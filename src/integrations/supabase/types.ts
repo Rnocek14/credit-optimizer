@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      career_paths: {
+        Row: {
+          advanced_roles: string[] | null
+          average_salary: number | null
+          certifications: string[] | null
+          common_entry_roles: string[] | null
+          created_at: string
+          education_required: string | null
+          growth_outlook: string | null
+          id: string
+          industry: string | null
+          key_skills: string[] | null
+          level: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          advanced_roles?: string[] | null
+          average_salary?: number | null
+          certifications?: string[] | null
+          common_entry_roles?: string[] | null
+          created_at?: string
+          education_required?: string | null
+          growth_outlook?: string | null
+          id?: string
+          industry?: string | null
+          key_skills?: string[] | null
+          level?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          advanced_roles?: string[] | null
+          average_salary?: number | null
+          certifications?: string[] | null
+          common_entry_roles?: string[] | null
+          created_at?: string
+          education_required?: string | null
+          growth_outlook?: string | null
+          id?: string
+          industry?: string | null
+          key_skills?: string[] | null
+          level?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       career_tracks: {
         Row: {
           created_at: string
