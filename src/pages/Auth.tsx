@@ -42,26 +42,48 @@ export default function Auth() {
 
       if (error) throw error;
 
-      toast({
-        title: "Welcome back!",
-        description: "You've been signed in successfully.",
-      });
-
-      // Check if user has completed onboarding
+      // Get user and create/update profile
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
+        // Check if profile exists
+        let { data: profile } = await supabase
           .from("profiles")
-          .select("id")
+          .select("*")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        navigate(profile ? "/dashboard" : "/onboarding");
+        // Create profile if it doesn't exist
+        if (!profile) {
+          const isAdmin = user.email === "founder@lifepath.dev";
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .insert({
+              user_id: user.id,
+              name: user.email?.split("@")[0] || "User",
+              role: isAdmin ? "admin" : "user"
+            })
+            .select()
+            .single();
+          profile = newProfile;
+        }
+
+        toast({
+          title: "Welcome back!",
+          description: "You've been signed in successfully.",
+        });
+
+        // Redirect to admin moderation if admin, otherwise dashboard
+        if (profile?.role === "admin") {
+          navigate("/admin/moderation");
+        } else {
+          navigate(profile ? "/dashboard" : "/onboarding");
+        }
       }
     } catch (error: any) {
+      console.error("Sign in error:", error);
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: error.message || "Invalid login credentials",
         variant: "destructive",
       });
     } finally {
@@ -72,7 +94,7 @@ export default function Auth() {
   const handleSignUp = async (data: AuthData) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -82,11 +104,24 @@ export default function Auth() {
 
       if (error) throw error;
 
+      // Auto-create profile for new users
+      if (authData.user) {
+        const isAdmin = data.email === "founder@lifepath.dev";
+        await supabase
+          .from("profiles")
+          .insert({
+            user_id: authData.user.id,
+            name: data.email.split("@")[0] || "User",
+            role: isAdmin ? "admin" : "user"
+          });
+      }
+
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",
       });
     } catch (error: any) {
+      console.error("Sign up error:", error);
       toast({
         title: "Sign up failed",
         description: error.message,

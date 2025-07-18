@@ -256,6 +256,7 @@ export type Database = {
           location: string | null
           name: string | null
           resume_review_summary: string | null
+          role: string | null
           role_title: string | null
           salary_expectations: number | null
           skills: string[] | null
@@ -281,6 +282,7 @@ export type Database = {
           location?: string | null
           name?: string | null
           resume_review_summary?: string | null
+          role?: string | null
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
@@ -306,6 +308,7 @@ export type Database = {
           location?: string | null
           name?: string | null
           resume_review_summary?: string | null
+          role?: string | null
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
@@ -488,6 +491,10 @@ export type Database = {
       generate_user_roadmap: {
         Args: { user_id_param: string }
         Returns: Json
+      }
+      get_user_role: {
+        Args: { user_id_param: string }
+        Returns: string
       }
     }
     Enums: {
