@@ -22,6 +22,15 @@ interface ProofItem {
 // Filter type for proof items
 type ProofFilter = 'all' | 'certification' | 'portfolio' | 'mentor_verified' | 'external_link';
 
+// AI Review Summary interface
+interface AIReviewSummary {
+  summary: string;
+  taglines: string[];
+  strengths: string[];
+  gaps: string[];
+  overall_score: number;
+}
+
 // Helper function to extract proof items from roadmap steps
 const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
   const proofItems: ProofItem[] = [];
@@ -261,6 +270,8 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [proofFilter, setProofFilter] = useState<ProofFilter>('all');
+  const [aiReview, setAiReview] = useState<AIReviewSummary | null>(null);
+  const [generatingReview, setGeneratingReview] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -286,6 +297,17 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
       setProfile(profileData);
       setTracks(careerTracks || []);
       setSteps(roadmapSteps || []);
+      
+      // Parse existing AI review if available
+      if (profileData?.resume_review_summary) {
+        try {
+          const parsedReview = JSON.parse(profileData.resume_review_summary);
+          setAiReview(parsedReview);
+        } catch (error) {
+          console.error('Failed to parse AI review:', error);
+        }
+      }
+      
       setLoading(false);
     };
 
@@ -367,6 +389,32 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
     });
   };
 
+  const generateAIReview = async () => {
+    setGeneratingReview(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-resume', {
+        body: { userId }
+      });
+
+      if (error) throw error;
+
+      setAiReview(data.analysis);
+      toast({
+        title: "AI Review Generated!",
+        description: "Your resume has been analyzed by AI",
+      });
+    } catch (error) {
+      console.error('Failed to generate AI review:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate AI review",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingReview(false);
+    }
+  };
+
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
 
   // Extract proof items for the web view
@@ -406,6 +454,103 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
           Completed {steps.length} roadmap steps across {tracks.length} career tracks.
           Verified outputs include certifications, portfolio projects, and mentor-rated milestones.
         </p>
+      </section>
+
+      {/* AI Review Summary Section */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground">AI Review Summary</h2>
+            {aiReview && (
+              <Badge variant="default" className="bg-primary text-primary-foreground">
+                ✅ AI Reviewed
+              </Badge>
+            )}
+          </div>
+          {!aiReview && (
+            <Button 
+              onClick={generateAIReview} 
+              disabled={generatingReview}
+              variant="outline"
+              size="sm"
+            >
+              {generatingReview ? 'Analyzing...' : 'Generate AI Review'}
+            </Button>
+          )}
+        </div>
+        
+        {aiReview ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <p className="text-muted-foreground leading-relaxed flex-1">{aiReview.summary}</p>
+                  <Badge variant="outline" className="ml-4 text-lg font-bold">
+                    {aiReview.overall_score}/100
+                  </Badge>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">📈 Strengths</h4>
+                    <ul className="space-y-1">
+                      {aiReview.strengths.map((strength, index) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-primary">•</span>
+                          {strength}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">🎯 Growth Areas</h4>
+                    <ul className="space-y-1">
+                      {aiReview.gaps.map((gap, index) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                          <span className="text-destructive">•</span>
+                          {gap}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">🏷️ Professional Status</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {aiReview.taglines.map((tagline, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {tagline}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                {profile.ai_reviewed_at && (
+                  <div className="text-xs text-muted-foreground border-t pt-2 mt-4">
+                    Last analyzed: {new Date(profile.ai_reviewed_at).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground mb-4">
+                Get AI-powered insights about your career readiness and portfolio strength.
+              </p>
+              <Button 
+                onClick={generateAIReview} 
+                disabled={generatingReview}
+                variant="default"
+              >
+                {generatingReview ? 'Analyzing Resume...' : 'Generate AI Review'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </section>
 
       {/* Proof of Learning Section */}

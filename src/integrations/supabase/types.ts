@@ -111,6 +111,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ai_reviewed_at: string | null
           availability: string | null
           career_goals: string | null
           created_at: string
@@ -122,6 +123,7 @@ export type Database = {
           learning_style: string | null
           location: string | null
           name: string | null
+          resume_review_summary: string | null
           role_title: string | null
           salary_expectations: number | null
           skills: string[] | null
@@ -132,6 +134,7 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          ai_reviewed_at?: string | null
           availability?: string | null
           career_goals?: string | null
           created_at?: string
@@ -143,6 +146,7 @@ export type Database = {
           learning_style?: string | null
           location?: string | null
           name?: string | null
+          resume_review_summary?: string | null
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
@@ -153,6 +157,7 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          ai_reviewed_at?: string | null
           availability?: string | null
           career_goals?: string | null
           created_at?: string
@@ -164,6 +169,7 @@ export type Database = {
           learning_style?: string | null
           location?: string | null
           name?: string | null
+          resume_review_summary?: string | null
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
