@@ -74,6 +74,7 @@ export type Database = {
           reasoning: string | null
           time_to_proficiency: string | null
           title: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -84,6 +85,7 @@ export type Database = {
           reasoning?: string | null
           time_to_proficiency?: string | null
           title: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           reasoning?: string | null
           time_to_proficiency?: string | null
           title?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
