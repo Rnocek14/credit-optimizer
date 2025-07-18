@@ -14,6 +14,8 @@ import PublicResume from "./pages/PublicResume";
 import Discover from "./pages/Discover";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
+import ResumeEmbed from "./pages/ResumeEmbed";
+import EmbedGenerator from "./pages/EmbedGenerator";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -55,6 +57,8 @@ const App = () => (
           <Route path="/discover" element={<Discover />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/mentor" element={<MentorInbox />} />
+        <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
+        <Route path="/embed-generator" element={<EmbedGenerator />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
