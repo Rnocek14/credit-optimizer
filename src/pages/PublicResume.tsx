@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download } from "lucide-react";
+import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download, Eye, MousePointer, Info } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAnalytics } from "@/lib/analytics";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProfileData {
   id: string;
@@ -29,6 +30,16 @@ interface ProfileData {
   created_at: string;
 }
 
+interface ResumeStats {
+  totalViews: number;
+  clickThroughRate: number;
+  sourceBreakdown: {
+    gallery: number;
+    embed: number;
+    direct: number;
+  };
+}
+
 const PublicResume = () => {
   const { userId } = useParams();
   const [searchParams] = useSearchParams();
@@ -36,13 +47,46 @@ const PublicResume = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [stats, setStats] = useState<ResumeStats | null>(null);
   const analytics = useAnalytics();
 
   useEffect(() => {
     if (userId) {
       fetchProfile();
+      fetchStats();
     }
   }, [userId]);
+
+  const fetchStats = async () => {
+    try {
+      const { data: events, error } = await supabase
+        .from("resume_events")
+        .select("event_type, source, created_at")
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      const totalViews = events?.filter(e => e.event_type === 'resume_view').length || 0;
+      const totalClicks = events?.filter(e => e.event_type === 'resume_click').length || 0;
+      const clickThroughRate = totalViews > 0 ? Math.round((totalClicks / totalViews) * 100) : 0;
+
+      const sourceBreakdown = events?.reduce((acc, event) => {
+        if (event.event_type === 'resume_view') {
+          const source = event.source || 'direct';
+          acc[source] = (acc[source] || 0) + 1;
+        }
+        return acc;
+      }, { gallery: 0, embed: 0, direct: 0 }) || { gallery: 0, embed: 0, direct: 0 };
+
+      setStats({
+        totalViews,
+        clickThroughRate,
+        sourceBreakdown
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -212,6 +256,55 @@ const PublicResume = () => {
               )}
             </div>
           </div>
+
+          {/* Resume Stats */}
+          {stats && (
+            <TooltipProvider>
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Public Resume Stats</h3>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Stats reflect verified activity across all public embeds, shares, and gallery views. Updated daily.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-lg font-bold">{stats.totalViews}</p>
+                      <p className="text-xs text-muted-foreground">Total Views</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <MousePointer className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-lg font-bold">{stats.clickThroughRate}%</p>
+                      <p className="text-xs text-muted-foreground">Click Rate</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="text-lg font-bold">
+                        {stats.sourceBreakdown.gallery + stats.sourceBreakdown.embed + stats.sourceBreakdown.direct}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        G:{stats.sourceBreakdown.gallery} E:{stats.sourceBreakdown.embed} D:{stats.sourceBreakdown.direct}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
+          )}
           
           {/* Action Buttons */}
           <div className="flex gap-3 mt-6">
