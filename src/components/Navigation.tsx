@@ -30,6 +30,7 @@ export default function Navigation() {
 
   const navItems = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/onboarding", label: "Onboarding", icon: User },
     { href: "/dashboard", label: "Dashboard", icon: Target },
   ];
