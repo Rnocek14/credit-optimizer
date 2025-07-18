@@ -190,6 +190,7 @@ export type Database = {
           success_metrics: string | null
           timeline: string | null
           title: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -206,6 +207,7 @@ export type Database = {
           success_metrics?: string | null
           timeline?: string | null
           title: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -222,6 +224,7 @@ export type Database = {
           success_metrics?: string | null
           timeline?: string | null
           title?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
