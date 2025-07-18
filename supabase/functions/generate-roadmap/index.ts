@@ -159,7 +159,16 @@ Return JSON format:
 
     let parsedCareerTracks
     try {
-      parsedCareerTracks = JSON.parse(careerTracksContent)
+      // Clean the response content - remove markdown code blocks if present
+      let cleanContent = careerTracksContent.trim()
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```\s*$/, '')
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```\s*$/, '')
+      }
+      
+      console.log('Cleaned content for parsing:', cleanContent)
+      parsedCareerTracks = JSON.parse(cleanContent)
       console.log('✅ Successfully parsed career tracks JSON')
     } catch (e) {
       console.error('❌ Failed to parse career tracks JSON:', e)
