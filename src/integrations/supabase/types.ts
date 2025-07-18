@@ -20,7 +20,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_user_roadmap: {
+        Args: { user_id_param: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

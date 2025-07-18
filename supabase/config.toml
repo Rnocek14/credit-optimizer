@@ -1,1 +1,7 @@
 project_id = "vzpissitddpunkpythsb"
+
+[functions.generate-roadmap]
+verify_jwt = false
+
+[functions.signup-automation]
+verify_jwt = false
