@@ -1,0 +1,122 @@
+-- Insert batch 4 of 10 career paths into career_paths table
+INSERT INTO public.career_paths (
+  title, summary, industry, level, average_salary, growth_outlook, 
+  key_skills, education_required, certifications, common_entry_roles, advanced_roles
+) VALUES
+(
+  'Technical Program Manager',
+  'Oversee technical projects, coordinate teams across functions, and ensure alignment with business goals',
+  'Technology',
+  'Mid',
+  118000,
+  'Faster than average',
+  ARRAY['Project Management', 'Agile Methodology', 'Technical Writing', 'Cross-functional Leadership', 'Risk Management', 'Scrum', 'Stakeholder Communication', 'Roadmapping'],
+  'Bachelor''s in Computer Science, Engineering, or related field',
+  ARRAY['PMP', 'Certified Scrum Master', 'SAFe Program Consultant', 'Agile Certified Practitioner'],
+  ARRAY['Project Manager', 'Product Owner', 'Software Engineer', 'Scrum Master'],
+  ARRAY['Senior TPM', 'Program Director', 'Technical Director', 'VP of Programs', 'CTO']
+),
+(
+  'Customer Success Manager',
+  'Help customers achieve their goals using a company''s product while driving retention and satisfaction',
+  'SaaS / Customer Experience',
+  'Entry',
+  75000,
+  'Much faster than average',
+  ARRAY['Customer Relationship Management', 'Product Knowledge', 'Communication', 'Onboarding', 'Account Management', 'Data Analysis', 'Churn Prevention', 'Customer Advocacy'],
+  'Bachelor''s in Business, Communications, or related field',
+  ARRAY['SuccessCOACHing', 'Gainsight Certified', 'HubSpot Service Certification', 'CSM Certified'],
+  ARRAY['Customer Support Rep', 'Onboarding Specialist', 'Account Coordinator', 'Implementation Specialist'],
+  ARRAY['Senior CSM', 'Customer Success Director', 'VP of Customer Experience', 'Chief Customer Officer']
+),
+(
+  'Bioinformatics Scientist',
+  'Apply computational techniques to understand biological data, often for genomics, drug discovery, or diagnostics',
+  'Biotechnology',
+  'Advanced',
+  105000,
+  'Faster than average',
+  ARRAY['Genomics', 'R Programming', 'Python', 'Machine Learning', 'Data Visualization', 'Biostatistics', 'Databases', 'Molecular Biology'],
+  'PhD in Bioinformatics, Computational Biology, or related field',
+  ARRAY['Coursera Bioinformatics', 'NIH Big Data Training', 'SAS Bioinformatics Certification'],
+  ARRAY['Lab Technician', 'Data Scientist', 'Biology Research Assistant', 'Genomic Analyst'],
+  ARRAY['Lead Bioinformatics Scientist', 'Principal Investigator', 'Director of Genomics', 'CTO (Biotech)']
+),
+(
+  'Real Estate Investment Analyst',
+  'Evaluate real estate investments, model cash flows, and support acquisition, development, or asset management strategies',
+  'Finance / Real Estate',
+  'Entry',
+  85000,
+  'Average',
+  ARRAY['Financial Modeling', 'Excel', 'Real Estate Valuation', 'Market Analysis', 'Underwriting', 'REIT Knowledge', 'Investment Strategy', 'ARGUS'],
+  'Bachelor''s in Finance, Real Estate, or Economics',
+  ARRAY['ARGUS Certification', 'CCIM', 'REFA', 'Financial Modeling & Valuation Analyst (FMVA)'],
+  ARRAY['Investment Analyst', 'Underwriting Analyst', 'Real Estate Assistant', 'Research Associate'],
+  ARRAY['Investment Manager', 'Director of Acquisitions', 'Asset Manager', 'VP of Investments', 'CIO']
+),
+(
+  'Digital Content Creator',
+  'Produce engaging media content for platforms like YouTube, TikTok, and Instagram with a focus on storytelling and brand growth',
+  'Media / Marketing',
+  'Entry',
+  65000,
+  'Much faster than average',
+  ARRAY['Video Editing', 'Social Media', 'Content Strategy', 'Audience Engagement', 'Analytics', 'SEO', 'Branding', 'Camera & Lighting'],
+  'Self-taught or Bachelor''s in Media, Marketing, or related field',
+  ARRAY['YouTube Creator Academy', 'HubSpot Content Certification', 'Meta Blueprint', 'TikTok Creative Certificate'],
+  ARRAY['Social Media Assistant', 'Video Editor', 'Content Assistant', 'Junior Creator'],
+  ARRAY['Senior Content Creator', 'Influencer Marketing Lead', 'Creative Director', 'Brand Strategist']
+),
+(
+  'Speech-Language Pathologist',
+  'Assess and treat speech, language, and communication disorders in patients of all ages',
+  'Healthcare / Education',
+  'Advanced',
+  82000,
+  'Much faster than average',
+  ARRAY['Therapeutic Interventions', 'Communication Assessment', 'Patient Documentation', 'Audiology', 'Rehabilitation', 'Pediatrics', 'Medical Collaboration', 'Empathy'],
+  'Master''s in Speech-Language Pathology',
+  ARRAY['ASHA CCC-SLP', 'State Licensure', 'BLS Certification'],
+  ARRAY['SLP Assistant', 'Therapy Aide', 'Education Support Specialist', 'Pediatric Assistant'],
+  ARRAY['Lead SLP', 'Clinical Supervisor', 'Department Director', 'SLP Educator']
+),
+(
+  'Cloud Infrastructure Engineer',
+  'Design, implement, and manage scalable and secure cloud environments for enterprise systems and applications',
+  'Technology',
+  'Mid',
+  112000,
+  'Much faster than average',
+  ARRAY['AWS', 'Azure', 'Terraform', 'Kubernetes', 'Linux', 'CI/CD', 'Monitoring', 'Security'],
+  'Bachelor''s in Computer Science, Engineering, or IT',
+  ARRAY['AWS Certified Solutions Architect', 'Microsoft Azure Administrator', 'Google Cloud Architect', 'HashiCorp Terraform Associate'],
+  ARRAY['Cloud Support Engineer', 'DevOps Engineer', 'System Administrator', 'IT Engineer'],
+  ARRAY['Cloud Architect', 'Infrastructure Lead', 'Site Reliability Engineer', 'Director of Cloud Ops']
+),
+(
+  'Genetic Counselor',
+  'Help individuals understand and make informed decisions about genetic conditions, testing, and inherited risks',
+  'Healthcare / Genetics',
+  'Advanced',
+  89000,
+  'Faster than average',
+  ARRAY['Genetic Testing', 'Patient Counseling', 'Risk Assessment', 'Communication', 'Medical Ethics', 'Family History Analysis', 'Clinical Documentation', 'Empathy'],
+  'Master''s in Genetic Counseling',
+  ARRAY['ABGC Certification', 'State Licensure', 'HIPAA Certification'],
+  ARRAY['Genetic Assistant', 'Health Educator', 'Medical Assistant', 'Lab Technician'],
+  ARRAY['Lead Genetic Counselor', 'Clinical Director', 'Research Supervisor', 'Program Manager']
+),
+(
+  'No-Code Developer',
+  'Use visual development platforms to build apps and workflows without traditional coding',
+  'Technology / Entrepreneurship',
+  'Entry',
+  70000,
+  'Much faster than average',
+  ARRAY['Bubble', 'Webflow', 'Airtable', 'Zapier', 'Automation', 'UX/UI', 'App Design', 'Problem Solving'],
+  'Self-taught or Bachelor''s in Design, Business, or related field',
+  ARRAY['Makerpad Bootcamp', 'Webflow University', 'Bubble Academy', 'Zapier Certified Expert'],
+  ARRAY['Product Builder', 'Automation Specialist', 'App Designer', 'Startup Founder'],
+  ARRAY['Lead No-Code Developer', 'Operations Architect', 'Product Strategist', 'Technical Founder']
+);
