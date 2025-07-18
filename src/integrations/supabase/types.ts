@@ -147,6 +147,50 @@ export type Database = {
           },
         ]
       }
+      mentor_feedback: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          mentor_email: string
+          rating: number
+          recommend_for_gallery: boolean | null
+          recommend_for_jobs: boolean | null
+          resume_event_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          mentor_email: string
+          rating: number
+          recommend_for_gallery?: boolean | null
+          recommend_for_jobs?: boolean | null
+          resume_event_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          mentor_email?: string
+          rating?: number
+          recommend_for_gallery?: boolean | null
+          recommend_for_jobs?: boolean | null
+          resume_event_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_feedback_resume_event_id_fkey"
+            columns: ["resume_event_id"]
+            isOneToOne: false
+            referencedRelation: "resume_shared_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null

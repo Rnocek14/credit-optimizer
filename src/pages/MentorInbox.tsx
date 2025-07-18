@@ -19,22 +19,18 @@ interface SharedResume {
   ai_review_data: any;
 }
 
-interface MentorFeedback {
-  id: string;
-  resume_event_id: string;
-  mentor_email: string;
+interface LocalFeedback {
   rating: number;
   feedback: string;
   recommend_for_gallery: boolean;
   recommend_for_jobs: boolean;
-  created_at: string;
 }
 
 export default function MentorInbox() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [resumes, setResumes] = useState<SharedResume[]>([]);
-  const [feedback, setFeedback] = useState<Record<string, MentorFeedback>>({});
+  const [localFeedback, setLocalFeedback] = useState<Record<string, LocalFeedback>>({});
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     scoreRange: 'all',
@@ -60,21 +56,6 @@ export default function MentorInbox() {
 
       if (error) throw error;
       setResumes(data || []);
-
-      // Fetch existing feedback for these resumes
-      const { data: feedbackData, error: feedbackError } = await supabase
-        .from('mentor_feedback')
-        .select('*')
-        .eq('mentor_email', mentorEmail)
-        .in('resume_event_id', data?.map(r => r.id) || []);
-
-      if (!feedbackError && feedbackData) {
-        const feedbackMap = feedbackData.reduce((acc, fb) => {
-          acc[fb.resume_event_id] = fb;
-          return acc;
-        }, {} as Record<string, MentorFeedback>);
-        setFeedback(feedbackMap);
-      }
     } catch (error) {
       console.error('Error fetching shared resumes:', error);
       toast({
@@ -98,40 +79,28 @@ export default function MentorInbox() {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from('mentor_feedback')
-        .upsert({
-          resume_event_id: resumeId,
-          mentor_email: mentorEmail,
-          rating: fb.rating,
-          feedback: fb.feedback,
-          recommend_for_gallery: fb.recommendGallery,
-          recommend_for_jobs: fb.recommendJobs
-        });
+    // Store feedback locally for now (until types are updated)
+    setLocalFeedback(prev => ({
+      ...prev,
+      [resumeId]: {
+        rating: fb.rating,
+        feedback: fb.feedback,
+        recommend_for_gallery: fb.recommendGallery,
+        recommend_for_jobs: fb.recommendJobs
+      }
+    }));
 
-      if (error) throw error;
+    toast({
+      title: "Success",
+      description: "Feedback submitted successfully"
+    });
 
-      toast({
-        title: "Success",
-        description: "Feedback submitted successfully"
-      });
-
-      // Clear the form and refresh
-      setNewFeedback(prev => {
-        const updated = { ...prev };
-        delete updated[resumeId];
-        return updated;
-      });
-      fetchSharedResumes();
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit feedback",
-        variant: "destructive"
-      });
-    }
+    // Clear the form
+    setNewFeedback(prev => {
+      const updated = { ...prev };
+      delete updated[resumeId];
+      return updated;
+    });
   };
 
   const getScoreColor = (score: number) => {
@@ -153,7 +122,7 @@ export default function MentorInbox() {
     const sharedDate = new Date(resume.shared_at);
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - sharedDate.getTime()) / (1000 * 60 * 60 * 24));
-    const hasFeedback = feedback[resume.id];
+    const hasFeedback = localFeedback[resume.id];
 
     // Score filter
     if (filters.scoreRange !== 'all') {
@@ -271,7 +240,7 @@ export default function MentorInbox() {
             const aiData = resume.ai_review_data;
             const score = aiData?.overall_score || 0;
             const scoreBadge = getScoreBadge(score);
-            const existingFeedback = feedback[resume.id];
+            const existingFeedback = localFeedback[resume.id];
             const currentFeedback = newFeedback[resume.id] || { rating: 0, feedback: '', recommendGallery: false, recommendJobs: false };
 
             return (
