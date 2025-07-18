@@ -79,12 +79,12 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
         model: 'gpt-4o',
         messages: [
           {
-            role: 'system',
-            content: 'You are an expert career advisor. Always respond with valid JSON only, no additional text or formatting.'
+            role: "system",
+            content: "You are an expert career roadmap generator. You MUST respond with pure, valid JSON only. Do NOT include any explanation, markdown formatting (like ```json), or extra text. Just return a JSON object with two keys: 'career_tracks' and 'roadmap_steps'."
           },
           {
-            role: 'user',
-            content: prompt
+            role: "user",
+            content: `${prompt}\n\nIMPORTANT: Your response must be valid JSON ONLY. Do not include any markdown, no explanation, no wrapping text — just the JSON object exactly.`
           }
         ],
         temperature: 0.7,
@@ -99,7 +99,7 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
     const openaiData = await openaiResponse.json();
     const generatedContent = openaiData.choices[0].message.content;
     
-    console.log('Raw GPT response:', generatedContent);
+    console.log("Raw GPT content:", generatedContent);
 
     // Parse the JSON response
     let roadmapData;
