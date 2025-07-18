@@ -38,9 +38,9 @@ const EmbedExplorer = () => {
   const [filteredProfiles, setFilteredProfiles] = useState<ExplorerProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [industryFilter, setIndustryFilter] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("");
-  const [badgeFilter, setBadgeFilter] = useState("");
+  const [badgeFilter, setBadgeFilter] = useState("all");
   const [sortBy, setSortBy] = useState("most_viewed");
   const [minScore, setMinScore] = useState(80);
   
@@ -130,13 +130,13 @@ const EmbedExplorer = () => {
         profile.skills?.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // Industry filter
-      const industryMatch = !industryFilter || profile.industry === industryFilter;
+      const industryMatch = industryFilter === "all" || profile.industry === industryFilter;
 
       // Role filter
       const roleMatch = !roleFilter || profile.role_title?.toLowerCase().includes(roleFilter.toLowerCase());
 
       // Badge filter
-      const badgeMatch = !badgeFilter || 
+      const badgeMatch = badgeFilter === "all" || 
         profile.badges.some(badge => badge.badge_type.name === badgeFilter);
 
       // Score filter
@@ -233,7 +233,7 @@ const EmbedExplorer = () => {
                 <SelectValue placeholder="All Industries" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Industries</SelectItem>
+                <SelectItem value="all">All Industries</SelectItem>
                 {getUniqueIndustries().map((industry) => (
                   <SelectItem key={industry} value={industry}>
                     {industry}
@@ -247,7 +247,7 @@ const EmbedExplorer = () => {
                 <SelectValue placeholder="All Badges" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Badges</SelectItem>
+                <SelectItem value="all">All Badges</SelectItem>
                 {getUniqueBadges().map((badge) => (
                   <SelectItem key={badge} value={badge}>
                     {badge}
