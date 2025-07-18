@@ -30,6 +30,11 @@ const Index = () => {
                 Browse Resume Gallery
               </Link>
             </Button>
+            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
+              <Link to="/discover">
+                AI Discovery
+              </Link>
+            </Button>
             </div>
           </div>
         </div>

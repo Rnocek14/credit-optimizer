@@ -109,6 +109,44 @@ export type Database = {
           },
         ]
       }
+      featured_gallery_curations: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          curation_tag: string
+          display_order: number | null
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          curation_tag: string
+          display_order?: number | null
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          curation_tag?: string
+          display_order?: number | null
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "featured_gallery_curations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null
