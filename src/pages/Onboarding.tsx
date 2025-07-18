@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, User, Target, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Navigation from "@/components/Navigation";
+import OnboardingConfirmation from "@/components/OnboardingConfirmation";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -36,6 +38,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -135,8 +138,8 @@ export default function Onboarding() {
         description: "Your personalized roadmap is being generated...",
       });
 
-      // Navigate to dashboard
-      navigate("/dashboard");
+      // Show confirmation screen instead of immediate redirect
+      setShowConfirmation(true);
     } catch (error) {
       console.error("Error:", error);
       toast({
@@ -149,20 +152,26 @@ export default function Onboarding() {
     }
   };
 
+  if (showConfirmation) {
+    return <OnboardingConfirmation onContinue={() => navigate("/dashboard")} />;
+  }
+
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="container max-w-2xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Create Your Career Profile
-          </h1>
-          <p className="text-muted-foreground">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-background py-4 md:py-8">
+        <div className="container max-w-2xl mx-auto px-4">
+          <div className="text-center mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+              Create Your Career Profile
+            </h1>
+            <p className="text-muted-foreground text-sm md:text-base">
             Tell us about yourself to generate your personalized career roadmap
           </p>
-        </div>
+          </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
             {/* Personal Information */}
             <Card>
               <CardHeader>
@@ -174,7 +183,7 @@ export default function Onboarding() {
                   Basic information about your background
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 md:space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -472,7 +481,7 @@ export default function Onboarding() {
               </CardContent>
             </Card>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading} variant="gradient">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -481,10 +490,11 @@ export default function Onboarding() {
               ) : (
                 "Create Profile & Generate Roadmap"
               )}
-            </Button>
-          </form>
-        </Form>
+              </Button>
+            </form>
+          </Form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

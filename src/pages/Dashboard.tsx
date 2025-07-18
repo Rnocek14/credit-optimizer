@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Target, BookOpen, Clock, TrendingUp, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Navigation from "@/components/Navigation";
+import ProgressBar from "@/components/ProgressBar";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -131,37 +134,56 @@ export default function Dashboard() {
     }
   };
 
+  const completedSteps = roadmapSteps.filter(step => step.completed).length;
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your dashboard...</p>
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 py-6 md:py-8">
+            <div className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+                Your Career Dashboard
+              </h1>
+              <p className="text-muted-foreground text-sm md:text-base">
+                Track your progress and follow your personalized roadmap
+              </p>
+            </div>
+            <DashboardSkeleton />
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Your Career Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Track your progress and follow your personalized roadmap
-          </p>
-        </div>
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6 md:py-8">
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+              Your Career Dashboard
+            </h1>
+            <p className="text-muted-foreground text-sm md:text-base">
+              Track your progress and follow your personalized roadmap
+            </p>
+          </div>
 
-        {/* Career Tracks */}
-        {careerTracks.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          {/* Progress Overview */}
+          {roadmapSteps.length > 0 && (
+            <ProgressBar completed={completedSteps} total={roadmapSteps.length} />
+          )}
+
+          {/* Career Tracks */}
+          {careerTracks.length > 0 && (
+            <div className="mb-6 md:mb-8">
+              <h2 className="text-xl md:text-2xl font-semibold mb-4 flex items-center gap-2">
               <Target className="h-6 w-6" />
               Recommended Career Tracks
             </h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {careerTracks.map((track) => (
                 <Card key={track.id}>
                   <CardHeader>
@@ -190,23 +212,23 @@ export default function Dashboard() {
                       )}
                     </div>
                   </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Roadmap Steps */}
-        {roadmapSteps.length > 0 && (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+          {/* Roadmap Steps */}
+          {roadmapSteps.length > 0 && (
+            <div>
+              <h2 className="text-xl md:text-2xl font-semibold mb-4 flex items-center gap-2">
               <BookOpen className="h-6 w-6" />
               Your Learning Roadmap
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {roadmapSteps.map((step, index) => (
                 <Card key={step.id} className={step.completed ? "opacity-75" : ""}>
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0 mt-1">
                         <Checkbox
@@ -218,23 +240,25 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1 space-y-3">
                         <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg flex items-center gap-2">
-                              <span className="text-muted-foreground text-sm">
+                        <div>
+                          <div className="space-y-1 md:space-y-2">
+                            <h3 className="font-semibold text-base md:text-lg flex items-center gap-2">
+                              <span className="text-muted-foreground text-xs md:text-sm">
                                 #{index + 1}
                               </span>
                               {step.title}
                               {step.completed && (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
                               )}
                             </h3>
                             {step.description && (
-                              <p className="text-muted-foreground mt-1">
+                              <p className="text-muted-foreground mt-1 text-sm md:text-base">
                                 {step.description}
                               </p>
                             )}
                           </div>
-                          <div className="flex gap-2">
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                             {step.priority && (
                               <Badge variant={getPriorityColor(step.priority)}>
                                 {step.priority}
@@ -246,7 +270,7 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 text-xs md:text-sm">
                           {step.timeline && (
                             <div>
                               <span className="font-medium">Timeline:</span>
@@ -270,9 +294,9 @@ export default function Dashboard() {
                         {step.prerequisites && step.prerequisites.length > 0 && (
                           <div>
                             <span className="font-medium text-sm">Prerequisites:</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-1 md:mt-2">
                               {step.prerequisites.map((prereq, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
+                                  <Badge key={i} variant="secondary" className="text-xs">
                                   {prereq}
                                 </Badge>
                               ))}
@@ -284,26 +308,27 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {careerTracks.length === 0 && roadmapSteps.length === 0 && (
-          <Card>
-            <CardContent className="text-center py-12">
-              <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No roadmap found</h3>
-              <p className="text-muted-foreground mb-4">
+          {careerTracks.length === 0 && roadmapSteps.length === 0 && (
+            <Card>
+              <CardContent className="text-center py-8 md:py-12">
+                <BookOpen className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-base md:text-lg font-semibold mb-2">No roadmap found</h3>
+                <p className="text-muted-foreground mb-4 text-sm md:text-base">
                 It looks like your roadmap is still being generated or there was an issue.
               </p>
               <Button onClick={fetchData}>
                 <Loader2 className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
