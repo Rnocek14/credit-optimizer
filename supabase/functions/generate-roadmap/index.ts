@@ -6,8 +6,10 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
-  console.log('🚀 generate-roadmap function called')
+  console.log('🚀🚀🚀 GENERATE-ROADMAP FUNCTION STARTED 🚀🚀🚀')
+  console.log('Timestamp:', new Date().toISOString())
   console.log('Request method:', req.method)
+  console.log('Request URL:', req.url)
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -16,15 +18,29 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Creating Supabase client...')
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    console.log('🔧 Creating Supabase client...')
+    
+    // Check environment variables first
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') 
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')
+    
+    console.log('Environment check:')
+    console.log('- SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing')
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅ Set' : '❌ Missing')
+    console.log('- OPENAI_API_KEY:', openaiKey ? '✅ Set' : '❌ Missing')
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required Supabase environment variables')
+    }
+    
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('Parsing request body...')
-    const { user_id } = await req.json()
-    console.log('Received user_id:', user_id)
+    console.log('📝 Parsing request body...')
+    const body = await req.json()
+    console.log('Request body:', body)
+    const { user_id } = body
+    console.log('Extracted user_id:', user_id)
 
     if (!user_id) {
       console.error('❌ user_id is required')
@@ -60,13 +76,12 @@ Deno.serve(async (req) => {
       goals: profile.career_goals
     })
 
-    // Check OpenAI API key
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiApiKey) {
+    // OpenAI API key already checked above
+    if (!openaiKey) {
       console.error('❌ OPENAI_API_KEY not found')
       throw new Error('OPENAI_API_KEY is not configured')
     }
-    console.log('✅ OpenAI API key found')
+    console.log('✅ OpenAI API key confirmed available')
 
     // Get relevant career paths
     console.log('🔍 Fetching relevant career paths...')
@@ -108,7 +123,7 @@ Return JSON format:
     const careerTracksResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -245,18 +260,26 @@ Return JSON format:
     }
 
     console.log('🎉 Roadmap generation completed successfully!')
+    console.log('Final result summary:')
+    console.log(`- Career tracks created: ${parsedCareerTracks.career_tracks.length}`)
+    console.log(`- Roadmap steps created: ${allRoadmapSteps.length}`)
+    console.log(`- User: ${profile.name} (${user_id})`)
+
+    const successResponse = {
+      success: true,
+      message: 'Roadmap generated successfully',
+      data: {
+        career_tracks_created: parsedCareerTracks.career_tracks.length,
+        roadmap_steps_created: allRoadmapSteps.length,
+        user_id: user_id,
+        profile_name: profile.name,
+      }
+    }
+    
+    console.log('Returning response:', successResponse)
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: 'Roadmap generated successfully',
-        data: {
-          career_tracks_created: parsedCareerTracks.career_tracks.length,
-          roadmap_steps_created: allRoadmapSteps.length,
-          user_id: user_id,
-          profile_name: profile.name,
-        }
-      }),
+      JSON.stringify(successResponse),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
@@ -264,15 +287,22 @@ Return JSON format:
     )
 
   } catch (error) {
-    console.error('💥 Error in generate-roadmap function:', error)
+    console.error('💥💥💥 CRITICAL ERROR in generate-roadmap function 💥💥💥')
+    console.error('Error message:', error.message)
     console.error('Error stack:', error.stack)
+    console.error('Error details:', error)
+    
+    const errorResponse = {
+      success: false,
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    }
+    
+    console.error('Returning error response:', errorResponse)
     
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message,
-        stack: error.stack,
-      }),
+      JSON.stringify(errorResponse),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
