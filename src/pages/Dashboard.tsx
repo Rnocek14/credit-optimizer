@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
+import { ResumePreview } from "@/components/ResumePreview";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -327,6 +328,12 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* Resume Preview for Aisha Khan */}
+          <div className="mt-8">
+            <h2 className="text-xl md:text-2xl font-semibold mb-4">Resume Preview</h2>
+            <ResumePreview userId="2b458624-d498-4cca-a63d-9341cc20e363" />
+          </div>
         </div>
       </div>
     </>
