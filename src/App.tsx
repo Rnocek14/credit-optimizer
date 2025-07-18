@@ -16,6 +16,7 @@ import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
+import Analytics from "./pages/Analytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,14 @@ const App = () => (
         <Route path="/mentor" element={<MentorInbox />} />
         <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
         <Route path="/embed-generator" element={<EmbedGenerator />} />
+        <Route 
+          path="/analytics" 
+          element={
+            <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+              <Analytics />
+            </ProtectedRoute>
+          } 
+        />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
