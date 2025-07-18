@@ -4,8 +4,85 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
-import { Download, Copy, Share } from 'lucide-react';
+import { Download, Copy, Share, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+// Types for proof items
+interface ProofItem {
+  id: string;
+  title: string;
+  type: 'certification' | 'portfolio' | 'mentor_verified' | 'external_link';
+  description: string;
+  link?: string;
+  trackTitle: string;
+}
+
+// Helper function to extract proof items from roadmap steps
+const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
+  const proofItems: ProofItem[] = [];
+  
+  steps.forEach((step, index) => {
+    const trackIndex = Math.floor(index / 3);
+    const track = tracks[trackIndex];
+    const trackTitle = track?.title || 'Unknown Track';
+
+    // Check for success metrics (certifications, achievements)
+    if (step.success_metrics) {
+      const isPortfolio = step.success_metrics.toLowerCase().includes('project') || 
+                         step.success_metrics.toLowerCase().includes('portfolio') ||
+                         step.success_metrics.toLowerCase().includes('github');
+      const isCertification = step.success_metrics.toLowerCase().includes('exam') || 
+                             step.success_metrics.toLowerCase().includes('certificate') ||
+                             step.success_metrics.toLowerCase().includes('certification');
+      
+      proofItems.push({
+        id: `${step.id}_success`,
+        title: step.title,
+        type: isCertification ? 'certification' : isPortfolio ? 'portfolio' : 'certification',
+        description: step.success_metrics,
+        trackTitle,
+      });
+    }
+
+    // Check for mentor verification
+    if (step.mentor_verified || step.verified) {
+      proofItems.push({
+        id: `${step.id}_mentor`,
+        title: step.title,
+        type: 'mentor_verified',
+        description: 'Verified by mentor/instructor',
+        trackTitle,
+      });
+    }
+
+    // Check for external links
+    if (step.external_links && Array.isArray(step.external_links)) {
+      step.external_links.forEach((link: string, linkIndex: number) => {
+        proofItems.push({
+          id: `${step.id}_link_${linkIndex}`,
+          title: step.title,
+          type: 'external_link',
+          description: 'External resource/project',
+          link,
+          trackTitle,
+        });
+      });
+    }
+  });
+
+  return proofItems;
+};
+
+// Helper function to get icon for proof type
+const getProofIcon = (type: ProofItem['type']): string => {
+  switch (type) {
+    case 'certification': return '📜';
+    case 'portfolio': return '📝';
+    case 'mentor_verified': return '🧑‍🏫';
+    case 'external_link': return '🔗';
+    default: return '✅';
+  }
+};
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -81,50 +158,80 @@ const styles = StyleSheet.create({
 });
 
 // PDF Document Component
-const ResumePDFDocument = ({ profile, tracks, steps }: any) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.name}>{profile.name}</Text>
-        <Text style={styles.subtitle}>{profile.role_title} → {profile.career_goals}</Text>
-        <Text style={styles.subtitle}>{profile.location} • {profile.availability}</Text>
-      </View>
+const ResumePDFDocument = ({ profile, tracks, steps }: any) => {
+  const proofItems = extractProofItems(steps, tracks);
+  const groupedProof = proofItems.reduce((acc, item) => {
+    if (!acc[item.trackTitle]) acc[item.trackTitle] = [];
+    acc[item.trackTitle].push(item);
+    return acc;
+  }, {} as Record<string, ProofItem[]>);
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Summary</Text>
-        <Text style={styles.subtitle}>
-          Completed {steps.length} roadmap steps across {tracks.length} career tracks.
-          Verified outputs include certifications, portfolio projects, and mentor-rated milestones.
-        </Text>
-      </View>
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <Text style={styles.name}>{profile.name}</Text>
+          <Text style={styles.subtitle}>{profile.role_title} → {profile.career_goals}</Text>
+          <Text style={styles.subtitle}>{profile.location} • {profile.availability}</Text>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Career Tracks & Achievements</Text>
-        {tracks.map((track: any, index: number) => {
-          const trackSteps = steps.filter((_: any, i: number) => Math.floor(i / 3) === index);
-          return (
-            <View key={track.id} style={{ marginBottom: 15 }}>
-              <Text style={styles.trackTitle}>{track.title}</Text>
-              <Text style={styles.trackDescription}>{track.description}</Text>
-              {trackSteps.map((step: any, i: number) => (
-                <View key={i} style={styles.stepContainer}>
-                  <Text style={styles.stepTitle}>{step.title}</Text>
-                  <Text style={styles.stepDescription}>{step.description}</Text>
-                  <Text style={styles.stepMeta}>
-                    📅 {step.timeline} • ⏱ {step.estimated_duration}
-                  </Text>
-                  <Text style={styles.stepMeta}>
-                    Category: {step.category} | Success: {step.success_metrics}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          );
-        })}
-      </View>
-    </Page>
-  </Document>
-);
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Summary</Text>
+          <Text style={styles.subtitle}>
+            Completed {steps.length} roadmap steps across {tracks.length} career tracks.
+            Verified outputs include certifications, portfolio projects, and mentor-rated milestones.
+          </Text>
+        </View>
+
+        {/* Proof of Learning Section */}
+        {proofItems.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Proof of Learning</Text>
+            {Object.entries(groupedProof).map(([trackTitle, items]) => (
+              <View key={trackTitle} style={{ marginBottom: 10 }}>
+                <Text style={styles.trackTitle}>{trackTitle}</Text>
+                {items.map((item) => (
+                  <View key={item.id} style={styles.stepContainer}>
+                    <Text style={styles.stepTitle}>
+                      {getProofIcon(item.type)} {item.title}
+                    </Text>
+                    <Text style={styles.stepDescription}>{item.description}</Text>
+                    {item.link && <Text style={styles.stepMeta}>Link: {item.link}</Text>}
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Career Tracks & Achievements</Text>
+          {tracks.map((track: any, index: number) => {
+            const trackSteps = steps.filter((_: any, i: number) => Math.floor(i / 3) === index);
+            return (
+              <View key={track.id} style={{ marginBottom: 15 }}>
+                <Text style={styles.trackTitle}>{track.title}</Text>
+                <Text style={styles.trackDescription}>{track.description}</Text>
+                {trackSteps.map((step: any, i: number) => (
+                  <View key={i} style={styles.stepContainer}>
+                    <Text style={styles.stepTitle}>{step.title}</Text>
+                    <Text style={styles.stepDescription}>{step.description}</Text>
+                    <Text style={styles.stepMeta}>
+                      📅 {step.timeline} • ⏱ {step.estimated_duration}
+                    </Text>
+                    <Text style={styles.stepMeta}>
+                      Category: {step.category} | Success: {step.success_metrics}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      </Page>
+    </Document>
+  );
+};
 
 interface ResumePreviewProps {
   userId: string;
@@ -235,6 +342,14 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
 
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
 
+  // Extract proof items for the web view
+  const proofItems = extractProofItems(steps, tracks);
+  const groupedProof = proofItems.reduce((acc, item) => {
+    if (!acc[item.trackTitle]) acc[item.trackTitle] = [];
+    acc[item.trackTitle].push(item);
+    return acc;
+  }, {} as Record<string, ProofItem[]>);
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6 bg-background rounded-lg shadow-md">
       <header>
@@ -250,6 +365,51 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
           Verified outputs include certifications, portfolio projects, and mentor-rated milestones.
         </p>
       </section>
+
+      {/* Proof of Learning Section */}
+      {proofItems.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4 text-foreground">Proof of Learning</h2>
+          {Object.entries(groupedProof).map(([trackTitle, items]) => (
+            <Card key={trackTitle} className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">{trackTitle}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                    <span className="text-lg">{getProofIcon(item.type)}</span>
+                    <div className="flex-1">
+                      <div className="font-semibold text-foreground">{item.title}</div>
+                      <div className="text-sm text-muted-foreground">{item.description}</div>
+                      {item.link && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <ExternalLink className="w-3 h-3" />
+                          <a 
+                            href={item.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {item.link}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={
+                      item.type === 'certification' ? 'default' :
+                      item.type === 'portfolio' ? 'secondary' :
+                      item.type === 'mentor_verified' ? 'outline' : 'outline'
+                    }>
+                      {item.type.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
 
       <section>
         <h2 className="text-xl font-semibold mb-2 text-foreground">Career Tracks & Achievements</h2>
