@@ -1,17 +1,28 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download, Eye, MousePointer, Info, Clock, Globe } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { 
+  MapPin, 
+  Star, 
+  Eye, 
+  Trophy, 
+  Share2, 
+  Copy, 
+  ExternalLink,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  User
+} from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { useAnalytics } from "@/lib/analytics";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProfileData {
   id: string;
+  user_id: string;
   name: string;
   role_title: string;
   location: string;
@@ -30,109 +41,115 @@ interface ProfileData {
   created_at: string;
 }
 
-interface ResumeStats {
-  totalViews: number;
-  clickThroughRate: number;
-  sourceBreakdown: {
-    gallery: number;
-    embed: number;
-    direct: number;
+interface UserBadge {
+  id: string;
+  badge_type: {
+    name: string;
+    display_name: string;
+    description: string;
+    icon: string;
+    color: string;
+    background_color: string;
   };
-  lastUpdated: string | null;
+  assigned_reason: string;
+  created_at: string;
+}
+
+interface ReviewData {
+  overall_score: number;
+  strengths: string[];
+  gaps: string[];
+  taglines: string[];
+  summary: string;
 }
 
 const PublicResume = () => {
   const { userId } = useParams();
-  const [searchParams] = useSearchParams();
-  const isPublic = searchParams.get("public") === "true";
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [badges, setBadges] = useState<UserBadge[]>([]);
+  const [viewCount, setViewCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [stats, setStats] = useState<ResumeStats | null>(null);
-  const analytics = useAnalytics();
 
   useEffect(() => {
     if (userId) {
-      fetchProfile();
-      fetchStats();
+      fetchProfileData();
+      trackView();
     }
   }, [userId]);
 
-  const fetchStats = async () => {
+  const fetchProfileData = async () => {
     try {
-      const { data: events, error } = await supabase
-        .from("resume_events")
-        .select("event_type, source, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const totalViews = events?.filter(e => e.event_type === 'resume_view').length || 0;
-      const totalClicks = events?.filter(e => e.event_type === 'resume_click').length || 0;
-      const clickThroughRate = totalViews > 0 ? Math.round((totalClicks / totalViews) * 100) : 0;
-
-      const sourceBreakdown = events?.reduce((acc, event) => {
-        if (event.event_type === 'resume_view') {
-          const source = event.source || 'direct';
-          acc[source] = (acc[source] || 0) + 1;
-        }
-        return acc;
-      }, { gallery: 0, embed: 0, direct: 0 }) || { gallery: 0, embed: 0, direct: 0 };
-
-      const lastUpdated = events && events.length > 0 ? events[0].created_at : null;
-
-      setStats({
-        totalViews,
-        clickThroughRate,
-        sourceBreakdown,
-        lastUpdated
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  };
-
-  const fetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
+      // Fetch profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('gallery_enabled', true)
         .single();
 
-      if (error) {
-        if (error.code === "PGRST116") {
-          setNotFound(true);
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      // For public access, check if gallery is enabled
-      if (isPublic && (!data.gallery_enabled || !data.resume_review_summary)) {
+      if (profileError || !profileData) {
         setNotFound(true);
         return;
       }
 
-      setProfile(data);
-      
-      // Track resume view
-      analytics.trackResumeView(data.user_id, isPublic ? 'public' : 'direct', {
-        resume_id: data.id,
-        source_type: isPublic ? 'gallery' : 'direct_link'
-      });
+      setProfile(profileData);
+
+      // Fetch user badges
+      const { data: badgesData } = await supabase
+        .from('user_badges')
+        .select(`
+          id,
+          assigned_reason,
+          created_at,
+          badge_type:badge_types (
+            name,
+            display_name,
+            description,
+            icon,
+            color,
+            background_color
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('active', true);
+
+      setBadges(badgesData || []);
+
+      // Fetch view count
+      const { data: events } = await supabase
+        .from('resume_events')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('event_type', 'view');
+
+      setViewCount(events?.length || 0);
+
     } catch (error) {
-      console.error("Error fetching profile:", error);
-      toast.error("Failed to load resume");
+      console.error('Error fetching profile:', error);
       setNotFound(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const getReviewData = () => {
+  const trackView = async () => {
+    try {
+      await supabase.from('resume_events').insert({
+        user_id: userId,
+        event_type: 'view',
+        source: 'direct',
+        metadata: {
+          timestamp: new Date().toISOString(),
+          referrer: document.referrer || 'direct'
+        }
+      });
+    } catch (error) {
+      console.error('Error tracking view:', error);
+    }
+  };
+
+  const getReviewData = (): ReviewData | null => {
     if (!profile?.resume_review_summary) return null;
     try {
       return JSON.parse(profile.resume_review_summary);
@@ -141,45 +158,31 @@ const PublicResume = () => {
     }
   };
 
-  const copyLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard!");
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy link');
+    }
   };
 
-  const downloadResume = async () => {
-    try {
-      const response = await fetch('/api/generate-resume-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: profile?.id })
-      });
-      
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${profile?.name?.replace(/\s+/g, '_')}_Resume.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success("Resume downloaded successfully!");
-      } else {
-        throw new Error('Failed to generate PDF');
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error("Failed to download resume");
-    }
+  const shareToTwitter = () => {
+    const text = `Check out ${profile?.name}'s resume - ${profile?.role_title}`;
+    const url = window.location.href;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+  };
+
+  const shareToLinkedIn = () => {
+    const url = window.location.href;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading resume...</p>
         </div>
       </div>
@@ -188,325 +191,280 @@ const PublicResume = () => {
 
   if (notFound || !profile) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Resume Not Found</h1>
-          <p className="text-muted-foreground mb-6">
-            This resume is not available for public viewing.
-          </p>
-          <Button onClick={() => window.history.back()}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
-          </Button>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-8">
+            <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Resume Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              This resume is not available or has been removed from the public gallery.
+            </p>
+            <Button asChild>
+              <a href="/resume-gallery">Browse Gallery</a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   const reviewData = getReviewData();
-  const score = reviewData?.overall_score || 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={() => window.history.back()}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">{profile.name}</h1>
-              <p className="text-xl text-muted-foreground mb-4">{profile.role_title}</p>
-              
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {profile.location && (
-                  <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {profile.location}
-                  </div>
-                )}
-                {profile.years_experience && (
-                  <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    {profile.years_experience} years experience
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-end gap-2">
-              {score > 0 && (
-                <Badge variant="secondary" className="text-xl font-bold px-4 py-2">
-                  {score}/100
-                </Badge>
-              )}
-              {score >= 90 && (
-                <Badge variant="default" className="bg-yellow-500 text-yellow-50">
-                  <Trophy className="w-4 h-4 mr-1" />
-                  Top Candidate
-                </Badge>
-              )}
-              {profile.gallery_featured && (
-                <Badge variant="outline">
-                  <Star className="w-4 h-4 mr-1" />
-                  Featured
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Resume Stats */}
-          {stats && (
-            <TooltipProvider>
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm">Public Resume Stats</h3>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Stats reflect verified activity across all public embeds, shares, and gallery views. Updated daily.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-lg font-bold">{stats.totalViews}</p>
-                      <p className="text-xs text-muted-foreground">Total Views</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <MousePointer className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-lg font-bold">{stats.clickThroughRate}%</p>
-                      <p className="text-xs text-muted-foreground">Click Rate</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-primary" />
-                    <div>
-                      <p className="text-lg font-bold">
-                        {stats.sourceBreakdown.gallery + stats.sourceBreakdown.embed + stats.sourceBreakdown.direct}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Gallery: {stats.sourceBreakdown.gallery} • Embed: {stats.sourceBreakdown.embed} • Direct: {stats.sourceBreakdown.direct}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                {stats.lastUpdated && (
-                  <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      Last updated: {(() => {
-                        const now = new Date();
-                        const updated = new Date(stats.lastUpdated);
-                        const diffHours = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60));
-                        if (diffHours < 1) return "Less than an hour ago";
-                        if (diffHours === 1) return "1 hour ago";
-                        if (diffHours < 24) return `${diffHours} hours ago`;
-                        const diffDays = Math.floor(diffHours / 24);
-                        if (diffDays === 1) return "1 day ago";
-                        return `${diffDays} days ago`;
-                      })()}
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
+      <div className="container mx-auto px-4 max-w-4xl">
+        {/* Header Card */}
+        <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl border-2 hover:border-primary/20">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center">
+                    <span className="text-2xl font-bold text-primary-foreground">
+                      {profile.name?.charAt(0) || '?'}
                     </span>
                   </div>
-                )}
-              </div>
-            </TooltipProvider>
-          )}
-          
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-6">
-            <Button onClick={copyLink} variant="outline">
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Link
-            </Button>
-            <Button onClick={downloadResume} variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Download Resume
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* AI Review Summary */}
-            {reviewData && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5" />
-                    AI Career Assessment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Professional Summary</h4>
-                    <p className="text-muted-foreground">{reviewData.professional_feedback}</p>
-                  </div>
                   
-                  {reviewData.taglines && reviewData.taglines.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold mb-2">Key Strengths</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {reviewData.taglines.map((tagline: string, index: number) => (
-                          <Badge key={index} variant="outline">{tagline}</Badge>
-                        ))}
-                      </div>
+                  <div>
+                    <CardTitle className="text-2xl md:text-3xl font-bold text-foreground">
+                      {profile.name}
+                    </CardTitle>
+                    <p className="text-lg text-muted-foreground font-medium">
+                      {profile.role_title}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  {profile.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {profile.location}
                     </div>
                   )}
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-1">Career Readiness</h4>
-                      <p className="text-2xl font-bold text-primary">{reviewData.career_readiness_score}/100</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-1">Overall Score</h4>
-                      <p className="text-2xl font-bold text-primary">{reviewData.overall_score}/100</p>
-                    </div>
+                  <div className="flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {viewCount} views
                   </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Career Goals */}
-            {profile.career_goals && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Career Goals</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{profile.career_goals}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Education */}
-            {profile.education && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Education</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{profile.education}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Work Preferences */}
-            {profile.work_preferences && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Work Preferences</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{profile.work_preferences}</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {profile.industry && (
-                  <div>
-                    <h4 className="font-semibold mb-1">Industry</h4>
-                    <p className="text-muted-foreground">{profile.industry}</p>
-                  </div>
-                )}
-                
-                {profile.experience_level && (
-                  <div>
-                    <h4 className="font-semibold mb-1">Experience Level</h4>
-                    <p className="text-muted-foreground">{profile.experience_level}</p>
-                  </div>
-                )}
-                
-                {profile.salary_expectations && (
-                  <div>
-                    <h4 className="font-semibold mb-1">Salary Expectations</h4>
-                    <p className="text-muted-foreground">
-                      ${profile.salary_expectations.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Skills */}
-            {profile.skills && profile.skills.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Skills</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.skills.map((skill, index) => (
-                      <Badge key={index} variant="secondary">{skill}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Interests */}
-            {profile.interests && profile.interests.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Interests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.interests.map((interest, index) => (
-                      <Badge key={index} variant="outline">{interest}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Profile Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Profile Created</span>
-                  <span>{format(new Date(profile.created_at), "MMM yyyy")}</span>
+                  {profile.gallery_featured && (
+                    <Badge variant="secondary" className="bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-800 border-yellow-200">
+                      <Trophy className="h-3 w-3 mr-1" />
+                      Featured in Gallery
+                    </Badge>
+                  )}
                 </div>
-                {profile.ai_reviewed_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">AI Reviewed</span>
-                    <span>{format(new Date(profile.ai_reviewed_at), "MMM dd, yyyy")}</span>
+              </div>
+
+              {/* Share Tools */}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Link
+                </Button>
+                <Button variant="outline" size="sm" onClick={shareToTwitter}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Twitter
+                </Button>
+                <Button variant="outline" size="sm" onClick={shareToLinkedIn}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  LinkedIn
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* AI Review Summary */}
+        {reviewData && (
+          <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Review Summary
+                <Badge variant="outline" className="ml-auto text-lg font-bold bg-gradient-to-r from-primary/10 to-primary/5">
+                  {reviewData.overall_score}/100
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Taglines */}
+              {reviewData.taglines && reviewData.taglines.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3">Professional Highlights</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {reviewData.taglines.map((tagline, index) => (
+                      <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
+                        {tagline}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {reviewData.summary && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3">Summary</h4>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {reviewData.summary}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Strengths */}
+                {reviewData.strengths && reviewData.strengths.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      Key Strengths
+                    </h4>
+                    <ul className="space-y-2">
+                      {reviewData.strengths.map((strength, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-muted-foreground">{strength}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
+
+                {/* Gaps */}
+                {reviewData.gaps && reviewData.gaps.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      Growth Areas
+                    </h4>
+                    <ul className="space-y-2">
+                      {reviewData.gaps.map((gap, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm">
+                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
+                          <span className="text-muted-foreground">{gap}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Skills & Badges */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {/* Skills */}
+          {profile.skills && profile.skills.length > 0 && (
+            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+              <CardHeader>
+                <CardTitle>Skills & Expertise</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {profile.skills.map((skill, index) => (
+                    <Badge key={index} variant="outline" className="text-sm">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-          </div>
+          )}
+
+          {/* Badges */}
+          {badges.length > 0 && (
+            <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+              <CardHeader>
+                <CardTitle>Verified Achievements</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {badges.map((badge) => (
+                    <div key={badge.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                      <Badge
+                        variant="outline"
+                        className="text-sm px-3 py-1"
+                        style={{
+                          color: badge.badge_type.color,
+                          backgroundColor: badge.badge_type.background_color,
+                          borderColor: badge.badge_type.color
+                        }}
+                      >
+                        {badge.badge_type.icon} {badge.badge_type.display_name}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-muted-foreground">
+                          {badge.badge_type.description}
+                        </p>
+                        {badge.assigned_reason && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {badge.assigned_reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Additional Info */}
+        {(profile.career_goals || profile.education || profile.work_preferences) && (
+          <Card className="shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+            <CardHeader>
+              <CardTitle>Additional Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {profile.career_goals && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Career Goals</h4>
+                  <p className="text-muted-foreground">{profile.career_goals}</p>
+                </div>
+              )}
+
+              {profile.education && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Education</h4>
+                  <p className="text-muted-foreground">{profile.education}</p>
+                </div>
+              )}
+
+              {profile.work_preferences && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Work Preferences</h4>
+                  <p className="text-muted-foreground">{profile.work_preferences}</p>
+                </div>
+              )}
+
+              <Separator />
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                {profile.years_experience && (
+                  <span>{profile.years_experience} years experience</span>
+                )}
+                {profile.experience_level && (
+                  <span>• {profile.experience_level} level</span>
+                )}
+                {profile.industry && (
+                  <span>• {profile.industry}</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Footer CTA */}
+        <div className="text-center mt-12 py-8">
+          <Button size="lg" asChild>
+            <a href="/resume-gallery">
+              Discover More Talent
+            </a>
+          </Button>
         </div>
       </div>
     </div>
