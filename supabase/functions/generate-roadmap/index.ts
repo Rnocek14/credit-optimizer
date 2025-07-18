@@ -19,8 +19,8 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { user_id, profile_data } = await req.json();
-    console.log('Generating roadmap for user:', user_id);
+    const { user_id: profile_id, profile_data } = await req.json();
+    console.log('Generating roadmap for profile ID:', profile_id);
     console.log('Function redeployed with OpenAI API key configured');
 
     // Create the comprehensive prompt for GPT-4
@@ -120,7 +120,7 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
 
     // Insert career tracks
     const careerTracksToInsert = roadmapData.career_tracks.map((track: any) => ({
-      user_id,
+      user_id: profile_id,
       title: track.title,
       description: track.description,
       reasoning: track.reasoning,
@@ -142,7 +142,7 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
 
     // Insert roadmap steps
     const roadmapStepsToInsert = roadmapData.roadmap_steps.map((step: any, index: number) => ({
-      user_id,
+      user_id: profile_id,
       title: step.title,
       description: step.description,
       category: step.category,
