@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +211,36 @@ const PublicResume = () => {
 
   const reviewData = getReviewData();
 
+  // Generate meta tag content
+  const ogTitle = `${profile.name} – ${profile.role_title}`;
+  const ogDescription = reviewData?.summary || 
+    (reviewData?.taglines && reviewData.taglines.length > 0 
+      ? reviewData.taglines.join(' • ') 
+      : `${profile.role_title} with ${profile.years_experience || 0} years of experience`);
+  const ogUrl = window.location.href;
+  const ogImage = `https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=1200&h=630&fit=crop&crop=entropy&auto=format&q=80`;
+
   return (
+    <>
+      <Helmet>
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={ogUrl} />
+        <meta property="og:type" content="profile" />
+        <meta property="og:site_name" content="Talent Gallery" />
+        
+        {/* Twitter Card Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
+        
+        {/* Page Title */}
+        <title>{ogTitle} | Talent Gallery</title>
+        <meta name="description" content={ogDescription} />
+      </Helmet>
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header Card */}
@@ -468,6 +498,7 @@ const PublicResume = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
