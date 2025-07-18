@@ -52,7 +52,7 @@ serve(async (req) => {
     const profileData = {
       user_background: {
         experience_level: profile.experience_level,
-        current_role: profile.current_role,
+        current_role: profile.role_title,
         industry: profile.industry,
         skills: profile.skills || [],
         education: profile.education,
