@@ -9,6 +9,8 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import InternalError from "./pages/InternalError";
+import ResumeGallery from "./pages/ResumeGallery";
+import PublicResume from "./pages/PublicResume";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,8 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route path="/resume-gallery" element={<ResumeGallery />} />
+          <Route path="/resume/:userId" element={<PublicResume />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

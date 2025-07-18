@@ -26,8 +26,8 @@ const Index = () => {
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-              <Link to="/dashboard">
-                View Dashboard
+              <Link to="/resume-gallery">
+                Browse Resume Gallery
               </Link>
             </Button>
             </div>
