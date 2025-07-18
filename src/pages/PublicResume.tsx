@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Trophy, Star, ArrowLeft } from "lucide-react";
+import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -81,6 +81,40 @@ const PublicResume = () => {
       return JSON.parse(profile.resume_review_summary);
     } catch {
       return null;
+    }
+  };
+
+  const copyLink = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    toast.success("Link copied to clipboard!");
+  };
+
+  const downloadResume = async () => {
+    try {
+      const response = await fetch('/api/generate-resume-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile?.id })
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${profile?.name?.replace(/\s+/g, '_')}_Resume.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success("Resume downloaded successfully!");
+      } else {
+        throw new Error('Failed to generate PDF');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Failed to download resume");
     }
   };
 
@@ -169,6 +203,18 @@ const PublicResume = () => {
                 </Badge>
               )}
             </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-6">
+            <Button onClick={copyLink} variant="outline">
+              <Copy className="w-4 h-4 mr-2" />
+              Copy Link
+            </Button>
+            <Button onClick={downloadResume} variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Download Resume
+            </Button>
           </div>
         </div>
 
