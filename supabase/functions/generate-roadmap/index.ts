@@ -21,6 +21,7 @@ serve(async (req) => {
     
     const { user_id, profile_data } = await req.json();
     console.log('Generating roadmap for user:', user_id);
+    console.log('Function redeployed with OpenAI API key configured');
 
     // Create the comprehensive prompt for GPT-4
     const prompt = `You are a professional career advisor AI. Generate a personalized career development roadmap based on the following user profile data:
