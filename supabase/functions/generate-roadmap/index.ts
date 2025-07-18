@@ -13,15 +13,29 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')!;
+    console.log('=== FUNCTION START ===');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    console.log('Environment check:', {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey,
+      hasOpenaiKey: !!openaiKey
+    });
+    
+    if (!supabaseUrl || !supabaseKey || !openaiKey) {
+      throw new Error('Missing required environment variables');
+    }
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { user_id: profile_id, profile_data } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body received:', requestBody);
+    
+    const { user_id: profile_id, profile_data } = requestBody;
     console.log('Generating roadmap for profile ID:', profile_id);
-    console.log('Function redeployed with OpenAI API key configured');
+    console.log('Profile data:', JSON.stringify(profile_data, null, 2));
 
     // Create the comprehensive prompt for GPT-4
     const prompt = `You are a professional career advisor AI. Generate a personalized career development roadmap based on the following user profile data:
@@ -94,20 +108,34 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
     });
 
     if (!openaiResponse.ok) {
-      throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+      const errorText = await openaiResponse.text();
+      console.error('OpenAI API error:', openaiResponse.status, errorText);
+      throw new Error(`OpenAI API error: ${openaiResponse.statusText} - ${errorText}`);
     }
 
     const openaiData = await openaiResponse.json();
-    const generatedContent = openaiData.choices[0].message.content;
+    console.log('OpenAI response received:', {
+      hasChoices: !!openaiData.choices,
+      choicesLength: openaiData.choices?.length,
+      usage: openaiData.usage
+    });
     
-    console.log("Raw GPT content:", generatedContent);
+    const generatedContent = openaiData.choices[0].message.content;
+    console.log("Raw GPT content (first 500 chars):", generatedContent?.substring(0, 500));
 
     // Parse the JSON response
     let roadmapData;
     try {
       roadmapData = JSON.parse(generatedContent);
+      console.log('Successfully parsed JSON. Structure:', {
+        hasCareerTracks: !!roadmapData.career_tracks,
+        careerTracksCount: roadmapData.career_tracks?.length,
+        hasRoadmapSteps: !!roadmapData.roadmap_steps,
+        roadmapStepsCount: roadmapData.roadmap_steps?.length
+      });
     } catch (parseError) {
       console.error('Failed to parse GPT response as JSON:', parseError);
+      console.error('Raw content that failed to parse:', generatedContent);
       throw new Error('Invalid JSON response from AI');
     }
 
@@ -116,9 +144,10 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
       throw new Error('Invalid roadmap data structure');
     }
 
-    console.log('Parsed roadmap data:', roadmapData);
+    console.log('Parsed roadmap data keys:', Object.keys(roadmapData));
 
     // Insert career tracks
+    console.log('=== INSERTING CAREER TRACKS ===');
     const careerTracksToInsert = roadmapData.career_tracks.map((track: any) => ({
       user_id: profile_id,
       title: track.title,
@@ -127,6 +156,9 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
       growth_potential: track.growth_potential,
       time_to_proficiency: track.time_to_proficiency
     }));
+
+    console.log('Career tracks to insert:', careerTracksToInsert.length, 'items');
+    console.log('First career track:', careerTracksToInsert[0]);
 
     const { data: careerTracks, error: careerTracksError } = await supabase
       .from('career_tracks')
@@ -138,9 +170,10 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
       throw careerTracksError;
     }
 
-    console.log('Inserted career tracks:', careerTracks);
+    console.log('Successfully inserted career tracks:', careerTracks?.length, 'items');
 
     // Insert roadmap steps
+    console.log('=== INSERTING ROADMAP STEPS ===');
     const roadmapStepsToInsert = roadmapData.roadmap_steps.map((step: any, index: number) => ({
       user_id: profile_id,
       title: step.title,
@@ -154,6 +187,9 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
       order_index: index + 1
     }));
 
+    console.log('Roadmap steps to insert:', roadmapStepsToInsert.length, 'items');
+    console.log('First roadmap step:', roadmapStepsToInsert[0]);
+
     const { data: roadmapSteps, error: roadmapStepsError } = await supabase
       .from('roadmap_steps')
       .insert(roadmapStepsToInsert)
@@ -164,7 +200,8 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
       throw roadmapStepsError;
     }
 
-    console.log('Inserted roadmap steps:', roadmapSteps);
+    console.log('Successfully inserted roadmap steps:', roadmapSteps?.length, 'items');
+    console.log('=== FUNCTION SUCCESS ===');
 
     return new Response(
       JSON.stringify({
@@ -177,11 +214,14 @@ Make sure the JSON is valid and well-formatted. Focus on practical, actionable a
     );
 
   } catch (error) {
+    console.error('=== FUNCTION ERROR ===');
     console.error('Error in generate-roadmap function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error.message,
+        stack: error.stack
       }),
       {
         status: 500,
