@@ -117,6 +117,8 @@ export type Database = {
           created_at: string
           education: string | null
           experience_level: string | null
+          gallery_enabled: boolean | null
+          gallery_featured: boolean | null
           id: string
           industry: string | null
           interests: string[] | null
@@ -140,6 +142,8 @@ export type Database = {
           created_at?: string
           education?: string | null
           experience_level?: string | null
+          gallery_enabled?: boolean | null
+          gallery_featured?: boolean | null
           id?: string
           industry?: string | null
           interests?: string[] | null
@@ -163,6 +167,8 @@ export type Database = {
           created_at?: string
           education?: string | null
           experience_level?: string | null
+          gallery_enabled?: boolean | null
+          gallery_featured?: boolean | null
           id?: string
           industry?: string | null
           interests?: string[] | null
@@ -178,6 +184,36 @@ export type Database = {
           willing_to_relocate?: boolean | null
           work_preferences?: string | null
           years_experience?: number | null
+        }
+        Relationships: []
+      }
+      resume_shared_events: {
+        Row: {
+          ai_review_data: Json | null
+          created_at: string
+          id: string
+          resume_data: Json | null
+          shared_at: string
+          shared_with_email: string
+          user_id: string
+        }
+        Insert: {
+          ai_review_data?: Json | null
+          created_at?: string
+          id?: string
+          resume_data?: Json | null
+          shared_at?: string
+          shared_with_email: string
+          user_id: string
+        }
+        Update: {
+          ai_review_data?: Json | null
+          created_at?: string
+          id?: string
+          resume_data?: Json | null
+          shared_at?: string
+          shared_with_email?: string
+          user_id?: string
         }
         Relationships: []
       }

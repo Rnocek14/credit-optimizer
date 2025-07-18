@@ -3,8 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
-import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye } from 'lucide-react';
+import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Types for proof items
@@ -272,6 +276,10 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [proofFilter, setProofFilter] = useState<ProofFilter>('all');
   const [aiReview, setAiReview] = useState<AIReviewSummary | null>(null);
   const [generatingReview, setGeneratingReview] = useState(false);
+  const [mentorModalOpen, setMentorModalOpen] = useState(false);
+  const [mentorEmail, setMentorEmail] = useState('');
+  const [mentorMessage, setMentorMessage] = useState('');
+  const [sendingToMentor, setSendingToMentor] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -415,6 +423,75 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
     }
   };
 
+  const toggleGalleryInclusion = async () => {
+    try {
+      const newGalleryStatus = !profile.gallery_enabled;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ gallery_enabled: newGalleryStatus })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setProfile({ ...profile, gallery_enabled: newGalleryStatus });
+      toast({
+        title: newGalleryStatus ? "Added to Gallery!" : "Removed from Gallery",
+        description: newGalleryStatus 
+          ? "Your resume is now visible in the public gallery" 
+          : "Your resume has been removed from the public gallery",
+      });
+    } catch (error) {
+      console.error('Failed to toggle gallery inclusion:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update gallery settings",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendToMentor = async () => {
+    if (!mentorEmail || !mentorEmail.includes('@')) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid mentor email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingToMentor(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-resume-to-mentor', {
+        body: { 
+          userId, 
+          mentorEmail, 
+          message: mentorMessage 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Resume Sent!",
+        description: `Your AI-reviewed resume has been sent to ${mentorEmail}`,
+      });
+      
+      setMentorModalOpen(false);
+      setMentorEmail('');
+      setMentorMessage('');
+    } catch (error) {
+      console.error('Failed to send resume to mentor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send resume to mentor",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingToMentor(false);
+    }
+  };
+
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
 
   // Extract proof items for the web view
@@ -552,6 +629,105 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
           </Card>
         )}
       </section>
+
+      {/* Gallery Inclusion & Mentor Sharing - Show only for AI-reviewed resumes */}
+      {aiReview && (
+        <section>
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Gallery Inclusion Toggle */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-foreground">Resume Gallery</h4>
+                        {aiReview.overall_score >= 80 && (
+                          <Badge variant="default" className="bg-yellow-500 text-yellow-50">
+                            ⭐ Top Candidate
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {aiReview.overall_score >= 80 
+                          ? "Your high-scoring resume qualifies for public gallery inclusion"
+                          : "Share your verified resume in the public gallery"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={profile.gallery_enabled}
+                    onCheckedChange={toggleGalleryInclusion}
+                    disabled={!aiReview}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Send to Mentor */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-semibold text-foreground">Share with Mentor</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Send your AI-reviewed resume with proof of learning
+                    </p>
+                  </div>
+                  <Dialog open={mentorModalOpen} onOpenChange={setMentorModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Send className="w-4 h-4 mr-2" />
+                        Send
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Send Resume to Mentor</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium">Mentor Email</label>
+                          <Input
+                            type="email"
+                            placeholder="mentor@example.com"
+                            value={mentorEmail}
+                            onChange={(e) => setMentorEmail(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Personal Message (Optional)</label>
+                          <Textarea
+                            placeholder="Hi, I'd love to get your feedback on my career progress..."
+                            value={mentorMessage}
+                            onChange={(e) => setMentorMessage(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setMentorModalOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={sendToMentor}
+                            disabled={sendingToMentor || !mentorEmail}
+                          >
+                            {sendingToMentor ? 'Sending...' : 'Send Resume'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* Proof of Learning Section */}
       {proofItems.length > 0 && (
