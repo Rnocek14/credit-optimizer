@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      badge_types: {
+        Row: {
+          active: boolean
+          background_color: string | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          criteria_type: string | null
+          criteria_value: Json | null
+          description: string | null
+          display_name: string
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          background_color?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria_type?: string | null
+          criteria_value?: Json | null
+          description?: string | null
+          display_name: string
+          icon?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          background_color?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          criteria_type?: string | null
+          criteria_value?: Json | null
+          description?: string | null
+          display_name?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       career_paths: {
         Row: {
           advanced_roles: string[] | null
@@ -384,6 +432,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          active: boolean
+          assigned_by: string | null
+          assigned_reason: string | null
+          badge_type_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          assigned_by?: string | null
+          assigned_reason?: string | null
+          badge_type_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          assigned_by?: string | null
+          assigned_reason?: string | null
+          badge_type_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_type_id_fkey"
+            columns: ["badge_type_id"]
+            isOneToOne: false
+            referencedRelation: "badge_types"
             referencedColumns: ["id"]
           },
         ]

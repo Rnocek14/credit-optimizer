@@ -17,6 +17,7 @@ import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Analytics from "./pages/Analytics";
+import AdminBadges from "./pages/AdminBadges";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
             </ProtectedRoute>
           } 
         />
+        <Route path="/admin/badges" element={<AdminBadges />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
