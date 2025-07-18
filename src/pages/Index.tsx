@@ -19,8 +19,8 @@ const Index = () => {
               Get personalized career guidance powered by AI. Create your profile and receive a custom roadmap to achieve your professional goals.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-            <Button asChild size="lg" variant="gradient" className="w-full sm:w-auto">
-              <Link to="/onboarding">
+              <Button asChild size="lg" variant="gradient" className="w-full sm:w-auto">
+                <Link to="/auth">
                 Get Started
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
