@@ -14,7 +14,172 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      career_tracks: {
+        Row: {
+          created_at: string
+          description: string | null
+          growth_potential: string | null
+          id: string
+          reasoning: string | null
+          time_to_proficiency: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          growth_potential?: string | null
+          id?: string
+          reasoning?: string | null
+          time_to_proficiency?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          growth_potential?: string | null
+          id?: string
+          reasoning?: string | null
+          time_to_proficiency?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_tracks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          availability: string | null
+          career_goals: string | null
+          created_at: string
+          education: string | null
+          experience_level: string | null
+          id: string
+          industry: string | null
+          interests: string[] | null
+          learning_style: string | null
+          location: string | null
+          name: string | null
+          role_title: string | null
+          salary_expectations: number | null
+          skills: string[] | null
+          updated_at: string
+          user_id: string | null
+          willing_to_relocate: boolean | null
+          work_preferences: string | null
+          years_experience: number | null
+        }
+        Insert: {
+          availability?: string | null
+          career_goals?: string | null
+          created_at?: string
+          education?: string | null
+          experience_level?: string | null
+          id?: string
+          industry?: string | null
+          interests?: string[] | null
+          learning_style?: string | null
+          location?: string | null
+          name?: string | null
+          role_title?: string | null
+          salary_expectations?: number | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          willing_to_relocate?: boolean | null
+          work_preferences?: string | null
+          years_experience?: number | null
+        }
+        Update: {
+          availability?: string | null
+          career_goals?: string | null
+          created_at?: string
+          education?: string | null
+          experience_level?: string | null
+          id?: string
+          industry?: string | null
+          interests?: string[] | null
+          learning_style?: string | null
+          location?: string | null
+          name?: string | null
+          role_title?: string | null
+          salary_expectations?: number | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          willing_to_relocate?: boolean | null
+          work_preferences?: string | null
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
+      roadmap_steps: {
+        Row: {
+          category: string | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          estimated_duration: string | null
+          id: string
+          order_index: number | null
+          prerequisites: string[] | null
+          priority: string | null
+          success_metrics: string | null
+          timeline: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          order_index?: number | null
+          prerequisites?: string[] | null
+          priority?: string | null
+          success_metrics?: string | null
+          timeline?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          order_index?: number | null
+          prerequisites?: string[] | null
+          priority?: string | null
+          success_metrics?: string | null
+          timeline?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_steps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
