@@ -10,30 +10,9 @@ export const RoadmapTester = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Jordan Reyes profile data for testing
   const testPayload = {
-    user_id: "5b11f83e-2f25-422d-aa61-b4f9c07b7eee",
-    profile_data: {
-      user_background: {
-        experience_level: "beginner",
-        role_title: "Graphic Designer",
-        industry: "Design",
-        skills: ["Figma", "Photoshop", "Illustrator"],
-        education: "BA in Graphic Design",
-        years_experience: 2
-      },
-      goals_and_interests: {
-        career_goals: "Become a UX Designer at a product company",
-        interests: ["User Experience", "Mobile Apps"],
-        preferred_learning_style: "Project-based",
-        availability: "10 hours/week"
-      },
-      context: {
-        location: "Remote",
-        willing_to_relocate: false,
-        salary_expectations: 80000,
-        work_preferences: "remote-first"
-      }
-    }
+    user_id: "cd43942f-56c5-49b5-8771-39f88b2775a2"
   };
 
   const handleGenerateRoadmap = async () => {
@@ -78,6 +57,52 @@ export const RoadmapTester = () => {
     }
   };
 
+  const checkDatabaseResults = async () => {
+    try {
+      // Check career tracks
+      const { data: careerTracks, error: careerError } = await supabase
+        .from('career_tracks')
+        .select('*')
+        .eq('user_id', testPayload.user_id);
+
+      // Check roadmap steps  
+      const { data: roadmapSteps, error: roadmapError } = await supabase
+        .from('roadmap_steps')
+        .select('*')
+        .eq('user_id', testPayload.user_id);
+
+      if (careerError || roadmapError) {
+        throw new Error("Error fetching results from database");
+      }
+
+      console.log("Career tracks created:", careerTracks);
+      console.log("Roadmap steps created:", roadmapSteps);
+
+      setResponse({
+        ...response,
+        database_check: {
+          career_tracks: careerTracks,
+          roadmap_steps: roadmapSteps,
+          career_tracks_count: careerTracks?.length || 0,
+          roadmap_steps_count: roadmapSteps?.length || 0,
+        }
+      });
+
+      toast({
+        title: "Database Check Complete",
+        description: `Found ${careerTracks?.length || 0} career tracks and ${roadmapSteps?.length || 0} roadmap steps`,
+      });
+
+    } catch (error) {
+      console.error("Error checking database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to check database results",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
@@ -87,13 +112,24 @@ export const RoadmapTester = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button 
-          onClick={handleGenerateRoadmap} 
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? 'Generating Roadmap...' : 'Generate Roadmap'}
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            onClick={handleGenerateRoadmap} 
+            disabled={loading}
+            className="flex-1"
+          >
+            {loading ? 'Generating Roadmap...' : 'Generate Roadmap for Jordan Reyes'}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={checkDatabaseResults}
+            disabled={loading}
+            className="flex-1"
+          >
+            Check Database Results
+          </Button>
+        </div>
 
         {error && (
           <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
