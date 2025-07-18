@@ -12,6 +12,7 @@ import InternalError from "./pages/InternalError";
 import ResumeGallery from "./pages/ResumeGallery";
 import PublicResume from "./pages/PublicResume";
 import Discover from "./pages/Discover";
+import Admin from "./pages/Admin";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
           <Route path="/discover" element={<Discover />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
