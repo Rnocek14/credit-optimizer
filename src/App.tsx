@@ -18,6 +18,7 @@ import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Analytics from "./pages/Analytics";
 import AdminBadges from "./pages/AdminBadges";
+import EmbedExplorer from "./pages/EmbedExplorer";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
           } 
         />
         <Route path="/admin/badges" element={<AdminBadges />} />
+        <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
