@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download, Eye, MousePointer, Info } from "lucide-react";
+import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download, Eye, MousePointer, Info, Clock, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAnalytics } from "@/lib/analytics";
@@ -38,6 +38,7 @@ interface ResumeStats {
     embed: number;
     direct: number;
   };
+  lastUpdated: string | null;
 }
 
 const PublicResume = () => {
@@ -62,7 +63,8 @@ const PublicResume = () => {
       const { data: events, error } = await supabase
         .from("resume_events")
         .select("event_type, source, created_at")
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -78,10 +80,13 @@ const PublicResume = () => {
         return acc;
       }, { gallery: 0, embed: 0, direct: 0 }) || { gallery: 0, embed: 0, direct: 0 };
 
+      const lastUpdated = events && events.length > 0 ? events[0].created_at : null;
+
       setStats({
         totalViews,
         clickThroughRate,
-        sourceBreakdown
+        sourceBreakdown,
+        lastUpdated
       });
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -291,17 +296,36 @@ const PublicResume = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-primary" />
+                    <Globe className="w-4 h-4 text-primary" />
                     <div>
                       <p className="text-lg font-bold">
                         {stats.sourceBreakdown.gallery + stats.sourceBreakdown.embed + stats.sourceBreakdown.direct}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        G:{stats.sourceBreakdown.gallery} E:{stats.sourceBreakdown.embed} D:{stats.sourceBreakdown.direct}
+                        Gallery: {stats.sourceBreakdown.gallery} • Embed: {stats.sourceBreakdown.embed} • Direct: {stats.sourceBreakdown.direct}
                       </p>
                     </div>
                   </div>
                 </div>
+                
+                {stats.lastUpdated && (
+                  <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      Last updated: {(() => {
+                        const now = new Date();
+                        const updated = new Date(stats.lastUpdated);
+                        const diffHours = Math.floor((now.getTime() - updated.getTime()) / (1000 * 60 * 60));
+                        if (diffHours < 1) return "Less than an hour ago";
+                        if (diffHours === 1) return "1 hour ago";
+                        if (diffHours < 24) return `${diffHours} hours ago`;
+                        const diffDays = Math.floor(diffHours / 24);
+                        if (diffDays === 1) return "1 day ago";
+                        return `${diffDays} days ago`;
+                      })()}
+                    </span>
+                  </div>
+                )}
               </div>
             </TooltipProvider>
           )}
