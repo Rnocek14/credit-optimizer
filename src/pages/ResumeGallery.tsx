@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Trophy, Star, Search } from "lucide-react";
 import { toast } from "sonner";
+import { useAnalytics } from "@/lib/analytics";
 
 interface GalleryProfile {
   id: string;
+  user_id: string;
   name: string;
   role_title: string;
   location: string;
@@ -28,6 +30,7 @@ const ResumeGallery = () => {
   const [industryFilter, setIndustryFilter] = useState("all");
   const [scoreFilter, setScoreFilter] = useState("all");
   const navigate = useNavigate();
+  const analytics = useAnalytics();
 
   useEffect(() => {
     fetchGalleryProfiles();
@@ -41,7 +44,7 @@ const ResumeGallery = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, name, role_title, location, industry, resume_review_summary, gallery_featured")
+        .select("id, user_id, name, role_title, location, industry, resume_review_summary, gallery_featured")
         .eq("gallery_enabled", true)
         .not("resume_review_summary", "is", null);
 
@@ -254,7 +257,13 @@ const ResumeGallery = () => {
 
                   <Button 
                     className="w-full" 
-                    onClick={() => navigate(`/resume/${profile.id}?public=true`)}
+                    onClick={() => {
+                      analytics.trackGalleryImpression(profile.user_id, {
+                        resume_id: profile.id,
+                        button_type: 'view_full_resume'
+                      });
+                      navigate(`/resume/${profile.id}?public=true`);
+                    }}
                   >
                     View Full Resume
                   </Button>

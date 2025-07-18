@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Calendar, Trophy, Star, ArrowLeft, Copy, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAnalytics } from "@/lib/analytics";
 
 interface ProfileData {
   id: string;
@@ -35,6 +36,7 @@ const PublicResume = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const analytics = useAnalytics();
 
   useEffect(() => {
     if (userId) {
@@ -66,6 +68,12 @@ const PublicResume = () => {
       }
 
       setProfile(data);
+      
+      // Track resume view
+      analytics.trackResumeView(data.user_id, isPublic ? 'public' : 'direct', {
+        resume_id: data.id,
+        source_type: isPublic ? 'gallery' : 'direct_link'
+      });
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast.error("Failed to load resume");

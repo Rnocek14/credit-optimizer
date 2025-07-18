@@ -269,6 +269,33 @@ export type Database = {
         }
         Relationships: []
       }
+      resume_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       resume_shared_events: {
         Row: {
           ai_review_data: Json | null

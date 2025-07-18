@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, ExternalLink, Award, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAnalytics } from '@/lib/analytics';
 
 interface ProfileData {
   id: string;
+  user_id: string;
   name: string;
   role_title: string;
   location: string;
@@ -39,6 +41,7 @@ export default function ResumeEmbed() {
   const [roadmapStats, setRoadmapStats] = useState({ total: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const analytics = useAnalytics();
 
   useEffect(() => {
     if (resumeId) {
@@ -61,6 +64,13 @@ export default function ResumeEmbed() {
       }
 
       setProfile(profileData);
+      
+      // Track embed view
+      analytics.trackEmbedInteraction(profileData.user_id, {
+        resume_id: profileData.id,
+        embed_theme: theme,
+        embed_size: size
+      });
 
       // Fetch career tracks
       const { data: tracksData, error: tracksError } = await supabase
@@ -268,8 +278,15 @@ export default function ResumeEmbed() {
           {/* CTA */}
           <Button 
             className="w-full" 
-            asChild
             variant={theme === 'dark' ? 'secondary' : 'default'}
+            onClick={() => {
+              analytics.trackCTAClick(profile.user_id, 'embed', {
+                button_type: 'view_full_resume',
+                embed_theme: theme,
+                embed_size: size
+              });
+            }}
+            asChild
           >
             <a 
               href={`${window.location.origin}/resume/${resumeId}`} 

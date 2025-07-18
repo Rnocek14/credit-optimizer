@@ -100,10 +100,35 @@ export default function Analytics() {
       const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
       startDate.setDate(endDate.getDate() - days);
 
-      // Generate mock data for now (in real implementation, this would come from analytics tables)
-      const mockViews = generateMockTimeSeriesData(days, 5, 50);
-      const mockClicks = generateMockClicksData(days);
-      const mockScoreHistory = generateMockScoreData(days);
+      // Fetch real analytics data from resume_events table
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('resume_events')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (eventsError) {
+        console.error('Error fetching analytics events:', eventsError);
+        // Fall back to mock data
+        const mockViews = generateMockTimeSeriesData(days, 5, 50);
+        const mockClicks = generateMockClicksData(days);
+        const mockScoreHistory = generateMockScoreData(days);
+        setAnalytics({
+          views: mockViews,
+          clicks: mockClicks,
+          scoreHistory: mockScoreHistory,
+          mentorFeedback: { totalRatings: 0, averageRating: 0, totalFeedback: 0, galleryRecommendations: 0, jobRecommendations: 0 },
+          galleryStats: { isEnabled: false, isFeatured: false, featuredTag: null, publicViews: 0 }
+        });
+        return;
+      }
+
+      // Process events data into charts
+      const views = processViewsData(eventsData || [], days);
+      const clicks = processClicksData(eventsData || [], days);
+      const scoreHistory = generateMockScoreData(days); // Keep mock for now
 
       // Fetch real mentor feedback data
       const { data: mentorData, error: mentorError } = await supabase
@@ -129,9 +154,9 @@ export default function Analytics() {
       };
 
       setAnalytics({
-        views: mockViews,
-        clicks: mockClicks,
-        scoreHistory: mockScoreHistory,
+        views: views,
+        clicks: clicks,
+        scoreHistory: scoreHistory,
         mentorFeedback: mentorStats,
         galleryStats
       });
@@ -146,6 +171,57 @@ export default function Analytics() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Process analytics events into chart data
+  const processViewsData = (events: any[], days: number) => {
+    const viewEvents = events.filter(e => e.event_type === 'resume_view');
+    const dateMap: Record<string, number> = {};
+    
+    // Initialize all dates with 0
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - 1 - i));
+      dateMap[date.toISOString().split('T')[0]] = 0;
+    }
+    
+    // Count events by date
+    viewEvents.forEach(event => {
+      const date = new Date(event.created_at).toISOString().split('T')[0];
+      if (dateMap.hasOwnProperty(date)) {
+        dateMap[date]++;
+      }
+    });
+    
+    return Object.entries(dateMap).map(([date, count]) => ({ date, count }));
+  };
+
+  const processClicksData = (events: any[], days: number) => {
+    const clickEvents = events.filter(e => 
+      ['resume_click', 'cta_click', 'embed_interaction', 'gallery_impression'].includes(e.event_type)
+    );
+    const dateMap: Record<string, { count: number; type: string }> = {};
+    
+    // Initialize all dates
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - 1 - i));
+      dateMap[date.toISOString().split('T')[0]] = { count: 0, type: 'mixed' };
+    }
+    
+    // Count clicks by date
+    clickEvents.forEach(event => {
+      const date = new Date(event.created_at).toISOString().split('T')[0];
+      if (dateMap.hasOwnProperty(date)) {
+        dateMap[date].count++;
+      }
+    });
+    
+    return Object.entries(dateMap).map(([date, data]) => ({ 
+      date, 
+      count: data.count, 
+      type: data.type 
+    }));
   };
 
   // Helper functions for mock data generation
