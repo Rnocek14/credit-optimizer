@@ -20,6 +20,7 @@ import Analytics from "./pages/Analytics";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
 import AdminModeration from "./pages/AdminModeration";
+import AdminSettings from "./pages/AdminSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
         />
         <Route path="/admin/badges" element={<AdminBadges />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
