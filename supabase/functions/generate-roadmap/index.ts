@@ -1,237 +1,330 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
-serve(async (req) => {
-  console.log('=== FUNCTION RECEIVED REQUEST ===');
-  console.log('Method:', req.method);
-  console.log('URL:', req.url);
-  
+interface Profile {
+  id: string
+  name: string
+  experience_level: string
+  years_experience: number
+  role_title: string
+  industry: string
+  skills: string[]
+  education: string
+  career_goals: string
+  interests: string[]
+  learning_style: string
+  availability: string
+  location: string
+  willing_to_relocate: boolean
+  salary_expectations: number
+  work_preferences: string
+}
+
+interface CareerTrack {
+  title: string
+  description: string
+  reasoning: string
+  growth_potential: string
+  time_to_proficiency: string
+}
+
+interface RoadmapStep {
+  title: string
+  description: string
+  category: string
+  timeline: string
+  priority: string
+  estimated_duration: string
+  prerequisites: string[]
+  success_metrics: string
+  order_index: number
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight');
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('=== FUNCTION START ===');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    
-    console.log('Environment check:', {
-      hasSupabaseUrl: !!supabaseUrl,
-      hasSupabaseKey: !!supabaseKey,
-      hasOpenaiKey: !!openaiKey
-    });
-    
-    if (!supabaseUrl || !supabaseKey || !openaiKey) {
-      throw new Error('Missing required environment variables');
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { user_id } = await req.json()
+
+    if (!user_id) {
+      throw new Error('user_id is required')
     }
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    const requestBody = await req.json();
-    console.log('Request body received:', requestBody);
-    
-    const { user_id: profile_id, profile_data } = requestBody;
-    console.log('Generating roadmap for profile ID:', profile_id);
-    console.log('Profile data:', JSON.stringify(profile_data, null, 2));
 
-    // Create the comprehensive prompt for GPT-4
-    const prompt = `You are a professional career advisor AI. Generate a personalized career development roadmap based on the following user profile data:
+    console.log(`Generating roadmap for user: ${user_id}`)
 
-${JSON.stringify(profile_data, null, 2)}
+    // Get user profile
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', user_id)
+      .single()
 
-Create a comprehensive roadmap with the following structure:
+    if (profileError || !profile) {
+      throw new Error(`Profile not found: ${profileError?.message}`)
+    }
 
-1. CAREER TRACKS (3-5 potential career paths):
-   - Each track should be relevant to their background, interests, and goals
-   - Include track name, description, and why it's suitable for them
-   - Consider their current experience level and growth potential
+    console.log(`Found profile for: ${profile.name}`)
 
-2. ROADMAP STEPS (8-12 concrete, actionable steps):
-   - Mix of short-term (1-3 months), medium-term (3-12 months), and long-term (1-3 years) goals
-   - Include specific skills to develop, certifications to pursue, projects to build
-   - Prioritize steps that build upon each other logically
-   - Make steps specific and measurable when possible
+    // Get relevant career paths based on user's industry and interests
+    const { data: careerPaths, error: careerPathsError } = await supabaseClient
+      .from('career_paths')
+      .select('*')
+      .or(`industry.ilike.%${profile.industry}%,title.ilike.%${profile.role_title}%`)
+      .limit(20)
 
-Return your response as a valid JSON object with this exact structure:
+    if (careerPathsError) {
+      throw new Error(`Error fetching career paths: ${careerPathsError.message}`)
+    }
+
+    console.log(`Found ${careerPaths?.length || 0} relevant career paths`)
+
+    // Generate career tracks using OpenAI
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiApiKey) {
+      throw new Error('OPENAI_API_KEY is not configured')
+    }
+
+    const careerTracksPrompt = `Based on the following user profile, suggest 3 specific career tracks. Focus on realistic progression paths that align with their current experience, goals, and constraints.
+
+User Profile:
+- Name: ${profile.name}
+- Current Role: ${profile.role_title}
+- Experience Level: ${profile.experience_level}
+- Years of Experience: ${profile.years_experience}
+- Industry: ${profile.industry}
+- Skills: ${profile.skills?.join(', ')}
+- Education: ${profile.education}
+- Career Goals: ${profile.career_goals}
+- Interests: ${profile.interests?.join(', ')}
+- Learning Style: ${profile.learning_style}
+- Availability: ${profile.availability}
+- Location: ${profile.location}
+- Willing to Relocate: ${profile.willing_to_relocate}
+- Salary Expectations: $${profile.salary_expectations}
+- Work Preferences: ${profile.work_preferences}
+
+Available Career Paths in Database:
+${careerPaths?.map(cp => `- ${cp.title}: ${cp.summary} (${cp.industry}, ${cp.level} level, avg salary: $${cp.average_salary})`).join('\n')}
+
+Please provide exactly 3 career track recommendations in this JSON format:
 {
   "career_tracks": [
     {
-      "title": "Career Track Name",
-      "description": "Detailed description of this career path",
-      "reasoning": "Why this is suitable for the user",
-      "growth_potential": "Expected growth and opportunities",
-      "time_to_proficiency": "Estimated time to become proficient"
-    }
-  ],
-  "roadmap_steps": [
-    {
-      "title": "Step Title",
-      "description": "Detailed description of what to do",
-      "category": "skill_development|certification|project|networking|experience",
-      "timeline": "short_term|medium_term|long_term",
-      "priority": "high|medium|low",
-      "estimated_duration": "Time estimate (e.g., '2-4 weeks')",
-      "prerequisites": ["List of prerequisites if any"],
-      "success_metrics": "How to measure completion/success"
+      "title": "Specific Career Path Title",
+      "description": "Detailed description of this career path and why it fits the user",
+      "reasoning": "Why this path makes sense given their background and goals",
+      "growth_potential": "Expected career progression and opportunities",
+      "time_to_proficiency": "Estimated time to reach proficiency in this path"
     }
   ]
-}
+}`
 
-Make sure the JSON is valid and well-formatted. Focus on practical, actionable advice that will genuinely help the user advance their career.`;
-
-    // Call OpenAI API
-    console.log('Calling OpenAI API...');
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const careerTracksResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiKey}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
-            role: "system",
-            content: "You are an expert career roadmap generator. You MUST respond with pure, valid JSON only. Do NOT include any explanation, markdown formatting (like ```json), or extra text. Just return a JSON object with two keys: 'career_tracks' and 'roadmap_steps'."
+            role: 'system',
+            content: 'You are a career counselor expert. Provide practical, realistic career advice based on user profiles and available career paths. Always respond with valid JSON.'
           },
           {
-            role: "user",
-            content: `${prompt}\n\nIMPORTANT: Your response must be valid JSON ONLY. Do not include any markdown, no explanation, no wrapping text — just the JSON object exactly.`
+            role: 'user',
+            content: careerTracksPrompt
           }
         ],
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 2000,
       }),
-    });
+    })
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error('OpenAI API error:', openaiResponse.status, errorText);
-      throw new Error(`OpenAI API error: ${openaiResponse.statusText} - ${errorText}`);
+    if (!careerTracksResponse.ok) {
+      throw new Error(`OpenAI API error: ${careerTracksResponse.statusText}`)
     }
 
-    const openaiData = await openaiResponse.json();
-    console.log('OpenAI response received:', {
-      hasChoices: !!openaiData.choices,
-      choicesLength: openaiData.choices?.length,
-      usage: openaiData.usage
-    });
-    
-    const generatedContent = openaiData.choices[0].message.content;
-    console.log("Raw GPT content (first 500 chars):", generatedContent?.substring(0, 500));
+    const careerTracksData = await careerTracksResponse.json()
+    const careerTracksContent = careerTracksData.choices[0].message.content
 
-    // Parse the JSON response
-    let roadmapData;
+    console.log('Generated career tracks:', careerTracksContent)
+
+    let parsedCareerTracks
     try {
-      roadmapData = JSON.parse(generatedContent);
-      console.log('Successfully parsed JSON. Structure:', {
-        hasCareerTracks: !!roadmapData.career_tracks,
-        careerTracksCount: roadmapData.career_tracks?.length,
-        hasRoadmapSteps: !!roadmapData.roadmap_steps,
-        roadmapStepsCount: roadmapData.roadmap_steps?.length
-      });
-    } catch (parseError) {
-      console.error('Failed to parse GPT response as JSON:', parseError);
-      console.error('Raw content that failed to parse:', generatedContent);
-      throw new Error('Invalid JSON response from AI');
+      parsedCareerTracks = JSON.parse(careerTracksContent)
+    } catch (e) {
+      console.error('Failed to parse career tracks JSON:', e)
+      throw new Error('Failed to parse career recommendations')
     }
 
-    // Validate the structure
-    if (!roadmapData.career_tracks || !roadmapData.roadmap_steps) {
-      throw new Error('Invalid roadmap data structure');
-    }
-
-    console.log('Parsed roadmap data keys:', Object.keys(roadmapData));
-
-    // Insert career tracks
-    console.log('=== INSERTING CAREER TRACKS ===');
-    const careerTracksToInsert = roadmapData.career_tracks.map((track: any) => ({
-      user_id: profile_id,
+    // Insert career tracks into database
+    const careerTracksToInsert = parsedCareerTracks.career_tracks.map((track: CareerTrack) => ({
+      user_id: user_id,
       title: track.title,
       description: track.description,
       reasoning: track.reasoning,
       growth_potential: track.growth_potential,
-      time_to_proficiency: track.time_to_proficiency
-    }));
+      time_to_proficiency: track.time_to_proficiency,
+    }))
 
-    console.log('Career tracks to insert:', careerTracksToInsert.length, 'items');
-    console.log('First career track:', careerTracksToInsert[0]);
-
-    const { data: careerTracks, error: careerTracksError } = await supabase
+    const { data: insertedCareerTracks, error: careerTracksInsertError } = await supabaseClient
       .from('career_tracks')
       .insert(careerTracksToInsert)
-      .select();
+      .select()
 
-    if (careerTracksError) {
-      console.error('Error inserting career tracks:', careerTracksError);
-      throw careerTracksError;
+    if (careerTracksInsertError) {
+      throw new Error(`Error inserting career tracks: ${careerTracksInsertError.message}`)
     }
 
-    console.log('Successfully inserted career tracks:', careerTracks?.length, 'items');
+    console.log(`Inserted ${insertedCareerTracks?.length || 0} career tracks`)
 
-    // Insert roadmap steps
-    console.log('=== INSERTING ROADMAP STEPS ===');
-    const roadmapStepsToInsert = roadmapData.roadmap_steps.map((step: any, index: number) => ({
-      user_id: profile_id,
-      title: step.title,
-      description: step.description,
-      category: step.category,
-      timeline: step.timeline,
-      priority: step.priority,
-      estimated_duration: step.estimated_duration,
-      prerequisites: step.prerequisites || [],
-      success_metrics: step.success_metrics,
-      order_index: index + 1
-    }));
+    // Generate roadmap steps for each career track
+    const allRoadmapSteps = []
 
-    console.log('Roadmap steps to insert:', roadmapStepsToInsert.length, 'items');
-    console.log('First roadmap step:', roadmapStepsToInsert[0]);
+    for (const careerTrack of parsedCareerTracks.career_tracks) {
+      const roadmapPrompt = `Create a detailed learning roadmap for someone pursuing this career path:
 
-    const { data: roadmapSteps, error: roadmapStepsError } = await supabase
-      .from('roadmap_steps')
-      .insert(roadmapStepsToInsert)
-      .select();
+Career Track: ${careerTrack.title}
+Description: ${careerTrack.description}
 
-    if (roadmapStepsError) {
-      console.error('Error inserting roadmap steps:', roadmapStepsError);
-      throw roadmapStepsError;
+User Context:
+- Current Level: ${profile.experience_level}
+- Years Experience: ${profile.years_experience}
+- Current Skills: ${profile.skills?.join(', ')}
+- Availability: ${profile.availability}
+- Learning Style: ${profile.learning_style}
+- Career Goals: ${profile.career_goals}
+
+Please create 6-8 actionable learning steps in this JSON format:
+{
+  "roadmap_steps": [
+    {
+      "title": "Specific, actionable step title",
+      "description": "Detailed description of what to do and how",
+      "category": "Learning category (e.g., Technical Skills, Soft Skills, Experience, Networking)",
+      "timeline": "When to complete this (e.g., Month 1-2, Week 1-4)",
+      "priority": "High, Medium, or Low",
+      "estimated_duration": "Time commitment (e.g., 2-3 hours/week, 1 month)",
+      "prerequisites": ["List of prerequisite steps or skills"],
+      "success_metrics": "How to measure completion and success"
+    }
+  ]
+}`
+
+      const roadmapResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a career coach creating detailed, actionable learning roadmaps. Provide specific, measurable steps that can be completed within the user\'s time constraints. Always respond with valid JSON.'
+            },
+            {
+              role: 'user',
+              content: roadmapPrompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 3000,
+        }),
+      })
+
+      if (!roadmapResponse.ok) {
+        console.error(`OpenAI API error for roadmap: ${roadmapResponse.statusText}`)
+        continue
+      }
+
+      const roadmapData = await roadmapResponse.json()
+      const roadmapContent = roadmapData.choices[0].message.content
+
+      console.log(`Generated roadmap for ${careerTrack.title}:`, roadmapContent)
+
+      let parsedRoadmap
+      try {
+        parsedRoadmap = JSON.parse(roadmapContent)
+      } catch (e) {
+        console.error('Failed to parse roadmap JSON:', e)
+        continue
+      }
+
+      // Add steps with order index and user_id
+      const roadmapSteps = parsedRoadmap.roadmap_steps.map((step: RoadmapStep, index: number) => ({
+        user_id: user_id,
+        title: step.title,
+        description: step.description,
+        category: step.category,
+        timeline: step.timeline,
+        priority: step.priority,
+        estimated_duration: step.estimated_duration,
+        prerequisites: step.prerequisites || [],
+        success_metrics: step.success_metrics,
+        order_index: index + 1,
+        completed: false,
+      }))
+
+      allRoadmapSteps.push(...roadmapSteps)
     }
 
-    console.log('Successfully inserted roadmap steps:', roadmapSteps?.length, 'items');
-    console.log('=== FUNCTION SUCCESS ===');
+    // Insert all roadmap steps
+    if (allRoadmapSteps.length > 0) {
+      const { data: insertedRoadmapSteps, error: roadmapStepsInsertError } = await supabaseClient
+        .from('roadmap_steps')
+        .insert(allRoadmapSteps)
+        .select()
+
+      if (roadmapStepsInsertError) {
+        throw new Error(`Error inserting roadmap steps: ${roadmapStepsInsertError.message}`)
+      }
+
+      console.log(`Inserted ${insertedRoadmapSteps?.length || 0} roadmap steps`)
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Roadmap generated successfully',
-        career_tracks: careerTracks,
-        roadmap_steps: roadmapSteps
+        data: {
+          career_tracks_created: parsedCareerTracks.career_tracks.length,
+          roadmap_steps_created: allRoadmapSteps.length,
+          user_id: user_id,
+        }
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
 
   } catch (error) {
-    console.error('=== FUNCTION ERROR ===');
-    console.error('Error in generate-roadmap function:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error generating roadmap:', error)
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
-        stack: error.stack
       }),
       {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    );
+    )
   }
-});
+})
