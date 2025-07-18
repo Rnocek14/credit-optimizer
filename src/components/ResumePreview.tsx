@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
-import { Download, Copy, Share, ExternalLink } from 'lucide-react';
+import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Types for proof items
@@ -15,7 +15,12 @@ interface ProofItem {
   description: string;
   link?: string;
   trackTitle: string;
+  transcriptId?: string;
+  criScore?: number;
 }
+
+// Filter type for proof items
+type ProofFilter = 'all' | 'certification' | 'portfolio' | 'mentor_verified' | 'external_link';
 
 // Helper function to extract proof items from roadmap steps
 const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
@@ -41,6 +46,8 @@ const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
         type: isCertification ? 'certification' : isPortfolio ? 'portfolio' : 'certification',
         description: step.success_metrics,
         trackTitle,
+        transcriptId: step.transcript_id,
+        criScore: step.cri_score,
       });
     }
 
@@ -52,6 +59,8 @@ const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
         type: 'mentor_verified',
         description: 'Verified by mentor/instructor',
         trackTitle,
+        transcriptId: step.transcript_id,
+        criScore: step.cri_score,
       });
     }
 
@@ -65,12 +74,21 @@ const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
           description: 'External resource/project',
           link,
           trackTitle,
+          transcriptId: step.transcript_id,
+          criScore: step.cri_score,
         });
       });
     }
   });
 
   return proofItems;
+};
+
+// Helper function to calculate average CRI score per track
+const calculateTrackCRI = (items: ProofItem[]): number => {
+  const validScores = items.filter(item => item.criScore).map(item => item.criScore!);
+  if (validScores.length === 0) return 0;
+  return Math.round((validScores.reduce((sum, score) => sum + score, 0) / validScores.length) * 10) / 10;
 };
 
 // Helper function to get icon for proof type
@@ -242,6 +260,7 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [tracks, setTracks] = useState<any[]>([]);
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [proofFilter, setProofFilter] = useState<ProofFilter>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -340,15 +359,38 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
     }
   };
 
+  const handleViewTranscript = (transcriptId: string) => {
+    // Placeholder for transcript viewing functionality
+    toast({
+      title: "Transcript View",
+      description: `Would open transcript ${transcriptId}`,
+    });
+  };
+
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
 
   // Extract proof items for the web view
   const proofItems = extractProofItems(steps, tracks);
-  const groupedProof = proofItems.reduce((acc, item) => {
+  
+  // Filter proof items based on selected filter
+  const filteredProofItems = proofItems.filter(item => 
+    proofFilter === 'all' || item.type === proofFilter
+  );
+  
+  const groupedProof = filteredProofItems.reduce((acc, item) => {
     if (!acc[item.trackTitle]) acc[item.trackTitle] = [];
     acc[item.trackTitle].push(item);
     return acc;
   }, {} as Record<string, ProofItem[]>);
+
+  // Get filter counts for badges
+  const filterCounts = {
+    all: proofItems.length,
+    certification: proofItems.filter(item => item.type === 'certification').length,
+    portfolio: proofItems.filter(item => item.type === 'portfolio').length,
+    mentor_verified: proofItems.filter(item => item.type === 'mentor_verified').length,
+    external_link: proofItems.filter(item => item.type === 'external_link').length,
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6 bg-background rounded-lg shadow-md">
@@ -369,45 +411,108 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
       {/* Proof of Learning Section */}
       {proofItems.length > 0 && (
         <section>
-          <h2 className="text-xl font-semibold mb-4 text-foreground">Proof of Learning</h2>
-          {Object.entries(groupedProof).map(([trackTitle, items]) => (
-            <Card key={trackTitle} className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-lg">{trackTitle}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {items.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
-                    <span className="text-lg">{getProofIcon(item.type)}</span>
-                    <div className="flex-1">
-                      <div className="font-semibold text-foreground">{item.title}</div>
-                      <div className="text-sm text-muted-foreground">{item.description}</div>
-                      {item.link && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <ExternalLink className="w-3 h-3" />
-                          <a 
-                            href={item.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline"
-                          >
-                            {item.link}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                    <Badge variant={
-                      item.type === 'certification' ? 'default' :
-                      item.type === 'portfolio' ? 'secondary' :
-                      item.type === 'mentor_verified' ? 'outline' : 'outline'
-                    }>
-                      {item.type.replace('_', ' ')}
-                    </Badge>
-                  </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-foreground">Proof of Learning</h2>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <div className="flex gap-1">
+                {[
+                  { key: 'all' as ProofFilter, label: 'All', icon: '📋' },
+                  { key: 'certification' as ProofFilter, label: 'Certs', icon: '📜' },
+                  { key: 'portfolio' as ProofFilter, label: 'Portfolio', icon: '📝' },
+                  { key: 'mentor_verified' as ProofFilter, label: 'Verified', icon: '🧑‍🏫' },
+                  { key: 'external_link' as ProofFilter, label: 'Links', icon: '🔗' },
+                ].map(filter => (
+                  <Button
+                    key={filter.key}
+                    variant={proofFilter === filter.key ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setProofFilter(filter.key)}
+                    className="text-xs"
+                  >
+                    {filter.icon} {filter.label}
+                    {filterCounts[filter.key] > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-4 text-xs">
+                        {filterCounts[filter.key]}
+                      </Badge>
+                    )}
+                  </Button>
                 ))}
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            </div>
+          </div>
+          
+          {Object.entries(groupedProof).map(([trackTitle, items]) => {
+            const trackCRI = calculateTrackCRI(items);
+            return (
+              <Card key={trackTitle} className="mb-4">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{trackTitle}</CardTitle>
+                    {trackCRI > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        Avg CRI: {trackCRI}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                      <span className="text-lg">{getProofIcon(item.type)}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="font-semibold text-foreground">{item.title}</div>
+                          {item.criScore && (
+                            <Badge variant="secondary" className="text-xs">
+                              CRI {item.criScore}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">{item.description}</div>
+                        
+                        <div className="flex items-center gap-3 mt-2">
+                          {item.link && (
+                            <div className="flex items-center gap-1">
+                              <ExternalLink className="w-3 h-3" />
+                              <a 
+                                href={item.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline"
+                              >
+                                {item.link.length > 40 ? `${item.link.substring(0, 40)}...` : item.link}
+                              </a>
+                            </div>
+                          )}
+                          
+                          {item.transcriptId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewTranscript(item.transcriptId!)}
+                              className="h-6 px-2 text-xs"
+                            >
+                              <Paperclip className="w-3 h-3 mr-1" />
+                              Linked to Transcript
+                              <Eye className="w-3 h-3 ml-1" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant={
+                        item.type === 'certification' ? 'default' :
+                        item.type === 'portfolio' ? 'secondary' :
+                        item.type === 'mentor_verified' ? 'outline' : 'outline'
+                      }>
+                        {item.type.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </section>
       )}
 
