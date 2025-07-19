@@ -191,5 +191,15 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Mentor role check for teach route
+  if (location.pathname === "/teach" && currentRole !== "mentor" && currentRole !== "admin") {
+    toast({
+      title: "Access denied", 
+      description: "You need mentor privileges to access this page.",
+      variant: "destructive",
+    });
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 }

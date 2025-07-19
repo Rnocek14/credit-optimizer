@@ -320,6 +320,57 @@ export type Database = {
         }
         Relationships: []
       }
+      recommended_courses: {
+        Row: {
+          active: boolean | null
+          cost: string | null
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          id: string
+          is_ai_recommended: boolean | null
+          mentor_id: string
+          platform: string
+          reasoning: string | null
+          skill_tags: string[] | null
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          cost?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          is_ai_recommended?: boolean | null
+          mentor_id: string
+          platform: string
+          reasoning?: string | null
+          skill_tags?: string[] | null
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          cost?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          is_ai_recommended?: boolean | null
+          mentor_id?: string
+          platform?: string
+          reasoning?: string | null
+          skill_tags?: string[] | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       resume_events: {
         Row: {
           created_at: string
