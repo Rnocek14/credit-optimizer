@@ -472,6 +472,53 @@ export default function SkillTree() {
     return unlockedLayers.has(skillDepth);
   };
 
+  // Calculate layer statistics for progress overlay
+  const getLayerStats = (layerIndex: number, data = skillTreeData) => {
+    const layerMap = getSkillLayers(data);
+    const skillsInLayer = layerMap.get(layerIndex) || [];
+    
+    if (skillsInLayer.length === 0) {
+      return {
+        totalXp: 0,
+        earnedXp: 0,
+        completionPercentage: 0,
+        averageCri: 0,
+        verifiedCount: 0,
+        totalCount: 0,
+        hasData: false
+      };
+    }
+    
+    let totalXp = 0;
+    let earnedXp = 0;
+    let totalCri = 0;
+    let verifiedCount = 0;
+    
+    skillsInLayer.forEach(skill => {
+      const progress = getSkillProgress(skill.id);
+      totalXp += skill.xp_value;
+      earnedXp += progress?.xp_earned || 0;
+      
+      if (progress?.status === 'verified' && progress.cri_score) {
+        totalCri += progress.cri_score;
+        verifiedCount++;
+      }
+    });
+    
+    const completionPercentage = totalXp > 0 ? (earnedXp / totalXp) * 100 : 0;
+    const averageCri = verifiedCount > 0 ? totalCri / verifiedCount : 0;
+    
+    return {
+      totalXp,
+      earnedXp,
+      completionPercentage,
+      averageCri,
+      verifiedCount,
+      totalCount: skillsInLayer.length,
+      hasData: true
+    };
+  };
+
   // Build layered tree structure for custom positioning
   const buildLayeredTreeStructure = (data = skillTreeData): SkillNode => {
     const skillMap = new Map<string, Skill>();
@@ -1173,6 +1220,7 @@ export default function SkillTree() {
                     const unlockedLayers = getUnlockedLayers(filteredData);
                     const isLayerUnlocked = unlockedLayers.has(layerIndex);
                     const layerUnlockText = getLayerUnlockText(layerIndex, filteredData);
+                    const layerStats = getLayerStats(layerIndex, filteredData);
                     
                     return (
                       <div 
@@ -1185,23 +1233,106 @@ export default function SkillTree() {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className={`backdrop-blur-sm border rounded-lg p-3 shadow-lg max-w-[180px] ${
+                              <div className={`backdrop-blur-sm border rounded-lg shadow-lg max-w-[220px] ${
                                 isLayerUnlocked 
                                   ? 'bg-slate-800/90 border-slate-600/50' 
                                   : 'bg-slate-900/50 border-slate-700/30'
                               }`}>
-                                <div className={`text-sm font-semibold mb-1 flex items-center gap-2 ${
-                                  isLayerUnlocked ? 'text-slate-100' : 'text-slate-400'
-                                }`}>
-                                  {layerConfig.name}
-                                  {!isLayerUnlocked && <span className="text-xs">🔒</span>}
+                                {/* Layer Header */}
+                                <div className="p-3 pb-2">
+                                  <div className={`text-sm font-semibold mb-1 flex items-center gap-2 ${
+                                    isLayerUnlocked ? 'text-slate-100' : 'text-slate-400'
+                                  }`}>
+                                    {layerConfig.name}
+                                    {!isLayerUnlocked && <span className="text-xs">🔒</span>}
+                                  </div>
+                                  <div className={`text-xs ${
+                                    isLayerUnlocked ? 'text-slate-400' : 'text-slate-500'
+                                  }`}>
+                                    {skillsInLayer.length} skill{skillsInLayer.length !== 1 ? 's' : ''}
+                                    {!isLayerUnlocked && ' • Locked'}
+                                  </div>
                                 </div>
-                                <div className={`text-xs ${
-                                  isLayerUnlocked ? 'text-slate-400' : 'text-slate-500'
-                                }`}>
-                                  {skillsInLayer.length} skill{skillsInLayer.length !== 1 ? 's' : ''}
-                                  {!isLayerUnlocked && ' • Locked'}
-                                </div>
+
+                                {/* XP + CRI Summary Overlay */}
+                                {layerStats.hasData && (
+                                  <div className={`px-3 pb-3 space-y-2 ${
+                                    !isLayerUnlocked ? 'opacity-50' : ''
+                                  }`}>
+                                    {/* XP Progress Bar */}
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className={isLayerUnlocked ? 'text-slate-300' : 'text-slate-500'}>
+                                          XP Progress
+                                        </span>
+                                        <span className={`font-medium ${
+                                          isLayerUnlocked ? 'text-slate-200' : 'text-slate-500'
+                                        }`}>
+                                          {layerStats.earnedXp}/{layerStats.totalXp}
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+                                        <div 
+                                          className={`h-full transition-all duration-500 ease-out ${
+                                            isLayerUnlocked 
+                                              ? layerStats.completionPercentage >= 100 
+                                                ? 'bg-emerald-500' 
+                                                : 'bg-blue-500'
+                                              : 'bg-slate-600'
+                                          }`}
+                                          style={{ 
+                                            width: `${Math.min(100, layerStats.completionPercentage)}%`,
+                                            transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="text-xs text-slate-400">
+                                        {Math.round(layerStats.completionPercentage)}% complete
+                                      </div>
+                                    </div>
+
+                                    {/* CRI Average Badge */}
+                                    {layerStats.verifiedCount > 0 && (
+                                      <div className="flex items-center justify-between">
+                                        <span className={`text-xs ${
+                                          isLayerUnlocked ? 'text-slate-300' : 'text-slate-500'
+                                        }`}>
+                                          Avg CRI
+                                        </span>
+                                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                          isLayerUnlocked 
+                                            ? layerStats.averageCri >= 90 
+                                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                              : layerStats.averageCri >= 80 
+                                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                                : layerStats.averageCri >= 70 
+                                                  ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                                                  : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                            : 'bg-slate-600/20 text-slate-400 border border-slate-600/30'
+                                        }`}>
+                                          {Math.round(layerStats.averageCri)}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Skills Status */}
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className={isLayerUnlocked ? 'text-slate-300' : 'text-slate-500'}>
+                                        Verified
+                                      </span>
+                                      <span className={`font-medium ${
+                                        isLayerUnlocked 
+                                          ? layerStats.verifiedCount === layerStats.totalCount 
+                                            ? 'text-emerald-300' 
+                                            : 'text-slate-200'
+                                          : 'text-slate-500'
+                                      }`}>
+                                        {layerStats.verifiedCount}/{layerStats.totalCount}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Layer divider line */}
                                 <div className={`absolute -right-4 top-1/2 transform -translate-y-1/2 w-4 h-px bg-gradient-to-r ${
                                   isLayerUnlocked 
@@ -1214,21 +1345,43 @@ export default function SkillTree() {
                               side="right" 
                               className="bg-slate-800 border-slate-700 text-slate-100 max-w-xs"
                             >
-                              <div className="space-y-2">
+                              <div className="space-y-3">
                                 <div className="font-semibold flex items-center gap-2">
                                   {layerConfig.name}
                                   {!isLayerUnlocked && <span>🔒</span>}
                                 </div>
                                 <div className="text-sm text-slate-300">{layerConfig.description}</div>
                                 
+                                {/* Detailed Stats in Tooltip */}
+                                {layerStats.hasData && (
+                                  <div className="space-y-2 text-sm border-t border-slate-700 pt-2">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">XP Progress:</span>
+                                      <span>{layerStats.earnedXp}/{layerStats.totalXp} ({Math.round(layerStats.completionPercentage)}%)</span>
+                                    </div>
+                                    {layerStats.verifiedCount > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-400">Average CRI:</span>
+                                        <span style={{ color: getCRIColor(layerStats.averageCri) }}>
+                                          {Math.round(layerStats.averageCri)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Skills Verified:</span>
+                                      <span>{layerStats.verifiedCount}/{layerStats.totalCount}</span>
+                                    </div>
+                                  </div>
+                                )}
+
                                 {!isLayerUnlocked ? (
-                                  <div className="text-sm">
+                                  <div className="text-sm border-t border-slate-700 pt-2">
                                     <div className="text-amber-400 font-medium">Locked</div>
                                     <div className="text-xs text-slate-400 mt-1">{layerUnlockText}</div>
                                   </div>
                                 ) : (
-                                  <div className="text-xs text-slate-400">
-                                    Skills in this layer: {skillsInLayer.map(s => s.name).join(', ')}
+                                  <div className="text-xs text-slate-400 border-t border-slate-700 pt-2">
+                                    Skills: {skillsInLayer.map(s => s.name).join(', ')}
                                   </div>
                                 )}
                               </div>
