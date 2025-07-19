@@ -555,8 +555,8 @@ export default function SkillTree() {
               <text
                 x="0"
                 y="-5"
-                fontSize="14"
-                fontWeight="600"
+                fontSize="12"
+                fontWeight="bold"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
@@ -571,11 +571,11 @@ export default function SkillTree() {
               <text
                 x="0"
                 y="8"
-                fontSize="9"
-                fontWeight="500"
+                fontSize="10"
+                fontWeight="normal"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="#94a3b8"
+                fill="white"
                 letterSpacing="0.5"
               >
                 {category.toUpperCase()}
@@ -585,11 +585,11 @@ export default function SkillTree() {
               <text
                 x="0"
                 y={nodeHeight/2 - 12}
-                fontSize="11"
-                fontWeight="500"
+                fontSize="10"
+                fontWeight="normal"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="#cbd5e1"
+                fill="white"
               >
                 {xpEarned}/{xpValue} XP
               </text>
@@ -790,36 +790,36 @@ export default function SkillTree() {
                 </p>
               </div>
               
-              {/* Zoom Controls */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomOut}
-                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                >
-                  <ZoomOut className="h-3 w-3" />
-                  Zoom Out
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleZoomIn}
-                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                >
-                  <ZoomIn className="h-3 w-3" />
-                  Zoom In
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetView}
-                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Reset
-                </Button>
-              </div>
+               {/* Zoom Controls */}
+               <div className="flex items-center gap-2">
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={handleZoomOut}
+                   className="flex items-center gap-1 bg-slate-700 border-slate-600 text-white hover:bg-slate-600 min-h-[40px]"
+                 >
+                   <ZoomOut className="h-3 w-3" />
+                   Zoom Out
+                 </Button>
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={handleZoomIn}
+                   className="flex items-center gap-1 bg-slate-700 border-slate-600 text-white hover:bg-slate-600 min-h-[40px]"
+                 >
+                   <ZoomIn className="h-3 w-3" />
+                   Zoom In
+                 </Button>
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={handleResetView}
+                   className="flex items-center gap-1 bg-slate-700 border-slate-600 text-white hover:bg-slate-600 min-h-[40px]"
+                 >
+                   <RotateCcw className="h-3 w-3" />
+                   Reset
+                 </Button>
+               </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -852,9 +852,7 @@ export default function SkillTree() {
                   }
                   .rd3t-tree-container svg text {
                     fill: white !important;
-                  }
-                  .rd3t-tree-container text {
-                    fill: white !important;
+                    font-family: sans-serif !important;
                   }
                 `}
               </style>
