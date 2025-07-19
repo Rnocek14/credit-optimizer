@@ -46,16 +46,12 @@ interface ProfileData {
 
 interface UserBadge {
   id: string;
-  badge_type: {
+  badge: {
     name: string;
-    display_name: string;
+    emoji: string;
     description: string;
-    icon: string;
-    color: string;
-    background_color: string;
+    slug: string;
   };
-  assigned_reason: string;
-  created_at: string;
 }
 
 interface ReviewData {
@@ -120,19 +116,14 @@ const PublicResume = () => {
         .from('user_badges')
         .select(`
           id,
-          assigned_reason,
-          created_at,
-          badge_type:badge_types (
+          badge:badges(
             name,
-            display_name,
+            emoji,
             description,
-            icon,
-            color,
-            background_color
+            slug
           )
         `)
-        .eq('user_id', userId)
-        .eq('active', true);
+        .eq('user_id', userId);
 
       setBadges(badgesData || []);
 
@@ -589,29 +580,18 @@ const PublicResume = () => {
                 <CardTitle>Verified Achievements</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
                   {badges.map((badge) => (
-                    <div key={badge.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                    <div key={badge.id} className="relative group">
                       <Badge
-                        variant="outline"
-                        className="text-sm px-3 py-1"
-                        style={{
-                          color: badge.badge_type.color,
-                          backgroundColor: badge.badge_type.background_color,
-                          borderColor: badge.badge_type.color
-                        }}
+                        variant="secondary"
+                        className="text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-help"
                       >
-                        {badge.badge_type.icon} {badge.badge_type.display_name}
+                        <span className="mr-1">{badge.badge.emoji}</span>
+                        {badge.badge.name}
                       </Badge>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-muted-foreground">
-                          {badge.badge_type.description}
-                        </p>
-                        {badge.assigned_reason && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {badge.assigned_reason}
-                          </p>
-                        )}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-background border rounded shadow-lg text-xs w-max max-w-xs opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {badge.badge.description}
                       </div>
                     </div>
                   ))}

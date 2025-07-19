@@ -98,6 +98,39 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          created_at: string
+          description: string
+          emoji: string
+          id: string
+          name: string
+          slug: string
+          threshold: number | null
+          trigger_type: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          emoji: string
+          id?: string
+          name: string
+          slug: string
+          threshold?: number | null
+          trigger_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          name?: string
+          slug?: string
+          threshold?: number | null
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       career_goals: {
         Row: {
           active: boolean | null
@@ -694,6 +727,35 @@ export type Database = {
         Relationships: []
       }
       user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges_old: {
         Row: {
           active: boolean
           assigned_by: string | null

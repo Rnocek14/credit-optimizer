@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { triggerBadgeAssignment } from '@/lib/badgeUtils';
 import { FileText, Download, Globe, Loader2, RefreshCw, Save } from 'lucide-react';
 
 interface ResumeContent {
@@ -110,6 +111,11 @@ const ResumeBuilder = () => {
         });
 
       if (error) throw error;
+
+      // Trigger badge assignment if publishing
+      if (publishToProfile && user?.id) {
+        await triggerBadgeAssignment(user.id);
+      }
 
       toast({
         title: "Resume saved!",
