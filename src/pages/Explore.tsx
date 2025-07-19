@@ -130,29 +130,32 @@ export default function Explore() {
           skill_tags,
           url,
           is_ai_recommended,
-          profiles!recommended_courses_mentor_id_fkey (
-            name,
-            role_title
-          )
+          mentor_id
         `)
         .eq('active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setCourses(coursesData || []);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-    }
-  };
+      // Get mentor profiles separately
+      const coursesWithMentors = await Promise.all(
+        (coursesData || []).map(async (course) => {
+          const { data: mentorData } = await supabase
+            .from('profiles')
+            .select('name, role_title')
+            .eq('user_id', course.mentor_id)
+            .single();
+
+          return {
+            ...course,
+            mentor: mentorData || { name: 'Unknown', role_title: 'Mentor' }
+          };
         })
       );
 
-      setMentors(mentorsWithRatings);
+      setCourses(coursesWithMentors);
     } catch (error) {
-      console.error('Error fetching mentors:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching courses:', error);
     }
   };
 
