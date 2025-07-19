@@ -886,6 +886,20 @@ export type Database = {
           earned_at: string
         }[]
       }
+      get_demo_resume_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          name: string
+          email: string
+          resume_id: string
+          created_at: string
+          slug: string
+          total_xp: number
+          current_level: number
+          earned_badges: Json
+        }[]
+      }
       get_user_level: {
         Args: { user_id_param: string }
         Returns: {
