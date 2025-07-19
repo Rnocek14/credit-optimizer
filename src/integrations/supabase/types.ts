@@ -62,6 +62,42 @@ export type Database = {
         }
         Relationships: []
       }
+      career_goals: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          description: string | null
+          id: string
+          target_date: string | null
+          target_role: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          target_date?: string | null
+          target_role?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          target_date?: string | null
+          target_role?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       career_paths: {
         Row: {
           advanced_roles: string[] | null
@@ -191,6 +227,60 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_progress: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          course_id: string | null
+          created_at: string
+          description: string | null
+          goal_id: string
+          id: string
+          order_index: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          goal_id: string
+          id?: string
+          order_index?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          goal_id?: string
+          id?: string
+          order_index?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "recommended_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_progress_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
             referencedColumns: ["id"]
           },
         ]
