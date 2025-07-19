@@ -482,11 +482,15 @@ const PublicResume = () => {
                       <div key={category}>
                         <h5 className="text-sm font-medium text-foreground mb-2">{category}</h5>
                         <div className="flex flex-wrap gap-1">
-                          {skills.map((skill, index) => (
+                          {Array.isArray(skills) ? skills.map((skill, index) => (
                             <Badge key={index} variant="secondary" className="text-xs">
                               {skill}
                             </Badge>
-                          ))}
+                          )) : (
+                            <Badge variant="secondary" className="text-xs">
+                              {String(skills)}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     ))}
