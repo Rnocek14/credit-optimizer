@@ -508,6 +508,7 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
+                style={{ fill: 'white', color: 'white' }}
               >
                 {categoryIcon}
               </text>
@@ -534,6 +535,7 @@ export default function SkillTree() {
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="white"
+                    style={{ fill: 'white', color: 'white' }}
                   >
                     {criScore}
                   </text>
@@ -560,6 +562,7 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
+                style={{ fill: 'white', color: 'white' }}
               >
                 {nodeDatum.name.length > 10 ? 
                   `${nodeDatum.name.slice(0, 10)}...` : 
@@ -577,6 +580,7 @@ export default function SkillTree() {
                 dominantBaseline="middle"
                 fill="white"
                 letterSpacing="0.5"
+                style={{ fill: 'white', color: 'white' }}
               >
                 {category.toUpperCase()}
               </text>
@@ -590,6 +594,7 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
+                style={{ fill: 'white', color: 'white' }}
               >
                 {xpEarned}/{xpValue} XP
               </text>
@@ -853,6 +858,20 @@ export default function SkillTree() {
                   .rd3t-tree-container svg text {
                     fill: white !important;
                     font-family: sans-serif !important;
+                  }
+                  .rd3t-tree-container text {
+                    fill: white !important;
+                    color: white !important;
+                    font-family: sans-serif !important;
+                  }
+                  /* Force all SVG text elements to be white */
+                  svg text, svg text * {
+                    fill: white !important;
+                    color: white !important;
+                  }
+                  /* Ensure no inherited dark colors override white text */
+                  .rd3t-tree-container * {
+                    color: inherit;
                   }
                 `}
               </style>
