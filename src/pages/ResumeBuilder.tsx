@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +38,7 @@ const ResumeBuilder = () => {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [editableContent, setEditableContent] = useState<ResumeContent | null>(null);
   const [resumeTitle, setResumeTitle] = useState('');
+  const [publishToProfile, setPublishToProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -102,14 +105,17 @@ const ResumeBuilder = () => {
           title: resumeTitle || 'Untitled Resume',
           content: editableContent as any,
           cri_average: resumeData.criAverage,
-          readiness_score: resumeData.readinessScore
+          readiness_score: resumeData.readinessScore,
+          published_to_profile: publishToProfile
         });
 
       if (error) throw error;
 
       toast({
         title: "Resume saved!",
-        description: "Your resume draft has been saved successfully.",
+        description: publishToProfile 
+          ? "Your resume draft has been saved and published to your profile."
+          : "Your resume draft has been saved successfully.",
       });
     } catch (error) {
       console.error('Error saving resume:', error);
@@ -264,18 +270,44 @@ const ResumeBuilder = () => {
             </CardContent>
           </Card>
 
-          {/* Resume Title */}
+          {/* Resume Title & Publish Settings */}
           <Card>
             <CardHeader>
-              <CardTitle>Resume Title</CardTitle>
+              <CardTitle>Resume Settings</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Input
-                value={resumeTitle}
-                onChange={(e) => setResumeTitle(e.target.value)}
-                placeholder="Enter a title for your resume..."
-                className="max-w-md"
-              />
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="resume-title" className="text-sm font-medium">
+                  Resume Title
+                </Label>
+                <Input
+                  id="resume-title"
+                  value={resumeTitle}
+                  onChange={(e) => setResumeTitle(e.target.value)}
+                  placeholder="Enter a title for your resume..."
+                  className="mt-1"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="publish-toggle"
+                  checked={publishToProfile}
+                  onCheckedChange={setPublishToProfile}
+                />
+                <Label htmlFor="publish-toggle" className="text-sm font-medium">
+                  Publish to Profile
+                </Label>
+              </div>
+              
+              {publishToProfile && (
+                <div className="text-sm text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/20">
+                  <p className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-primary" />
+                    This resume will be visible on your public profile at <code>/resume/:id</code>
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -364,7 +396,7 @@ const ResumeBuilder = () => {
                   ) : (
                     <>
                       <Save className="w-4 h-4 mr-2" />
-                      Save Resume Draft
+                      {publishToProfile ? 'Save & Publish' : 'Save Resume Draft'}
                     </>
                   )}
                 </Button>
@@ -372,10 +404,12 @@ const ResumeBuilder = () => {
                   <Download className="w-4 h-4 mr-2" />
                   Download PDF
                 </Button>
-                <Button variant="outline" className="flex-1">
-                  <Globe className="w-4 h-4 mr-2" />
-                  Publish to Profile
-                </Button>
+                {publishToProfile && (
+                  <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1 h-auto">
+                    <Globe className="h-3 w-3" />
+                    Will Publish
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
