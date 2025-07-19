@@ -1,0 +1,2 @@
+-- Update config to make assign-badges function public
+-- This is handled in the supabase/config.toml file, not via SQL migration
