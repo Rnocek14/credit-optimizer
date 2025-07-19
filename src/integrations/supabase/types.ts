@@ -799,6 +799,30 @@ export type Database = {
           },
         ]
       }
+      user_xp: {
+        Row: {
+          created_at: string
+          id: string
+          last_updated: string
+          total_xp: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          total_xp?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_updated?: string
+          total_xp?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -820,6 +844,17 @@ export type Database = {
           threshold: number
           user_has_earned: boolean
           earned_at: string
+        }[]
+      }
+      get_user_level: {
+        Args: { user_id_param: string }
+        Returns: {
+          user_id: string
+          total_xp: number
+          current_level: number
+          xp_for_current_level: number
+          xp_for_next_level: number
+          xp_progress_in_level: number
         }[]
       }
       get_user_role: {
