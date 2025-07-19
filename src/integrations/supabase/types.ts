@@ -823,11 +823,51 @@ export type Database = {
         }
         Relationships: []
       }
+      xp_events: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          reason: string
+          source_id: string | null
+          user_id: string
+          xp_amount: number
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          reason: string
+          source_id?: string | null
+          user_id: string
+          xp_amount: number
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          source_id?: string | null
+          user_id?: string
+          xp_amount?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      award_xp: {
+        Args: {
+          user_id_param: string
+          xp_amount_param: number
+          action_type_param: string
+          reason_param: string
+          source_id_param?: string
+        }
+        Returns: undefined
+      }
       generate_user_roadmap: {
         Args: { user_id_param: string }
         Returns: Json
