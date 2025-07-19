@@ -551,7 +551,7 @@ export default function SkillTree() {
                 strokeWidth="1"
               />
 
-              {/* Skill name - center with guaranteed white text */}
+              {/* Skill name - center with white text */}
               <text
                 x="0"
                 y="-5"
@@ -560,7 +560,6 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
-                className="text-sm font-semibold text-white"
               >
                 {nodeDatum.name.length > 10 ? 
                   `${nodeDatum.name.slice(0, 10)}...` : 
@@ -568,7 +567,7 @@ export default function SkillTree() {
                 }
               </text>
 
-              {/* Category label */}
+              {/* Category label - white text */}
               <text
                 x="0"
                 y="8"
@@ -577,13 +576,12 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#94a3b8"
-                className="text-[10px] text-slate-400 uppercase tracking-wide"
                 letterSpacing="0.5"
               >
                 {category.toUpperCase()}
               </text>
 
-              {/* XP earned text - bottom with guaranteed visibility */}
+              {/* XP earned text - bottom with white text */}
               <text
                 x="0"
                 y={nodeHeight/2 - 12}
@@ -592,7 +590,6 @@ export default function SkillTree() {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#cbd5e1"
-                className="text-xs text-slate-300"
               >
                 {xpEarned}/{xpValue} XP
               </text>
@@ -852,6 +849,12 @@ export default function SkillTree() {
                     width: 100% !important;
                     height: 100% !important;
                     background: #0f172a;
+                  }
+                  .rd3t-tree-container svg text {
+                    fill: white !important;
+                  }
+                  .rd3t-tree-container text {
+                    fill: white !important;
                   }
                 `}
               </style>
