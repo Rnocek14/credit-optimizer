@@ -170,9 +170,9 @@ export default function Explore() {
       const matchesSkills = selectedSkills.length === 0 || 
         selectedSkills.some(skill => mentor.skills?.includes(skill));
       
-      const matchesIndustry = !selectedIndustry || mentor.industry === selectedIndustry;
+      const matchesIndustry = !selectedIndustry || selectedIndustry === "all" || mentor.industry === selectedIndustry;
       const matchesRole = !selectedRole || mentor.role_title?.includes(selectedRole);
-      const matchesRating = !minRating || mentor.rating >= parseFloat(minRating);
+      const matchesRating = !minRating || minRating === "all" || mentor.rating >= parseFloat(minRating);
 
       return matchesSearch && matchesSkills && matchesIndustry && matchesRole && matchesRating;
     });
@@ -186,8 +186,8 @@ export default function Explore() {
       const matchesSkills = selectedSkills.length === 0 || 
         selectedSkills.some(skill => course.skill_tags.includes(skill));
       
-      const matchesPlatform = !selectedPlatform || course.platform === selectedPlatform;
-      const matchesDifficulty = !selectedDifficulty || course.difficulty === selectedDifficulty;
+      const matchesPlatform = !selectedPlatform || selectedPlatform === "all" || course.platform === selectedPlatform;
+      const matchesDifficulty = !selectedDifficulty || selectedDifficulty === "all" || course.difficulty === selectedDifficulty;
       const matchesFree = !showFreeOnly || course.cost === "Free";
 
       return matchesSearch && matchesSkills && matchesPlatform && matchesDifficulty && matchesFree;
@@ -272,7 +272,7 @@ export default function Explore() {
                           <SelectValue placeholder="All Industries" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Industries</SelectItem>
+                          <SelectItem value="all">All Industries</SelectItem>
                           {availableIndustries.map(industry => (
                             <SelectItem key={industry} value={industry}>{industry}</SelectItem>
                           ))}
@@ -287,7 +287,7 @@ export default function Explore() {
                           <SelectValue placeholder="Any Rating" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Rating</SelectItem>
+                          <SelectItem value="all">Any Rating</SelectItem>
                           <SelectItem value="4">4+ Stars</SelectItem>
                           <SelectItem value="4.5">4.5+ Stars</SelectItem>
                         </SelectContent>
@@ -379,7 +379,7 @@ export default function Explore() {
                           <SelectValue placeholder="All Platforms" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Platforms</SelectItem>
+                          <SelectItem value="all">All Platforms</SelectItem>
                           {availablePlatforms.map(platform => (
                             <SelectItem key={platform} value={platform}>{platform}</SelectItem>
                           ))}
@@ -394,7 +394,7 @@ export default function Explore() {
                           <SelectValue placeholder="All Levels" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Levels</SelectItem>
+                          <SelectItem value="all">All Levels</SelectItem>
                           <SelectItem value="Beginner">Beginner</SelectItem>
                           <SelectItem value="Intermediate">Intermediate</SelectItem>
                           <SelectItem value="Advanced">Advanced</SelectItem>
