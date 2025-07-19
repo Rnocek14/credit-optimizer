@@ -118,6 +118,141 @@ export default function SkillTree() {
   const [isDemoMode, setIsDemoMode] = useState(true); // Demo mode for unlocking all layers
   const treeRef = useRef<any>(null);
 
+  // Find the suggested next skill for progression
+  const getSuggestedNextSkill = (data = skillTreeData) => {
+    const unlockedLayers = getUnlockedLayers(data);
+    const layerMap = getSkillLayers(data);
+    const maxLayer = Math.max(...Array.from(layerMap.keys()));
+    
+    // Find the lowest locked layer
+    let nextLockedLayer = -1;
+    for (let i = 0; i <= maxLayer; i++) {
+      if (!unlockedLayers.has(i)) {
+        nextLockedLayer = i;
+        break;
+      }
+    }
+    
+    // If all layers are unlocked or we're in demo mode, no suggestion needed
+    if (nextLockedLayer === -1 || isDemoMode) {
+      return null;
+    }
+    
+    // Get skills from the previous layer (the one that needs progress)
+    const previousLayer = nextLockedLayer - 1;
+    if (previousLayer < 0) return null;
+    
+    const previousLayerSkills = layerMap.get(previousLayer) || [];
+    if (previousLayerSkills.length === 0) return null;
+    
+    // Find skills that are candidates for progression
+    const candidates = previousLayerSkills
+      .map(skill => {
+        const progress = getSkillProgress(skill.id);
+        const xpEarned = progress?.xp_earned || 0;
+        const xpNeeded = skill.xp_value;
+        const status = progress?.status || 'locked';
+        
+        // Score based on progress and priority
+        let score = 0;
+        if (status === 'in_progress') {
+          score = 100 + (xpEarned / xpNeeded) * 50; // High priority for in-progress
+        } else if (status === 'locked' && xpEarned > 0) {
+          score = 50 + (xpEarned / xpNeeded) * 40; // Medium priority for started but not in-progress
+        } else if (status === 'locked') {
+          score = 10; // Low priority for not started
+        } else if (status === 'verified') {
+          score = 0; // Already verified, not a candidate
+        }
+        
+        return {
+          skill,
+          progress,
+          xpEarned,
+          xpNeeded,
+          status,
+          score,
+          completionRatio: xpNeeded > 0 ? xpEarned / xpNeeded : 0
+        };
+      })
+      .filter(candidate => candidate.score > 0) // Only unverified skills
+      .sort((a, b) => b.score - a.score); // Sort by priority score
+    
+    if (candidates.length === 0) return null;
+    
+    const topCandidate = candidates[0];
+    const layerStats = getLayerStats(previousLayer, data);
+    
+    return {
+      skill: topCandidate.skill,
+      progress: topCandidate.progress,
+      xpEarned: topCandidate.xpEarned,
+      xpNeeded: topCandidate.xpNeeded,
+      status: topCandidate.status,
+      nextLockedLayer,
+      previousLayer,
+      layerStats,
+      reason: `Verifying this unlocks ${LAYER_CONFIG[nextLockedLayer]?.name || `Layer ${nextLockedLayer + 1}`}`
+    };
+  };
+
+  // Scroll to and highlight a specific skill node
+  const jumpToSkill = (skillId: string) => {
+    // Find the skill node in the DOM and scroll to it
+    const skillElements = document.querySelectorAll('[aria-label*="Skill:"]');
+    let targetElement: Element | null = null;
+    
+    skillElements.forEach(element => {
+      const ariaLabel = element.getAttribute('aria-label') || '';
+      if (ariaLabel.includes(skillTreeData.skills.find(s => s.id === skillId)?.name || '')) {
+        targetElement = element;
+      }
+    });
+    
+    if (targetElement) {
+      targetElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      
+      // Add a brief highlight animation
+      const svgElement = targetElement as SVGElement;
+      const highlightCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      highlightCircle.setAttribute('cx', '0');
+      highlightCircle.setAttribute('cy', '0');
+      highlightCircle.setAttribute('r', '80');
+      highlightCircle.setAttribute('fill', 'none');
+      highlightCircle.setAttribute('stroke', '#3b82f6');
+      highlightCircle.setAttribute('stroke-width', '4');
+      highlightCircle.setAttribute('opacity', '0');
+      
+      // Create pulsing animation
+      const animation = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      animation.setAttribute('attributeName', 'opacity');
+      animation.setAttribute('values', '0;0.8;0;0.6;0');
+      animation.setAttribute('dur', '2s');
+      animation.setAttribute('repeatCount', '2');
+      
+      const scaleAnimation = document.createElementNS('http://www.w3.org/2000/svg', 'animateTransform');
+      scaleAnimation.setAttribute('attributeName', 'transform');
+      scaleAnimation.setAttribute('type', 'scale');
+      scaleAnimation.setAttribute('values', '0.8;1.2;0.8;1.1;0.8');
+      scaleAnimation.setAttribute('dur', '2s');
+      scaleAnimation.setAttribute('repeatCount', '2');
+      
+      highlightCircle.appendChild(animation);
+      highlightCircle.appendChild(scaleAnimation);
+      svgElement.appendChild(highlightCircle);
+      
+      // Remove the highlight after animation
+      setTimeout(() => {
+        if (highlightCircle.parentNode) {
+          highlightCircle.parentNode.removeChild(highlightCircle);
+        }
+      }, 4000);
+    }
+  };
+
   useEffect(() => {
     fetchSkillTreeData();
   }, []);
@@ -516,7 +651,8 @@ export default function SkillTree() {
       verifiedCount,
       totalCount: skillsInLayer.length,
       hasData: true
-    };
+  };
+
   };
 
   // Build layered tree structure for custom positioning
@@ -1159,6 +1295,113 @@ export default function SkillTree() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Suggested Next Skill Card */}
+        {(() => {
+          const suggestion = getSuggestedNextSkill(filteredData);
+          if (!suggestion) return null;
+          
+          return (
+            <Card className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/30 rounded-xl shadow-lg animate-fade-in">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-400" />
+                      <h3 className="text-lg font-semibold text-white">Suggested Next Skill</h3>
+                    </div>
+                    
+                    {/* Skill Info */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{getCategoryIcon(suggestion.skill.category)}</span>
+                        <div>
+                          <h4 className="text-xl font-bold text-blue-300">{suggestion.skill.name}</h4>
+                          <p className="text-sm text-slate-400">{suggestion.skill.category}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Reason */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <Lock className="h-4 w-4 text-amber-400" />
+                        <span className="text-amber-300 font-medium">{suggestion.reason}</span>
+                      </div>
+                      
+                      {/* Progress */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-300">XP Progress</span>
+                          <span className="text-white font-medium">
+                            {suggestion.xpEarned}/{suggestion.xpNeeded} XP
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-700 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-700 ease-out"
+                            style={{ 
+                              width: `${Math.min(100, (suggestion.xpEarned / suggestion.xpNeeded) * 100)}%` 
+                            }}
+                          />
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {Math.round((suggestion.xpEarned / suggestion.xpNeeded) * 100)}% complete
+                        </div>
+                      </div>
+                      
+                      {/* Layer Stats */}
+                      <div className="flex items-center gap-4 text-xs text-slate-400 pt-2 border-t border-slate-700">
+                        <span>Layer {suggestion.previousLayer + 1}: {suggestion.layerStats.verifiedCount}/{suggestion.layerStats.totalCount} verified</span>
+                        <span>•</span>
+                        <span>{Math.round(suggestion.layerStats.completionPercentage)}% complete</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Action Button */}
+                  <div className="flex flex-col gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => jumpToSkill(suggestion.skill.id)}
+                            className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                            size="sm"
+                          >
+                            <Target className="h-4 w-4 mr-2" />
+                            Jump to Skill
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent 
+                          className="bg-slate-800 border-slate-700 text-slate-100 max-w-xs"
+                        >
+                          <div className="space-y-1">
+                            <div className="font-semibold">{suggestion.skill.name}</div>
+                            <div className="text-sm text-slate-300">
+                              {suggestion.skill.description}
+                            </div>
+                            <div className="text-xs text-slate-400 pt-1 border-t border-slate-700">
+                              Click to scroll to this skill in the tree
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    
+                    {/* Status Badge */}
+                    <div className={`text-xs px-2 py-1 rounded-full text-center font-medium ${
+                      suggestion.status === 'in_progress' 
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : 'bg-slate-600/20 text-slate-400 border border-slate-600/30'
+                    }`}>
+                      {suggestion.status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Interactive Skill Tree */}
         <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg">
