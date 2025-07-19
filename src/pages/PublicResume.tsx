@@ -66,10 +66,26 @@ interface ReviewData {
   summary: string;
 }
 
+interface AIResumeDraft {
+  id: string;
+  title: string;
+  content: {
+    summary: string;
+    bullets: string[];
+    skills: {
+      [category: string]: string[];
+    };
+  };
+  cri_average: number;
+  readiness_score: number;
+  created_at: string;
+}
+
 const PublicResume = () => {
   const { userId } = useParams();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [badges, setBadges] = useState<UserBadge[]>([]);
+  const [aiResumeDraft, setAiResumeDraft] = useState<AIResumeDraft | null>(null);
   const [viewCount, setViewCount] = useState(0);
   const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,6 +154,23 @@ const PublicResume = () => {
         .limit(3);
 
       setRecommendedCourses(coursesData || []);
+
+      // Fetch latest published AI resume draft
+      const { data: resumeDraftData } = await supabase
+        .from('ai_resume_drafts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('published_to_profile', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (resumeDraftData) {
+        setAiResumeDraft({
+          ...resumeDraftData,
+          content: resumeDraftData.content as any
+        } as AIResumeDraft);
+      }
 
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -365,6 +398,91 @@ const PublicResume = () => {
             </div>
           </CardHeader>
         </Card>
+
+        {/* AI Resume Draft Section */}
+        {aiResumeDraft && (
+          <Card className="mb-8 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl border-2 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Resume Draft
+                <Badge variant="outline" className="bg-gradient-to-r from-primary/10 to-primary/5">
+                  {aiResumeDraft.title}
+                </Badge>
+                {aiResumeDraft.readiness_score > 75 && (
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    AI Verified
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Resume Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{aiResumeDraft.cri_average.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">CRI Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">{aiResumeDraft.readiness_score.toFixed(1)}</div>
+                  <div className="text-xs text-muted-foreground">Readiness</div>
+                </div>
+                <div className="text-center col-span-2 md:col-span-1">
+                  <div className="text-xs text-muted-foreground">Generated: {new Date(aiResumeDraft.created_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              {/* Professional Summary */}
+              {aiResumeDraft.content.summary && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3">Professional Summary</h4>
+                  <p className="text-muted-foreground leading-relaxed bg-card/50 p-4 rounded-lg border">
+                    {aiResumeDraft.content.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Key Achievements */}
+              {aiResumeDraft.content.bullets && aiResumeDraft.content.bullets.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3">Key Achievements</h4>
+                  <ul className="space-y-2">
+                    {aiResumeDraft.content.bullets.map((bullet, index) => (
+                      <li key={index} className="flex items-start gap-3 text-sm">
+                        <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-muted-foreground">{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Skills Categories */}
+              {aiResumeDraft.content.skills && Object.keys(aiResumeDraft.content.skills).length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-foreground mb-3">Skills & Competencies</h4>
+                  <div className="space-y-3">
+                    {Object.entries(aiResumeDraft.content.skills).map(([category, skills]) => (
+                      <div key={category}>
+                        <h5 className="text-sm font-medium text-foreground mb-2">{category}</h5>
+                        <div className="flex flex-wrap gap-1">
+                          {skills.map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* AI Review Summary */}
 
         {/* AI Review Summary */}
         {reviewData && (
