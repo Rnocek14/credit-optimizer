@@ -262,6 +262,42 @@ export type Database = {
           },
         ]
       }
+      course_skill_map: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          skill_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          skill_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_skill_map_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "recommended_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_skill_map_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       featured_gallery_curations: {
         Row: {
           active: boolean
@@ -678,6 +714,78 @@ export type Database = {
           },
         ]
       }
+      skill_graph_edges: {
+        Row: {
+          created_at: string
+          id: string
+          prerequisite_skill_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prerequisite_skill_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prerequisite_skill_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_graph_edges_prerequisite_skill_id_fkey"
+            columns: ["prerequisite_skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_graph_edges_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skills: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          difficulty_level: number | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+          xp_value: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+          xp_value?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+          xp_value?: number | null
+        }
+        Relationships: []
+      }
       transcripts: {
         Row: {
           created_at: string
@@ -795,6 +903,53 @@ export type Database = {
             columns: ["badge_type_id"]
             isOneToOne: false
             referencedRelation: "badge_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_skill_progress: {
+        Row: {
+          created_at: string
+          cri_score: number | null
+          id: string
+          skill_id: string
+          status: string
+          updated_at: string
+          user_id: string
+          verification_date: string | null
+          verification_source: string | null
+          xp_earned: number | null
+        }
+        Insert: {
+          created_at?: string
+          cri_score?: number | null
+          id?: string
+          skill_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          verification_date?: string | null
+          verification_source?: string | null
+          xp_earned?: number | null
+        }
+        Update: {
+          created_at?: string
+          cri_score?: number | null
+          id?: string
+          skill_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verification_date?: string | null
+          verification_source?: string | null
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_skill_progress_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
