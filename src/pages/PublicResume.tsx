@@ -11,9 +11,9 @@ import {
   Star, 
   Eye, 
   Trophy, 
-  Share2, 
-  Copy, 
-  ExternalLink,
+  Share2,
+  GraduationCap,
+  Copy,
   CheckCircle,
   AlertCircle,
   Sparkles,
@@ -69,6 +69,7 @@ const PublicResume = () => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [badges, setBadges] = useState<UserBadge[]>([]);
   const [viewCount, setViewCount] = useState(0);
+  const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -285,9 +286,53 @@ const PublicResume = () => {
                     </Badge>
                   )}
                 </div>
-              </div>
+        </div>
 
-              {/* Share Tools */}
+        {/* Recommended Courses */}
+        {recommendedCourses.length > 0 && (
+          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-8 border shadow-sm">
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+              <GraduationCap className="h-6 w-6 text-primary" />
+              Courses Recommended by {profile.name}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommendedCourses.map((course: any) => (
+                <div key={course.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-sm line-clamp-2">{course.title}</h3>
+                    {course.is_ai_recommended && (
+                      <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        AI
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">{course.platform}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <span>{course.difficulty}</span>
+                    <span>•</span>
+                    <span>{course.cost}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {course.skill_tags.slice(0, 2).map((skill: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                  <Button asChild size="sm" className="w-full">
+                    <a href={course.url} target="_blank" rel="noopener noreferrer">
+                      View Course
+                      <Share2 className="h-3 w-3 ml-2" />
+                    </a>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Share Tools */}
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={copyToClipboard}>
                   <Copy className="h-4 w-4 mr-2" />
@@ -298,7 +343,7 @@ const PublicResume = () => {
                   Twitter
                 </Button>
                 <Button variant="outline" size="sm" onClick={shareToLinkedIn}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <Share2 className="h-4 w-4 mr-2" />
                   LinkedIn
                 </Button>
               </div>

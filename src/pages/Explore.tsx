@@ -41,47 +41,18 @@ interface Course {
   platform: string;
   difficulty: string;
   cost: string;
-  skills: string[];
+  skill_tags: string[];
   url: string;
   is_ai_recommended: boolean;
+  mentor: {
+    name: string;
+    role_title: string;
+  };
 }
-
-// Mock courses data - replace with actual data source later
-const mockCourses: Course[] = [
-  {
-    id: "1",
-    title: "Advanced React Development",
-    platform: "Coursera",
-    difficulty: "Advanced", 
-    cost: "$49",
-    skills: ["React", "JavaScript", "Frontend"],
-    url: "https://coursera.org/react-advanced",
-    is_ai_recommended: true
-  },
-  {
-    id: "2", 
-    title: "Machine Learning Fundamentals",
-    platform: "edX",
-    difficulty: "Intermediate",
-    cost: "Free",
-    skills: ["Python", "Machine Learning", "Data Science"],
-    url: "https://edx.org/ml-fundamentals",
-    is_ai_recommended: false
-  },
-  {
-    id: "3",
-    title: "UX Design Masterclass",
-    platform: "Udemy", 
-    difficulty: "Beginner",
-    cost: "$89",
-    skills: ["UX Design", "Figma", "User Research"],
-    url: "https://udemy.com/ux-masterclass",
-    is_ai_recommended: true
-  }
-];
 
 export default function Explore() {
   const [mentors, setMentors] = useState<Mentor[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -96,6 +67,7 @@ export default function Explore() {
 
   useEffect(() => {
     fetchMentors();
+    fetchCourses();
   }, []);
 
   const fetchMentors = async () => {
@@ -145,6 +117,45 @@ export default function Explore() {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      const { data: coursesData, error } = await supabase
+        .from('recommended_courses')
+        .select(`
+          id,
+          title,
+          platform,
+          difficulty,
+          cost,
+          skill_tags,
+          url,
+          is_ai_recommended,
+          profiles!recommended_courses_mentor_id_fkey (
+            name,
+            role_title
+          )
+        `)
+        .eq('active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setCourses(coursesData || []);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+        })
+      );
+
+      setMentors(mentorsWithRatings);
+    } catch (error) {
+      console.error('Error fetching mentors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter and search logic
   const filteredMentors = useMemo(() => {
     return mentors.filter(mentor => {
@@ -164,12 +175,12 @@ export default function Explore() {
   }, [mentors, searchTerm, selectedSkills, selectedIndustry, selectedRole, minRating]);
 
   const filteredCourses = useMemo(() => {
-    return mockCourses.filter(course => {
+    return courses.filter(course => {
       const matchesSearch = !searchTerm || 
         course.title.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesSkills = selectedSkills.length === 0 || 
-        selectedSkills.some(skill => course.skills.includes(skill));
+        selectedSkills.some(skill => course.skill_tags.includes(skill));
       
       const matchesPlatform = !selectedPlatform || course.platform === selectedPlatform;
       const matchesDifficulty = !selectedDifficulty || course.difficulty === selectedDifficulty;
@@ -177,7 +188,7 @@ export default function Explore() {
 
       return matchesSearch && matchesSkills && matchesPlatform && matchesDifficulty && matchesFree;
     });
-  }, [searchTerm, selectedSkills, selectedPlatform, selectedDifficulty, showFreeOnly]);
+  }, [courses, searchTerm, selectedSkills, selectedPlatform, selectedDifficulty, showFreeOnly]);
 
   const availableSkills = ["React", "JavaScript", "Python", "UX Design", "Machine Learning", "Frontend", "Backend"];
   const availableIndustries = ["Technology", "Healthcare", "Finance", "Education", "Marketing"];
@@ -429,11 +440,16 @@ export default function Explore() {
                         </div>
 
                         <div className="flex flex-wrap gap-1 mb-4">
-                          {course.skills.slice(0, 3).map((skill, index) => (
+                          {course.skill_tags.slice(0, 3).map((skill, index) => (
                             <Badge key={index} variant="secondary" className="text-xs">
                               {skill}
                             </Badge>
                           ))}
+                        </div>
+
+                        <div className="text-xs text-muted-foreground mb-4 pt-2 border-t">
+                          <p>Recommended by <span className="font-medium">{course.mentor.name}</span></p>
+                          <p>{course.mentor.role_title}</p>
                         </div>
 
                         <Button asChild className="w-full">
