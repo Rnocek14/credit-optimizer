@@ -332,9 +332,25 @@ export default function SkillTree() {
     const domainColors = getDomainColors(category);
     const categoryIcon = getCategoryIcon(category);
 
-    // Calculate radius based on status
-    const baseRadius = 45;
-    const glowRadius = status === 'verified' ? 55 : status === 'in_progress' ? 50 : baseRadius;
+    // Calculate radius based on status with increased spacing
+    const baseRadius = 52;
+    const nodeWidth = baseRadius * 2.5;
+
+    // Status-specific styling
+    const getStatusBorder = () => {
+      switch (status) {
+        case 'verified':
+          return { stroke: '#10b981', strokeWidth: '3', strokeDasharray: 'none' };
+        case 'in_progress':
+          return { stroke: '#f59e0b', strokeWidth: '2', strokeDasharray: 'none' };
+        case 'locked':
+          return { stroke: '#64748b', strokeWidth: '2', strokeDasharray: '8,4' };
+        default:
+          return { stroke: '#64748b', strokeWidth: '2', strokeDasharray: 'none' };
+      }
+    };
+
+    const statusBorder = getStatusBorder();
 
     return (
       <TooltipProvider>
@@ -344,7 +360,8 @@ export default function SkillTree() {
               style={{ 
                 pointerEvents: 'all', 
                 cursor: 'pointer',
-                filter: status === 'verified' ? `drop-shadow(0 0 8px ${domainColors.glow})` : 'none'
+                filter: status === 'verified' ? 'drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3))' : 
+                       status === 'in_progress' ? 'drop-shadow(0 4px 8px rgba(245, 158, 11, 0.3))' : 'none'
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -360,142 +377,125 @@ export default function SkillTree() {
               role="button"
               aria-label={`${nodeDatum.name} skill - ${status} status`}
             >
-              {/* Outer glow ring for verified skills */}
+              {/* Subtle glow for verified skills */}
               {status === 'verified' && (
                 <circle
                   cx="0"
                   cy="0"
-                  r={glowRadius}
+                  r={baseRadius + 6}
                   fill="none"
-                  stroke={domainColors.glow}
-                  strokeWidth="3"
-                  strokeOpacity="0.6"
+                  stroke="#10b981"
+                  strokeWidth="2"
+                  strokeOpacity="0.4"
                 >
                   <animate
-                    attributeName="r"
-                    values={`${glowRadius};${glowRadius + 5};${glowRadius}`}
-                    dur="3s"
-                    repeatCount="indefinite"
-                  />
-                  <animate
                     attributeName="stroke-opacity"
-                    values="0.6;0.3;0.6"
-                    dur="3s"
+                    values="0.4;0.2;0.4"
+                    dur="2s"
                     repeatCount="indefinite"
                   />
                 </circle>
               )}
 
-              {/* Progress ring for in-progress skills */}
+              {/* Animated ring for in-progress skills */}
               {status === 'in_progress' && (
-                <>
-                  <circle
-                    cx="0"
-                    cy="0"
-                    r={baseRadius + 3}
-                    fill="none"
-                    stroke="#374151"
-                    strokeWidth="4"
+                <circle
+                  cx="0"
+                  cy="0"
+                  r={baseRadius + 4}
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="3"
+                  strokeOpacity="0.6"
+                >
+                  <animate
+                    attributeName="r"
+                    values={`${baseRadius + 4};${baseRadius + 8};${baseRadius + 4}`}
+                    dur="1.5s"
+                    repeatCount="indefinite"
                   />
-                  <circle
-                    cx="0"
-                    cy="0"
-                    r={baseRadius + 3}
-                    fill="none"
-                    stroke={domainColors.primary}
-                    strokeWidth="4"
-                    strokeDasharray={`${(xpProgress * 283) / 100} ${283 - (xpProgress * 283) / 100}`}
-                    strokeDashoffset="0"
-                    transform="rotate(-90)"
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="0.6;0.2;0.6"
+                    dur="1.5s"
+                    repeatCount="indefinite"
                   />
-                </>
+                </circle>
               )}
 
-              {/* Domain background circle */}
-              <circle
-                cx="0"
-                cy="0"
-                r={baseRadius}
-                fill={domainColors.bg}
-                stroke={domainColors.primary}
-                strokeWidth="2"
+              {/* Main node background */}
+              <rect
+                x={-nodeWidth/2}
+                y={-baseRadius}
+                width={nodeWidth}
+                height={baseRadius * 2}
+                rx="12"
+                fill={status === 'locked' ? '#374151' : '#1e293b'}
+                stroke={statusBorder.stroke}
+                strokeWidth={statusBorder.strokeWidth}
+                strokeDasharray={statusBorder.strokeDasharray}
+                opacity={status === 'locked' ? '0.7' : '1'}
               />
 
-              {/* Main skill circle */}
-              <circle
-                cx="0"
-                cy="0"
-                r={baseRadius - 8}
-                fill="#1e293b"
-                stroke={domainColors.secondary}
-                strokeWidth="2"
-              >
-                <animate
-                  attributeName="stroke-width"
-                  values="2;4;2"
-                  dur="0.3s"
-                  begin="mouseover"
-                />
-              </circle>
+              {/* XP Progress bar background */}
+              <rect
+                x={-nodeWidth/2 + 8}
+                y={-baseRadius + 8}
+                width={nodeWidth - 16}
+                height="6"
+                rx="3"
+                fill="#374151"
+              />
 
-              {/* Category icon - top */}
+              {/* XP Progress bar fill */}
+              <rect
+                x={-nodeWidth/2 + 8}
+                y={-baseRadius + 8}
+                width={Math.max(2, ((nodeWidth - 16) * xpProgress) / 100)}
+                height="6"
+                rx="3"
+                fill={domainColors.primary}
+              />
+
+              {/* Category icon - top left */}
               <circle
-                cx="0"
-                cy="-20"
-                r="10"
+                cx={-nodeWidth/2 + 16}
+                cy={-baseRadius + 24}
+                r="12"
                 fill={domainColors.primary}
                 stroke="#1e293b"
                 strokeWidth="2"
               />
               <text
-                x="0"
-                y="-20"
-                fontSize="14"
+                x={-nodeWidth/2 + 16}
+                y={-baseRadius + 24}
+                fontSize="16"
                 textAnchor="middle"
                 dominantBaseline="middle"
               >
                 {categoryIcon}
               </text>
 
-              {/* Status icon - top left */}
-              <circle
-                cx="-25"
-                cy="-15"
-                r="8"
-                fill="#334155"
-                stroke={domainColors.primary}
-                strokeWidth="1"
-              />
-              <foreignObject x="-29" y="-19" width="8" height="8">
-                <div className="flex items-center justify-center w-2 h-2">
-                  {getStatusIcon(status, 'h-2 w-2')}
-                </div>
-              </foreignObject>
-
               {/* CRI badge - top right */}
               {criScore && (
                 <>
-                  <circle
-                    cx="25"
-                    cy="-15"
-                    r="12"
+                  <rect
+                    x={nodeWidth/2 - 32}
+                    y={-baseRadius + 8}
+                    width="28"
+                    height="16"
+                    rx="8"
                     fill={getCRIColor(criScore)}
                     stroke="#1e293b"
-                    strokeWidth="2"
-                  >
-                    <animate
-                      attributeName="r"
-                      values="12;14;12"
-                      dur="0.5s"
-                      begin="click"
-                    />
-                  </circle>
+                    strokeWidth="1"
+                  />
                   <text
-                    x="25"
-                    y="-15"
+                    x={nodeWidth/2 - 18}
+                    y={-baseRadius + 16}
+                    fontSize="11"
+                    fontWeight="600"
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="text-xs font-bold"
                     fill="white"
                   >
                     {criScore}
@@ -503,42 +503,30 @@ export default function SkillTree() {
                 </>
               )}
 
-              {/* Skill name */}
+              {/* Skill name - center */}
               <text
+                x="0"
+                y="-8"
+                fontSize="15"
+                fontWeight="600"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="text-sm font-bold"
-                fill="#f1f5f9"
-                y="2"
+                fill="white"
               >
-                {nodeDatum.name.length > 8 ? nodeDatum.name.substring(0, 8) + '...' : nodeDatum.name}
+                {nodeDatum.name.length > 12 ? 
+                  `${nodeDatum.name.slice(0, 12)}...` : 
+                  nodeDatum.name
+                }
               </text>
 
-              {/* XP progress bar */}
-              <rect
-                x="-25"
-                y="15"
-                width="50"
-                height="6"
-                rx="3"
-                fill="#374151"
-              />
-              <rect
-                x="-25"
-                y="15"
-                width={50 * (xpProgress / 100)}
-                height="6"
-                rx="3"
-                fill={domainColors.primary}
-              />
-
-              {/* XP text */}
+              {/* XP earned text - bottom */}
               <text
+                x="0"
+                y={baseRadius - 12}
+                fontSize="12"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="text-xs"
                 fill="#94a3b8"
-                y="28"
               >
                 {xpEarned}/{xpValue} XP
               </text>
