@@ -479,17 +479,22 @@ const PublicResume = () => {
                   <h4 className="font-semibold text-foreground mb-3">Skills & Competencies</h4>
                   <div className="space-y-3">
                     {Object.entries(aiResumeDraft.content.skills).map(([category, skills]) => (
-                      <div key={category}>
-                        <h5 className="text-sm font-medium text-foreground mb-2">{category}</h5>
-                        <div className="flex flex-wrap gap-1">
-                          {Array.isArray(skills) ? skills.map((skill, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          )) : (
-                            <Badge variant="secondary" className="text-xs">
+                      <div key={category} className="mb-4">
+                        <div className="text-sm font-semibold text-muted-foreground mb-1">{category}</div>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(skills) ? (
+                            skills.map((skill, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 text-xs bg-muted rounded-md border text-muted-foreground"
+                              >
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="px-2 py-1 text-xs bg-muted rounded-md border text-muted-foreground">
                               {String(skills)}
-                            </Badge>
+                            </span>
                           )}
                         </div>
                       </div>
