@@ -46,6 +46,7 @@ export default function Demos() {
         return;
       }
 
+      console.log('Demo profiles data:', data);
       setProfiles(data || []);
     } catch (error) {
       console.error('Error:', error);
@@ -59,8 +60,9 @@ export default function Demos() {
     }
   };
 
-  const handleViewResume = (resumeId: string) => {
-    navigate(`/resume/${resumeId}`);
+  const handleViewResume = (userId: string) => {
+    // Navigate using user_id instead of resume_id
+    navigate(`/resume/${userId}`);
   };
 
   const handleLoginAsUser = async (userId: string, userEmail: string) => {
@@ -84,28 +86,6 @@ export default function Demos() {
         variant: "destructive",
       });
     }
-  };
-
-  const getProgressPercentage = (currentXp: number, level: number) => {
-    // Calculate XP needed for current level and next level
-    let xpForCurrentLevel = 0;
-    let xpForNextLevel = 100;
-    
-    if (level >= 2) xpForCurrentLevel = 100;
-    if (level >= 3) xpForCurrentLevel = 250;
-    if (level >= 4) xpForCurrentLevel = 500;
-    if (level >= 5) xpForCurrentLevel = 500 + ((level - 5) * 500);
-    
-    if (level === 1) xpForNextLevel = 100;
-    else if (level === 2) xpForNextLevel = 250;
-    else if (level === 3) xpForNextLevel = 500;
-    else if (level === 4) xpForNextLevel = 1000;
-    else xpForNextLevel = 500 + ((level - 4) * 500);
-    
-    const progressInLevel = currentXp - xpForCurrentLevel;
-    const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
-    
-    return Math.min(100, Math.max(0, (progressInLevel / xpNeededForLevel) * 100));
   };
 
   if (loading) {
@@ -210,7 +190,7 @@ export default function Demos() {
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2 pt-2">
                   <Button
-                    onClick={() => handleViewResume(profile.resume_id)}
+                    onClick={() => handleViewResume(profile.user_id)}
                     className="w-full"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
@@ -242,4 +222,26 @@ export default function Demos() {
       </div>
     </TooltipProvider>
   );
+
+  function getProgressPercentage(currentXp: number, level: number) {
+    // Calculate XP needed for current level and next level
+    let xpForCurrentLevel = 0;
+    let xpForNextLevel = 100;
+    
+    if (level >= 2) xpForCurrentLevel = 100;
+    if (level >= 3) xpForCurrentLevel = 250;
+    if (level >= 4) xpForCurrentLevel = 500;
+    if (level >= 5) xpForCurrentLevel = 500 + ((level - 5) * 500);
+    
+    if (level === 1) xpForNextLevel = 100;
+    else if (level === 2) xpForNextLevel = 250;
+    else if (level === 3) xpForNextLevel = 500;
+    else if (level === 4) xpForNextLevel = 1000;
+    else xpForNextLevel = 500 + ((level - 4) * 500);
+    
+    const progressInLevel = currentXp - xpForCurrentLevel;
+    const xpNeededForLevel = xpForNextLevel - xpForCurrentLevel;
+    
+    return Math.min(100, Math.max(0, (progressInLevel / xpNeededForLevel) * 100));
+  }
 }

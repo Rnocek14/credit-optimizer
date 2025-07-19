@@ -89,6 +89,7 @@ const PublicResume = () => {
 
   useEffect(() => {
     if (userId) {
+      console.log('PublicResume: Loading profile for user:', userId);
       fetchProfileData();
       trackView();
     }
@@ -96,15 +97,20 @@ const PublicResume = () => {
 
   const fetchProfileData = async () => {
     try {
-      // Fetch profile data
+      console.log('Fetching profile data for user:', userId);
+      
+      // Fetch profile data - remove gallery_enabled requirement for demo users
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .eq('gallery_enabled', true)
         .single();
 
+      console.log('Profile data:', profileData);
+      console.log('Profile error:', profileError);
+
       if (profileError || !profileData) {
+        console.log('Profile not found or error:', profileError);
         setNotFound(true);
         return;
       }
