@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, CheckCircle2, Clock, X, Trophy, Calendar, Filter } from "lucide-react";
+import { Lock, CheckCircle2, Clock, X, Trophy, Calendar, Filter, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import Tree from "react-d3-tree";
 
 interface Skill {
@@ -89,6 +89,8 @@ export default function SkillTree() {
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [treeTranslate, setTreeTranslate] = useState({ x: 300, y: 80 });
+  const [treeZoom, setTreeZoom] = useState(0.7);
 
   useEffect(() => {
     fetchSkillTreeData();
@@ -326,10 +328,22 @@ export default function SkillTree() {
     }
   };
 
+  const handleZoomIn = () => {
+    setTreeZoom(prev => Math.min(prev + 0.1, 2));
+  };
+
+  const handleZoomOut = () => {
+    setTreeZoom(prev => Math.max(prev - 0.1, 0.3));
+  };
+
+  const handleResetView = () => {
+    setTreeTranslate({ x: 300, y: 80 });
+    setTreeZoom(0.7);
+  };
+
   const renderCustomNode = ({ nodeDatum }: any) => {
     const status = nodeDatum.attributes?.status || 'locked';
     const category = nodeDatum.attributes?.category || '';
-    const difficultyLevel = nodeDatum.attributes?.difficulty_level || 1;
     const criScore = nodeDatum.attributes?.cri_score;
     const xpValue = nodeDatum.attributes?.xp_value || 0;
     const skillId = nodeDatum.attributes?.id;
@@ -343,123 +357,169 @@ export default function SkillTree() {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <g>
-              {/* Domain halo/glow effect */}
+            <g 
+              style={{ pointerEvents: 'all', cursor: 'pointer' }}
+              onClick={() => handleNodeClick({ data: { attributes: nodeDatum.attributes } })}
+            >
+              {/* Domain halo effect */}
               <circle
                 cx="0"
                 cy="0"
-                r="45"
+                r="52"
                 fill="none"
                 stroke={domainColors.halo}
                 strokeWidth="1"
-                strokeOpacity="0.3"
-                strokeDasharray="3,3"
+                strokeOpacity="0.2"
+                strokeDasharray="4,4"
               />
+
+              {/* Click animation ring */}
+              <circle
+                cx="0"
+                cy="0"
+                r="0"
+                fill="none"
+                stroke={domainColors.border}
+                strokeWidth="3"
+                opacity="0"
+              >
+                <animate
+                  attributeName="r"
+                  values="0;55;0"
+                  dur="0.8s"
+                  begin="click"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0;0.6;0"
+                  dur="0.8s"
+                  begin="click"
+                />
+              </circle>
 
               {/* Verified node glowing ring animation */}
               {status === 'verified' && (
-                <>
-                  <circle
-                    cx="0"
-                    cy="0"
-                    r="38"
-                    fill="none"
-                    stroke="#22c55e"
-                    strokeWidth="2"
-                    strokeOpacity="0.6"
-                  >
-                    <animate
-                      attributeName="r"
-                      values="38;42;38"
-                      dur="2s"
-                      repeatCount="indefinite"
-                    />
-                    <animate
-                      attributeName="stroke-opacity"
-                      values="0.6;0.3;0.6"
-                      dur="2s"
-                      repeatCount="indefinite"
-                    />
-                  </circle>
-                </>
+                <circle
+                  cx="0"
+                  cy="0"
+                  r="42"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="2"
+                  strokeOpacity="0.5"
+                >
+                  <animate
+                    attributeName="r"
+                    values="42;46;42"
+                    dur="3s"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="stroke-opacity"
+                    values="0.5;0.8;0.5"
+                    dur="3s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
               )}
 
-              {/* Circular XP progress bar for in-progress nodes */}
+              {/* Circular XP progress ring for in-progress nodes */}
               {status === 'in_progress' && (
                 <>
                   <circle
                     cx="0"
                     cy="0"
-                    r="36"
+                    r="40"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="3"
+                    strokeWidth="4"
                   />
                   <circle
                     cx="0"
                     cy="0"
-                    r="36"
+                    r="40"
                     fill="none"
                     stroke="#eab308"
-                    strokeWidth="3"
-                    strokeDasharray={`${(xpProgress * 226) / 100} ${226 - (xpProgress * 226) / 100}`}
+                    strokeWidth="4"
+                    strokeDasharray={`${(xpProgress * 251) / 100} ${251 - (xpProgress * 251) / 100}`}
                     strokeDashoffset="0"
                     transform="rotate(-90)"
                   />
                 </>
               )}
 
-              {/* Main card background with domain colors */}
-              <rect
-                x="-65"
-                y="-32"
-                width="130"
-                height="64"
-                rx="12"
+              {/* Main circular card */}
+              <circle
+                cx="0"
+                cy="0"
+                r="35"
                 fill={domainColors.bg}
                 stroke={domainColors.border}
                 strokeWidth="2"
-                className="cursor-pointer transition-all"
-                onMouseEnter={() => setHoveredNode(skillId)}
-                onMouseLeave={() => setHoveredNode(null)}
+                style={{ pointerEvents: 'all' }}
+              />
+
+              {/* Hover effect ring */}
+              <circle
+                cx="0"
+                cy="0"
+                r="35"
+                fill="none"
+                stroke={domainColors.border}
+                strokeWidth="0"
+                opacity="0"
               >
                 <animate
                   attributeName="stroke-width"
-                  values="2;3;2"
+                  values="0;4;0"
                   dur="0.3s"
                   begin="mouseover"
                 />
-              </rect>
-              
+                <animate
+                  attributeName="opacity"
+                  values="0;0.4;0"
+                  dur="0.3s"
+                  begin="mouseover"
+                />
+              </circle>
+
               {/* Category icon - Top left */}
+              <circle
+                cx="-20"
+                cy="-20"
+                r="8"
+                fill="rgba(255,255,255,0.9)"
+                stroke={domainColors.border}
+                strokeWidth="1"
+              />
               <text
-                x="-55"
+                x="-20"
                 y="-20"
-                fontSize="16"
+                fontSize="12"
                 textAnchor="middle"
                 dominantBaseline="middle"
               >
                 {categoryIcon}
               </text>
 
-              {/* Status icon - Top left corner */}
-              <foreignObject x="-58" y="-28" width="16" height="16">
-                <div className="flex items-center justify-center w-4 h-4">
-                  {getStatusIcon(status, 'h-3 w-3')}
-                </div>
-              </foreignObject>
-
-              {/* CRI badge - Top right */}
+              {/* CRI badge - Top right with click pulse animation */}
               {criScore && (
                 <>
                   <circle
-                    cx="50"
+                    cx="20"
                     cy="-20"
-                    r="12"
+                    r="10"
                     fill={getCRIColor(criScore)}
-                  />
+                  >
+                    <animate
+                      attributeName="r"
+                      values="10;12;10"
+                      dur="0.6s"
+                      begin="click"
+                    />
+                  </circle>
                   <text
-                    x="50"
+                    x="20"
                     y="-20"
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -471,93 +531,63 @@ export default function SkillTree() {
                 </>
               )}
 
-              {/* Skill name */}
+              {/* Status icon - Bottom left */}
+              <circle
+                cx="-18"
+                cy="18"
+                r="6"
+                fill="white"
+                stroke={getStatusBorder(status)}
+                strokeWidth="1"
+              />
+              <foreignObject x="-22" y="14" width="8" height="8">
+                <div className="flex items-center justify-center w-2 h-2">
+                  {getStatusIcon(status, 'h-2 w-2')}
+                </div>
+              </foreignObject>
+
+              {/* Skill name - Center */}
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="text-sm font-bold"
                 fill="#1f2937"
-                y="-8"
+                y="-2"
               >
-                {nodeDatum.name.length > 10 ? nodeDatum.name.substring(0, 10) + '...' : nodeDatum.name}
+                {nodeDatum.name.length > 8 ? nodeDatum.name.substring(0, 8) + '...' : nodeDatum.name}
               </text>
 
-              {/* Category label */}
+              {/* XP progress bar - Center bottom */}
               <rect
-                x="-35"
-                y="2"
-                width="70"
-                height="18"
-                rx="9"
-                fill="rgba(255,255,255,0.8)"
-                stroke={domainColors.border}
-                strokeWidth="1"
-              />
-              <text
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="text-xs font-medium"
-                fill={domainColors.border}
-                y="11"
-              >
-                {category}
-              </text>
-
-              {/* XP progress indicator */}
-              <rect
-                x="-55"
-                y="22"
-                width="110"
-                height="6"
-                rx="3"
+                x="-20"
+                y="8"
+                width="40"
+                height="4"
+                rx="2"
                 fill="#e5e7eb"
               />
               <rect
-                x="-55"
-                y="22"
-                width={110 * (xpProgress / 100)}
-                height="6"
-                rx="3"
+                x="-20"
+                y="8"
+                width={40 * (xpProgress / 100)}
+                height="4"
+                rx="2"
                 fill={status === 'verified' ? '#22c55e' : status === 'in_progress' ? '#eab308' : '#9ca3af'}
               />
 
-              {/* XP text */}
+              {/* XP text - Bottom */}
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="text-xs"
                 fill="#6b7280"
-                y="32"
+                y="28"
               >
                 {xpEarned}/{xpValue} XP
               </text>
-
-              {/* Click animation circle */}
-              <circle
-                cx="0"
-                cy="0"
-                r="0"
-                fill="none"
-                stroke={domainColors.border}
-                strokeWidth="2"
-                opacity="0"
-              >
-                <animate
-                  attributeName="r"
-                  values="0;50;0"
-                  dur="0.6s"
-                  begin="click"
-                />
-                <animate
-                  attributeName="opacity"
-                  values="0;0.8;0"
-                  dur="0.6s"
-                  begin="click"
-                />
-              </circle>
             </g>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs">
+          <TooltipContent className="max-w-xs" side="right">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-base">{categoryIcon}</span>
@@ -588,9 +618,9 @@ export default function SkillTree() {
                   <span>{xpEarned}/{xpValue} ({Math.round(xpProgress)}%)</span>
                 </div>
                 {progress?.verification_source && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Source:</span>
-                    <span className="text-xs">{progress.verification_source}</span>
+                  <div>
+                    <span className="text-muted-foreground text-xs">Source:</span>
+                    <div className="text-xs font-medium">{progress.verification_source}</div>
                   </div>
                 )}
               </div>
@@ -746,21 +776,56 @@ export default function SkillTree() {
       {/* Interactive Skill Tree */}
       <Card className="rounded-xl shadow-sm border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" />
-            Interactive Skill Tree
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Click on any skill node to view details. Use mouse wheel to zoom and drag to pan.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Interactive Skill Tree
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Click on any skill node to view details. Use mouse wheel to zoom and drag to pan.
+              </p>
+            </div>
+            
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomOut}
+                className="flex items-center gap-1"
+              >
+                <ZoomOut className="h-3 w-3" />
+                Zoom Out
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomIn}
+                className="flex items-center gap-1"
+              >
+                <ZoomIn className="h-3 w-3" />
+                Zoom In
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetView}
+                className="flex items-center gap-1"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reset View
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-[600px] border border-gray-200 rounded-lg overflow-hidden relative">
             <Tree
               data={treeData}
               orientation="vertical"
-              translate={{ x: 300, y: 80 }}
-              zoom={0.7}
+              translate={treeTranslate}
+              zoom={treeZoom}
               enableLegacyTransitions={true}
               onNodeClick={handleNodeClick}
               renderCustomNodeElement={renderCustomNode}
@@ -774,15 +839,19 @@ export default function SkillTree() {
                   stroke-width: 2px !important;
                   fill: none !important;
                 }
+                .rd3t-tree-container {
+                  width: 100% !important;
+                  height: 100% !important;
+                }
               `}
             </style>
           </div>
         </CardContent>
       </Card>
 
-      {/* Skill Detail Panel */}
+      {/* Skill Detail Panel - Mobile responsive */}
       <Sheet open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen}>
-        <SheetContent className="w-96">
+        <SheetContent className="w-full sm:w-96 sm:max-w-96" side="right">
           <SheetHeader>
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
