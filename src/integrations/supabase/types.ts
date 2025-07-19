@@ -609,6 +609,54 @@ export type Database = {
           },
         ]
       }
+      transcripts: {
+        Row: {
+          created_at: string
+          credits: number | null
+          cri_score: number | null
+          description: string | null
+          difficulty: string | null
+          grade: string | null
+          id: string
+          skill_tags: string[] | null
+          title: string
+          updated_at: string
+          use_in_resume: boolean | null
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          credits?: number | null
+          cri_score?: number | null
+          description?: string | null
+          difficulty?: string | null
+          grade?: string | null
+          id?: string
+          skill_tags?: string[] | null
+          title: string
+          updated_at?: string
+          use_in_resume?: boolean | null
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          credits?: number | null
+          cri_score?: number | null
+          description?: string | null
+          difficulty?: string | null
+          grade?: string | null
+          id?: string
+          skill_tags?: string[] | null
+          title?: string
+          updated_at?: string
+          use_in_resume?: boolean | null
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           active: boolean

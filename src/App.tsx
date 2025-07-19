@@ -18,6 +18,7 @@ import Explore from "./pages/Explore";
 import Teach from "./pages/Teach";
 import Saved from "./pages/Saved";
 import Goals from "./pages/Goals";
+import Transcript from "./pages/Transcript";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
@@ -83,6 +84,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Goals />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/transcript" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Transcript />
               </ProtectedRoute>
             } 
           />
