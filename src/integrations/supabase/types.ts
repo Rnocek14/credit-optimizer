@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_resume_drafts: {
+        Row: {
+          content: Json
+          created_at: string
+          cri_average: number | null
+          id: string
+          published_to_profile: boolean | null
+          readiness_score: number | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          cri_average?: number | null
+          id?: string
+          published_to_profile?: boolean | null
+          readiness_score?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          cri_average?: number | null
+          id?: string
+          published_to_profile?: boolean | null
+          readiness_score?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       badge_types: {
         Row: {
           active: boolean

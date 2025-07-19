@@ -19,6 +19,7 @@ import Teach from "./pages/Teach";
 import Saved from "./pages/Saved";
 import Goals from "./pages/Goals";
 import Transcript from "./pages/Transcript";
+import ResumeBuilder from "./pages/ResumeBuilder";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
@@ -92,6 +93,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Transcript />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/resume-builder" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ResumeBuilder />
               </ProtectedRoute>
             } 
           />
