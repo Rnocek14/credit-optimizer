@@ -1,210 +1,235 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import SaveButton from "@/components/SaveButton";
-import { 
-  Star, 
-  User, 
-  GraduationCap, 
-  Filter, 
-  Search, 
-  MapPin, 
-  ExternalLink,
-  Sparkles,
-  Award,
-  Target
-} from "lucide-react";
-
-interface Mentor {
-  id: string;
-  user_id: string;
-  name: string;
-  role_title: string;
-  location: string;
-  skills: string[];
-  industry: string;
-  resume_review_summary: string;
-  rating: number;
-  feedback_count: number;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { ExternalLink, MapPin, Clock } from "lucide-react";
 
 interface Course {
   id: string;
   title: string;
   platform: string;
-  difficulty: string;
-  cost: string;
+  difficulty?: string;
+  cost?: string;
   skill_tags: string[];
-  url: string;
+  url?: string;
+  mentor_name?: string;
   is_ai_recommended: boolean;
-  mentor: {
-    name: string;
-    role_title: string;
-  };
+  created_at: string;
 }
 
+interface FeaturedMentor {
+  id: string;
+  user_id: string;
+  name: string;
+  role_title?: string;
+  years_experience?: number;
+  skills: string[];
+  location?: string;
+}
+
+// Demo data for courses
+const demoCourses: Course[] = [
+  {
+    id: "1",
+    title: "Advanced React Patterns",
+    platform: "Udemy",
+    difficulty: "Advanced",
+    cost: "$89.99",
+    skill_tags: ["React", "JavaScript", "Frontend", "Hooks"],
+    url: "https://udemy.com/react-patterns",
+    mentor_name: "Aisha Khan",
+    is_ai_recommended: true,
+    created_at: "2024-01-15T10:00:00Z"
+  },
+  {
+    id: "2",
+    title: "Node.js Backend Development",
+    platform: "Coursera",
+    difficulty: "Intermediate",
+    cost: "Free",
+    skill_tags: ["Node.js", "Backend", "API", "Express"],
+    mentor_name: "Mateo Silva",
+    is_ai_recommended: false,
+    created_at: "2024-02-01T14:30:00Z"
+  },
+  {
+    id: "3",
+    title: "Full Stack Web Development",
+    platform: "FreeCodeCamp",
+    difficulty: "Beginner",
+    cost: "Free",
+    skill_tags: ["HTML", "CSS", "JavaScript", "MongoDB"],
+    mentor_name: "Jade Chen",
+    is_ai_recommended: true,
+    created_at: "2024-01-20T09:15:00Z"
+  },
+  {
+    id: "4",
+    title: "TypeScript Fundamentals",
+    platform: "Pluralsight",
+    difficulty: "Intermediate",
+    cost: "$29/month",
+    skill_tags: ["TypeScript", "JavaScript", "Frontend"],
+    mentor_name: "Aisha Khan",
+    is_ai_recommended: false,
+    created_at: "2024-03-10T16:45:00Z"
+  },
+  {
+    id: "5",
+    title: "AWS Cloud Practitioner",
+    platform: "AWS Training",
+    difficulty: "Beginner",
+    cost: "Free",
+    skill_tags: ["AWS", "Cloud", "DevOps"],
+    mentor_name: "Mateo Silva",
+    is_ai_recommended: true,
+    created_at: "2024-02-15T11:20:00Z"
+  },
+  {
+    id: "6",
+    title: "Python for Data Science",
+    platform: "Coursera",
+    difficulty: "Intermediate",
+    cost: "$49/month",
+    skill_tags: ["Python", "Data Science", "Machine Learning"],
+    mentor_name: "Jade Chen",
+    is_ai_recommended: true,
+    created_at: "2024-01-30T13:45:00Z"
+  }
+];
+
+// Demo data for featured mentors
+const demoMentors: FeaturedMentor[] = [
+  {
+    id: "1",
+    user_id: "2b458624-d498-4cca-a63d-9341cc20e363",
+    name: "Aisha Khan",
+    role_title: "Senior Frontend Developer",
+    years_experience: 5,
+    skills: ["React", "TypeScript", "Node.js", "AWS", "GraphQL"],
+    location: "San Francisco, CA"
+  },
+  {
+    id: "2", 
+    user_id: "3c459625-e499-5ddb-b64d-a442dd21f474",
+    name: "Mateo Silva",
+    role_title: "Full Stack Engineer",
+    years_experience: 7,
+    skills: ["JavaScript", "Python", "Docker", "Kubernetes", "PostgreSQL"],
+    location: "Austin, TX"
+  },
+  {
+    id: "3",
+    user_id: "4d56a736-f5aa-6eec-c75e-b553ee32e585", 
+    name: "Jade Chen",
+    role_title: "Data Science Lead",
+    years_experience: 6,
+    skills: ["Python", "Machine Learning", "SQL", "TensorFlow", "R"],
+    location: "Seattle, WA"
+  }
+];
+
 export default function Explore() {
-  const [mentors, setMentors] = useState<Mentor[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [mentors, setMentors] = useState<FeaturedMentor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  // Filters
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedIndustry, setSelectedIndustry] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
-  const [minRating, setMinRating] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState("");
-  const [selectedDifficulty, setSelectedDifficulty] = useState("");
-  const [showFreeOnly, setShowFreeOnly] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const filters = ["All", "AI Recommended", "Beginner", "Free", "Advanced"];
 
   useEffect(() => {
-    fetchMentors();
-    fetchCourses();
+    fetchExploreData();
   }, []);
 
-  const fetchMentors = async () => {
+  const fetchExploreData = async () => {
     try {
-      // Get profiles marked as mentors (using a field that exists)
-      const { data: profilesData, error: profilesError } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // Use demo data when not logged in
+        setCourses(demoCourses);
+        setMentors(demoMentors);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch recommended courses
+      const { data: coursesData } = await supabase
+        .from('recommended_courses')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(12);
+
+      // Fetch featured mentors
+      const { data: mentorsData } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          user_id,
-          name,
-          role_title,
-          location,
-          skills,
-          industry,
-          resume_review_summary
-        `)
+        .select('id, user_id, name, role_title, years_experience, skills, location')
+        .eq('gallery_featured', true)
         .eq('gallery_enabled', true)
-        .not('resume_review_summary', 'is', null);
+        .not('name', 'is', null)
+        .limit(6);
 
-      if (profilesError) throw profilesError;
+      // Transform courses data
+      const transformedCourses: Course[] = (coursesData || []).map(course => ({
+        id: course.id,
+        title: course.title,
+        platform: course.platform,
+        difficulty: course.difficulty,
+        cost: course.cost,
+        skill_tags: course.skill_tags || [],
+        url: course.url,
+        mentor_name: "Expert Mentor", // Placeholder since we don't have mentor join
+        is_ai_recommended: course.is_ai_recommended || false,
+        created_at: course.created_at
+      }));
 
-      // Get mentor feedback ratings for each profile
-      const mentorsWithRatings = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          const { data: feedbackData } = await supabase
-            .from('mentor_feedback')
-            .select('rating')
-            .eq('mentor_email', profile.user_id); // This would need proper email lookup
+      // Transform mentors data
+      const transformedMentors: FeaturedMentor[] = (mentorsData || []).map(mentor => ({
+        id: mentor.id,
+        user_id: mentor.user_id,
+        name: mentor.name || "Anonymous Mentor",
+        role_title: mentor.role_title,
+        years_experience: mentor.years_experience,
+        skills: mentor.skills || [],
+        location: mentor.location
+      }));
 
-          const ratings = feedbackData?.map(f => f.rating) || [];
-          const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
-
-          return {
-            ...profile,
-            rating: Math.round(avgRating * 10) / 10,
-            feedback_count: ratings.length
-          };
-        })
-      );
-
-      setMentors(mentorsWithRatings);
+      setCourses(transformedCourses.length > 0 ? transformedCourses : demoCourses);
+      setMentors(transformedMentors.length > 0 ? transformedMentors : demoMentors);
     } catch (error) {
-      console.error('Error fetching mentors:', error);
+      console.error('Error fetching explore data:', error);
+      setCourses(demoCourses);
+      setMentors(demoMentors);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCourses = async () => {
-    try {
-      const { data: coursesData, error } = await supabase
-        .from('recommended_courses')
-        .select(`
-          id,
-          title,
-          platform,
-          difficulty,
-          cost,
-          skill_tags,
-          url,
-          is_ai_recommended,
-          mentor_id
-        `)
-        .eq('active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Get mentor profiles separately
-      const coursesWithMentors = await Promise.all(
-        (coursesData || []).map(async (course) => {
-          const { data: mentorData } = await supabase
-            .from('profiles')
-            .select('name, role_title')
-            .eq('user_id', course.mentor_id)
-            .single();
-
-          return {
-            ...course,
-            mentor: mentorData || { name: 'Unknown', role_title: 'Mentor' }
-          };
-        })
-      );
-
-      setCourses(coursesWithMentors);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
+  const getDifficultyColor = (difficulty?: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'beginner':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'intermediate':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'advanced':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  // Filter and search logic
-  const filteredMentors = useMemo(() => {
-    return mentors.filter(mentor => {
-      const matchesSearch = !searchTerm || 
-        mentor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        mentor.role_title?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesSkills = selectedSkills.length === 0 || 
-        selectedSkills.some(skill => mentor.skills?.includes(skill));
-      
-      const matchesIndustry = !selectedIndustry || selectedIndustry === "all" || mentor.industry === selectedIndustry;
-      const matchesRole = !selectedRole || mentor.role_title?.includes(selectedRole);
-      const matchesRating = !minRating || minRating === "all" || mentor.rating >= parseFloat(minRating);
-
-      return matchesSearch && matchesSkills && matchesIndustry && matchesRole && matchesRating;
-    });
-  }, [mentors, searchTerm, selectedSkills, selectedIndustry, selectedRole, minRating]);
-
-  const filteredCourses = useMemo(() => {
-    return courses.filter(course => {
-      const matchesSearch = !searchTerm || 
-        course.title.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesSkills = selectedSkills.length === 0 || 
-        selectedSkills.some(skill => course.skill_tags.includes(skill));
-      
-      const matchesPlatform = !selectedPlatform || selectedPlatform === "all" || course.platform === selectedPlatform;
-      const matchesDifficulty = !selectedDifficulty || selectedDifficulty === "all" || course.difficulty === selectedDifficulty;
-      const matchesFree = !showFreeOnly || course.cost === "Free";
-
-      return matchesSearch && matchesSkills && matchesPlatform && matchesDifficulty && matchesFree;
-    });
-  }, [courses, searchTerm, selectedSkills, selectedPlatform, selectedDifficulty, showFreeOnly]);
-
-  const availableSkills = ["React", "JavaScript", "Python", "UX Design", "Machine Learning", "Frontend", "Backend"];
-  const availableIndustries = ["Technology", "Healthcare", "Finance", "Education", "Marketing"];
-  const availablePlatforms = ["Coursera", "edX", "Udemy", "Pluralsight"];
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading courses & mentors...</p>
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-8">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="h-64 bg-gray-200 rounded-xl"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -212,275 +237,159 @@ export default function Explore() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <Target className="h-8 w-8 text-primary mr-3" />
-            <span className="text-lg font-semibold text-primary tracking-wide">EXPLORE</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Explore Courses & Mentors
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Discover curated learning resources and connect with experienced mentors to accelerate your career growth.
+    <div className="container mx-auto p-6 space-y-12">
+      {/* Featured Courses Section */}
+      <div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">🎓 Recommended Courses</h1>
+          <p className="text-muted-foreground">
+            Discover curated learning paths tailored to advance your career
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="max-w-md mx-auto mb-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search courses or mentors..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+        {/* Filter Pills */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {filters.map((filter) => (
+            <Button
+              key={filter}
+              variant={activeFilter === filter ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveFilter(filter)}
+              className="rounded-full"
+            >
+              {filter}
+            </Button>
+          ))}
         </div>
 
-        <Tabs defaultValue="mentors" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8">
-            <TabsTrigger value="mentors" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Mentors
-            </TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Courses
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="mentors">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              {/* Mentors Filters */}
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filters
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Industry</Label>
-                      <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All Industries" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Industries</SelectItem>
-                          {availableIndustries.map(industry => (
-                            <SelectItem key={industry} value={industry}>{industry}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label>Min Rating</Label>
-                      <Select value={minRating} onValueChange={setMinRating}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Any Rating" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any Rating</SelectItem>
-                          <SelectItem value="4">4+ Stars</SelectItem>
-                          <SelectItem value="4.5">4.5+ Stars</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Mentors Grid */}
-              <div className="lg:col-span-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredMentors.map((mentor) => (
-                    <Card key={mentor.id} className="hover:scale-105 transition-all duration-300 hover:shadow-lg">
-                      <CardContent className="p-6">
-                        <div className="text-center mb-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <span className="text-xl font-bold text-primary-foreground">
-                              {mentor.name?.charAt(0) || '?'}
-                            </span>
-                          </div>
-                          <h3 className="font-bold text-lg mb-1">{mentor.name}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{mentor.role_title}</p>
-                          {mentor.location && (
-                            <div className="flex items-center justify-center text-xs text-muted-foreground">
-                              <MapPin className="h-3 w-3 mr-1" />
-                              {mentor.location}
-                            </div>
-                          )}
-                        </div>
-
-                        {mentor.rating > 0 && (
-                          <div className="flex items-center justify-center mb-4">
-                            <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full">
-                              <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              <span className="text-sm font-medium">{mentor.rating}</span>
-                              <span className="text-xs text-muted-foreground">({mentor.feedback_count})</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {mentor.skills && mentor.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {mentor.skills.slice(0, 3).map((skill, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-
-                        <Button asChild variant="outline" className="w-full">
-                          <Link to={`/resume/${mentor.user_id}`}>
-                            View Profile
-                          </Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <Card key={course.id} className="shadow-sm hover:shadow-md transition-shadow rounded-xl p-4 group">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start mb-2">
+                  {course.difficulty && (
+                    <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
+                      {course.difficulty}
+                    </Badge>
+                  )}
+                  {course.is_ai_recommended && (
+                    <Badge variant="secondary" className="text-xs">
+                      AI Recommended
+                    </Badge>
+                  )}
                 </div>
-
-                {filteredMentors.length === 0 && (
-                  <div className="text-center py-12">
-                    <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No mentors found</h3>
-                    <p className="text-muted-foreground">Try adjusting your search criteria.</p>
-                  </div>
+                <CardTitle className="text-lg leading-tight group-hover:text-primary transition-colors">
+                  {course.title}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">{course.platform}</p>
+                {course.mentor_name && (
+                  <p className="text-xs text-muted-foreground">by {course.mentor_name}</p>
                 )}
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="courses">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              {/* Courses Filters */}
-              <div className="lg:col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      Filters
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Platform</Label>
-                      <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All Platforms" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Platforms</SelectItem>
-                          {availablePlatforms.map(platform => (
-                            <SelectItem key={platform} value={platform}>{platform}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              </CardHeader>
+              
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {course.skill_tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {course.skill_tags.slice(0, 3).map((tag, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {course.skill_tags.length > 3 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{course.skill_tags.length - 3} more
+                        </Badge>
+                      )}
                     </div>
-                    
-                    <div>
-                      <Label>Difficulty</Label>
-                      <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="All Levels" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Levels</SelectItem>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  )}
 
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="free-only" 
-                        checked={showFreeOnly}
-                        onCheckedChange={setShowFreeOnly}
-                      />
-                      <Label htmlFor="free-only">Free only</Label>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Courses Grid */}
-              <div className="lg:col-span-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredCourses.map((course) => (
-                    <Card key={course.id} className="hover:scale-105 transition-all duration-300 hover:shadow-lg">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-bold text-lg mb-2 line-clamp-2">{course.title}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">{course.platform}</p>
-                          </div>
-                          {course.is_ai_recommended && (
-                            <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
-                              <Sparkles className="h-3 w-3 mr-1" />
-                              AI Suggested
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-4 mb-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Award className="h-4 w-4 text-muted-foreground" />
-                            {course.difficulty}
-                          </div>
-                          <div className="font-medium text-primary">
-                            {course.cost}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {course.skill_tags.slice(0, 3).map((skill, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        <div className="text-xs text-muted-foreground mb-4 pt-2 border-t">
-                          <p>Recommended by <span className="font-medium">{course.mentor.name}</span></p>
-                          <p>{course.mentor.role_title}</p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button asChild className="flex-1">
-                            <a href={course.url} target="_blank" rel="noopener noreferrer">
-                              View Course
-                              <ExternalLink className="h-4 w-4 ml-2" />
-                            </a>
-                          </Button>
-                          <SaveButton courseId={course.id} />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  <div className="flex justify-between items-center pt-2">
+                    {course.cost && (
+                      <span className="text-sm font-medium text-primary">
+                        {course.cost}
+                      </span>
+                    )}
+                    {course.url && (
+                      <Button size="sm" className="ml-auto" asChild>
+                        <a href={course.url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View Course
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
 
-                {filteredCourses.length === 0 && (
-                  <div className="text-center py-12">
-                    <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No courses found</h3>
-                    <p className="text-muted-foreground">Try adjusting your search criteria.</p>
-                  </div>
+      {/* Featured Mentors Section */}
+      <div>
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-2">🧑‍🏫 Featured Mentors</h2>
+          <p className="text-muted-foreground">
+            Connect with industry experts who can guide your career journey
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {mentors.map((mentor) => (
+            <Card key={mentor.id} className="shadow-sm hover:shadow-md transition-shadow rounded-xl p-4 group">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                  {mentor.name}
+                </CardTitle>
+                {mentor.role_title && (
+                  <p className="text-sm text-muted-foreground">{mentor.role_title}</p>
                 )}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  {mentor.years_experience && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {mentor.years_experience}+ years
+                    </div>
+                  )}
+                  {mentor.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {mentor.location}
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {mentor.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {mentor.skills.slice(0, 3).map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                      {mentor.skills.length > 3 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{mentor.skills.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <Button size="sm" className="w-full" asChild>
+                      <Link to={`/resume/${mentor.user_id}`}>
+                        View Profile
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
