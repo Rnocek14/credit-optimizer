@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import SaveButton from "@/components/SaveButton";
 import { 
   Star, 
   User, 
@@ -455,12 +456,15 @@ export default function Explore() {
                           <p>{course.mentor.role_title}</p>
                         </div>
 
-                        <Button asChild className="w-full">
-                          <a href={course.url} target="_blank" rel="noopener noreferrer">
-                            View Course
-                            <ExternalLink className="h-4 w-4 ml-2" />
-                          </a>
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button asChild className="flex-1">
+                            <a href={course.url} target="_blank" rel="noopener noreferrer">
+                              View Course
+                              <ExternalLink className="h-4 w-4 ml-2" />
+                            </a>
+                          </Button>
+                          <SaveButton courseId={course.id} />
+                        </div>
                       </CardContent>
                     </Card>
                   ))}

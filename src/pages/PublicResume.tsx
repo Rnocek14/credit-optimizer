@@ -2,22 +2,24 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import SaveButton from "@/components/SaveButton";
 import { Separator } from "@/components/ui/separator";
 import { 
   MapPin, 
   Star, 
   Eye, 
   Trophy, 
+  Copy,
   Share2,
   GraduationCap,
-  Copy,
-  CheckCircle,
-  AlertCircle,
+  ExternalLink,
   Sparkles,
-  User
+  User,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -126,6 +128,16 @@ const PublicResume = () => {
         .eq('event_type', 'view');
 
       setViewCount(events?.length || 0);
+
+      // Fetch recommended courses if this user is a mentor
+      const { data: coursesData } = await supabase
+        .from('recommended_courses')
+        .select('id, title, platform, difficulty, cost, skill_tags, url, is_ai_recommended')
+        .eq('mentor_id', userId)
+        .eq('active', true)
+        .limit(3);
+
+      setRecommendedCourses(coursesData || []);
 
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -320,12 +332,15 @@ const PublicResume = () => {
                       </Badge>
                     ))}
                   </div>
-                  <Button asChild size="sm" className="w-full">
-                    <a href={course.url} target="_blank" rel="noopener noreferrer">
-                      View Course
-                      <Share2 className="h-3 w-3 ml-2" />
-                    </a>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button asChild size="sm" className="flex-1">
+                      <a href={course.url} target="_blank" rel="noopener noreferrer">
+                        View Course
+                        <ExternalLink className="h-3 w-3 ml-2" />
+                      </a>
+                    </Button>
+                    <SaveButton courseId={course.id} size="sm" />
+                  </div>
                 </div>
               ))}
             </div>
