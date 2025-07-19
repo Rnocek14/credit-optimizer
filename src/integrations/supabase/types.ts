@@ -826,6 +826,16 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: string
       }
+      suggest_badges_for_user: {
+        Args: { user_uuid: string }
+        Returns: {
+          badge_id: string
+          slug: string
+          name: string
+          emoji: string
+          reason: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
