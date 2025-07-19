@@ -99,6 +99,13 @@ const LAYER_CONFIG = [
 const LAYER_SPACING = 160; // Vertical spacing between layers
 const NODE_SPACING = 120; // Horizontal spacing within layers
 
+// Layer unlock configuration
+const LAYER_UNLOCK_CONFIG = {
+  minVerifiedSkills: 2, // Minimum verified skills needed in previous layer
+  minXpPercentage: 50,  // Minimum XP percentage needed in previous layer
+  demoMode: false       // When true, all layers are unlocked
+};
+
 export default function SkillTree() {
   const [skillTreeData, setSkillTreeData] = useState<SkillTreeData>(demoSkillTreeData);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
@@ -108,6 +115,7 @@ export default function SkillTree() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [treeTranslate, setTreeTranslate] = useState({ x: 400, y: 100 });
   const [treeZoom, setTreeZoom] = useState(0.8);
+  const [isDemoMode, setIsDemoMode] = useState(true); // Demo mode for unlocking all layers
   const treeRef = useRef<any>(null);
 
   useEffect(() => {
@@ -226,6 +234,15 @@ export default function SkillTree() {
   const handleNodeClick = (nodeData: any) => {
     const skillId = nodeData.data.attributes?.id;
     if (skillId) {
+      // Check if the skill's layer is unlocked
+      if (!isSkillLayerUnlocked(skillId)) {
+        const depthMap = calculateSkillDepths();
+        const skillDepth = depthMap.get(skillId) || 0;
+        const unlockText = getLayerUnlockText(skillDepth);
+        // You could show a toast here instead of opening the panel
+        return; // Don't open detail panel for locked skills
+      }
+      
       const skill = skillTreeData.skills.find(s => s.id === skillId);
       const progress = getSkillProgress(skillId);
       
@@ -355,6 +372,106 @@ export default function SkillTree() {
     return layerMap;
   };
 
+  // Determine which layers are unlocked based on user progress
+  const getUnlockedLayers = (data = skillTreeData): Set<number> => {
+    const unlockedLayers = new Set<number>();
+    const layerMap = getSkillLayers(data);
+    const maxLayer = Math.max(...Array.from(layerMap.keys()));
+    
+    // Demo mode or root layer is always unlocked
+    if (isDemoMode || LAYER_UNLOCK_CONFIG.demoMode) {
+      for (let i = 0; i <= maxLayer; i++) {
+        unlockedLayers.add(i);
+      }
+      return unlockedLayers;
+    }
+    
+    // Layer 0 (foundations) is always unlocked
+    unlockedLayers.add(0);
+    
+    // Check each subsequent layer
+    for (let layerIndex = 1; layerIndex <= maxLayer; layerIndex++) {
+      const previousLayerSkills = layerMap.get(layerIndex - 1) || [];
+      
+      if (previousLayerSkills.length === 0) {
+        // No previous layer, unlock this one
+        unlockedLayers.add(layerIndex);
+        continue;
+      }
+      
+      // Count verified skills in previous layer
+      const verifiedSkills = previousLayerSkills.filter(skill => {
+        const progress = getSkillProgress(skill.id);
+        return progress?.status === 'verified';
+      }).length;
+      
+      // Calculate total XP earned vs total XP available in previous layer
+      const totalXpAvailable = previousLayerSkills.reduce((sum, skill) => sum + skill.xp_value, 0);
+      const totalXpEarned = previousLayerSkills.reduce((sum, skill) => {
+        const progress = getSkillProgress(skill.id);
+        return sum + (progress?.xp_earned || 0);
+      }, 0);
+      const xpPercentage = totalXpAvailable > 0 ? (totalXpEarned / totalXpAvailable) * 100 : 0;
+      
+      // Check unlock conditions
+      const hasEnoughVerifiedSkills = verifiedSkills >= LAYER_UNLOCK_CONFIG.minVerifiedSkills;
+      const hasEnoughXp = xpPercentage >= LAYER_UNLOCK_CONFIG.minXpPercentage;
+      
+      if (hasEnoughVerifiedSkills || hasEnoughXp) {
+        unlockedLayers.add(layerIndex);
+      } else {
+        // If this layer is locked, all subsequent layers are also locked
+        break;
+      }
+    }
+    
+    return unlockedLayers;
+  };
+
+  // Get unlock requirement text for a locked layer
+  const getLayerUnlockText = (layerIndex: number, data = skillTreeData): string => {
+    if (layerIndex === 0) return ""; // Root layer is always unlocked
+    
+    const layerMap = getSkillLayers(data);
+    const previousLayerSkills = layerMap.get(layerIndex - 1) || [];
+    
+    if (previousLayerSkills.length === 0) return "";
+    
+    const verifiedCount = previousLayerSkills.filter(skill => {
+      const progress = getSkillProgress(skill.id);
+      return progress?.status === 'verified';
+    }).length;
+    
+    const totalXpAvailable = previousLayerSkills.reduce((sum, skill) => sum + skill.xp_value, 0);
+    const totalXpEarned = previousLayerSkills.reduce((sum, skill) => {
+      const progress = getSkillProgress(skill.id);
+      return sum + (progress?.xp_earned || 0);
+    }, 0);
+    const xpPercentage = totalXpAvailable > 0 ? (totalXpEarned / totalXpAvailable) * 100 : 0;
+    
+    const skillsNeeded = Math.max(0, LAYER_UNLOCK_CONFIG.minVerifiedSkills - verifiedCount);
+    const xpNeeded = Math.max(0, LAYER_UNLOCK_CONFIG.minXpPercentage - xpPercentage);
+    
+    if (skillsNeeded === 0) {
+      return `Unlocked! (${verifiedCount}/${LAYER_UNLOCK_CONFIG.minVerifiedSkills} verified skills)`;
+    }
+    
+    if (xpNeeded <= 0) {
+      return `Unlocked! (${Math.round(xpPercentage)}%/${LAYER_UNLOCK_CONFIG.minXpPercentage}% XP earned)`;
+    }
+    
+    const previousLayerName = LAYER_CONFIG[layerIndex - 1]?.name || `Layer ${layerIndex}`;
+    return `Complete ${skillsNeeded} more skill${skillsNeeded !== 1 ? 's' : ''} in ${previousLayerName} to unlock`;
+  };
+
+  // Check if a specific skill's layer is unlocked
+  const isSkillLayerUnlocked = (skillId: string, data = skillTreeData): boolean => {
+    const depthMap = calculateSkillDepths(data);
+    const skillDepth = depthMap.get(skillId) || 0;
+    const unlockedLayers = getUnlockedLayers(data);
+    return unlockedLayers.has(skillDepth);
+  };
+
   // Build layered tree structure for custom positioning
   const buildLayeredTreeStructure = (data = skillTreeData): SkillNode => {
     const skillMap = new Map<string, Skill>();
@@ -450,13 +567,23 @@ export default function SkillTree() {
     const domainColors = getDomainColors(category);
     const categoryIcon = getCategoryIcon(category);
 
+    // Check if this skill's layer is unlocked
+    const isLayerUnlocked = isSkillLayerUnlocked(skillId);
+    const depthMap = calculateSkillDepths();
+    const skillDepth = depthMap.get(skillId) || 0;
+    const layerUnlockText = isLayerUnlocked ? '' : getLayerUnlockText(skillDepth);
+
     // Calculate dimensions with better spacing
     const baseRadius = 55;
     const nodeWidth = baseRadius * 2.8;
     const nodeHeight = baseRadius * 2;
 
-    // Status-specific styling
+    // Status-specific styling with layer lock consideration
     const getStatusBorder = () => {
+      if (!isLayerUnlocked) {
+        return { stroke: '#374151', strokeWidth: '2', glow: 'none' };
+      }
+      
       switch (status) {
         case 'verified':
           return { stroke: '#10b981', strokeWidth: '3', glow: 'rgba(16, 185, 129, 0.4)' };
@@ -477,24 +604,31 @@ export default function SkillTree() {
           <TooltipTrigger asChild>
             <g 
               style={{ 
-                pointerEvents: 'all', 
-                cursor: 'pointer',
+                pointerEvents: isLayerUnlocked ? 'all' : 'none', 
+                cursor: isLayerUnlocked ? 'pointer' : 'not-allowed',
                 filter: statusBorder.glow !== 'none' ? `drop-shadow(0 4px 12px ${statusBorder.glow})` : 'none',
-                transformOrigin: 'center'
+                transformOrigin: 'center',
+                opacity: isLayerUnlocked ? 1 : 0.4
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                handleNodeClick({ data: { attributes: nodeDatum.attributes } });
+                if (isLayerUnlocked) {
+                  handleNodeClick({ data: { attributes: nodeDatum.attributes } });
+                }
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if ((e.key === 'Enter' || e.key === ' ') && isLayerUnlocked) {
                   e.preventDefault();
                   handleNodeClick({ data: { attributes: nodeDatum.attributes } });
                 }
               }}
-              tabIndex={0}
+              tabIndex={isLayerUnlocked ? 0 : -1}
               role="button"
-              aria-label={`Skill: ${nodeDatum.name}, Status: ${status}, XP: ${xpEarned}/${xpValue}`}
+              aria-label={
+                isLayerUnlocked 
+                  ? `Skill: ${nodeDatum.name}, Status: ${status}, XP: ${xpEarned}/${xpValue}`
+                  : `Locked skill: ${nodeDatum.name}. ${layerUnlockText}`
+              }
             >
               {/* Hover scale animation */}
               <animateTransform
@@ -575,20 +709,67 @@ export default function SkillTree() {
                 width={nodeWidth}
                 height={nodeHeight}
                 rx="12"
-                fill="#1e293b"
+                fill={isLayerUnlocked ? "#1e293b" : "#0f172a"}
                 stroke={statusBorder.stroke}
                 strokeWidth={statusBorder.strokeWidth}
-                opacity={status === 'locked' ? '0.6' : '1'}
+                opacity={!isLayerUnlocked ? '0.3' : (status === 'locked' ? '0.6' : '1')}
                 filter="url(#innerShadow)"
               >
-                {/* Hover effect */}
-                <animate
-                  attributeName="fill"
-                  values="#1e293b;#334155;#1e293b"
-                  dur="0.3s"
-                  begin="mouseover"
-                />
+                {/* Hover effect - only for unlocked layers */}
+                {isLayerUnlocked && (
+                  <animate
+                    attributeName="fill"
+                    values="#1e293b;#334155;#1e293b"
+                    dur="0.3s"
+                    begin="mouseover"
+                  />
+                )}
               </rect>
+
+              {/* Layer lock overlay */}
+              {!isLayerUnlocked && (
+                <>
+                  <rect
+                    x={-nodeWidth/2}
+                    y={-nodeHeight/2}
+                    width={nodeWidth}
+                    height={nodeHeight}
+                    rx="12"
+                    fill="rgba(0, 0, 0, 0.7)"
+                    stroke="#374151"
+                    strokeWidth="2"
+                    strokeDasharray="4,4"
+                  >
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      values="0;8"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </rect>
+                  
+                  {/* Lock icon */}
+                  <circle
+                    cx="0"
+                    cy="-5"
+                    r="12"
+                    fill="#374151"
+                    stroke="#64748b"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x="0"
+                    y="-1"
+                    fontSize="14"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#9ca3af"
+                    style={{ fill: '#9ca3af', color: '#9ca3af' }}
+                  >
+                    🔒
+                  </text>
+                </>
+              )}
 
               {/* XP Progress bar background */}
               <rect
@@ -750,38 +931,54 @@ export default function SkillTree() {
               <div className="flex items-center gap-2">
                 <span className="text-base">{categoryIcon}</span>
                 <span className="font-semibold">{nodeDatum.name}</span>
+                {!isLayerUnlocked && <span className="text-lg">🔒</span>}
               </div>
-              <div className="text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Category:</span>
-                  <span>{category}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Status:</span>
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(status, 'h-3 w-3')}
-                    <span className="capitalize">{status.replace('_', ' ')}</span>
+              
+              {!isLayerUnlocked ? (
+                <div className="text-sm space-y-1">
+                  <div className="text-amber-400 font-medium">Layer Locked</div>
+                  <div className="text-slate-300">{layerUnlockText}</div>
+                  <div className="text-xs text-slate-500 mt-2">
+                    This skill is in Layer {skillDepth + 1} ({LAYER_CONFIG[skillDepth]?.name || `Layer ${skillDepth + 1}`})
                   </div>
                 </div>
-                {criScore && (
+              ) : (
+                <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">CRI Score:</span>
-                    <span className="font-medium" style={{ color: getCRIColor(criScore) }}>
-                      {criScore}
-                    </span>
+                    <span className="text-slate-400">Category:</span>
+                    <span>{category}</span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Progress:</span>
-                  <span>{Math.round(xpProgress)}% ({xpEarned}/{xpValue} XP)</span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Status:</span>
+                    <div className="flex items-center gap-1">
+                      {getStatusIcon(status, 'h-3 w-3')}
+                      <span className="capitalize">{status.replace('_', ' ')}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Layer:</span>
+                    <span>{LAYER_CONFIG[skillDepth]?.name || `Layer ${skillDepth + 1}`}</span>
+                  </div>
+                  {criScore && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">CRI Score:</span>
+                      <span className="font-medium" style={{ color: getCRIColor(criScore) }}>
+                        {criScore}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Progress:</span>
+                    <span>{Math.round(xpProgress)}% ({xpEarned}/{xpValue} XP)</span>
+                  </div>
+                  {progress?.verification_source && (
+                    <div>
+                      <span className="text-slate-400 text-xs">Source:</span>
+                      <div className="text-xs font-medium">{progress.verification_source}</div>
+                    </div>
+                  )}
                 </div>
-                {progress?.verification_source && (
-                  <div>
-                    <span className="text-slate-400 text-xs">Source:</span>
-                    <div className="text-xs font-medium">{progress.verification_source}</div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </TooltipContent>
         </Tooltip>
@@ -895,6 +1092,23 @@ export default function SkillTree() {
                   Clear All
                 </Button>
               )}
+              
+              {/* Demo Mode Toggle */}
+              <div className="ml-4 pl-4 border-l border-slate-600">
+                <Button
+                  variant={isDemoMode ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setIsDemoMode(!isDemoMode)}
+                  className={`flex items-center gap-2 min-h-[40px] ${
+                    isDemoMode 
+                      ? 'bg-purple-600 hover:bg-purple-500 text-white border-purple-500' 
+                      : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                  }`}
+                >
+                  <BookOpen className="h-3 w-3" />
+                  {isDemoMode ? 'Demo Mode (All Unlocked)' : 'Realistic Mode'}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -956,6 +1170,9 @@ export default function SkillTree() {
                       description: `Advanced skills level ${layerIndex + 1}` 
                     };
                     const skillsInLayer = getSkillLayers(filteredData).get(layerIndex) || [];
+                    const unlockedLayers = getUnlockedLayers(filteredData);
+                    const isLayerUnlocked = unlockedLayers.has(layerIndex);
+                    const layerUnlockText = getLayerUnlockText(layerIndex, filteredData);
                     
                     return (
                       <div 
@@ -968,15 +1185,29 @@ export default function SkillTree() {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600/50 rounded-lg p-3 shadow-lg max-w-[180px]">
-                                <div className="text-sm font-semibold text-slate-100 mb-1">
+                              <div className={`backdrop-blur-sm border rounded-lg p-3 shadow-lg max-w-[180px] ${
+                                isLayerUnlocked 
+                                  ? 'bg-slate-800/90 border-slate-600/50' 
+                                  : 'bg-slate-900/50 border-slate-700/30'
+                              }`}>
+                                <div className={`text-sm font-semibold mb-1 flex items-center gap-2 ${
+                                  isLayerUnlocked ? 'text-slate-100' : 'text-slate-400'
+                                }`}>
                                   {layerConfig.name}
+                                  {!isLayerUnlocked && <span className="text-xs">🔒</span>}
                                 </div>
-                                <div className="text-xs text-slate-400">
+                                <div className={`text-xs ${
+                                  isLayerUnlocked ? 'text-slate-400' : 'text-slate-500'
+                                }`}>
                                   {skillsInLayer.length} skill{skillsInLayer.length !== 1 ? 's' : ''}
+                                  {!isLayerUnlocked && ' • Locked'}
                                 </div>
                                 {/* Layer divider line */}
-                                <div className="absolute -right-4 top-1/2 transform -translate-y-1/2 w-4 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                                <div className={`absolute -right-4 top-1/2 transform -translate-y-1/2 w-4 h-px bg-gradient-to-r ${
+                                  isLayerUnlocked 
+                                    ? 'from-slate-600 to-transparent' 
+                                    : 'from-slate-700 to-transparent'
+                                }`} />
                               </div>
                             </TooltipTrigger>
                             <TooltipContent 
@@ -984,11 +1215,22 @@ export default function SkillTree() {
                               className="bg-slate-800 border-slate-700 text-slate-100 max-w-xs"
                             >
                               <div className="space-y-2">
-                                <div className="font-semibold">{layerConfig.name}</div>
-                                <div className="text-sm text-slate-300">{layerConfig.description}</div>
-                                <div className="text-xs text-slate-400">
-                                  Skills in this layer: {skillsInLayer.map(s => s.name).join(', ')}
+                                <div className="font-semibold flex items-center gap-2">
+                                  {layerConfig.name}
+                                  {!isLayerUnlocked && <span>🔒</span>}
                                 </div>
+                                <div className="text-sm text-slate-300">{layerConfig.description}</div>
+                                
+                                {!isLayerUnlocked ? (
+                                  <div className="text-sm">
+                                    <div className="text-amber-400 font-medium">Locked</div>
+                                    <div className="text-xs text-slate-400 mt-1">{layerUnlockText}</div>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-slate-400">
+                                    Skills in this layer: {skillsInLayer.map(s => s.name).join(', ')}
+                                  </div>
+                                )}
                               </div>
                             </TooltipContent>
                           </Tooltip>
