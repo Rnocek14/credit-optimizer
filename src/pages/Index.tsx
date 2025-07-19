@@ -35,6 +35,11 @@ const Index = () => {
                 Discover Featured Talent
               </Link>
             </Button>
+            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
+              <Link to="/demos">
+                View Demo Accounts
+              </Link>
+            </Button>
             </div>
           </div>
         </div>
