@@ -20,13 +20,11 @@ interface ExplorerProfile {
   skills: string[];
   badges: Array<{
     id: string;
-    badge_type: {
+    badge: {
       name: string;
-      display_name: string;
+      emoji: string;
       description: string;
-      icon: string;
-      color: string;
-      background_color: string;
+      slug: string;
     };
   }>;
   view_count: number;
@@ -84,17 +82,14 @@ const EmbedExplorer = () => {
             .from('user_badges')
             .select(`
               id,
-              badge_type:badge_types (
+              badge:badges (
                 name,
-                display_name,
+                emoji,
                 description,
-                icon,
-                color,
-                background_color
+                slug
               )
             `)
-            .eq('user_id', profile.user_id)
-            .eq('active', true);
+            .eq('user_id', profile.user_id);
 
           // Get view counts
           const { data: events } = await supabase
@@ -137,7 +132,7 @@ const EmbedExplorer = () => {
 
       // Badge filter
       const badgeMatch = badgeFilter === "all" || 
-        profile.badges.some(badge => badge.badge_type.name === badgeFilter);
+        profile.badges.some(badge => badge.badge.name === badgeFilter);
 
       // Score filter
       const reviewData = getReviewData(profile.resume_review_summary);
@@ -183,7 +178,7 @@ const EmbedExplorer = () => {
     const badges = new Set<string>();
     profiles.forEach(profile => {
       profile.badges.forEach(badge => {
-        badges.add(badge.badge_type.name);
+        badges.add(badge.badge.name);
       });
     });
     return Array.from(badges);
@@ -353,15 +348,11 @@ const EmbedExplorer = () => {
                         {profile.badges.slice(0, 3).map((badge) => (
                           <Badge
                             key={badge.id}
-                            variant="outline"
-                            className="text-xs"
-                            style={{
-                              color: badge.badge_type.color,
-                              backgroundColor: badge.badge_type.background_color,
-                              borderColor: badge.badge_type.color
-                            }}
+                            variant="secondary"
+                            className="text-xs bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           >
-                            {badge.badge_type.icon} {badge.badge_type.display_name}
+                            <span className="mr-1">{badge.badge.emoji}</span>
+                            {badge.badge.name}
                           </Badge>
                         ))}
                         {profile.badges.length > 3 && (

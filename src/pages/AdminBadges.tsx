@@ -6,89 +6,68 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trophy, Star, Eye, Zap, Users, Lightbulb, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-interface BadgeType {
+interface NewBadge {
   id: string;
   name: string;
-  display_name: string;
+  emoji: string;
   description: string;
-  icon: string;
-  color: string;
-  background_color: string;
-  criteria_type: string;
-  criteria_value: any;
-  active: boolean;
+  slug: string;
+  trigger_type: string;
+  threshold: number;
   created_at: string;
-  updated_at: string;
 }
 
-interface UserBadge {
+interface NewUserBadge {
   id: string;
   user_id: string;
-  badge_type: BadgeType;
-  assigned_by: string;
-  assigned_reason: string;
-  active: boolean;
-  created_at: string;
+  badge_id: string;
+  earned_at: string;
+  badge?: NewBadge;
 }
 
-const iconMap = {
-  trophy: Trophy,
-  star: Star,
-  eye: Eye,
-  zap: Zap,
-  users: Users,
-  lightbulb: Lightbulb,
-};
-
 const AdminBadges = () => {
-  const [badgeTypes, setBadgeTypes] = useState<BadgeType[]>([]);
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [badges, setBadges] = useState<NewBadge[]>([]);
+  const [userBadges, setUserBadges] = useState<NewUserBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [editingBadge, setEditingBadge] = useState<BadgeType | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
-    display_name: "",
+    emoji: "",
     description: "",
-    icon: "trophy",
-    color: "#3b82f6",
-    background_color: "#dbeafe",
-    criteria_type: "manual",
+    slug: "",
+    trigger_type: "manual",
+    threshold: 0
   });
 
   const [assignData, setAssignData] = useState({
     user_id: "",
-    badge_type_id: "",
-    assigned_reason: "",
+    badge_id: ""
   });
 
   useEffect(() => {
-    fetchBadgeTypes();
+    fetchBadges();
     fetchUserBadges();
   }, []);
 
-  const fetchBadgeTypes = async () => {
+  const fetchBadges = async () => {
     try {
       const { data, error } = await supabase
-        .from("badge_types")
+        .from("badges")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setBadgeTypes(data || []);
+      setBadges(data || []);
     } catch (error) {
-      console.error("Error fetching badge types:", error);
-      toast.error("Failed to load badge types");
+      console.error("Error fetching badges:", error);
+      toast.error("Failed to load badges");
     }
   };
 
@@ -98,13 +77,12 @@ const AdminBadges = () => {
         .from("user_badges")
         .select(`
           *,
-          badge_type:badge_types(*)
+          badge:badges(*)
         `)
-        .eq("active", true)
-        .order("created_at", { ascending: false });
+        .order("earned_at", { ascending: false });
 
       if (error) throw error;
-      setUserBadges(data as UserBadge[] || []);
+      setUserBadges(data || []);
     } catch (error) {
       console.error("Error fetching user badges:", error);
       toast.error("Failed to load user badges");
@@ -113,59 +91,21 @@ const AdminBadges = () => {
     }
   };
 
-  const handleCreateBadgeType = async () => {
+  const handleCreateBadge = async () => {
     try {
       const { error } = await supabase
-        .from("badge_types")
+        .from("badges")
         .insert([formData]);
 
       if (error) throw error;
 
-      toast.success("Badge type created successfully");
+      toast.success("Badge created successfully");
       setIsCreateDialogOpen(false);
       resetForm();
-      fetchBadgeTypes();
+      fetchBadges();
     } catch (error) {
-      console.error("Error creating badge type:", error);
-      toast.error("Failed to create badge type");
-    }
-  };
-
-  const handleUpdateBadgeType = async () => {
-    if (!editingBadge) return;
-
-    try {
-      const { error } = await supabase
-        .from("badge_types")
-        .update(formData)
-        .eq("id", editingBadge.id);
-
-      if (error) throw error;
-
-      toast.success("Badge type updated successfully");
-      setEditingBadge(null);
-      resetForm();
-      fetchBadgeTypes();
-    } catch (error) {
-      console.error("Error updating badge type:", error);
-      toast.error("Failed to update badge type");
-    }
-  };
-
-  const handleToggleBadgeType = async (id: string, active: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("badge_types")
-        .update({ active })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      toast.success(`Badge type ${active ? "activated" : "deactivated"}`);
-      fetchBadgeTypes();
-    } catch (error) {
-      console.error("Error toggling badge type:", error);
-      toast.error("Failed to update badge type");
+      console.error("Error creating badge:", error);
+      toast.error("Failed to create badge");
     }
   };
 
@@ -179,7 +119,7 @@ const AdminBadges = () => {
 
       toast.success("Badge assigned successfully");
       setIsAssignDialogOpen(false);
-      setAssignData({ user_id: "", badge_type_id: "", assigned_reason: "" });
+      setAssignData({ user_id: "", badge_id: "" });
       fetchUserBadges();
     } catch (error) {
       console.error("Error assigning badge:", error);
@@ -187,65 +127,32 @@ const AdminBadges = () => {
     }
   };
 
-  const handleRevokeBadge = async (id: string) => {
+  const handleRemoveBadge = async (id: string) => {
     try {
       const { error } = await supabase
         .from("user_badges")
-        .update({ active: false })
+        .delete()
         .eq("id", id);
 
       if (error) throw error;
 
-      toast.success("Badge revoked successfully");
+      toast.success("Badge removed successfully");
       fetchUserBadges();
     } catch (error) {
-      console.error("Error revoking badge:", error);
-      toast.error("Failed to revoke badge");
+      console.error("Error removing badge:", error);
+      toast.error("Failed to remove badge");
     }
   };
 
   const resetForm = () => {
     setFormData({
       name: "",
-      display_name: "",
+      emoji: "",
       description: "",
-      icon: "trophy",
-      color: "#3b82f6",
-      background_color: "#dbeafe",
-      criteria_type: "manual",
+      slug: "",
+      trigger_type: "manual",
+      threshold: 0
     });
-  };
-
-  const openEditDialog = (badge: BadgeType) => {
-    setEditingBadge(badge);
-    setFormData({
-      name: badge.name,
-      display_name: badge.display_name,
-      description: badge.description || "",
-      icon: badge.icon,
-      color: badge.color,
-      background_color: badge.background_color,
-      criteria_type: badge.criteria_type,
-    });
-    setIsCreateDialogOpen(true);
-  };
-
-  const renderBadgePreview = (badge: Partial<BadgeType>) => {
-    const IconComponent = iconMap[badge.icon as keyof typeof iconMap] || Trophy;
-    return (
-      <Badge 
-        variant="secondary" 
-        className="text-sm px-3 py-1"
-        style={{ 
-          color: badge.color, 
-          backgroundColor: badge.background_color,
-          border: `1px solid ${badge.color}20`
-        }}
-      >
-        <IconComponent className="w-4 h-4 mr-1" />
-        {badge.display_name}
-      </Badge>
-    );
   };
 
   if (loading) {
@@ -265,7 +172,7 @@ const AdminBadges = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Badge Management</h1>
           <p className="text-muted-foreground">
-            Create and manage badges for recognizing exceptional candidates
+            Create and manage badges for recognizing achievements
           </p>
         </div>
 
@@ -274,19 +181,17 @@ const AdminBadges = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Badge Types</CardTitle>
+                <CardTitle>Available Badges</CardTitle>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => { resetForm(); setEditingBadge(null); }}>
+                    <Button onClick={resetForm}>
                       <Plus className="w-4 h-4 mr-2" />
                       Create Badge
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>
-                        {editingBadge ? "Edit Badge Type" : "Create Badge Type"}
-                      </DialogTitle>
+                      <DialogTitle>Create New Badge</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
@@ -295,16 +200,16 @@ const AdminBadges = () => {
                           id="name"
                           value={formData.name}
                           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="e.g., top_performer"
+                          placeholder="e.g., High Achiever"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="display_name">Display Name</Label>
+                        <Label htmlFor="emoji">Emoji</Label>
                         <Input
-                          id="display_name"
-                          value={formData.display_name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                          placeholder="e.g., Top Performer"
+                          id="emoji"
+                          value={formData.emoji}
+                          onChange={(e) => setFormData(prev => ({ ...prev, emoji: e.target.value }))}
+                          placeholder="⭐"
                         />
                       </div>
                       <div>
@@ -317,66 +222,35 @@ const AdminBadges = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="icon">Icon</Label>
-                        <Select value={formData.icon} onValueChange={(value) => setFormData(prev => ({ ...prev, icon: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="trophy">Trophy</SelectItem>
-                            <SelectItem value="star">Star</SelectItem>
-                            <SelectItem value="eye">Eye</SelectItem>
-                            <SelectItem value="zap">Zap</SelectItem>
-                            <SelectItem value="users">Users</SelectItem>
-                            <SelectItem value="lightbulb">Lightbulb</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="color">Text Color</Label>
-                          <Input
-                            id="color"
-                            type="color"
-                            value={formData.color}
-                            onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="background_color">Background Color</Label>
-                          <Input
-                            id="background_color"
-                            type="color"
-                            value={formData.background_color}
-                            onChange={(e) => setFormData(prev => ({ ...prev, background_color: e.target.value }))}
-                          />
-                        </div>
+                        <Label htmlFor="slug">Slug</Label>
+                        <Input
+                          id="slug"
+                          value={formData.slug}
+                          onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
+                          placeholder="high-achiever"
+                        />
                       </div>
                       <div>
-                        <Label htmlFor="criteria_type">Criteria Type</Label>
-                        <Select value={formData.criteria_type} onValueChange={(value) => setFormData(prev => ({ ...prev, criteria_type: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="manual">Manual Assignment</SelectItem>
-                            <SelectItem value="ai_score">AI Score Based</SelectItem>
-                            <SelectItem value="mentor_feedback">Mentor Feedback</SelectItem>
-                            <SelectItem value="gallery_featured">Gallery Featured</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="trigger_type">Trigger Type</Label>
+                        <Input
+                          id="trigger_type"
+                          value={formData.trigger_type}
+                          onChange={(e) => setFormData(prev => ({ ...prev, trigger_type: e.target.value }))}
+                          placeholder="cri_score"
+                        />
                       </div>
                       <div>
-                        <Label>Preview</Label>
-                        <div className="mt-2">
-                          {renderBadgePreview(formData)}
-                        </div>
+                        <Label htmlFor="threshold">Threshold</Label>
+                        <Input
+                          id="threshold"
+                          type="number"
+                          value={formData.threshold}
+                          onChange={(e) => setFormData(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                          placeholder="80"
+                        />
                       </div>
-                      <Button 
-                        onClick={editingBadge ? handleUpdateBadgeType : handleCreateBadgeType}
-                        className="w-full"
-                      >
-                        {editingBadge ? "Update Badge" : "Create Badge"}
+                      <Button onClick={handleCreateBadge} className="w-full">
+                        Create Badge
                       </Button>
                     </div>
                   </DialogContent>
@@ -385,23 +259,19 @@ const AdminBadges = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {badgeTypes.map((badge) => (
+                {badges.map((badge) => (
                   <div key={badge.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
-                      {renderBadgePreview(badge)}
+                      <Badge variant="secondary" className="text-sm">
+                        <span className="mr-1">{badge.emoji}</span>
+                        {badge.name}
+                      </Badge>
                       <div>
-                        <p className="font-medium">{badge.display_name}</p>
                         <p className="text-sm text-muted-foreground">{badge.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {badge.trigger_type} ≥ {badge.threshold}
+                        </p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={badge.active}
-                        onCheckedChange={(checked) => handleToggleBadgeType(badge.id, checked)}
-                      />
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(badge)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
                     </div>
                   </div>
                 ))}
@@ -436,28 +306,19 @@ const AdminBadges = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="badge_type_id">Badge Type</Label>
-                        <Select value={assignData.badge_type_id} onValueChange={(value) => setAssignData(prev => ({ ...prev, badge_type_id: value }))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select badge type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {badgeTypes.filter(b => b.active).map((badge) => (
-                              <SelectItem key={badge.id} value={badge.id}>
-                                {badge.display_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="assigned_reason">Reason</Label>
-                        <Textarea
-                          id="assigned_reason"
-                          value={assignData.assigned_reason}
-                          onChange={(e) => setAssignData(prev => ({ ...prev, assigned_reason: e.target.value }))}
-                          placeholder="Reason for assigning this badge..."
-                        />
+                        <Label htmlFor="badge_id">Badge</Label>
+                        <select
+                          value={assignData.badge_id}
+                          onChange={(e) => setAssignData(prev => ({ ...prev, badge_id: e.target.value }))}
+                          className="w-full p-2 border rounded"
+                        >
+                          <option value="">Select badge</option>
+                          {badges.map((badge) => (
+                            <option key={badge.id} value={badge.id}>
+                              {badge.emoji} {badge.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <Button onClick={handleAssignBadge} className="w-full">
                         Assign Badge
@@ -472,19 +333,21 @@ const AdminBadges = () => {
                 {userBadges.map((userBadge) => (
                   <div key={userBadge.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
-                      {renderBadgePreview(userBadge.badge_type)}
+                      <Badge variant="secondary" className="text-sm">
+                        <span className="mr-1">{userBadge.badge?.emoji}</span>
+                        {userBadge.badge?.name}
+                      </Badge>
                       <div>
                         <p className="font-medium">User {userBadge.user_id.slice(0, 8)}</p>
-                        <p className="text-sm text-muted-foreground">{userBadge.badge_type.display_name} Badge</p>
                         <p className="text-xs text-muted-foreground">
-                          Assigned {format(new Date(userBadge.created_at), "MMM dd, yyyy")}
+                          Earned {format(new Date(userBadge.earned_at), "MMM dd, yyyy")}
                         </p>
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRevokeBadge(userBadge.id)}
+                      onClick={() => handleRemoveBadge(userBadge.id)}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />

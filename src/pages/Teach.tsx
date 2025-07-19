@@ -32,12 +32,11 @@ interface MentorProfile {
   role_title: string;
   badges: Array<{
     id: string;
-    badge_type: {
+    badge: {
       name: string;
-      display_name: string;
-      icon: string;
-      color: string;
-      background_color: string;
+      emoji: string;
+      description: string;
+      slug: string;
     };
   }>;
 }
@@ -127,16 +126,14 @@ export default function Teach() {
         .from('user_badges')
         .select(`
           id,
-          badge_type:badge_types (
+          badge:badges (
             name,
-            display_name,
-            icon,
-            color,
-            background_color
+            emoji,
+            description,
+            slug
           )
         `)
-        .eq('user_id', user.id)
-        .eq('active', true);
+        .eq('user_id', user.id);
 
       setProfile({
         ...profileData,
@@ -353,15 +350,11 @@ export default function Teach() {
                   {profile.badges.map((badge) => (
                     <Badge
                       key={badge.id}
-                      variant="outline"
-                      className="px-3 py-1"
-                      style={{
-                        color: badge.badge_type.color,
-                        backgroundColor: badge.badge_type.background_color,
-                        borderColor: badge.badge_type.color
-                      }}
+                      variant="secondary"
+                      className="px-3 py-1 bg-primary/10 text-primary"
                     >
-                      {badge.badge_type.icon} {badge.badge_type.display_name}
+                      <span className="mr-1">{badge.badge.emoji}</span>
+                      {badge.badge.name}
                     </Badge>
                   ))}
                 </div>

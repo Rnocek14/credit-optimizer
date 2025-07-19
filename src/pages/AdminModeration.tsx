@@ -212,14 +212,18 @@ const AdminModeration = () => {
 
   const assignBadge = async (userId: string, badgeTypeId: string, reason: string) => {
     try {
+      // Temporarily disable badge assignment until proper badge management is implemented
+      // const { error } = await supabase
+      //   .from('user_badges')
+      //   .insert({
+      //     user_id: userId,
+      //     badge_id: badgeTypeId, // Would need actual badge ID
+      //   });
+
       const { error } = await supabase
-        .from('user_badges')
-        .insert({
-          user_id: userId,
-          badge_type_id: badgeTypeId,
-          assigned_reason: reason,
-          metadata: { assigned_via: 'moderation_panel' }
-        });
+        .from('profiles')
+        .update({ gallery_featured: true })
+        .eq('user_id', userId);
 
       if (error) throw error;
 

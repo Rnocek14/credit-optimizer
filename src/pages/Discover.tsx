@@ -16,13 +16,11 @@ interface FeaturedProfile {
   resume_review_summary: string;
   badges: Array<{
     id: string;
-    badge_type: {
+    badge: {
       name: string;
-      display_name: string;
+      emoji: string;
       description: string;
-      icon: string;
-      color: string;
-      background_color: string;
+      slug: string;
     };
   }>;
   view_count: number;
@@ -65,17 +63,14 @@ export default function Discover() {
             .from('user_badges')
             .select(`
               id,
-              badge_type:badge_types (
+              badge:badges (
                 name,
-                display_name,
+                emoji,
                 description,
-                icon,
-                color,
-                background_color
+                slug
               )
             `)
             .eq('user_id', profile.user_id)
-            .eq('active', true)
             .limit(2); // Show top 2 badges
 
           // Get view counts
@@ -234,15 +229,11 @@ export default function Discover() {
                         {profile.badges.map((badge) => (
                           <Badge
                             key={badge.id}
-                            variant="outline"
-                            className="text-xs px-3 py-1 font-medium"
-                            style={{
-                              color: badge.badge_type.color,
-                              backgroundColor: badge.badge_type.background_color,
-                              borderColor: badge.badge_type.color
-                            }}
+                            variant="secondary"
+                            className="text-xs px-3 py-1 font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           >
-                            {badge.badge_type.icon} {badge.badge_type.display_name}
+                            <span className="mr-1">{badge.badge.emoji}</span>
+                            {badge.badge.name}
                           </Badge>
                         ))}
                       </div>
