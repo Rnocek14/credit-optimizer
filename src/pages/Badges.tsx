@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 interface BadgeType {
   id: string;
@@ -29,10 +30,19 @@ interface UserProgress {
   readiness_score: number | null;
 }
 
+interface SuggestedBadge {
+  badge_id: string;
+  slug: string;
+  name: string;
+  emoji: string;
+  reason: string;
+}
+
 export default function Badges() {
   const [badges, setBadges] = useState<BadgeType[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [suggestedBadges, setSuggestedBadges] = useState<SuggestedBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
@@ -96,6 +106,16 @@ export default function Badges() {
           };
           
           setUserProgress(progress);
+
+          // Fetch suggested badges
+          const { data: suggestedData, error: suggestedError } = await supabase
+            .rpc('suggest_badges_for_user', { user_uuid: user.id });
+          
+          if (suggestedError) {
+            console.error('Error fetching suggested badges:', suggestedError);
+          } else {
+            setSuggestedBadges(suggestedData || []);
+          }
         }
       } catch (error) {
         console.error('Error fetching badges:', error);
@@ -221,6 +241,41 @@ export default function Badges() {
           {!user && " Sign in to track your progress!"}
         </p>
       </div>
+
+      {/* Suggested Badges Section */}
+      {user && suggestedBadges.length > 0 && (
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">🎯 Suggested Badges for You</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {suggestedBadges.map((badge) => (
+              <Link 
+                key={badge.badge_id}
+                to={`/badges/${badge.slug}`}
+                className="block"
+              >
+                <Card className="h-full transition-all duration-200 hover:shadow-lg hover:bg-muted/50 border-2 border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{badge.emoji}</span>
+                      <div>
+                        <CardTitle className="text-lg">{badge.name}</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">
+                          {badge.reason}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="text-xs text-primary font-medium">
+                      Click to view badge details →
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {badges.map((badge) => {
