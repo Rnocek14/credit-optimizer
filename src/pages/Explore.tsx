@@ -1,697 +1,835 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  ExternalLink, 
-  MapPin, 
-  Clock, 
+  Search, 
+  Filter, 
   Star, 
+  Clock, 
+  Trophy, 
   BookOpen, 
-  User, 
-  Zap, 
-  TrendingUp, 
-  Plus, 
-  Check, 
-  Filter,
+  Users,
+  Heart,
+  Play,
+  Bookmark,
+  TrendingUp,
+  Award,
+  ChevronRight,
+  Zap,
+  Target,
+  User,
+  MapPin,
+  Calendar,
+  ExternalLink,
+  Plus,
   Code,
   Server,
   Cloud,
   Database,
   Settings,
-  Smartphone
+  Smartphone,
+  Brain,
+  Lock,
+  Sparkles
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Course {
   id: string;
   title: string;
+  description: string;
+  category: string;
+  layer: number;
+  xpReward: number;
+  criBoost?: number;
+  duration: string;
+  rating: number;
+  enrollments: number;
+  difficulty: string;
+  tags: string[];
+  instructor: string;
   platform: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   cost: string;
-  skill_tags: string[];
-  skill_id: string;
+  verified: boolean;
   url?: string;
-  mentor_name?: string;
-  xp_reward: number;
-  cri_impact: number;
-  category: 'Frontend' | 'Backend' | 'Cloud' | 'Data Science' | 'DevOps' | 'Mobile';
-  is_recommended: boolean;
-  instructor_verified: boolean;
-  top_rated: boolean;
-  created_at: string;
+  skillGapFiller: boolean;
+  aiSuggested: boolean;
 }
 
 interface Mentor {
   id: string;
-  user_id: string;
   name: string;
-  role_title: string;
-  years_experience: number;
-  skills: string[];
+  title: string;
+  company: string;
+  expertise: string[];
+  rating: number;
+  reviews: number;
+  hourlyRate?: number;
+  responseTime: string;
   location: string;
-  category: 'Frontend' | 'Backend' | 'Cloud' | 'Data Science' | 'DevOps' | 'Mobile';
-  skill_id: string;
-  xp_reward: number;
-  cri_impact: number;
-  hourly_rate?: string;
-  top_rated: boolean;
-  mentorship_available: boolean;
+  verified: boolean;
+  availableSlots: number;
+  bio: string;
+  avatar?: string;
+  nextLayerSpecialist: boolean;
+  topRated: boolean;
 }
 
-// Enhanced mock data with Life Path platform requirements
+// Enhanced mock data with Life Path platform features
 const mockCourses: Course[] = [
   {
-    id: "1",
-    title: "Advanced React Hooks",
-    platform: "Scrimba",
-    difficulty: "Advanced",
-    cost: "Free",
-    skill_tags: ["React", "Hooks", "State Management"],
-    skill_id: "react-advanced",
-    url: "https://scrimba.com/react-hooks",
-    mentor_name: "Sarah Chen",
-    xp_reward: 120,
-    cri_impact: 15,
-    category: "Frontend",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-01-15T10:00:00Z"
+    id: '1',
+    title: 'React Fundamentals',
+    description: 'Learn the basics of React including components, state, and props. Perfect for building modern UIs.',
+    category: 'Frontend',
+    layer: 1,
+    xpReward: 30,
+    criBoost: 15,
+    duration: '4 weeks',
+    rating: 4.8,
+    enrollments: 1250,
+    difficulty: 'Beginner',
+    tags: ['React', 'JavaScript', 'Web Development'],
+    instructor: 'Sarah Chen',
+    platform: 'TechLearn',
+    cost: 'Free',
+    verified: true,
+    skillGapFiller: true,
+    aiSuggested: true
   },
   {
-    id: "2",
-    title: "Node.js API Design",
-    platform: "Udemy",
-    difficulty: "Intermediate",
-    cost: "$49.99",
-    skill_tags: ["Node.js", "API", "Express", "MongoDB"],
-    skill_id: "nodejs-api",
-    mentor_name: "Alex Rodriguez",
-    xp_reward: 90,
-    cri_impact: 12,
-    category: "Backend",
-    is_recommended: false,
-    instructor_verified: true,
-    top_rated: false,
-    created_at: "2024-02-01T14:30:00Z"
+    id: '2',
+    title: 'Advanced TypeScript Patterns',
+    description: 'Master complex TypeScript patterns and advanced type system features for scalable applications.',
+    category: 'Frontend',
+    layer: 2,
+    xpReward: 45,
+    criBoost: 20,
+    duration: '6 weeks',
+    rating: 4.9,
+    enrollments: 890,
+    difficulty: 'Advanced',
+    tags: ['TypeScript', 'JavaScript', 'Type System'],
+    instructor: 'Alex Rodriguez',
+    platform: 'CodeMaster',
+    cost: '$89',
+    verified: true,
+    skillGapFiller: false,
+    aiSuggested: true
   },
   {
-    id: "3",
-    title: "AWS Cloud Fundamentals",
-    platform: "AWS Training",
-    difficulty: "Beginner",
-    cost: "Free",
-    skill_tags: ["AWS", "EC2", "S3", "Lambda"],
-    skill_id: "aws-basics",
-    mentor_name: "Jordan Smith",
-    xp_reward: 80,
-    cri_impact: 10,
-    category: "Cloud",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-01-20T09:15:00Z"
+    id: '3',
+    title: 'Node.js Backend Development',
+    description: 'Build scalable backend applications with Node.js and Express. Learn APIs, databases, and deployment.',
+    category: 'Backend',
+    layer: 2,
+    xpReward: 40,
+    criBoost: 18,
+    duration: '8 weeks',
+    rating: 4.7,
+    enrollments: 2100,
+    difficulty: 'Intermediate',
+    tags: ['Node.js', 'Express', 'API Development'],
+    instructor: 'Marcus Johnson',
+    platform: 'DevAcademy',
+    cost: '$129',
+    verified: false,
+    skillGapFiller: true,
+    aiSuggested: false
   },
   {
-    id: "4",
-    title: "TypeScript Deep Dive",
-    platform: "Frontend Masters",
-    difficulty: "Advanced",
-    cost: "$39/month",
-    skill_tags: ["TypeScript", "JavaScript", "Types"],
-    skill_id: "typescript-advanced",
-    mentor_name: "Emily Watson",
-    xp_reward: 110,
-    cri_impact: 14,
-    category: "Frontend",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-03-10T16:45:00Z"
+    id: '4',
+    title: 'AWS Cloud Architecture',
+    description: 'Design and deploy cloud infrastructure on AWS. Master EC2, S3, Lambda, and more.',
+    category: 'Cloud',
+    layer: 3,
+    xpReward: 60,
+    criBoost: 25,
+    duration: '10 weeks',
+    rating: 4.6,
+    enrollments: 756,
+    difficulty: 'Advanced',
+    tags: ['AWS', 'Cloud', 'Infrastructure'],
+    instructor: 'Emma Thompson',
+    platform: 'CloudGuru',
+    cost: '$199',
+    verified: true,
+    skillGapFiller: false,
+    aiSuggested: false
   },
   {
-    id: "5",
-    title: "Python Data Analysis",
-    platform: "Coursera",
-    difficulty: "Intermediate",
-    cost: "$49/month",
-    skill_tags: ["Python", "Pandas", "NumPy", "Visualization"],
-    skill_id: "python-data",
-    mentor_name: "Dr. Michael Kim",
-    xp_reward: 100,
-    cri_impact: 13,
-    category: "Data Science",
-    is_recommended: false,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-02-15T11:20:00Z"
+    id: '5',
+    title: 'Docker & Kubernetes Essentials',
+    description: 'Containerize and orchestrate applications with Docker and Kubernetes for modern DevOps.',
+    category: 'DevOps',
+    layer: 2,
+    xpReward: 50,
+    criBoost: 22,
+    duration: '7 weeks',
+    rating: 4.5,
+    enrollments: 980,
+    difficulty: 'Intermediate',
+    tags: ['Docker', 'Kubernetes', 'DevOps'],
+    instructor: 'Chris Wilson',
+    platform: 'DevOps Pro',
+    cost: '$149',
+    verified: true,
+    skillGapFiller: true,
+    aiSuggested: true
   },
   {
-    id: "6",
-    title: "Docker & Kubernetes",
-    platform: "Linux Academy",
-    difficulty: "Advanced",
-    cost: "$29/month",
-    skill_tags: ["Docker", "Kubernetes", "Containers"],
-    skill_id: "docker-k8s",
-    mentor_name: "Chris Thompson",
-    xp_reward: 130,
-    cri_impact: 16,
-    category: "DevOps",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: false,
-    created_at: "2024-01-30T13:45:00Z"
-  },
-  {
-    id: "7",
-    title: "React Native Essentials",
-    platform: "Expo Learn",
-    difficulty: "Intermediate",
-    cost: "Free",
-    skill_tags: ["React Native", "Mobile", "Expo"],
-    skill_id: "react-native",
-    mentor_name: "Lisa Park",
-    xp_reward: 95,
-    cri_impact: 11,
-    category: "Mobile",
-    is_recommended: false,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-03-05T08:30:00Z"
-  },
-  {
-    id: "8",
-    title: "GraphQL Complete Guide",
-    platform: "Apollo Academy",
-    difficulty: "Advanced",
-    cost: "$69.99",
-    skill_tags: ["GraphQL", "Apollo", "API"],
-    skill_id: "graphql-advanced",
-    mentor_name: "David Lee",
-    xp_reward: 115,
-    cri_impact: 14,
-    category: "Backend",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-02-20T12:00:00Z"
-  },
-  {
-    id: "9",
-    title: "Machine Learning Basics",
-    platform: "Kaggle Learn",
-    difficulty: "Beginner",
-    cost: "Free",
-    skill_tags: ["ML", "Python", "Scikit-learn"],
-    skill_id: "ml-basics",
-    mentor_name: "Dr. Anna Zhang",
-    xp_reward: 85,
-    cri_impact: 10,
-    category: "Data Science",
-    is_recommended: false,
-    instructor_verified: true,
-    top_rated: false,
-    created_at: "2024-03-15T15:20:00Z"
-  },
-  {
-    id: "10",
-    title: "Terraform Infrastructure",
-    platform: "HashiCorp Learn",
-    difficulty: "Intermediate",
-    cost: "Free",
-    skill_tags: ["Terraform", "IaC", "AWS"],
-    skill_id: "terraform",
-    mentor_name: "Mark Johnson",
-    xp_reward: 105,
-    cri_impact: 12,
-    category: "DevOps",
-    is_recommended: true,
-    instructor_verified: true,
-    top_rated: true,
-    created_at: "2024-03-01T10:15:00Z"
+    id: '6',
+    title: 'JavaScript Algorithms & Data Structures',
+    description: 'Master fundamental algorithms and data structures using JavaScript. Ace your interviews.',
+    category: 'Frontend',
+    layer: 1,
+    xpReward: 35,
+    criBoost: 16,
+    duration: '5 weeks',
+    rating: 4.7,
+    enrollments: 1800,
+    difficulty: 'Intermediate',
+    tags: ['JavaScript', 'Algorithms', 'Data Structures'],
+    instructor: 'David Park',
+    platform: 'AlgoMaster',
+    cost: 'Free',
+    verified: true,
+    skillGapFiller: false,
+    aiSuggested: false
   }
 ];
 
 const mockMentors: Mentor[] = [
   {
-    id: "1",
-    user_id: "2b458624-d498-4cca-a63d-9341cc20e363",
-    name: "Sarah Chen",
-    role_title: "Senior Frontend Architect",
-    years_experience: 8,
-    skills: ["React", "TypeScript", "Next.js", "GraphQL"],
-    location: "San Francisco, CA",
-    category: "Frontend",
-    skill_id: "react-advanced",
-    xp_reward: 50,
-    cri_impact: 8,
-    hourly_rate: "$120/hr",
-    top_rated: true,
-    mentorship_available: true
+    id: '1',
+    name: 'Dr. Michael Zhang',
+    title: 'Senior Software Engineer',
+    company: 'Google',
+    expertise: ['React', 'TypeScript', 'System Design', 'Performance'],
+    rating: 4.9,
+    reviews: 127,
+    hourlyRate: 150,
+    responseTime: '< 2 hours',
+    location: 'San Francisco, CA',
+    verified: true,
+    availableSlots: 8,
+    bio: 'Former Google Tech Lead with 10+ years experience in scalable web applications and mentoring engineers.',
+    avatar: '/avatars/michael.jpg',
+    nextLayerSpecialist: true,
+    topRated: true
   },
   {
-    id: "2", 
-    user_id: "3c459625-e499-5ddb-b64d-a442dd21f474",
-    name: "Alex Rodriguez",
-    role_title: "Backend Engineering Lead",
-    years_experience: 10,
-    skills: ["Node.js", "Python", "PostgreSQL", "Redis"],
-    location: "Austin, TX",
-    category: "Backend",
-    skill_id: "nodejs-api",
-    xp_reward: 60,
-    cri_impact: 9,
-    hourly_rate: "$140/hr",
-    top_rated: true,
-    mentorship_available: true
+    id: '2',
+    name: 'Lisa Park',
+    title: 'Principal Engineer',
+    company: 'Netflix',
+    expertise: ['Node.js', 'Microservices', 'DevOps', 'AWS'],
+    rating: 4.8,
+    reviews: 89,
+    hourlyRate: 180,
+    responseTime: '< 4 hours',
+    location: 'Seattle, WA',
+    verified: true,
+    availableSlots: 5,
+    bio: 'Netflix Principal Engineer specializing in backend systems and cloud architecture at scale.',
+    avatar: '/avatars/lisa.jpg',
+    nextLayerSpecialist: true,
+    topRated: true
   },
   {
-    id: "3",
-    user_id: "4d56a736-f5aa-6eec-c75e-b553ee32e585", 
-    name: "Dr. Michael Kim",
-    role_title: "ML Engineering Manager",
-    years_experience: 12,
-    skills: ["Python", "TensorFlow", "AWS", "Spark"],
-    location: "Seattle, WA",
-    category: "Data Science",
-    skill_id: "python-data",
-    xp_reward: 70,
-    cri_impact: 11,
-    hourly_rate: "$160/hr",
-    top_rated: true,
-    mentorship_available: true
+    id: '3',
+    name: 'James Wilson',
+    title: 'Lead Developer',
+    company: 'Stripe',
+    expertise: ['JavaScript', 'Payment Systems', 'Security', 'APIs'],
+    rating: 4.7,
+    reviews: 156,
+    hourlyRate: 120,
+    responseTime: '< 6 hours',
+    location: 'Austin, TX',
+    verified: false,
+    availableSlots: 12,
+    bio: 'Stripe Lead Developer with expertise in fintech and secure payment processing systems.',
+    avatar: '/avatars/james.jpg',
+    nextLayerSpecialist: false,
+    topRated: true
   },
   {
-    id: "4",
-    user_id: "5e67b847-g6bb-7ffd-d86f-c664ff43f696",
-    name: "Jordan Smith",
-    role_title: "Cloud Solutions Architect",
-    years_experience: 9,
-    skills: ["AWS", "Terraform", "Kubernetes", "Docker"],
-    location: "Denver, CO",
-    category: "Cloud",
-    skill_id: "aws-basics",
-    xp_reward: 55,
-    cri_impact: 9,
-    hourly_rate: "$130/hr",
-    top_rated: false,
-    mentorship_available: true
-  },
-  {
-    id: "5",
-    user_id: "6f78c958-h7cc-8ggf-e97g-d775gg54g707",
-    name: "Emily Watson",
-    role_title: "Staff Software Engineer",
-    years_experience: 11,
-    skills: ["TypeScript", "React", "Node.js", "PostgreSQL"],
-    location: "New York, NY",
-    category: "Frontend",
-    skill_id: "typescript-advanced",
-    xp_reward: 65,
-    cri_impact: 10,
-    hourly_rate: "$150/hr",
-    top_rated: true,
-    mentorship_available: true
+    id: '4',
+    name: 'Sarah Martinez',
+    title: 'Cloud Solutions Architect',
+    company: 'Microsoft Azure',
+    expertise: ['Azure', 'Cloud Architecture', 'Terraform', 'Security'],
+    rating: 4.9,
+    reviews: 203,
+    hourlyRate: 160,
+    responseTime: '< 3 hours',
+    location: 'Austin, TX',
+    verified: true,
+    availableSlots: 6,
+    bio: 'Microsoft Azure Solutions Architect helping companies migrate to cloud and optimize infrastructure.',
+    avatar: '/avatars/sarah.jpg',
+    nextLayerSpecialist: true,
+    topRated: true
   }
 ];
 
-const CourseCard = ({ course, onSaveToRoadmap }: { course: Course; onSaveToRoadmap: (courseId: string) => void }) => {
-  const getCategoryIcon = (category: Course['category']) => {
-    switch (category) {
-      case 'Frontend': return <Code className="h-4 w-4" />;
-      case 'Backend': return <Server className="h-4 w-4" />;
-      case 'Cloud': return <Cloud className="h-4 w-4" />;
-      case 'Data Science': return <Database className="h-4 w-4" />;
-      case 'DevOps': return <Settings className="h-4 w-4" />;
-      case 'Mobile': return <Smartphone className="h-4 w-4" />;
-      default: return <BookOpen className="h-4 w-4" />;
+export default function Explore() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("relevance");
+  const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
+  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("courses");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Simulate fetching user's skill tree progress
+  const [userLayer, setUserLayer] = useState(1); // Current highest unlocked layer
+  const [skillGaps, setSkillGaps] = useState(['React', 'TypeScript']); // Skills needed for next layer
+
+  // Filter and sort logic
+  const getFilteredCourses = () => {
+    let filtered = mockCourses.filter(course => {
+      const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           course.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesCategory = selectedCategory === "all" || course.category.toLowerCase() === selectedCategory.toLowerCase();
+      const matchesVerified = !showVerifiedOnly || course.verified;
+      
+      return matchesSearch && matchesCategory && matchesVerified;
+    });
+
+    // Sort courses
+    switch (sortBy) {
+      case "xp":
+        filtered.sort((a, b) => b.xpReward - a.xpReward);
+        break;
+      case "cri":
+        filtered.sort((a, b) => (b.criBoost || 0) - (a.criBoost || 0));
+        break;
+      case "rating":
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case "popularity":
+        filtered.sort((a, b) => b.enrollments - a.enrollments);
+        break;
+      default:
+        // Relevance - prioritize AI suggested and skill gap fillers
+        filtered.sort((a, b) => {
+          const aScore = (a.aiSuggested ? 100 : 0) + (a.skillGapFiller ? 50 : 0);
+          const bScore = (b.aiSuggested ? 100 : 0) + (b.skillGapFiller ? 50 : 0);
+          return bScore - aScore;
+        });
+        break;
     }
+
+    return filtered;
   };
 
-  const getDifficultyColor = (difficulty: Course['difficulty']) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-      case 'Intermediate': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-      case 'Advanced': return 'bg-red-500/20 text-red-300 border-red-500/30';
+  const getFilteredMentors = () => {
+    let filtered = mockMentors.filter(mentor => {
+      const matchesSearch = mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           mentor.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           mentor.expertise.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesVerified = !showVerifiedOnly || mentor.verified;
+      
+      return matchesSearch && matchesVerified;
+    });
+
+    // Sort mentors
+    switch (sortBy) {
+      case "rating":
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case "reviews":
+        filtered.sort((a, b) => b.reviews - a.reviews);
+        break;
+      case "availability":
+        filtered.sort((a, b) => b.availableSlots - a.availableSlots);
+        break;
+      default:
+        // Relevance - prioritize next layer specialists and top rated
+        filtered.sort((a, b) => {
+          const aScore = (a.nextLayerSpecialist ? 100 : 0) + (a.topRated ? 50 : 0);
+          const bScore = (b.nextLayerSpecialist ? 100 : 0) + (b.topRated ? 50 : 0);
+          return bScore - aScore;
+        });
+        break;
     }
+
+    return filtered;
   };
 
-  return (
-    <Card className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
+  const toggleSaveItem = (itemId: string) => {
+    const newSavedItems = new Set(savedItems);
+    if (newSavedItems.has(itemId)) {
+      newSavedItems.delete(itemId);
+      toast({
+        title: "Removed from saved",
+        description: "Item removed from your saved list"
+      });
+    } else {
+      newSavedItems.add(itemId);
+      toast({
+        title: "Saved successfully",
+        description: "Item added to your saved list"
+      });
+    }
+    setSavedItems(newSavedItems);
+  };
+
+  // Get curated sections
+  const getSuggestedCourses = () => getFilteredCourses().filter(c => c.aiSuggested).slice(0, 3);
+  const getSkillGapCourses = () => getFilteredCourses().filter(c => c.skillGapFiller).slice(0, 3);
+  const getTopRatedMentors = () => getFilteredMentors().filter(m => m.topRated).slice(0, 3);
+  const getNextLayerMentors = () => getFilteredMentors().filter(m => m.nextLayerSpecialist).slice(0, 3);
+
+  const CourseCard = ({ course }: { course: Course }) => (
+    <Card className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            {getCategoryIcon(course.category)}
-            <Badge variant="outline" className="text-slate-300 border-slate-600">
-              {course.category}
-            </Badge>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              {course.aiSuggested && (
+                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">
+                  <Brain className="h-3 w-3 mr-1" />
+                  AI Suggested
+                </Badge>
+              )}
+              {course.skillGapFiller && (
+                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs">
+                  <Target className="h-3 w-3 mr-1" />
+                  Gap Filler
+                </Badge>
+              )}
+              {course.verified && (
+                <Badge className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                  <Award className="h-3 w-3 mr-1" />
+                  Verified
+                </Badge>
+              )}
+            </div>
+            <CardTitle className="text-lg text-slate-100 group-hover:text-blue-300 transition-colors">
+              {course.title}
+            </CardTitle>
+            <p className="text-sm text-slate-400 mt-1">{course.instructor} • {course.platform}</p>
           </div>
-          <div className="flex gap-1">
-            {course.is_recommended && (
-              <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
-                🔥 Recommended
-              </Badge>
-            )}
-            {course.instructor_verified && (
-              <Badge variant="outline" className="text-blue-300 border-blue-500/30 text-xs">
-                ✓ Verified
-              </Badge>
-            )}
-            {course.top_rated && (
-              <Badge variant="outline" className="text-yellow-300 border-yellow-500/30 text-xs">
-                <Star className="h-3 w-3 mr-1" />
-                Top Rated
-              </Badge>
-            )}
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleSaveItem(course.id)}
+            className="text-slate-400 hover:text-red-400"
+          >
+            <Heart className={`h-4 w-4 ${savedItems.has(course.id) ? 'fill-red-400 text-red-400' : ''}`} />
+          </Button>
         </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-300 line-clamp-2">{course.description}</p>
         
-        <CardTitle className="text-slate-100 text-lg leading-tight group-hover:text-white transition-colors">
-          {course.title}
-        </CardTitle>
-        
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-400">{course.platform}</span>
-          <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
+        {/* Tags and Badges */}
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+            Layer {course.layer}
+          </Badge>
+          <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+            {course.category}
+          </Badge>
+          <Badge variant="outline" className={`${
+            course.difficulty === 'Beginner' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' :
+            course.difficulty === 'Intermediate' ? 'bg-amber-600/20 text-amber-300 border-amber-500/30' :
+            'bg-red-600/20 text-red-300 border-red-500/30'
+          }`}>
             {course.difficulty}
           </Badge>
         </div>
-        
-        {course.mentor_name && (
-          <p className="text-xs text-slate-500">by {course.mentor_name}</p>
-        )}
-      </CardHeader>
-      
-      <CardContent className="pt-0 space-y-4">
+
+        {/* Tags */}
         <div className="flex flex-wrap gap-1">
-          {course.skill_tags.slice(0, 3).map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs bg-slate-800 text-slate-300">
+          {course.tags.slice(0, 3).map((tag, index) => (
+            <Badge key={index} variant="secondary" className="text-xs bg-slate-700 text-slate-300">
               {tag}
             </Badge>
           ))}
-          {course.skill_tags.length > 3 && (
-            <Badge variant="secondary" className="text-xs bg-slate-800 text-slate-300">
-              +{course.skill_tags.length - 3}
+          {course.tags.length > 3 && (
+            <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
+              +{course.tags.length - 3}
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1 text-green-400">
-              <Zap className="h-3 w-3" />
-              +{course.xp_reward} XP
-            </div>
-            <div className="flex items-center gap-1 text-blue-400">
-              <TrendingUp className="h-3 w-3" />
-              +{course.cri_impact} CRI
-            </div>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-yellow-400" />
+            <span className="text-slate-300">{course.xpReward} XP</span>
           </div>
-          <span className="text-slate-300 font-medium">{course.cost}</span>
+          {course.criBoost && (
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-400" />
+              <span className="text-slate-300">+{course.criBoost} CRI</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-400" />
+            <span className="text-slate-300">{course.duration}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-yellow-400" />
+            <span className="text-slate-300">{course.rating} ({course.enrollments})</span>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-800"
-            onClick={() => onSaveToRoadmap(course.id)}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Save to Roadmap
-          </Button>
-          {course.url && (
-            <Button size="sm" variant="default" asChild>
-              <a href={course.url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3" />
-              </a>
+        {/* Price and Action */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+          <span className="font-semibold text-slate-200">{course.cost}</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="text-slate-300 border-slate-600">
+              <Plus className="h-3 w-3 mr-1" />
+              Save
             </Button>
-          )}
+            <Button className="bg-blue-600 hover:bg-blue-500 text-white" size="sm">
+              <Play className="h-4 w-4 mr-2" />
+              Start
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
   );
-};
 
-const MentorCard = ({ mentor, onConnect }: { mentor: Mentor; onConnect: (mentorId: string) => void }) => {
-  const getCategoryIcon = (category: Mentor['category']) => {
-    switch (category) {
-      case 'Frontend': return <Code className="h-4 w-4" />;
-      case 'Backend': return <Server className="h-4 w-4" />;
-      case 'Cloud': return <Cloud className="h-4 w-4" />;
-      case 'Data Science': return <Database className="h-4 w-4" />;
-      case 'DevOps': return <Settings className="h-4 w-4" />;
-      case 'Mobile': return <Smartphone className="h-4 w-4" />;
-      default: return <User className="h-4 w-4" />;
-    }
-  };
-
-  return (
-    <Card className="bg-slate-900/50 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
+  const MentorCard = ({ mentor }: { mentor: Mentor }) => (
+    <Card className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            {getCategoryIcon(mentor.category)}
-            <Badge variant="outline" className="text-slate-300 border-slate-600">
-              {mentor.category}
-            </Badge>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+              <User className="h-6 w-6 text-slate-300" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                {mentor.nextLayerSpecialist && (
+                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Next Layer
+                  </Badge>
+                )}
+                {mentor.topRated && (
+                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs">
+                    <Star className="h-3 w-3 mr-1" />
+                    Top Rated
+                  </Badge>
+                )}
+                {mentor.verified && (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                    <Award className="h-3 w-3 mr-1" />
+                    Verified
+                  </Badge>
+                )}
+              </div>
+              <CardTitle className="text-lg text-slate-100 group-hover:text-purple-300 transition-colors">
+                {mentor.name}
+              </CardTitle>
+              <p className="text-sm text-slate-400">{mentor.title}</p>
+              <p className="text-xs text-slate-500">{mentor.company}</p>
+            </div>
           </div>
-          {mentor.top_rated && (
-            <Badge variant="outline" className="text-yellow-300 border-yellow-500/30 text-xs">
-              <Star className="h-3 w-3 mr-1" />
-              Top Rated
-            </Badge>
-          )}
-        </div>
-        
-        <CardTitle className="text-slate-100 text-lg group-hover:text-white transition-colors">
-          {mentor.name}
-        </CardTitle>
-        
-        <p className="text-slate-400 text-sm">{mentor.role_title}</p>
-        
-        <div className="flex items-center gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {mentor.years_experience}+ years
-          </div>
-          <div className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {mentor.location}
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleSaveItem(mentor.id)}
+            className="text-slate-400 hover:text-red-400"
+          >
+            <Heart className={`h-4 w-4 ${savedItems.has(mentor.id) ? 'fill-red-400 text-red-400' : ''}`} />
+          </Button>
         </div>
       </CardHeader>
-      
-      <CardContent className="pt-0 space-y-4">
-        <div className="flex flex-wrap gap-1">
-          {mentor.skills.slice(0, 3).map((skill, index) => (
-            <Badge key={index} variant="secondary" className="text-xs bg-slate-800 text-slate-300">
+      <CardContent className="space-y-4">
+        <p className="text-sm text-slate-300 line-clamp-2">{mentor.bio}</p>
+        
+        {/* Expertise Tags */}
+        <div className="flex flex-wrap gap-2">
+          {mentor.expertise.slice(0, 3).map((skill, index) => (
+            <Badge key={index} variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
               {skill}
             </Badge>
           ))}
-          {mentor.skills.length > 3 && (
-            <Badge variant="secondary" className="text-xs bg-slate-800 text-slate-300">
-              +{mentor.skills.length - 3}
+          {mentor.expertise.length > 3 && (
+            <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+              +{mentor.expertise.length - 3} more
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1 text-green-400">
-              <Zap className="h-3 w-3" />
-              +{mentor.xp_reward} XP
-            </div>
-            <div className="flex items-center gap-1 text-blue-400">
-              <TrendingUp className="h-3 w-3" />
-              +{mentor.cri_impact} CRI
-            </div>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-yellow-400" />
+            <span className="text-slate-300">{mentor.rating} ({mentor.reviews})</span>
           </div>
-          {mentor.hourly_rate && (
-            <span className="text-slate-300 font-medium text-sm">{mentor.hourly_rate}</span>
-          )}
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-400" />
+            <span className="text-slate-300">{mentor.responseTime}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-slate-400" />
+            <span className="text-slate-300">{mentor.location}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-emerald-400" />
+            <span className="text-slate-300">{mentor.availableSlots} slots</span>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="flex-1 border-slate-600 text-slate-300 hover:bg-slate-800"
-            onClick={() => onConnect(mentor.id)}
-          >
-            <User className="h-3 w-3 mr-1" />
-            Connect
-          </Button>
-          <Button size="sm" variant="default" asChild>
-            <Link to={`/resume/${mentor.user_id}`}>
-              View Profile
-            </Link>
+        {/* Price and Action */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+          <span className="font-semibold text-slate-200">
+            {mentor.hourlyRate ? `$${mentor.hourlyRate}/hr` : 'Contact for pricing'}
+          </span>
+          <Button className="bg-purple-600 hover:bg-purple-500 text-white" size="sm">
+            <Users className="h-4 w-4 mr-2" />
+            Book Session
           </Button>
         </div>
       </CardContent>
     </Card>
   );
-};
-
-export default function Explore() {
-  const [courses, setCourses] = useState<Course[]>(mockCourses);
-  const [mentors, setMentors] = useState<Mentor[]>(mockMentors);
-  const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("All");
-  const [showFilters, setShowFilters] = useState(false);
-  const { toast } = useToast();
-
-  const categories = ["All", "Frontend", "Backend", "Cloud", "Data Science", "DevOps", "Mobile"];
-  const additionalFilters = ["🔥 Recommended", "Beginner", "Free", "Top Rated"];
-
-  useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const filteredCourses = courses.filter(course => {
-    if (activeFilter === "All") return true;
-    if (activeFilter === "🔥 Recommended") return course.is_recommended;
-    if (activeFilter === "Free") return course.cost === "Free";
-    if (activeFilter === "Top Rated") return course.top_rated;
-    if (activeFilter === "Beginner") return course.difficulty === "Beginner";
-    return course.category === activeFilter;
-  });
-
-  const filteredMentors = mentors.filter(mentor => {
-    if (activeFilter === "All") return true;
-    if (activeFilter === "🔥 Recommended") return mentor.top_rated;
-    if (activeFilter === "Top Rated") return mentor.top_rated;
-    return mentor.category === activeFilter;
-  });
-
-  const handleSaveToRoadmap = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId);
-    if (course) {
-      toast({
-        title: "Added to Roadmap!",
-        description: `"${course.title}" has been saved to your learning roadmap.`,
-      });
-    }
-  };
-
-  const handleConnectMentor = (mentorId: string) => {
-    const mentor = mentors.find(m => m.id === mentorId);
-    if (mentor) {
-      toast({
-        title: "Connection Request Sent!",
-        description: `Your request to connect with ${mentor.name} has been sent.`,
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 p-6">
-        <div className="container mx-auto">
-          <div className="animate-pulse space-y-8">
-            <div className="h-8 bg-slate-800 rounded w-1/3"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-80 bg-slate-800 rounded-xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="container mx-auto p-6 space-y-8">
+    <div className="min-h-screen bg-slate-900 text-slate-100">
+      <div className="container mx-auto p-6">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-white">🎯 Explore Your Path</h1>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-            Discover courses and mentors tailored to your roadmap and skill tree progress
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
+            🌟 Explore Learning Paths
+          </h1>
+          <p className="text-slate-400 text-lg">
+            Discover courses, mentors, and resources tailored to your learning journey and skill gaps
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-200">Filter by Category</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="md:hidden border-slate-600 text-slate-300"
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-          </div>
-          
-          <div className={`flex flex-wrap gap-2 ${showFilters ? 'block' : 'hidden md:flex'}`}>
-            {[...categories, ...additionalFilters].map((filter) => (
-              <Button
-                key={filter}
-                variant={activeFilter === filter ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveFilter(filter)}
-                className={`rounded-full ${
-                  activeFilter === filter 
-                    ? "bg-blue-600 text-white" 
-                    : "border-slate-600 text-slate-300 hover:bg-slate-800"
-                }`}
-              >
-                {filter}
-              </Button>
-            ))}
-          </div>
-        </div>
+        {/* User Progress Context */}
+        <Card className="bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 rounded-xl shadow-lg mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-blue-400" />
+                  <span className="text-slate-300">Current Layer: <span className="font-semibold text-white">{userLayer}</span></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Lock className="h-5 w-5 text-amber-400" />
+                  <span className="text-slate-300">Next Layer Skills: <span className="font-semibold text-amber-300">{skillGaps.join(', ')}</span></span>
+                </div>
+              </div>
+              <Badge className="bg-blue-600 hover:bg-blue-500">
+                <Sparkles className="h-3 w-3 mr-1" />
+                AI Personalized
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Courses Section */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <BookOpen className="h-6 w-6" />
-              Courses ({filteredCourses.length})
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course) => (
-              <CourseCard 
-                key={course.id} 
-                course={course} 
-                onSaveToRoadmap={handleSaveToRoadmap}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Search and Filters */}
+        <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg mb-6">
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search courses, mentors, or skills..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400"
+                />
+              </div>
 
-        {/* Mentors Section */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <User className="h-6 w-6" />
-              Mentors ({filteredMentors.length})
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMentors.map((mentor) => (
-              <MentorCard 
-                key={mentor.id} 
-                mentor={mentor} 
-                onConnect={handleConnectMentor}
-              />
-            ))}
-          </div>
-        </div>
+              {/* Category Filter */}
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[200px] bg-slate-700 border-slate-600 text-slate-100">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="frontend">Frontend</SelectItem>
+                  <SelectItem value="backend">Backend</SelectItem>
+                  <SelectItem value="cloud">Cloud</SelectItem>
+                  <SelectItem value="devops">DevOps</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Sort By */}
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-slate-100">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="relevance">Relevance</SelectItem>
+                  <SelectItem value="xp">XP Reward</SelectItem>
+                  <SelectItem value="cri">CRI Boost</SelectItem>
+                  <SelectItem value="rating">Rating</SelectItem>
+                  <SelectItem value="popularity">Popularity</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Verified Toggle */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="verified-only"
+                  checked={showVerifiedOnly}
+                  onCheckedChange={setShowVerifiedOnly}
+                />
+                <Label htmlFor="verified-only" className="text-slate-300">Verified Only</Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 bg-slate-800 border-slate-700">
+            <TabsTrigger value="courses" className="data-[state=active]:bg-slate-700">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Courses
+            </TabsTrigger>
+            <TabsTrigger value="mentors" className="data-[state=active]:bg-slate-700">
+              <Users className="h-4 w-4 mr-2" />
+              Mentors
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Courses Tab */}
+          <TabsContent value="courses" className="space-y-8">
+            {/* AI Suggested Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-blue-400" />
+                <h2 className="text-2xl font-semibold text-slate-100">Suggested for You</h2>
+                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">AI Curated</Badge>
+              </div>
+              <p className="text-slate-400">Courses tailored to your current progress and career goals</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getSuggestedCourses().map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            </div>
+
+            {/* Skill Gap Fillers */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-orange-400" />
+                <h2 className="text-2xl font-semibold text-slate-100">Skill Gap Fillers</h2>
+                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white">Unlock Next Layer</Badge>
+              </div>
+              <p className="text-slate-400">Complete these to unlock Layer {userLayer + 1} in your skill tree</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getSkillGapCourses().map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            </div>
+
+            {/* All Courses */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-slate-100">All Courses</h2>
+                <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+                  {getFilteredCourses().length} courses
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getFilteredCourses().map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Mentors Tab */}
+          <TabsContent value="mentors" className="space-y-8">
+            {/* Top-Rated Mentors */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-400" />
+                <h2 className="text-2xl font-semibold text-slate-100">Top-Rated Mentors</h2>
+                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">Highest Rated</Badge>
+              </div>
+              <p className="text-slate-400">Industry experts with exceptional mentoring track records</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getTopRatedMentors().map((mentor) => (
+                  <MentorCard key={mentor.id} mentor={mentor} />
+                ))}
+              </div>
+            </div>
+
+            {/* Next Layer Specialists */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-purple-400" />
+                <h2 className="text-2xl font-semibold text-slate-100">Next Layer Specialists</h2>
+                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">Layer {userLayer + 1}</Badge>
+              </div>
+              <p className="text-slate-400">Mentors specializing in skills you need for your next advancement</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getNextLayerMentors().map((mentor) => (
+                  <MentorCard key={mentor.id} mentor={mentor} />
+                ))}
+              </div>
+            </div>
+
+            {/* All Mentors */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-slate-100">All Mentors</h2>
+                <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+                  {getFilteredMentors().length} mentors
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {getFilteredMentors().map((mentor) => (
+                  <MentorCard key={mentor.id} mentor={mentor} />
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Saved Items Quick Access */}
+        {savedItems.size > 0 && (
+          <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-100">
+                <Bookmark className="h-5 w-5 text-purple-400" />
+                Saved Items ({savedItems.size})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 flex-wrap">
+                {Array.from(savedItems).map((itemId) => {
+                  const course = mockCourses.find(c => c.id === itemId);
+                  const mentor = mockMentors.find(m => m.id === itemId);
+                  const item = course || mentor;
+                  
+                  return item ? (
+                    <Badge key={itemId} variant="outline" className="bg-purple-600/20 border-purple-500/30 text-purple-300">
+                      {course ? course.title : mentor?.name}
+                    </Badge>
+                  ) : null;
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
