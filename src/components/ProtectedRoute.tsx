@@ -80,7 +80,7 @@ export default function ProtectedRoute({
             .from("profiles")
             .select("id, role")
             .eq("user_id", session.user.id)
-            .single();
+            .maybeSingle();
             
           setHasProfile(!!profile);
           setProfileRole(profile?.role || null);
@@ -108,7 +108,7 @@ export default function ProtectedRoute({
         if (!mounted) return;
         
         // Skip if dev user is active
-        if (window.__devUser__ || devUser) return;
+        if (window.__devUser__) return;
         
         if (session?.user) {
           setUser(session.user);
@@ -119,7 +119,7 @@ export default function ProtectedRoute({
               .from("profiles")
               .select("id, role")
               .eq("user_id", session.user.id)
-              .single();
+              .maybeSingle();
               
             setHasProfile(!!profile);
             setProfileRole(profile?.role || null);
@@ -140,7 +140,7 @@ export default function ProtectedRoute({
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [devUser]);
+  }, []);
 
   if (loading) {
     return (
