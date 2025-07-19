@@ -87,6 +87,18 @@ const demoSkillTreeData: SkillTreeData = {
   ]
 };
 
+// Layer configuration for visual progression
+const LAYER_CONFIG = [
+  { name: "🪴 Foundations", description: "Core building blocks" },
+  { name: "📈 Builder Layer", description: "Intermediate skills" },
+  { name: "🌐 Systems & Scale", description: "Advanced concepts" },
+  { name: "🚀 Expert Mastery", description: "Specialized expertise" },
+  { name: "🔬 Innovation", description: "Cutting-edge skills" }
+];
+
+const LAYER_SPACING = 160; // Vertical spacing between layers
+const NODE_SPACING = 120; // Horizontal spacing within layers
+
 export default function SkillTree() {
   const [skillTreeData, setSkillTreeData] = useState<SkillTreeData>(demoSkillTreeData);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
@@ -278,24 +290,120 @@ export default function SkillTree() {
     return [...new Set(skillTreeData.skills.map(s => s.category))];
   };
 
-  const buildTreeStructure = (data = skillTreeData): SkillNode => {
+  // Calculate skill depth based on prerequisite chain
+  const calculateSkillDepths = (data = skillTreeData): Map<string, number> => {
+    const depthMap = new Map<string, number>();
+    const visited = new Set<string>();
+    
+    const calculateDepth = (skillId: string): number => {
+      if (depthMap.has(skillId)) {
+        return depthMap.get(skillId)!;
+      }
+      
+      if (visited.has(skillId)) {
+        // Circular dependency, assign default depth
+        depthMap.set(skillId, 0);
+        return 0;
+      }
+      
+      visited.add(skillId);
+      
+      // Find prerequisites for this skill
+      const prerequisites = data.edges
+        .filter(edge => edge.skill_id === skillId)
+        .map(edge => edge.prerequisite_skill_id);
+      
+      if (prerequisites.length === 0) {
+        // No prerequisites, this is a foundation skill
+        depthMap.set(skillId, 0);
+        visited.delete(skillId);
+        return 0;
+      }
+      
+      // Calculate depth as max prerequisite depth + 1
+      const maxPrereqDepth = Math.max(
+        ...prerequisites.map(prereqId => calculateDepth(prereqId))
+      );
+      
+      const depth = maxPrereqDepth + 1;
+      depthMap.set(skillId, depth);
+      visited.delete(skillId);
+      return depth;
+    };
+    
+    // Calculate depth for all skills
+    data.skills.forEach(skill => {
+      calculateDepth(skill.id);
+    });
+    
+    return depthMap;
+  };
+
+  // Group skills by layer based on their depth
+  const getSkillLayers = (data = skillTreeData): Map<number, Skill[]> => {
+    const depthMap = calculateSkillDepths(data);
+    const layerMap = new Map<number, Skill[]>();
+    
+    data.skills.forEach(skill => {
+      const depth = depthMap.get(skill.id) || 0;
+      if (!layerMap.has(depth)) {
+        layerMap.set(depth, []);
+      }
+      layerMap.get(depth)!.push(skill);
+    });
+    
+    return layerMap;
+  };
+
+  // Build layered tree structure for custom positioning
+  const buildLayeredTreeStructure = (data = skillTreeData): SkillNode => {
     const skillMap = new Map<string, Skill>();
     const progressMap = new Map<string, SkillProgress>();
+    const layerMap = getSkillLayers(data);
     
     data.skills.forEach(skill => skillMap.set(skill.id, skill));
     data.progress.forEach(progress => progressMap.set(progress.skill_id, progress));
 
-    const rootSkillIds = data.skills
-      .filter(skill => !data.edges.some(edge => edge.skill_id === skill.id))
-      .map(skill => skill.id);
+    // Create a synthetic root node to hold all foundation skills
+    const foundationSkills = layerMap.get(0) || [];
+    
+    const createNode = (skill: Skill): SkillNode => {
+      const progress = progressMap.get(skill.id);
+      
+      return {
+        name: skill.name,
+        attributes: {
+          id: skill.id,
+          status: progress?.status || 'locked',
+          category: skill.category,
+          difficulty_level: skill.difficulty_level,
+          xp_value: skill.xp_value,
+          cri_score: progress?.cri_score,
+          verification_source: progress?.verification_source,
+          description: skill.description
+        },
+        children: undefined // We'll handle connections differently
+      };
+    };
 
-    const buildNode = (skillId: string): SkillNode => {
+    // Build tree with proper layered connections
+    const buildConnectedNode = (skillId: string, visitedPath: Set<string> = new Set()): SkillNode => {
+      if (visitedPath.has(skillId)) {
+        // Prevent infinite recursion
+        const skill = skillMap.get(skillId)!;
+        return createNode(skill);
+      }
+      
       const skill = skillMap.get(skillId)!;
       const progress = progressMap.get(skillId);
       
+      visitedPath.add(skillId);
+      
       const children = data.edges
         .filter(edge => edge.prerequisite_skill_id === skillId)
-        .map(edge => buildNode(edge.skill_id));
+        .map(edge => buildConnectedNode(edge.skill_id, new Set(visitedPath)));
+      
+      visitedPath.delete(skillId);
 
       return {
         name: skill.name,
@@ -313,11 +421,21 @@ export default function SkillTree() {
       };
     };
 
-    if (rootSkillIds.length > 0) {
-      return buildNode(rootSkillIds[0]);
+    // Start with the first foundation skill if available
+    if (foundationSkills.length > 0) {
+      return buildConnectedNode(foundationSkills[0].id);
+    }
+    
+    // Fallback to first skill
+    if (data.skills.length > 0) {
+      return buildConnectedNode(data.skills[0].id);
     }
 
-    return buildNode(data.skills[0].id);
+    // Return empty root
+    return {
+      name: "Root",
+      children: []
+    };
   };
 
   const renderCustomNode = ({ nodeDatum }: any) => {
@@ -683,7 +801,7 @@ export default function SkillTree() {
   }
 
   const filteredData = getFilteredData();
-  const treeData = buildTreeStructure(filteredData);
+  const treeData = buildLayeredTreeStructure(filteredData);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
@@ -829,6 +947,72 @@ export default function SkillTree() {
           </CardHeader>
           <CardContent>
             <div className="h-[700px] bg-slate-900 border border-slate-700 rounded-lg overflow-hidden relative">
+              {/* Layer Labels - positioned absolutely on left side */}
+              {getSkillLayers(filteredData).size > 0 && (
+                <div className="absolute left-4 top-0 z-10 flex flex-col gap-4 pt-6">
+                  {Array.from(getSkillLayers(filteredData).keys()).sort((a, b) => a - b).map((layerIndex) => {
+                    const layerConfig = LAYER_CONFIG[layerIndex] || { 
+                      name: `📚 Layer ${layerIndex + 1}`, 
+                      description: `Advanced skills level ${layerIndex + 1}` 
+                    };
+                    const skillsInLayer = getSkillLayers(filteredData).get(layerIndex) || [];
+                    
+                    return (
+                      <div 
+                        key={layerIndex}
+                        className="relative"
+                        style={{ 
+                          marginTop: layerIndex === 0 ? '20px' : `${LAYER_SPACING - 40}px`
+                        }}
+                      >
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600/50 rounded-lg p-3 shadow-lg max-w-[180px]">
+                                <div className="text-sm font-semibold text-slate-100 mb-1">
+                                  {layerConfig.name}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {skillsInLayer.length} skill{skillsInLayer.length !== 1 ? 's' : ''}
+                                </div>
+                                {/* Layer divider line */}
+                                <div className="absolute -right-4 top-1/2 transform -translate-y-1/2 w-4 h-px bg-gradient-to-r from-slate-600 to-transparent" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                              side="right" 
+                              className="bg-slate-800 border-slate-700 text-slate-100 max-w-xs"
+                            >
+                              <div className="space-y-2">
+                                <div className="font-semibold">{layerConfig.name}</div>
+                                <div className="text-sm text-slate-300">{layerConfig.description}</div>
+                                <div className="text-xs text-slate-400">
+                                  Skills in this layer: {skillsInLayer.map(s => s.name).join(', ')}
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Horizontal divider lines between layers */}
+              <div className="absolute inset-0 pointer-events-none z-0">
+                {Array.from(getSkillLayers(filteredData).keys()).slice(1).map((layerIndex) => (
+                  <div
+                    key={`divider-${layerIndex}`}
+                    className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-slate-600/30 to-transparent"
+                    style={{
+                      top: `${50 + layerIndex * (LAYER_SPACING * treeZoom)}px`,
+                      transform: `translateY(${treeTranslate.y}px)`
+                    }}
+                  />
+                ))}
+              </div>
+
               <Tree
                 data={treeData}
                 orientation="vertical"
@@ -837,8 +1021,8 @@ export default function SkillTree() {
                 enableLegacyTransitions={true}
                 onNodeClick={handleNodeClick}
                 renderCustomNodeElement={renderCustomNode}
-                separation={{ siblings: 3, nonSiblings: 3.5 }}
-                nodeSize={{ x: 200, y: 160 }}
+                separation={{ siblings: 2.5, nonSiblings: 3 }}
+                nodeSize={{ x: NODE_SPACING, y: LAYER_SPACING }}
                 ref={treeRef}
                 pathFunc="step"
               />
