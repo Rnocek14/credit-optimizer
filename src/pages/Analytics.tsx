@@ -23,8 +23,14 @@ import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
 
 interface AnalyticsData {
-  views: { date: string; count: number; }[];
+  views: { date: string; count: number; source: string; }[];
   clicks: { date: string; count: number; type: string; }[];
+  sourceBreakdown: { source: string; count: number; percentage: number; }[];
+  badgeImpact: { 
+    beforeBadges: number; 
+    afterBadges: number; 
+    improvement: number; 
+  };
   scoreHistory: { date: string; score: number; }[];
   mentorFeedback: {
     totalRatings: number;
@@ -57,6 +63,28 @@ export default function Analytics() {
   useEffect(() => {
     if (user) {
       fetchAnalytics();
+      
+      // Set up real-time subscription
+      const channel = supabase
+        .channel('analytics-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'resume_events',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            // Refetch analytics when new events are added
+            fetchAnalytics();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, timeRange]);
 
@@ -111,30 +139,36 @@ export default function Analytics() {
 
       if (eventsError) {
         console.error('Error fetching analytics events:', eventsError);
-        // Fall back to mock data
-        const mockViews = generateMockTimeSeriesData(days, 5, 50);
-        const mockClicks = generateMockClicksData(days);
-        const mockScoreHistory = generateMockScoreData(days);
-        setAnalytics({
-          views: mockViews,
-          clicks: mockClicks,
-          scoreHistory: mockScoreHistory,
-          mentorFeedback: { totalRatings: 0, averageRating: 0, totalFeedback: 0, galleryRecommendations: 0, jobRecommendations: 0 },
-          galleryStats: { isEnabled: false, isFeatured: false, featuredTag: null, publicViews: 0 }
-        });
+        setAnalytics(generateFallbackData(days));
         return;
       }
+
+      // Fetch user badges to calculate badge impact
+      const { data: badgesData } = await supabase
+        .from('user_badges')
+        .select('created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
 
       // Process events data into charts
       const views = processViewsData(eventsData || [], days);
       const clicks = processClicksData(eventsData || [], days);
-      const scoreHistory = generateMockScoreData(days); // Keep mock for now
+      const sourceBreakdown = processSourceBreakdown(eventsData || []);
+      const badgeImpact = processBadgeImpact(eventsData || [], badgesData || []);
+      const scoreHistory = processScoreHistory(profile?.ai_reviewed_at);
 
       // Fetch real mentor feedback data
-      const { data: mentorData, error: mentorError } = await supabase
+      const { data: sharedEvents } = await supabase
+        .from('resume_shared_events')
+        .select('id')
+        .eq('user_id', user.id);
+
+      const sharedEventIds = sharedEvents?.map(e => e.id) || [];
+      
+      const { data: mentorData } = await supabase
         .from('mentor_feedback')
         .select('rating, feedback, recommend_for_gallery, recommend_for_jobs')
-        .in('resume_event_id', []);  // Will be populated from resume_shared_events
+        .in('resume_event_id', sharedEventIds);
 
       const mentorStats = {
         totalRatings: mentorData?.length || 0,
@@ -145,18 +179,27 @@ export default function Analytics() {
         jobRecommendations: mentorData?.filter(item => item.recommend_for_jobs).length || 0,
       };
 
-      // Fetch gallery stats
+      // Fetch featured curation tag
+      const { data: curationData } = await supabase
+        .from('featured_gallery_curations')
+        .select('curation_tag')
+        .eq('profile_id', profile?.id)
+        .eq('active', true)
+        .single();
+
       const galleryStats = {
         isEnabled: profile?.gallery_enabled || false,
         isFeatured: profile?.gallery_featured || false,
-        featuredTag: null, // Will be fetched from featured_gallery_curations
-        publicViews: Math.floor(Math.random() * 500) + 100, // Mock data
+        featuredTag: curationData?.curation_tag || null,
+        publicViews: eventsData?.filter(e => e.source === 'gallery').length || 0,
       };
 
       setAnalytics({
-        views: views,
-        clicks: clicks,
-        scoreHistory: scoreHistory,
+        views,
+        clicks,
+        sourceBreakdown,
+        badgeImpact,
+        scoreHistory,
         mentorFeedback: mentorStats,
         galleryStats
       });
@@ -176,29 +219,33 @@ export default function Analytics() {
   // Process analytics events into chart data
   const processViewsData = (events: any[], days: number) => {
     const viewEvents = events.filter(e => e.event_type === 'resume_view');
-    const dateMap: Record<string, number> = {};
+    const dateMap: Record<string, { count: number; source: string }> = {};
     
     // Initialize all dates with 0
     for (let i = 0; i < days; i++) {
       const date = new Date();
       date.setDate(date.getDate() - (days - 1 - i));
-      dateMap[date.toISOString().split('T')[0]] = 0;
+      dateMap[date.toISOString().split('T')[0]] = { count: 0, source: 'direct' };
     }
     
-    // Count events by date
+    // Count events by date and source
     viewEvents.forEach(event => {
       const date = new Date(event.created_at).toISOString().split('T')[0];
       if (dateMap.hasOwnProperty(date)) {
-        dateMap[date]++;
+        dateMap[date].count++;
       }
     });
     
-    return Object.entries(dateMap).map(([date, count]) => ({ date, count }));
+    return Object.entries(dateMap).map(([date, data]) => ({ 
+      date, 
+      count: data.count, 
+      source: data.source 
+    }));
   };
 
   const processClicksData = (events: any[], days: number) => {
     const clickEvents = events.filter(e => 
-      ['resume_click', 'cta_click', 'embed_interaction', 'gallery_impression'].includes(e.event_type)
+      ['resume_click', 'cta_click', 'embed_interaction', 'share_click'].includes(e.event_type)
     );
     const dateMap: Record<string, { count: number; type: string }> = {};
     
@@ -222,6 +269,80 @@ export default function Analytics() {
       count: data.count, 
       type: data.type 
     }));
+  };
+
+  const processSourceBreakdown = (events: any[]) => {
+    const viewEvents = events.filter(e => e.event_type === 'resume_view');
+    const sourceCounts: Record<string, number> = {};
+    
+    viewEvents.forEach(event => {
+      const source = event.source || 'direct';
+      sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+    });
+    
+    const total = Object.values(sourceCounts).reduce((sum, count) => sum + count, 0);
+    
+    return Object.entries(sourceCounts).map(([source, count]) => ({
+      source: source.charAt(0).toUpperCase() + source.slice(1),
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0
+    }));
+  };
+
+  const processBadgeImpact = (events: any[], badges: any[]) => {
+    if (!badges.length) {
+      return { beforeBadges: 0, afterBadges: 0, improvement: 0 };
+    }
+
+    const firstBadgeDate = new Date(badges[0].created_at);
+    const viewEvents = events.filter(e => e.event_type === 'resume_view');
+    
+    const beforeBadges = viewEvents.filter(e => 
+      new Date(e.created_at) < firstBadgeDate
+    ).length;
+    
+    const afterBadges = viewEvents.filter(e => 
+      new Date(e.created_at) >= firstBadgeDate
+    ).length;
+    
+    const improvement = beforeBadges > 0 ? 
+      Math.round(((afterBadges - beforeBadges) / beforeBadges) * 100) : 0;
+    
+    return { beforeBadges, afterBadges, improvement };
+  };
+
+  const processScoreHistory = (aiReviewedAt: string | null) => {
+    if (!aiReviewedAt) return [];
+    
+    // Get current AI score from resume_review_summary
+    const currentScore = profile?.resume_review_summary?.overall_score || 0;
+    
+    return [
+      { 
+        date: new Date(aiReviewedAt).toISOString().split('T')[0], 
+        score: currentScore 
+      }
+    ];
+  };
+
+  const generateFallbackData = (days: number) => {
+    const mockViews = generateMockTimeSeriesData(days, 5, 50);
+    const mockClicks = generateMockClicksData(days);
+    const mockScoreHistory = generateMockScoreData(days);
+    
+    return {
+      views: mockViews.map(v => ({ ...v, source: 'direct' })),
+      clicks: mockClicks,
+      sourceBreakdown: [
+        { source: 'Gallery', count: 45, percentage: 60 },
+        { source: 'Direct', count: 22, percentage: 30 },
+        { source: 'Embed', count: 8, percentage: 10 }
+      ],
+      badgeImpact: { beforeBadges: 15, afterBadges: 35, improvement: 133 },
+      scoreHistory: mockScoreHistory,
+      mentorFeedback: { totalRatings: 0, averageRating: 0, totalFeedback: 0, galleryRecommendations: 0, jobRecommendations: 0 },
+      galleryStats: { isEnabled: false, isFeatured: false, featuredTag: null, publicViews: 0 }
+    };
   };
 
   // Helper functions for mock data generation
@@ -398,10 +519,10 @@ export default function Analytics() {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Views Chart */}
+              {/* Views Over Time */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Resume Views</CardTitle>
+                  <CardTitle>Resume Views Over Time</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -416,24 +537,62 @@ export default function Analytics() {
                 </CardContent>
               </Card>
 
-              {/* AI Score Trend */}
+              {/* Source Breakdown */}
               <Card>
                 <CardHeader>
-                  <CardTitle>AI Score Trend</CardTitle>
+                  <CardTitle>Traffic Sources</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={analytics?.scoreHistory}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis domain={[60, 100]} />
+                    <PieChart>
+                      <Pie
+                        data={analytics?.sourceBreakdown}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                        label={({ source, percentage }) => `${source}: ${percentage}%`}
+                      >
+                        {analytics?.sourceBreakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b'][index % 3]} />
+                        ))}
+                      </Pie>
                       <Tooltip />
-                      <Line type="monotone" dataKey="score" stroke="#f59e0b" strokeWidth={2} />
-                    </LineChart>
+                    </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Badge Impact */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Badge Impact Analysis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-muted-foreground">
+                      {analytics?.badgeImpact.beforeBadges}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Views Before Badges</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary">
+                      {analytics?.badgeImpact.afterBadges}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Views After Badges</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-2xl font-bold ${analytics?.badgeImpact.improvement >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {analytics?.badgeImpact.improvement >= 0 ? '+' : ''}{analytics?.badgeImpact.improvement}%
+                    </p>
+                    <p className="text-sm text-muted-foreground">Improvement</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="engagement" className="space-y-6">
