@@ -808,6 +808,20 @@ export type Database = {
         Args: { user_id_param: string }
         Returns: Json
       }
+      get_badge_for_user: {
+        Args: { badge_slug: string; user_uuid?: string }
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          emoji: string
+          trigger_type: string
+          description: string
+          threshold: number
+          user_has_earned: boolean
+          earned_at: string
+        }[]
+      }
       get_user_role: {
         Args: { user_id_param: string }
         Returns: string
