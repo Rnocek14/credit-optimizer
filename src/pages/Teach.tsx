@@ -1,607 +1,342 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 import { 
-  GraduationCap, 
-  Star, 
-  Users, 
-  BookOpen, 
-  Award, 
-  Plus,
-  ExternalLink,
   Edit,
-  Trash2,
-  MessageSquare,
-  TrendingUp,
-  Sparkles
+  MapPin,
+  Briefcase,
+  Star,
+  BookOpen,
+  Users,
+  Calendar,
+  ExternalLink
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface MentorProfile {
   id: string;
-  user_id: string;
   name: string;
   role_title: string;
-  badges: Array<{
-    id: string;
-    badge: {
-      name: string;
-      emoji: string;
-      description: string;
-      slug: string;
-    };
-  }>;
+  location: string;
+  industry: string;
+  skills: string[];
+  years_experience: number;
+  experience_level: string;
 }
 
-interface MentorStats {
-  resumes_reviewed: number;
-  courses_recommended: number;
-  average_rating: number;
-  total_feedback: number;
-}
-
-interface FeedbackRecord {
-  id: string;
-  resume_event_id: string;
-  rating: number;
-  feedback: string;
-  created_at: string;
-  recommend_for_gallery: boolean;
-  recommend_for_jobs: boolean;
-}
-
-interface CourseRecommendation {
+interface TeachingContribution {
   id: string;
   title: string;
   platform: string;
-  url: string;
-  skill_tags: string[];
   difficulty: string;
-  cost: string;
-  description: string;
-  reasoning: string;
-  is_ai_recommended: boolean;
-  created_at: string;
+  skill_tags: string[];
+  description?: string;
+  url?: string;
 }
 
-export default function Teach() {
+const Teach = () => {
   const [profile, setProfile] = useState<MentorProfile | null>(null);
-  const [stats, setStats] = useState<MentorStats>({
-    resumes_reviewed: 0,
-    courses_recommended: 0,
-    average_rating: 0,
-    total_feedback: 0
-  });
-  const [feedbackRecords, setFeedbackRecords] = useState<FeedbackRecord[]>([]);
-  const [courseRecommendations, setCourseRecommendations] = useState<CourseRecommendation[]>([]);
+  const [contributions, setContributions] = useState<TeachingContribution[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  // Course recommendation form state
-  const [courseForm, setCourseForm] = useState({
-    title: "",
-    platform: "",
-    url: "",
-    skill_tags: "",
-    difficulty: "",
-    cost: "",
-    description: "",
-    reasoning: ""
-  });
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetchMentorData();
+    checkUser();
   }, []);
 
-  const fetchMentorData = async () => {
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+    if (user) {
+      fetchMentorProfile(user.id);
+      fetchTeachingContributions(user.id);
+    } else {
+      // Use demo data for Aisha Khan if no user is logged in
+      fetchMentorProfile('2b458624-d498-4cca-a63d-9341cc20e363');
+      fetchTeachingContributions('2b458624-d498-4cca-a63d-9341cc20e363');
+    }
+  };
+
+  const fetchMentorProfile = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get mentor profile
-      const { data: profileData, error: profileError } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          user_id,
-          name,
-          role_title
-        `)
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Get badges
-      const { data: badgesData } = await supabase
-        .from('user_badges')
-        .select(`
-          id,
-          badge:badges (
-            name,
-            emoji,
-            description,
-            slug
-          )
-        `)
-        .eq('user_id', user.id);
-
-      setProfile({
-        ...profileData,
-        badges: badgesData || []
-      });
-
-      // Get mentor feedback records
-      const { data: feedbackData } = await supabase
-        .from('mentor_feedback')
         .select('*')
-        .eq('mentor_email', user.email) // Assuming mentor_email maps to user email
-        .order('created_at', { ascending: false });
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      setFeedbackRecords(feedbackData || []);
+      if (error) {
+        console.error('Error fetching mentor profile:', error);
+        toast.error('Failed to load mentor profile');
+        return;
+      }
 
-      // Calculate stats
-      const ratings = feedbackData?.map(f => f.rating) || [];
-      const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to load mentor profile');
+    }
+  };
 
-      // Get course recommendations
-      const { data: coursesData } = await supabase
+  const fetchTeachingContributions = async (userId: string) => {
+    try {
+      // Fetch recommended courses created by this mentor
+      const { data, error } = await supabase
         .from('recommended_courses')
         .select('*')
-        .eq('mentor_id', user.id)
+        .eq('mentor_id', userId)
         .eq('active', true)
-        .order('created_at', { ascending: false });
+        .limit(6);
 
-      setCourseRecommendations(coursesData || []);
+      if (error) {
+        console.error('Error fetching teaching contributions:', error);
+        return;
+      }
 
-      setStats({
-        resumes_reviewed: feedbackData?.length || 0,
-        courses_recommended: coursesData?.length || 0,
-        average_rating: Math.round(avgRating * 10) / 10,
-        total_feedback: feedbackData?.length || 0
-      });
-
+      setContributions(data || []);
     } catch (error) {
-      console.error('Error fetching mentor data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load mentor data.",
-        variant: "destructive",
-      });
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCourseSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('recommended_courses')
-        .insert({
-          mentor_id: user.id,
-          title: courseForm.title,
-          platform: courseForm.platform,
-          url: courseForm.url,
-          skill_tags: courseForm.skill_tags.split(',').map(s => s.trim()).filter(Boolean),
-          difficulty: courseForm.difficulty,
-          cost: courseForm.cost,
-          description: courseForm.description,
-          reasoning: courseForm.reasoning
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Course recommendation submitted successfully!",
-      });
-
-      // Reset form
-      setCourseForm({
-        title: "",
-        platform: "",
-        url: "",
-        skill_tags: "",
-        difficulty: "",
-        cost: "",
-        description: "",
-        reasoning: ""
-      });
-
-      // Refresh data
-      fetchMentorData();
-
-    } catch (error) {
-      console.error('Error submitting course:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit course recommendation.",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteCourse = async (courseId: string) => {
-    try {
-      const { error } = await supabase
-        .from('recommended_courses')
-        .update({ active: false })
-        .eq('id', courseId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Course recommendation deleted.",
-      });
-
-      fetchMentorData();
-    } catch (error) {
-      console.error('Error deleting course:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete course recommendation.",
-        variant: "destructive",
-      });
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'beginner':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'intermediate':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'advanced':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        <div className="container mx-auto px-4 py-16">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading mentor dashboard...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading mentor profile...</p>
           </div>
         </div>
       </div>
     );
   }
 
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <Card className="max-w-md mx-auto shadow-lg rounded-xl">
+            <CardContent className="text-center py-12">
+              <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Mentor Profile Not Found</h3>
+              <p className="text-muted-foreground mb-6">
+                Complete your profile to start mentoring and sharing your expertise with others.
+              </p>
+              <Button className="bg-primary hover:bg-primary/90">
+                <Edit className="h-4 w-4 mr-2" />
+                Complete Profile
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 py-8">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <GraduationCap className="h-8 w-8 text-primary mr-3" />
-            <span className="text-lg font-semibold text-primary tracking-wide">MENTOR DASHBOARD</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Welcome, {profile?.name}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+            🧑‍🏫 <span>Mentor Profile</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Share your expertise, recommend courses, and help shape the next generation of talent.
+          <p className="text-muted-foreground">
+            Share your expertise and help others grow in their careers
           </p>
         </div>
 
-        {/* Overview Panel */}
-        <Card className="mb-8">
+        {/* Mentor Profile Card */}
+        <Card className="mb-8 shadow-lg rounded-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Mentor Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Profile Info */}
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-xl font-bold text-primary-foreground">
-                    {profile?.name?.charAt(0) || '?'}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-2xl flex items-center justify-center">
+                  <span className="text-2xl font-bold text-primary-foreground">
+                    {profile.name?.charAt(0) || '?'}
                   </span>
                 </div>
-                <h3 className="font-bold">{profile?.name}</h3>
-                <p className="text-sm text-muted-foreground">{profile?.role_title}</p>
-                
-                {/* AI Verified Badge */}
-                <div className="mt-3">
-                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    AI-Verified Mentor
-                  </Badge>
+                <div>
+                  <CardTitle className="text-2xl font-bold">
+                    {profile.name}
+                  </CardTitle>
+                  <p className="text-lg text-muted-foreground font-medium">
+                    {profile.role_title}
+                  </p>
                 </div>
               </div>
-
-              {/* Stats */}
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary mb-1">{stats.resumes_reviewed}</div>
-                <div className="text-sm text-muted-foreground">Resumes Reviewed</div>
-                <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mt-2" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                {profile.location && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{profile.location}</span>
+                  </div>
+                )}
+                {profile.industry && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                    <span>{profile.industry}</span>
+                  </div>
+                )}
               </div>
-
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary mb-1">{stats.courses_recommended}</div>
-                <div className="text-sm text-muted-foreground">Courses Recommended</div>
-                <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mt-2" />
-              </div>
-
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary mb-1">{stats.average_rating}/5</div>
-                <div className="text-sm text-muted-foreground">Average Rating</div>
-                <Star className="h-8 w-8 text-muted-foreground mx-auto mt-2" />
+              <div className="space-y-3">
+                {profile.years_experience && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{profile.years_experience}+ years experience</span>
+                  </div>
+                )}
+                {profile.experience_level && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                    <span>{profile.experience_level} Level</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Badges */}
-            {profile?.badges && profile.badges.length > 0 && (
-              <div className="mt-6 pt-6 border-t">
-                <h4 className="font-semibold mb-3">Your Badges</h4>
+            {/* Skills */}
+            {profile.skills && profile.skills.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-foreground mb-3">Areas of Expertise</h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.badges.map((badge) => (
-                    <Badge
-                      key={badge.id}
-                      variant="secondary"
-                      className="px-3 py-1 bg-primary/10 text-primary"
-                    >
-                      <span className="mr-1">{badge.badge.emoji}</span>
-                      {badge.badge.name}
+                  {profile.skills.map((skill, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm">
+                      {skill}
                     </Badge>
                   ))}
                 </div>
               </div>
             )}
+
+            <Separator />
+
+            {/* Mentorship Statement */}
+            <div>
+              <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Why I Mentor
+              </h4>
+              <p className="text-muted-foreground leading-relaxed italic">
+                "I mentor to give back and support others in navigating the same path I once took. 
+                My experience in {profile.industry} has taught me valuable lessons that I'm passionate 
+                about sharing with the next generation of professionals."
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Action Panels */}
-        <Tabs defaultValue="recommend" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="recommend">Recommend Course</TabsTrigger>
-            <TabsTrigger value="feedback">Feedback Log</TabsTrigger>
-            <TabsTrigger value="courses">My Recommendations</TabsTrigger>
-          </TabsList>
+        {/* Teaching Contributions */}
+        <div className="border-t border-gray-200 mt-6 pt-6">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            Teaching Contributions
+          </h2>
 
-          <TabsContent value="recommend">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Recommend a Course
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleCourseSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="title">Course Title *</Label>
-                      <Input
-                        id="title"
-                        value={courseForm.title}
-                        onChange={(e) => setCourseForm({...courseForm, title: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="platform">Platform *</Label>
-                      <Input
-                        id="platform"
-                        value={courseForm.platform}
-                        onChange={(e) => setCourseForm({...courseForm, platform: e.target.value})}
-                        placeholder="e.g., Coursera, Udemy, edX"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="url">Course URL</Label>
-                    <Input
-                      id="url"
-                      type="url"
-                      value={courseForm.url}
-                      onChange={(e) => setCourseForm({...courseForm, url: e.target.value})}
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="skill_tags">Skills (comma-separated)</Label>
-                      <Input
-                        id="skill_tags"
-                        value={courseForm.skill_tags}
-                        onChange={(e) => setCourseForm({...courseForm, skill_tags: e.target.value})}
-                        placeholder="React, JavaScript, Web Development"
-                      />
-                    </div>
-                    <div>
-                      <Label>Difficulty</Label>
-                      <Select value={courseForm.difficulty} onValueChange={(value) => setCourseForm({...courseForm, difficulty: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select difficulty" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="cost">Cost</Label>
-                      <Input
-                        id="cost"
-                        value={courseForm.cost}
-                        onChange={(e) => setCourseForm({...courseForm, cost: e.target.value})}
-                        placeholder="Free, $49, $99"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">Course Description</Label>
-                    <Textarea
-                      id="description"
-                      value={courseForm.description}
-                      onChange={(e) => setCourseForm({...courseForm, description: e.target.value})}
-                      placeholder="Brief description of what the course covers..."
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="reasoning">Why do you recommend this course?</Label>
-                    <Textarea
-                      id="reasoning"
-                      value={courseForm.reasoning}
-                      onChange={(e) => setCourseForm({...courseForm, reasoning: e.target.value})}
-                      placeholder="Explain why this course is valuable and who would benefit..."
-                    />
-                  </div>
-
-                  <Button type="submit" disabled={submitting} className="w-full">
-                    {submitting ? "Submitting..." : "Recommend Course"}
-                  </Button>
-                </form>
+          {contributions.length === 0 ? (
+            <Card className="shadow-sm rounded-xl">
+              <CardContent className="text-center py-12">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Courses Shared Yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Start sharing your knowledge by recommending courses and resources that helped shape your expertise.
+                </p>
+                <Button variant="outline">
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Share Your First Course
+                </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Resume Feedback Log
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {feedbackRecords.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No feedback submitted yet</h3>
-                    <p className="text-muted-foreground">Your resume reviews will appear here.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {feedbackRecords.map((feedback) => (
-                      <div key={feedback.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-4 w-4 ${
-                                    i < feedback.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                              {new Date(feedback.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            {feedback.recommend_for_gallery && (
-                              <Badge variant="secondary">Gallery Rec</Badge>
-                            )}
-                            {feedback.recommend_for_jobs && (
-                              <Badge variant="secondary">Job Rec</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-sm">{feedback.feedback}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="courses">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  My Course Recommendations
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {courseRecommendations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No course recommendations yet</h3>
-                    <p className="text-muted-foreground">Start by recommending your first course!</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {courseRecommendations.map((course) => (
-                      <div key={course.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold">{course.title}</h3>
-                            <p className="text-sm text-muted-foreground">{course.platform}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            {course.is_ai_recommended && (
-                              <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
-                                <Sparkles className="h-3 w-3 mr-1" />
-                                AI
-                              </Badge>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCourse(course.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {course.skill_tags.map((skill, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                          <span>{course.difficulty}</span>
-                          <span>{course.cost}</span>
-                        </div>
-
-                        <p className="text-sm mb-3">{course.description}</p>
-
-                        {course.url && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={course.url} target="_blank" rel="noopener noreferrer">
-                              View Course
-                              <ExternalLink className="h-3 w-3 ml-2" />
-                            </a>
-                          </Button>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {contributions.map((course) => (
+                <Card key={course.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-semibold text-foreground text-sm leading-tight">
+                        {course.title}
+                      </h3>
+                      <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
+                        {course.difficulty}
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground font-medium">
+                      {course.platform}
+                    </div>
+                    
+                    {course.description && (
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {course.description}
+                      </p>
+                    )}
+                    
+                    {course.skill_tags && course.skill_tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {course.skill_tags.slice(0, 3).map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {course.skill_tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{course.skill_tags.length - 3} more
+                          </Badge>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                    )}
+                    
+                    {course.url && (
+                      <div className="pt-2">
+                        <Button asChild size="sm" variant="outline" className="w-full">
+                          <a href={course.url} target="_blank" rel="noopener noreferrer">
+                            View Course
+                            <ExternalLink className="h-3 w-3 ml-2" />
+                          </a>
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Floating Edit Button */}
+        <Button
+          className="fixed bottom-6 right-6 rounded-full h-14 w-14 shadow-lg hover:shadow-xl bg-primary hover:bg-primary/90 z-50"
+          size="icon"
+        >
+          <Edit className="h-6 w-6" />
+        </Button>
       </div>
     </div>
   );
-}
+};
+
+export default Teach;
