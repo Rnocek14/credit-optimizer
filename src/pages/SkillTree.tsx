@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock, CheckCircle2, Clock, X, Trophy, Calendar, Filter, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Lock, CheckCircle2, Clock, X, Trophy, Calendar, Filter, ZoomIn, ZoomOut, RotateCcw, Target, BookOpen } from "lucide-react";
 import Tree from "react-d3-tree";
 
 interface Skill {
@@ -51,14 +51,16 @@ interface SkillTreeData {
 // Demo data for Aisha Khan
 const demoSkillTreeData: SkillTreeData = {
   skills: [
-    { id: '1', name: 'HTML', slug: 'html', category: 'Markup', description: 'HyperText Markup Language - foundation of web development', difficulty_level: 1, xp_value: 10 },
-    { id: '2', name: 'CSS', slug: 'css', category: 'Styling', description: 'Cascading Style Sheets for styling web pages', difficulty_level: 1, xp_value: 15 },
-    { id: '3', name: 'JavaScript', slug: 'javascript', category: 'Programming', description: 'Core programming language for web development', difficulty_level: 1, xp_value: 20 },
-    { id: '4', name: 'React', slug: 'react', category: 'Framework', description: 'JavaScript library for building user interfaces', difficulty_level: 2, xp_value: 30 },
-    { id: '5', name: 'TypeScript', slug: 'typescript', category: 'Programming', description: 'Typed superset of JavaScript', difficulty_level: 2, xp_value: 25 },
+    { id: '1', name: 'HTML', slug: 'html', category: 'Frontend', description: 'HyperText Markup Language - foundation of web development', difficulty_level: 1, xp_value: 10 },
+    { id: '2', name: 'CSS', slug: 'css', category: 'Frontend', description: 'Cascading Style Sheets for styling web pages', difficulty_level: 1, xp_value: 15 },
+    { id: '3', name: 'JavaScript', slug: 'javascript', category: 'Frontend', description: 'Core programming language for web development', difficulty_level: 1, xp_value: 20 },
+    { id: '4', name: 'React', slug: 'react', category: 'Frontend', description: 'JavaScript library for building user interfaces', difficulty_level: 2, xp_value: 30 },
+    { id: '5', name: 'TypeScript', slug: 'typescript', category: 'Frontend', description: 'Typed superset of JavaScript', difficulty_level: 2, xp_value: 25 },
     { id: '6', name: 'Node.js', slug: 'nodejs', category: 'Backend', description: 'JavaScript runtime for server-side development', difficulty_level: 2, xp_value: 25 },
-    { id: '7', name: 'Next.js', slug: 'nextjs', category: 'Framework', description: 'React framework for production applications', difficulty_level: 3, xp_value: 35 },
-    { id: '8', name: 'GraphQL', slug: 'graphql', category: 'API', description: 'Query language and runtime for APIs', difficulty_level: 3, xp_value: 35 }
+    { id: '7', name: 'Next.js', slug: 'nextjs', category: 'Frontend', description: 'React framework for production applications', difficulty_level: 3, xp_value: 35 },
+    { id: '8', name: 'GraphQL', slug: 'graphql', category: 'Backend', description: 'Query language and runtime for APIs', difficulty_level: 3, xp_value: 35 },
+    { id: '9', name: 'AWS', slug: 'aws', category: 'Cloud', description: 'Amazon Web Services cloud platform', difficulty_level: 3, xp_value: 40 },
+    { id: '10', name: 'Docker', slug: 'docker', category: 'DevOps', description: 'Containerization platform', difficulty_level: 3, xp_value: 30 }
   ],
   progress: [
     { skill_id: '1', status: 'verified', cri_score: 85, verification_source: 'Web Development Course', verification_date: '2024-01-15', xp_earned: 10 },
@@ -68,7 +70,9 @@ const demoSkillTreeData: SkillTreeData = {
     { skill_id: '5', status: 'in_progress', xp_earned: 12 },
     { skill_id: '6', status: 'in_progress', xp_earned: 8 },
     { skill_id: '7', status: 'locked', xp_earned: 0 },
-    { skill_id: '8', status: 'locked', xp_earned: 0 }
+    { skill_id: '8', status: 'locked', xp_earned: 0 },
+    { skill_id: '9', status: 'locked', xp_earned: 0 },
+    { skill_id: '10', status: 'locked', xp_earned: 0 }
   ],
   edges: [
     { prerequisite_skill_id: '1', skill_id: '2' },
@@ -77,7 +81,9 @@ const demoSkillTreeData: SkillTreeData = {
     { prerequisite_skill_id: '3', skill_id: '5' },
     { prerequisite_skill_id: '3', skill_id: '6' },
     { prerequisite_skill_id: '4', skill_id: '7' },
-    { prerequisite_skill_id: '6', skill_id: '8' }
+    { prerequisite_skill_id: '6', skill_id: '8' },
+    { prerequisite_skill_id: '8', skill_id: '9' },
+    { prerequisite_skill_id: '6', skill_id: '10' }
   ]
 };
 
@@ -88,9 +94,9 @@ export default function SkillTree() {
   const [loading, setLoading] = useState(true);
   const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [treeTranslate, setTreeTranslate] = useState({ x: 300, y: 80 });
-  const [treeZoom, setTreeZoom] = useState(0.7);
+  const [treeTranslate, setTreeTranslate] = useState({ x: 400, y: 100 });
+  const [treeZoom, setTreeZoom] = useState(0.8);
+  const treeRef = useRef<any>(null);
 
   useEffect(() => {
     fetchSkillTreeData();
@@ -128,7 +134,6 @@ export default function SkillTree() {
         };
         setSkillTreeData(realData);
       } else {
-        // Fallback to demo data
         setSkillTreeData(demoSkillTreeData);
       }
     } catch (error) {
@@ -146,87 +151,91 @@ export default function SkillTree() {
   const getStatusIcon = (status: 'locked' | 'in_progress' | 'verified', size = 'h-4 w-4') => {
     switch (status) {
       case 'verified':
-        return <CheckCircle2 className={`${size} text-green-600`} />;
+        return <CheckCircle2 className={`${size} text-emerald-400`} />;
       case 'in_progress':
-        return <Clock className={`${size} text-yellow-600`} />;
+        return <Clock className={`${size} text-amber-400`} />;
       case 'locked':
-        return <Lock className={`${size} text-gray-400`} />;
-    }
-  };
-
-  const getStatusBg = (status: 'locked' | 'in_progress' | 'verified') => {
-    switch (status) {
-      case 'verified':
-        return '#dcfce7'; // green-100
-      case 'in_progress':
-        return '#fef3c7'; // yellow-100
-      case 'locked':
-        return '#f3f4f6'; // gray-100
-    }
-  };
-
-  const getStatusBorder = (status: 'locked' | 'in_progress' | 'verified') => {
-    switch (status) {
-      case 'verified':
-        return '#22c55e'; // green-500
-      case 'in_progress':
-        return '#eab308'; // yellow-500
-      case 'locked':
-        return '#9ca3af'; // gray-400
-    }
-  };
-
-  const getCRIColor = (score?: number) => {
-    if (!score) return '#9ca3af';
-    if (score >= 90) return '#059669'; // emerald-600
-    if (score >= 80) return '#16a34a'; // green-600
-    if (score >= 70) return '#ca8a04'; // yellow-600
-    return '#dc2626'; // red-600
-  };
-
-  const getDifficultyColor = (level: number) => {
-    switch (level) {
-      case 1:
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 2:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 3:
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return <Lock className={`${size} text-slate-500`} />;
     }
   };
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
-      'Programming': '💻',
-      'Framework': '⚛️',
-      'Styling': '🎨',
-      'Markup': '📝',
-      'Backend': '🔧',
-      'API': '🔗',
+      'Frontend': '🎨',
+      'Backend': '⚙️',
       'Cloud': '☁️',
-      'DevOps': '🐳',
-      'Quality': '🧪',
-      'Design': '🎯'
+      'DevOps': '🔧',
+      'Mobile': '📱',
+      'AI/ML': '🤖',
+      'Database': '🗄️',
+      'Security': '🔒'
     };
     return icons[category] || '📚';
   };
 
-  const getDomainColor = (category: string) => {
-    const domainColors: Record<string, { bg: string, border: string, halo: string }> = {
-      'Programming': { bg: '#dbeafe', border: '#3b82f6', halo: '#3b82f6' },
-      'Framework': { bg: '#dcfce7', border: '#22c55e', halo: '#22c55e' },
-      'Styling': { bg: '#fef3c7', border: '#f59e0b', halo: '#f59e0b' },
-      'Markup': { bg: '#e0e7ff', border: '#6366f1', halo: '#6366f1' },
-      'Backend': { bg: '#fecaca', border: '#ef4444', halo: '#ef4444' },
-      'API': { bg: '#fed7ff', border: '#d946ef', halo: '#d946ef' },
-      'Cloud': { bg: '#e0f2fe', border: '#0ea5e9', halo: '#0ea5e9' },
-      'DevOps': { bg: '#f3e8ff', border: '#8b5cf6', halo: '#8b5cf6' },
-      'Quality': { bg: '#ecfdf5', border: '#10b981', halo: '#10b981' },
-      'Design': { bg: '#fff1f2', border: '#f43f5e', halo: '#f43f5e' }
+  const getDomainColors = (category: string) => {
+    const colors: Record<string, { primary: string, secondary: string, glow: string, bg: string }> = {
+      'Frontend': { 
+        primary: '#10b981', 
+        secondary: '#34d399', 
+        glow: '#6ee7b7',
+        bg: 'rgba(16, 185, 129, 0.1)'
+      },
+      'Backend': { 
+        primary: '#3b82f6', 
+        secondary: '#60a5fa', 
+        glow: '#93c5fd',
+        bg: 'rgba(59, 130, 246, 0.1)'
+      },
+      'Cloud': { 
+        primary: '#8b5cf6', 
+        secondary: '#a78bfa', 
+        glow: '#c4b5fd',
+        bg: 'rgba(139, 92, 246, 0.1)'
+      },
+      'DevOps': { 
+        primary: '#f59e0b', 
+        secondary: '#fbbf24', 
+        glow: '#fcd34d',
+        bg: 'rgba(245, 158, 11, 0.1)'
+      }
     };
-    return domainColors[category] || { bg: '#f3f4f6', border: '#9ca3af', halo: '#9ca3af' };
+    return colors[category] || colors['Frontend'];
+  };
+
+  const getCRIColor = (score?: number) => {
+    if (!score) return '#64748b';
+    if (score >= 90) return '#10b981'; // emerald-500
+    if (score >= 80) return '#22c55e'; // green-500
+    if (score >= 70) return '#eab308'; // yellow-500
+    return '#ef4444'; // red-500
+  };
+
+  const handleNodeClick = (nodeData: any) => {
+    const skillId = nodeData.data.attributes?.id;
+    if (skillId) {
+      const skill = skillTreeData.skills.find(s => s.id === skillId);
+      const progress = getSkillProgress(skillId);
+      
+      if (skill) {
+        setSelectedSkill(skill);
+        setSelectedProgress(progress || null);
+        setIsDetailPanelOpen(true);
+      }
+    }
+  };
+
+  const handleZoomIn = () => {
+    setTreeZoom(prev => Math.min(prev + 0.2, 2));
+  };
+
+  const handleZoomOut = () => {
+    setTreeZoom(prev => Math.max(prev - 0.2, 0.3));
+  };
+
+  const handleResetView = () => {
+    setTreeTranslate({ x: 400, y: 100 });
+    setTreeZoom(0.8);
   };
 
   const getFilteredData = () => {
@@ -276,7 +285,6 @@ export default function SkillTree() {
     data.skills.forEach(skill => skillMap.set(skill.id, skill));
     data.progress.forEach(progress => progressMap.set(progress.skill_id, progress));
 
-    // Find root nodes (skills with no prerequisites)
     const rootSkillIds = data.skills
       .filter(skill => !data.edges.some(edge => edge.skill_id === skill.id))
       .map(skill => skill.id);
@@ -305,40 +313,11 @@ export default function SkillTree() {
       };
     };
 
-    // If we have root nodes, use the first one as the tree root
     if (rootSkillIds.length > 0) {
       return buildNode(rootSkillIds[0]);
     }
 
-    // Fallback: use the first skill
     return buildNode(data.skills[0].id);
-  };
-
-  const handleNodeClick = (nodeData: any) => {
-    const skillId = nodeData.data.attributes?.id;
-    if (skillId) {
-      const skill = skillTreeData.skills.find(s => s.id === skillId);
-      const progress = getSkillProgress(skillId);
-      
-      if (skill) {
-        setSelectedSkill(skill);
-        setSelectedProgress(progress || null);
-        setIsDetailPanelOpen(true);
-      }
-    }
-  };
-
-  const handleZoomIn = () => {
-    setTreeZoom(prev => Math.min(prev + 0.1, 2));
-  };
-
-  const handleZoomOut = () => {
-    setTreeZoom(prev => Math.max(prev - 0.1, 0.3));
-  };
-
-  const handleResetView = () => {
-    setTreeTranslate({ x: 300, y: 80 });
-    setTreeZoom(0.7);
   };
 
   const renderCustomNode = ({ nodeDatum }: any) => {
@@ -350,177 +329,170 @@ export default function SkillTree() {
     const progress = getSkillProgress(skillId);
     const xpEarned = progress?.xp_earned || 0;
     const xpProgress = xpValue > 0 ? (xpEarned / xpValue) * 100 : 0;
-    const domainColors = getDomainColor(category);
+    const domainColors = getDomainColors(category);
     const categoryIcon = getCategoryIcon(category);
+
+    // Calculate radius based on status
+    const baseRadius = 45;
+    const glowRadius = status === 'verified' ? 55 : status === 'in_progress' ? 50 : baseRadius;
 
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <g 
-              style={{ pointerEvents: 'all', cursor: 'pointer' }}
-              onClick={() => handleNodeClick({ data: { attributes: nodeDatum.attributes } })}
+              style={{ 
+                pointerEvents: 'all', 
+                cursor: 'pointer',
+                filter: status === 'verified' ? `drop-shadow(0 0 8px ${domainColors.glow})` : 'none'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNodeClick({ data: { attributes: nodeDatum.attributes } });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleNodeClick({ data: { attributes: nodeDatum.attributes } });
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`${nodeDatum.name} skill - ${status} status`}
             >
-              {/* Domain halo effect */}
-              <circle
-                cx="0"
-                cy="0"
-                r="52"
-                fill="none"
-                stroke={domainColors.halo}
-                strokeWidth="1"
-                strokeOpacity="0.2"
-                strokeDasharray="4,4"
-              />
-
-              {/* Click animation ring */}
-              <circle
-                cx="0"
-                cy="0"
-                r="0"
-                fill="none"
-                stroke={domainColors.border}
-                strokeWidth="3"
-                opacity="0"
-              >
-                <animate
-                  attributeName="r"
-                  values="0;55;0"
-                  dur="0.8s"
-                  begin="click"
-                />
-                <animate
-                  attributeName="opacity"
-                  values="0;0.6;0"
-                  dur="0.8s"
-                  begin="click"
-                />
-              </circle>
-
-              {/* Verified node glowing ring animation */}
+              {/* Outer glow ring for verified skills */}
               {status === 'verified' && (
                 <circle
                   cx="0"
                   cy="0"
-                  r="42"
+                  r={glowRadius}
                   fill="none"
-                  stroke="#22c55e"
-                  strokeWidth="2"
-                  strokeOpacity="0.5"
+                  stroke={domainColors.glow}
+                  strokeWidth="3"
+                  strokeOpacity="0.6"
                 >
                   <animate
                     attributeName="r"
-                    values="42;46;42"
+                    values={`${glowRadius};${glowRadius + 5};${glowRadius}`}
                     dur="3s"
                     repeatCount="indefinite"
                   />
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.5;0.8;0.5"
+                    values="0.6;0.3;0.6"
                     dur="3s"
                     repeatCount="indefinite"
                   />
                 </circle>
               )}
 
-              {/* Circular XP progress ring for in-progress nodes */}
+              {/* Progress ring for in-progress skills */}
               {status === 'in_progress' && (
                 <>
                   <circle
                     cx="0"
                     cy="0"
-                    r="40"
+                    r={baseRadius + 3}
                     fill="none"
-                    stroke="#e5e7eb"
+                    stroke="#374151"
                     strokeWidth="4"
                   />
                   <circle
                     cx="0"
                     cy="0"
-                    r="40"
+                    r={baseRadius + 3}
                     fill="none"
-                    stroke="#eab308"
+                    stroke={domainColors.primary}
                     strokeWidth="4"
-                    strokeDasharray={`${(xpProgress * 251) / 100} ${251 - (xpProgress * 251) / 100}`}
+                    strokeDasharray={`${(xpProgress * 283) / 100} ${283 - (xpProgress * 283) / 100}`}
                     strokeDashoffset="0"
                     transform="rotate(-90)"
                   />
                 </>
               )}
 
-              {/* Main circular card */}
+              {/* Domain background circle */}
               <circle
                 cx="0"
                 cy="0"
-                r="35"
+                r={baseRadius}
                 fill={domainColors.bg}
-                stroke={domainColors.border}
+                stroke={domainColors.primary}
                 strokeWidth="2"
-                style={{ pointerEvents: 'all' }}
               />
 
-              {/* Hover effect ring */}
+              {/* Main skill circle */}
               <circle
                 cx="0"
                 cy="0"
-                r="35"
-                fill="none"
-                stroke={domainColors.border}
-                strokeWidth="0"
-                opacity="0"
+                r={baseRadius - 8}
+                fill="#1e293b"
+                stroke={domainColors.secondary}
+                strokeWidth="2"
               >
                 <animate
                   attributeName="stroke-width"
-                  values="0;4;0"
-                  dur="0.3s"
-                  begin="mouseover"
-                />
-                <animate
-                  attributeName="opacity"
-                  values="0;0.4;0"
+                  values="2;4;2"
                   dur="0.3s"
                   begin="mouseover"
                 />
               </circle>
 
-              {/* Category icon - Top left */}
+              {/* Category icon - top */}
               <circle
-                cx="-20"
+                cx="0"
                 cy="-20"
-                r="8"
-                fill="rgba(255,255,255,0.9)"
-                stroke={domainColors.border}
-                strokeWidth="1"
+                r="10"
+                fill={domainColors.primary}
+                stroke="#1e293b"
+                strokeWidth="2"
               />
               <text
-                x="-20"
+                x="0"
                 y="-20"
-                fontSize="12"
+                fontSize="14"
                 textAnchor="middle"
                 dominantBaseline="middle"
               >
                 {categoryIcon}
               </text>
 
-              {/* CRI badge - Top right with click pulse animation */}
+              {/* Status icon - top left */}
+              <circle
+                cx="-25"
+                cy="-15"
+                r="8"
+                fill="#334155"
+                stroke={domainColors.primary}
+                strokeWidth="1"
+              />
+              <foreignObject x="-29" y="-19" width="8" height="8">
+                <div className="flex items-center justify-center w-2 h-2">
+                  {getStatusIcon(status, 'h-2 w-2')}
+                </div>
+              </foreignObject>
+
+              {/* CRI badge - top right */}
               {criScore && (
                 <>
                   <circle
-                    cx="20"
-                    cy="-20"
-                    r="10"
+                    cx="25"
+                    cy="-15"
+                    r="12"
                     fill={getCRIColor(criScore)}
+                    stroke="#1e293b"
+                    strokeWidth="2"
                   >
                     <animate
                       attributeName="r"
-                      values="10;12;10"
-                      dur="0.6s"
+                      values="12;14;12"
+                      dur="0.5s"
                       begin="click"
                     />
                   </circle>
                   <text
-                    x="20"
-                    y="-20"
+                    x="25"
+                    y="-15"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     className="text-xs font-bold"
@@ -531,63 +503,75 @@ export default function SkillTree() {
                 </>
               )}
 
-              {/* Status icon - Bottom left */}
-              <circle
-                cx="-18"
-                cy="18"
-                r="6"
-                fill="white"
-                stroke={getStatusBorder(status)}
-                strokeWidth="1"
-              />
-              <foreignObject x="-22" y="14" width="8" height="8">
-                <div className="flex items-center justify-center w-2 h-2">
-                  {getStatusIcon(status, 'h-2 w-2')}
-                </div>
-              </foreignObject>
-
-              {/* Skill name - Center */}
+              {/* Skill name */}
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="text-sm font-bold"
-                fill="#1f2937"
-                y="-2"
+                fill="#f1f5f9"
+                y="2"
               >
                 {nodeDatum.name.length > 8 ? nodeDatum.name.substring(0, 8) + '...' : nodeDatum.name}
               </text>
 
-              {/* XP progress bar - Center bottom */}
+              {/* XP progress bar */}
               <rect
-                x="-20"
-                y="8"
-                width="40"
-                height="4"
-                rx="2"
-                fill="#e5e7eb"
+                x="-25"
+                y="15"
+                width="50"
+                height="6"
+                rx="3"
+                fill="#374151"
               />
               <rect
-                x="-20"
-                y="8"
-                width={40 * (xpProgress / 100)}
-                height="4"
-                rx="2"
-                fill={status === 'verified' ? '#22c55e' : status === 'in_progress' ? '#eab308' : '#9ca3af'}
+                x="-25"
+                y="15"
+                width={50 * (xpProgress / 100)}
+                height="6"
+                rx="3"
+                fill={domainColors.primary}
               />
 
-              {/* XP text - Bottom */}
+              {/* XP text */}
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="text-xs"
-                fill="#6b7280"
+                fill="#94a3b8"
                 y="28"
               >
                 {xpEarned}/{xpValue} XP
               </text>
+
+              {/* Click ripple effect */}
+              <circle
+                cx="0"
+                cy="0"
+                r="0"
+                fill="none"
+                stroke={domainColors.primary}
+                strokeWidth="3"
+                opacity="0"
+              >
+                <animate
+                  attributeName="r"
+                  values="0;60;0"
+                  dur="0.6s"
+                  begin="click"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0;0.8;0"
+                  dur="0.6s"
+                  begin="click"
+                />
+              </circle>
             </g>
           </TooltipTrigger>
-          <TooltipContent className="max-w-xs" side="right">
+          <TooltipContent 
+            className="max-w-xs bg-slate-800 border-slate-700 text-slate-100" 
+            side="right"
+          >
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-base">{categoryIcon}</span>
@@ -595,11 +579,11 @@ export default function SkillTree() {
               </div>
               <div className="text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Category:</span>
+                  <span className="text-slate-400">Category:</span>
                   <span>{category}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status:</span>
+                  <span className="text-slate-400">Status:</span>
                   <div className="flex items-center gap-1">
                     {getStatusIcon(status, 'h-3 w-3')}
                     <span className="capitalize">{status.replace('_', ' ')}</span>
@@ -607,19 +591,19 @@ export default function SkillTree() {
                 </div>
                 {criScore && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">CRI Score:</span>
+                    <span className="text-slate-400">CRI Score:</span>
                     <span className="font-medium" style={{ color: getCRIColor(criScore) }}>
                       {criScore}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">XP Progress:</span>
-                  <span>{xpEarned}/{xpValue} ({Math.round(xpProgress)}%)</span>
+                  <span className="text-slate-400">Progress:</span>
+                  <span>{Math.round(xpProgress)}% ({xpEarned}/{xpValue} XP)</span>
                 </div>
                 {progress?.verification_source && (
                   <div>
-                    <span className="text-muted-foreground text-xs">Source:</span>
+                    <span className="text-slate-400 text-xs">Source:</span>
                     <div className="text-xs font-medium">{progress.verification_source}</div>
                   </div>
                 )}
@@ -633,10 +617,10 @@ export default function SkillTree() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="h-96 bg-gray-200 rounded-xl"></div>
+          <div className="h-8 bg-slate-700 rounded w-1/3"></div>
+          <div className="h-96 bg-slate-700 rounded-xl"></div>
         </div>
       </div>
     );
@@ -646,363 +630,335 @@ export default function SkillTree() {
   const treeData = buildTreeStructure(filteredData);
 
   return (
-    <div className="container mx-auto p-6">
-      {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">🌳 Skill Tree Navigator</h1>
-        <p className="text-muted-foreground">
-          Explore your skill progression and unlock new learning pathways through your interactive skill tree
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-900 text-slate-100">
+      <div className="container mx-auto p-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent mb-2">
+            🌳 Skill Tree Navigator
+          </h1>
+          <p className="text-slate-400 text-lg">
+            Explore your skill progression and unlock new learning pathways through your interactive skill tree
+          </p>
+        </div>
 
-      {/* Filter Bar */}
-      <Card className="rounded-xl shadow-sm border mb-6">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Filter className="h-5 w-5 text-primary" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-2">
-            {/* Status Filters */}
-            <Button
-              variant={activeFilters.includes('verified') ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => toggleFilter('verified')}
-              className="flex items-center gap-2"
-            >
-              <CheckCircle2 className="h-3 w-3" />
-              Verified Only
-            </Button>
-            <Button
-              variant={activeFilters.includes('in_progress') ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => toggleFilter('in_progress')}
-              className="flex items-center gap-2"
-            >
-              <Clock className="h-3 w-3" />
-              In Progress
-            </Button>
-            <Button
-              variant={activeFilters.includes('locked') ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => toggleFilter('locked')}
-              className="flex items-center gap-2"
-            >
-              <Lock className="h-3 w-3" />
-              Locked
-            </Button>
-            
-            {/* Category Filters */}
-            {getUniqueCategories().map(category => (
+        {/* Filter Bar */}
+        <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-slate-100">
+              <Filter className="h-5 w-5 text-emerald-400" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {/* Status Filters */}
               <Button
-                key={category}
-                variant={activeFilters.includes(category.toLowerCase()) ? 'default' : 'outline'}
+                variant={activeFilters.includes('verified') ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => toggleFilter(category.toLowerCase())}
+                onClick={() => toggleFilter('verified')}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 border-emerald-500"
               >
-                {category}
-              </Button>
-            ))}
-            
-            {/* Clear Filters */}
-            {activeFilters.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveFilters([])}
-                className="ml-2"
-              >
-                Clear All
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Legend */}
-      <Card className="rounded-xl shadow-sm border mb-6">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Legend</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Status Legend */}
-            <div>
-              <h4 className="font-medium mb-3">Skill Status</h4>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-100"></div>
-                  <span className="text-sm">Verified - Skill mastered with proof</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded border-2 border-yellow-500 bg-yellow-100"></div>
-                  <span className="text-sm">In Progress - Currently learning</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded border-2 border-gray-400 bg-gray-100"></div>
-                  <span className="text-sm">Locked - Prerequisites not met</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* CRI Legend */}
-            <div>
-              <h4 className="font-medium mb-3">CRI Score Levels</h4>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-4 rounded" style={{ backgroundColor: '#059669' }}></div>
-                  <span className="text-sm">90+ Expert Level</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-4 rounded" style={{ backgroundColor: '#16a34a' }}></div>
-                  <span className="text-sm">80-89 Proficient</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-4 rounded" style={{ backgroundColor: '#ca8a04' }}></div>
-                  <span className="text-sm">70-79 Developing</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-4 rounded" style={{ backgroundColor: '#dc2626' }}></div>
-                  <span className="text-sm">Below 70 Needs Improvement</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Interactive Skill Tree */}
-      <Card className="rounded-xl shadow-sm border">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                Interactive Skill Tree
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Click on any skill node to view details. Use mouse wheel to zoom and drag to pan.
-              </p>
-            </div>
-            
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleZoomOut}
-                className="flex items-center gap-1"
-              >
-                <ZoomOut className="h-3 w-3" />
-                Zoom Out
+                <CheckCircle2 className="h-3 w-3" />
+                Verified
               </Button>
               <Button
-                variant="outline"
+                variant={activeFilters.includes('in_progress') ? 'default' : 'outline'}
                 size="sm"
-                onClick={handleZoomIn}
-                className="flex items-center gap-1"
+                onClick={() => toggleFilter('in_progress')}
+                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 border-amber-500"
               >
-                <ZoomIn className="h-3 w-3" />
-                Zoom In
+                <Clock className="h-3 w-3" />
+                In Progress
               </Button>
               <Button
-                variant="outline"
+                variant={activeFilters.includes('locked') ? 'default' : 'outline'}
                 size="sm"
-                onClick={handleResetView}
-                className="flex items-center gap-1"
+                onClick={() => toggleFilter('locked')}
+                className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 border-slate-500"
               >
-                <RotateCcw className="h-3 w-3" />
-                Reset View
+                <Lock className="h-3 w-3" />
+                Locked
               </Button>
+              
+              {/* Category Filters */}
+              {getUniqueCategories().map(category => (
+                <Button
+                  key={category}
+                  variant={activeFilters.includes(category.toLowerCase()) ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => toggleFilter(category.toLowerCase())}
+                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  {getCategoryIcon(category)} {category}
+                </Button>
+              ))}
+              
+              {/* Clear Filters */}
+              {activeFilters.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveFilters([])}
+                  className="ml-2 text-slate-400 hover:text-slate-100"
+                >
+                  Clear All
+                </Button>
+              )}
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[600px] border border-gray-200 rounded-lg overflow-hidden relative">
-            <Tree
-              data={treeData}
-              orientation="vertical"
-              translate={treeTranslate}
-              zoom={treeZoom}
-              enableLegacyTransitions={true}
-              onNodeClick={handleNodeClick}
-              renderCustomNodeElement={renderCustomNode}
-              separation={{ siblings: 2, nonSiblings: 2.5 }}
-              nodeSize={{ x: 160, y: 120 }}
-            />
-            <style>
-              {`
-                .rd3t-tree-container .rd3t-link {
-                  stroke: #9ca3af !important;
-                  stroke-width: 2px !important;
-                  fill: none !important;
-                }
-                .rd3t-tree-container {
-                  width: 100% !important;
-                  height: 100% !important;
-                }
-              `}
-            </style>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Skill Detail Panel - Mobile responsive */}
-      <Sheet open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen}>
-        <SheetContent className="w-full sm:w-96 sm:max-w-96" side="right">
-          <SheetHeader>
-            <div className="flex items-center justify-between">
-              <SheetTitle className="flex items-center gap-2">
-                {selectedProgress && getStatusIcon(selectedProgress.status)}
-                {selectedSkill?.name}
-              </SheetTitle>
-              <Button variant="ghost" size="sm" onClick={() => setIsDetailPanelOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </SheetHeader>
-
-          {selectedSkill && (
-            <div className="mt-6 space-y-6">
-              {/* Skill Info */}
+        {/* Interactive Skill Tree */}
+        <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="font-semibold mb-3">Skill Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Category</span>
-                    <Badge variant="secondary">{selectedSkill.category}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Difficulty</span>
-                    <Badge className={getDifficultyColor(selectedSkill.difficulty_level)}>
-                      Level {selectedSkill.difficulty_level}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">XP Value</span>
-                    <span className="text-sm font-medium">{selectedSkill.xp_value} XP</span>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-3">
-                  {selectedSkill.description}
+                <CardTitle className="flex items-center gap-2 text-slate-100">
+                  <Trophy className="h-5 w-5 text-emerald-400" />
+                  Interactive Skill Tree
+                </CardTitle>
+                <p className="text-sm text-slate-400 mt-1">
+                  Click nodes to explore skills. Use mouse wheel to zoom and drag to pan.
                 </p>
               </div>
-
-              {/* Progress Info */}
-              {selectedProgress && (
-                <div>
-                  <h3 className="font-semibold mb-3">Your Progress</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Status</span>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(selectedProgress.status)}
-                        <span className="text-sm font-medium capitalize">
-                          {selectedProgress.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {selectedProgress.cri_score && (
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">CRI Score</span>
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                          {selectedProgress.cri_score}
-                        </Badge>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">XP Progress</span>
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-medium">
-                          {selectedProgress.xp_earned} / {selectedSkill.xp_value} XP
-                        </span>
-                        <div className="w-20 h-2 bg-gray-200 rounded-full mt-1">
-                          <div 
-                            className="h-2 bg-primary rounded-full transition-all" 
-                            style={{ 
-                              width: `${Math.min(100, (selectedProgress.xp_earned / selectedSkill.xp_value) * 100)}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedProgress.verification_source && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Verification Source</span>
-                        <p className="text-sm font-medium mt-1">{selectedProgress.verification_source}</p>
-                      </div>
-                    )}
-
-                    {selectedProgress.verification_date && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        Completed on {new Date(selectedProgress.verification_date).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Roadmap Relevance */}
-              <div>
-                <h3 className="font-semibold mb-3">Roadmap Relevance</h3>
-                <div className="space-y-2">
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      <span className="text-sm font-medium text-blue-800">Career Goal Alignment</span>
-                    </div>
-                    <p className="text-xs text-blue-700">
-                      This skill supports your {selectedSkill?.category} career track and is essential for achieving senior-level positions.
-                    </p>
-                  </div>
-                  
-                  {selectedProgress?.status === 'verified' && (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-800">Milestone Achieved</span>
-                      </div>
-                      <p className="text-xs text-green-700">
-                        You've mastered this skill! Consider exploring advanced topics or related skills in your learning path.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedProgress?.status === 'in_progress' && (
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="w-4 h-4 text-yellow-600" />
-                        <span className="text-sm font-medium text-yellow-800">Active Learning</span>
-                      </div>
-                      <p className="text-xs text-yellow-700">
-                        Keep practicing! Complete related courses or projects to earn the remaining {selectedSkill.xp_value - (selectedProgress?.xp_earned || 0)} XP.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedProgress?.status === 'locked' && (
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Lock className="w-4 h-4 text-gray-600" />
-                        <span className="text-sm font-medium text-gray-800">Prerequisites Required</span>
-                      </div>
-                      <p className="text-xs text-gray-700">
-                        Complete prerequisite skills to unlock this learning path and start earning XP.
-                      </p>
-                    </div>
-                  )}
-                </div>
+              
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomOut}
+                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  <ZoomOut className="h-3 w-3" />
+                  Zoom Out
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomIn}
+                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  <ZoomIn className="h-3 w-3" />
+                  Zoom In
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetView}
+                  className="flex items-center gap-1 border-slate-600 text-slate-300 hover:bg-slate-700"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset
+                </Button>
               </div>
             </div>
-          )}
-        </SheetContent>
-      </Sheet>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[700px] bg-slate-900 border border-slate-700 rounded-lg overflow-hidden relative">
+              <Tree
+                data={treeData}
+                orientation="vertical"
+                translate={treeTranslate}
+                zoom={treeZoom}
+                enableLegacyTransitions={true}
+                onNodeClick={handleNodeClick}
+                renderCustomNodeElement={renderCustomNode}
+                separation={{ siblings: 2.5, nonSiblings: 3 }}
+                nodeSize={{ x: 180, y: 140 }}
+                ref={treeRef}
+              />
+              <style>
+                {`
+                  .rd3t-tree-container .rd3t-link {
+                    stroke: #475569 !important;
+                    stroke-width: 3px !important;
+                    fill: none !important;
+                    filter: drop-shadow(0 0 4px rgba(71, 85, 105, 0.3));
+                  }
+                  .rd3t-tree-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    background: #0f172a;
+                  }
+                `}
+              </style>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Skill Detail Panel - Mobile responsive */}
+        <Sheet open={isDetailPanelOpen} onOpenChange={setIsDetailPanelOpen}>
+          <SheetContent 
+            className="w-full sm:w-96 sm:max-w-96 bg-slate-800 border-slate-700 text-slate-100" 
+            side="right"
+          >
+            <SheetHeader>
+              <div className="flex items-center justify-between">
+                <SheetTitle className="flex items-center gap-2 text-slate-100">
+                  {selectedProgress && getStatusIcon(selectedProgress.status)}
+                  {selectedSkill?.name}
+                </SheetTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsDetailPanelOpen(false)}
+                  className="text-slate-400 hover:text-slate-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </SheetHeader>
+
+            {selectedSkill && (
+              <div className="mt-6 space-y-6">
+                {/* Skill Info */}
+                <div>
+                  <h3 className="font-semibold mb-3 text-slate-100">Skill Details</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-400">Category</span>
+                      <Badge 
+                        variant="secondary" 
+                        className="bg-slate-700 text-slate-200 border-slate-600"
+                      >
+                        {getCategoryIcon(selectedSkill.category)} {selectedSkill.category}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-400">Difficulty</span>
+                      <Badge className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
+                        Level {selectedSkill.difficulty_level}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-400">XP Value</span>
+                      <span className="text-sm font-medium text-slate-200">{selectedSkill.xp_value} XP</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-300 mt-4 p-3 bg-slate-700 rounded-lg border border-slate-600">
+                    {selectedSkill.description}
+                  </p>
+                </div>
+
+                {/* Progress Info */}
+                {selectedProgress && (
+                  <div>
+                    <h3 className="font-semibold mb-3 text-slate-100">Your Progress</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-400">Status</span>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(selectedProgress.status)}
+                          <span className="text-sm font-medium capitalize text-slate-200">
+                            {selectedProgress.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {selectedProgress.cri_score && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-slate-400">CRI Score</span>
+                          <Badge 
+                            variant="outline" 
+                            className="border-emerald-500 text-emerald-400 bg-emerald-950"
+                          >
+                            {selectedProgress.cri_score}
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between">
+                        <span className="text-sm text-slate-400">XP Progress</span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-medium text-slate-200">
+                            {selectedProgress.xp_earned} / {selectedSkill.xp_value} XP
+                          </span>
+                          <div className="w-20 h-2 bg-slate-700 rounded-full mt-1">
+                            <div 
+                              className="h-2 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full transition-all" 
+                              style={{ 
+                                width: `${Math.min(100, (selectedProgress.xp_earned / selectedSkill.xp_value) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedProgress.verification_source && (
+                        <div>
+                          <span className="text-sm text-slate-400">Verification Source</span>
+                          <p className="text-sm font-medium mt-1 text-slate-200">{selectedProgress.verification_source}</p>
+                        </div>
+                      )}
+
+                      {selectedProgress.verification_date && (
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                          <Calendar className="h-4 w-4" />
+                          Completed on {new Date(selectedProgress.verification_date).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Roadmap Relevance */}
+                <div>
+                  <h3 className="font-semibold mb-3 text-slate-100">Roadmap Alignment</h3>
+                  <div className="space-y-3">
+                    <div className="p-4 bg-gradient-to-r from-blue-900/30 to-emerald-900/30 border border-blue-800/50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-4 h-4 text-blue-400" />
+                        <span className="text-sm font-medium text-blue-300">Career Goal Alignment</span>
+                      </div>
+                      <p className="text-xs text-blue-200">
+                        This skill is essential for your {selectedSkill?.category} career track and opens pathways to senior-level positions.
+                      </p>
+                    </div>
+                    
+                    {selectedProgress?.status === 'verified' && (
+                      <div className="p-4 bg-gradient-to-r from-emerald-900/30 to-green-900/30 border border-emerald-800/50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span className="text-sm font-medium text-emerald-300">Milestone Achieved</span>
+                        </div>
+                        <p className="text-xs text-emerald-200">
+                          Excellent work! Consider exploring advanced topics or related skills in your learning path.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedProgress?.status === 'in_progress' && (
+                      <div className="p-4 bg-gradient-to-r from-amber-900/30 to-yellow-900/30 border border-amber-800/50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-amber-400" />
+                          <span className="text-sm font-medium text-amber-300">Active Learning</span>
+                        </div>
+                        <p className="text-xs text-amber-200">
+                          Keep going! Complete related courses to earn the remaining {selectedSkill.xp_value - (selectedProgress?.xp_earned || 0)} XP.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedProgress?.status === 'locked' && (
+                      <div className="p-4 bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600/50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lock className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm font-medium text-slate-300">Prerequisites Required</span>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          Complete prerequisite skills to unlock this learning path and start earning XP.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
+      </div>
     </div>
   );
 }
