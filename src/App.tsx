@@ -29,6 +29,7 @@ import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
 import AdminModeration from "./pages/AdminModeration";
 import AdminSettings from "./pages/AdminSettings";
+import Badges from "./pages/Badges";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
           />
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
+          <Route path="/badges" element={<Badges />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/teach" element={<Teach />} />
