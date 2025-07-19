@@ -14,6 +14,7 @@ import InternalError from "./pages/InternalError";
 import ResumeGallery from "./pages/ResumeGallery";
 import PublicResume from "./pages/PublicResume";
 import Discover from "./pages/Discover";
+import Explore from "./pages/Explore";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
@@ -64,6 +65,7 @@ const App = () => (
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
           <Route path="/discover" element={<Discover />} />
+          <Route path="/explore" element={<Explore />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/mentor" element={<MentorInbox />} />
         <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
