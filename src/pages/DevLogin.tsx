@@ -222,10 +222,82 @@ export default function DevLogin() {
               </Button>
             </div>
 
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Demo Accounts</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start" 
+                onClick={() => {
+                  const demoUser = {
+                    id: '2b458624-d498-4cca-a63d-9341cc20e363',
+                    email: 'aisha@demo.com',
+                    role: 'user',
+                    name: 'Aisha Khan'
+                  };
+                  window.__devUser__ = demoUser;
+                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  toast({ title: "Demo Login", description: "Logged in as Aisha Khan (Frontend Developer)" });
+                  navigate("/dashboard");
+                }}
+              >
+                🚀 Aisha Khan (Frontend Dev, 200 XP)
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start" 
+                onClick={() => {
+                  const demoUser = {
+                    id: '3c459625-e499-5ddb-b64d-a442dd21f474',
+                    email: 'mateo@demo.com',
+                    role: 'user',
+                    name: 'Mateo Silva'
+                  };
+                  window.__devUser__ = demoUser;
+                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  toast({ title: "Demo Login", description: "Logged in as Mateo Silva (DevOps Engineer)" });
+                  navigate("/dashboard");
+                }}
+              >
+                ⚙️ Mateo Silva (DevOps Engineer, 350 XP)
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start" 
+                onClick={() => {
+                  const demoUser = {
+                    id: '4d56a736-f5aa-6eec-c75e-b553ee32e585',
+                    email: 'jade@demo.com',
+                    role: 'user',
+                    name: 'Jade Chen'
+                  };
+                  window.__devUser__ = demoUser;
+                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  toast({ title: "Demo Login", description: "Logged in as Jade Chen (ML Research Scientist)" });
+                  navigate("/dashboard");
+                }}
+              >
+                🧠 Jade Chen (ML Scientist, 500 XP) ⭐
+              </Button>
+            </div>
+
             <div className="text-xs text-muted-foreground space-y-1">
               <p><strong>Pro tip:</strong> Use <code>window.__devUser__</code> in console</p>
               <p><strong>Admin emails:</strong> founder@lifepath.dev or any email with "admin"</p>
               <p><strong>Auto-redirect:</strong> Admins → /admin/moderation, Users → /dashboard</p>
+              <p><strong>View demo resumes:</strong> <Link to="/resume-gallery" className="text-primary hover:underline">Resume Gallery</Link></p>
             </div>
           </CardContent>
         </Card>
