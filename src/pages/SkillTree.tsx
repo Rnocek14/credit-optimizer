@@ -195,6 +195,38 @@ export default function SkillTree() {
     }
   };
 
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      'Programming': '💻',
+      'Framework': '⚛️',
+      'Styling': '🎨',
+      'Markup': '📝',
+      'Backend': '🔧',
+      'API': '🔗',
+      'Cloud': '☁️',
+      'DevOps': '🐳',
+      'Quality': '🧪',
+      'Design': '🎯'
+    };
+    return icons[category] || '📚';
+  };
+
+  const getDomainColor = (category: string) => {
+    const domainColors: Record<string, { bg: string, border: string, halo: string }> = {
+      'Programming': { bg: '#dbeafe', border: '#3b82f6', halo: '#3b82f6' },
+      'Framework': { bg: '#dcfce7', border: '#22c55e', halo: '#22c55e' },
+      'Styling': { bg: '#fef3c7', border: '#f59e0b', halo: '#f59e0b' },
+      'Markup': { bg: '#e0e7ff', border: '#6366f1', halo: '#6366f1' },
+      'Backend': { bg: '#fecaca', border: '#ef4444', halo: '#ef4444' },
+      'API': { bg: '#fed7ff', border: '#d946ef', halo: '#d946ef' },
+      'Cloud': { bg: '#e0f2fe', border: '#0ea5e9', halo: '#0ea5e9' },
+      'DevOps': { bg: '#f3e8ff', border: '#8b5cf6', halo: '#8b5cf6' },
+      'Quality': { bg: '#ecfdf5', border: '#10b981', halo: '#10b981' },
+      'Design': { bg: '#fff1f2', border: '#f43f5e', halo: '#f43f5e' }
+    };
+    return domainColors[category] || { bg: '#f3f4f6', border: '#9ca3af', halo: '#9ca3af' };
+  };
+
   const getFilteredData = () => {
     if (activeFilters.length === 0) return skillTreeData;
 
@@ -301,116 +333,267 @@ export default function SkillTree() {
     const criScore = nodeDatum.attributes?.cri_score;
     const xpValue = nodeDatum.attributes?.xp_value || 0;
     const skillId = nodeDatum.attributes?.id;
+    const progress = getSkillProgress(skillId);
+    const xpEarned = progress?.xp_earned || 0;
+    const xpProgress = xpValue > 0 ? (xpEarned / xpValue) * 100 : 0;
+    const domainColors = getDomainColor(category);
+    const categoryIcon = getCategoryIcon(category);
 
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <g>
-              {/* Card Background */}
+              {/* Domain halo/glow effect */}
+              <circle
+                cx="0"
+                cy="0"
+                r="45"
+                fill="none"
+                stroke={domainColors.halo}
+                strokeWidth="1"
+                strokeOpacity="0.3"
+                strokeDasharray="3,3"
+              />
+
+              {/* Verified node glowing ring animation */}
+              {status === 'verified' && (
+                <>
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="38"
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth="2"
+                    strokeOpacity="0.6"
+                  >
+                    <animate
+                      attributeName="r"
+                      values="38;42;38"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="stroke-opacity"
+                      values="0.6;0.3;0.6"
+                      dur="2s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
+                </>
+              )}
+
+              {/* Circular XP progress bar for in-progress nodes */}
+              {status === 'in_progress' && (
+                <>
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="36"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="0"
+                    cy="0"
+                    r="36"
+                    fill="none"
+                    stroke="#eab308"
+                    strokeWidth="3"
+                    strokeDasharray={`${(xpProgress * 226) / 100} ${226 - (xpProgress * 226) / 100}`}
+                    strokeDashoffset="0"
+                    transform="rotate(-90)"
+                  />
+                </>
+              )}
+
+              {/* Main card background with domain colors */}
               <rect
-                x="-60"
-                y="-30"
-                width="120"
-                height="60"
-                rx="8"
-                fill={getStatusBg(status)}
-                stroke={getStatusBorder(status)}
+                x="-65"
+                y="-32"
+                width="130"
+                height="64"
+                rx="12"
+                fill={domainColors.bg}
+                stroke={domainColors.border}
                 strokeWidth="2"
-                className="cursor-pointer transition-all hover:stroke-width-3"
+                className="cursor-pointer transition-all"
                 onMouseEnter={() => setHoveredNode(skillId)}
                 onMouseLeave={() => setHoveredNode(null)}
-              />
+              >
+                <animate
+                  attributeName="stroke-width"
+                  values="2;3;2"
+                  dur="0.3s"
+                  begin="mouseover"
+                />
+              </rect>
               
-              {/* Status Icon - Top Left */}
-              <foreignObject x="-55" y="-25" width="16" height="16">
+              {/* Category icon - Top left */}
+              <text
+                x="-55"
+                y="-20"
+                fontSize="16"
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {categoryIcon}
+              </text>
+
+              {/* Status icon - Top left corner */}
+              <foreignObject x="-58" y="-28" width="16" height="16">
                 <div className="flex items-center justify-center w-4 h-4">
                   {getStatusIcon(status, 'h-3 w-3')}
                 </div>
               </foreignObject>
 
-              {/* CRI Badge - Top Right */}
+              {/* CRI badge - Top right */}
               {criScore && (
-                <rect
-                  x="30"
-                  y="-25"
-                  width="24"
-                  height="16"
-                  rx="8"
-                  fill={getCRIColor(criScore)}
-                />
-              )}
-              {criScore && (
-                <text
-                  x="42"
-                  y="-17"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-xs font-bold"
-                  fill="white"
-                >
-                  {criScore}
-                </text>
+                <>
+                  <circle
+                    cx="50"
+                    cy="-20"
+                    r="12"
+                    fill={getCRIColor(criScore)}
+                  />
+                  <text
+                    x="50"
+                    y="-20"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="text-xs font-bold"
+                    fill="white"
+                  >
+                    {criScore}
+                  </text>
+                </>
               )}
 
-              {/* Skill Name */}
+              {/* Skill name */}
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
                 className="text-sm font-bold"
                 fill="#1f2937"
-                y="-5"
+                y="-8"
               >
-                {nodeDatum.name.length > 12 ? nodeDatum.name.substring(0, 12) + '...' : nodeDatum.name}
+                {nodeDatum.name.length > 10 ? nodeDatum.name.substring(0, 10) + '...' : nodeDatum.name}
               </text>
 
-              {/* Category Badge */}
+              {/* Category label */}
               <rect
-                x="-30"
-                y="5"
-                width="60"
-                height="16"
-                rx="8"
-                fill="#e5e7eb"
-                stroke="#9ca3af"
+                x="-35"
+                y="2"
+                width="70"
+                height="18"
+                rx="9"
+                fill="rgba(255,255,255,0.8)"
+                stroke={domainColors.border}
                 strokeWidth="1"
               />
               <text
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="text-xs"
-                fill="#374151"
-                y="13"
+                className="text-xs font-medium"
+                fill={domainColors.border}
+                y="11"
               >
                 {category}
               </text>
 
-              {/* XP Progress Bar */}
+              {/* XP progress indicator */}
               <rect
-                x="-50"
+                x="-55"
                 y="22"
-                width="100"
-                height="4"
-                rx="2"
+                width="110"
+                height="6"
+                rx="3"
                 fill="#e5e7eb"
               />
               <rect
-                x="-50"
+                x="-55"
                 y="22"
-                width="100"
-                height="4"
-                rx="2"
+                width={110 * (xpProgress / 100)}
+                height="6"
+                rx="3"
                 fill={status === 'verified' ? '#22c55e' : status === 'in_progress' ? '#eab308' : '#9ca3af'}
               />
+
+              {/* XP text */}
+              <text
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="text-xs"
+                fill="#6b7280"
+                y="32"
+              >
+                {xpEarned}/{xpValue} XP
+              </text>
+
+              {/* Click animation circle */}
+              <circle
+                cx="0"
+                cy="0"
+                r="0"
+                fill="none"
+                stroke={domainColors.border}
+                strokeWidth="2"
+                opacity="0"
+              >
+                <animate
+                  attributeName="r"
+                  values="0;50;0"
+                  dur="0.6s"
+                  begin="click"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0;0.8;0"
+                  dur="0.6s"
+                  begin="click"
+                />
+              </circle>
             </g>
           </TooltipTrigger>
-          <TooltipContent>
-            <div className="text-sm">
-              <p className="font-semibold">{nodeDatum.name}</p>
-              <p>Category: {category}</p>
-              <p>Status: {status.replace('_', ' ')}</p>
-              {criScore && <p>CRI Score: {criScore}</p>}
-              <p>XP Value: {xpValue}</p>
+          <TooltipContent className="max-w-xs">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">{categoryIcon}</span>
+                <span className="font-semibold">{nodeDatum.name}</span>
+              </div>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Category:</span>
+                  <span>{category}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <div className="flex items-center gap-1">
+                    {getStatusIcon(status, 'h-3 w-3')}
+                    <span className="capitalize">{status.replace('_', ' ')}</span>
+                  </div>
+                </div>
+                {criScore && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">CRI Score:</span>
+                    <span className="font-medium" style={{ color: getCRIColor(criScore) }}>
+                      {criScore}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">XP Progress:</span>
+                  <span>{xpEarned}/{xpValue} ({Math.round(xpProgress)}%)</span>
+                </div>
+                {progress?.verification_source && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Source:</span>
+                    <span className="text-xs">{progress.verification_source}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -642,7 +825,7 @@ export default function SkillTree() {
               {selectedProgress && (
                 <div>
                   <h3 className="font-semibold mb-3">Your Progress</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Status</span>
                       <div className="flex items-center gap-2">
@@ -663,15 +846,25 @@ export default function SkillTree() {
                     )}
                     
                     <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">XP Earned</span>
-                      <span className="text-sm font-medium">
-                        {selectedProgress.xp_earned} / {selectedSkill.xp_value} XP
-                      </span>
+                      <span className="text-sm text-muted-foreground">XP Progress</span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-medium">
+                          {selectedProgress.xp_earned} / {selectedSkill.xp_value} XP
+                        </span>
+                        <div className="w-20 h-2 bg-gray-200 rounded-full mt-1">
+                          <div 
+                            className="h-2 bg-primary rounded-full transition-all" 
+                            style={{ 
+                              width: `${Math.min(100, (selectedProgress.xp_earned / selectedSkill.xp_value) * 100)}%` 
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {selectedProgress.verification_source && (
                       <div>
-                        <span className="text-sm text-muted-foreground">Verified through</span>
+                        <span className="text-sm text-muted-foreground">Verification Source</span>
                         <p className="text-sm font-medium mt-1">{selectedProgress.verification_source}</p>
                       </div>
                     )}
@@ -685,6 +878,58 @@ export default function SkillTree() {
                   </div>
                 </div>
               )}
+
+              {/* Roadmap Relevance */}
+              <div>
+                <h3 className="font-semibold mb-3">Roadmap Relevance</h3>
+                <div className="space-y-2">
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span className="text-sm font-medium text-blue-800">Career Goal Alignment</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      This skill supports your {selectedSkill?.category} career track and is essential for achieving senior-level positions.
+                    </p>
+                  </div>
+                  
+                  {selectedProgress?.status === 'verified' && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">Milestone Achieved</span>
+                      </div>
+                      <p className="text-xs text-green-700">
+                        You've mastered this skill! Consider exploring advanced topics or related skills in your learning path.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedProgress?.status === 'in_progress' && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-800">Active Learning</span>
+                      </div>
+                      <p className="text-xs text-yellow-700">
+                        Keep practicing! Complete related courses or projects to earn the remaining {selectedSkill.xp_value - (selectedProgress?.xp_earned || 0)} XP.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedProgress?.status === 'locked' && (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Lock className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-800">Prerequisites Required</span>
+                      </div>
+                      <p className="text-xs text-gray-700">
+                        Complete prerequisite skills to unlock this learning path and start earning XP.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </SheetContent>
