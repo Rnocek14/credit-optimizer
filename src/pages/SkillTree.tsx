@@ -332,21 +332,22 @@ export default function SkillTree() {
     const domainColors = getDomainColors(category);
     const categoryIcon = getCategoryIcon(category);
 
-    // Calculate radius based on status with increased spacing
-    const baseRadius = 52;
-    const nodeWidth = baseRadius * 2.5;
+    // Calculate dimensions with better spacing
+    const baseRadius = 55;
+    const nodeWidth = baseRadius * 2.8;
+    const nodeHeight = baseRadius * 2;
 
     // Status-specific styling
     const getStatusBorder = () => {
       switch (status) {
         case 'verified':
-          return { stroke: '#10b981', strokeWidth: '3', strokeDasharray: 'none' };
+          return { stroke: '#10b981', strokeWidth: '3', glow: 'rgba(16, 185, 129, 0.4)' };
         case 'in_progress':
-          return { stroke: '#f59e0b', strokeWidth: '2', strokeDasharray: 'none' };
+          return { stroke: '#f59e0b', strokeWidth: '2', glow: 'rgba(245, 158, 11, 0.4)' };
         case 'locked':
-          return { stroke: '#64748b', strokeWidth: '2', strokeDasharray: '8,4' };
+          return { stroke: '#64748b', strokeWidth: '2', glow: 'none' };
         default:
-          return { stroke: '#64748b', strokeWidth: '2', strokeDasharray: 'none' };
+          return { stroke: '#64748b', strokeWidth: '2', glow: 'none' };
       }
     };
 
@@ -360,8 +361,8 @@ export default function SkillTree() {
               style={{ 
                 pointerEvents: 'all', 
                 cursor: 'pointer',
-                filter: status === 'verified' ? 'drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3))' : 
-                       status === 'in_progress' ? 'drop-shadow(0 4px 8px rgba(245, 158, 11, 0.3))' : 'none'
+                filter: statusBorder.glow !== 'none' ? `drop-shadow(0 4px 12px ${statusBorder.glow})` : 'none',
+                transformOrigin: 'center'
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -375,71 +376,97 @@ export default function SkillTree() {
               }}
               tabIndex={0}
               role="button"
-              aria-label={`${nodeDatum.name} skill - ${status} status`}
+              aria-label={`Skill: ${nodeDatum.name}, Status: ${status}, XP: ${xpEarned}/${xpValue}`}
             >
+              {/* Hover scale animation */}
+              <animateTransform
+                attributeName="transform"
+                type="scale"
+                values="1;1.03;1"
+                dur="0.3s"
+                begin="mouseover"
+              />
+
               {/* Subtle glow for verified skills */}
               {status === 'verified' && (
-                <circle
-                  cx="0"
-                  cy="0"
-                  r={baseRadius + 6}
+                <rect
+                  x={-nodeWidth/2 - 4}
+                  y={-nodeHeight/2 - 4}
+                  width={nodeWidth + 8}
+                  height={nodeHeight + 8}
+                  rx="16"
                   fill="none"
                   stroke="#10b981"
                   strokeWidth="2"
-                  strokeOpacity="0.4"
+                  strokeOpacity="0.3"
                 >
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.4;0.2;0.4"
+                    values="0.3;0.1;0.3"
                     dur="2s"
                     repeatCount="indefinite"
                   />
-                </circle>
+                </rect>
               )}
 
               {/* Animated ring for in-progress skills */}
               {status === 'in_progress' && (
-                <circle
-                  cx="0"
-                  cy="0"
-                  r={baseRadius + 4}
+                <rect
+                  x={-nodeWidth/2 - 3}
+                  y={-nodeHeight/2 - 3}
+                  width={nodeWidth + 6}
+                  height={nodeHeight + 6}
+                  rx="15"
                   fill="none"
                   stroke="#f59e0b"
-                  strokeWidth="3"
-                  strokeOpacity="0.6"
+                  strokeWidth="2"
+                  strokeOpacity="0.5"
                 >
                   <animate
-                    attributeName="r"
-                    values={`${baseRadius + 4};${baseRadius + 8};${baseRadius + 4}`}
+                    attributeName="stroke-width"
+                    values="2;4;2"
                     dur="1.5s"
                     repeatCount="indefinite"
                   />
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.6;0.2;0.6"
+                    values="0.5;0.2;0.5"
                     dur="1.5s"
                     repeatCount="indefinite"
                   />
-                </circle>
+                </rect>
               )}
 
-              {/* Main node background - Always dark for readability */}
+              {/* Main node background - solid dark with inner shadow */}
+              <defs>
+                <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                  <feOffset dx="0" dy="2" result="offset"/>
+                  <feFlood floodColor="#000000" floodOpacity="0.4"/>
+                  <feComposite in2="offset" operator="in"/>
+                  <feMerge>
+                    <feMergeNode/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
               <rect
                 x={-nodeWidth/2}
-                y={-baseRadius}
+                y={-nodeHeight/2}
                 width={nodeWidth}
-                height={baseRadius * 2}
+                height={nodeHeight}
                 rx="12"
-                fill="#0f172a"
+                fill="#1e293b"
                 stroke={statusBorder.stroke}
                 strokeWidth={statusBorder.strokeWidth}
-                strokeDasharray={statusBorder.strokeDasharray}
                 opacity={status === 'locked' ? '0.6' : '1'}
+                filter="url(#innerShadow)"
               >
                 {/* Hover effect */}
                 <animate
                   attributeName="fill"
-                  values="#0f172a;#1e293b;#0f172a"
+                  values="#1e293b;#334155;#1e293b"
                   dur="0.3s"
                   begin="mouseover"
                 />
@@ -447,9 +474,9 @@ export default function SkillTree() {
 
               {/* XP Progress bar background */}
               <rect
-                x={-nodeWidth/2 + 8}
-                y={-baseRadius + 8}
-                width={nodeWidth - 16}
+                x={-nodeWidth/2 + 12}
+                y={-nodeHeight/2 + 12}
+                width={nodeWidth - 24}
                 height="4"
                 rx="2"
                 fill="#374151"
@@ -457,27 +484,27 @@ export default function SkillTree() {
 
               {/* XP Progress bar fill */}
               <rect
-                x={-nodeWidth/2 + 8}
-                y={-baseRadius + 8}
-                width={Math.max(2, ((nodeWidth - 16) * xpProgress) / 100)}
+                x={-nodeWidth/2 + 12}
+                y={-nodeHeight/2 + 12}
+                width={Math.max(2, ((nodeWidth - 24) * xpProgress) / 100)}
                 height="4"
                 rx="2"
                 fill="#60a5fa"
               />
 
-              {/* Category icon - top left */}
+              {/* Category icon - top left with proper spacing */}
               <circle
-                cx={-nodeWidth/2 + 18}
-                cy={-baseRadius + 24}
-                r="12"
+                cx={-nodeWidth/2 + 20}
+                cy={-nodeHeight/2 + 28}
+                r="10"
                 fill={domainColors.primary}
-                stroke="#0f172a"
+                stroke="#1e293b"
                 strokeWidth="2"
               />
               <text
-                x={-nodeWidth/2 + 18}
-                y={-baseRadius + 24}
-                fontSize="14"
+                x={-nodeWidth/2 + 20}
+                y={-nodeHeight/2 + 28}
+                fontSize="12"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
@@ -485,24 +512,25 @@ export default function SkillTree() {
                 {categoryIcon}
               </text>
 
-              {/* CRI badge - top right */}
+              {/* CRI badge - top right with proper styling */}
               {criScore && (
                 <>
                   <rect
-                    x={nodeWidth/2 - 32}
-                    y={-baseRadius + 8}
-                    width="28"
+                    x={nodeWidth/2 - 30}
+                    y={-nodeHeight/2 + 12}
+                    width="24"
                     height="16"
                     rx="8"
                     fill={getCRIColor(criScore)}
-                    stroke="#0f172a"
+                    fillOpacity="0.9"
+                    stroke="#1e293b"
                     strokeWidth="1"
                   />
                   <text
                     x={nodeWidth/2 - 18}
-                    y={-baseRadius + 16}
+                    y={-nodeHeight/2 + 20}
                     fontSize="10"
-                    fontWeight="600"
+                    fontWeight="700"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="white"
@@ -514,37 +542,28 @@ export default function SkillTree() {
 
               {/* Status indicator */}
               <circle
-                cx={nodeWidth/2 - 18}
-                cy={-baseRadius + 30}
-                r="6"
+                cx={nodeWidth/2 - 15}
+                cy={-nodeHeight/2 + 35}
+                r="5"
                 fill={status === 'verified' ? '#10b981' : 
                       status === 'in_progress' ? '#f59e0b' : '#64748b'}
-                stroke="#0f172a"
+                stroke="#1e293b"
                 strokeWidth="1"
               />
 
-              {/* Skill name background for better readability */}
-              <rect
-                x={-nodeWidth/2 + 4}
-                y={-18}
-                width={nodeWidth - 8}
-                height="20"
-                rx="4"
-                fill="rgba(15, 23, 42, 0.8)"
-              />
-
-              {/* Skill name - center with white text */}
+              {/* Skill name - center with guaranteed white text */}
               <text
                 x="0"
-                y="-8"
+                y="-5"
                 fontSize="14"
                 fontWeight="600"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
+                className="text-sm font-semibold text-white"
               >
-                {nodeDatum.name.length > 11 ? 
-                  `${nodeDatum.name.slice(0, 11)}...` : 
+                {nodeDatum.name.length > 10 ? 
+                  `${nodeDatum.name.slice(0, 10)}...` : 
                   nodeDatum.name
                 }
               </text>
@@ -553,33 +572,27 @@ export default function SkillTree() {
               <text
                 x="0"
                 y="8"
-                fontSize="10"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#94a3b8"
-              >
-                {category}
-              </text>
-
-              {/* XP earned text background for better readability */}
-              <rect
-                x={-25}
-                y={baseRadius - 18}
-                width="50"
-                height="14"
-                rx="3"
-                fill="rgba(15, 23, 42, 0.8)"
-              />
-
-              {/* XP earned text - bottom with guaranteed white text */}
-              <text
-                x="0"
-                y={baseRadius - 10}
-                fontSize="10"
+                fontSize="9"
                 fontWeight="500"
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="#e2e8f0"
+                fill="#94a3b8"
+                className="text-[10px] text-slate-400 uppercase tracking-wide"
+                letterSpacing="0.5"
+              >
+                {category.toUpperCase()}
+              </text>
+
+              {/* XP earned text - bottom with guaranteed visibility */}
+              <text
+                x="0"
+                y={nodeHeight/2 - 12}
+                fontSize="11"
+                fontWeight="500"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#cbd5e1"
+                className="text-xs text-slate-300"
               >
                 {xpEarned}/{xpValue} XP
               </text>
@@ -596,13 +609,13 @@ export default function SkillTree() {
               >
                 <animate
                   attributeName="r"
-                  values="0;60;0"
+                  values="0;80;0"
                   dur="0.6s"
                   begin="click"
                 />
                 <animate
                   attributeName="opacity"
-                  values="0;0.8;0"
+                  values="0;0.6;0"
                   dur="0.6s"
                   begin="click"
                 />
@@ -698,7 +711,11 @@ export default function SkillTree() {
                 variant={activeFilters.includes('verified') ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleFilter('verified')}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 border-emerald-500"
+                className={`flex items-center gap-2 min-h-[40px] ${
+                  activeFilters.includes('verified') 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500' 
+                    : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                }`}
               >
                 <CheckCircle2 className="h-3 w-3" />
                 Verified
@@ -707,7 +724,11 @@ export default function SkillTree() {
                 variant={activeFilters.includes('in_progress') ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleFilter('in_progress')}
-                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 border-amber-500"
+                className={`flex items-center gap-2 min-h-[40px] ${
+                  activeFilters.includes('in_progress') 
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500' 
+                    : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                }`}
               >
                 <Clock className="h-3 w-3" />
                 In Progress
@@ -716,7 +737,11 @@ export default function SkillTree() {
                 variant={activeFilters.includes('locked') ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => toggleFilter('locked')}
-                className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 border-slate-500"
+                className={`flex items-center gap-2 min-h-[40px] ${
+                  activeFilters.includes('locked') 
+                    ? 'bg-slate-600 hover:bg-slate-500 text-white border-slate-500' 
+                    : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                }`}
               >
                 <Lock className="h-3 w-3" />
                 Locked
@@ -729,7 +754,11 @@ export default function SkillTree() {
                   variant={activeFilters.includes(category.toLowerCase()) ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => toggleFilter(category.toLowerCase())}
-                  className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  className={`min-h-[40px] ${
+                    activeFilters.includes(category.toLowerCase()) 
+                      ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 font-bold' 
+                      : 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600'
+                  }`}
                 >
                   {getCategoryIcon(category)} {category}
                 </Button>
@@ -741,7 +770,7 @@ export default function SkillTree() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveFilters([])}
-                  className="ml-2 text-slate-400 hover:text-slate-100"
+                  className="ml-2 text-slate-400 hover:text-slate-100 hover:bg-slate-700 min-h-[40px]"
                 >
                   Clear All
                 </Button>
@@ -806,9 +835,10 @@ export default function SkillTree() {
                 enableLegacyTransitions={true}
                 onNodeClick={handleNodeClick}
                 renderCustomNodeElement={renderCustomNode}
-                separation={{ siblings: 2.5, nonSiblings: 3 }}
-                nodeSize={{ x: 180, y: 140 }}
+                separation={{ siblings: 3, nonSiblings: 3.5 }}
+                nodeSize={{ x: 200, y: 160 }}
                 ref={treeRef}
+                pathFunc="step"
               />
               <style>
                 {`
