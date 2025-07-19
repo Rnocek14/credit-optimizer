@@ -120,6 +120,11 @@ export default function SkillTree() {
 
   // Find the suggested next skill for progression
   const getSuggestedNextSkill = (data = skillTreeData) => {
+    // Don't show suggestions in demo mode
+    if (isDemoMode) {
+      return null;
+    }
+    
     const unlockedLayers = getUnlockedLayers(data);
     const layerMap = getSkillLayers(data);
     const maxLayer = Math.max(...Array.from(layerMap.keys()));
@@ -133,8 +138,8 @@ export default function SkillTree() {
       }
     }
     
-    // If all layers are unlocked or we're in demo mode, no suggestion needed
-    if (nextLockedLayer === -1 || isDemoMode) {
+    // If all layers are unlocked, no suggestion needed
+    if (nextLockedLayer === -1) {
       return null;
     }
     
@@ -750,11 +755,11 @@ export default function SkillTree() {
     const domainColors = getDomainColors(category);
     const categoryIcon = getCategoryIcon(category);
 
-    // Check if this skill's layer is unlocked
-    const isLayerUnlocked = isSkillLayerUnlocked(skillId);
-    const depthMap = calculateSkillDepths();
+    // Check if this skill's layer is unlocked (using filtered data to respect active filters)
+    const isLayerUnlocked = isSkillLayerUnlocked(skillId, skillTreeData);
+    const depthMap = calculateSkillDepths(skillTreeData);
     const skillDepth = depthMap.get(skillId) || 0;
-    const layerUnlockText = isLayerUnlocked ? '' : getLayerUnlockText(skillDepth);
+    const layerUnlockText = isLayerUnlocked ? '' : getLayerUnlockText(skillDepth, skillTreeData);
 
     // Calculate dimensions with better spacing
     const baseRadius = 55;
@@ -797,6 +802,9 @@ export default function SkillTree() {
                 e.stopPropagation();
                 if (isLayerUnlocked) {
                   handleNodeClick({ data: { attributes: nodeDatum.attributes } });
+                } else {
+                  // Optional: Show toast notification for locked skills
+                  console.log(`Skill "${nodeDatum.name}" is locked. ${layerUnlockText}`);
                 }
               }}
               onKeyDown={(e) => {
@@ -892,10 +900,10 @@ export default function SkillTree() {
                 width={nodeWidth}
                 height={nodeHeight}
                 rx="12"
-                fill={isLayerUnlocked ? "#1e293b" : "#0f172a"}
+                 fill={isLayerUnlocked ? "#1e293b" : "#0f172a"}
                 stroke={statusBorder.stroke}
                 strokeWidth={statusBorder.strokeWidth}
-                opacity={!isLayerUnlocked ? '0.3' : (status === 'locked' ? '0.6' : '1')}
+                opacity={!isLayerUnlocked ? 0.4 : (status === 'locked' ? 0.7 : 1)}
                 filter="url(#innerShadow)"
               >
                 {/* Hover effect - only for unlocked layers */}
@@ -1302,9 +1310,9 @@ export default function SkillTree() {
           if (!suggestion) return null;
           
           return (
-            <Card className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/30 rounded-xl shadow-lg animate-fade-in">
+            <Card className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border-blue-500/30 rounded-xl shadow-lg animate-fade-in mb-6">
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                   <div className="flex-1 space-y-3">
                     {/* Header */}
                     <div className="flex items-center gap-2">
@@ -1359,7 +1367,7 @@ export default function SkillTree() {
                   </div>
                   
                   {/* Action Button */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 sm:min-w-fit">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
