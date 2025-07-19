@@ -423,27 +423,35 @@ export default function SkillTree() {
                 </circle>
               )}
 
-              {/* Main node background */}
+              {/* Main node background - Always dark for readability */}
               <rect
                 x={-nodeWidth/2}
                 y={-baseRadius}
                 width={nodeWidth}
                 height={baseRadius * 2}
                 rx="12"
-                fill={status === 'locked' ? '#374151' : '#1e293b'}
+                fill="#0f172a"
                 stroke={statusBorder.stroke}
                 strokeWidth={statusBorder.strokeWidth}
                 strokeDasharray={statusBorder.strokeDasharray}
-                opacity={status === 'locked' ? '0.7' : '1'}
-              />
+                opacity={status === 'locked' ? '0.6' : '1'}
+              >
+                {/* Hover effect */}
+                <animate
+                  attributeName="fill"
+                  values="#0f172a;#1e293b;#0f172a"
+                  dur="0.3s"
+                  begin="mouseover"
+                />
+              </rect>
 
               {/* XP Progress bar background */}
               <rect
                 x={-nodeWidth/2 + 8}
                 y={-baseRadius + 8}
                 width={nodeWidth - 16}
-                height="6"
-                rx="3"
+                height="4"
+                rx="2"
                 fill="#374151"
               />
 
@@ -452,26 +460,27 @@ export default function SkillTree() {
                 x={-nodeWidth/2 + 8}
                 y={-baseRadius + 8}
                 width={Math.max(2, ((nodeWidth - 16) * xpProgress) / 100)}
-                height="6"
-                rx="3"
-                fill={domainColors.primary}
+                height="4"
+                rx="2"
+                fill="#60a5fa"
               />
 
               {/* Category icon - top left */}
               <circle
-                cx={-nodeWidth/2 + 16}
+                cx={-nodeWidth/2 + 18}
                 cy={-baseRadius + 24}
                 r="12"
                 fill={domainColors.primary}
-                stroke="#1e293b"
+                stroke="#0f172a"
                 strokeWidth="2"
               />
               <text
-                x={-nodeWidth/2 + 16}
+                x={-nodeWidth/2 + 18}
                 y={-baseRadius + 24}
-                fontSize="16"
+                fontSize="14"
                 textAnchor="middle"
                 dominantBaseline="middle"
+                fill="white"
               >
                 {categoryIcon}
               </text>
@@ -486,13 +495,13 @@ export default function SkillTree() {
                     height="16"
                     rx="8"
                     fill={getCRIColor(criScore)}
-                    stroke="#1e293b"
+                    stroke="#0f172a"
                     strokeWidth="1"
                   />
                   <text
                     x={nodeWidth/2 - 18}
                     y={-baseRadius + 16}
-                    fontSize="11"
+                    fontSize="10"
                     fontWeight="600"
                     textAnchor="middle"
                     dominantBaseline="middle"
@@ -503,30 +512,74 @@ export default function SkillTree() {
                 </>
               )}
 
-              {/* Skill name - center */}
+              {/* Status indicator */}
+              <circle
+                cx={nodeWidth/2 - 18}
+                cy={-baseRadius + 30}
+                r="6"
+                fill={status === 'verified' ? '#10b981' : 
+                      status === 'in_progress' ? '#f59e0b' : '#64748b'}
+                stroke="#0f172a"
+                strokeWidth="1"
+              />
+
+              {/* Skill name background for better readability */}
+              <rect
+                x={-nodeWidth/2 + 4}
+                y={-18}
+                width={nodeWidth - 8}
+                height="20"
+                rx="4"
+                fill="rgba(15, 23, 42, 0.8)"
+              />
+
+              {/* Skill name - center with white text */}
               <text
                 x="0"
                 y="-8"
-                fontSize="15"
+                fontSize="14"
                 fontWeight="600"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="white"
               >
-                {nodeDatum.name.length > 12 ? 
-                  `${nodeDatum.name.slice(0, 12)}...` : 
+                {nodeDatum.name.length > 11 ? 
+                  `${nodeDatum.name.slice(0, 11)}...` : 
                   nodeDatum.name
                 }
               </text>
 
-              {/* XP earned text - bottom */}
+              {/* Category label */}
               <text
                 x="0"
-                y={baseRadius - 12}
-                fontSize="12"
+                y="8"
+                fontSize="10"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#94a3b8"
+              >
+                {category}
+              </text>
+
+              {/* XP earned text background for better readability */}
+              <rect
+                x={-25}
+                y={baseRadius - 18}
+                width="50"
+                height="14"
+                rx="3"
+                fill="rgba(15, 23, 42, 0.8)"
+              />
+
+              {/* XP earned text - bottom with guaranteed white text */}
+              <text
+                x="0"
+                y={baseRadius - 10}
+                fontSize="10"
+                fontWeight="500"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#e2e8f0"
               >
                 {xpEarned}/{xpValue} XP
               </text>
