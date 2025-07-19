@@ -33,6 +33,7 @@ export default function Navigation() {
     { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/badges", label: "Badges", icon: Award },
     { href: "/transcripts", label: "Transcripts", icon: BookOpen },
+    { href: "/course-history", label: "Course History", icon: BookOpen },
     { href: "/teach", label: "Teach", icon: GraduationCap },
     { href: "/onboarding", label: "Onboarding", icon: User },
     { href: "/dashboard", label: "Dashboard", icon: Target },

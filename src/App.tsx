@@ -20,6 +20,7 @@ import Saved from "./pages/Saved";
 import Goals from "./pages/Goals";
 import Transcript from "./pages/Transcript";
 import Transcripts from "./pages/Transcripts";
+import CourseHistory from "./pages/CourseHistory";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
@@ -108,6 +109,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Transcripts />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/course-history" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <CourseHistory />
               </ProtectedRoute>
             } 
           />
