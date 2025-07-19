@@ -99,12 +99,30 @@ const PublicResume = () => {
     try {
       console.log('Fetching profile data for user:', userId);
       
-      // Fetch profile data - remove gallery_enabled requirement for demo users
-      const { data: profileData, error: profileError } = await supabase
+      // Fetch profile data - try both user_id and id for demo compatibility
+      let profileData, profileError;
+      
+      // First try by user_id (normal case)
+      const userIdResult = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
+      
+      if (userIdResult.data) {
+        profileData = userIdResult.data;
+        profileError = userIdResult.error;
+      } else {
+        // If not found by user_id, try by id (demo case)
+        const idResult = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        profileData = idResult.data;
+        profileError = idResult.error;
+      }
 
       console.log('Profile data:', profileData);
       console.log('Profile error:', profileError);
