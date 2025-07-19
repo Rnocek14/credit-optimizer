@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass } from "lucide-react";
+import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,6 +35,7 @@ export default function Navigation() {
     { href: "/badges", label: "Badges", icon: Award },
     { href: "/transcripts", label: "Transcripts", icon: BookOpen },
     { href: "/course-history", label: "Course History", icon: BookOpen },
+    { href: "/skill-tree", label: "Skill Tree", icon: TreePine },
     { href: "/teach", label: "Teach", icon: GraduationCap },
     { href: "/onboarding", label: "Onboarding", icon: User },
     { href: "/dashboard", label: "Dashboard", icon: Target },
