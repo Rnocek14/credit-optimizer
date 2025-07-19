@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,9 +20,19 @@ interface UserBadge {
   earned_at: string;
 }
 
+interface UserProgress {
+  goals_count: number;
+  transcripts_count: number;
+  saved_courses_count: number;
+  published_resume_count: number;
+  cri_score: number | null;
+  readiness_score: number | null;
+}
+
 export default function Badges() {
   const [badges, setBadges] = useState<BadgeType[]>([]);
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
@@ -44,13 +55,47 @@ export default function Badges() {
 
         // Fetch user badges if logged in
         if (user) {
-          const { data: userBadgesData, error: userBadgesError } = await supabase
-            .from('user_badges')
-            .select('badge_id, earned_at')
-            .eq('user_id', user.id);
+          const [userBadgesResult, goalsResult, transcriptsResult, savedCoursesResult, resumesResult] = await Promise.all([
+            supabase
+              .from('user_badges')
+              .select('badge_id, earned_at')
+              .eq('user_id', user.id),
+            supabase
+              .from('career_goals')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('active', true),
+            supabase
+              .from('transcripts')
+              .select('id')
+              .eq('user_id', user.id),
+            supabase
+              .from('saved_courses')
+              .select('id')
+              .eq('user_id', user.id),
+            supabase
+              .from('ai_resume_drafts')
+              .select('id, cri_average, readiness_score')
+              .eq('user_id', user.id)
+              .eq('published_to_profile', true)
+          ]);
 
-          if (userBadgesError) throw userBadgesError;
-          setUserBadges(userBadgesData || []);
+          if (userBadgesResult.error) throw userBadgesResult.error;
+          setUserBadges(userBadgesResult.data || []);
+
+          // Calculate user progress
+          const progress: UserProgress = {
+            goals_count: goalsResult.data?.length || 0,
+            transcripts_count: transcriptsResult.data?.length || 0,
+            saved_courses_count: savedCoursesResult.data?.length || 0,
+            published_resume_count: resumesResult.data?.length || 0,
+            cri_score: resumesResult.data?.reduce((max, resume) => 
+              Math.max(max, resume.cri_average || 0), 0) || null,
+            readiness_score: resumesResult.data?.reduce((max, resume) => 
+              Math.max(max, resume.readiness_score || 0), 0) || null,
+          };
+          
+          setUserProgress(progress);
         }
       } catch (error) {
         console.error('Error fetching badges:', error);
@@ -95,6 +140,58 @@ export default function Badges() {
     }
   };
 
+  const getProgressInfo = (badge: BadgeType) => {
+    if (!user || !userProgress || !badge.threshold || isBadgeEarned(badge.id)) {
+      return null;
+    }
+
+    let current = 0;
+    let target = badge.threshold;
+    let progressText = '';
+    let showProgressBar = true;
+
+    switch (badge.trigger_type) {
+      case 'goal_count':
+        current = userProgress.goals_count;
+        progressText = `${current} of ${target} goals completed`;
+        break;
+      case 'transcript_count':
+        current = userProgress.transcripts_count;
+        progressText = `${current} of ${target} transcripts added`;
+        break;
+      case 'saved_courses_count':
+        current = userProgress.saved_courses_count;
+        progressText = `${current} of ${target} courses saved`;
+        break;
+      case 'published_resume_count':
+        current = userProgress.published_resume_count;
+        progressText = `${current} of ${target} resumes published`;
+        break;
+      case 'cri_score':
+        current = userProgress.cri_score || 0;
+        progressText = `Current: ${current}${current > 0 ? ` / ${target}` : ''}`;
+        showProgressBar = false;
+        break;
+      case 'readiness_score':
+        current = userProgress.readiness_score || 0;
+        progressText = `Current: ${current}${current > 0 ? ` / ${target}` : ''}`;
+        showProgressBar = false;
+        break;
+      default:
+        return null;
+    }
+
+    const progressPercentage = showProgressBar ? Math.min((current / target) * 100, 100) : 0;
+
+    return {
+      current,
+      target,
+      progressText,
+      progressPercentage,
+      showProgressBar
+    };
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -128,6 +225,7 @@ export default function Badges() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {badges.map((badge) => {
           const earned = isBadgeEarned(badge.id);
+          const progressInfo = getProgressInfo(badge);
           
           return (
             <Card 
@@ -182,6 +280,25 @@ export default function Badges() {
                       <p className="text-xs text-green-700 dark:text-green-300 font-medium">
                         ✨ Earned! Keep up the great work.
                       </p>
+                    </div>
+                  )}
+
+                  {progressInfo && !earned && (
+                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                          Progress
+                        </p>
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {progressInfo.progressText}
+                        </span>
+                      </div>
+                      {progressInfo.showProgressBar && (
+                        <Progress 
+                          value={progressInfo.progressPercentage} 
+                          className="h-2"
+                        />
+                      )}
                     </div>
                   )}
                 </div>
