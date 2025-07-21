@@ -195,82 +195,89 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
-  // Calculate hierarchical levels for skills based on dependencies
+  // Calculate hierarchical levels for skills using topological sort
   const getSkillLevels = useCallback(() => {
     const levels = new Map<string, number>();
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
-
+    
     // Log filtered skills for debugging
     console.log('🔍 Filtered Skills used in layout:', filteredSkills.map(s => ({ id: s.id, name: s.name })));
 
     const filteredSkillIds = new Set(filteredSkills.map(s => s.id));
+    console.log('🔍 Filtered Skill IDs:', Array.from(filteredSkillIds));
     
-    // Try filtered edges first, fallback to all edges if none valid
-    let validEdges = skillEdges.filter(
+    // Only consider edges where both skills are in filtered set
+    const validEdges = skillEdges.filter(
       edge =>
         filteredSkillIds.has(edge.skill_id) &&
         filteredSkillIds.has(edge.prerequisite_skill_id)
     );
-
-    console.log('📊 Valid edges count:', validEdges.length);
     
-    // Fallback: if no valid edges, use all edges but skip invalid ones during processing
-    if (validEdges.length === 0) {
-      console.log('⚠️ No valid filtered edges found, using all skillEdges with runtime filtering');
-      validEdges = skillEdges;
-    }
+    console.log('📊 Valid edges count:', validEdges.length);
+    console.log('📊 Valid edges:', validEdges.map(e => `${e.prerequisite_skill_id} -> ${e.skill_id}`));
 
-    // Helper: calculate depth recursively
-    const calculateDepth = (skillId: string): number => {
-      if (visited.has(skillId)) return levels.get(skillId) || 0;
-      if (visiting.has(skillId)) {
-        console.warn(`Cycle detected involving skill ${skillId}`);
-        return 0;
-      }
-
-      visiting.add(skillId);
-
-      const prereqEdges = validEdges.filter(e => e.skill_id === skillId && filteredSkillIds.has(e.prerequisite_skill_id));
-      if (prereqEdges.length === 0) {
-        levels.set(skillId, 0);
-        visiting.delete(skillId);
-        visited.add(skillId);
-        return 0;
-      }
-
-      let maxDepth = 0;
-      for (const edge of prereqEdges) {
-        const prereqDepth = calculateDepth(edge.prerequisite_skill_id);
-        maxDepth = Math.max(maxDepth, prereqDepth + 1);
-      }
-
-      levels.set(skillId, maxDepth);
-      visiting.delete(skillId);
-      visited.add(skillId);
-      return maxDepth;
-    };
-
-    // Run for all visible filtered skills
-    for (const skill of filteredSkills) {
-      if (!visited.has(skill.id)) {
-        calculateDepth(skill.id);
-      }
-    }
-
-    // Check for disconnected skills and root skills
-    const rootSkills = filteredSkills.filter(skill => {
-      const hasPrerequisites = validEdges.some(edge => 
-        edge.skill_id === skill.id && filteredSkillIds.has(edge.prerequisite_skill_id)
-      );
-      return !hasPrerequisites;
+    // Topological sort approach: calculate in-degree for each skill
+    const inDegree = new Map<string, number>();
+    
+    // Initialize all filtered skills with in-degree 0
+    filteredSkills.forEach(skill => {
+      inDegree.set(skill.id, 0);
     });
     
-    const disconnectedSkills = filteredSkills.filter(skill => !levels.has(skill.id));
+    // Count prerequisites (in-degree) for each skill
+    validEdges.forEach(edge => {
+      const currentDegree = inDegree.get(edge.skill_id) || 0;
+      inDegree.set(edge.skill_id, currentDegree + 1);
+    });
     
-    console.log('🌱 Root skills (no prerequisites):', rootSkills.map(s => ({ id: s.id, name: s.name })));
-    console.log('🔌 Disconnected skills:', disconnectedSkills.map(s => ({ id: s.id, name: s.name })));
-    console.log('✅ Skill Levels:', [...levels.entries()]);
+    console.log('📊 In-degrees:', Array.from(inDegree.entries()));
+    
+    // Start with skills that have no prerequisites (in-degree = 0)
+    const queue: Array<{ skillId: string; level: number }> = [];
+    
+    filteredSkills.forEach(skill => {
+      const degree = inDegree.get(skill.id) || 0;
+      if (degree === 0) {
+        levels.set(skill.id, 0);
+        queue.push({ skillId: skill.id, level: 0 });
+      }
+    });
+    
+    console.log('🌱 Root skills (level 0):', queue.map(q => q.skillId));
+    
+    // Process queue: assign levels based on prerequisites
+    while (queue.length > 0) {
+      const { skillId, level } = queue.shift()!;
+      
+      // Find all skills that depend on this skill
+      const dependentEdges = validEdges.filter(edge => edge.prerequisite_skill_id === skillId);
+      
+      dependentEdges.forEach(edge => {
+        const dependentSkillId = edge.skill_id;
+        const currentDegree = inDegree.get(dependentSkillId) || 0;
+        
+        if (currentDegree > 0) {
+          // Reduce in-degree
+          inDegree.set(dependentSkillId, currentDegree - 1);
+          
+          // If all prerequisites are processed, assign level
+          if (currentDegree - 1 === 0) {
+            const newLevel = level + 1;
+            levels.set(dependentSkillId, newLevel);
+            queue.push({ skillId: dependentSkillId, level: newLevel });
+          }
+        }
+      });
+    }
+    
+    // Handle any remaining skills (cycles or disconnected)
+    filteredSkills.forEach(skill => {
+      if (!levels.has(skill.id)) {
+        console.warn(`⚠️ Skill ${skill.id} (${skill.name}) not processed, assigning level 0`);
+        levels.set(skill.id, 0);
+      }
+    });
+    
+    console.log('🧱 Final Skill Levels:', Array.from(levels.entries()));
     
     return levels;
   }, [filteredSkills, skillEdges]);
