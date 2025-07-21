@@ -30,17 +30,23 @@ interface SkillTreeNodeProps {
 }
 
 const categoryColors = {
-  'Technical': { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', icon: '🧠' },
-  'Soft Skills': { bg: 'bg-green-100', border: 'border-green-300', text: 'text-green-800', icon: '💡' },
-  'Career': { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-800', icon: '🎯' },
-  'Tools': { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800', icon: '🛠️' },
+  'API': { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', icon: '🔌' },
+  'Backend': { bg: 'bg-green-100', border: 'border-green-300', text: 'text-green-800', icon: '⚙️' },
+  'Cloud': { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800', icon: '☁️' },
+  'Design': { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-800', icon: '🎨' },
+  'DevOps': { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-800', icon: '🔧' },
+  'Framework': { bg: 'bg-purple-100', border: 'border-purple-300', text: 'text-purple-800', icon: '🏗️' },
+  'Markup': { bg: 'bg-yellow-100', border: 'border-yellow-300', text: 'text-yellow-800', icon: '📝' },
+  'Programming': { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', icon: '💻' },
+  'Quality': { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800', icon: '✅' },
+  'Styling': { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800', icon: '💄' },
   'default': { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800', icon: '📚' }
 };
 
 const statusColors = {
   'locked': 'opacity-50 cursor-not-allowed',
   'available': 'hover:shadow-lg hover:scale-105 cursor-pointer transition-all duration-300',
-  'in_progress': 'ring-2 ring-blue-400 cursor-pointer animate-pulse',
+  'in_progress': 'ring-2 ring-blue-400 cursor-pointer',
   'completed': 'ring-2 ring-green-400 cursor-pointer shadow-lg'
 };
 
@@ -62,9 +68,9 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
   const progressPercent = userProgress ? (userProgress.xp_earned / skill.xp_value) * 100 : 0;
   
   const sizeClasses = {
-    small: 'w-16 h-14 text-xs min-h-[44px]', // Mobile responsive
-    medium: 'w-24 h-20 text-sm min-h-[44px]',
-    large: 'w-32 h-24 text-base min-h-[44px]'
+    small: 'w-20 h-16 text-xs',
+    medium: 'w-24 h-20 text-sm',
+    large: 'w-32 h-24 text-base'
   };
 
   const handleMouseEnter = () => {
@@ -77,12 +83,19 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
     onHover?.(false);
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent drag when clicking on skill
+    if (userProgress?.status !== 'locked') {
+      onClick();
+    }
+  };
+
   const tooltipContent = prerequisiteSteps 
-    ? `${prerequisiteSteps} steps to unlock`
+    ? `${prerequisiteSteps} prerequisites needed`
     : userProgress?.status === 'locked' 
       ? 'Complete prerequisites first'
       : hasCourses 
-        ? 'Has learning resources available'
+        ? 'Learning resources available'
         : 'Click to view details';
 
   return (
@@ -91,22 +104,22 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
         <TooltipTrigger asChild>
           <div
             className={`
-              absolute transform -translate-x-1/2 -translate-y-1/2 
+              absolute
               ${sizeClasses[size]} 
               ${categoryData.bg} ${categoryData.border} ${categoryData.text}
               ${statusColor}
               border-2 rounded-lg p-2 transition-all duration-300
-              flex flex-col items-center justify-center relative overflow-hidden
-              ${isRecommended ? 'ring-2 ring-yellow-400 shadow-yellow-200/50 shadow-lg animate-pulse' : ''}
+              flex flex-col items-center justify-center relative overflow-hidden select-none
+              ${isRecommended ? 'ring-2 ring-yellow-400 shadow-yellow-200/50 shadow-lg' : ''}
               ${isHighlighted ? 'ring-4 ring-primary shadow-xl scale-110 z-10' : ''}
               ${isHovered ? 'shadow-xl scale-105 z-20' : ''}
             `}
             style={{ 
               left: position.x, 
               top: position.y,
-              textShadow: userProgress?.status === 'locked' ? 'none' : '0 0 4px rgba(0,0,0,0.3)'
+              pointerEvents: 'auto'
             }}
-            onClick={userProgress?.status !== 'locked' ? onClick : undefined}
+            onClick={handleClick}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
@@ -118,19 +131,21 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
             )}
 
             {/* Skill Icon */}
-            <div className="text-lg mb-1 drop-shadow-sm">
+            <div className="text-base mb-1">
               {categoryData.icon}
             </div>
             
-            <div className="font-semibold text-center leading-tight mb-1 line-clamp-2 relative z-10">
+            {/* Skill Name */}
+            <div className="font-semibold text-center leading-tight mb-1 line-clamp-2">
               {skill.name}
             </div>
             
+            {/* Progress Bar */}
             {userProgress && (
-              <div className="w-full">
+              <div className="w-full px-1">
                 <Progress 
                   value={progressPercent} 
-                  className="h-2 mb-1 transition-all duration-500"
+                  className="h-1 mb-1"
                 />
                 <div className="text-xs text-center font-medium">
                   {userProgress.xp_earned}/{skill.xp_value} XP
@@ -138,20 +153,21 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
               </div>
             )}
             
+            {/* Badges */}
             <div className="flex gap-1 mt-1">
               <Badge variant="outline" className="text-xs px-1 py-0">
                 L{skill.difficulty_level}
               </Badge>
               {userProgress?.status === 'completed' && (
-                <Badge variant="outline" className="text-xs px-1 py-0 bg-green-100 animate-bounce">
+                <Badge variant="outline" className="text-xs px-1 py-0 bg-green-100">
                   ✓
                 </Badge>
               )}
             </div>
 
-            {/* Unlock animation overlay */}
+            {/* Completion animation overlay */}
             {userProgress?.status === 'completed' && (
-              <div className="absolute inset-0 bg-green-200/20 rounded-lg animate-ping" />
+              <div className="absolute inset-0 bg-green-200/20 rounded-lg animate-pulse" />
             )}
           </div>
         </TooltipTrigger>
