@@ -1,4 +1,7 @@
+
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, Target, Award, TrendingUp, X } from 'lucide-react';
+import { CourseCard } from './CourseCard';
 
 interface SkillDetailSidePanelProps {
   skill: {
@@ -48,6 +52,35 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
   onClose,
   onPlanSkill
 }) => {
+  // Fetch related courses for this skill
+  const { data: relatedCourses = [], isLoading: coursesLoading } = useQuery({
+    queryKey: ['skill-courses', skill?.id],
+    queryFn: async () => {
+      if (!skill?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('course_skill_map')
+        .select(`
+          course_id,
+          recommended_courses (
+            id,
+            title,
+            platform,
+            url,
+            difficulty,
+            cost,
+            description,
+            skill_tags
+          )
+        `)
+        .eq('skill_id', skill.id);
+      
+      if (error) throw error;
+      return data.map(item => item.recommended_courses).filter(Boolean);
+    },
+    enabled: !!skill?.id && open
+  });
+
   if (!skill) return null;
 
   const progressPercent = userProgress ? (userProgress.xp_earned / skill.xp_value) * 100 : 0;
@@ -70,6 +103,11 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
                   <Badge variant="outline">
                     Level {skill.difficulty_level}
                   </Badge>
+                  {relatedCourses.length > 0 && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      {relatedCourses.length} course{relatedCourses.length !== 1 ? 's' : ''}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </SheetTitle>
@@ -259,17 +297,40 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
                   <Award className="h-5 w-5" />
                   Learning Resources
                 </CardTitle>
+                <CardDescription>
+                  Recommended courses and materials for this skill
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="text-4xl mb-2">📚</div>
-                  <p className="mb-2">Curated learning resources coming soon!</p>
-                  <p className="text-sm">We'll recommend courses, articles, and projects based on your learning style.</p>
-                </div>
-                <Button variant="outline" className="w-full" disabled>
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View Recommended Courses
-                </Button>
+              <CardContent>
+                {coursesLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-20 bg-gray-200 rounded-lg"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : relatedCourses.length > 0 ? (
+                  <div className="space-y-3">
+                    {relatedCourses.map((course) => (
+                      <CourseCard
+                        key={course.id}
+                        course={course}
+                        compact={true}
+                        onStartCourse={(courseId) => {
+                          console.log('Starting course:', courseId);
+                          // TODO: Track course engagement
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-4xl mb-2">📚</div>
+                    <p className="mb-2">No courses found for this skill yet.</p>
+                    <p className="text-sm">Check back later for new recommendations!</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

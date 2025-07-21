@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,6 +88,23 @@ const SkillTree = () => {
     }
   });
 
+  // Fetch skills with courses
+  const { data: skillsWithCourses = [], isLoading: skillsWithCoursesLoading } = useQuery({
+    queryKey: ['skills-with-courses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_skill_map')
+        .select('skill_id')
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return { data: data?.map(item => item.skill_id) || [], error };
+        });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
@@ -112,7 +128,8 @@ const SkillTree = () => {
     total: skills.length,
     completed: userProgress.filter(p => p.status === 'completed').length,
     inProgress: userProgress.filter(p => p.status === 'in_progress').length,
-    recommended: recommendedSkills.length
+    recommended: recommendedSkills.length,
+    withCourses: skillsWithCourses.length
   };
 
   const handleCategoryToggle = (category: string) => {
@@ -181,14 +198,14 @@ const SkillTree = () => {
           <div>
             <h1 className="text-3xl font-bold">Skill Tree</h1>
             <p className="text-muted-foreground">
-              Visualize your learning journey and plan your next steps
+              Visualize your learning journey and discover courses for each skill
             </p>
           </div>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-blue-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <BookOpen className="h-5 w-5 text-blue-600" />
@@ -216,6 +233,13 @@ const SkillTree = () => {
             <span className="text-sm font-medium text-purple-900">Recommended</span>
           </div>
           <div className="text-2xl font-bold text-purple-600">{skillCounts.recommended}</div>
+        </div>
+        <div className="bg-cyan-50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <BookOpen className="h-5 w-5 text-cyan-600" />
+            <span className="text-sm font-medium text-cyan-900">With Courses</span>
+          </div>
+          <div className="text-2xl font-bold text-cyan-600">{skillCounts.withCourses}</div>
         </div>
       </div>
 
@@ -245,6 +269,7 @@ const SkillTree = () => {
         skillEdges={skillEdges}
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills}
+        skillsWithCourses={skillsWithCourses}
         onSkillClick={handleSkillClick}
         className="min-h-[600px]"
       />

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { SkillTreeNode } from './SkillTreeNode';
@@ -35,6 +34,7 @@ interface InteractiveSkillTreeProps {
   skillEdges: SkillEdge[];
   filteredSkills: Skill[];
   recommendedSkills: string[];
+  skillsWithCourses?: string[];
   onSkillClick: (skill: Skill) => void;
   className?: string;
   showMinimap?: boolean;
@@ -46,6 +46,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
   skillEdges,
   filteredSkills,
   recommendedSkills,
+  skillsWithCourses = [],
   onSkillClick,
   className,
   showMinimap = true
@@ -270,6 +271,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
             const progress = userProgress.find(p => p.skill_id === skill.id);
             const isRecommended = recommendedSkills.includes(skill.id);
             const isHighlighted = highlightedPath.includes(skill.id);
+            const hasCourses = skillsWithCourses.includes(skill.id);
             
             // Calculate prerequisite steps
             const prerequisites = skillEdges
@@ -300,6 +302,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
                 }}
                 isRecommended={isRecommended}
                 isHighlighted={isHighlighted}
+                hasCourses={hasCourses}
                 prerequisiteSteps={uncompletedPrereqs.length}
                 onHover={(hovered) => handleSkillHover(skill.id, hovered)}
                 size={window.innerWidth < 768 ? 'small' : 'medium'}
@@ -314,6 +317,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
               <div className="w-24 h-16 bg-muted rounded relative overflow-hidden">
                 {visibleSkills.slice(0, 20).map((skill, index) => {
                   const progress = userProgress.find(p => p.skill_id === skill.id);
+                  const hasCourses = skillsWithCourses.includes(skill.id);
                   const x = (index % 8) * 3;
                   const y = Math.floor(index / 8) * 3;
                   return (
@@ -322,9 +326,11 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
                       className={`absolute w-2 h-2 rounded-full ${
                         progress?.status === 'completed' ? 'bg-green-500' :
                         progress?.status === 'in_progress' ? 'bg-blue-500' :
+                        hasCourses ? 'bg-purple-400' :
                         'bg-gray-300'
                       }`}
                       style={{ left: x, top: y }}
+                      title={skill.name}
                     />
                   );
                 })}

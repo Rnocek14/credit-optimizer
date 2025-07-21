@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BookOpen } from 'lucide-react';
 
 interface SkillTreeNodeProps {
   skill: {
@@ -23,6 +24,7 @@ interface SkillTreeNodeProps {
   isRecommended?: boolean;
   size?: 'small' | 'medium' | 'large';
   isHighlighted?: boolean;
+  hasCourses?: boolean;
   prerequisiteSteps?: number;
   onHover?: (hovered: boolean) => void;
 }
@@ -50,6 +52,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
   isRecommended = false,
   size = 'medium',
   isHighlighted = false,
+  hasCourses = false,
   prerequisiteSteps,
   onHover
 }) => {
@@ -78,7 +81,9 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
     ? `${prerequisiteSteps} steps to unlock`
     : userProgress?.status === 'locked' 
       ? 'Complete prerequisites first'
-      : 'Click to view details';
+      : hasCourses 
+        ? 'Has learning resources available'
+        : 'Click to view details';
 
   return (
     <TooltipProvider>
@@ -105,6 +110,13 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
+            {/* Course indicator */}
+            {hasCourses && (
+              <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-1">
+                <BookOpen className="h-2 w-2" />
+              </div>
+            )}
+
             {/* Skill Icon */}
             <div className="text-lg mb-1 drop-shadow-sm">
               {categoryData.icon}
