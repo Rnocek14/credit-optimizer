@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import Navigation from "@/components/Navigation";
 import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { ResumePreview } from "@/components/ResumePreview";
+import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -27,8 +29,9 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Use the new auth helper to get current user
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
         toast({
           title: "Authentication Error",
           description: "Please log in to view your dashboard",
@@ -37,13 +40,8 @@ export default function Dashboard() {
         return;
       }
 
-      // Get user's profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
+      // Get user's profile using the auth helper
+      const profile = await getUserProfile(currentUser.id, currentUser.isDevUser);
       if (!profile) {
         toast({
           title: "Profile Not Found",
