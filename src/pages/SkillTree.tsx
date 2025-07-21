@@ -162,6 +162,17 @@ const SkillTree = () => {
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
+  // Mock goal skills - in a real app, this would come from user's career goals
+  const goalSkills = skills
+    .filter(skill => 
+      skill.category === 'Programming' || 
+      skill.category === 'Framework' || 
+      skill.name.toLowerCase().includes('react') ||
+      skill.name.toLowerCase().includes('javascript')
+    )
+    .slice(0, 6)
+    .map(skill => skill.id);
+
   // Filter skills based on current filters
   const filteredSkills = skills.filter(skill => {
     const progress = userProgress.find(p => p.skill_id === skill.id);
@@ -172,7 +183,7 @@ const SkillTree = () => {
     const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
     const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
     const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
-    const matchesGoalPath = !showGoalPathOnly || true; // TODO: Connect to actual career goals
+    const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
     
     return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
   });
@@ -335,6 +346,7 @@ const SkillTree = () => {
         skillEdges={skillEdges}
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills}
+        goalSkills={goalSkills}
         availableCategories={categories}
         onSkillClick={handleSkillClick}
       />

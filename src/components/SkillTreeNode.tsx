@@ -18,6 +18,7 @@ interface SkillTreeNodeProps {
   position: { x: number; y: number };
   onClick: () => void;
   isRecommended?: boolean;
+  isGoalSkill?: boolean;
   size?: 'small' | 'medium';
   isHighlighted?: boolean;
   hasCourses?: boolean;
@@ -33,6 +34,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
   position,
   onClick,
   isRecommended = false,
+  isGoalSkill = false,
   size = 'medium',
   isHighlighted = false,
   hasCourses = false,
@@ -61,6 +63,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
     : '';
   
   const pathHighlight = isInPath ? 'ring-2 ring-blue-300 shadow-md skill-path-pulse' : '';
+  const goalHighlight = isGoalSkill ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : '';
 
   const progressPercentage = userProgress && skill.xp_value > 0 
     ? Math.min((userProgress.xp_earned / skill.xp_value) * 100, 100)
@@ -68,7 +71,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 touch-manipulation ${statusRing} ${pathHighlight}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 touch-manipulation ${statusRing} ${pathHighlight} ${goalHighlight}`}
       style={{
         left: position.x,
         top: position.y,
@@ -119,6 +122,13 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
         </div>
       )}
       
+      {/* Goal Path Star Badge */}
+      {isGoalSkill && (
+        <div className="absolute -top-1 -left-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center border border-yellow-600">
+          <span className="text-[8px]">🎯</span>
+        </div>
+      )}
+
       {/* Recommendation Star */}
       {isRecommended && (
         <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">

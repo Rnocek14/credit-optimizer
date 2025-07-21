@@ -74,6 +74,7 @@ interface SkillTreeCanvasProps {
   }>;
   filteredSkills: any[];
   recommendedSkills: string[];
+  goalSkills?: string[];
   availableCategories: string[];
   onSkillClick: (skill: any) => void;
   skillsWithCourses?: string[];
@@ -85,6 +86,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   skillEdges,
   filteredSkills,
   recommendedSkills,
+  goalSkills = [],
   availableCategories,
   onSkillClick,
   skillsWithCourses = []
@@ -622,6 +624,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               onClick={() => handleSkillClick(skill)}
               categoryColor={getCategoryColor(skill.category)}
               isRecommended={isRecommended}
+              isGoalSkill={goalSkills.includes(skill.id)}
               hasCourses={hasCourses}
               size="medium"
               isInPath={isInPath}

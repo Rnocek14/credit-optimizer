@@ -10,6 +10,7 @@ export const InteractiveSkillTree = ({
   skillEdges,
   filteredSkills,
   recommendedSkills,
+  goalSkills = [],
   availableCategories,
   onSkillClick,
   showMinimap = true,
@@ -79,6 +80,7 @@ export const InteractiveSkillTree = ({
         skillEdges={skillEdges || []}
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills || []}
+        goalSkills={goalSkills}
         availableCategories={availableCategories || []}
         onSkillClick={onSkillClick}
       />
