@@ -36,6 +36,7 @@ import AdminSettings from "./pages/AdminSettings";
 import Badges from "./pages/Badges";
 import BadgeDetail from "./pages/BadgeDetail";
 import Demos from "./pages/Demos";
+import Timeline from "./pages/Timeline";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -127,6 +128,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <SkillTree />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/timeline" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Timeline />
               </ProtectedRoute>
             } 
           />
