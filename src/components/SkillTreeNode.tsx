@@ -60,7 +60,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
     ? 'ring-2 ring-blue-400'
     : '';
   
-  const pathHighlight = isInPath ? 'ring-2 ring-blue-300 shadow-md' : '';
+  const pathHighlight = isInPath ? 'ring-2 ring-blue-300 shadow-md skill-path-pulse' : '';
 
   const progressPercentage = userProgress && skill.xp_value > 0 
     ? Math.min((userProgress.xp_earned / skill.xp_value) * 100, 100)
@@ -68,7 +68,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 ${statusRing} ${pathHighlight}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 touch-manipulation ${statusRing} ${pathHighlight}`}
       style={{
         left: position.x,
         top: position.y,
@@ -84,6 +84,8 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleMouseEnter}
+      onTouchEnd={handleMouseLeave}
     >
       {/* Skill Name */}
       <div className="font-bold text-center mb-1 truncate text-gray-800" title={skill.name}>

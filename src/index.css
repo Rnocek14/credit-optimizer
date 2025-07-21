@@ -103,3 +103,33 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-inter;
   }
 }
+
+/* Interactive SkillTree Polish Effects */
+@layer utilities {
+  .skill-arrow-flow {
+    stroke-dasharray: 8 4;
+    animation: flow 2s ease-in-out infinite;
+  }
+  
+  .skill-path-pulse {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes flow {
+    0% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: 12;
+    }
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 8px hsl(var(--primary) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 16px hsl(var(--primary) / 0.6);
+    }
+  }
+}

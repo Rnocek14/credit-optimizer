@@ -96,6 +96,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [containerDimensions, setContainerDimensions] = useState({ width: 1200, height: 800 });
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const [renderStartTime, setRenderStartTime] = useState<number>(0);
+  const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
 
@@ -151,10 +152,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     if (isHovering) {
       const path = getPrerequisitePath(skillId);
       setHighlightedSkillPath(path);
+      
+      // Set arrows for animation
+      const arrowIds = skillEdges
+        .filter(edge => path.includes(edge.skill_id) && path.includes(edge.prerequisite_skill_id))
+        .map(edge => `${edge.prerequisite_skill_id}-${edge.skill_id}`);
+      setHoveredArrows(arrowIds);
     } else {
       setHighlightedSkillPath([]);
+      setHoveredArrows([]);
     }
-  }, [getPrerequisitePath]);
+  }, [getPrerequisitePath, skillEdges]);
+
 
   // Memoized skill depth calculation for hierarchical layout
   const getSkillDepthMap = useCallback(() => {
@@ -293,6 +302,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
     return positions;
   }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
+
+  // Auto-scroll to center skill on click
+  const handleSkillClick = useCallback((skill: any) => {
+    const position = skillPositions.get(skill.id);
+    if (position) {
+      const targetX = containerDimensions.width / 2 - (position.x + 60) * zoomLevel;
+      const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
+      
+      setPanOffset({ x: targetX, y: targetY });
+    }
+    onSkillClick(skill);
+  }, [skillPositions, containerDimensions, zoomLevel, onSkillClick]);
 
   // Debounced fit-to-view for performance
   const debouncedFitToView = useDebounce(() => {
@@ -552,17 +573,27 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           </marker>
         </defs>
         
-        {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => (
-          <path
-            key={edgeKey}
-            d={pathData}
-            stroke="#64748b"
-            strokeWidth="2"
-            fill="none"
-            markerEnd="url(#arrowhead)"
-            opacity="0.7"
-          />
-        ))}
+        {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => {
+          const [prerequisiteId, skillId] = edgeKey.split('-');
+          const fromSkill = skills.find(s => s.id === prerequisiteId);
+          const toSkill = skills.find(s => s.id === skillId);
+          const isHovered = hoveredArrows.includes(edgeKey);
+          
+          const strokeColor = toSkill ? getCategoryColor(toSkill.category) : '#9ca3af';
+          
+          return (
+            <path
+              key={edgeKey}
+              d={pathData}
+              stroke={strokeColor}
+              strokeWidth="2"
+              fill="none"
+              strokeOpacity={isHovered ? "0.9" : "0.6"}
+              className={isHovered ? "skill-arrow-flow" : ""}
+              markerEnd="url(#arrowhead)"
+            />
+          );
+        })}
       </svg>
 
       {/* Node Layer */}
@@ -588,7 +619,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               skill={skill}
               userProgress={progress}
               position={position}
-              onClick={() => onSkillClick(skill)}
+              onClick={() => handleSkillClick(skill)}
               categoryColor={getCategoryColor(skill.category)}
               isRecommended={isRecommended}
               hasCourses={hasCourses}
