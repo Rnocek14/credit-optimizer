@@ -37,6 +37,7 @@ import Badges from "./pages/Badges";
 import BadgeDetail from "./pages/BadgeDetail";
 import Demos from "./pages/Demos";
 import Timeline from "./pages/Timeline";
+import Plans from "./pages/Plans";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -136,6 +137,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Timeline />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/plans" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Plans />
               </ProtectedRoute>
             } 
           />
