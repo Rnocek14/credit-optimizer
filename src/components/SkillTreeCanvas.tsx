@@ -238,12 +238,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }
     });
 
-    const levelHeight = 200; // Increased spacing for better animation visibility
-    const nodeWidth = 140; // Wider nodes for better content display
-    const nodeSpacing = 50; // More spacing between nodes
-    const categorySpacing = 20; // Enhanced category separation
-    const baseY = 120;
     const canvasWidth = containerDimensions.width;
+    const levelHeight = 180; // Better vertical spacing
+    const nodeWidth = 120; // Responsive node width
+    const nodeSpacing = Math.max(30, Math.min(60, canvasWidth / 20)); // Dynamic spacing based on viewport
+    const categorySpacing = 15; // Category separation
+    const baseY = 100;
 
     const sortSkillsByCategory = (skills: any[]) => {
       return skills.sort((a, b) => {
@@ -272,7 +272,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
       totalWidth += categoryTransitions * categorySpacing;
 
-      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
+      const startX = Math.max(40, (canvasWidth - totalWidth) / 2);
       const y = baseY + depth * levelHeight;
 
       let currentX = startX;
@@ -308,7 +308,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
       totalWidth += categoryTransitions * categorySpacing;
 
-      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
+      const startX = Math.max(40, (canvasWidth - totalWidth) / 2);
       let currentX = startX;
       let lastCategory = null;
 
@@ -330,8 +330,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
     if (position) {
-      const targetX = containerDimensions.width / 2 - (position.x + 70) * zoomLevel;
-      const targetY = containerDimensions.height / 2 - (position.y + 50) * zoomLevel;
+      const targetX = containerDimensions.width / 2 - (position.x + 60) * zoomLevel;
+      const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
       
       setPanOffset({ x: targetX, y: targetY });
     }
@@ -449,9 +449,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(edge.skill_id);
       if (!from || !to) return;
       
-      const fromX = from.x + 70;
-      const fromY = from.y + 100;
-      const toX = to.x + 70;
+      const fromX = from.x + 60;
+      const fromY = from.y + 80;
+      const toX = to.x + 60;
       const toY = to.y;
       
       const dx = toX - fromX;
@@ -480,10 +480,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(branch.to_skill_id);
       if (!from || !to) return;
       
-      const fromX = from.x + 70;
-      const fromY = from.y + 50;
-      const toX = to.x + 70;
-      const toY = to.y + 50;
+      const fromX = from.x + 60;
+      const fromY = from.y + 40;
+      const toX = to.x + 60;
+      const toY = to.y + 40;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
