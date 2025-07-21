@@ -40,6 +40,7 @@ import Demos from "./pages/Demos";
 import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
 import SalaryInsights from "./pages/SalaryInsights";
+import ResumeAnalytics from "./pages/ResumeAnalytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -185,6 +186,14 @@ const App = () => (
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
+        <Route 
+          path="/resume-analytics" 
+          element={
+            <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+              <ResumeAnalytics />
+            </ProtectedRoute>
+          } 
+        />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

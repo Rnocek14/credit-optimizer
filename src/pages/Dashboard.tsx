@@ -11,6 +11,7 @@ import Navigation from "@/components/Navigation";
 import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { ResumePreview } from "@/components/ResumePreview";
+import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -326,6 +327,11 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+
+          {/* Analytics Dashboard */}
+          <div className="mt-8">
+            <ResumeAnalyticsDashboard />
+          </div>
 
           {/* Resume Preview for Aisha Khan */}
           <div className="mt-8">
