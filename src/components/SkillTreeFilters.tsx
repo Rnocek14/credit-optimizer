@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Search, Filter, Target, Eye, EyeOff } from 'lucide-react';
+import { Search, Filter, Target, Eye, EyeOff, Unlock, Star, Route } from 'lucide-react';
 
 interface SkillTreeFiltersProps {
   searchTerm: string;
@@ -17,6 +17,12 @@ interface SkillTreeFiltersProps {
   onRecommendedToggle: (show: boolean) => void;
   focusMode: boolean;
   onFocusModeToggle: (focus: boolean) => void;
+  showUnlockedOnly: boolean;
+  onUnlockedOnlyToggle: (show: boolean) => void;
+  showRecommendedNext: boolean;
+  onRecommendedNextToggle: (show: boolean) => void;
+  showGoalPathOnly: boolean;
+  onGoalPathOnlyToggle: (show: boolean) => void;
   skillCounts: {
     total: number;
     completed: number;
@@ -26,7 +32,7 @@ interface SkillTreeFiltersProps {
 }
 
 const categories = [
-  { name: 'Technical', color: 'bg-blue-100 text-blue-800', icon: '🖥️' },
+  { name: 'Technical', color: 'bg-blue-100 text-blue-800', icon: '🧠' },
   { name: 'Soft Skills', color: 'bg-green-100 text-green-800', icon: '💡' },
   { name: 'Career', color: 'bg-purple-100 text-purple-800', icon: '🎯' },
   { name: 'Tools', color: 'bg-orange-100 text-orange-800', icon: '🛠️' }
@@ -41,6 +47,12 @@ export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
   onRecommendedToggle,
   focusMode,
   onFocusModeToggle,
+  showUnlockedOnly,
+  onUnlockedOnlyToggle,
+  showRecommendedNext,
+  onRecommendedNextToggle,
+  showGoalPathOnly,
+  onGoalPathOnlyToggle,
   skillCounts
 }) => {
   return (
@@ -89,7 +101,7 @@ export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
         </div>
 
         {/* Toggles */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="flex items-center space-x-2">
             <Switch
               id="recommended"
@@ -111,6 +123,42 @@ export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
             <Label htmlFor="focus" className="flex items-center gap-2">
               {focusMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
               Focus Mode
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="unlocked"
+              checked={showUnlockedOnly}
+              onCheckedChange={onUnlockedOnlyToggle}
+            />
+            <Label htmlFor="unlocked" className="flex items-center gap-2">
+              <Unlock className="h-4 w-4" />
+              Unlocked Only
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="recommendedNext"
+              checked={showRecommendedNext}
+              onCheckedChange={onRecommendedNextToggle}
+            />
+            <Label htmlFor="recommendedNext" className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              Recommended Next
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="goalPath"
+              checked={showGoalPathOnly}
+              onCheckedChange={onGoalPathOnlyToggle}
+            />
+            <Label htmlFor="goalPath" className="flex items-center gap-2">
+              <Route className="h-4 w-4" />
+              Goal Path Only
             </Label>
           </div>
         </div>

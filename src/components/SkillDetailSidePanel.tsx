@@ -1,0 +1,280 @@
+import React from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BookOpen, Target, Award, TrendingUp, X } from 'lucide-react';
+
+interface SkillDetailSidePanelProps {
+  skill: {
+    id: string;
+    name: string;
+    category: string;
+    xp_value: number;
+    difficulty_level: number;
+    description?: string;
+  } | null;
+  userProgress?: {
+    status: 'locked' | 'available' | 'in_progress' | 'completed';
+    xp_earned: number;
+    cri_score?: number;
+    verification_source?: string;
+  };
+  prerequisites?: Array<{
+    id: string;
+    name: string;
+    completed: boolean;
+  }>;
+  open: boolean;
+  onClose: () => void;
+  onPlanSkill: (skillId: string) => void;
+}
+
+const categoryColors = {
+  'Technical': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🧠' },
+  'Soft Skills': { bg: 'bg-green-100', text: 'text-green-800', icon: '💡' },
+  'Career': { bg: 'bg-purple-100', text: 'text-purple-800', icon: '🎯' },
+  'Tools': { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🛠️' },
+  'default': { bg: 'bg-gray-100', text: 'text-gray-800', icon: '📚' }
+};
+
+export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
+  skill,
+  userProgress,
+  prerequisites = [],
+  open,
+  onClose,
+  onPlanSkill
+}) => {
+  if (!skill) return null;
+
+  const progressPercent = userProgress ? (userProgress.xp_earned / skill.xp_value) * 100 : 0;
+  const canPlan = userProgress?.status === 'available' || userProgress?.status === 'in_progress';
+  const categoryData = categoryColors[skill.category as keyof typeof categoryColors] || categoryColors.default;
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+        <SheetHeader className="space-y-4">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center gap-2">
+              <span className="text-2xl">{categoryData.icon}</span>
+              <div>
+                <div className="text-xl font-bold">{skill.name}</div>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline" className={`${categoryData.bg} ${categoryData.text}`}>
+                    {skill.category}
+                  </Badge>
+                  <Badge variant="outline">
+                    Level {skill.difficulty_level}
+                  </Badge>
+                </div>
+              </div>
+            </SheetTitle>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Progress Overview */}
+          {userProgress && (
+            <Card className="mb-4">
+              <CardContent className="pt-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Progress</span>
+                    <Badge variant={
+                      userProgress.status === 'completed' ? 'default' :
+                      userProgress.status === 'in_progress' ? 'secondary' :
+                      'outline'
+                    }>
+                      {userProgress.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                  <Progress value={progressPercent} className="h-3" />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{userProgress.xp_earned} / {skill.xp_value} XP</span>
+                    <span>{Math.round(progressPercent)}%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </SheetHeader>
+
+        <Tabs defaultValue="overview" className="w-full mt-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
+            <TabsTrigger value="prereqs" className="text-xs">Prerequisites</TabsTrigger>
+            <TabsTrigger value="resources" className="text-xs">Resources</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BookOpen className="h-5 w-5" />
+                  Description
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed">
+                  {skill.description || 'No description available for this skill.'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">XP Reward</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{skill.xp_value}</div>
+                  <p className="text-xs text-muted-foreground">Points when mastered</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Difficulty</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">Level {skill.difficulty_level}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {skill.difficulty_level <= 2 ? 'Beginner' : 
+                     skill.difficulty_level <= 4 ? 'Intermediate' : 'Advanced'}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {canPlan && (
+              <Button 
+                onClick={() => onPlanSkill(skill.id)}
+                className="w-full"
+                size="lg"
+              >
+                <Target className="h-4 w-4 mr-2" />
+                Plan This Skill with Maya
+              </Button>
+            )}
+          </TabsContent>
+
+          <TabsContent value="progress" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Progress Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userProgress?.cri_score && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">CRI Score</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {userProgress.cri_score.toFixed(1)}
+                    </div>
+                  </div>
+                )}
+
+                {userProgress?.verification_source && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Verified By</div>
+                    <Badge variant="outline">{userProgress.verification_source}</Badge>
+                  </div>
+                )}
+
+                <div className="bg-muted/50 p-4 rounded-lg">
+                  <div className="text-sm font-medium mb-2">XP Breakdown</div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Current XP:</span>
+                      <span className="font-mono">{userProgress?.xp_earned || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total XP:</span>
+                      <span className="font-mono">{skill.xp_value}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold border-t pt-2">
+                      <span>Remaining:</span>
+                      <span className="font-mono">{skill.xp_value - (userProgress?.xp_earned || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="prereqs" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Prerequisites</CardTitle>
+                <CardDescription>
+                  Skills you need to master before tackling this one
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {prerequisites.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-2">🎉</div>
+                    <p className="text-muted-foreground">No prerequisites required!</p>
+                    <p className="text-sm text-muted-foreground">You can start learning this skill right away.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {prerequisites.map((prereq) => (
+                      <div key={prereq.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                          prereq.completed ? 'bg-green-500' : 'bg-gray-300'
+                        }`}>
+                          {prereq.completed && <span className="text-white text-xs">✓</span>}
+                        </div>
+                        <div className="flex-1">
+                          <span className={prereq.completed ? 'text-green-700 font-medium' : 'text-muted-foreground'}>
+                            {prereq.name}
+                          </span>
+                        </div>
+                        {prereq.completed && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="resources" className="space-y-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Learning Resources
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="text-4xl mb-2">📚</div>
+                  <p className="mb-2">Curated learning resources coming soon!</p>
+                  <p className="text-sm">We'll recommend courses, articles, and projects based on your learning style.</p>
+                </div>
+                <Button variant="outline" className="w-full" disabled>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View Recommended Courses
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </SheetContent>
+    </Sheet>
+  );
+};

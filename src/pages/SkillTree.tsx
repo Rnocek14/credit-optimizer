@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
 import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
-import { SkillDetailModal } from '@/components/SkillDetailModal';
+import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,9 @@ const SkillTree = () => {
   const [activeCategories, setActiveCategories] = useState<string[]>(['Technical', 'Soft Skills', 'Career', 'Tools']);
   const [showOnlyRecommended, setShowOnlyRecommended] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
+  const [showRecommendedNext, setShowRecommendedNext] = useState(false);
+  const [showGoalPathOnly, setShowGoalPathOnly] = useState(false);
 
   // Fetch skills
   const { data: skills = [], isLoading: skillsLoading } = useQuery({
@@ -91,12 +94,17 @@ const SkillTree = () => {
 
   // Filter skills based on current filters
   const filteredSkills = skills.filter(skill => {
+    const progress = userProgress.find(p => p.skill_id === skill.id);
+    
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = activeCategories.includes(skill.category);
     const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
+    const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
+    const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
+    const matchesGoalPath = !showGoalPathOnly || true; // TODO: Connect to actual career goals
     
-    return matchesSearch && matchesCategory && matchesRecommended;
+    return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
   });
 
   // Calculate skill counts
@@ -221,6 +229,12 @@ const SkillTree = () => {
         onRecommendedToggle={setShowOnlyRecommended}
         focusMode={focusMode}
         onFocusModeToggle={setFocusMode}
+        showUnlockedOnly={showUnlockedOnly}
+        onUnlockedOnlyToggle={setShowUnlockedOnly}
+        showRecommendedNext={showRecommendedNext}
+        onRecommendedNextToggle={setShowRecommendedNext}
+        showGoalPathOnly={showGoalPathOnly}
+        onGoalPathOnlyToggle={setShowGoalPathOnly}
         skillCounts={skillCounts}
       />
 
@@ -235,8 +249,8 @@ const SkillTree = () => {
         className="min-h-[600px]"
       />
 
-      {/* Skill Detail Modal */}
-      <SkillDetailModal
+      {/* Skill Detail Side Panel */}
+      <SkillDetailSidePanel
         skill={selectedSkill}
         userProgress={selectedSkill ? getSkillProgress(selectedSkill.id) : undefined}
         prerequisites={selectedSkill ? getSkillPrerequisites(selectedSkill.id) : []}
