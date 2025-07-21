@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe } from 'lucide-react';
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
 interface LocationROIExplorerProps {
   selectedCareerPathId: string | null;
@@ -92,8 +92,9 @@ const LOCATIONS = [
   }
 ];
 
-// World map topology URL (free from Natural Earth)
-const geoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+// World map topology URLs
+const worldGeoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+const usaStatesGeoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/united-states/us-albers-50.json";
 
 // Color scale function for heat map
 const getColorByMetric = (value: number, metric: 'roi' | 'colAdjustedRoi' | 'lqi', maxValue: number) => {
@@ -124,6 +125,8 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   const [sortBy, setSortBy] = useState<'roi' | 'colAdjustedRoi' | 'jobMarket' | 'lqi'>('roi');
   const [mapMetric, setMapMetric] = useState<'roi' | 'colAdjustedRoi' | 'lqi'>('lqi');
   const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
+  const [mapView, setMapView] = useState<'global' | 'usa'>('global');
+  const [zoom, setZoom] = useState(1);
   
   // Mock current user region for visa calculations
   const currentUserRegion = 'india';
@@ -235,9 +238,17 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   });
   const maxMetricValue = Math.max(...metricValues);
 
-  // Get location data for country mapping
+  // Get location data for country/state mapping
   const getLocationByCountryCode = (countryCode: string) => {
     return locationROIData.find(loc => loc.countryCode === countryCode);
+  };
+  
+  const getLocationByStateName = (stateName: string) => {
+    const stateMapping: Record<string, string> = {
+      'California': 'california',
+      'New York': 'new-york'
+    };
+    return locationROIData.find(loc => loc.value === stateMapping[stateName]);
   };
   const topROILocations = [...locationROIData].sort((a, b) => b.roi - a.roi).slice(0, 2);
   const topCOLROILocations = [...locationROIData].sort((a, b) => b.colAdjustedROI - a.colAdjustedROI).slice(0, 2);
@@ -259,123 +270,244 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
             Compare {careerPath.title} earning potential across different locations
           </p>
           
-          {/* World Heat Map */}
+          {/* Interactive World Heat Map */}
           <div className="mt-6 p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold">🗺️ World ROI Heat Map</h3>
-              <Select value={mapMetric} onValueChange={(value: 'roi' | 'colAdjustedRoi' | 'lqi') => setMapMetric(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select metric" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="roi">ROI</SelectItem>
-                  <SelectItem value="colAdjustedRoi">Net ROI (COL-adjusted)</SelectItem>
-                  <SelectItem value="lqi">LQI Score</SelectItem>
-                </SelectContent>
-              </Select>
+              <h3 className="text-sm font-semibold">🗺️ Interactive ROI Heat Map</h3>
+              <div className="flex gap-2">
+                <Select value={mapView} onValueChange={(value: 'global' | 'usa') => setMapView(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">🌍 Global View</SelectItem>
+                    <SelectItem value="usa">🇺🇸 U.S. States</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={mapMetric} onValueChange={(value: 'roi' | 'colAdjustedRoi' | 'lqi') => setMapMetric(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select metric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="roi">ROI</SelectItem>
+                    <SelectItem value="colAdjustedRoi">Net ROI (COL-adjusted)</SelectItem>
+                    <SelectItem value="lqi">LQI Score</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="relative">
               <ComposableMap
                 projection="geoMercator"
-                projectionConfig={{
+                projectionConfig={mapView === 'usa' ? {
+                  scale: 800,
+                  center: [-98, 39]
+                } : {
                   scale: 100,
                   center: [0, 20]
                 }}
                 style={{ width: "100%", height: "400px" }}
               >
-                <Geographies geography={geoUrl}>
-                  {({ geographies }) =>
-                    geographies.map((geo) => {
-                      const countryCode = geo.properties.ISO_A2;
-                      const locationData = getLocationByCountryCode(countryCode);
-                      const metricValue = locationData ? (
-                        mapMetric === 'roi' ? locationData.roi :
-                        mapMetric === 'colAdjustedRoi' ? locationData.colAdjustedROI :
-                        locationData.lqi
-                      ) : 0;
-                      
-                      const fillColor = locationData 
-                        ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
-                        : "#e2e8f0";
-                      
-                      const isSelected = selectedLocation === locationData?.value;
-                      const isHovered = hoveredLocation === locationData?.value;
+                <ZoomableGroup
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  minZoom={0.5}
+                  maxZoom={8}
+                  center={mapView === 'usa' ? [-98, 39] : [0, 20]}
+                >
+                  {/* Global View */}
+                  {mapView === 'global' && (
+                    <Geographies geography={worldGeoUrl}>
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          const countryCode = geo.properties.ISO_A2;
+                          const locationData = getLocationByCountryCode(countryCode);
+                          const metricValue = locationData ? (
+                            mapMetric === 'roi' ? locationData.roi :
+                            mapMetric === 'colAdjustedRoi' ? locationData.colAdjustedROI :
+                            locationData.lqi
+                          ) : 0;
+                          
+                          const fillColor = locationData 
+                            ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
+                            : "hsl(var(--muted))";
+                          
+                          const isSelected = selectedLocation === locationData?.value;
+                          const isHovered = hoveredLocation === locationData?.value;
+                          
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              fill={fillColor}
+                              stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
+                              strokeWidth={isSelected ? 2 : 0.5}
+                              style={{
+                                default: { outline: "none" },
+                                hover: { 
+                                  outline: "none", 
+                                  cursor: locationData ? "pointer" : "default",
+                                  filter: isHovered ? "brightness(1.1)" : "none"
+                                },
+                                pressed: { outline: "none" }
+                              }}
+                              onMouseEnter={() => {
+                                if (locationData) setHoveredLocation(locationData.value);
+                              }}
+                              onMouseLeave={() => setHoveredLocation(null)}
+                              onClick={() => {
+                                if (locationData && onLocationSelect) {
+                                  onLocationSelect(locationData.value);
+                                }
+                              }}
+                            />
+                          );
+                        })
+                      }
+                    </Geographies>
+                  )}
+                  
+                  {/* USA States View */}
+                  {mapView === 'usa' && (
+                    <Geographies geography={usaStatesGeoUrl} parseGeographies={(geos) => 
+                      geos.map(geo => ({ ...geo, properties: { ...geo.properties, NAME: geo.properties.NAME || geo.properties.name } }))
+                    }>
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          const stateName = geo.properties.NAME;
+                          const locationData = getLocationByStateName(stateName);
+                          const metricValue = locationData ? (
+                            mapMetric === 'roi' ? locationData.roi :
+                            mapMetric === 'colAdjustedRoi' ? locationData.colAdjustedROI :
+                            locationData.lqi
+                          ) : 0;
+                          
+                          const fillColor = locationData 
+                            ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
+                            : "hsl(var(--muted))";
+                          
+                          const isSelected = selectedLocation === locationData?.value;
+                          const isHovered = hoveredLocation === locationData?.value;
+                          
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              fill={fillColor}
+                              stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--border))"}
+                              strokeWidth={isSelected ? 2 : 0.5}
+                              style={{
+                                default: { outline: "none" },
+                                hover: { 
+                                  outline: "none", 
+                                  cursor: locationData ? "pointer" : "default",
+                                  filter: isHovered ? "brightness(1.1)" : "none"
+                                },
+                                pressed: { outline: "none" }
+                              }}
+                              onMouseEnter={() => {
+                                if (locationData) setHoveredLocation(locationData.value);
+                              }}
+                              onMouseLeave={() => setHoveredLocation(null)}
+                              onClick={() => {
+                                if (locationData && onLocationSelect) {
+                                  onLocationSelect(locationData.value);
+                                }
+                              }}
+                            />
+                          );
+                        })
+                      }
+                    </Geographies>
+                  )}
+                  
+                  {/* Markers for specific locations */}
+                  {locationROIData
+                    .filter(location => {
+                      if (mapView === 'usa') {
+                        return location.countryCode === 'US' && location.value !== 'united-states';
+                      }
+                      return location.countryCode !== 'REMOTE' && location.countryCode !== 'US';
+                    })
+                    .map(location => {
+                      const isSelected = selectedLocation === location.value;
+                      const isHovered = hoveredLocation === location.value;
+                      const metricValue = mapMetric === 'roi' ? location.roi :
+                                        mapMetric === 'colAdjustedRoi' ? location.colAdjustedROI :
+                                        location.lqi;
                       
                       return (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill={fillColor}
-                          stroke={isSelected ? "#3b82f6" : "#94a3b8"}
-                          strokeWidth={isSelected ? 2 : 0.5}
-                          style={{
-                            default: { outline: "none" },
-                            hover: { 
-                              outline: "none", 
-                              cursor: locationData ? "pointer" : "default",
-                              filter: isHovered ? "brightness(1.1)" : "none"
-                            },
-                            pressed: { outline: "none" }
-                          }}
-                          onMouseEnter={() => {
-                            if (locationData) setHoveredLocation(locationData.value);
-                          }}
+                        <Marker
+                          key={location.value}
+                          coordinates={location.coordinates}
+                          onClick={() => onLocationSelect?.(location.value)}
+                          onMouseEnter={() => setHoveredLocation(location.value)}
                           onMouseLeave={() => setHoveredLocation(null)}
-                          onClick={() => {
-                            if (locationData && onLocationSelect) {
-                              onLocationSelect(locationData.value);
-                            }
-                          }}
-                        />
-                      );
-                    })
-                  }
-                </Geographies>
-                
-                {/* Markers for special locations */}
-                {locationROIData
-                  .filter(location => location.countryCode !== 'REMOTE')
-                  .map(location => {
-                    const isSelected = selectedLocation === location.value;
-                    const isHovered = hoveredLocation === location.value;
-                    const metricValue = mapMetric === 'roi' ? location.roi :
-                                      mapMetric === 'colAdjustedRoi' ? location.colAdjustedROI :
-                                      location.lqi;
-                    
-                    return (
-                      <Marker
-                        key={location.value}
-                        coordinates={location.coordinates}
-                        onClick={() => onLocationSelect?.(location.value)}
-                        onMouseEnter={() => setHoveredLocation(location.value)}
-                        onMouseLeave={() => setHoveredLocation(null)}
-                      >
-                        <circle
-                          r={isSelected ? 8 : 6}
-                          fill={getColorByMetric(metricValue, mapMetric, maxMetricValue)}
-                          stroke={isSelected ? "#3b82f6" : "#fff"}
-                          strokeWidth={2}
-                          style={{
-                            cursor: "pointer",
-                            filter: isHovered ? "brightness(1.2)" : "none"
-                          }}
-                        />
-                        <text
-                          textAnchor="middle"
-                          y={-12}
-                          style={{
-                            fontSize: "12px",
-                            fill: "#374151",
-                            fontWeight: isSelected ? "bold" : "normal",
-                            pointerEvents: "none"
-                          }}
                         >
-                          {location.emoji}
-                        </text>
-                      </Marker>
-                    );
-                  })}
+                          <circle
+                            r={isSelected ? 8 : 6}
+                            fill={getColorByMetric(metricValue, mapMetric, maxMetricValue)}
+                            stroke={isSelected ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                            strokeWidth={2}
+                            style={{
+                              cursor: "pointer",
+                              filter: isHovered ? "brightness(1.2)" : "none"
+                            }}
+                          />
+                          <text
+                            textAnchor="middle"
+                            y={-12}
+                            style={{
+                              fontSize: "12px",
+                              fill: "hsl(var(--foreground))",
+                              fontWeight: isSelected ? "bold" : "normal",
+                              pointerEvents: "none"
+                            }}
+                          >
+                            {location.emoji}
+                          </text>
+                        </Marker>
+                      );
+                    })}
+                  
+                  {/* Remote work floating marker */}
+                  {mapView === 'global' && (
+                    <Marker
+                      coordinates={[20, -20]}
+                      onClick={() => onLocationSelect?.('remote')}
+                      onMouseEnter={() => setHoveredLocation('remote')}
+                      onMouseLeave={() => setHoveredLocation(null)}
+                    >
+                      <circle
+                        r={selectedLocation === 'remote' ? 10 : 8}
+                        fill={getColorByMetric(
+                          locationROIData.find(l => l.value === 'remote')?.[mapMetric === 'roi' ? 'roi' : mapMetric === 'colAdjustedRoi' ? 'colAdjustedROI' : 'lqi'] || 0,
+                          mapMetric,
+                          maxMetricValue
+                        )}
+                        stroke={selectedLocation === 'remote' ? "hsl(var(--primary))" : "hsl(var(--background))"}
+                        strokeWidth={2}
+                        style={{
+                          cursor: "pointer",
+                          filter: hoveredLocation === 'remote' ? "brightness(1.2)" : "none"
+                        }}
+                      />
+                      <text
+                        textAnchor="middle"
+                        y={4}
+                        style={{
+                          fontSize: "14px",
+                          fill: "hsl(var(--background))",
+                          fontWeight: "bold",
+                          pointerEvents: "none"
+                        }}
+                      >
+                        💻
+                      </text>
+                    </Marker>
+                  )}
+                </ZoomableGroup>
               </ComposableMap>
               
               {/* Tooltip */}
