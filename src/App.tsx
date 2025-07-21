@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +40,7 @@ import Demos from "./pages/Demos";
 import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
 import ProtectedRoute from "./components/ProtectedRoute";
+import LocationManagerPanel from "./components/LocationManagerPanel";
 
 const queryClient = new QueryClient();
 
@@ -179,6 +181,7 @@ const App = () => (
         <Route path="/admin/badges" element={<AdminBadges />} />
         <Route path="/admin/moderation" element={<AdminModeration />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

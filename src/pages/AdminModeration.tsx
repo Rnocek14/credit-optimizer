@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle, XCircle, Star, Flag, Users, Settings, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, Star, Flag, Users, Settings, Zap, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 interface ModerationProfile {
   id: string;
@@ -266,6 +267,33 @@ const AdminModeration = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Admin Moderation Panel</h1>
           <p className="text-muted-foreground">Review, approve, and moderate content across the platform</p>
+          
+          <div className="flex gap-4 mt-6">
+            <Link to="/admin">
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Main Admin
+              </Button>
+            </Link>
+            <Link to="/admin/badges">
+              <Button variant="outline" size="sm">
+                <Star className="h-4 w-4 mr-2" />
+                Badges
+              </Button>
+            </Link>
+            <Link to="/admin/settings">
+              <Button variant="outline" size="sm">
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </Link>
+            <Link to="/admin/locations">
+              <Button variant="outline" size="sm">
+                <MapPin className="h-4 w-4 mr-2" />
+                Locations
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Tabs defaultValue="flagged" className="space-y-6">
