@@ -39,6 +39,7 @@ import BadgeDetail from "./pages/BadgeDetail";
 import Demos from "./pages/Demos";
 import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
+import SalaryInsights from "./pages/SalaryInsights";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -85,6 +86,7 @@ const App = () => (
           <Route path="/badges/:slug" element={<BadgeDetail />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/salary-insights" element={<SalaryInsights />} />
           <Route path="/teach" element={<Teach />} />
           <Route 
             path="/saved" 
