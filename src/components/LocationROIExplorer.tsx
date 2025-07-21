@@ -151,6 +151,36 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     enabled: !!selectedCareerPathId
   });
 
+  // Fetch career-specific location multipliers
+  const { data: careerLocationMultipliers = [] } = useQuery({
+    queryKey: ['career-location-multipliers', selectedCareerPathId],
+    queryFn: async () => {
+      if (!selectedCareerPathId) return [];
+      
+      const { data, error } = await supabase
+        .from('career_location_multipliers')
+        .select('*')
+        .eq('career_path_id', selectedCareerPathId);
+      
+      if (error) {
+        console.error('Career location multipliers fetch error:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!selectedCareerPathId
+  });
+
+  // Create a map of location_id to custom salary multiplier
+  const careerMultiplierMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    careerLocationMultipliers.forEach(multiplier => {
+      map[multiplier.location_id] = multiplier.salary_multiplier;
+    });
+    return map;
+  }, [careerLocationMultipliers]);
+
   // Filter locations based on selected filters
   const filteredLocations = useMemo(() => {
     return locations.filter(location => {
@@ -185,7 +215,11 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     const totalMonths = Math.ceil(totalWeeks / 4);
 
     return filteredLocations.map(location => {
-      const adjustedSalary = Math.round((careerPath.average_salary || 78000) * location.salary_multiplier);
+      // Use career-specific multiplier if available, otherwise fall back to location default
+      const salaryMultiplier = careerMultiplierMap[location.id] || location.salary_multiplier;
+      const hasCustomMultiplier = !!careerMultiplierMap[location.id];
+      
+      const adjustedSalary = Math.round((careerPath.average_salary || 78000) * salaryMultiplier);
       const uplift = adjustedSalary - currentSalary;
       const roi = uplift / totalCost;
       const colAdjustedROI = uplift / (totalCost * location.cost_of_living);
@@ -211,7 +245,9 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
         roiScore,
         colScore,
         jobMarketScore,
-        visaScore
+        visaScore,
+        salaryMultiplier,
+        hasCustomMultiplier
       };
     }).sort((a, b) => {
       if (sortBy === 'lqi') return b.lqi - a.lqi;
@@ -222,7 +258,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
       }
       return b.roi - a.roi;
     });
-  }, [filteredLocations, careerPath, goalSkillIds, sortBy, currentUserRegion]);
+  }, [filteredLocations, careerPath, goalSkillIds, sortBy, currentUserRegion, careerMultiplierMap]);
 
   // Auto-focus map when continent is selected
   const mapProjectionConfig = useMemo(() => {
@@ -618,10 +654,20 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                       <div className="text-sm space-y-1">
                         <div className="font-semibold flex items-center gap-2">
                           {location.emoji} {location.label}
+                          {location.hasCustomMultiplier && (
+                            <Badge className="bg-purple-500 text-purple-100 text-xs">
+                              🎯 Custom
+                            </Badge>
+                          )}
                         </div>
                         <div>ROI: {location.roi.toFixed(1)}×</div>
                         <div>Net ROI: {location.colAdjustedROI.toFixed(1)}×</div>
                         <div>LQI: {location.lqi.toFixed(1)}</div>
+                        {location.hasCustomMultiplier && (
+                          <div className="text-xs text-purple-600">
+                            Salary Multiplier: {location.salaryMultiplier.toFixed(2)}× (career-specific)
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -724,13 +770,28 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{location.emoji}</span>
                       <h3 className="font-semibold text-sm">{location.label}</h3>
+                      {location.hasCustomMultiplier && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className="bg-purple-500 text-purple-100 text-xs">
+                              🎯 Custom for {careerPath.title}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Career-specific salary multiplier: {location.salaryMultiplier.toFixed(2)}×</p>
+                            <p className="text-xs text-muted-foreground">vs default: {location.salary_multiplier.toFixed(2)}×</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
 
                     {/* Adjusted Salary */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-muted-foreground">Salary</span>
+                        <span className="text-xs text-muted-foreground">
+                          Salary {location.hasCustomMultiplier && <span className="text-purple-600">(custom {location.salaryMultiplier.toFixed(2)}×)</span>}
+                        </span>
                       </div>
                       <span className="text-sm font-medium text-green-600">
                         ${location.adjustedSalary.toLocaleString()}
