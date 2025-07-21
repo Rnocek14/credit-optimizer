@@ -28,6 +28,8 @@ interface SkillEdge {
   skill_id: string;
 }
 
+type LayoutMode = 'category' | 'hierarchy' | 'force';
+
 interface InteractiveSkillTreeProps {
   skills: Skill[];
   userProgress: UserProgress[];
@@ -39,6 +41,7 @@ interface InteractiveSkillTreeProps {
   onSkillClick: (skill: Skill) => void;
   className?: string;
   showMinimap?: boolean;
+  layoutMode?: LayoutMode;
 }
 
 export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
@@ -51,7 +54,8 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
   availableCategories,
   onSkillClick,
   className,
-  showMinimap = true
+  showMinimap = true,
+  layoutMode = 'hierarchy'
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -62,17 +66,229 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
   const { toast } = useToast();
 
-  // Calculate optimal container size based on skills
+  // Helper function to build skill depth map based on prerequisite chains
+  const getSkillDepthMap = useCallback((): Map<string, number> => {
+    const depthMap = new Map<string, number>();
+    const visited = new Set<string>();
+    
+    const calculateDepth = (skillId: string): number => {
+      if (visited.has(skillId)) return depthMap.get(skillId) || 0;
+      visited.add(skillId);
+      
+      const prerequisites = skillEdges
+        .filter(edge => edge.skill_id === skillId)
+        .map(edge => edge.prerequisite_skill_id);
+      
+      if (prerequisites.length === 0) {
+        depthMap.set(skillId, 0);
+        return 0;
+      }
+      
+      const maxPrereqDepth = Math.max(...prerequisites.map(prereqId => calculateDepth(prereqId)));
+      const depth = maxPrereqDepth + 1;
+      depthMap.set(skillId, depth);
+      return depth;
+    };
+    
+    filteredSkills.forEach(skill => calculateDepth(skill.id));
+    return depthMap;
+  }, [filteredSkills, skillEdges]);
+
+  // Helper function to generate layered hierarchical layout
+  const generateLayeredLayout = useCallback((): Map<string, { x: number; y: number }> => {
+    const positions = new Map<string, { x: number; y: number }>();
+    const depthMap = getSkillDepthMap();
+    
+    // Group skills by depth level
+    const skillsByLevel = new Map<number, Skill[]>();
+    filteredSkills.forEach(skill => {
+      const depth = depthMap.get(skill.id) || 0;
+      if (!skillsByLevel.has(depth)) {
+        skillsByLevel.set(depth, []);
+      }
+      skillsByLevel.get(depth)!.push(skill);
+    });
+    
+    const maxDepth = Math.max(...Array.from(depthMap.values())) || 0;
+    const levelHeight = 150;
+    const baseY = 100;
+    
+    // Position skills in each level
+    Array.from(skillsByLevel.entries()).forEach(([level, levelSkills]) => {
+      const y = baseY + level * levelHeight;
+      const totalWidth = Math.max(800, levelSkills.length * 180);
+      const spacing = totalWidth / (levelSkills.length + 1);
+      
+      // Sort skills by category to maintain some grouping
+      levelSkills.sort((a, b) => a.category.localeCompare(b.category));
+      
+      levelSkills.forEach((skill, index) => {
+        const x = spacing * (index + 1) - 50; // Center adjustment
+        positions.set(skill.id, { x, y });
+      });
+    });
+    
+    return positions;
+  }, [filteredSkills, getSkillDepthMap]);
+
+  // Helper function for force-directed layout with repulsion
+  const generateForceLayout = useCallback((): Map<string, { x: number; y: number }> => {
+    const positions = new Map<string, { x: number; y: number }>();
+    
+    // Initialize random positions
+    filteredSkills.forEach((skill, index) => {
+      const angle = (index / filteredSkills.length) * 2 * Math.PI;
+      const radius = 200 + Math.random() * 100;
+      const x = 500 + Math.cos(angle) * radius;
+      const y = 400 + Math.sin(angle) * radius;
+      positions.set(skill.id, { x, y });
+    });
+    
+    // Apply force simulation (simplified)
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const forces = new Map<string, { x: number; y: number }>();
+      
+      // Initialize forces
+      filteredSkills.forEach(skill => {
+        forces.set(skill.id, { x: 0, y: 0 });
+      });
+      
+      // Repulsion forces
+      filteredSkills.forEach(skill1 => {
+        filteredSkills.forEach(skill2 => {
+          if (skill1.id === skill2.id) return;
+          
+          const pos1 = positions.get(skill1.id)!;
+          const pos2 = positions.get(skill2.id)!;
+          const dx = pos1.x - pos2.x;
+          const dy = pos1.y - pos2.y;
+          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+          
+          if (distance < 150) { // Minimum distance
+            const repulsionForce = 300 / (distance * distance);
+            const fx = (dx / distance) * repulsionForce;
+            const fy = (dy / distance) * repulsionForce;
+            
+            const force1 = forces.get(skill1.id)!;
+            force1.x += fx;
+            force1.y += fy;
+          }
+        });
+      });
+      
+      // Attraction forces for connected skills
+      skillEdges.forEach(edge => {
+        const sourcePos = positions.get(edge.prerequisite_skill_id);
+        const targetPos = positions.get(edge.skill_id);
+        
+        if (!sourcePos || !targetPos) return;
+        
+        const dx = targetPos.x - sourcePos.x;
+        const dy = targetPos.y - sourcePos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        const attractionForce = distance * 0.01;
+        
+        const fx = (dx / distance) * attractionForce;
+        const fy = (dy / distance) * attractionForce;
+        
+        const sourceForce = forces.get(edge.prerequisite_skill_id)!;
+        const targetForce = forces.get(edge.skill_id)!;
+        
+        sourceForce.x += fx;
+        sourceForce.y += fy;
+        targetForce.x -= fx;
+        targetForce.y -= fy;
+      });
+      
+      // Apply forces with damping
+      filteredSkills.forEach(skill => {
+        const pos = positions.get(skill.id)!;
+        const force = forces.get(skill.id)!;
+        
+        pos.x += force.x * 0.1;
+        pos.y += force.y * 0.1;
+        
+        // Keep within bounds
+        pos.x = Math.max(50, Math.min(pos.x, containerDimensions.width - 50));
+        pos.y = Math.max(50, Math.min(pos.y, containerDimensions.height - 50));
+      });
+    }
+    
+    return positions;
+  }, [filteredSkills, skillEdges, containerDimensions]);
+
+  // Helper function for category-based layout (legacy)
+  const generateCategoryLayout = useCallback((): Map<string, { x: number; y: number }> => {
+    const positions = new Map<string, { x: number; y: number }>();
+    
+    const categorySpacing = 200;
+    const skillSpacing = 80;
+    const baseX = 100;
+    const baseY = 100;
+    const categoriesPerRow = Math.min(availableCategories.length, 4);
+    
+    const skillsByCategory = new Map<string, Skill[]>();
+    availableCategories.forEach(category => {
+      const categorySkills = filteredSkills.filter(skill => skill.category === category);
+      if (categorySkills.length > 0) {
+        skillsByCategory.set(category, categorySkills);
+      }
+    });
+    
+    const activeCategories = Array.from(skillsByCategory.keys());
+    
+    activeCategories.forEach((category, categoryIndex) => {
+      const categorySkills = skillsByCategory.get(category) || [];
+      
+      const categoryRow = Math.floor(categoryIndex / categoriesPerRow);
+      const categoryCol = categoryIndex % categoriesPerRow;
+      
+      const categoryBaseX = baseX + categoryCol * categorySpacing;
+      const categoryBaseY = baseY + categoryRow * (categorySpacing + 20);
+      
+      const skillsPerRow = Math.min(Math.ceil(Math.sqrt(categorySkills.length)), 2);
+      
+      categorySkills.forEach((skill, index) => {
+        const skillRow = Math.floor(index / skillsPerRow);
+        const skillCol = index % skillsPerRow;
+        
+        const x = categoryBaseX + skillCol * skillSpacing;
+        const y = categoryBaseY + skillRow * skillSpacing;
+        
+        positions.set(skill.id, { x, y });
+      });
+    });
+    
+    return positions;
+  }, [filteredSkills, availableCategories]);
+
+  // Calculate optimal container size based on skills and layout
   useEffect(() => {
     const skillCount = filteredSkills.length;
-    const categoryCount = availableCategories.length;
     
-    // More compact sizing to fit better
-    const minWidth = Math.max(800, Math.min(categoryCount * 160, 1200));
-    const minHeight = Math.max(600, Math.min(Math.ceil(skillCount / 4) * 120, 900));
-    
-    setContainerDimensions({ width: minWidth, height: minHeight });
-  }, [filteredSkills.length, availableCategories.length]);
+    if (layoutMode === 'hierarchy') {
+      const depthMap = getSkillDepthMap();
+      const maxDepth = Math.max(...Array.from(depthMap.values()).concat([0])) + 1;
+      const maxSkillsPerLevel = Math.max(...Array.from(
+        Array(maxDepth).fill(0).map((_, level) => 
+          Array.from(depthMap.entries()).filter(([_, depth]) => depth === level).length
+        ).concat([1])
+      ));
+      
+      const minWidth = Math.max(800, maxSkillsPerLevel * 180 + 200);
+      const minHeight = Math.max(600, maxDepth * 150 + 200);
+      setContainerDimensions({ width: minWidth, height: minHeight });
+    } else if (layoutMode === 'force') {
+      const minWidth = Math.max(1000, Math.sqrt(skillCount) * 200);
+      const minHeight = Math.max(800, Math.sqrt(skillCount) * 150);
+      setContainerDimensions({ width: minWidth, height: minHeight });
+    } else {
+      const categoryCount = availableCategories.length;
+      const minWidth = Math.max(800, Math.min(categoryCount * 160, 1200));
+      const minHeight = Math.max(600, Math.min(Math.ceil(skillCount / 4) * 120, 900));
+      setContainerDimensions({ width: minWidth, height: minHeight });
+    }
+  }, [filteredSkills.length, availableCategories.length, layoutMode, getSkillDepthMap]);
 
   const resetView = () => {
     setZoomLevel(0.8);
@@ -161,58 +377,85 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
     });
   }, [toast]);
 
-  // Improved positioning system with proper bounds and centering
-  const calculateSkillPositions = () => {
-    const positions = new Map<string, { x: number; y: number }>();
+  // Master positioning system that delegates to layout algorithms
+  const calculateSkillPositions = useCallback((): Map<string, { x: number; y: number }> => {
+    if (filteredSkills.length === 0) return new Map();
     
-    if (filteredSkills.length === 0) return positions;
+    switch (layoutMode) {
+      case 'hierarchy':
+        return generateLayeredLayout();
+      case 'force':
+        return generateForceLayout();
+      case 'category':
+      default:
+        return generateCategoryLayout();
+    }
+  }, [layoutMode, generateLayeredLayout, generateForceLayout, generateCategoryLayout]);
+
+  // Auto-invoke fitToView on load and when layout changes
+  useEffect(() => {
+    if (filteredSkills.length > 0) {
+      const timeoutId = setTimeout(() => {
+        fitToView();
+      }, 100); // Small delay to ensure layout calculations are complete
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [filteredSkills.length, layoutMode]);
+
+  // Helper function to get category color based on skill category
+  const getCategoryColor = useCallback((category: string): string => {
+    const colors = {
+      'frontend': '#3b82f6',     // Blue
+      'backend': '#10b981',      // Green  
+      'database': '#f59e0b',     // Yellow
+      'devops': '#ef4444',       // Red
+      'cloud': '#8b5cf6',        // Purple
+      'mobile': '#06b6d4',       // Cyan
+      'testing': '#84cc16',      // Lime
+      'design': '#ec4899',       // Pink
+      'security': '#f97316',     // Orange
+      'ai': '#6366f1'            // Indigo
+    };
+    return colors[category.toLowerCase() as keyof typeof colors] || '#6b7280';
+  }, []);
+
+  // Helper function to calculate bezier curve for edges
+  const calculateBezierPath = useCallback((
+    sourceX: number, sourceY: number, 
+    targetX: number, targetY: number
+  ): string => {
+    const dx = targetX - sourceX;
+    const dy = targetY - sourceY;
     
-    // More compact layout for better fit
-    const categorySpacing = 200;
-    const skillSpacing = 80;
-    const baseX = 100;
-    const baseY = 100;
+    // Control points for smooth curves
+    let cp1x, cp1y, cp2x, cp2y;
     
-    // Create a more compact grid layout
-    const categoriesPerRow = Math.min(availableCategories.length, 4);
-    
-    // Group skills by category first
-    const skillsByCategory = new Map<string, Skill[]>();
-    availableCategories.forEach(category => {
-      const categorySkills = filteredSkills.filter(skill => skill.category === category);
-      if (categorySkills.length > 0) {
-        skillsByCategory.set(category, categorySkills);
+    if (layoutMode === 'hierarchy') {
+      // For hierarchical layout, prefer vertical flow
+      if (Math.abs(dy) > Math.abs(dx)) {
+        // Vertical connection
+        cp1x = sourceX;
+        cp1y = sourceY + dy * 0.5;
+        cp2x = targetX;
+        cp2y = targetY - dy * 0.5;
+      } else {
+        // Horizontal connection
+        cp1x = sourceX + dx * 0.5;
+        cp1y = sourceY;
+        cp2x = targetX - dx * 0.5;
+        cp2y = targetY;
       }
-    });
+    } else {
+      // For other layouts, use standard bezier curves
+      cp1x = sourceX + dx * 0.3;
+      cp1y = sourceY + dy * 0.1;
+      cp2x = targetX - dx * 0.3;
+      cp2y = targetY - dy * 0.1;
+    }
     
-    const activeCategories = Array.from(skillsByCategory.keys());
-    
-    activeCategories.forEach((category, categoryIndex) => {
-      const categorySkills = skillsByCategory.get(category) || [];
-      
-      // Calculate category position in a more compact grid
-      const categoryRow = Math.floor(categoryIndex / categoriesPerRow);
-      const categoryCol = categoryIndex % categoriesPerRow;
-      
-      const categoryBaseX = baseX + categoryCol * categorySpacing;
-      const categoryBaseY = baseY + categoryRow * (categorySpacing + 20);
-      
-      // Arrange skills within category more efficiently
-      const skillsPerRow = Math.min(Math.ceil(Math.sqrt(categorySkills.length)), 2);
-      
-      categorySkills.forEach((skill, index) => {
-        const skillRow = Math.floor(index / skillsPerRow);
-        const skillCol = index % skillsPerRow;
-        
-        const x = categoryBaseX + skillCol * skillSpacing;
-        const y = categoryBaseY + skillRow * skillSpacing;
-        
-        positions.set(skill.id, { x, y });
-      });
-    });
-    
-    return positions;
-  };
+    return `M ${sourceX} ${sourceY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${targetX} ${targetY}`;
+  }, [layoutMode]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) { // Left click
@@ -326,6 +569,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
                   prerequisiteSteps={uncompletedPrereqs.length}
                   onHover={(hovered) => handleSkillHover(skill.id, hovered)}
                   size={zoomLevel < 0.5 ? 'small' : 'medium'}
+                  categoryColor={getCategoryColor(skill.category)}
                 />
               );
             })}
@@ -352,28 +596,44 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
                 const isHighlighted = highlightedPath.includes(edge.prerequisite_skill_id) && 
                                     highlightedPath.includes(edge.skill_id);
                 
-                // Calculate connection points (center of nodes)
-                const sourceX = sourcePos.x + 50; // Half node width
-                const sourceY = sourcePos.y + 40; // Half node height
-                const targetX = targetPos.x + 50;
-                const targetY = targetPos.y + 40;
+                // Calculate connection points anchored to node borders
+                const nodeWidth = 100;
+                const nodeHeight = 80;
+                
+                // Source: bottom edge for hierarchy, right edge for others
+                let sourceX, sourceY, targetX, targetY;
+                
+                if (layoutMode === 'hierarchy') {
+                  // Connect from bottom to top for clear progression
+                  sourceX = sourcePos.x + nodeWidth / 2;
+                  sourceY = sourcePos.y + nodeHeight;
+                  targetX = targetPos.x + nodeWidth / 2;
+                  targetY = targetPos.y;
+                } else {
+                  // Connect from center to center for other layouts
+                  sourceX = sourcePos.x + nodeWidth / 2;
+                  sourceY = sourcePos.y + nodeHeight / 2;
+                  targetX = targetPos.x + nodeWidth / 2;
+                  targetY = targetPos.y + nodeHeight / 2;
+                }
+                
+                // Use bezier curves for smoother connections
+                const pathData = calculateBezierPath(sourceX, sourceY, targetX, targetY);
                 
                 return (
-                  <line
+                  <path
                     key={`${edge.prerequisite_skill_id}-${edge.skill_id}`}
-                    x1={sourceX}
-                    y1={sourceY}
-                    x2={targetX}
-                    y2={targetY}
+                    d={pathData}
                     stroke={isHighlighted ? '#3b82f6' : '#94a3b8'}
                     strokeWidth={isHighlighted ? 3 : 2}
+                    fill="none"
                     opacity={isHighlighted ? 0.9 : 0.6}
-                    markerEnd="url(#arrowhead)"
+                    markerEnd={`url(#arrowhead${isHighlighted ? '-highlighted' : ''})`}
                   />
                 );
               })}
               
-              {/* Arrow marker definition */}
+              {/* Arrow marker definitions */}
               <defs>
                 <marker
                   id="arrowhead"
@@ -386,6 +646,19 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
                   <polygon
                     points="0 0, 10 3.5, 0 7"
                     fill="#94a3b8"
+                  />
+                </marker>
+                <marker
+                  id="arrowhead-highlighted"
+                  markerWidth="10"
+                  markerHeight="7"
+                  refX="9"
+                  refY="3.5"
+                  orient="auto"
+                >
+                  <polygon
+                    points="0 0, 10 3.5, 0 7"
+                    fill="#3b82f6"
                   />
                 </marker>
               </defs>

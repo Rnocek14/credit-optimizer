@@ -27,6 +27,7 @@ interface SkillTreeNodeProps {
   hasCourses?: boolean;
   prerequisiteSteps?: number;
   onHover?: (hovered: boolean) => void;
+  categoryColor?: string;
 }
 
 const categoryColors = {
@@ -60,12 +61,18 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
   isHighlighted = false,
   hasCourses = false,
   prerequisiteSteps,
-  onHover
+  onHover,
+  categoryColor
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const categoryData = categoryColors[skill.category as keyof typeof categoryColors] || categoryColors.default;
   const statusColor = statusColors[userProgress?.status || 'available'];
   const progressPercent = userProgress ? (userProgress.xp_earned / skill.xp_value) * 100 : 0;
+  
+  // Use categoryColor prop for border if provided, otherwise fall back to category mapping
+  const borderStyle = categoryColor 
+    ? { borderColor: categoryColor, borderWidth: '2px', borderStyle: 'solid' }
+    : {};
   
   const sizeClasses = {
     small: 'w-20 h-16 text-xs',
@@ -117,7 +124,8 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
             style={{ 
               left: position.x, 
               top: position.y,
-              pointerEvents: 'auto'
+              pointerEvents: 'auto',
+              ...borderStyle
             }}
             onClick={handleClick}
             onMouseEnter={handleMouseEnter}
