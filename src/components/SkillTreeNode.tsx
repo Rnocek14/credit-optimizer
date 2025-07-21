@@ -59,25 +59,42 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow rounded p-2 text-xs transition-all duration-200 cursor-pointer ${statusRing}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 ${statusRing}`}
       style={{
         left: position.x,
         top: position.y,
         borderColor: borderColor,
-        borderRadius: 8,
-        width: 100,
+        borderRadius: 12,
+        width: 120,
         height: 80,
       }}
       onClick={onClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="font-bold truncate">{skill.name}</div>
-      <div className="text-[10px] text-gray-600">L{skill.difficulty_level}</div>
-      {hasCourses && <div className="text-green-500 text-[10px]">📘 Courses</div>}
+      <div className="font-bold text-center mb-1 truncate text-gray-800">{skill.name}</div>
+      <div className="text-center text-[10px] text-gray-600 mb-1">
+        Level {skill.difficulty_level} • {skill.category}
+      </div>
+      {hasCourses && (
+        <div className="text-center text-green-600 text-[10px] mb-1">📚 Resources</div>
+      )}
       {userProgress && (
-        <div className="text-[10px] mt-1">
-          XP: {userProgress.xp_earned}/{skill.xp_value}
+        <div className="text-center text-[10px]">
+          <div className="w-full bg-gray-200 rounded-full h-1 mb-1">
+            <div 
+              className="bg-blue-500 h-1 rounded-full transition-all"
+              style={{ width: `${(userProgress.xp_earned / skill.xp_value) * 100}%` }}
+            />
+          </div>
+          <span className="text-gray-700">
+            {userProgress.xp_earned}/{skill.xp_value} XP
+          </span>
+        </div>
+      )}
+      {isRecommended && (
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+          <span className="text-[8px]">⭐</span>
         </div>
       )}
     </div>
