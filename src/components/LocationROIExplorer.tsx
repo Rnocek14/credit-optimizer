@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, DollarSign, TrendingUp, Clock, Receipt } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe } from 'lucide-react';
 
 interface LocationROIExplorerProps {
   selectedCareerPathId: string | null;
@@ -11,18 +14,77 @@ interface LocationROIExplorerProps {
 }
 
 const LOCATIONS = [
-  { value: 'united-states', label: 'United States', multiplier: 1.0, emoji: '🇺🇸' },
-  { value: 'california', label: 'California', multiplier: 1.3, emoji: '🏖️' },
-  { value: 'new-york', label: 'New York', multiplier: 1.2, emoji: '🗽' },
-  { value: 'india', label: 'India', multiplier: 0.3, emoji: '🇮🇳' },
-  { value: 'uk', label: 'United Kingdom', multiplier: 0.9, emoji: '🇬🇧' },
-  { value: 'remote', label: 'Remote', multiplier: 1.1, emoji: '💻' }
+  { 
+    value: 'united-states', 
+    label: 'United States', 
+    multiplier: 1.0, 
+    emoji: '🇺🇸',
+    costOfLiving: 1.0,
+    jobMarket: 'High',
+    jobIcon: '🔥',
+    visaEligible: { india: true, uk: true, remote: true }
+  },
+  { 
+    value: 'california', 
+    label: 'California', 
+    multiplier: 1.3, 
+    emoji: '🏖️',
+    costOfLiving: 1.4,
+    jobMarket: 'High',
+    jobIcon: '🔥',
+    visaEligible: { india: false, uk: true, remote: true }
+  },
+  { 
+    value: 'new-york', 
+    label: 'New York', 
+    multiplier: 1.2, 
+    emoji: '🗽',
+    costOfLiving: 1.35,
+    jobMarket: 'High',
+    jobIcon: '🔥',
+    visaEligible: { india: false, uk: true, remote: true }
+  },
+  { 
+    value: 'india', 
+    label: 'India', 
+    multiplier: 0.3, 
+    emoji: '🇮🇳',
+    costOfLiving: 0.35,
+    jobMarket: 'Medium',
+    jobIcon: '⚠️',
+    visaEligible: { india: true, uk: true, remote: true }
+  },
+  { 
+    value: 'uk', 
+    label: 'United Kingdom', 
+    multiplier: 0.9, 
+    emoji: '🇬🇧',
+    costOfLiving: 1.1,
+    jobMarket: 'Medium',
+    jobIcon: '⚠️',
+    visaEligible: { india: true, uk: true, remote: true }
+  },
+  { 
+    value: 'remote', 
+    label: 'Remote', 
+    multiplier: 1.1, 
+    emoji: '💻',
+    costOfLiving: 0.8,
+    jobMarket: 'Low',
+    jobIcon: '❄️',
+    visaEligible: { india: true, uk: true, remote: true }
+  }
 ];
 
 export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   selectedCareerPathId,
   goalSkillIds
 }) => {
+  const [showVisaEligibility, setShowVisaEligibility] = useState(false);
+  const [sortBy, setSortBy] = useState<'roi' | 'colAdjustedRoi' | 'jobMarket'>('roi');
+  
+  // Mock current user region for visa calculations
+  const currentUserRegion = 'india';
   // Fetch selected career path details
   const { data: careerPath } = useQuery({
     queryKey: ['career-path', selectedCareerPathId],
@@ -83,35 +145,82 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     const adjustedSalary = Math.round((careerPath.average_salary || 78000) * location.multiplier);
     const uplift = adjustedSalary - currentSalary;
     const roi = uplift / totalCost;
+    const colAdjustedROI = uplift / (totalCost * location.costOfLiving);
+    const isVisaEligible = location.visaEligible[currentUserRegion as keyof typeof location.visaEligible];
     
     return {
       ...location,
       adjustedSalary,
       uplift,
       roi,
+      colAdjustedROI,
       totalCost,
-      totalMonths
+      totalMonths,
+      isVisaEligible
     };
-  }).sort((a, b) => b.roi - a.roi); // Sort by ROI descending
+  }).sort((a, b) => {
+    if (sortBy === 'colAdjustedRoi') return b.colAdjustedROI - a.colAdjustedROI;
+    if (sortBy === 'jobMarket') {
+      const jobMarketOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+      return jobMarketOrder[b.jobMarket as keyof typeof jobMarketOrder] - jobMarketOrder[a.jobMarket as keyof typeof jobMarketOrder];
+    }
+    return b.roi - a.roi; // Default ROI sort
+  });
 
-  // Find top 2 ROI locations
-  const topROILocations = locationROIData.slice(0, 2);
+  // Find top locations for different metrics
+  const topROILocations = [...locationROIData].sort((a, b) => b.roi - a.roi).slice(0, 2);
+  const topCOLROILocations = [...locationROIData].sort((a, b) => b.colAdjustedROI - a.colAdjustedROI).slice(0, 2);
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MapPin className="h-5 w-5" />
-          🌍 Relocation ROI Explorer
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Compare {careerPath.title} earning potential across different locations
-        </p>
-      </CardHeader>
+    <TooltipProvider>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            🌍 Relocation ROI Explorer
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Compare {careerPath.title} earning potential across different locations
+          </p>
+          
+          {/* Controls */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="visa-toggle"
+                checked={showVisaEligibility}
+                onCheckedChange={setShowVisaEligibility}
+              />
+              <Label htmlFor="visa-toggle" className="text-sm">Show Visa Eligibility</Label>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSortBy('roi')}
+                className={`px-3 py-1 text-xs rounded ${sortBy === 'roi' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              >
+                Sort by ROI
+              </button>
+              <button
+                onClick={() => setSortBy('colAdjustedRoi')}
+                className={`px-3 py-1 text-xs rounded ${sortBy === 'colAdjustedRoi' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              >
+                Sort by Net ROI
+              </button>
+              <button
+                onClick={() => setSortBy('jobMarket')}
+                className={`px-3 py-1 text-xs rounded ${sortBy === 'jobMarket' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              >
+                Sort by Jobs
+              </button>
+            </div>
+          </div>
+        </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {locationROIData.map(location => {
             const isTopROI = topROILocations.some(top => top.value === location.value);
+            const isTopCOLROI = topCOLROILocations.some(top => top.value === location.value);
             
             return (
               <div
@@ -122,11 +231,19 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                     : 'border-border bg-card hover:shadow-md'
                 }`}
               >
-                {isTopROI && (
-                  <Badge className="absolute -top-2 -right-2 bg-yellow-500 text-yellow-900">
-                    🔥 Best ROI
-                  </Badge>
-                )}
+                {/* Badges */}
+                <div className="absolute -top-2 -right-2 flex flex-col gap-1">
+                  {isTopROI && (
+                    <Badge className="bg-yellow-500 text-yellow-900">
+                      🔥 Best ROI
+                    </Badge>
+                  )}
+                  {isTopCOLROI && !isTopROI && (
+                    <Badge className="bg-blue-500 text-blue-100">
+                      💡 Best COL-Adjusted ROI
+                    </Badge>
+                  )}
+                </div>
                 
                 <div className="space-y-3">
                   {/* Location Header */}
@@ -157,6 +274,61 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                     </span>
                   </div>
 
+                  {/* COL-Adjusted ROI */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Lightbulb className="h-3 w-3 text-cyan-600" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>ROI adjusted for cost of living ({(location.costOfLiving * 100).toFixed(0)}% of US baseline)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="text-xs text-muted-foreground">Net ROI (Cost-Adjusted)</span>
+                    </div>
+                    <span className="text-sm font-bold text-cyan-600">
+                      {location.colAdjustedROI.toFixed(1)}× Return
+                    </span>
+                  </div>
+
+                  {/* Job Availability */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Briefcase className="h-3 w-3 text-indigo-600" />
+                      <span className="text-xs text-muted-foreground">Job Availability</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm">{location.jobIcon}</span>
+                      <span className="text-sm font-medium text-indigo-600">{location.jobMarket}</span>
+                    </div>
+                  </div>
+
+                  {/* Visa Status (conditional) */}
+                  {showVisaEligibility && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Globe className="h-3 w-3 text-slate-600" />
+                        <span className="text-xs text-muted-foreground">Visa Status</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm">
+                              {location.isVisaEligible ? '✅' : '❌'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{location.isVisaEligible ? 'Visa eligible from India' : 'Visa restrictions apply'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <span className="text-sm font-medium text-slate-600">
+                          {location.isVisaEligible ? 'Eligible' : 'Restricted'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Total Cost */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
@@ -186,11 +358,17 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
 
         {/* Summary Stats */}
         <div className="mt-6 pt-4 border-t">
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-xs text-muted-foreground">Best ROI</p>
               <p className="font-semibold text-sm">
-                {locationROIData[0]?.emoji} {locationROIData[0]?.label}
+                {topROILocations[0]?.emoji} {topROILocations[0]?.label}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Best Net ROI</p>
+              <p className="font-semibold text-sm">
+                {topCOLROILocations[0]?.emoji} {topCOLROILocations[0]?.label}
               </p>
             </div>
             <div>
@@ -204,8 +382,12 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
               <p className="font-semibold text-sm">{skillCount} skills</p>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            *Based on regional adjustments and cost of living factors
+          </p>
         </div>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 };
