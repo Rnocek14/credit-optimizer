@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
 import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
 import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
+import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Target, Award } from 'lucide-react';
+import { ArrowLeft, BookOpen, Target, Award, TestTube } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
 
 interface Skill {
@@ -44,6 +45,7 @@ const SkillTree = () => {
   const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
   const [showRecommendedNext, setShowRecommendedNext] = useState(false);
   const [showGoalPathOnly, setShowGoalPathOnly] = useState(false);
+  const [showPerformanceTest, setShowPerformanceTest] = useState(false);
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -278,6 +280,14 @@ const SkillTree = () => {
             </p>
           </div>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowPerformanceTest(!showPerformanceTest)}
+        >
+          <TestTube className="h-4 w-4 mr-2" />
+          {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
+        </Button>
       </div>
 
       {/* Quick Stats */}
@@ -338,6 +348,9 @@ const SkillTree = () => {
         skillCounts={skillCounts}
         availableCategories={categories}
       />
+
+      {/* Performance Test Section */}
+      {showPerformanceTest && <SkillTreePerformanceTest />}
 
       {/* Interactive Skill Tree */}
       <InteractiveSkillTree

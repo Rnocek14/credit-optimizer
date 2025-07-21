@@ -416,12 +416,15 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   }, [isDragging, zoomLevel]);
 
   // Debounced container resize handling
-  const debouncedResize = useDebounce(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setContainerDimensions({ width: rect.width, height: rect.height });
-    }
-  }, 100);
+  const debouncedResize = useCallback(
+    useDebounce(() => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerDimensions({ width: rect.width, height: rect.height });
+      }
+    }, 100),
+    []
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -435,7 +438,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [debouncedResize]);
+  }, []); // Remove debouncedResize from dependencies
 
   // Mouse drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
