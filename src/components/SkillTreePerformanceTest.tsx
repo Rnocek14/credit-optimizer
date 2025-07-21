@@ -258,8 +258,10 @@ export const SkillTreePerformanceTest: React.FC = () => {
             filteredSkills={syntheticData.skills}
             recommendedSkills={syntheticData.recommendedSkills}
             goalSkills={syntheticData.goalSkills}
+            checkpointSkills={syntheticData.goalSkills.slice(0, 2)}
             availableCategories={syntheticData.categories}
             onSkillClick={(skill) => console.log('Synthetic skill clicked:', skill.name)}
+            careerPathName="Demo Career Path"
           />
         </div>
       )}

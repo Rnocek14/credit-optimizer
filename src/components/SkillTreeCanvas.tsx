@@ -75,9 +75,11 @@ interface SkillTreeCanvasProps {
   filteredSkills: any[];
   recommendedSkills: string[];
   goalSkills?: string[];
+  checkpointSkills?: string[];
   availableCategories: string[];
   onSkillClick: (skill: any) => void;
   skillsWithCourses?: string[];
+  careerPathName?: string;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -87,9 +89,11 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   filteredSkills,
   recommendedSkills,
   goalSkills = [],
+  checkpointSkills = [],
   availableCategories,
   onSkillClick,
-  skillsWithCourses = []
+  skillsWithCourses = [],
+  careerPathName
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -628,10 +632,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               categoryColor={getCategoryColor(skill.category)}
               isRecommended={isRecommended}
               isGoalSkill={goalSkills.includes(skill.id)}
+              isCheckpoint={checkpointSkills.includes(skill.id)}
               hasCourses={hasCourses}
               size="medium"
               isInPath={isInPath}
               onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
+              careerPathName={careerPathName}
             />
           );
         })}

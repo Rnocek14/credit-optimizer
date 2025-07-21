@@ -11,10 +11,12 @@ export const InteractiveSkillTree = ({
   filteredSkills,
   recommendedSkills,
   goalSkills = [],
+  checkpointSkills = [],
   availableCategories,
   onSkillClick,
   showMinimap = true,
-  layoutMode = 'hierarchy'
+  layoutMode = 'hierarchy',
+  careerPathName
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -81,8 +83,10 @@ export const InteractiveSkillTree = ({
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills || []}
         goalSkills={goalSkills}
+        checkpointSkills={checkpointSkills}
         availableCategories={availableCategories || []}
         onSkillClick={onSkillClick}
+        careerPathName={careerPathName}
       />
     </SkillTreeErrorBoundary>
   );

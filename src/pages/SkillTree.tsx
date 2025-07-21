@@ -6,6 +6,8 @@ import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
 import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
 import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest';
 import { ExportTreeButton } from '@/components/ExportTreeButton';
+import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
+import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ const SkillTree = () => {
   const [showRecommendedNext, setShowRecommendedNext] = useState(false);
   const [showGoalPathOnly, setShowGoalPathOnly] = useState(false);
   const [showPerformanceTest, setShowPerformanceTest] = useState(false);
+  const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -166,16 +169,117 @@ const SkillTree = () => {
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
-  // Mock goal skills - in a real app, this would come from user's career goals
-  const goalSkills = skills
-    .filter(skill => 
-      skill.category === 'Programming' || 
-      skill.category === 'Framework' || 
-      skill.name.toLowerCase().includes('react') ||
-      skill.name.toLowerCase().includes('javascript')
-    )
-    .slice(0, 6)
-    .map(skill => skill.id);
+  // Fetch career steps for selected career path
+  const { data: careerSteps = [] } = useQuery({
+    queryKey: ['career-steps', selectedCareerPath],
+    queryFn: async () => {
+      if (!selectedCareerPath) return [];
+      
+      const { data, error } = await supabase
+        .from('roadmap_steps')
+        .select('*')
+        .eq('user_id', selectedCareerPath)
+        .order('order_index');
+      
+      if (error) {
+        console.error('Career steps fetch error:', error);
+        // Return mock UX Designer skills
+        return [
+          { title: 'User Research', category: 'Design', is_checkpoint: false },
+          { title: 'Wireframing', category: 'Design', is_checkpoint: true },
+          { title: 'Prototyping', category: 'Design', is_checkpoint: false },
+          { title: 'Figma', category: 'Design', is_checkpoint: false },
+          { title: 'Adobe Creative Suite', category: 'Design', is_checkpoint: true },
+          { title: 'Information Architecture', category: 'Design', is_checkpoint: false },
+          { title: 'Usability Testing', category: 'Design', is_checkpoint: false },
+          { title: 'Design Systems', category: 'Design', is_checkpoint: true }
+        ];
+      }
+      
+      return data;
+    },
+    enabled: !!selectedCareerPath
+  });
+
+  // Get selected career path details
+  const { data: selectedCareerPathData } = useQuery({
+    queryKey: ['career-path-data', selectedCareerPath],
+    queryFn: async () => {
+      if (!selectedCareerPath) return null;
+      
+      const { data, error } = await supabase
+        .from('career_paths')
+        .select('*')
+        .eq('id', selectedCareerPath)
+        .single();
+      
+      if (error) {
+        // Return mock UX Designer data
+        return {
+          id: 'ux-designer',
+          title: 'UX Designer',
+          average_salary: 78000
+        };
+      }
+      
+      return data;
+    },
+    enabled: !!selectedCareerPath
+  });
+
+  // Generate goal skills based on career steps
+  const goalSkills = React.useMemo(() => {
+    if (!careerSteps.length) {
+      // Default UX Designer skills
+      return skills
+        .filter(skill => 
+          skill.category === 'Design' || 
+          skill.name.toLowerCase().includes('figma') ||
+          skill.name.toLowerCase().includes('adobe') ||
+          skill.name.toLowerCase().includes('research') ||
+          skill.name.toLowerCase().includes('wireframe') ||
+          skill.name.toLowerCase().includes('prototype')
+        )
+        .slice(0, 8)
+        .map(skill => skill.id);
+    }
+    
+    // Map career steps to actual skills
+    const stepNames = careerSteps.map(step => step.title.toLowerCase());
+    return skills
+      .filter(skill => 
+        stepNames.some(stepName => 
+          skill.name.toLowerCase().includes(stepName) ||
+          stepName.includes(skill.name.toLowerCase())
+        )
+      )
+      .map(skill => skill.id);
+  }, [careerSteps, skills]);
+
+  // Generate checkpoint skills
+  const checkpointSkills = React.useMemo(() => {
+    if (!careerSteps.length) {
+      // Default checkpoints for UX Designer
+      return skills
+        .filter(skill => 
+          skill.name.toLowerCase().includes('wireframe') ||
+          skill.name.toLowerCase().includes('adobe') ||
+          skill.name.toLowerCase().includes('design system')
+        )
+        .map(skill => skill.id);
+    }
+    
+    const checkpointSteps = careerSteps.filter(step => (step as any).is_checkpoint === true);
+    const stepNames = checkpointSteps.map(step => step.title.toLowerCase());
+    return skills
+      .filter(skill => 
+        stepNames.some(stepName => 
+          skill.name.toLowerCase().includes(stepName) ||
+          stepName.includes(skill.name.toLowerCase())
+        )
+      )
+      .map(skill => skill.id);
+  }, [careerSteps, skills]);
 
   // Filter skills based on current filters
   const filteredSkills = skills.filter(skill => {
@@ -282,16 +386,22 @@ const SkillTree = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <ExportTreeButton containerRef={skillTreeRef} />
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowPerformanceTest(!showPerformanceTest)}
-          >
-            <TestTube className="h-4 w-4 mr-2" />
-            {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
-          </Button>
+        <div className="flex items-center gap-4">
+          <CareerGoalDropdown 
+            selectedCareerPath={selectedCareerPath}
+            onCareerPathChange={setSelectedCareerPath}
+          />
+          <div className="flex items-center gap-2">
+            <ExportTreeButton containerRef={skillTreeRef} />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowPerformanceTest(!showPerformanceTest)}
+            >
+              <TestTube className="h-4 w-4 mr-2" />
+              {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -357,17 +467,28 @@ const SkillTree = () => {
       {/* Performance Test Section */}
       {showPerformanceTest && <SkillTreePerformanceTest />}
 
-      {/* Interactive Skill Tree */}
-      <div ref={skillTreeRef} data-skill-tree-canvas>
-        <InteractiveSkillTree
-          skills={skills}
-          userProgress={userProgress}
-          skillEdges={skillEdges}
-          filteredSkills={filteredSkills}
-          recommendedSkills={recommendedSkills}
-          goalSkills={goalSkills}
-          availableCategories={categories}
-          onSkillClick={handleSkillClick}
+      {/* Main Content with Skill Tree and ROI Panel */}
+      <div className="flex gap-6">
+        {/* Interactive Skill Tree */}
+        <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
+          <InteractiveSkillTree
+            skills={skills}
+            userProgress={userProgress}
+            skillEdges={skillEdges}
+            filteredSkills={filteredSkills}
+            recommendedSkills={recommendedSkills}
+            goalSkills={goalSkills}
+            checkpointSkills={checkpointSkills}
+            availableCategories={categories}
+            onSkillClick={handleSkillClick}
+            careerPathName={selectedCareerPathData?.title}
+          />
+        </div>
+
+        {/* ROI Panel */}
+        <CareerROIPanel 
+          selectedCareerPath={selectedCareerPath}
+          goalSkillIds={goalSkills}
         />
       </div>
 

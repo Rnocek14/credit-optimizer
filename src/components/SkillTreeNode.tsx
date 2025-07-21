@@ -26,6 +26,8 @@ interface SkillTreeNodeProps {
   onHover?: (hovered: boolean) => void;
   categoryColor?: string;
   isInPath?: boolean;
+  isCheckpoint?: boolean;
+  careerPathName?: string;
 }
 
 export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
@@ -41,7 +43,9 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
   prerequisiteSteps,
   onHover,
   categoryColor = '#ccc',
-  isInPath = false
+  isInPath = false,
+  isCheckpoint = false,
+  careerPathName
 }) => {
   const [hovered, setHovered] = useState(false);
 
@@ -63,7 +67,8 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
     : '';
   
   const pathHighlight = isInPath ? 'ring-2 ring-blue-300 shadow-md skill-path-pulse' : '';
-  const goalHighlight = isGoalSkill ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30' : '';
+  const goalHighlight = isGoalSkill ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/30 animate-pulse' : '';
+  const checkpointHighlight = isCheckpoint ? 'ring-4 ring-purple-500 shadow-xl shadow-purple-500/40' : '';
 
   const progressPercentage = userProgress && skill.xp_value > 0 
     ? Math.min((userProgress.xp_earned / skill.xp_value) * 100, 100)
@@ -71,14 +76,14 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 touch-manipulation ${statusRing} ${pathHighlight} ${goalHighlight}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 touch-manipulation ${statusRing} ${pathHighlight} ${goalHighlight} ${checkpointHighlight}`}
       style={{
         left: position.x,
         top: position.y,
         borderColor: borderColor,
         borderRadius: 12,
-        width: 120,
-        height: 80,
+        width: isCheckpoint ? 140 : 120,
+        height: isCheckpoint ? 100 : 80,
         pointerEvents: 'auto'
       }}
       onClick={(e) => {
@@ -122,10 +127,17 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
         </div>
       )}
       
+      {/* Checkpoint Badge */}
+      {isCheckpoint && (
+        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-purple-600 text-white text-[8px] rounded-full font-bold">
+          CHECKPOINT
+        </div>
+      )}
+
       {/* Goal Path Star Badge */}
       {isGoalSkill && (
-        <div className="absolute -top-1 -left-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center border border-yellow-600">
-          <span className="text-[8px]">🎯</span>
+        <div className="absolute -top-1 -left-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center border-2 border-yellow-700 shadow-lg">
+          <span className="text-[10px]">🎯</span>
         </div>
       )}
 
@@ -137,10 +149,22 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
       )}
       
       {/* Hover Tooltip */}
-      {hovered && skill.description && (
+      {hovered && (
         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50 max-w-xs">
           <div className="bg-gray-900 text-white text-xs rounded p-2 shadow-lg">
-            {skill.description}
+            {isCheckpoint && (
+              <div className="text-purple-300 font-bold mb-1">
+                🎯 Milestone Skill – Unlocks advanced branches
+              </div>
+            )}
+            {isGoalSkill && careerPathName && (
+              <div className="text-yellow-300 font-bold mb-1">
+                Part of {careerPathName} path — learn this to unlock new roles
+              </div>
+            )}
+            {skill.description && (
+              <div>{skill.description}</div>
+            )}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
           </div>
         </div>
