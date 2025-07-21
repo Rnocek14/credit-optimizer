@@ -218,113 +218,70 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return depthMap;
   }, [filteredSkills, skillEdges]);
 
-  // Enhanced hierarchical layout with better spacing
+  // Enhanced grid-based layout with category organization
   const skillPositions = useMemo(() => {
     if (!filteredSkills.length) return new Map();
 
     const positions = new Map();
-    const depthMap = getSkillDepthMap();
-
-    const levelMap = new Map();
-    const disconnectedSkills = [];
-
-    filteredSkills.forEach(skill => {
-      const depth = depthMap.get(skill.id);
-      if (depth !== undefined) {
-        if (!levelMap.has(depth)) levelMap.set(depth, []);
-        levelMap.get(depth).push(skill);
-      } else {
-        disconnectedSkills.push(skill);
-      }
-    });
-
     const canvasWidth = containerDimensions.width;
-    const levelHeight = 180; // Better vertical spacing
-    const nodeWidth = 120; // Responsive node width
-    const nodeSpacing = Math.max(30, Math.min(60, canvasWidth / 20)); // Dynamic spacing based on viewport
-    const categorySpacing = 15; // Category separation
-    const baseY = 100;
+    const nodeWidth = 140;
+    const nodeHeight = 100;
+    const horizontalSpacing = 60;
+    const verticalSpacing = 80;
+    const categorySpacing = 40;
+    const baseX = 60;
+    const baseY = 80;
 
-    const sortSkillsByCategory = (skills: any[]) => {
-      return skills.sort((a, b) => {
-        const categoryA = a.category || 'Unknown';
-        const categoryB = b.category || 'Unknown';
-        if (categoryA !== categoryB) {
-          return categoryA.localeCompare(categoryB);
-        }
-        return a.name.localeCompare(b.name);
-      });
-    };
-
-    Array.from(levelMap.entries()).forEach(([depth, skillList]) => {
-      const sortedSkills = sortSkillsByCategory(skillList);
-      const skillCount = sortedSkills.length;
-      
-      let totalWidth = skillCount * nodeWidth + (skillCount - 1) * nodeSpacing;
-      
-      let currentCategory = null;
-      let categoryTransitions = 0;
-      sortedSkills.forEach(skill => {
-        if (currentCategory && skill.category !== currentCategory) {
-          categoryTransitions++;
-        }
-        currentCategory = skill.category;
-      });
-      totalWidth += categoryTransitions * categorySpacing;
-
-      const startX = Math.max(40, (canvasWidth - totalWidth) / 2);
-      const y = baseY + depth * levelHeight;
-
-      let currentX = startX;
-      let lastCategory = null;
-
-      sortedSkills.forEach((skill) => {
-        if (lastCategory && skill.category !== lastCategory) {
-          currentX += categorySpacing;
-        }
-
-        positions.set(skill.id, { x: currentX, y });
-        currentX += nodeWidth + nodeSpacing;
-        lastCategory = skill.category;
-      });
+    // Group skills by category
+    const skillsByCategory = new Map<string, any[]>();
+    filteredSkills.forEach(skill => {
+      const category = skill.category || 'Other';
+      if (!skillsByCategory.has(category)) {
+        skillsByCategory.set(category, []);
+      }
+      skillsByCategory.get(category)!.push(skill);
     });
 
-    // Handle disconnected skills with better positioning
-    if (disconnectedSkills.length > 0) {
-      const maxDepth = Math.max(...Array.from(depthMap.values()), -1);
-      const disconnectedY = baseY + (maxDepth + 2) * levelHeight;
+    // Sort categories for consistent layout
+    const sortedCategories = Array.from(skillsByCategory.keys()).sort();
+    
+    // Calculate grid layout
+    const maxSkillsPerRow = Math.floor((canvasWidth - baseX * 2) / (nodeWidth + horizontalSpacing));
+    
+    let currentY = baseY;
+    
+    sortedCategories.forEach((category, categoryIndex) => {
+      const categorySkills = skillsByCategory.get(category)!.sort((a, b) => a.name.localeCompare(b.name));
       
-      const sortedDisconnected = sortSkillsByCategory(disconnectedSkills);
-      const skillCount = sortedDisconnected.length;
+      // Add category spacing (except for first category)
+      if (categoryIndex > 0) {
+        currentY += categorySpacing;
+      }
       
-      let totalWidth = skillCount * nodeWidth + (skillCount - 1) * nodeSpacing;
-      let currentCategory = null;
-      let categoryTransitions = 0;
-      sortedDisconnected.forEach(skill => {
-        if (currentCategory && skill.category !== currentCategory) {
-          categoryTransitions++;
-        }
-        currentCategory = skill.category;
+      // Calculate rows needed for this category
+      const rowsNeeded = Math.ceil(categorySkills.length / maxSkillsPerRow);
+      
+      categorySkills.forEach((skill, index) => {
+        const row = Math.floor(index / maxSkillsPerRow);
+        const col = index % maxSkillsPerRow;
+        
+        // Calculate position for this skill
+        const skillsInThisRow = Math.min(maxSkillsPerRow, categorySkills.length - row * maxSkillsPerRow);
+        const totalRowWidth = skillsInThisRow * nodeWidth + (skillsInThisRow - 1) * horizontalSpacing;
+        const rowStartX = Math.max(baseX, (canvasWidth - totalRowWidth) / 2);
+        
+        const x = rowStartX + col * (nodeWidth + horizontalSpacing);
+        const y = currentY + row * (nodeHeight + verticalSpacing);
+        
+        positions.set(skill.id, { x, y });
       });
-      totalWidth += categoryTransitions * categorySpacing;
-
-      const startX = Math.max(40, (canvasWidth - totalWidth) / 2);
-      let currentX = startX;
-      let lastCategory = null;
-
-      sortedDisconnected.forEach((skill) => {
-        if (lastCategory && skill.category !== lastCategory) {
-          currentX += categorySpacing;
-        }
-
-        positions.set(skill.id, { x: currentX, y: disconnectedY });
-        currentX += nodeWidth + nodeSpacing;
-        lastCategory = skill.category;
-      });
-    }
+      
+      // Move Y position for next category
+      currentY += rowsNeeded * (nodeHeight + verticalSpacing);
+    });
 
     return positions;
-  }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
+  }, [filteredSkills, containerDimensions.width]);
 
   // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
