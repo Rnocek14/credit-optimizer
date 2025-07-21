@@ -527,6 +527,8 @@ const SkillTree = () => {
             <LocationROIExplorer
               selectedCareerPathId={selectedCareerPath}
               goalSkillIds={goalSkills}
+              selectedLocation={selectedLocation}
+              onLocationSelect={setSelectedLocation}
             />
           )}
         </div>

@@ -6,11 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe } from 'lucide-react';
+import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
 
 interface LocationROIExplorerProps {
   selectedCareerPathId: string | null;
   goalSkillIds: string[];
+  selectedLocation?: string;
+  onLocationSelect?: (location: string) => void;
 }
 
 const LOCATIONS = [
@@ -22,7 +26,9 @@ const LOCATIONS = [
     costOfLiving: 1.0,
     jobMarket: 'High',
     jobIcon: '🔥',
-    visaEligible: { india: true, uk: true, remote: true }
+    visaEligible: { india: true, uk: true, remote: true },
+    coordinates: [-95.7129, 37.0902], // USA center
+    countryCode: 'US'
   },
   { 
     value: 'california', 
@@ -32,7 +38,9 @@ const LOCATIONS = [
     costOfLiving: 1.4,
     jobMarket: 'High',
     jobIcon: '🔥',
-    visaEligible: { india: false, uk: true, remote: true }
+    visaEligible: { india: false, uk: true, remote: true },
+    coordinates: [-119.4179, 36.7783], // California center
+    countryCode: 'US'
   },
   { 
     value: 'new-york', 
@@ -42,7 +50,9 @@ const LOCATIONS = [
     costOfLiving: 1.35,
     jobMarket: 'High',
     jobIcon: '🔥',
-    visaEligible: { india: false, uk: true, remote: true }
+    visaEligible: { india: false, uk: true, remote: true },
+    coordinates: [-74.0059, 40.7128], // NYC coordinates
+    countryCode: 'US'
   },
   { 
     value: 'india', 
@@ -52,7 +62,9 @@ const LOCATIONS = [
     costOfLiving: 0.35,
     jobMarket: 'Medium',
     jobIcon: '⚠️',
-    visaEligible: { india: true, uk: true, remote: true }
+    visaEligible: { india: true, uk: true, remote: true },
+    coordinates: [78.9629, 20.5937], // India center
+    countryCode: 'IN'
   },
   { 
     value: 'uk', 
@@ -62,7 +74,9 @@ const LOCATIONS = [
     costOfLiving: 1.1,
     jobMarket: 'Medium',
     jobIcon: '⚠️',
-    visaEligible: { india: true, uk: true, remote: true }
+    visaEligible: { india: true, uk: true, remote: true },
+    coordinates: [-2.3358, 53.4084], // UK center
+    countryCode: 'GB'
   },
   { 
     value: 'remote', 
@@ -72,16 +86,44 @@ const LOCATIONS = [
     costOfLiving: 0.8,
     jobMarket: 'Low',
     jobIcon: '❄️',
-    visaEligible: { india: true, uk: true, remote: true }
+    visaEligible: { india: true, uk: true, remote: true },
+    coordinates: [0, 0], // Global remote
+    countryCode: 'REMOTE'
   }
 ];
 
+// World map topology URL (free from Natural Earth)
+const geoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+
+// Color scale function for heat map
+const getColorByMetric = (value: number, metric: 'roi' | 'colAdjustedRoi' | 'lqi', maxValue: number) => {
+  const normalizedValue = Math.min(value / maxValue, 1);
+  
+  if (normalizedValue < 0.3) {
+    // Red to orange
+    const intensity = normalizedValue / 0.3;
+    return `hsl(${10 + intensity * 20}, 70%, ${40 + intensity * 20}%)`;
+  } else if (normalizedValue < 0.7) {
+    // Orange to yellow
+    const intensity = (normalizedValue - 0.3) / 0.4;
+    return `hsl(${30 + intensity * 30}, 70%, ${60 + intensity * 20}%)`;
+  } else {
+    // Yellow to green
+    const intensity = (normalizedValue - 0.7) / 0.3;
+    return `hsl(${60 + intensity * 60}, 70%, ${50 + intensity * 20}%)`;
+  }
+};
+
 export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   selectedCareerPathId,
-  goalSkillIds
+  goalSkillIds,
+  selectedLocation,
+  onLocationSelect
 }) => {
   const [showVisaEligibility, setShowVisaEligibility] = useState(false);
   const [sortBy, setSortBy] = useState<'roi' | 'colAdjustedRoi' | 'jobMarket' | 'lqi'>('roi');
+  const [mapMetric, setMapMetric] = useState<'roi' | 'colAdjustedRoi' | 'lqi'>('lqi');
+  const [hoveredLocation, setHoveredLocation] = useState<string | null>(null);
   
   // Mock current user region for visa calculations
   const currentUserRegion = 'india';
@@ -182,7 +224,21 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     return b.roi - a.roi; // Default ROI sort
   });
 
-  // Find top locations for different metrics
+  // Get metric values for heat map scaling
+  const metricValues = locationROIData.map(location => {
+    switch (mapMetric) {
+      case 'roi': return location.roi;
+      case 'colAdjustedRoi': return location.colAdjustedROI;
+      case 'lqi': return location.lqi;
+      default: return location.lqi;
+    }
+  });
+  const maxMetricValue = Math.max(...metricValues);
+
+  // Get location data for country mapping
+  const getLocationByCountryCode = (countryCode: string) => {
+    return locationROIData.find(loc => loc.countryCode === countryCode);
+  };
   const topROILocations = [...locationROIData].sort((a, b) => b.roi - a.roi).slice(0, 2);
   const topCOLROILocations = [...locationROIData].sort((a, b) => b.colAdjustedROI - a.colAdjustedROI).slice(0, 2);
   const topLQILocation = [...locationROIData].sort((a, b) => b.lqi - a.lqi)[0];
@@ -202,6 +258,165 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
           <p className="text-sm text-muted-foreground">
             Compare {careerPath.title} earning potential across different locations
           </p>
+          
+          {/* World Heat Map */}
+          <div className="mt-6 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold">🗺️ World ROI Heat Map</h3>
+              <Select value={mapMetric} onValueChange={(value: 'roi' | 'colAdjustedRoi' | 'lqi') => setMapMetric(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select metric" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="roi">ROI</SelectItem>
+                  <SelectItem value="colAdjustedRoi">Net ROI (COL-adjusted)</SelectItem>
+                  <SelectItem value="lqi">LQI Score</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="relative">
+              <ComposableMap
+                projection="geoMercator"
+                projectionConfig={{
+                  scale: 100,
+                  center: [0, 20]
+                }}
+                style={{ width: "100%", height: "400px" }}
+              >
+                <Geographies geography={geoUrl}>
+                  {({ geographies }) =>
+                    geographies.map((geo) => {
+                      const countryCode = geo.properties.ISO_A2;
+                      const locationData = getLocationByCountryCode(countryCode);
+                      const metricValue = locationData ? (
+                        mapMetric === 'roi' ? locationData.roi :
+                        mapMetric === 'colAdjustedRoi' ? locationData.colAdjustedROI :
+                        locationData.lqi
+                      ) : 0;
+                      
+                      const fillColor = locationData 
+                        ? getColorByMetric(metricValue, mapMetric, maxMetricValue)
+                        : "#e2e8f0";
+                      
+                      const isSelected = selectedLocation === locationData?.value;
+                      const isHovered = hoveredLocation === locationData?.value;
+                      
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill={fillColor}
+                          stroke={isSelected ? "#3b82f6" : "#94a3b8"}
+                          strokeWidth={isSelected ? 2 : 0.5}
+                          style={{
+                            default: { outline: "none" },
+                            hover: { 
+                              outline: "none", 
+                              cursor: locationData ? "pointer" : "default",
+                              filter: isHovered ? "brightness(1.1)" : "none"
+                            },
+                            pressed: { outline: "none" }
+                          }}
+                          onMouseEnter={() => {
+                            if (locationData) setHoveredLocation(locationData.value);
+                          }}
+                          onMouseLeave={() => setHoveredLocation(null)}
+                          onClick={() => {
+                            if (locationData && onLocationSelect) {
+                              onLocationSelect(locationData.value);
+                            }
+                          }}
+                        />
+                      );
+                    })
+                  }
+                </Geographies>
+                
+                {/* Markers for special locations */}
+                {locationROIData
+                  .filter(location => location.countryCode !== 'REMOTE')
+                  .map(location => {
+                    const isSelected = selectedLocation === location.value;
+                    const isHovered = hoveredLocation === location.value;
+                    const metricValue = mapMetric === 'roi' ? location.roi :
+                                      mapMetric === 'colAdjustedRoi' ? location.colAdjustedROI :
+                                      location.lqi;
+                    
+                    return (
+                      <Marker
+                        key={location.value}
+                        coordinates={location.coordinates}
+                        onClick={() => onLocationSelect?.(location.value)}
+                        onMouseEnter={() => setHoveredLocation(location.value)}
+                        onMouseLeave={() => setHoveredLocation(null)}
+                      >
+                        <circle
+                          r={isSelected ? 8 : 6}
+                          fill={getColorByMetric(metricValue, mapMetric, maxMetricValue)}
+                          stroke={isSelected ? "#3b82f6" : "#fff"}
+                          strokeWidth={2}
+                          style={{
+                            cursor: "pointer",
+                            filter: isHovered ? "brightness(1.2)" : "none"
+                          }}
+                        />
+                        <text
+                          textAnchor="middle"
+                          y={-12}
+                          style={{
+                            fontSize: "12px",
+                            fill: "#374151",
+                            fontWeight: isSelected ? "bold" : "normal",
+                            pointerEvents: "none"
+                          }}
+                        >
+                          {location.emoji}
+                        </text>
+                      </Marker>
+                    );
+                  })}
+              </ComposableMap>
+              
+              {/* Tooltip */}
+              {hoveredLocation && (
+                <div className="absolute top-4 left-4 bg-white border rounded-lg p-3 shadow-lg z-10">
+                  {(() => {
+                    const location = locationROIData.find(l => l.value === hoveredLocation);
+                    if (!location) return null;
+                    
+                    return (
+                      <div className="text-sm space-y-1">
+                        <div className="font-semibold flex items-center gap-2">
+                          {location.emoji} {location.label}
+                        </div>
+                        <div>ROI: {location.roi.toFixed(1)}×</div>
+                        <div>Net ROI: {location.colAdjustedROI.toFixed(1)}×</div>
+                        <div>LQI: {location.lqi.toFixed(1)}</div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              
+              {/* Legend */}
+              <div className="absolute bottom-4 right-4 bg-white border rounded-lg p-3 shadow-lg">
+                <div className="text-xs font-semibold mb-2">
+                  {mapMetric === 'roi' ? 'ROI Scale' : 
+                   mapMetric === 'colAdjustedRoi' ? 'Net ROI Scale' : 
+                   'LQI Scale'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: getColorByMetric(0.2, mapMetric, maxMetricValue) }}></div>
+                  <span className="text-xs">Low</span>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: getColorByMetric(0.6, mapMetric, maxMetricValue) }}></div>
+                  <span className="text-xs">Medium</span>
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: getColorByMetric(1.0, mapMetric, maxMetricValue) }}></div>
+                  <span className="text-xs">High</span>
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* Controls */}
           <div className="flex items-center justify-between pt-4 border-t">
@@ -247,15 +462,19 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
           {locationROIData.map(location => {
             const isTopROI = topROILocations.some(top => top.value === location.value);
             const isTopCOLROI = topCOLROILocations.some(top => top.value === location.value);
+            const isSelected = selectedLocation === location.value;
             
             return (
               <div
                 key={location.value}
-                className={`relative p-4 rounded-lg border-2 transition-all ${
-                  isTopROI 
-                    ? 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50' 
-                    : 'border-border bg-card hover:shadow-md'
+                className={`relative p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                  isSelected 
+                    ? 'border-blue-400 bg-gradient-to-br from-blue-50 to-cyan-50 ring-2 ring-blue-200'
+                    : isTopROI 
+                      ? 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50' 
+                      : 'border-border bg-card hover:shadow-md'
                 }`}
+                onClick={() => onLocationSelect?.(location.value)}
               >
                 {/* Badges */}
                 <div className="absolute -top-2 -right-2 flex flex-col gap-1">
