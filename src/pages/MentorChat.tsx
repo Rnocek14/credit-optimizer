@@ -91,7 +91,6 @@ export default function MentorChat() {
   ];
 
   useEffect(() => {
-    console.log('MentorChat initializing...');
     initializeChat();
   }, []);
 
@@ -101,17 +100,13 @@ export default function MentorChat() {
 
   const initializeChat = async () => {
     try {
-      console.log('Getting current user...');
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user);
       
       if (!user) {
-        console.log('No user found, redirecting to auth...');
         return;
       }
       
       setCurrentUser(user);
-      console.log('User set, loading context...');
       await loadUserContext(user.id);
       await loadMilestonePlans(user.id);
       await loadWelcomeMessage(user.id);
@@ -126,17 +121,12 @@ export default function MentorChat() {
 
   const loadUserContext = async (userId: string) => {
     try {
-      console.log('Loading user context for:', userId);
-      
-      // Fetch real user context from Supabase
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: { 
           message: 'FETCH_CONTEXT_ONLY', 
           userId: userId 
         }
       });
-
-      console.log('User context response:', data, error);
 
       if (error) {
         console.error('Error loading user context:', error);
@@ -145,7 +135,6 @@ export default function MentorChat() {
       
       if (data?.userContext) {
         setUserContext(data.userContext);
-        console.log('User context loaded:', data.userContext);
         
         // Check for level-up celebration
         const currentLevel = data.userContext.level?.current_level || 1;
@@ -162,16 +151,12 @@ export default function MentorChat() {
 
   const loadMilestonePlans = async (userId: string) => {
     try {
-      console.log('Loading milestone plans for:', userId);
-      
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: { 
           action: 'GET_MILESTONE_PLANS',
           userId: userId 
         }
       });
-
-      console.log('Milestone plans response:', data, error);
 
       if (error) {
         console.error('Error loading milestone plans:', error);
@@ -180,7 +165,6 @@ export default function MentorChat() {
       
       if (data?.plans) {
         setMilestonePlans(data.plans);
-        console.log('Milestone plans loaded:', data.plans);
       }
     } catch (error) {
       console.error('Error loading milestone plans:', error);
@@ -189,16 +173,12 @@ export default function MentorChat() {
 
   const loadWelcomeMessage = async (userId: string) => {
     try {
-      console.log('Loading welcome message for:', userId);
-      
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: { 
           message: "Hi Maya! I just opened the chat. Can you give me a personalized welcome based on my current progress and suggest what I should focus on next?", 
           userId: userId 
         }
       });
-
-      console.log('Welcome message response:', data, error);
 
       if (error) {
         console.error('Error loading welcome message:', error);
@@ -213,7 +193,6 @@ export default function MentorChat() {
       };
 
       setMessages([welcomeMessage]);
-      console.log('Welcome message loaded');
     } catch (error) {
       console.error('Error loading welcome message:', error);
       // Fallback welcome message
@@ -228,19 +207,9 @@ export default function MentorChat() {
   };
 
   const handleSendMessage = async () => {
-    console.log('handleSendMessage called');
-    console.log('Input value:', input);
-    console.log('Input trimmed:', input.trim());
-    console.log('Current user:', currentUser);
-    console.log('Is loading:', isLoading);
-
-    if (!input.trim()) {
-      console.log('Input is empty after trimming, aborting');
-      return;
-    }
+    if (!input.trim()) return;
 
     if (!currentUser) {
-      console.log('No current user, aborting');
       toast({
         title: "Authentication Required",
         description: "Please log in to chat with Maya.",
@@ -249,12 +218,8 @@ export default function MentorChat() {
       return;
     }
 
-    if (isLoading) {
-      console.log('Already loading, aborting');
-      return;
-    }
+    if (isLoading) return;
 
-    console.log('Creating user message...');
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input,
@@ -262,7 +227,6 @@ export default function MentorChat() {
       timestamp: new Date()
     };
 
-    console.log('Adding user message to chat:', userMessage);
     setMessages(prev => [...prev, userMessage]);
     
     const messageToSend = input;
@@ -270,15 +234,12 @@ export default function MentorChat() {
     setIsLoading(true);
 
     try {
-      console.log('Calling AI mentor chat function...');
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: { 
           message: messageToSend, 
           userId: currentUser.id 
         }
       });
-
-      console.log('AI response:', data, error);
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -292,18 +253,15 @@ export default function MentorChat() {
         timestamp: new Date()
       };
 
-      console.log('Adding assistant message to chat:', assistantMessage);
       setMessages(prev => [...prev, assistantMessage]);
       
       // Update user context if provided
       if (data.userContext) {
-        console.log('Updating user context:', data.userContext);
         setUserContext(data.userContext);
       }
 
       // Handle new milestone plan creation
       if (data.milestonePlan) {
-        console.log('New milestone plan created:', data.milestonePlan);
         await loadMilestonePlans(currentUser.id);
         toast({
           title: "🎯 New Milestone Plan Created!",
@@ -313,7 +271,6 @@ export default function MentorChat() {
 
       // Check for celebration triggers
       if (data.shouldTriggerCelebration) {
-        console.log('Triggering celebration...');
         setShowPlanCelebration(true);
         setTimeout(() => setShowPlanCelebration(false), 4000);
       }
@@ -335,7 +292,6 @@ export default function MentorChat() {
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
-      console.log('Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -393,16 +349,13 @@ export default function MentorChat() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    console.log('Key pressed:', e.key, 'Shift:', e.shiftKey);
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      console.log('Enter pressed without shift, calling handleSendMessage');
       handleSendMessage();
     }
   };
 
   const handleButtonClick = (e: React.MouseEvent) => {
-    console.log('Send button clicked');
     e.preventDefault();
     handleSendMessage();
   };
@@ -486,14 +439,6 @@ export default function MentorChat() {
     );
   };
 
-  // Debug info
-  console.log('Render state:', {
-    input,
-    inputTrimmed: input.trim(),
-    currentUser: !!currentUser,
-    isLoading,
-    buttonDisabled: !input.trim() || isLoading
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -822,15 +767,10 @@ export default function MentorChat() {
                     onClick={handleButtonClick}
                     disabled={!input.trim() || isLoading}
                     size="icon"
-                    type="button"
+                    type="submit"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
-                </div>
-                
-                {/* Debug info (remove in production) */}
-                <div className="text-xs text-muted-foreground mt-2">
-                  Debug: Input="{input}" | User={currentUser ? 'OK' : 'Missing'} | Loading={isLoading ? 'Yes' : 'No'} | Disabled={!input.trim() || isLoading ? 'Yes' : 'No'}
                 </div>
               </div>
             </Card>
