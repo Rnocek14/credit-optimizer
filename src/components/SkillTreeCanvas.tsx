@@ -224,13 +224,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
     const positions = new Map();
     const canvasWidth = containerDimensions.width;
-    const nodeWidth = 140;
-    const nodeHeight = 100;
-    const horizontalSpacing = 60;
-    const verticalSpacing = 80;
-    const categorySpacing = 40;
-    const baseX = 60;
-    const baseY = 80;
+    const nodeWidth = 80;  // Match actual node size (w-20 = 80px)
+    const nodeHeight = 80; // Match actual node size (h-20 = 80px)
+    const horizontalSpacing = 40;
+    const verticalSpacing = 60;
+    const categorySpacing = 30;
+    const baseX = 40;
+    const baseY = 60;
 
     // Group skills by category
     const skillsByCategory = new Map<string, any[]>();
@@ -287,7 +287,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
     if (position) {
-      const targetX = containerDimensions.width / 2 - (position.x + 60) * zoomLevel;
+      const targetX = containerDimensions.width / 2 - (position.x + 40) * zoomLevel; // Center of 80px node
       const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
       
       setPanOffset({ x: targetX, y: targetY });
@@ -397,7 +397,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Enhanced arrow paths with better animations
+  // Enhanced arrow paths with correct node dimensions
   const arrowPaths = useMemo(() => {
     const paths = new Map<string, string>();
     
@@ -406,18 +406,24 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(edge.skill_id);
       if (!from || !to) return;
       
-      const fromX = from.x + 60;
-      const fromY = from.y + 80;
-      const toX = to.x + 60;
-      const toY = to.y;
+      // Node dimensions: 80px x 80px (w-20 h-20)
+      const nodeWidth = 80;
+      const nodeHeight = 80;
+      
+      // Calculate connection points (center bottom of 'from' node to center top of 'to' node)
+      const fromX = from.x + nodeWidth / 2;
+      const fromY = from.y + nodeHeight; // Bottom of from node
+      const toX = to.x + nodeWidth / 2;
+      const toY = to.y; // Top of to node
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
+      // Create smooth bezier curve
       const controlPoint1X = fromX;
-      const controlPoint1Y = fromY + Math.abs(dy) * 0.4;
+      const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
       const controlPoint2X = toX;
-      const controlPoint2Y = toY - Math.abs(dy) * 0.4;
+      const controlPoint2Y = toY - Math.abs(dy) * 0.3;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
@@ -437,18 +443,24 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(branch.to_skill_id);
       if (!from || !to) return;
       
-      const fromX = from.x + 60;
-      const fromY = from.y + 40;
-      const toX = to.x + 60;
-      const toY = to.y + 40;
+      // Node dimensions: 80px x 80px
+      const nodeWidth = 80;
+      const nodeHeight = 80;
+      
+      // Center-to-center connections for pivot paths
+      const fromX = from.x + nodeWidth / 2;
+      const fromY = from.y + nodeHeight / 2;
+      const toX = to.x + nodeWidth / 2;
+      const toY = to.y + nodeHeight / 2;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
+      // Create arched path for pivot connections
       const controlPoint1X = fromX + dx * 0.3;
-      const controlPoint1Y = fromY - 40;
+      const controlPoint1Y = fromY - 50; // Arc upward
       const controlPoint2X = toX - dx * 0.3;
-      const controlPoint2Y = toY - 40;
+      const controlPoint2Y = toY - 50;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`pivot-${branch.from_skill_id}-${branch.to_skill_id}`, { path: pathData, branch });
