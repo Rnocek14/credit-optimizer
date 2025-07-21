@@ -16,7 +16,9 @@ import {
   Star, 
   BookOpen,
   Award,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Trophy
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -30,16 +32,21 @@ interface Message {
 }
 
 interface UserContext {
-  currentXP: number;
-  currentLevel: number;
-  nextLevelXP: number;
-  suggestedSkill: string;
-  skillGaps: string[];
-  savedItems: number;
-  publishedResume: boolean;
+  profile: any;
+  level: any;
+  goals: any[];
+  savedCount: number;
+  hasPublishedResume: boolean;
   criScore: number;
-  nextGoal: string;
-  recentActions: string[];
+  readinessScore: number;
+  recentActions: any[];
+  recentBadges: any[];
+}
+
+interface LevelMilestone {
+  level: number;
+  title: string;
+  description: string;
 }
 
 export default function MentorChat() {
@@ -47,81 +54,105 @@ export default function MentorChat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLevelUpCelebration, setShowLevelUpCelebration] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const levelMilestones: LevelMilestone[] = [
+    { level: 5, title: "Rising Star", description: "You're gaining momentum!" },
+    { level: 10, title: "Dedicated Learner", description: "Consistency is your superpower!" },
+    { level: 20, title: "Skill Master", description: "You're becoming an expert!" },
+    { level: 30, title: "Mentor Material", description: "Others look up to your expertise!" },
+  ];
+
   useEffect(() => {
-    loadUserContext();
-    loadMockChatHistory();
+    initializeChat();
   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  const initializeChat = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      setCurrentUser(user);
+      await loadUserContext(user.id);
+      await loadWelcomeMessage(user.id);
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadUserContext = async () => {
+  const loadUserContext = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Mock user context for now - replace with real data
-      setUserContext({
-        currentXP: 1250,
-        currentLevel: 3,
-        nextLevelXP: 1500,
-        suggestedSkill: 'React Hooks',
-        skillGaps: ['Advanced JavaScript', 'Backend APIs', 'Database Design'],
-        savedItems: 12,
-        publishedResume: true,
-        criScore: 78,
-        nextGoal: 'Complete Frontend Fundamentals',
-        recentActions: [
-          'Completed "JavaScript Basics" course',
-          'Earned "First Steps" badge',
-          'Updated profile information'
-        ]
+      // Fetch real user context from Supabase
+      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+        body: { 
+          message: 'FETCH_CONTEXT_ONLY', 
+          userId: userId 
+        }
       });
+
+      if (error) throw error;
+      
+      if (data?.userContext) {
+        setUserContext(data.userContext);
+        
+        // Check for level-up celebration
+        const currentLevel = data.userContext.level?.current_level || 1;
+        const milestone = levelMilestones.find(m => m.level === currentLevel);
+        if (milestone && currentLevel > 1) {
+          setShowLevelUpCelebration(true);
+          setTimeout(() => setShowLevelUpCelebration(false), 5000);
+        }
+      }
     } catch (error) {
       console.error('Error loading user context:', error);
     }
   };
 
-  const loadMockChatHistory = () => {
-    const mockMessages: Message[] = [
-      {
+  const loadWelcomeMessage = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+        body: { 
+          message: "Hi Maya! I just opened the chat. Can you give me a personalized welcome based on my current progress and suggest what I should focus on next?", 
+          userId: userId 
+        }
+      });
+
+      if (error) throw error;
+
+      const welcomeMessage: Message = {
         id: '1',
-        content: "👋 Hey there! I'm Maya, your AI mentor. I've analyzed your progress and I'm excited to help you reach your goals! You're currently at Level 3 with 1,250 XP - great momentum!",
+        content: data.response,
         role: 'assistant',
-        timestamp: new Date(Date.now() - 1000 * 60 * 5)
-      },
-      {
-        id: '2',
-        content: "Based on your skill tree, I recommend focusing on **React Hooks** next. It'll unlock Layer 4 and boost your frontend expertise. Want me to suggest some courses?",
+        timestamp: new Date()
+      };
+
+      setMessages([welcomeMessage]);
+    } catch (error) {
+      console.error('Error loading welcome message:', error);
+      // Fallback welcome message
+      const fallbackMessage: Message = {
+        id: '1',
+        content: "👋 Hey there! I'm Maya, your AI mentor. I'm here to help you navigate your learning journey and reach your career goals. What would you like to work on today?",
         role: 'assistant',
-        timestamp: new Date(Date.now() - 1000 * 60 * 4)
-      },
-      {
-        id: '3',
-        content: "That sounds perfect! What are the best React Hooks courses you'd recommend?",
-        role: 'user',
-        timestamp: new Date(Date.now() - 1000 * 60 * 3)
-      },
-      {
-        id: '4',
-        content: "Excellent choice! Here are my top 3 picks:\n\n🎯 **React Hooks Masterclass** (Coursera)\n- 40 XP reward\n- CRI boost: +5 points\n- Duration: 3 weeks\n- Perfect for your current level\n\n📚 **Modern React Development** (Udemy)\n- 35 XP reward\n- Hands-on projects\n- Duration: 2 weeks\n\n🚀 **Advanced React Patterns** (FreeCodeCamp)\n- 25 XP reward\n- Free course\n- Duration: 1 week\n\nShall I add any of these to your saved items?",
-        role: 'assistant',
-        timestamp: new Date(Date.now() - 1000 * 60 * 2)
-      }
-    ];
-    setMessages(mockMessages);
+        timestamp: new Date()
+      };
+      setMessages([fallbackMessage]);
+    }
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !currentUser) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -134,25 +165,49 @@ export default function MentorChat() {
     setInput('');
     setIsLoading(true);
 
-    // Mock AI response - replace with real GPT-4o call
-    setTimeout(() => {
-      const responses = [
-        "That's a great question! Based on your current progress at Level 3, I'd suggest focusing on practical projects to solidify your React knowledge. Have you considered building a portfolio project?",
-        "I see you have 12 saved items! That shows great planning. Which one feels most exciting to start with? I can help you create a learning schedule.",
-        "Your CRI score of 78 is impressive! To boost it further, consider adding more verified projects to your resume. What type of project interests you most?",
-        "Looking at your skill gaps, I notice Backend APIs is on the list. Once you master React Hooks, that would be a natural next step. Should we plan that pathway?"
-      ];
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+        body: { 
+          message: input, 
+          userId: currentUser.id 
+        }
+      });
+
+      if (error) throw error;
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: data.response,
         role: 'assistant',
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Update user context if provided
+      if (data.userContext) {
+        setUserContext(data.userContext);
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Add fallback response
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm having trouble connecting right now. Please try your question again in a moment!",
+        role: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -162,11 +217,40 @@ export default function MentorChat() {
     }
   };
 
-  const progressPercentage = userContext ? (userContext.currentXP / userContext.nextLevelXP) * 100 : 0;
+  const formatRecentAction = (action: any) => {
+    return action.reason || 'Recent activity';
+  };
+
+  const progressPercentage = userContext?.level ? 
+    ((userContext.level.total_xp - (userContext.level.xp_for_current_level || 0)) / 
+     ((userContext.level.xp_for_next_level || 100) - (userContext.level.xp_for_current_level || 0))) * 100 : 0;
+
+  const currentMilestone = userContext?.level ? 
+    levelMilestones.find(m => m.level === userContext.level.current_level) : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      
+      {/* Level Up Celebration */}
+      {showLevelUpCelebration && currentMilestone && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <Card className="w-96 mx-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="p-8 text-center">
+              <div className="mb-4">
+                <Trophy className="h-16 w-16 mx-auto text-primary animate-bounce" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Level {userContext?.level?.current_level} Achieved!</h2>
+              <h3 className="text-lg font-semibold text-primary mb-2">{currentMilestone.title}</h3>
+              <p className="text-muted-foreground mb-4">{currentMilestone.description}</p>
+              <Button onClick={() => setShowLevelUpCelebration(false)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Continue Learning
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
@@ -176,88 +260,144 @@ export default function MentorChat() {
             {userContext && (
               <>
                 {/* XP Progress */}
-                <Card>
+                <Card className={currentMilestone ? 'ring-2 ring-primary ring-opacity-50' : ''}>
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-primary" />
                       Your Progress
+                      {currentMilestone && (
+                        <Badge variant="default" className="ml-auto">
+                          <Trophy className="h-3 w-3 mr-1" />
+                          {currentMilestone.title}
+                        </Badge>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium">Level {userContext.currentLevel}</span>
+                        <span className="text-sm font-medium">Level {userContext.level?.current_level || 1}</span>
                         <span className="text-sm text-muted-foreground">
-                          {userContext.currentXP} / {userContext.nextLevelXP} XP
+                          {userContext.level?.total_xp || 0} / {userContext.level?.xp_for_next_level || 100} XP
                         </span>
                       </div>
                       <Progress value={progressPercentage} className="h-2" />
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {Math.round(((userContext.level?.xp_for_next_level || 100) - (userContext.level?.total_xp || 0)))} XP to next level
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="text-center p-2 bg-muted rounded">
-                        <div className="font-bold text-primary">{userContext.criScore}</div>
+                        <div className="font-bold text-primary">
+                          {userContext.criScore > 0 ? Math.round(userContext.criScore) : 'N/A'}
+                        </div>
                         <div className="text-muted-foreground">CRI Score</div>
                       </div>
                       <div className="text-center p-2 bg-muted rounded">
-                        <div className="font-bold text-primary">{userContext.savedItems}</div>
+                        <div className="font-bold text-primary">{userContext.savedCount}</div>
                         <div className="text-muted-foreground">Saved Items</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Next Goal */}
+                {/* Current Goal */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Target className="h-4 w-4 text-primary" />
-                      Next Goal
+                      Current Focus
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm">{userContext.nextGoal}</p>
-                    <Badge variant="outline" className="mt-2">
-                      <Star className="h-3 w-3 mr-1" />
-                      Suggested: {userContext.suggestedSkill}
-                    </Badge>
+                    <p className="text-sm">
+                      {userContext.goals?.[0]?.title || 'Set your first goal to get started!'}
+                    </p>
+                    {userContext.goals?.[0]?.target_role && (
+                      <Badge variant="outline" className="mt-2">
+                        <Star className="h-3 w-3 mr-1" />
+                        Target: {userContext.goals[0].target_role}
+                      </Badge>
+                    )}
+                    {!userContext.hasPublishedResume && (
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                        💡 Consider publishing your resume to boost visibility
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Recent Actions */}
+                {/* Recent Activity */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Award className="h-4 w-4 text-primary" />
-                      Recent Actions
+                      Recent Activity
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {userContext.recentActions.map((action, index) => (
-                        <div key={index} className="text-sm text-muted-foreground">
-                          • {action}
+                      {userContext.recentActions?.length > 0 ? (
+                        userContext.recentActions.slice(0, 3).map((action, index) => (
+                          <div key={index} className="text-sm text-muted-foreground">
+                            • {formatRecentAction(action)}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Start learning to see your activity here!
                         </div>
-                      ))}
+                      )}
                     </div>
+                    
+                    {/* Recent Badges */}
+                    {userContext.recentBadges?.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <div className="text-xs font-medium mb-2">Recent Badges:</div>
+                        <div className="flex gap-1 flex-wrap">
+                          {userContext.recentBadges.slice(0, 3).map((badge, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {badge.badges?.emoji} {badge.badges?.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Skill Gaps */}
+                {/* Skills & Gaps */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <BookOpen className="h-4 w-4 text-primary" />
-                      Skill Gaps
+                      Skills Overview
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {userContext.skillGaps.map((gap, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {gap}
-                        </Badge>
-                      ))}
-                    </div>
+                    {/* Current Skills */}
+                    {userContext.profile?.skills && userContext.profile.skills.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium mb-2">Current Skills:</div>
+                        <div className="space-y-1">
+                          {userContext.profile.skills.slice(0, 4).map((skill: string, index: number) => (
+                            <Badge key={index} variant="secondary" className="text-xs mr-1">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Readiness Score */}
+                    {userContext.readinessScore > 0 && (
+                      <div className="mt-3 p-2 bg-muted rounded">
+                        <div className="text-xs font-medium">Career Readiness</div>
+                        <div className="text-lg font-bold text-primary">
+                          {Math.round(userContext.readinessScore)}%
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </>
