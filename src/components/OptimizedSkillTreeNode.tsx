@@ -70,7 +70,7 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
 
   return (
     <>
-      <style jsx>{`
+      <style>{`
         .goal-skill-glow {
           animation: subtle-glow 3s ease-in-out infinite;
           box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);

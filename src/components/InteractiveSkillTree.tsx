@@ -4,6 +4,44 @@ import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
 
+interface Skill {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  difficulty_level: number;
+  xp_value: number;
+  slug: string;
+}
+
+interface UserProgress {
+  skill_id: string;
+  status: 'locked' | 'available' | 'in_progress' | 'completed';
+  xp_earned: number;
+  cri_score?: number;
+}
+
+interface SkillEdge {
+  skill_id: string;
+  prerequisite_skill_id: string;
+}
+
+interface InteractiveSkillTreeProps {
+  skills: Skill[];
+  userProgress: UserProgress[];
+  skillEdges: SkillEdge[];
+  filteredSkills: Skill[];
+  recommendedSkills: string[];
+  goalSkills?: string[];
+  checkpointSkills?: string[];
+  availableCategories: string[];
+  onSkillClick?: (skill: Skill) => void;
+  showMinimap?: boolean;
+  layoutMode?: string;
+  careerPathName?: string;
+  showPivotPaths?: boolean;
+}
+
 export const InteractiveSkillTree = React.memo(({
   skills,
   userProgress,
@@ -18,7 +56,7 @@ export const InteractiveSkillTree = React.memo(({
   layoutMode = 'hierarchy',
   careerPathName,
   showPivotPaths = false
-}) => {
+}: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
 
