@@ -174,21 +174,18 @@ const SkillTree = () => {
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
-  // Fetch career steps for selected career path
+  // Fixed career steps query - using proper UUID validation and error handling
   const { data: careerSteps = [] } = useQuery({
     queryKey: ['career-steps', selectedCareerPath],
     queryFn: async () => {
       if (!selectedCareerPath) return [];
       
-      const { data, error } = await supabase
-        .from('roadmap_steps')
-        .select('*')
-        .eq('user_id', selectedCareerPath)
-        .order('order_index');
+      // Validate if selectedCareerPath is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       
-      if (error) {
-        console.error('Career steps fetch error:', error);
-        // Return mock UX Designer skills
+      if (!uuidRegex.test(selectedCareerPath)) {
+        console.log('Career path is not a UUID, using mock data for:', selectedCareerPath);
+        // Return mock UX Designer skills for non-UUID career paths
         return [
           { title: 'User Research', category: 'Design', is_checkpoint: false },
           { title: 'Wireframing', category: 'Design', is_checkpoint: true },
@@ -201,38 +198,68 @@ const SkillTree = () => {
         ];
       }
       
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('roadmap_steps')
+          .select('*')
+          .eq('user_id', selectedCareerPath)
+          .order('order_index');
+        
+        if (error) {
+          console.error('Career steps fetch error:', error);
+          return [];
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Unexpected error fetching career steps:', err);
+        return [];
+      }
     },
-    enabled: !!selectedCareerPath
+    enabled: !!selectedCareerPath,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes to reduce re-fetching
   });
 
-  // Get selected career path details
+  // Fixed career path data query with proper error handling
   const { data: selectedCareerPathData } = useQuery({
     queryKey: ['career-path-data', selectedCareerPath],
     queryFn: async () => {
       if (!selectedCareerPath) return null;
       
-      const { data, error } = await supabase
-        .from('career_paths')
-        .select('*')
-        .eq('id', selectedCareerPath)
-        .single();
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       
-      if (error) {
-        // Return mock UX Designer data
+      if (!uuidRegex.test(selectedCareerPath)) {
+        // Return mock UX Designer data for non-UUID career paths
         return {
-          id: 'ux-designer',
+          id: selectedCareerPath,
           title: 'UX Designer',
           average_salary: 78000
         };
       }
       
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('career_paths')
+          .select('*')
+          .eq('id', selectedCareerPath)
+          .single();
+        
+        if (error) {
+          console.error('Career path fetch error:', error);
+          return null;
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Unexpected error fetching career path:', err);
+        return null;
+      }
     },
-    enabled: !!selectedCareerPath
+    enabled: !!selectedCareerPath,
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
-  // Generate goal skills based on career steps
+  // Memoized goal skills to prevent unnecessary recalculations
   const goalSkills = React.useMemo(() => {
     if (!careerSteps.length) {
       // Default UX Designer skills
@@ -261,7 +288,7 @@ const SkillTree = () => {
       .map(skill => skill.id);
   }, [careerSteps, skills]);
 
-  // Generate checkpoint skills
+  // Memoized checkpoint skills
   const checkpointSkills = React.useMemo(() => {
     if (!careerSteps.length) {
       // Default checkpoints for UX Designer

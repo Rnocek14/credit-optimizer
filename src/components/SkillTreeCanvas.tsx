@@ -1,39 +1,13 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { SkillTreeNode } from './SkillTreeNode';
+import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
 
-// Performance tracking utilities
+// Simplified performance tracking
 const performanceTracker = {
-  startTime: 0,
-  frameCount: 0,
-  lastFrameTime: 0,
-  
-  startTracking() {
-    this.startTime = performance.now();
-    this.frameCount = 0;
-    this.lastFrameTime = performance.now();
-  },
-  
-  trackFrame() {
-    this.frameCount++;
-    const currentTime = performance.now();
-    const deltaTime = currentTime - this.lastFrameTime;
-    this.lastFrameTime = currentTime;
-    
-    if (this.frameCount % 30 === 0) {
-      const avgFrameTime = (currentTime - this.startTime) / this.frameCount;
-      const fps = 1000 / deltaTime;
-      console.log(`[SkillTree Performance] Avg Frame Time: ${avgFrameTime.toFixed(2)}ms, Current FPS: ${fps.toFixed(1)}`);
-    }
-  },
-  
-  endTracking() {
-    const totalTime = performance.now() - this.startTime;
-    const avgFps = this.frameCount / (totalTime / 1000);
-    console.log(`[SkillTree Performance] Total render time: ${totalTime.toFixed(2)}ms, Avg FPS: ${avgFps.toFixed(1)}, Total frames: ${this.frameCount}`);
+  log: (message: string) => {
+    console.log(`[SkillTree Performance] ${message}`);
   }
 };
 
@@ -45,12 +19,11 @@ function useDebounce<T extends (...args: any[]) => any>(
   const timeoutRef = useRef<NodeJS.Timeout>();
   const callbackRef = useRef(callback);
   
-  // Update callback ref when callback changes
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
   
-  return useCallback((...args: Parameters<T>) => {
+  const debouncedCallback = useCallback((...args: Parameters<T>) => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -58,7 +31,9 @@ function useDebounce<T extends (...args: any[]) => any>(
     timeoutRef.current = setTimeout(() => {
       callbackRef.current(...args);
     }, delay);
-  }, [delay]) as T;
+  }, [delay]);
+  
+  return debouncedCallback as T;
 }
 
 interface SkillBranch {
@@ -124,12 +99,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationFrameRef = useRef<number>();
-  
-  // Use refs for stable function references
   const fitToViewRef = useRef<() => void>();
 
-  // Fetch skill branches for pivot paths
+  // Fetch skill branches for pivot paths with proper caching
   const { data: skillBranches = [] } = useQuery({
     queryKey: ['skill-branches'],
     queryFn: async () => {
@@ -144,7 +116,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       
       return data as SkillBranch[];
     },
-    enabled: showPivotPaths
+    enabled: showPivotPaths,
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
   // Memoized category colors for consistent theming
@@ -361,7 +334,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     onSkillClick(skill);
   }, [skillPositions, containerDimensions, zoomLevel, onSkillClick]);
 
-  // Stable fit-to-view function
+  // Optimized fit-to-view function with stable reference
   const createFitToView = useCallback(() => {
     return () => {
       if (skillPositions.size === 0) return;
@@ -396,7 +369,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     };
   }, [skillPositions, containerDimensions]);
 
-  // Update fit-to-view ref when dependencies change
+  // Update fit-to-view ref
   useEffect(() => {
     fitToViewRef.current = createFitToView();
   }, [createFitToView]);
@@ -406,7 +379,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     if (fitToViewRef.current) {
       fitToViewRef.current();
     }
-  }, 150);
+  }, 300);
 
   // Manual fit-to-view for button clicks
   const fitToView = useCallback(() => {
@@ -415,17 +388,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, []);
 
-  // Auto-fit on layout changes - FIXED: removed problematic dependency
+  // FIXED: Remove problematic dependency that causes infinite loop
   useEffect(() => {
-    if (filteredSkills.length > 0) {
+    if (filteredSkills.length > 0 && skillPositions.size > 0) {
       const timeoutId = setTimeout(() => {
         requestAnimationFrame(() => {
-          debouncedFitToView();
+          if (fitToViewRef.current) {
+            fitToViewRef.current();
+          }
         });
-      }, 300);
+      }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [filteredSkills.length]); // Only depend on skill count, not the debounced function
+  }, [filteredSkills.length, skillPositions.size]); // Only depend on counts, not functions
 
   // Container resize handling with stable reference
   const handleResize = useCallback(() => {
@@ -533,21 +508,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setSelectedPivotPath(branch);
   }, []);
 
-  // Performance benchmark logging (simplified to avoid render loops)
+  // Simplified performance logging
   useEffect(() => {
-    const renderTime = performance.now();
-    console.log(`[SkillTree Benchmark] Rendered ${filteredSkills.length} skills`);
-    
-    // Benchmark categories
-    if (filteredSkills.length <= 12) {
-      console.log(`[Benchmark] Small tree (≤12 skills) - Target: <100ms`);
-    } else if (filteredSkills.length <= 25) {
-      console.log(`[Benchmark] Medium tree (13-25 skills) - Target: <200ms`);
-    } else if (filteredSkills.length <= 50) {
-      console.log(`[Benchmark] Large tree (26-50 skills) - Target: <400ms`);
-    } else {
-      console.log(`[Benchmark] XL tree (50+ skills) - Consider virtualization`);
-    }
+    performanceTracker.log(`Rendered ${filteredSkills.length} skills`);
   }, [filteredSkills.length]);
 
   return (
@@ -679,7 +642,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         })}
       </svg>
 
-      {/* Node Layer */}
+      {/* Optimized Node Layer */}
       <div
         className="absolute inset-0"
         style={{
@@ -697,7 +660,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           const isInPath = highlightedSkillPath.includes(skill.id);
           
           return (
-            <SkillTreeNode
+            <OptimizedSkillTreeNode
               key={skill.id}
               skill={skill}
               userProgress={progress}

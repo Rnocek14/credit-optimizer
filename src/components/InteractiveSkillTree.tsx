@@ -4,7 +4,7 @@ import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
 
-export const InteractiveSkillTree = ({
+export const InteractiveSkillTree = React.memo(({
   skills,
   userProgress,
   skillEdges,
@@ -22,27 +22,15 @@ export const InteractiveSkillTree = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
 
-  // Track loading time and show skeleton if >500ms
+  // Simplified loading logic to prevent rapid state changes
   useEffect(() => {
-    const loadingTimer = setTimeout(() => {
-      if (skills && skills.length > 0 && filteredSkills && filteredSkills.length > 0) {
-        const loadTime = performance.now() - loadStartTime;
-        console.log(`[SkillTree] Initial load completed in ${loadTime.toFixed(2)}ms`);
-        setIsLoading(false);
-      }
-    }, 500);
-
-    // If data loads quickly, hide loading immediately
     if (skills && skills.length > 0 && filteredSkills && filteredSkills.length > 0) {
       const loadTime = performance.now() - loadStartTime;
-      if (loadTime < 500) {
-        console.log(`[SkillTree] Fast load completed in ${loadTime.toFixed(2)}ms`);
-        setIsLoading(false);
-      }
+      console.log(`[SkillTree] Load completed in ${loadTime.toFixed(2)}ms`);
+      setIsLoading(false);
     }
+  }, [skills?.length, filteredSkills?.length, loadStartTime]);
 
-    return () => clearTimeout(loadingTimer);
-  }, [skills, filteredSkills, loadStartTime]);
   console.log('InteractiveSkillTree render:', {
     skillsCount: skills?.length || 0,
     filteredSkillsCount: filteredSkills?.length || 0,
@@ -70,9 +58,9 @@ export const InteractiveSkillTree = ({
     );
   }
 
-  // Show loading skeleton if taking too long
-  if (isLoading) {
-    return <LoadingSkeleton nodeCount={skills.length} />;
+  // Show loading skeleton only if actually loading
+  if (isLoading && skills.length === 0) {
+    return <LoadingSkeleton nodeCount={Math.min(skills.length || 12, 12)} />;
   }
 
   return (
@@ -92,4 +80,6 @@ export const InteractiveSkillTree = ({
       />
     </SkillTreeErrorBoundary>
   );
-};
+});
+
+InteractiveSkillTree.displayName = 'InteractiveSkillTree';
