@@ -435,3 +435,4 @@ function checkForCelebrationTriggers(userContext: any): boolean {
   
   // Trigger celebrations for major milestones
   return level >= 5 || recentBadges >= 3 || criScore >= 85;
+}
