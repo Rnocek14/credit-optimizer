@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
+import { EnhancedSkillTreeNode } from './EnhancedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
 
-// Simplified performance tracking
+// Enhanced performance tracking with feature monitoring
 const performanceTracker = {
-  log: (message: string) => {
-    console.log(`[SkillTree Performance] ${message}`);
+  log: (message: string, features?: any) => {
+    console.log(`[SkillTree Performance] ${message}`, features || '');
   }
 };
 
@@ -120,7 +120,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
-  // Memoized category colors for consistent theming
+  // Enhanced category colors for better visual consistency
   const getCategoryColor = useCallback((category: string) => {
     const colors = {
       Programming: '#3b82f6',
@@ -137,7 +137,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return colors[category as keyof typeof colors] || '#9ca3af';
   }, []);
 
-  // Memoized prerequisite path calculation for highlighting
+  // Memoized prerequisite path calculation for enhanced highlighting
   const getPrerequisitePath = useMemo(() => {
     const pathCache = new Map<string, string[]>();
     
@@ -154,7 +154,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         visited.add(currentSkillId);
         path.push(currentSkillId);
         
-        // Find all prerequisites for the current skill
         const prerequisites = skillEdges.filter(edge => edge.skill_id === currentSkillId);
         prerequisites.forEach(edge => {
           dfs(edge.prerequisite_skill_id);
@@ -167,17 +166,23 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     };
   }, [skillEdges]);
 
-  // Skill hover handlers
+  // Enhanced skill hover handlers with animation triggers
   const handleSkillHover = useCallback((skillId: string, isHovering: boolean) => {
     if (isHovering) {
       const path = getPrerequisitePath(skillId);
       setHighlightedSkillPath(path);
       
-      // Set arrows for animation
+      // Enhanced arrow animation
       const arrowIds = skillEdges
         .filter(edge => path.includes(edge.skill_id) && path.includes(edge.prerequisite_skill_id))
         .map(edge => `${edge.prerequisite_skill_id}-${edge.skill_id}`);
       setHoveredArrows(arrowIds);
+      
+      // Performance tracking for hover interactions
+      performanceTracker.log(`Hover activated for skill: ${skillId}`, {
+        pathLength: path.length,
+        arrowCount: arrowIds.length
+      });
     } else {
       setHighlightedSkillPath([]);
       setHoveredArrows([]);
@@ -200,7 +205,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       children.forEach(edge => dfs(edge.skill_id, depth + 1));
     };
 
-    // Start DFS from skills with no prerequisites
     const skillsWithPrereqs = new Set(skillEdges.map(e => e.skill_id));
     const rootSkills = filteredSkills.filter(skill => !skillsWithPrereqs.has(skill.id));
     
@@ -209,14 +213,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return depthMap;
   }, [filteredSkills, skillEdges]);
 
-  // Memoized hierarchical layout generation
+  // Enhanced hierarchical layout with better spacing
   const skillPositions = useMemo(() => {
     if (!filteredSkills.length) return new Map();
 
     const positions = new Map();
     const depthMap = getSkillDepthMap();
 
-    // Group skills by depth level
     const levelMap = new Map();
     const disconnectedSkills = [];
 
@@ -230,14 +233,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }
     });
 
-    const levelHeight = 180;
-    const nodeWidth = 120;
-    const nodeSpacing = 40;
-    const categorySpacing = 15;
-    const baseY = 100;
+    const levelHeight = 200; // Increased spacing for better animation visibility
+    const nodeWidth = 140; // Wider nodes for better content display
+    const nodeSpacing = 50; // More spacing between nodes
+    const categorySpacing = 20; // Enhanced category separation
+    const baseY = 120;
     const canvasWidth = containerDimensions.width;
 
-    // Helper function to sort skills by category within a level
     const sortSkillsByCategory = (skills: any[]) => {
       return skills.sort((a, b) => {
         const categoryA = a.category || 'Unknown';
@@ -249,12 +251,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
     };
 
-    // Process each depth level
     Array.from(levelMap.entries()).forEach(([depth, skillList]) => {
       const sortedSkills = sortSkillsByCategory(skillList);
       const skillCount = sortedSkills.length;
       
-      // Calculate total width including category spacing
       let totalWidth = skillCount * nodeWidth + (skillCount - 1) * nodeSpacing;
       
       let currentCategory = null;
@@ -267,8 +267,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
       totalWidth += categoryTransitions * categorySpacing;
 
-      // Center the level horizontally
-      const startX = Math.max(50, (canvasWidth - totalWidth) / 2);
+      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
       const y = baseY + depth * levelHeight;
 
       let currentX = startX;
@@ -285,7 +284,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
     });
 
-    // Handle disconnected skills at bottom
+    // Handle disconnected skills with better positioning
     if (disconnectedSkills.length > 0) {
       const maxDepth = Math.max(...Array.from(depthMap.values()), -1);
       const disconnectedY = baseY + (maxDepth + 2) * levelHeight;
@@ -304,7 +303,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
       totalWidth += categoryTransitions * categorySpacing;
 
-      const startX = Math.max(50, (canvasWidth - totalWidth) / 2);
+      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
       let currentX = startX;
       let lastCategory = null;
 
@@ -322,12 +321,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return positions;
   }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
 
-  // Auto-scroll to center skill on click
+  // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
     if (position) {
-      const targetX = containerDimensions.width / 2 - (position.x + 60) * zoomLevel;
-      const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
+      const targetX = containerDimensions.width / 2 - (position.x + 70) * zoomLevel;
+      const targetY = containerDimensions.height / 2 - (position.y + 50) * zoomLevel;
       
       setPanOffset({ x: targetX, y: targetY });
     }
@@ -348,9 +347,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
 
-      const contentWidth = maxX - minX + 120;
-      const contentHeight = maxY - minY + 100;
-      const padding = 50;
+      const contentWidth = maxX - minX + 140;
+      const contentHeight = maxY - minY + 120;
+      const padding = 60;
 
       const viewportWidth = containerDimensions.width - padding * 2;
       const viewportHeight = containerDimensions.height - padding * 2;
@@ -369,26 +368,23 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     };
   }, [skillPositions, containerDimensions]);
 
-  // Update fit-to-view ref
   useEffect(() => {
     fitToViewRef.current = createFitToView();
   }, [createFitToView]);
 
-  // Debounced fit-to-view for automatic layout changes
   const debouncedFitToView = useDebounce(() => {
     if (fitToViewRef.current) {
       fitToViewRef.current();
     }
   }, 300);
 
-  // Manual fit-to-view for button clicks
   const fitToView = useCallback(() => {
     if (fitToViewRef.current) {
       fitToViewRef.current();
     }
   }, []);
 
-  // FIXED: Remove problematic dependency that causes infinite loop
+  // Auto-fit with better timing
   useEffect(() => {
     if (filteredSkills.length > 0 && skillPositions.size > 0) {
       const timeoutId = setTimeout(() => {
@@ -397,12 +393,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             fitToViewRef.current();
           }
         });
-      }, 500);
+      }, 600); // Slightly longer delay for animations to settle
       return () => clearTimeout(timeoutId);
     }
-  }, [filteredSkills.length, skillPositions.size]); // Only depend on counts, not functions
+  }, [filteredSkills.length, skillPositions.size]);
 
-  // Container resize handling with stable reference
+  // Container resize handling
   const handleResize = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -413,16 +409,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const debouncedResize = useDebounce(handleResize, 100);
 
   useEffect(() => {
-    // Initial size measurement
     handleResize();
-    
     window.addEventListener('resize', debouncedResize);
     return () => window.removeEventListener('resize', debouncedResize);
-  }, []); // Empty dependency array - stable functions
+  }, []);
 
   // Mouse drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) { // Left mouse button
+    if (e.button === 0) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
     }
@@ -441,7 +435,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Memoized arrow paths to prevent unnecessary SVG redraws
+  // Enhanced arrow paths with better animations
   const arrowPaths = useMemo(() => {
     const paths = new Map<string, string>();
     
@@ -450,18 +444,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(edge.skill_id);
       if (!from || !to) return;
       
-      const fromX = from.x + 60;
-      const fromY = from.y + 80;
-      const toX = to.x + 60;
+      const fromX = from.x + 70;
+      const fromY = from.y + 100;
+      const toX = to.x + 70;
       const toY = to.y;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
       const controlPoint1X = fromX;
-      const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
+      const controlPoint1Y = fromY + Math.abs(dy) * 0.4;
       const controlPoint2X = toX;
-      const controlPoint2Y = toY - Math.abs(dy) * 0.3;
+      const controlPoint2Y = toY - Math.abs(dy) * 0.4;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
@@ -470,7 +464,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return paths;
   }, [skillEdges, skillPositions]);
 
-  // Memoized pivot path arrows
+  // Enhanced pivot paths
   const pivotPaths = useMemo(() => {
     if (!showPivotPaths) return new Map<string, { path: string; branch: SkillBranch }>();
     
@@ -481,20 +475,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(branch.to_skill_id);
       if (!from || !to) return;
       
-      // Different positioning for pivot paths to avoid overlap
-      const fromX = from.x + 60;
-      const fromY = from.y + 40; // Higher position for pivot paths
-      const toX = to.x + 60;
-      const toY = to.y + 40;
+      const fromX = from.x + 70;
+      const fromY = from.y + 50;
+      const toX = to.x + 70;
+      const toY = to.y + 50;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
-      // Create curved path for pivot connections
       const controlPoint1X = fromX + dx * 0.3;
-      const controlPoint1Y = fromY - 30; // Arc above normal connections
+      const controlPoint1Y = fromY - 40;
       const controlPoint2X = toX - dx * 0.3;
-      const controlPoint2Y = toY - 30;
+      const controlPoint2Y = toY - 40;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`pivot-${branch.from_skill_id}-${branch.to_skill_id}`, { path: pathData, branch });
@@ -503,15 +495,23 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return paths;
   }, [skillBranches, skillPositions, showPivotPaths]);
 
-  // Handle pivot path click
   const handlePivotPathClick = useCallback((branch: SkillBranch) => {
     setSelectedPivotPath(branch);
   }, []);
 
-  // Simplified performance logging
+  // Enhanced performance logging with feature tracking
   useEffect(() => {
-    performanceTracker.log(`Rendered ${filteredSkills.length} skills`);
-  }, [filteredSkills.length]);
+    performanceTracker.log(`Enhanced render complete: ${filteredSkills.length} skills`, {
+      animations: true,
+      tooltips: true,
+      progressBars: true,
+      statusRings: true,
+      hoverEffects: true,
+      goalSkills: goalSkills.length,
+      checkpoints: checkpointSkills.length,
+      pivotPaths: showPivotPaths ? skillBranches.length : 0
+    });
+  }, [filteredSkills.length, goalSkills.length, checkpointSkills.length, skillBranches.length, showPivotPaths]);
 
   return (
     <div 
@@ -523,38 +523,55 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Zoom Controls */}
+      {/* Enhanced Zoom Controls */}
       <div className="absolute top-4 left-4 z-20 flex gap-2">
         <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm"
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
           onClick={() => setZoomLevel(prev => Math.min(prev * 1.2, 3))}
         >
           Zoom In
         </button>
         <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm"
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
           onClick={() => setZoomLevel(prev => Math.max(prev * 0.8, 0.2))}
         >
           Zoom Out
         </button>
         <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm"
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
           onClick={fitToView}
         >
           Fit to View
         </button>
       </div>
 
-      {/* Stats Display */}
-      <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow">
+      {/* Enhanced Stats Display */}
+      <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
         <div className="text-sm space-y-1">
-          <div>Skills: {filteredSkills.length}</div>
-          <div>Categories: {availableCategories.length}</div>
-          <div>Zoom: {Math.round(zoomLevel * 100)}%</div>
+          <div className="flex justify-between">
+            <span>Skills:</span>
+            <span className="font-medium">{filteredSkills.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Categories:</span>
+            <span className="font-medium">{availableCategories.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Goals:</span>
+            <span className="font-medium text-blue-600">{goalSkills.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Checkpoints:</span>
+            <span className="font-medium text-pink-600">{checkpointSkills.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Zoom:</span>
+            <span className="font-medium">{Math.round(zoomLevel * 100)}%</span>
+          </div>
         </div>
       </div>
 
-      {/* SVG Layer for Arrows */}
+      {/* Enhanced SVG Layer for Arrows with better animations */}
       <svg
         className="absolute inset-0 pointer-events-none"
         width={containerDimensions.width}
@@ -595,7 +612,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         
         {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => {
           const [prerequisiteId, skillId] = edgeKey.split('-');
-          const fromSkill = skills.find(s => s.id === prerequisiteId);
           const toSkill = skills.find(s => s.id === skillId);
           const isHovered = hoveredArrows.includes(edgeKey);
           
@@ -606,21 +622,21 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               key={edgeKey}
               d={pathData}
               stroke={strokeColor}
-              strokeWidth="2"
+              strokeWidth={isHovered ? "3" : "2"}
               fill="none"
               strokeOpacity={isHovered ? "0.9" : "0.6"}
-              className={isHovered ? "skill-arrow-flow" : ""}
+              className={isHovered ? "skill-arrow-flow" : "transition-all duration-300"}
               markerEnd="url(#arrowhead)"
             />
           );
         })}
 
-        {/* Pivot Path Arrows */}
+        {/* Enhanced Pivot Path Arrows */}
         {showPivotPaths && Array.from(pivotPaths.entries()).map(([pivotKey, { path: pathData, branch }]) => {
           const typeColors = {
-            pivot: '#fbbf24', // Gold/yellow for pivots
-            branch: '#10b981', // Green for branches
-            backtrack: '#f97316' // Orange for backtrack
+            pivot: '#fbbf24',
+            branch: '#10b981',
+            backtrack: '#f97316'
           };
           
           const strokeColor = typeColors[branch.type];
@@ -634,7 +650,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               fill="none"
               strokeOpacity="0.8"
               strokeDasharray="8,4"
-              className="cursor-pointer hover:stroke-opacity-100 pointer-events-auto"
+              className="cursor-pointer hover:stroke-opacity-100 pointer-events-auto transition-all duration-300"
               markerEnd="url(#pivot-arrowhead)"
               onClick={() => handlePivotPathClick(branch)}
             />
@@ -642,7 +658,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         })}
       </svg>
 
-      {/* Optimized Node Layer */}
+      {/* Enhanced Node Layer with full functionality */}
       <div
         className="absolute inset-0"
         style={{
@@ -660,7 +676,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           const isInPath = highlightedSkillPath.includes(skill.id);
           
           return (
-            <OptimizedSkillTreeNode
+            <EnhancedSkillTreeNode
               key={skill.id}
               skill={skill}
               userProgress={progress}
@@ -695,3 +711,5 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     </div>
   );
 });
+
+SkillTreeCanvas.displayName = 'SkillTreeCanvas';

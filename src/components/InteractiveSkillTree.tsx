@@ -60,21 +60,25 @@ export const InteractiveSkillTree = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
 
-  // Simplified loading logic to prevent rapid state changes
+  // Simplified loading logic with better performance tracking
   useEffect(() => {
     if (skills && skills.length > 0 && filteredSkills && filteredSkills.length > 0) {
       const loadTime = performance.now() - loadStartTime;
-      console.log(`[SkillTree] Load completed in ${loadTime.toFixed(2)}ms`);
+      console.log(`[SkillTree] Enhanced load completed in ${loadTime.toFixed(2)}ms`);
+      console.log(`[SkillTree] Rendered ${filteredSkills.length} skills with full animations`);
       setIsLoading(false);
     }
   }, [skills?.length, filteredSkills?.length, loadStartTime]);
 
-  console.log('InteractiveSkillTree render:', {
+  console.log('InteractiveSkillTree Enhanced render:', {
     skillsCount: skills?.length || 0,
     filteredSkillsCount: filteredSkills?.length || 0,
     edgesCount: skillEdges?.length || 0,
     categoriesCount: availableCategories?.length || 0,
-    isLoading
+    goalSkillsCount: goalSkills?.length || 0,
+    checkpointSkillsCount: checkpointSkills?.length || 0,
+    isLoading,
+    hasAnimations: true
   });
 
   // Validate required props
@@ -96,7 +100,7 @@ export const InteractiveSkillTree = React.memo(({
     );
   }
 
-  // Show loading skeleton only if actually loading
+  // Show enhanced loading skeleton
   if (isLoading && skills.length === 0) {
     return <LoadingSkeleton nodeCount={Math.min(skills.length || 12, 12)} />;
   }
