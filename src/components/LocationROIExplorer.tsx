@@ -74,9 +74,9 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   const [zoom, setZoom] = useState(1);
   
   // Filter states
-  const [selectedContinent, setSelectedContinent] = useState<string>('');
-  const [visaFilter, setVisaFilter] = useState<string>('');
-  const [jobMarketFilter, setJobMarketFilter] = useState<string>('');
+  const [selectedContinent, setSelectedContinent] = useState<string>('all');
+  const [visaFilter, setVisaFilter] = useState<string>('all');
+  const [jobMarketFilter, setJobMarketFilter] = useState<string>('all');
   
   const currentUserRegion = 'india';
 
@@ -154,9 +154,9 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   // Filter locations based on selected filters
   const filteredLocations = useMemo(() => {
     return locations.filter(location => {
-      const continentMatch = !selectedContinent || location.continent === selectedContinent;
-      const visaMatch = !visaFilter || (visaFilter === 'eligible' && location.visa_eligibility[currentUserRegion]);
-      const jobMarketMatch = !jobMarketFilter || location.job_market === jobMarketFilter;
+      const continentMatch = !selectedContinent || selectedContinent === 'all' || location.continent === selectedContinent;
+      const visaMatch = !visaFilter || visaFilter === 'all' || (visaFilter === 'eligible' && location.visa_eligibility[currentUserRegion]);
+      const jobMarketMatch = !jobMarketFilter || jobMarketFilter === 'all' || location.job_market === jobMarketFilter;
       
       return continentMatch && visaMatch && jobMarketMatch;
     });
@@ -321,7 +321,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                   <SelectValue placeholder="All Continents" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Continents</SelectItem>
+                  <SelectItem value="all">All Continents</SelectItem>
                   {availableContinents.map(continent => (
                     <SelectItem key={continent} value={continent}>{continent}</SelectItem>
                   ))}
@@ -339,7 +339,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                   <SelectValue placeholder="All Regions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Regions</SelectItem>
+                  <SelectItem value="all">All Regions</SelectItem>
                   <SelectItem value="eligible">Visa Eligible Only</SelectItem>
                 </SelectContent>
               </Select>
@@ -355,7 +355,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                   <SelectValue placeholder="All Markets" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Markets</SelectItem>
+                  <SelectItem value="all">All Markets</SelectItem>
                   {availableJobMarkets.map(market => (
                     <SelectItem key={market} value={market}>{market}</SelectItem>
                   ))}
