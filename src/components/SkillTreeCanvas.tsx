@@ -201,13 +201,25 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     const visited = new Set<string>();
     const visiting = new Set<string>();
 
-    // Only include edges between filtered skills
+    // Log filtered skills for debugging
+    console.log('🔍 Filtered Skills used in layout:', filteredSkills.map(s => ({ id: s.id, name: s.name })));
+
     const filteredSkillIds = new Set(filteredSkills.map(s => s.id));
-    const validEdges = skillEdges.filter(
+    
+    // Try filtered edges first, fallback to all edges if none valid
+    let validEdges = skillEdges.filter(
       edge =>
         filteredSkillIds.has(edge.skill_id) &&
         filteredSkillIds.has(edge.prerequisite_skill_id)
     );
+
+    console.log('📊 Valid edges count:', validEdges.length);
+    
+    // Fallback: if no valid edges, use all edges but skip invalid ones during processing
+    if (validEdges.length === 0) {
+      console.log('⚠️ No valid filtered edges found, using all skillEdges with runtime filtering');
+      validEdges = skillEdges;
+    }
 
     // Helper: calculate depth recursively
     const calculateDepth = (skillId: string): number => {
@@ -219,7 +231,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
       visiting.add(skillId);
 
-      const prereqEdges = validEdges.filter(e => e.skill_id === skillId);
+      const prereqEdges = validEdges.filter(e => e.skill_id === skillId && filteredSkillIds.has(e.prerequisite_skill_id));
       if (prereqEdges.length === 0) {
         levels.set(skillId, 0);
         visiting.delete(skillId);
@@ -246,7 +258,20 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }
     }
 
+    // Check for disconnected skills and root skills
+    const rootSkills = filteredSkills.filter(skill => {
+      const hasPrerequisites = validEdges.some(edge => 
+        edge.skill_id === skill.id && filteredSkillIds.has(edge.prerequisite_skill_id)
+      );
+      return !hasPrerequisites;
+    });
+    
+    const disconnectedSkills = filteredSkills.filter(skill => !levels.has(skill.id));
+    
+    console.log('🌱 Root skills (no prerequisites):', rootSkills.map(s => ({ id: s.id, name: s.name })));
+    console.log('🔌 Disconnected skills:', disconnectedSkills.map(s => ({ id: s.id, name: s.name })));
     console.log('✅ Skill Levels:', [...levels.entries()]);
+    
     return levels;
   }, [filteredSkills, skillEdges]);
 
