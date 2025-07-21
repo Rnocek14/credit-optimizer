@@ -7,6 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Send, 
   Bot, 
@@ -18,7 +20,12 @@ import {
   Award,
   MessageSquare,
   Sparkles,
-  Trophy
+  Trophy,
+  CheckCircle,
+  Clock,
+  Calendar,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,12 +48,25 @@ interface UserContext {
   readinessScore: number;
   recentActions: any[];
   recentBadges: any[];
+  milestonePlans: any[];
 }
 
 interface LevelMilestone {
   level: number;
   title: string;
   description: string;
+}
+
+interface MilestonePlan {
+  id: string;
+  title: string;
+  description: string;
+  steps: any[];
+  status: string;
+  completion_percentage: number;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
 }
 
 export default function MentorChat() {
@@ -56,6 +76,10 @@ export default function MentorChat() {
   const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showLevelUpCelebration, setShowLevelUpCelebration] = useState(false);
+  const [showPlanCelebration, setShowPlanCelebration] = useState(false);
+  const [milestonePlans, setMilestonePlans] = useState<MilestonePlan[]>([]);
+  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -81,6 +105,7 @@ export default function MentorChat() {
       
       setCurrentUser(user);
       await loadUserContext(user.id);
+      await loadMilestonePlans(user.id);
       await loadWelcomeMessage(user.id);
     } catch (error) {
       console.error('Error initializing chat:', error);
@@ -116,6 +141,25 @@ export default function MentorChat() {
       }
     } catch (error) {
       console.error('Error loading user context:', error);
+    }
+  };
+
+  const loadMilestonePlans = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+        body: { 
+          action: 'GET_MILESTONE_PLANS',
+          userId: userId 
+        }
+      });
+
+      if (error) throw error;
+      
+      if (data?.plans) {
+        setMilestonePlans(data.plans);
+      }
+    } catch (error) {
+      console.error('Error loading milestone plans:', error);
     }
   };
 
@@ -189,6 +233,21 @@ export default function MentorChat() {
         setUserContext(data.userContext);
       }
 
+      // Handle new milestone plan creation
+      if (data.milestonePlan) {
+        await loadMilestonePlans(currentUser.id);
+        toast({
+          title: "🎯 New Milestone Plan Created!",
+          description: `"${data.milestonePlan.title}" has been added to your plans.`,
+        });
+      }
+
+      // Check for celebration triggers
+      if (data.shouldTriggerCelebration) {
+        setShowPlanCelebration(true);
+        setTimeout(() => setShowPlanCelebration(false), 4000);
+      }
+
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -210,6 +269,58 @@ export default function MentorChat() {
     }
   };
 
+  const togglePlanExpansion = (planId: string) => {
+    setExpandedPlans(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(planId)) {
+        newSet.delete(planId);
+      } else {
+        newSet.add(planId);
+      }
+      return newSet;
+    });
+  };
+
+  const updateMilestoneStep = async (planId: string, stepIndex: number, completed: boolean) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+        body: { 
+          action: 'UPDATE_MILESTONE_STEP',
+          planId: planId,
+          stepIndex: stepIndex,
+          completed: completed,
+          userId: currentUser?.id 
+        }
+      });
+
+      if (error) throw error;
+
+      // Refresh milestone plans
+      await loadMilestonePlans(currentUser.id);
+
+      if (data.celebrated) {
+        setShowPlanCelebration(true);
+        setTimeout(() => setShowPlanCelebration(false), 4000);
+        toast({
+          title: "🎉 Plan Completed!",
+          description: "Congratulations on finishing your milestone plan!",
+        });
+      } else {
+        toast({
+          title: completed ? "✅ Step Completed!" : "⏳ Step Reopened",
+          description: completed ? "Great progress on your milestone!" : "Step marked as incomplete.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating milestone step:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update step. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -228,24 +339,98 @@ export default function MentorChat() {
   const currentMilestone = userContext?.level ? 
     levelMilestones.find(m => m.level === userContext.level.current_level) : null;
 
+  const renderMilestonePlan = (plan: MilestonePlan) => {
+    const isExpanded = expandedPlans.has(plan.id);
+    const completedSteps = plan.steps.filter(step => step.completed).length;
+    
+    return (
+      <Card key={plan.id} className={`mb-4 ${plan.status === 'completed' ? 'bg-green-50 border-green-200' : ''}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${plan.status === 'completed' ? 'bg-green-500' : plan.status === 'active' ? 'bg-blue-500' : 'bg-gray-400'}`} />
+              <CardTitle className="text-base">{plan.title}</CardTitle>
+              {plan.status === 'completed' && <Trophy className="h-4 w-4 text-yellow-500" />}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => togglePlanExpansion(plan.id)}
+            >
+              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {new Date(plan.created_at).toLocaleDateString()}
+            </div>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              {completedSteps}/{plan.steps.length} steps
+            </div>
+          </div>
+          <Progress value={plan.completion_percentage} className="h-2" />
+        </CardHeader>
+        
+        {isExpanded && (
+          <CardContent>
+            <div className="space-y-3">
+              {plan.steps.map((step: any, index: number) => (
+                <div key={index} className="flex items-start gap-3 p-2 rounded bg-muted/30">
+                  <Checkbox
+                    checked={step.completed}
+                    onCheckedChange={(checked) => updateMilestoneStep(plan.id, index, checked as boolean)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className={`font-medium ${step.completed ? 'line-through text-muted-foreground' : ''}`}>
+                      {step.title}
+                    </div>
+                    {step.description && (
+                      <div className={`text-sm ${step.completed ? 'line-through text-muted-foreground' : 'text-muted-foreground'}`}>
+                        {step.description}
+                      </div>
+                    )}
+                    {step.completed && step.completedAt && (
+                      <div className="text-xs text-green-600 mt-1">
+                        ✅ Completed {new Date(step.completedAt).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Level Up Celebration */}
-      {showLevelUpCelebration && currentMilestone && (
+      {/* Plan Completion Celebration */}
+      {showPlanCelebration && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <Card className="w-96 mx-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+          <Card className="w-96 mx-4 bg-gradient-to-br from-green-100 to-emerald-50 border-green-200">
             <CardContent className="p-8 text-center">
               <div className="mb-4">
-                <Trophy className="h-16 w-16 mx-auto text-primary animate-bounce" />
+                <div className="flex justify-center space-x-2">
+                  <Sparkles className="h-8 w-8 text-green-500 animate-pulse" />
+                  <Trophy className="h-12 w-12 text-yellow-500 animate-bounce" />
+                  <Sparkles className="h-8 w-8 text-green-500 animate-pulse" />
+                </div>
               </div>
-              <h2 className="text-2xl font-bold mb-2">Level {userContext?.level?.current_level} Achieved!</h2>
-              <h3 className="text-lg font-semibold text-primary mb-2">{currentMilestone.title}</h3>
-              <p className="text-muted-foreground mb-4">{currentMilestone.description}</p>
-              <Button onClick={() => setShowLevelUpCelebration(false)}>
+              <h2 className="text-2xl font-bold mb-2 text-green-800">Amazing Progress!</h2>
+              <p className="text-green-700 mb-4">You're making incredible strides in your learning journey!</p>
+              <Button 
+                onClick={() => setShowPlanCelebration(false)}
+                className="bg-green-600 hover:bg-green-700"
+              >
                 <Sparkles className="h-4 w-4 mr-2" />
-                Continue Learning
+                Keep Going!
               </Button>
             </CardContent>
           </Card>
@@ -255,8 +440,15 @@ export default function MentorChat() {
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
           
-          {/* Sidebar Context Panel */}
-          <div className="lg:col-span-1 space-y-4">
+          {/* Sidebar Context Panel with Tabs */}
+          <div className="lg:col-span-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="chat" className="text-xs">💬 Context</TabsTrigger>
+                <TabsTrigger value="plans" className="text-xs">📘 My Plans</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="chat" className="space-y-4 mt-4">
             {userContext && (
               <>
                 {/* XP Progress */}
@@ -400,8 +592,36 @@ export default function MentorChat() {
                     )}
                   </CardContent>
                 </Card>
-              </>
-            )}
+                </>
+              )}
+              </TabsContent>
+              
+              <TabsContent value="plans" className="mt-4">
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Target className="h-5 w-5 text-primary" />
+                        Milestone Plans
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[500px]">
+                        {milestonePlans.length > 0 ? (
+                          milestonePlans.map(renderMilestonePlan)
+                        ) : (
+                          <div className="text-center text-muted-foreground py-8">
+                            <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No milestone plans yet.</p>
+                            <p className="text-sm mt-2">Ask Maya to "Plan my next steps" to get started!</p>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Chat Area */}
@@ -418,7 +638,7 @@ export default function MentorChat() {
                   <div>
                     <h2 className="text-xl font-bold">Maya AI Mentor</h2>
                     <p className="text-sm text-muted-foreground">
-                      Your personalized career guidance assistant
+                      Your personalized career guidance assistant with long-term memory
                     </p>
                   </div>
                 </CardTitle>
@@ -506,7 +726,7 @@ export default function MentorChat() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ask Maya about your career path, skill gaps, or next steps..."
+                    placeholder="Ask Maya about your progress, plans, or say 'Plan my next steps'..."
                     className="flex-1"
                     disabled={isLoading}
                   />

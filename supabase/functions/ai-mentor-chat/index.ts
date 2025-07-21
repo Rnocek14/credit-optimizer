@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userId } = await req.json();
+    const { message, userId, action } = await req.json();
     
     if (!userId) {
       throw new Error('User ID is required');
@@ -24,11 +24,24 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Handle different action types
+    if (action === 'GET_MILESTONE_PLANS') {
+      return await getMilestonePlans(supabase, userId);
+    }
+    
+    if (action === 'UPDATE_MILESTONE_STEP') {
+      const { planId, stepIndex, completed } = await req.json();
+      return await updateMilestoneStep(supabase, planId, stepIndex, completed);
+    }
+
     // Fetch comprehensive user context
     const userContext = await fetchUserContext(supabase, userId);
     
+    // Check if this should trigger a milestone plan
+    const shouldCreatePlan = detectMilestoneTrigger(message, userContext);
+    
     // Generate system prompt based on user data
-    const systemPrompt = generateSystemPrompt(userContext);
+    const systemPrompt = await generateSystemPrompt(userContext, supabase, userId);
     
     // Call OpenAI GPT-4o
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -49,17 +62,25 @@ serve(async (req) => {
           { role: 'user', content: message }
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 800,
       }),
     });
 
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
 
+    // Check if the response suggests creating a milestone plan
+    let milestonePlan = null;
+    if (shouldCreatePlan || aiResponse.includes('milestone plan') || aiResponse.includes('3-step plan')) {
+      milestonePlan = await createMilestonePlan(supabase, userId, aiResponse, userContext);
+    }
+
     return new Response(
       JSON.stringify({ 
         response: aiResponse,
-        userContext: userContext 
+        userContext: userContext,
+        milestonePlan: milestonePlan,
+        shouldTriggerCelebration: checkForCelebrationTriggers(userContext)
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -132,6 +153,14 @@ async function fetchUserContext(supabase: any, userId: string) {
       .order('earned_at', { ascending: false })
       .limit(3);
 
+    // Get milestone plans
+    const { data: milestonePlans } = await supabase
+      .from('milestone_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
     return {
       profile: profile || {},
       level: userLevel?.[0] || { current_level: 1, total_xp: 0, xp_for_next_level: 100 },
@@ -141,7 +170,8 @@ async function fetchUserContext(supabase: any, userId: string) {
       criScore: publishedResume?.[0]?.cri_average || 0,
       readinessScore: publishedResume?.[0]?.readiness_score || 0,
       recentActions: recentActions || [],
-      recentBadges: badges || []
+      recentBadges: badges || [],
+      milestonePlans: milestonePlans || []
     };
   } catch (error) {
     console.error('Error fetching user context:', error);
@@ -154,13 +184,14 @@ async function fetchUserContext(supabase: any, userId: string) {
       criScore: 0,
       readinessScore: 0,
       recentActions: [],
-      recentBadges: []
+      recentBadges: [],
+      milestonePlans: []
     };
   }
 }
 
-function generateSystemPrompt(context: any) {
-  const { profile, level, goals, savedCount, hasPublishedResume, criScore, readinessScore, recentActions, recentBadges } = context;
+async function generateSystemPrompt(context: any, supabase: any, userId: string) {
+  const { profile, level, goals, savedCount, hasPublishedResume, criScore, readinessScore, recentActions, recentBadges, milestonePlans } = context;
   
   const userName = profile.name || 'there';
   const currentLevel = level.current_level || 1;
@@ -191,7 +222,11 @@ function generateSystemPrompt(context: any) {
     ? `Recently earned badges: ${recentBadges.map(b => b.badges.name).join(', ')}.`
     : 'No badges earned yet.';
 
-  return `You are Maya, a warm and encouraging AI mentor for a career development platform called Life Path. You help users progress through their skill development journey.
+  const milestoneSummary = milestonePlans.length > 0
+    ? `Active milestone plans: ${milestonePlans.filter(p => p.status === 'active').map(p => `"${p.title}" (${p.completion_percentage}% complete)`).join(', ')}.`
+    : 'No active milestone plans.';
+
+  return `You are Maya, a warm and encouraging AI mentor for a career development platform called Life Path. You help users progress through their skill development journey with LONG-TERM memory and milestone planning.
 
 CURRENT USER CONTEXT:
 - Name: ${userName}
@@ -205,6 +240,13 @@ CURRENT USER CONTEXT:
 - Published Resume: ${hasPublishedResume ? 'Yes' : 'No'}
 - ${recentActivitySummary}
 - ${badgesSummary}
+- ${milestoneSummary}
+
+MEMORY & MILESTONE FEATURES:
+- You can remember past conversations and milestone plans
+- When users ask "What was my last plan?" reference their active milestone plans
+- If they say "Plan my next steps" or "Help me level up", create a specific 3-step milestone plan
+- Always be proactive about suggesting milestone plans for major achievements
 
 PERSONALITY & APPROACH:
 - Be warm, encouraging, and direct like a trusted mentor
@@ -214,12 +256,182 @@ PERSONALITY & APPROACH:
 - ${personalityTraits}
 
 GUIDANCE PRIORITIES:
-1. If they're close to leveling up, acknowledge their progress and motivate them
-2. Reference their active goals and suggest concrete next steps
-3. If CRI/readiness scores are low, suggest improvement strategies
-4. If they have many saved items, suggest prioritization
-5. If no published resume, encourage making their profile public
-6. Celebrate recent achievements and badges naturally in conversation
+1. Reference their active milestone plans naturally in conversation
+2. If they're close to leveling up, acknowledge their progress and motivate them
+3. Reference their active goals and suggest concrete next steps
+4. If CRI/readiness scores are low, suggest improvement strategies
+5. If they have many saved items, suggest prioritization
+6. If no published resume, encourage making their profile public
+7. Celebrate recent achievements and badges naturally in conversation
+8. When appropriate, suggest creating new milestone plans
 
-Keep responses conversational, specific to their journey, and actionable. Avoid generic advice - make it personal to their current situation.`;
+MILESTONE PLAN FORMAT (when creating plans):
+When suggesting a milestone plan, format it as:
+**🎯 [Plan Title]**
+1. **[Step 1]** - [specific action]
+2. **[Step 2]** - [specific action]  
+3. **[Step 3]** - [specific action]
+
+Keep responses conversational, specific to their journey, and actionable. Reference their milestone progress naturally. Avoid generic advice - make it personal to their current situation and past plans.`;
 }
+
+// Helper functions for milestone planning
+function detectMilestoneTrigger(message: string, userContext: any): boolean {
+  const triggers = [
+    'plan my next steps',
+    'help me level up',
+    'what should i do next',
+    'create a plan',
+    'roadmap',
+    'milestone'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  return triggers.some(trigger => lowerMessage.includes(trigger));
+}
+
+async function createMilestonePlan(supabase: any, userId: string, aiResponse: string, userContext: any) {
+  try {
+    // Extract plan from AI response (simplified - could use more sophisticated parsing)
+    const lines = aiResponse.split('\n').filter(line => line.trim());
+    const titleMatch = aiResponse.match(/🎯\s*([^*\n]+)/);
+    const title = titleMatch ? titleMatch[1].trim() : 'Personalized Learning Plan';
+    
+    // Extract numbered steps
+    const stepRegex = /^\d+\.\s*\*\*([^*]+)\*\*\s*-\s*(.+)$/;
+    const steps = lines
+      .filter(line => stepRegex.test(line.trim()))
+      .map(line => {
+        const match = line.trim().match(stepRegex);
+        return {
+          title: match ? match[1].trim() : line,
+          description: match ? match[2].trim() : '',
+          completed: false,
+          completedAt: null
+        };
+      });
+
+    if (steps.length === 0) {
+      return null; // Don't create empty plans
+    }
+
+    const { data: plan, error } = await supabase
+      .from('milestone_plans')
+      .insert({
+        user_id: userId,
+        title: title,
+        description: `Generated plan based on current progress: Level ${userContext.level?.current_level || 1}`,
+        steps: steps,
+        status: 'active',
+        completion_percentage: 0
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return plan;
+  } catch (error) {
+    console.error('Error creating milestone plan:', error);
+    return null;
+  }
+}
+
+async function getMilestonePlans(supabase: any, userId: string) {
+  try {
+    const { data: plans, error } = await supabase
+      .from('milestone_plans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return new Response(
+      JSON.stringify({ plans }),
+      { 
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('Error fetching milestone plans:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+async function updateMilestoneStep(supabase: any, planId: string, stepIndex: number, completed: boolean) {
+  try {
+    // Get current plan
+    const { data: plan, error: fetchError } = await supabase
+      .from('milestone_plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Update the specific step
+    const updatedSteps = [...plan.steps];
+    updatedSteps[stepIndex] = {
+      ...updatedSteps[stepIndex],
+      completed: completed,
+      completedAt: completed ? new Date().toISOString() : null
+    };
+
+    // Calculate completion percentage
+    const completedCount = updatedSteps.filter(step => step.completed).length;
+    const completionPercentage = Math.round((completedCount / updatedSteps.length) * 100);
+    
+    // Determine if plan is completed
+    const status = completionPercentage === 100 ? 'completed' : 'active';
+    const completedAt = completionPercentage === 100 ? new Date().toISOString() : null;
+
+    // Update plan
+    const { data: updatedPlan, error: updateError } = await supabase
+      .from('milestone_plans')
+      .update({
+        steps: updatedSteps,
+        completion_percentage: completionPercentage,
+        status: status,
+        completed_at: completedAt,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', planId)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
+    return new Response(
+      JSON.stringify({ 
+        plan: updatedPlan,
+        celebrated: completionPercentage === 100
+      }),
+      { 
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      }
+    );
+  } catch (error) {
+    console.error('Error updating milestone step:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+function checkForCelebrationTriggers(userContext: any): boolean {
+  const level = userContext.level?.current_level || 1;
+  const recentBadges = userContext.recentBadges?.length || 0;
+  const criScore = userContext.criScore || 0;
+  
+  // Trigger celebrations for major milestones
+  return level >= 5 || recentBadges >= 3 || criScore >= 85;

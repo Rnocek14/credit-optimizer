@@ -434,6 +434,45 @@ export type Database = {
           },
         ]
       }
+      milestone_plans: {
+        Row: {
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+          steps: Json
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          steps?: Json
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          steps?: Json
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null
