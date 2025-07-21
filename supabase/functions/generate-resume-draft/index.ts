@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id } = await req.json();
+    const { userId, resumeTitle } = await req.json();
 
-    if (!user_id) {
+    if (!userId) {
       throw new Error('User ID is required');
     }
 
@@ -32,7 +32,7 @@ serve(async (req) => {
     const { data: transcripts, error: transcriptsError } = await supabaseClient
       .from('transcripts')
       .select('*')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .eq('use_in_resume', true);
 
     if (transcriptsError) {
@@ -47,8 +47,7 @@ serve(async (req) => {
         *,
         recommended_courses!inner(*)
       `)
-      .eq('user_id', user_id)
-      .gte('recommended_courses.skill_tags', 60); // This might need adjustment based on actual schema
+      .eq('user_id', userId);
 
     if (coursesError) {
       console.error('Error fetching saved courses:', coursesError);
@@ -58,7 +57,7 @@ serve(async (req) => {
     const { data: careerGoals, error: goalsError } = await supabaseClient
       .from('career_goals')
       .select('*')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .eq('active', true)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -139,7 +138,7 @@ Create a professional resume draft that positions this learner for their target 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -181,7 +180,33 @@ Create a professional resume draft that positions this learner for their target 
       (criAverage * 0.5)
     );
 
+    // Save resume draft to database
+    const { data: resume, error: insertError } = await supabaseClient
+      .from('ai_resume_drafts')
+      .insert({
+        user_id: userId,
+        title: resumeTitle || 'New Resume Draft',
+        content: resumeContent,
+        cri_average: Math.round(criAverage * 100) / 100,
+        readiness_score: Math.round(readinessScore * 100) / 100,
+        submitted_for_cri: false
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    // Award XP for creating resume
+    await supabaseClient.rpc('award_xp', {
+      user_id_param: userId,
+      xp_amount_param: 50,
+      action_type_param: 'resume_draft_created',
+      reason_param: 'Created new resume draft',
+      source_id_param: resume.id
+    });
+
     return new Response(JSON.stringify({
+      resume,
       content: resumeContent,
       criAverage: Math.round(criAverage * 100) / 100,
       readinessScore: Math.round(readinessScore * 100) / 100,
