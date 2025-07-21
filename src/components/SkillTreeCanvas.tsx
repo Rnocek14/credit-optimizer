@@ -200,54 +200,53 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     const levels = new Map<string, number>();
     const visited = new Set<string>();
     const visiting = new Set<string>();
-    
-    // Function to calculate depth with cycle detection
+
+    // Only include edges between filtered skills
+    const filteredSkillIds = new Set(filteredSkills.map(s => s.id));
+    const validEdges = skillEdges.filter(
+      edge =>
+        filteredSkillIds.has(edge.skill_id) &&
+        filteredSkillIds.has(edge.prerequisite_skill_id)
+    );
+
+    // Helper: calculate depth recursively
     const calculateDepth = (skillId: string): number => {
-      if (visited.has(skillId)) {
-        return levels.get(skillId) || 0;
-      }
-      
+      if (visited.has(skillId)) return levels.get(skillId) || 0;
       if (visiting.has(skillId)) {
-        // Cycle detected, assign level 0
-        console.warn(`Cycle detected for skill: ${skillId}`);
+        console.warn(`Cycle detected involving skill ${skillId}`);
         return 0;
       }
-      
+
       visiting.add(skillId);
-      
-      // Find all prerequisites for this skill
-      const prerequisites = skillEdges.filter(edge => edge.skill_id === skillId);
-      
-      if (prerequisites.length === 0) {
-        // No prerequisites, this is a root skill (level 0)
+
+      const prereqEdges = validEdges.filter(e => e.skill_id === skillId);
+      if (prereqEdges.length === 0) {
         levels.set(skillId, 0);
-        visited.add(skillId);
         visiting.delete(skillId);
+        visited.add(skillId);
         return 0;
       }
-      
-      // Calculate the maximum depth of all prerequisites + 1
-      let maxPrereqDepth = -1;
-      for (const edge of prerequisites) {
+
+      let maxDepth = 0;
+      for (const edge of prereqEdges) {
         const prereqDepth = calculateDepth(edge.prerequisite_skill_id);
-        maxPrereqDepth = Math.max(maxPrereqDepth, prereqDepth);
+        maxDepth = Math.max(maxDepth, prereqDepth + 1);
       }
-      
-      const depth = maxPrereqDepth + 1;
-      levels.set(skillId, depth);
-      visited.add(skillId);
+
+      levels.set(skillId, maxDepth);
       visiting.delete(skillId);
-      
-      return depth;
+      visited.add(skillId);
+      return maxDepth;
     };
-    
-    // Calculate levels for all filtered skills
-    filteredSkills.forEach(skill => {
+
+    // Run for all visible filtered skills
+    for (const skill of filteredSkills) {
       if (!visited.has(skill.id)) {
         calculateDepth(skill.id);
       }
-    });
-    
+    }
+
+    console.log('✅ Skill Levels:', [...levels.entries()]);
     return levels;
   }, [filteredSkills, skillEdges]);
 
@@ -307,10 +306,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       });
     }
 
+    const levelStats = Array.from(skillsByLevel.entries()).map(([level, group]) => ({
+      level,
+      count: group.length
+    }));
+    console.log('📊 Skill Level Distribution:', levelStats);
+
     console.log('Hierarchical layout completed:', {
       totalSkills: filteredSkills.length,
       maxLevel,
-      levelDistribution: Array.from(skillsByLevel.entries()).map(([level, skills]) => ({ level, count: skills.length }))
+      levelDistribution: levelStats
     });
 
     return positions;
