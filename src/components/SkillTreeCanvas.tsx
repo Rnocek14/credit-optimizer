@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -194,94 +195,126 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
-  // Memoized skill depth calculation for hierarchical layout
-  const getSkillDepthMap = useCallback(() => {
-    if (!filteredSkills.length || !skillEdges.length) return new Map();
+  // Calculate hierarchical levels for skills based on dependencies
+  const getSkillLevels = useCallback(() => {
+    const levels = new Map<string, number>();
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
     
-    const depthMap = new Map();
-    const visited = new Set();
-
-    const dfs = (skillId: string, depth: number) => {
-      if (visited.has(skillId)) return;
-      visited.add(skillId);
-      depthMap.set(skillId, depth);
+    // Function to calculate depth with cycle detection
+    const calculateDepth = (skillId: string): number => {
+      if (visited.has(skillId)) {
+        return levels.get(skillId) || 0;
+      }
       
-      const children = skillEdges.filter(e => e.prerequisite_skill_id === skillId);
-      children.forEach(edge => dfs(edge.skill_id, depth + 1));
+      if (visiting.has(skillId)) {
+        // Cycle detected, assign level 0
+        console.warn(`Cycle detected for skill: ${skillId}`);
+        return 0;
+      }
+      
+      visiting.add(skillId);
+      
+      // Find all prerequisites for this skill
+      const prerequisites = skillEdges.filter(edge => edge.skill_id === skillId);
+      
+      if (prerequisites.length === 0) {
+        // No prerequisites, this is a root skill (level 0)
+        levels.set(skillId, 0);
+        visited.add(skillId);
+        visiting.delete(skillId);
+        return 0;
+      }
+      
+      // Calculate the maximum depth of all prerequisites + 1
+      let maxPrereqDepth = -1;
+      for (const edge of prerequisites) {
+        const prereqDepth = calculateDepth(edge.prerequisite_skill_id);
+        maxPrereqDepth = Math.max(maxPrereqDepth, prereqDepth);
+      }
+      
+      const depth = maxPrereqDepth + 1;
+      levels.set(skillId, depth);
+      visited.add(skillId);
+      visiting.delete(skillId);
+      
+      return depth;
     };
-
-    const skillsWithPrereqs = new Set(skillEdges.map(e => e.skill_id));
-    const rootSkills = filteredSkills.filter(skill => !skillsWithPrereqs.has(skill.id));
     
-    rootSkills.forEach(skill => dfs(skill.id, 0));
+    // Calculate levels for all filtered skills
+    filteredSkills.forEach(skill => {
+      if (!visited.has(skill.id)) {
+        calculateDepth(skill.id);
+      }
+    });
     
-    return depthMap;
+    return levels;
   }, [filteredSkills, skillEdges]);
 
-  // Enhanced grid-based layout with category organization
+  // Hierarchical layout positioning
   const skillPositions = useMemo(() => {
     if (!filteredSkills.length) return new Map();
 
     const positions = new Map();
-    const canvasWidth = containerDimensions.width;
-    const nodeWidth = 80;  // Match actual node size (w-20 = 80px)
-    const nodeHeight = 80; // Match actual node size (h-20 = 80px)
-    const horizontalSpacing = 40;
-    const verticalSpacing = 60;
-    const categorySpacing = 30;
-    const baseX = 40;
-    const baseY = 60;
-
-    // Group skills by category
-    const skillsByCategory = new Map<string, any[]>();
+    const skillLevels = getSkillLevels();
+    
+    // Group skills by their hierarchical level
+    const skillsByLevel = new Map<number, any[]>();
+    let maxLevel = 0;
+    
     filteredSkills.forEach(skill => {
-      const category = skill.category || 'Other';
-      if (!skillsByCategory.has(category)) {
-        skillsByCategory.set(category, []);
+      const level = skillLevels.get(skill.id) || 0;
+      maxLevel = Math.max(maxLevel, level);
+      
+      if (!skillsByLevel.has(level)) {
+        skillsByLevel.set(level, []);
       }
-      skillsByCategory.get(category)!.push(skill);
+      skillsByLevel.get(level)!.push(skill);
     });
 
-    // Sort categories for consistent layout
-    const sortedCategories = Array.from(skillsByCategory.keys()).sort();
+    // Layout constants
+    const nodeWidth = 80;
+    const nodeHeight = 80;
+    const horizontalSpacing = 120; // Increased spacing between nodes
+    const verticalSpacing = 150; // Increased spacing between levels
+    const baseX = 60;
+    const baseY = 80;
     
-    // Calculate grid layout
-    const maxSkillsPerRow = Math.floor((canvasWidth - baseX * 2) / (nodeWidth + horizontalSpacing));
-    
-    let currentY = baseY;
-    
-    sortedCategories.forEach((category, categoryIndex) => {
-      const categorySkills = skillsByCategory.get(category)!.sort((a, b) => a.name.localeCompare(b.name));
+    // Position skills level by level
+    for (let level = 0; level <= maxLevel; level++) {
+      const skillsAtLevel = skillsByLevel.get(level) || [];
       
-      // Add category spacing (except for first category)
-      if (categoryIndex > 0) {
-        currentY += categorySpacing;
-      }
+      if (skillsAtLevel.length === 0) continue;
       
-      // Calculate rows needed for this category
-      const rowsNeeded = Math.ceil(categorySkills.length / maxSkillsPerRow);
+      // Sort skills at this level by category then name for consistent positioning
+      skillsAtLevel.sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return a.name.localeCompare(b.name);
+      });
       
-      categorySkills.forEach((skill, index) => {
-        const row = Math.floor(index / maxSkillsPerRow);
-        const col = index % maxSkillsPerRow;
-        
-        // Calculate position for this skill
-        const skillsInThisRow = Math.min(maxSkillsPerRow, categorySkills.length - row * maxSkillsPerRow);
-        const totalRowWidth = skillsInThisRow * nodeWidth + (skillsInThisRow - 1) * horizontalSpacing;
-        const rowStartX = Math.max(baseX, (canvasWidth - totalRowWidth) / 2);
-        
-        const x = rowStartX + col * (nodeWidth + horizontalSpacing);
-        const y = currentY + row * (nodeHeight + verticalSpacing);
+      // Calculate total width needed for this level
+      const totalWidth = skillsAtLevel.length * nodeWidth + (skillsAtLevel.length - 1) * horizontalSpacing;
+      const startX = Math.max(baseX, (containerDimensions.width - totalWidth) / 2);
+      
+      // Position each skill at this level
+      skillsAtLevel.forEach((skill, index) => {
+        const x = startX + index * (nodeWidth + horizontalSpacing);
+        const y = baseY + level * verticalSpacing;
         
         positions.set(skill.id, { x, y });
       });
-      
-      // Move Y position for next category
-      currentY += rowsNeeded * (nodeHeight + verticalSpacing);
+    }
+
+    console.log('Hierarchical layout completed:', {
+      totalSkills: filteredSkills.length,
+      maxLevel,
+      levelDistribution: Array.from(skillsByLevel.entries()).map(([level, skills]) => ({ level, count: skills.length }))
     });
 
     return positions;
-  }, [filteredSkills, containerDimensions.width]);
+  }, [filteredSkills, getSkillLevels, containerDimensions.width]);
 
   // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
@@ -397,7 +430,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Enhanced arrow paths with correct node dimensions
+  // Enhanced arrow paths with correct node dimensions and hierarchical flow
   const arrowPaths = useMemo(() => {
     const paths = new Map<string, string>();
     
@@ -419,7 +452,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const dx = toX - fromX;
       const dy = toY - fromY;
       
-      // Create smooth bezier curve
+      // Create smooth bezier curve for hierarchical flow
       const controlPoint1X = fromX;
       const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
       const controlPoint2X = toX;
