@@ -44,6 +44,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [containerDimensions, setContainerDimensions] = useState({ width: 1200, height: 800 });
+  const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Memoized category colors for consistent theming
@@ -62,6 +63,46 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     };
     return colors[category as keyof typeof colors] || '#9ca3af';
   }, []);
+
+  // Memoized prerequisite path calculation for highlighting
+  const getPrerequisitePath = useMemo(() => {
+    const pathCache = new Map<string, string[]>();
+    
+    return (skillId: string): string[] => {
+      if (pathCache.has(skillId)) {
+        return pathCache.get(skillId)!;
+      }
+      
+      const path: string[] = [];
+      const visited = new Set<string>();
+      
+      const dfs = (currentSkillId: string) => {
+        if (visited.has(currentSkillId)) return;
+        visited.add(currentSkillId);
+        path.push(currentSkillId);
+        
+        // Find all prerequisites for the current skill
+        const prerequisites = skillEdges.filter(edge => edge.skill_id === currentSkillId);
+        prerequisites.forEach(edge => {
+          dfs(edge.prerequisite_skill_id);
+        });
+      };
+      
+      dfs(skillId);
+      pathCache.set(skillId, path);
+      return path;
+    };
+  }, [skillEdges]);
+
+  // Skill hover handlers
+  const handleSkillHover = useCallback((skillId: string, isHovering: boolean) => {
+    if (isHovering) {
+      const path = getPrerequisitePath(skillId);
+      setHighlightedSkillPath(path);
+    } else {
+      setHighlightedSkillPath([]);
+    }
+  }, [getPrerequisitePath]);
 
   // Memoized skill depth calculation for hierarchical layout
   const getSkillDepthMap = useCallback(() => {
@@ -400,6 +441,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           const progress = userProgress.find(p => p.skill_id === skill.id);
           const isRecommended = recommendedSkills.includes(skill.id);
           const hasCourses = skillsWithCourses.includes(skill.id);
+          const isInPath = highlightedSkillPath.includes(skill.id);
           
           return (
             <SkillTreeNode
@@ -412,6 +454,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
               isRecommended={isRecommended}
               hasCourses={hasCourses}
               size="medium"
+              isInPath={isInPath}
+              onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
             />
           );
         })}

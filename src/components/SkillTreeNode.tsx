@@ -24,6 +24,7 @@ interface SkillTreeNodeProps {
   prerequisiteSteps?: number;
   onHover?: (hovered: boolean) => void;
   categoryColor?: string;
+  isInPath?: boolean;
 }
 
 export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
@@ -37,7 +38,8 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
   hasCourses = false,
   prerequisiteSteps,
   onHover,
-  categoryColor = '#ccc'
+  categoryColor = '#ccc',
+  isInPath = false
 }) => {
   const [hovered, setHovered] = useState(false);
 
@@ -57,6 +59,8 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
     : userProgress?.status === 'in_progress'
     ? 'ring-2 ring-blue-400'
     : '';
+  
+  const pathHighlight = isInPath ? 'ring-2 ring-blue-300 shadow-md' : '';
 
   const progressPercentage = userProgress && skill.xp_value > 0 
     ? Math.min((userProgress.xp_earned / skill.xp_value) * 100, 100)
@@ -64,7 +68,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 ${statusRing}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover:scale-105 ${statusRing} ${pathHighlight}`}
       style={{
         left: position.x,
         top: position.y,
