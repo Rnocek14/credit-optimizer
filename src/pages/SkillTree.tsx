@@ -13,7 +13,7 @@ import { LocationROIExplorer } from '@/components/LocationROIExplorer';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus } from 'lucide-react';
+import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
 
 interface Skill {
@@ -55,6 +55,7 @@ const SkillTree = () => {
   const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState('united-states');
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
+  const [showPivotPaths, setShowPivotPaths] = useState(false);
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -402,6 +403,14 @@ const SkillTree = () => {
           <div className="flex items-center gap-2">
             <ExportTreeButton containerRef={skillTreeRef} />
             <Button 
+              variant={showPivotPaths ? "default" : "outline"}
+              size="sm" 
+              onClick={() => setShowPivotPaths(!showPivotPaths)}
+            >
+              <Route className="h-4 w-4 mr-2" />
+              Show Pivot Paths
+            </Button>
+            <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setShowPerformanceTest(!showPerformanceTest)}
@@ -490,6 +499,7 @@ const SkillTree = () => {
             availableCategories={categories}
             onSkillClick={handleSkillClick}
             careerPathName={selectedCareerPathData?.title}
+            showPivotPaths={showPivotPaths}
           />
         </div>
 

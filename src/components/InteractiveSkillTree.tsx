@@ -16,7 +16,8 @@ export const InteractiveSkillTree = ({
   onSkillClick,
   showMinimap = true,
   layoutMode = 'hierarchy',
-  careerPathName
+  careerPathName,
+  showPivotPaths = false
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -87,6 +88,7 @@ export const InteractiveSkillTree = ({
         availableCategories={availableCategories || []}
         onSkillClick={onSkillClick}
         careerPathName={careerPathName}
+        showPivotPaths={showPivotPaths}
       />
     </SkillTreeErrorBoundary>
   );

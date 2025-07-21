@@ -929,6 +929,51 @@ export type Database = {
           },
         ]
       }
+      skill_branches: {
+        Row: {
+          created_at: string
+          from_skill_id: string
+          id: string
+          reasoning: string | null
+          recommended: boolean
+          to_skill_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          from_skill_id: string
+          id?: string
+          reasoning?: string | null
+          recommended?: boolean
+          to_skill_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          from_skill_id?: string
+          id?: string
+          reasoning?: string | null
+          recommended?: boolean
+          to_skill_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_branches_from_skill_id_fkey"
+            columns: ["from_skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_branches_to_skill_id_fkey"
+            columns: ["to_skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_graph_edges: {
         Row: {
           created_at: string

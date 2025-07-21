@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeNode } from './SkillTreeNode';
+import { SkillPivotModal } from './SkillPivotModal';
 
 // Performance tracking utilities
 const performanceTracker = {
@@ -52,6 +55,15 @@ function useDebounce<T extends (...args: any[]) => any>(
   }, [callback, delay]);
 }
 
+interface SkillBranch {
+  id: string;
+  from_skill_id: string;
+  to_skill_id: string;
+  type: 'pivot' | 'branch' | 'backtrack';
+  recommended: boolean;
+  reasoning: string;
+}
+
 interface SkillTreeCanvasProps {
   skills: Array<{
     id: string;
@@ -80,6 +92,7 @@ interface SkillTreeCanvasProps {
   onSkillClick: (skill: any) => void;
   skillsWithCourses?: string[];
   careerPathName?: string;
+  showPivotPaths?: boolean;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -93,7 +106,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   availableCategories,
   onSkillClick,
   skillsWithCourses = [],
-  careerPathName
+  careerPathName,
+  showPivotPaths = false
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -103,8 +117,27 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const [renderStartTime, setRenderStartTime] = useState<number>(0);
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
+  const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
+
+  // Fetch skill branches for pivot paths
+  const { data: skillBranches = [] } = useQuery({
+    queryKey: ['skill-branches'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('skill_branches')
+        .select('*');
+      
+      if (error) {
+        console.error('Skill branches fetch error:', error);
+        return [];
+      }
+      
+      return data as SkillBranch[];
+    },
+    enabled: showPivotPaths
+  });
 
   // Memoized category colors for consistent theming
   const getCategoryColor = useCallback((category: string) => {
@@ -494,6 +527,44 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return paths;
   }, [skillEdges, skillPositions]);
 
+  // Memoized pivot path arrows
+  const pivotPaths = useMemo(() => {
+    if (!showPivotPaths) return new Map<string, { path: string; branch: SkillBranch }>();
+    
+    const paths = new Map<string, { path: string; branch: SkillBranch }>();
+    
+    skillBranches.forEach(branch => {
+      const from = skillPositions.get(branch.from_skill_id);
+      const to = skillPositions.get(branch.to_skill_id);
+      if (!from || !to) return;
+      
+      // Different positioning for pivot paths to avoid overlap
+      const fromX = from.x + 60;
+      const fromY = from.y + 40; // Higher position for pivot paths
+      const toX = to.x + 60;
+      const toY = to.y + 40;
+      
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      
+      // Create curved path for pivot connections
+      const controlPoint1X = fromX + dx * 0.3;
+      const controlPoint1Y = fromY - 30; // Arc above normal connections
+      const controlPoint2X = toX - dx * 0.3;
+      const controlPoint2Y = toY - 30;
+      
+      const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
+      paths.set(`pivot-${branch.from_skill_id}-${branch.to_skill_id}`, { path: pathData, branch });
+    });
+    
+    return paths;
+  }, [skillBranches, skillPositions, showPivotPaths]);
+
+  // Handle pivot path click
+  const handlePivotPathClick = useCallback((branch: SkillBranch) => {
+    setSelectedPivotPath(branch);
+  }, []);
+
   // Performance benchmark logging
   useEffect(() => {
     if (renderStartTime > 0) {
@@ -580,6 +651,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               fill="#64748b"
             />
           </marker>
+          <marker
+            id="pivot-arrowhead"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon
+              points="0 0, 10 3.5, 0 7"
+              fill="#fbbf24"
+            />
+          </marker>
         </defs>
         
         {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => {
@@ -600,6 +684,32 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               strokeOpacity={isHovered ? "0.9" : "0.6"}
               className={isHovered ? "skill-arrow-flow" : ""}
               markerEnd="url(#arrowhead)"
+            />
+          );
+        })}
+
+        {/* Pivot Path Arrows */}
+        {showPivotPaths && Array.from(pivotPaths.entries()).map(([pivotKey, { path: pathData, branch }]) => {
+          const typeColors = {
+            pivot: '#fbbf24', // Gold/yellow for pivots
+            branch: '#10b981', // Green for branches
+            backtrack: '#f97316' // Orange for backtrack
+          };
+          
+          const strokeColor = typeColors[branch.type];
+          
+          return (
+            <path
+              key={pivotKey}
+              d={pathData}
+              stroke={strokeColor}
+              strokeWidth="2"
+              fill="none"
+              strokeOpacity="0.8"
+              strokeDasharray="8,4"
+              className="cursor-pointer hover:stroke-opacity-100 pointer-events-auto"
+              markerEnd="url(#pivot-arrowhead)"
+              onClick={() => handlePivotPathClick(branch)}
             />
           );
         })}
@@ -642,6 +752,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           );
         })}
       </div>
+
+      {/* Pivot Path Modal */}
+      {selectedPivotPath && (
+        <SkillPivotModal
+          isOpen={!!selectedPivotPath}
+          onClose={() => setSelectedPivotPath(null)}
+          fromSkillId={selectedPivotPath.from_skill_id}
+          toSkillId={selectedPivotPath.to_skill_id}
+          pivotType={selectedPivotPath.type}
+          reasoning={selectedPivotPath.reasoning}
+          recommended={selectedPivotPath.recommended}
+        />
+      )}
     </div>
   );
 });
