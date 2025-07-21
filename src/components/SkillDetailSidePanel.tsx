@@ -37,10 +37,16 @@ interface SkillDetailSidePanelProps {
 }
 
 const categoryColors = {
-  'Technical': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '🧠' },
-  'Soft Skills': { bg: 'bg-green-100', text: 'text-green-800', icon: '💡' },
-  'Career': { bg: 'bg-purple-100', text: 'text-purple-800', icon: '🎯' },
-  'Tools': { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🛠️' },
+  'Programming': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '💻' },
+  'Framework': { bg: 'bg-green-100', text: 'text-green-800', icon: '⚡' },
+  'Backend': { bg: 'bg-purple-100', text: 'text-purple-800', icon: '🔧' },
+  'API': { bg: 'bg-orange-100', text: 'text-orange-800', icon: '🔗' },
+  'Cloud': { bg: 'bg-cyan-100', text: 'text-cyan-800', icon: '☁️' },
+  'DevOps': { bg: 'bg-red-100', text: 'text-red-800', icon: '🚀' },
+  'Design': { bg: 'bg-pink-100', text: 'text-pink-800', icon: '🎨' },
+  'Quality': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '✅' },
+  'Styling': { bg: 'bg-indigo-100', text: 'text-indigo-800', icon: '🎭' },
+  'Markup': { bg: 'bg-emerald-100', text: 'text-emerald-800', icon: '📝' },
   'default': { bg: 'bg-gray-100', text: 'text-gray-800', icon: '📚' }
 };
 

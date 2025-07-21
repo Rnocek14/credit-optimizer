@@ -67,9 +67,9 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
     const skillCount = filteredSkills.length;
     const categoryCount = availableCategories.length;
     
-    // Dynamic sizing based on content
-    const minWidth = Math.max(1200, categoryCount * 200);
-    const minHeight = Math.max(800, Math.ceil(skillCount / 6) * 150);
+    // More compact sizing to fit better
+    const minWidth = Math.max(800, Math.min(categoryCount * 160, 1200));
+    const minHeight = Math.max(600, Math.min(Math.ceil(skillCount / 4) * 120, 900));
     
     setContainerDimensions({ width: minWidth, height: minHeight });
   }, [filteredSkills.length, availableCategories.length]);
@@ -102,8 +102,8 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
     const contentWidth = maxX - minX;
     const contentHeight = maxY - minY;
     
-    const viewportWidth = 1000; // Visible area width
-    const viewportHeight = 600; // Visible area height
+    const viewportWidth = 800; // Visible area width
+    const viewportHeight = 500; // Visible area height
     
     const scaleX = viewportWidth / contentWidth;
     const scaleY = viewportHeight / contentHeight;
@@ -167,28 +167,38 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
     
     if (filteredSkills.length === 0) return positions;
     
-    // Compact layout parameters
-    const categorySpacing = 280;
-    const skillSpacing = 100;
-    const baseX = 150;
-    const baseY = 150;
+    // More compact layout for better fit
+    const categorySpacing = 200;
+    const skillSpacing = 80;
+    const baseX = 100;
+    const baseY = 100;
     
-    // Organize categories in a grid that fits well
-    const categoriesPerRow = Math.min(Math.ceil(Math.sqrt(availableCategories.length)), 4);
+    // Create a more compact grid layout
+    const categoriesPerRow = Math.min(availableCategories.length, 4);
     
-    availableCategories.forEach((category, categoryIndex) => {
+    // Group skills by category first
+    const skillsByCategory = new Map<string, Skill[]>();
+    availableCategories.forEach(category => {
       const categorySkills = filteredSkills.filter(skill => skill.category === category);
-      if (categorySkills.length === 0) return;
+      if (categorySkills.length > 0) {
+        skillsByCategory.set(category, categorySkills);
+      }
+    });
+    
+    const activeCategories = Array.from(skillsByCategory.keys());
+    
+    activeCategories.forEach((category, categoryIndex) => {
+      const categorySkills = skillsByCategory.get(category) || [];
       
-      // Calculate category position
+      // Calculate category position in a more compact grid
       const categoryRow = Math.floor(categoryIndex / categoriesPerRow);
       const categoryCol = categoryIndex % categoriesPerRow;
       
       const categoryBaseX = baseX + categoryCol * categorySpacing;
-      const categoryBaseY = baseY + categoryRow * (categorySpacing + 50);
+      const categoryBaseY = baseY + categoryRow * (categorySpacing + 20);
       
-      // Organize skills within category
-      const skillsPerRow = Math.min(Math.ceil(Math.sqrt(categorySkills.length)), 3);
+      // Arrange skills within category more efficiently
+      const skillsPerRow = Math.min(Math.ceil(Math.sqrt(categorySkills.length)), 2);
       
       categorySkills.forEach((skill, index) => {
         const skillRow = Math.floor(index / skillsPerRow);
@@ -266,7 +276,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
           </div>
         </div>
         
-        <div className="relative w-full h-[700px] bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden">
+        <div className="relative w-full h-[600px] bg-gradient-to-br from-blue-50 to-purple-50 overflow-hidden">
           {/* Skill Tree Container */}
           <div 
             className="absolute inset-0 cursor-grab active:cursor-grabbing"
