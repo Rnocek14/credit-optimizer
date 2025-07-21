@@ -304,6 +304,7 @@ const SkillTree = () => {
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills}
         skillsWithCourses={skillsWithCourses}
+        availableCategories={categories}
         onSkillClick={handleSkillClick}
         className="min-h-[600px]"
       />

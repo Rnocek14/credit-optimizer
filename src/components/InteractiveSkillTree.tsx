@@ -35,6 +35,7 @@ interface InteractiveSkillTreeProps {
   filteredSkills: Skill[];
   recommendedSkills: string[];
   skillsWithCourses?: string[];
+  availableCategories: string[];
   onSkillClick: (skill: Skill) => void;
   className?: string;
   showMinimap?: boolean;
@@ -47,6 +48,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
   filteredSkills,
   recommendedSkills,
   skillsWithCourses = [],
+  availableCategories,
   onSkillClick,
   className,
   showMinimap = true
@@ -115,21 +117,32 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
     });
   }, [toast]);
 
-  // Calculate positions for skills in a more organized layout
+  // Calculate positions for skills using the actual categories from the database
   const calculateSkillPositions = () => {
     const positions = new Map<string, { x: number; y: number }>();
-    const categories = ['Technical', 'Soft Skills', 'Career', 'Tools'];
     
-    categories.forEach((category, categoryIndex) => {
+    // Use the actual categories from the database
+    const categoriesPerRow = Math.ceil(Math.sqrt(availableCategories.length));
+    const categorySpacing = 250; // Horizontal spacing between categories
+    const skillSpacing = 120; // Spacing between skills within a category
+    
+    availableCategories.forEach((category, categoryIndex) => {
       const categorySkills = filteredSkills.filter(skill => skill.category === category);
       const skillsPerRow = Math.ceil(Math.sqrt(categorySkills.length));
       
+      // Calculate category position in a grid layout
+      const categoryRow = Math.floor(categoryIndex / categoriesPerRow);
+      const categoryCol = categoryIndex % categoriesPerRow;
+      
+      const categoryBaseX = categoryCol * categorySpacing + 150;
+      const categoryBaseY = categoryRow * (categorySpacing + 50) + 150;
+      
       categorySkills.forEach((skill, index) => {
-        const row = Math.floor(index / skillsPerRow);
-        const col = index % skillsPerRow;
+        const skillRow = Math.floor(index / skillsPerRow);
+        const skillCol = index % skillsPerRow;
         
-        const x = categoryIndex * 300 + col * 120 + 150;
-        const y = row * 120 + 150;
+        const x = categoryBaseX + skillCol * skillSpacing;
+        const y = categoryBaseY + skillRow * skillSpacing;
         
         positions.set(skill.id, { x, y });
       });
@@ -146,6 +159,7 @@ export const InteractiveSkillTree: React.FC<InteractiveSkillTreeProps> = ({
   console.log('Visible skills:', visibleSkills.length);
   console.log('Filtered skills:', filteredSkills.length);
   console.log('All skills:', skills.length);
+  console.log('Available categories:', availableCategories);
 
   return (
     <Card className={className}>
