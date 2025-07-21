@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award } from 'lucide-react';
+import { getCurrentUser } from '@/lib/authHelper';
 
 interface Skill {
   id: string;
@@ -58,12 +60,19 @@ const SkillTree = () => {
     }
   });
 
-  // Fetch user progress
+  // Fetch user progress with auth helper
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ['user-skill-progress'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const user = await getCurrentUser();
+      if (!user) {
+        // Create mock progress for demo purposes
+        return skills.slice(0, 5).map((skill, index) => ({
+          skill_id: skill.id,
+          status: index < 2 ? 'completed' : index < 4 ? 'in_progress' : 'available',
+          xp_earned: index < 2 ? skill.xp_value : index < 4 ? Math.floor(skill.xp_value * 0.5) : 0,
+        })) as UserProgress[];
+      }
 
       const { data, error } = await supabase
         .from('user_skill_progress')
@@ -72,7 +81,8 @@ const SkillTree = () => {
       
       if (error) throw error;
       return data as UserProgress[];
-    }
+    },
+    enabled: !!skills.length
   });
 
   // Fetch skill edges
