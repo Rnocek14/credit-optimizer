@@ -77,13 +77,13 @@ export const SalaryInsightsExplorer: React.FC = () => {
         .order(sortBy === 'salary' ? 'reported_salary' : 'created_at', { ascending: false });
 
       // Apply filters
-      if (selectedCareerPath) {
+      if (selectedCareerPath && selectedCareerPath !== 'all') {
         query = query.eq('career_path_id', selectedCareerPath);
       }
-      if (selectedLocation) {
+      if (selectedLocation && selectedLocation !== 'all') {
         query = query.eq('location_id', selectedLocation);
       }
-      if (selectedExperience) {
+      if (selectedExperience && selectedExperience !== 'all') {
         query = query.eq('experience_level', selectedExperience);
       }
 
@@ -149,10 +149,10 @@ export const SalaryInsightsExplorer: React.FC = () => {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedCareerPath('');
-    setSelectedLocation('');
-    setSelectedExperience('');
-    setSelectedCompanyType('');
+    setSelectedCareerPath('all');
+    setSelectedLocation('all');
+    setSelectedExperience('all');
+    setSelectedCompanyType('all');
     setCurrentPage(1);
   };
 
@@ -212,7 +212,7 @@ export const SalaryInsightsExplorer: React.FC = () => {
                   <SelectValue placeholder="All careers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All careers</SelectItem>
+                  <SelectItem value="all">All careers</SelectItem>
                   {careerPaths?.map(career => (
                     <SelectItem key={career.id} value={career.id}>
                       {career.title}
@@ -229,7 +229,7 @@ export const SalaryInsightsExplorer: React.FC = () => {
                   <SelectValue placeholder="All locations" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All locations</SelectItem>
+                  <SelectItem value="all">All locations</SelectItem>
                   {locations?.map(location => (
                     <SelectItem key={location.id} value={location.id}>
                       {location.emoji} {location.label}
@@ -246,7 +246,7 @@ export const SalaryInsightsExplorer: React.FC = () => {
                   <SelectValue placeholder="All levels" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All levels</SelectItem>
+                  <SelectItem value="all">All levels</SelectItem>
                   <SelectItem value="Entry">Entry Level</SelectItem>
                   <SelectItem value="Mid">Mid Level</SelectItem>
                   <SelectItem value="Senior">Senior Level</SelectItem>
