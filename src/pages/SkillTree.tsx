@@ -303,10 +303,8 @@ const SkillTree = () => {
         skillEdges={skillEdges}
         filteredSkills={filteredSkills}
         recommendedSkills={recommendedSkills}
-        skillsWithCourses={skillsWithCourses}
         availableCategories={categories}
         onSkillClick={handleSkillClick}
-        className="min-h-[600px]"
       />
 
       {/* Skill Detail Side Panel */}
