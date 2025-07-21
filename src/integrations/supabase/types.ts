@@ -179,6 +179,41 @@ export type Database = {
         }
         Relationships: []
       }
+      career_location_multipliers: {
+        Row: {
+          career_path_id: string
+          created_at: string | null
+          id: string
+          location_id: string
+          salary_multiplier: number
+          updated_at: string | null
+        }
+        Insert: {
+          career_path_id: string
+          created_at?: string | null
+          id?: string
+          location_id: string
+          salary_multiplier: number
+          updated_at?: string | null
+        }
+        Update: {
+          career_path_id?: string
+          created_at?: string | null
+          id?: string
+          location_id?: string
+          salary_multiplier?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_location_multipliers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_paths: {
         Row: {
           advanced_roles: string[] | null
@@ -273,6 +308,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      continent_bounds: {
+        Row: {
+          bounds: Json
+          continent: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          bounds: Json
+          continent: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          bounds?: Json
+          continent?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
       }
       course_skill_map: {
         Row: {
@@ -401,6 +457,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      locations: {
+        Row: {
+          active: boolean
+          continent: string
+          coordinates: Json
+          cost_of_living: number
+          country_code: string
+          created_at: string
+          emoji: string
+          id: string
+          job_icon: string
+          job_market: string
+          label: string
+          salary_multiplier: number
+          updated_at: string
+          value: string
+          visa_eligibility: Json
+        }
+        Insert: {
+          active?: boolean
+          continent: string
+          coordinates: Json
+          cost_of_living?: number
+          country_code: string
+          created_at?: string
+          emoji: string
+          id?: string
+          job_icon: string
+          job_market: string
+          label: string
+          salary_multiplier?: number
+          updated_at?: string
+          value: string
+          visa_eligibility?: Json
+        }
+        Update: {
+          active?: boolean
+          continent?: string
+          coordinates?: Json
+          cost_of_living?: number
+          country_code?: string
+          created_at?: string
+          emoji?: string
+          id?: string
+          job_icon?: string
+          job_market?: string
+          label?: string
+          salary_multiplier?: number
+          updated_at?: string
+          value?: string
+          visa_eligibility?: Json
+        }
+        Relationships: []
       }
       mentor_feedback: {
         Row: {
