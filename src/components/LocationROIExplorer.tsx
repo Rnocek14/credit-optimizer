@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe, Filter } from 'lucide-react';
+import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe, Filter, MessageSquare, Plus } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
 
 interface LocationROIExplorerProps {
@@ -40,6 +41,26 @@ interface ContinentBounds {
     center: [number, number];
     scale: number;
   };
+}
+
+interface SalaryInsight {
+  id: string;
+  career_path_id: string;
+  location_id: string;
+  source: string;
+  reported_salary: number;
+  experience_level: string;
+  data_source?: string;
+  notes?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+interface SalaryInsightsData {
+  average_salary: number;
+  count: number;
+  experience_breakdown: Record<string, { salary: number; count: number }>;
+  has_insights: boolean;
 }
 
 const worldGeoUrl = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
@@ -172,6 +193,27 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     enabled: !!selectedCareerPathId
   });
 
+  // Fetch salary insights
+  const { data: salaryInsights = [] } = useQuery({
+    queryKey: ['salary-insights', selectedCareerPathId],
+    queryFn: async () => {
+      if (!selectedCareerPathId) return [];
+      
+      const { data, error } = await supabase
+        .from('salary_insights')
+        .select('*')
+        .eq('career_path_id', selectedCareerPathId);
+      
+      if (error) {
+        console.error('Salary insights fetch error:', error);
+        return [];
+      }
+      
+      return data as SalaryInsight[];
+    },
+    enabled: !!selectedCareerPathId
+  });
+
   // Create a map of location_id to custom salary multiplier
   const careerMultiplierMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -180,6 +222,52 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     });
     return map;
   }, [careerLocationMultipliers]);
+
+  // Process salary insights by location
+  const salaryInsightsMap = useMemo(() => {
+    const map: Record<string, SalaryInsightsData> = {};
+    
+    locations.forEach(location => {
+      const locationInsights = salaryInsights.filter(insight => insight.location_id === location.id);
+      
+      if (locationInsights.length > 0) {
+        const totalSalary = locationInsights.reduce((sum, insight) => sum + insight.reported_salary, 0);
+        const averageSalary = totalSalary / locationInsights.length;
+        
+        const experienceBreakdown: Record<string, { salary: number; count: number }> = {};
+        
+        locationInsights.forEach(insight => {
+          const level = insight.experience_level;
+          if (!experienceBreakdown[level]) {
+            experienceBreakdown[level] = { salary: 0, count: 0 };
+          }
+          experienceBreakdown[level].salary += insight.reported_salary;
+          experienceBreakdown[level].count += 1;
+        });
+        
+        // Calculate averages for each experience level
+        Object.keys(experienceBreakdown).forEach(level => {
+          experienceBreakdown[level].salary = experienceBreakdown[level].salary / experienceBreakdown[level].count;
+        });
+        
+        map[location.id] = {
+          average_salary: averageSalary,
+          count: locationInsights.length,
+          experience_breakdown: experienceBreakdown,
+          has_insights: true
+        };
+      } else {
+        map[location.id] = {
+          average_salary: 0,
+          count: 0,
+          experience_breakdown: {},
+          has_insights: false
+        };
+      }
+    });
+    
+    return map;
+  }, [salaryInsights, locations]);
 
   // Filter locations based on selected filters
   const filteredLocations = useMemo(() => {
@@ -219,7 +307,15 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
       const salaryMultiplier = careerMultiplierMap[location.id] || location.salary_multiplier;
       const hasCustomMultiplier = !!careerMultiplierMap[location.id];
       
-      const adjustedSalary = Math.round((careerPath.average_salary || 78000) * salaryMultiplier);
+      // Get salary insights for this location
+      const salaryData = salaryInsightsMap[location.id];
+      
+      // Use crowdsourced data if available, otherwise use calculated average
+      const baseSalary = salaryData?.has_insights 
+        ? salaryData.average_salary 
+        : (careerPath.average_salary || 78000);
+      
+      const adjustedSalary = Math.round(baseSalary * salaryMultiplier);
       const uplift = adjustedSalary - currentSalary;
       const roi = uplift / totalCost;
       const colAdjustedROI = uplift / (totalCost * location.cost_of_living);
@@ -247,9 +343,10 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
         jobMarketScore,
         visaScore,
         salaryMultiplier,
-        hasCustomMultiplier
+        hasCustomMultiplier,
+        salaryInsights: salaryData
       };
-    }).sort((a, b) => {
+        }).sort((a, b) => {
       if (sortBy === 'lqi') return b.lqi - a.lqi;
       if (sortBy === 'colAdjustedRoi') return b.colAdjustedROI - a.colAdjustedROI;
       if (sortBy === 'jobMarket') {
@@ -258,7 +355,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
       }
       return b.roi - a.roi;
     });
-  }, [filteredLocations, careerPath, goalSkillIds, sortBy, currentUserRegion, careerMultiplierMap]);
+  }, [filteredLocations, careerPath, goalSkillIds, sortBy, currentUserRegion, careerMultiplierMap, salaryInsightsMap]);
 
   // Auto-focus map when continent is selected
   const mapProjectionConfig = useMemo(() => {
@@ -660,14 +757,24 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                             </Badge>
                           )}
                         </div>
-                        <div>ROI: {location.roi.toFixed(1)}×</div>
-                        <div>Net ROI: {location.colAdjustedROI.toFixed(1)}×</div>
-                        <div>LQI: {location.lqi.toFixed(1)}</div>
-                        {location.hasCustomMultiplier && (
-                          <div className="text-xs text-purple-600">
-                            Salary Multiplier: {location.salaryMultiplier.toFixed(2)}× (career-specific)
-                          </div>
-                        )}
+                         <div>ROI: {location.roi.toFixed(1)}×</div>
+                         <div>Net ROI: {location.colAdjustedROI.toFixed(1)}×</div>
+                         <div>LQI: {location.lqi.toFixed(1)}</div>
+                         {location.salaryInsights?.has_insights && (
+                           <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                             <div className="font-semibold">💬 Crowdsourced Data (n={location.salaryInsights.count})</div>
+                             {Object.entries(location.salaryInsights.experience_breakdown).map(([level, data]) => (
+                               <div key={level}>
+                                 {level}: ${Math.round(data.salary).toLocaleString()} ({data.count})
+                               </div>
+                             ))}
+                           </div>
+                         )}
+                         {location.hasCustomMultiplier && (
+                           <div className="text-xs text-purple-600">
+                             Salary Multiplier: {location.salaryMultiplier.toFixed(2)}× (career-specific)
+                           </div>
+                         )}
                       </div>
                     );
                   })()}
@@ -695,13 +802,20 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
           
           {/* Controls */}
           <div className="flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="visa-toggle"
-                checked={showVisaEligibility}
-                onCheckedChange={setShowVisaEligibility}
-              />
-              <Label htmlFor="visa-toggle" className="text-sm">Show Visa Eligibility</Label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="visa-toggle"
+                  checked={showVisaEligibility}
+                  onCheckedChange={setShowVisaEligibility}
+                />
+                <Label htmlFor="visa-toggle" className="text-sm">Show Visa Eligibility</Label>
+              </div>
+              
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Contribute Salary Data
+              </Button>
             </div>
             
             <div className="flex gap-2">
@@ -786,16 +900,30 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                     </div>
 
                     {/* Adjusted Salary */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-muted-foreground">
-                          Salary {location.hasCustomMultiplier && <span className="text-purple-600">(custom {location.salaryMultiplier.toFixed(2)}×)</span>}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3 text-green-600" />
+                          <span className="text-xs text-muted-foreground">
+                            Salary {location.hasCustomMultiplier && <span className="text-purple-600">(custom {location.salaryMultiplier.toFixed(2)}×)</span>}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-green-600">
+                          ${location.adjustedSalary.toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-sm font-medium text-green-600">
-                        ${location.adjustedSalary.toLocaleString()}
-                      </span>
+                      
+                      {/* Crowdsourced salary info */}
+                      {location.salaryInsights?.has_insights ? (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground italic">
+                          <MessageSquare className="h-3 w-3" />
+                          <span>💬 Crowdsourced: ${Math.round(location.salaryInsights.average_salary).toLocaleString()} (n={location.salaryInsights.count})</span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          📊 Calculated estimate (no reports yet)
+                        </div>
+                      )}
                     </div>
 
                     {/* ROI Multiplier */}
