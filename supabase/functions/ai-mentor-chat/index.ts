@@ -56,7 +56,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
@@ -406,6 +406,28 @@ async function updateMilestoneStep(supabase: any, planId: string, stepIndex: num
       .single();
 
     if (updateError) throw updateError;
+
+    // Award XP for step completion
+    if (completed) {
+      await supabase.rpc('award_xp', {
+        user_id_param: plan.user_id,
+        xp_amount_param: 25,
+        action_type_param: 'milestone_step_completed',
+        reason_param: `Completed step: ${updatedSteps[stepIndex].title}`,
+        source_id_param: planId
+      });
+    }
+
+    // Award bonus XP for plan completion
+    if (completionPercentage === 100) {
+      await supabase.rpc('award_xp', {
+        user_id_param: plan.user_id,
+        xp_amount_param: 100,
+        action_type_param: 'milestone_plan_completed',
+        reason_param: `Completed milestone plan: ${plan.title}`,
+        source_id_param: planId
+      });
+    }
 
     return new Response(
       JSON.stringify({ 
