@@ -9,10 +9,11 @@ import { ExportTreeButton } from '@/components/ExportTreeButton';
 import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
 import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { LocationDropdown } from '@/components/LocationDropdown';
+import { LocationROIExplorer } from '@/components/LocationROIExplorer';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BookOpen, Target, Award, TestTube } from 'lucide-react';
+import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
 
 interface Skill {
@@ -53,6 +54,7 @@ const SkillTree = () => {
   const [showPerformanceTest, setShowPerformanceTest] = useState(false);
   const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState('united-states');
+  const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -492,11 +494,42 @@ const SkillTree = () => {
         </div>
 
         {/* ROI Panel */}
-        <CareerROIPanel 
-          selectedCareerPath={selectedCareerPath}
-          goalSkillIds={goalSkills}
-          selectedLocation={selectedLocation}
-        />
+        <div className="space-y-4">
+          {/* Toggle between focused and relocation explorer */}
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant={!showRelocationExplorer ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRelocationExplorer(false)}
+              className="flex items-center gap-2"
+            >
+              <Focus className="h-4 w-4" />
+              🎯 Focused ROI
+            </Button>
+            <Button
+              variant={showRelocationExplorer ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRelocationExplorer(true)}
+              className="flex items-center gap-2"
+            >
+              <Globe className="h-4 w-4" />
+              🌍 Relocation Explorer
+            </Button>
+          </div>
+
+          {!showRelocationExplorer ? (
+            <CareerROIPanel 
+              selectedCareerPath={selectedCareerPath}
+              goalSkillIds={goalSkills}
+              selectedLocation={selectedLocation}
+            />
+          ) : (
+            <LocationROIExplorer
+              selectedCareerPathId={selectedCareerPath}
+              goalSkillIds={goalSkills}
+            />
+          )}
+        </div>
       </div>
 
       {/* Skill Detail Side Panel */}
