@@ -37,12 +37,18 @@ const performanceTracker = {
   }
 };
 
-// Debounce utility
+// Fixed debounce utility with stable references
 function useDebounce<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
-): (...args: Parameters<T>) => void {
+): T {
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const callbackRef = useRef(callback);
+  
+  // Update callback ref when callback changes
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
   
   return useCallback((...args: Parameters<T>) => {
     if (timeoutRef.current) {
@@ -50,9 +56,9 @@ function useDebounce<T extends (...args: any[]) => any>(
     }
     
     timeoutRef.current = setTimeout(() => {
-      callback(...args);
+      callbackRef.current(...args);
     }, delay);
-  }, [callback, delay]);
+  }, [delay]) as T;
 }
 
 interface SkillBranch {
@@ -115,11 +121,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [containerDimensions, setContainerDimensions] = useState({ width: 1200, height: 800 });
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
-  const [renderStartTime, setRenderStartTime] = useState<number>(0);
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
+  
+  // Use refs for stable function references
+  const fitToViewRef = useRef<() => void>();
 
   // Fetch skill branches for pivot paths
   const { data: skillBranches = [] } = useQuery({
@@ -202,7 +210,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       setHoveredArrows([]);
     }
   }, [getPrerequisitePath, skillEdges]);
-
 
   // Memoized skill depth calculation for hierarchical layout
   const getSkillDepthMap = useCallback(() => {
@@ -354,128 +361,89 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     onSkillClick(skill);
   }, [skillPositions, containerDimensions, zoomLevel, onSkillClick]);
 
-  // Debounced fit-to-view for performance
-  const debouncedFitToView = useDebounce(() => {
-    if (skillPositions.size === 0) return;
+  // Stable fit-to-view function
+  const createFitToView = useCallback(() => {
+    return () => {
+      if (skillPositions.size === 0) return;
 
-    const positions = Array.from(skillPositions.values());
-    const xs = positions.map(p => p.x);
-    const ys = positions.map(p => p.y);
-    
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
+      const positions = Array.from(skillPositions.values());
+      const xs = positions.map(p => p.x);
+      const ys = positions.map(p => p.y);
+      
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
 
-    const contentWidth = maxX - minX + 120;
-    const contentHeight = maxY - minY + 100;
-    const padding = 50;
+      const contentWidth = maxX - minX + 120;
+      const contentHeight = maxY - minY + 100;
+      const padding = 50;
 
-    const viewportWidth = containerDimensions.width - padding * 2;
-    const viewportHeight = containerDimensions.height - padding * 2;
+      const viewportWidth = containerDimensions.width - padding * 2;
+      const viewportHeight = containerDimensions.height - padding * 2;
 
-    const scaleX = viewportWidth / contentWidth;
-    const scaleY = viewportHeight / contentHeight;
-    const newZoom = Math.min(scaleX, scaleY, 1.2);
+      const scaleX = viewportWidth / contentWidth;
+      const scaleY = viewportHeight / contentHeight;
+      const newZoom = Math.min(scaleX, scaleY, 1.2);
 
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const offsetX = containerDimensions.width / 2 - centerX * newZoom;
-    const offsetY = containerDimensions.height / 2 - centerY * newZoom;
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+      const offsetX = containerDimensions.width / 2 - centerX * newZoom;
+      const offsetY = containerDimensions.height / 2 - centerY * newZoom;
 
-    setZoomLevel(newZoom);
-    setPanOffset({ x: offsetX, y: offsetY });
-  }, 150);
-
-  // Immediate fit-to-view for button clicks
-  const fitToView = useCallback(() => {
-    if (skillPositions.size === 0) return;
-
-    const positions = Array.from(skillPositions.values());
-    const xs = positions.map(p => p.x);
-    const ys = positions.map(p => p.y);
-    
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    const contentWidth = maxX - minX + 120;
-    const contentHeight = maxY - minY + 100;
-    const padding = 50;
-
-    const viewportWidth = containerDimensions.width - padding * 2;
-    const viewportHeight = containerDimensions.height - padding * 2;
-
-    const scaleX = viewportWidth / contentWidth;
-    const scaleY = viewportHeight / contentHeight;
-    const newZoom = Math.min(scaleX, scaleY, 1.2);
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const offsetX = containerDimensions.width / 2 - centerX * newZoom;
-    const offsetY = containerDimensions.height / 2 - centerY * newZoom;
-
-    setZoomLevel(newZoom);
-    setPanOffset({ x: offsetX, y: offsetY });
+      setZoomLevel(newZoom);
+      setPanOffset({ x: offsetX, y: offsetY });
+    };
   }, [skillPositions, containerDimensions]);
 
-  // Auto-fit on layout changes with debouncing
+  // Update fit-to-view ref when dependencies change
   useEffect(() => {
-    setRenderStartTime(performance.now());
-    performanceTracker.startTracking();
-    
-    const timeoutId = setTimeout(() => {
-      requestAnimationFrame(() => {
-        debouncedFitToView();
-        performanceTracker.endTracking();
-      });
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [debouncedFitToView, filteredSkills.length]);
+    fitToViewRef.current = createFitToView();
+  }, [createFitToView]);
 
-  // Performance tracking for zoom/pan
-  useEffect(() => {
-    const trackPerformance = () => {
-      performanceTracker.trackFrame();
-      animationFrameRef.current = requestAnimationFrame(trackPerformance);
-    };
-    
-    if (isDragging || Math.abs(zoomLevel - 0.8) > 0.01) {
-      trackPerformance();
+  // Debounced fit-to-view for automatic layout changes
+  const debouncedFitToView = useDebounce(() => {
+    if (fitToViewRef.current) {
+      fitToViewRef.current();
     }
-    
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isDragging, zoomLevel]);
+  }, 150);
 
-  // Debounced container resize handling
-  const debouncedResize = useCallback(
-    useDebounce(() => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setContainerDimensions({ width: rect.width, height: rect.height });
-      }
-    }, 100),
-    []
-  );
+  // Manual fit-to-view for button clicks
+  const fitToView = useCallback(() => {
+    if (fitToViewRef.current) {
+      fitToViewRef.current();
+    }
+  }, []);
 
+  // Auto-fit on layout changes - FIXED: removed problematic dependency
   useEffect(() => {
-    const handleResize = () => {
-      debouncedResize();
-    };
+    if (filteredSkills.length > 0) {
+      const timeoutId = setTimeout(() => {
+        requestAnimationFrame(() => {
+          debouncedFitToView();
+        });
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [filteredSkills.length]); // Only depend on skill count, not the debounced function
 
+  // Container resize handling with stable reference
+  const handleResize = useCallback(() => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setContainerDimensions({ width: rect.width, height: rect.height });
     }
+  }, []);
+
+  const debouncedResize = useDebounce(handleResize, 100);
+
+  useEffect(() => {
+    // Initial size measurement
+    handleResize();
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []); // Remove debouncedResize from dependencies
+    window.addEventListener('resize', debouncedResize);
+    return () => window.removeEventListener('resize', debouncedResize);
+  }, []); // Empty dependency array - stable functions
 
   // Mouse drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -565,26 +533,22 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setSelectedPivotPath(branch);
   }, []);
 
-  // Performance benchmark logging
+  // Performance benchmark logging (simplified to avoid render loops)
   useEffect(() => {
-    if (renderStartTime > 0) {
-      const renderTime = performance.now() - renderStartTime;
-      console.log(`[SkillTree Benchmark] Rendered ${filteredSkills.length} skills in ${renderTime.toFixed(2)}ms`);
-      
-      // Benchmark categories
-      if (filteredSkills.length <= 12) {
-        console.log(`[Benchmark] Small tree (≤12 skills): ${renderTime.toFixed(2)}ms - Target: <100ms`);
-      } else if (filteredSkills.length <= 25) {
-        console.log(`[Benchmark] Medium tree (13-25 skills): ${renderTime.toFixed(2)}ms - Target: <200ms`);
-      } else if (filteredSkills.length <= 50) {
-        console.log(`[Benchmark] Large tree (26-50 skills): ${renderTime.toFixed(2)}ms - Target: <400ms`);
-      } else {
-        console.log(`[Benchmark] XL tree (50+ skills): ${renderTime.toFixed(2)}ms - Consider virtualization`);
-      }
-      
-      setRenderStartTime(0);
+    const renderTime = performance.now();
+    console.log(`[SkillTree Benchmark] Rendered ${filteredSkills.length} skills`);
+    
+    // Benchmark categories
+    if (filteredSkills.length <= 12) {
+      console.log(`[Benchmark] Small tree (≤12 skills) - Target: <100ms`);
+    } else if (filteredSkills.length <= 25) {
+      console.log(`[Benchmark] Medium tree (13-25 skills) - Target: <200ms`);
+    } else if (filteredSkills.length <= 50) {
+      console.log(`[Benchmark] Large tree (26-50 skills) - Target: <400ms`);
+    } else {
+      console.log(`[Benchmark] XL tree (50+ skills) - Consider virtualization`);
     }
-  }, [filteredSkills.length, renderStartTime]);
+  }, [filteredSkills.length]);
 
   return (
     <div 
