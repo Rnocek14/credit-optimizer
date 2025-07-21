@@ -282,21 +282,22 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return levels;
   }, [filteredSkills, skillEdges]);
 
-  // Hierarchical layout positioning
   const skillPositions = useMemo(() => {
     if (!filteredSkills.length) return new Map();
 
     const positions = new Map();
     const skillLevels = getSkillLevels();
-    
+
+    console.log('⛰️ Levels used for layout:', Array.from(skillLevels.entries()));
+
     // Group skills by their hierarchical level
     const skillsByLevel = new Map<number, any[]>();
     let maxLevel = 0;
-    
+
     filteredSkills.forEach(skill => {
       const level = skillLevels.get(skill.id) || 0;
       maxLevel = Math.max(maxLevel, level);
-      
+
       if (!skillsByLevel.has(level)) {
         skillsByLevel.set(level, []);
       }
@@ -306,34 +307,31 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     // Layout constants
     const nodeWidth = 80;
     const nodeHeight = 80;
-    const horizontalSpacing = 120; // Increased spacing between nodes
-    const verticalSpacing = 150; // Increased spacing between levels
+    const horizontalSpacing = 120;
+    const verticalSpacing = 150;
     const baseX = 60;
     const baseY = 80;
-    
+
     // Position skills level by level
     for (let level = 0; level <= maxLevel; level++) {
       const skillsAtLevel = skillsByLevel.get(level) || [];
-      
+
       if (skillsAtLevel.length === 0) continue;
-      
-      // Sort skills at this level by category then name for consistent positioning
+
       skillsAtLevel.sort((a, b) => {
         if (a.category !== b.category) {
           return a.category.localeCompare(b.category);
         }
         return a.name.localeCompare(b.name);
       });
-      
-      // Calculate total width needed for this level
+
       const totalWidth = skillsAtLevel.length * nodeWidth + (skillsAtLevel.length - 1) * horizontalSpacing;
       const startX = Math.max(baseX, (containerDimensions.width - totalWidth) / 2);
-      
-      // Position each skill at this level
+
       skillsAtLevel.forEach((skill, index) => {
         const x = startX + index * (nodeWidth + horizontalSpacing);
         const y = baseY + level * verticalSpacing;
-        
+
         positions.set(skill.id, { x, y });
       });
     }
@@ -351,7 +349,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     });
 
     return positions;
-  }, [filteredSkills, getSkillLevels, containerDimensions.width]);
+  }, [filteredSkills, skillEdges, getSkillLevels, containerDimensions.width]);
 
   // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
