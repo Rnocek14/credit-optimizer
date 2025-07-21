@@ -8,6 +8,7 @@ import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest'
 import { ExportTreeButton } from '@/components/ExportTreeButton';
 import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
 import { CareerROIPanel } from '@/components/CareerROIPanel';
+import { LocationDropdown } from '@/components/LocationDropdown';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ const SkillTree = () => {
   const [showGoalPathOnly, setShowGoalPathOnly] = useState(false);
   const [showPerformanceTest, setShowPerformanceTest] = useState(false);
   const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState('united-states');
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -387,6 +389,10 @@ const SkillTree = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <LocationDropdown
+            selectedLocation={selectedLocation}
+            onLocationChange={setSelectedLocation}
+          />
           <CareerGoalDropdown 
             selectedCareerPath={selectedCareerPath}
             onCareerPathChange={setSelectedCareerPath}
@@ -489,6 +495,7 @@ const SkillTree = () => {
         <CareerROIPanel 
           selectedCareerPath={selectedCareerPath}
           goalSkillIds={goalSkills}
+          selectedLocation={selectedLocation}
         />
       </div>
 

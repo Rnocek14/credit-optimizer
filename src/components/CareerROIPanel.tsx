@@ -4,15 +4,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, DollarSign, Clock, TrendingUp } from 'lucide-react';
+import { getLocationMultiplier, getLocationLabel } from './LocationDropdown';
 
 interface CareerROIPanelProps {
   selectedCareerPath: string | null;
   goalSkillIds: string[];
+  selectedLocation: string;
 }
 
 export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
   selectedCareerPath,
-  goalSkillIds
+  goalSkillIds,
+  selectedLocation
 }) => {
   // Fetch selected career path details
   const { data: careerPath } = useQuery({
@@ -72,9 +75,15 @@ export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
   const totalWeeks = skillCount * avgWeeksPerSkill;
   const totalMonths = Math.ceil(totalWeeks / 4);
 
-  // Calculate ROI
-  const salaryUplift = (careerPath.average_salary || 78000) - currentSalary;
+  // Calculate ROI with location adjustment
+  const locationMultiplier = getLocationMultiplier(selectedLocation);
+  const adjustedSalary = Math.round((careerPath.average_salary || 78000) * locationMultiplier);
+  const salaryUplift = adjustedSalary - currentSalary;
   const roiMultiplier = salaryUplift / totalCost;
+  
+  // Calculate adjustment percentage for display
+  const adjustmentPercentage = Math.round((locationMultiplier - 1) * 100);
+  const locationLabel = getLocationLabel(selectedLocation);
 
   return (
     <Card className="w-80 sticky top-4">
@@ -99,9 +108,16 @@ export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
             <DollarSign className="h-4 w-4 text-green-600" />
             <span className="text-sm font-medium">Salary Uplift</span>
           </div>
-          <span className="font-bold text-green-600">
-            +${salaryUplift.toLocaleString()}
-          </span>
+          <div className="text-right">
+            <span className="font-bold text-green-600">
+              +${salaryUplift.toLocaleString()}
+            </span>
+            {adjustmentPercentage !== 0 && (
+              <div className="text-xs text-green-700">
+                Adjusted for {locationLabel}: {adjustmentPercentage > 0 ? '+' : ''}{adjustmentPercentage}%
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Total Cost */}
@@ -140,7 +156,7 @@ export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
         {/* Skills Summary */}
         <div className="pt-2 border-t">
           <p className="text-xs text-muted-foreground">
-            {skillCount} skills in learning path • Based on industry averages
+            {skillCount} skills in learning path • Based on {locationLabel} averages
           </p>
         </div>
       </CardContent>
