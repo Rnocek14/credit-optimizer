@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,32 +45,42 @@ const SkillTree = () => {
   const [showRecommendedNext, setShowRecommendedNext] = useState(false);
   const [showGoalPathOnly, setShowGoalPathOnly] = useState(false);
 
-  // Fetch skills
-  const { data: skills = [], isLoading: skillsLoading } = useQuery({
+  // Fetch skills with better error handling
+  const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
+      console.log('Fetching skills...');
       const { data, error } = await supabase
         .from('skills')
         .select('*')
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Skills fetch error:', error);
+        throw error;
+      }
+      console.log('Skills fetched:', data?.length || 0);
       return data as Skill[];
     }
   });
 
-  // Fetch unique categories from skills
+  // Fetch categories with error handling
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['skill-categories'],
     queryFn: async () => {
+      console.log('Fetching categories...');
       const { data, error } = await supabase
         .from('skills')
         .select('category')
         .not('category', 'is', null);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Categories fetch error:', error);
+        throw error;
+      }
       
       const uniqueCategories = [...new Set(data.map(item => item.category))];
+      console.log('Categories fetched:', uniqueCategories);
       return uniqueCategories;
     }
   });
@@ -83,12 +92,14 @@ const SkillTree = () => {
     }
   }, [categories, activeCategories.length]);
 
-  // Fetch user progress with auth helper
+  // Fetch user progress with better error handling
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ['user-skill-progress'],
     queryFn: async () => {
+      console.log('Fetching user progress...');
       const user = await getCurrentUser();
       if (!user) {
+        console.log('No user found, creating mock progress');
         // Create mock progress for demo purposes
         return skills.slice(0, 5).map((skill, index) => ({
           skill_id: skill.id,
@@ -102,21 +113,30 @@ const SkillTree = () => {
         .select('*')
         .eq('user_id', user.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Progress fetch error:', error);
+        throw error;
+      }
+      console.log('User progress fetched:', data?.length || 0);
       return data as UserProgress[];
     },
     enabled: !!skills.length
   });
 
-  // Fetch skill edges
+  // Fetch skill edges with error handling
   const { data: skillEdges = [], isLoading: edgesLoading } = useQuery({
     queryKey: ['skill-edges'],
     queryFn: async () => {
+      console.log('Fetching skill edges...');
       const { data, error } = await supabase
         .from('skill_graph_edges')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Skill edges fetch error:', error);
+        throw error;
+      }
+      console.log('Skill edges fetched:', data?.length || 0);
       return data as SkillEdge[];
     }
   });
@@ -125,16 +145,17 @@ const SkillTree = () => {
   const { data: skillsWithCourses = [], isLoading: skillsWithCoursesLoading } = useQuery({
     queryKey: ['skills-with-courses'],
     queryFn: async () => {
+      console.log('Fetching skills with courses...');
       const { data, error } = await supabase
         .from('course_skill_map')
-        .select('skill_id')
-        .then(({ data, error }) => {
-          if (error) throw error;
-          return { data: data?.map(item => item.skill_id) || [], error };
-        });
+        .select('skill_id');
       
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Skills with courses fetch error:', error);
+        throw error;
+      }
+      console.log('Skills with courses fetched:', data?.length || 0);
+      return data?.map(item => item.skill_id) || [];
     }
   });
 
@@ -180,7 +201,6 @@ const SkillTree = () => {
   const handlePlanSkill = (skillId: string) => {
     const skill = skills.find(s => s.id === skillId);
     if (skill) {
-      // Navigate to Maya chat with skill planning context
       navigate('/mentor-chat', { 
         state: { 
           initialMessage: `I want to create a learning plan for the skill "${skill.name}". Can you help me create a detailed roadmap with milestones and resources?` 
@@ -206,6 +226,18 @@ const SkillTree = () => {
         };
       });
   };
+
+  // Show error state if there are critical errors
+  if (skillsError) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-red-800 text-lg font-semibold mb-2">Error Loading Skills</h2>
+          <p className="text-red-700">Unable to load the skill tree. Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (skillsLoading || progressLoading || edgesLoading || categoriesLoading) {
     return (
