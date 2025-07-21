@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
 import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
 import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
 import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest';
+import { ExportTreeButton } from '@/components/ExportTreeButton';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ const SkillTree = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
+  const skillTreeRef = useRef<HTMLDivElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [showOnlyRecommended, setShowOnlyRecommended] = useState(false);
@@ -280,14 +282,17 @@ const SkillTree = () => {
             </p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowPerformanceTest(!showPerformanceTest)}
-        >
-          <TestTube className="h-4 w-4 mr-2" />
-          {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportTreeButton containerRef={skillTreeRef} />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowPerformanceTest(!showPerformanceTest)}
+          >
+            <TestTube className="h-4 w-4 mr-2" />
+            {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -353,16 +358,18 @@ const SkillTree = () => {
       {showPerformanceTest && <SkillTreePerformanceTest />}
 
       {/* Interactive Skill Tree */}
-      <InteractiveSkillTree
-        skills={skills}
-        userProgress={userProgress}
-        skillEdges={skillEdges}
-        filteredSkills={filteredSkills}
-        recommendedSkills={recommendedSkills}
-        goalSkills={goalSkills}
-        availableCategories={categories}
-        onSkillClick={handleSkillClick}
-      />
+      <div ref={skillTreeRef} data-skill-tree-canvas>
+        <InteractiveSkillTree
+          skills={skills}
+          userProgress={userProgress}
+          skillEdges={skillEdges}
+          filteredSkills={filteredSkills}
+          recommendedSkills={recommendedSkills}
+          goalSkills={goalSkills}
+          availableCategories={categories}
+          onSkillClick={handleSkillClick}
+        />
+      </div>
 
       {/* Skill Detail Side Panel */}
       <SkillDetailSidePanel
