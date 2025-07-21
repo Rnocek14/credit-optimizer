@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { 
   Search, 
   Filter, 
@@ -37,30 +40,34 @@ import {
   Smartphone,
   Brain,
   Lock,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  Bot,
+  Lightbulb,
+  CheckCircle2,
+  AlertCircle,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface Course {
   id: string;
   title: string;
   description: string;
-  category: string;
-  layer: number;
-  xpReward: number;
-  criBoost?: number;
-  duration: string;
-  rating: number;
-  enrollments: number;
-  difficulty: string;
-  tags: string[];
-  instructor: string;
   platform: string;
+  difficulty: string;
   cost: string;
-  verified: boolean;
+  skill_tags: string[];
   url?: string;
-  skillGapFiller: boolean;
-  aiSuggested: boolean;
+  reasoning?: string;
+  xpReward?: number;
+  criBoost?: number;
+  duration?: string;
+  rating?: number;
+  enrollments?: number;
+  isSaved?: boolean;
+  isAiRecommended?: boolean;
 }
 
 interface Mentor {
@@ -78,255 +85,292 @@ interface Mentor {
   availableSlots: number;
   bio: string;
   avatar?: string;
-  nextLayerSpecialist: boolean;
-  topRated: boolean;
+  criBoost?: number;
 }
 
-// Enhanced mock data with Life Path platform features
-const mockCourses: Course[] = [
-  {
-    id: '1',
-    title: 'React Fundamentals',
-    description: 'Learn the basics of React including components, state, and props. Perfect for building modern UIs.',
-    category: 'Frontend',
-    layer: 1,
-    xpReward: 30,
-    criBoost: 15,
-    duration: '4 weeks',
-    rating: 4.8,
-    enrollments: 1250,
-    difficulty: 'Beginner',
-    tags: ['React', 'JavaScript', 'Web Development'],
-    instructor: 'Sarah Chen',
-    platform: 'TechLearn',
-    cost: 'Free',
-    verified: true,
-    skillGapFiller: true,
-    aiSuggested: true
-  },
-  {
-    id: '2',
-    title: 'Advanced TypeScript Patterns',
-    description: 'Master complex TypeScript patterns and advanced type system features for scalable applications.',
-    category: 'Frontend',
-    layer: 2,
-    xpReward: 45,
-    criBoost: 20,
-    duration: '6 weeks',
-    rating: 4.9,
-    enrollments: 890,
-    difficulty: 'Advanced',
-    tags: ['TypeScript', 'JavaScript', 'Type System'],
-    instructor: 'Alex Rodriguez',
-    platform: 'CodeMaster',
-    cost: '$89',
-    verified: true,
-    skillGapFiller: false,
-    aiSuggested: true
-  },
-  {
-    id: '3',
-    title: 'Node.js Backend Development',
-    description: 'Build scalable backend applications with Node.js and Express. Learn APIs, databases, and deployment.',
-    category: 'Backend',
-    layer: 2,
-    xpReward: 40,
-    criBoost: 18,
-    duration: '8 weeks',
-    rating: 4.7,
-    enrollments: 2100,
-    difficulty: 'Intermediate',
-    tags: ['Node.js', 'Express', 'API Development'],
-    instructor: 'Marcus Johnson',
-    platform: 'DevAcademy',
-    cost: '$129',
-    verified: false,
-    skillGapFiller: true,
-    aiSuggested: false
-  },
-  {
-    id: '4',
-    title: 'AWS Cloud Architecture',
-    description: 'Design and deploy cloud infrastructure on AWS. Master EC2, S3, Lambda, and more.',
-    category: 'Cloud',
-    layer: 3,
-    xpReward: 60,
-    criBoost: 25,
-    duration: '10 weeks',
-    rating: 4.6,
-    enrollments: 756,
-    difficulty: 'Advanced',
-    tags: ['AWS', 'Cloud', 'Infrastructure'],
-    instructor: 'Emma Thompson',
-    platform: 'CloudGuru',
-    cost: '$199',
-    verified: true,
-    skillGapFiller: false,
-    aiSuggested: false
-  },
-  {
-    id: '5',
-    title: 'Docker & Kubernetes Essentials',
-    description: 'Containerize and orchestrate applications with Docker and Kubernetes for modern DevOps.',
-    category: 'DevOps',
-    layer: 2,
-    xpReward: 50,
-    criBoost: 22,
-    duration: '7 weeks',
-    rating: 4.5,
-    enrollments: 980,
-    difficulty: 'Intermediate',
-    tags: ['Docker', 'Kubernetes', 'DevOps'],
-    instructor: 'Chris Wilson',
-    platform: 'DevOps Pro',
-    cost: '$149',
-    verified: true,
-    skillGapFiller: true,
-    aiSuggested: true
-  },
-  {
-    id: '6',
-    title: 'JavaScript Algorithms & Data Structures',
-    description: 'Master fundamental algorithms and data structures using JavaScript. Ace your interviews.',
-    category: 'Frontend',
-    layer: 1,
-    xpReward: 35,
-    criBoost: 16,
-    duration: '5 weeks',
-    rating: 4.7,
-    enrollments: 1800,
-    difficulty: 'Intermediate',
-    tags: ['JavaScript', 'Algorithms', 'Data Structures'],
-    instructor: 'David Park',
-    platform: 'AlgoMaster',
-    cost: 'Free',
-    verified: true,
-    skillGapFiller: false,
-    aiSuggested: false
-  }
-];
-
-const mockMentors: Mentor[] = [
-  {
-    id: '1',
-    name: 'Dr. Michael Zhang',
-    title: 'Senior Software Engineer',
-    company: 'Google',
-    expertise: ['React', 'TypeScript', 'System Design', 'Performance'],
-    rating: 4.9,
-    reviews: 127,
-    hourlyRate: 150,
-    responseTime: '< 2 hours',
-    location: 'San Francisco, CA',
-    verified: true,
-    availableSlots: 8,
-    bio: 'Former Google Tech Lead with 10+ years experience in scalable web applications and mentoring engineers.',
-    avatar: '/avatars/michael.jpg',
-    nextLayerSpecialist: true,
-    topRated: true
-  },
-  {
-    id: '2',
-    name: 'Lisa Park',
-    title: 'Principal Engineer',
-    company: 'Netflix',
-    expertise: ['Node.js', 'Microservices', 'DevOps', 'AWS'],
-    rating: 4.8,
-    reviews: 89,
-    hourlyRate: 180,
-    responseTime: '< 4 hours',
-    location: 'Seattle, WA',
-    verified: true,
-    availableSlots: 5,
-    bio: 'Netflix Principal Engineer specializing in backend systems and cloud architecture at scale.',
-    avatar: '/avatars/lisa.jpg',
-    nextLayerSpecialist: true,
-    topRated: true
-  },
-  {
-    id: '3',
-    name: 'James Wilson',
-    title: 'Lead Developer',
-    company: 'Stripe',
-    expertise: ['JavaScript', 'Payment Systems', 'Security', 'APIs'],
-    rating: 4.7,
-    reviews: 156,
-    hourlyRate: 120,
-    responseTime: '< 6 hours',
-    location: 'Austin, TX',
-    verified: false,
-    availableSlots: 12,
-    bio: 'Stripe Lead Developer with expertise in fintech and secure payment processing systems.',
-    avatar: '/avatars/james.jpg',
-    nextLayerSpecialist: false,
-    topRated: true
-  },
-  {
-    id: '4',
-    name: 'Sarah Martinez',
-    title: 'Cloud Solutions Architect',
-    company: 'Microsoft Azure',
-    expertise: ['Azure', 'Cloud Architecture', 'Terraform', 'Security'],
-    rating: 4.9,
-    reviews: 203,
-    hourlyRate: 160,
-    responseTime: '< 3 hours',
-    location: 'Austin, TX',
-    verified: true,
-    availableSlots: 6,
-    bio: 'Microsoft Azure Solutions Architect helping companies migrate to cloud and optimize infrastructure.',
-    avatar: '/avatars/sarah.jpg',
-    nextLayerSpecialist: true,
-    topRated: true
-  }
-];
+interface UserProgress {
+  currentLevel: number;
+  totalXp: number;
+  recentGoals: any[];
+  criScore: number;
+  readinessScore: number;
+  skillGaps: string[];
+  nextFocus: string;
+}
 
 export default function Explore() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("relevance");
+  const [selectedSkill, setSelectedSkill] = useState("all");
+  const [selectedPlatform, setSelectedPlatform] = useState("all");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
+  const [progressFilter, setProgressFilter] = useState("all"); // not-started, in-progress, completed
+  const [sortBy, setSortBy] = useState("ai-recommended");
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
-  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState("courses");
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("recommendations");
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  // Simulate fetching user's skill tree progress
-  const [userLayer, setUserLayer] = useState(1); // Current highest unlocked layer
-  const [skillGaps, setSkillGaps] = useState(['React', 'TypeScript']); // Skills needed for next layer
+  // Fetch user progress data
+  const { data: userProgress } = useQuery({
+    queryKey: ['user-progress'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-  // Filter and sort logic
+      // Get user level and XP
+      const { data: userLevel } = await supabase.rpc('get_user_level', { 
+        user_id_param: user.id 
+      });
+
+      // Get recent goals
+      const { data: goals } = await supabase
+        .from('career_goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      // Get latest resume scores
+      const { data: resume } = await supabase
+        .from('ai_resume_drafts')
+        .select('cri_average, readiness_score')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      return {
+        currentLevel: userLevel?.[0]?.current_level || 1,
+        totalXp: userLevel?.[0]?.total_xp || 0,
+        recentGoals: goals || [],
+        criScore: resume?.[0]?.cri_average || 0,
+        readinessScore: resume?.[0]?.readiness_score || 0,
+        skillGaps: ['React', 'TypeScript'], // Could be derived from resume analysis
+        nextFocus: goals?.[0]?.title || 'Set your first career goal'
+      } as UserProgress;
+    }
+  });
+
+  // Fetch available skills for filtering
+  const { data: availableSkills = [] } = useQuery({
+    queryKey: ['available-skills'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('skills')
+        .select('name, slug, category')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch courses from Supabase
+  const { data: courses = [], isLoading: isLoadingCourses } = useQuery({
+    queryKey: ['recommended-courses', selectedSkill, selectedPlatform, selectedDifficulty],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      let query = supabase
+        .from('recommended_courses')
+        .select('*')
+        .eq('active', true);
+
+      // Apply filters
+      if (selectedSkill !== 'all') {
+        query = query.contains('skill_tags', [selectedSkill]);
+      }
+
+      if (selectedPlatform !== 'all') {
+        query = query.eq('platform', selectedPlatform);
+      }
+
+      if (selectedDifficulty !== 'all') {
+        query = query.eq('difficulty', selectedDifficulty);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      // Get saved courses to mark them
+      const { data: savedCourses } = await supabase
+        .from('saved_courses')
+        .select('course_id')
+        .eq('user_id', user.id);
+
+      const savedCourseIds = new Set(savedCourses?.map(sc => sc.course_id) || []);
+
+      return data.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        platform: course.platform,
+        difficulty: course.difficulty,
+        cost: course.cost,
+        skill_tags: course.skill_tags || [],
+        url: course.url,
+        reasoning: course.reasoning,
+        xpReward: 25 + (course.difficulty === 'Advanced' ? 20 : course.difficulty === 'Intermediate' ? 10 : 0),
+        criBoost: Math.floor(Math.random() * 15) + 5,
+        duration: `${Math.floor(Math.random() * 8) + 2} weeks`,
+        rating: 4.5 + Math.random() * 0.5,
+        enrollments: Math.floor(Math.random() * 2000) + 100,
+        isSaved: savedCourseIds.has(course.id),
+        isAiRecommended: course.is_ai_recommended
+      }));
+    }
+  });
+
+  // Mock mentors - in real implementation, this would come from a mentors table
+  const mockMentors: Mentor[] = [
+    {
+      id: '1',
+      name: 'Dr. Sarah Chen',
+      title: 'Senior Software Engineer',
+      company: 'Google',
+      expertise: ['React', 'TypeScript', 'System Design', 'Performance'],
+      rating: 4.9,
+      reviews: 127,
+      hourlyRate: 150,
+      responseTime: '< 2 hours',
+      location: 'San Francisco, CA',
+      verified: true,
+      availableSlots: 8,
+      bio: 'Former Google Tech Lead with 10+ years experience in scalable web applications and mentoring engineers.',
+      criBoost: 25
+    },
+    {
+      id: '2',
+      name: 'Marcus Johnson',
+      title: 'Principal Engineer',
+      company: 'Netflix',
+      expertise: ['Node.js', 'Microservices', 'DevOps', 'AWS'],
+      rating: 4.8,
+      reviews: 89,
+      hourlyRate: 180,
+      responseTime: '< 4 hours',
+      location: 'Seattle, WA',
+      verified: true,
+      availableSlots: 5,
+      bio: 'Netflix Principal Engineer specializing in backend systems and cloud architecture at scale.',
+      criBoost: 30
+    },
+    {
+      id: '3',
+      name: 'Emma Rodriguez',
+      title: 'Lead Developer',
+      company: 'Stripe',
+      expertise: ['JavaScript', 'Payment Systems', 'Security', 'APIs'],
+      rating: 4.7,
+      reviews: 156,
+      hourlyRate: 120,
+      responseTime: '< 6 hours',
+      location: 'Austin, TX',
+      verified: true,
+      availableSlots: 12,
+      bio: 'Stripe Lead Developer with expertise in fintech and secure payment processing systems.',
+      criBoost: 20
+    }
+  ];
+
+  // Save/unsave course mutation
+  const saveCourse = useMutation({
+    mutationFn: async ({ courseId, save }: { courseId: string; save: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      if (save) {
+        const { error } = await supabase
+          .from('saved_courses')
+          .insert({ user_id: user.id, course_id: courseId });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('saved_courses')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('course_id', courseId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recommended-courses'] });
+    }
+  });
+
+  // Generate AI recommendations
+  const generateRecommendations = async () => {
+    setIsLoadingRecommendations(true);
+    try {
+      // In a real implementation, this would call an edge function for GPT recommendations
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      
+      toast({
+        title: "🎯 Recommendations Updated!",
+        description: "Found personalized courses based on your goals and skill gaps.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate recommendations. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+
+  const handleSaveCourse = async (courseId: string, currentlySaved: boolean) => {
+    try {
+      await saveCourse.mutateAsync({ courseId, save: !currentlySaved });
+      toast({
+        title: currentlySaved ? "Course removed" : "Course saved!",
+        description: currentlySaved ? "Removed from your saved courses" : "Added to your saved courses",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update saved courses",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStartMentorChat = (mentorName: string) => {
+    navigate(`/mentor?mentor=${encodeURIComponent(mentorName)}`);
+  };
+
+  // Filter logic
   const getFilteredCourses = () => {
-    let filtered = mockCourses.filter(course => {
+    let filtered = courses.filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           course.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = selectedCategory === "all" || course.category.toLowerCase() === selectedCategory.toLowerCase();
-      const matchesVerified = !showVerifiedOnly || course.verified;
+                           course.skill_tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      return matchesSearch && matchesCategory && matchesVerified;
+      return matchesSearch;
     });
 
     // Sort courses
     switch (sortBy) {
       case "xp":
-        filtered.sort((a, b) => b.xpReward - a.xpReward);
+        filtered.sort((a, b) => (b.xpReward || 0) - (a.xpReward || 0));
         break;
       case "cri":
         filtered.sort((a, b) => (b.criBoost || 0) - (a.criBoost || 0));
         break;
       case "rating":
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case "popularity":
-        filtered.sort((a, b) => b.enrollments - a.enrollments);
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       default:
-        // Relevance - prioritize AI suggested and skill gap fillers
+        // AI recommended first
         filtered.sort((a, b) => {
-          const aScore = (a.aiSuggested ? 100 : 0) + (a.skillGapFiller ? 50 : 0);
-          const bScore = (b.aiSuggested ? 100 : 0) + (b.skillGapFiller ? 50 : 0);
-          return bScore - aScore;
+          if (a.isAiRecommended && !b.isAiRecommended) return -1;
+          if (!a.isAiRecommended && b.isAiRecommended) return 1;
+          return 0;
         });
         break;
     }
@@ -334,134 +378,409 @@ export default function Explore() {
     return filtered;
   };
 
-  const getFilteredMentors = () => {
-    let filtered = mockMentors.filter(mentor => {
-      const matchesSearch = mentor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           mentor.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           mentor.expertise.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesVerified = !showVerifiedOnly || mentor.verified;
-      
-      return matchesSearch && matchesVerified;
-    });
+  const filteredCourses = getFilteredCourses();
+  const aiRecommendedCourses = filteredCourses.filter(c => c.isAiRecommended).slice(0, 3);
+  const skillGapCourses = filteredCourses.filter(c => 
+    userProgress?.skillGaps.some(gap => 
+      c.skill_tags.some(tag => tag.toLowerCase().includes(gap.toLowerCase()))
+    )
+  ).slice(0, 3);
 
-    // Sort mentors
-    switch (sortBy) {
-      case "rating":
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case "reviews":
-        filtered.sort((a, b) => b.reviews - a.reviews);
-        break;
-      case "availability":
-        filtered.sort((a, b) => b.availableSlots - a.availableSlots);
-        break;
-      default:
-        // Relevance - prioritize next layer specialists and top rated
-        filtered.sort((a, b) => {
-          const aScore = (a.nextLayerSpecialist ? 100 : 0) + (a.topRated ? 50 : 0);
-          const bScore = (b.nextLayerSpecialist ? 100 : 0) + (b.topRated ? 50 : 0);
-          return bScore - aScore;
-        });
-        break;
-    }
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">🔍 Explore & Discover</h1>
+          <p className="text-muted-foreground text-lg">
+            AI-powered course and mentor recommendations tailored to your goals
+          </p>
+        </div>
 
-    return filtered;
-  };
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="recommendations">🎯 For You</TabsTrigger>
+                <TabsTrigger value="courses">📚 Browse Courses</TabsTrigger>
+                <TabsTrigger value="mentors">👥 Find Mentors</TabsTrigger>
+              </TabsList>
 
-  const toggleSaveItem = (itemId: string) => {
-    const newSavedItems = new Set(savedItems);
-    if (newSavedItems.has(itemId)) {
-      newSavedItems.delete(itemId);
-      toast({
-        title: "Removed from saved",
-        description: "Item removed from your saved list"
-      });
-    } else {
-      newSavedItems.add(itemId);
-      toast({
-        title: "Saved successfully",
-        description: "Item added to your saved list"
-      });
-    }
-    setSavedItems(newSavedItems);
-  };
+              {/* AI Recommendations Tab */}
+              <TabsContent value="recommendations" className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold">Recommended For You</h2>
+                  <Button 
+                    onClick={generateRecommendations}
+                    disabled={isLoadingRecommendations}
+                    className="gap-2"
+                  >
+                    {isLoadingRecommendations ? (
+                      <>
+                        <Bot className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Refresh AI Picks
+                      </>
+                    )}
+                  </Button>
+                </div>
 
-  // Get curated sections
-  const getSuggestedCourses = () => getFilteredCourses().filter(c => c.aiSuggested).slice(0, 3);
-  const getSkillGapCourses = () => getFilteredCourses().filter(c => c.skillGapFiller).slice(0, 3);
-  const getTopRatedMentors = () => getFilteredMentors().filter(m => m.topRated).slice(0, 3);
-  const getNextLayerMentors = () => getFilteredMentors().filter(m => m.nextLayerSpecialist).slice(0, 3);
+                {userProgress && (
+                  <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Brain className="w-5 h-5" />
+                        AI Analysis
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Based on your Level {userProgress.currentLevel} progress, recent goals, and CRI score of {userProgress.criScore.toFixed(1)}, 
+                        here's what we recommend:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Target className="w-4 h-4 text-primary" />
+                          <span>Focus: {userProgress.skillGaps.join(', ')}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <TrendingUp className="w-4 h-4 text-green-500" />
+                          <span>CRI Goal: {(userProgress.criScore + 20).toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-blue-500" />
+                          <span>Timeline: 4-6 weeks</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-  const CourseCard = ({ course }: { course: Course }) => (
-    <Card className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
+                {/* AI Recommended Courses */}
+                {aiRecommendedCourses.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-yellow-500" />
+                      Top AI Picks
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {aiRecommendedCourses.map((course) => (
+                        <CourseCard 
+                          key={course.id} 
+                          course={course} 
+                          onSave={handleSaveCourse}
+                          isHighlighted={true}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skill Gap Courses */}
+                {skillGapCourses.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-orange-500" />
+                      Fill Your Skill Gaps
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {skillGapCourses.map((course) => (
+                        <CourseCard 
+                          key={course.id} 
+                          course={course} 
+                          onSave={handleSaveCourse}
+                          showGapFiller={true}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Browse Courses Tab */}
+              <TabsContent value="courses" className="space-y-6">
+                {/* Filters */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Filter className="w-5 h-5" />
+                      Filter Courses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <Label htmlFor="skill-filter">Skill</Label>
+                        <Select value={selectedSkill} onValueChange={setSelectedSkill}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Skills" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Skills</SelectItem>
+                            {availableSkills.map((skill) => (
+                              <SelectItem key={skill.slug} value={skill.name}>
+                                {skill.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="platform-filter">Platform</Label>
+                        <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Platforms" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Platforms</SelectItem>
+                            <SelectItem value="Coursera">Coursera</SelectItem>
+                            <SelectItem value="Udemy">Udemy</SelectItem>
+                            <SelectItem value="edX">edX</SelectItem>
+                            <SelectItem value="AWS Training">AWS Training</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="difficulty-filter">Difficulty</Label>
+                        <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Levels" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Levels</SelectItem>
+                            <SelectItem value="Beginner">Beginner</SelectItem>
+                            <SelectItem value="Intermediate">Intermediate</SelectItem>
+                            <SelectItem value="Advanced">Advanced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="sort-filter">Sort By</Label>
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ai-recommended">AI Recommended</SelectItem>
+                            <SelectItem value="xp">XP Reward</SelectItem>
+                            <SelectItem value="cri">CRI Boost</SelectItem>
+                            <SelectItem value="rating">Rating</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Search className="w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search courses..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Course Results */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">
+                      {filteredCourses.length} Courses Found
+                    </h3>
+                  </div>
+                  
+                  {isLoadingCourses ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="h-80 bg-muted rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {filteredCourses.map((course) => (
+                        <CourseCard 
+                          key={course.id} 
+                          course={course} 
+                          onSave={handleSaveCourse}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Mentors Tab */}
+              <TabsContent value="mentors" className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-semibold mb-4">Find Expert Mentors</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Connect with industry experts who can accelerate your career growth
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {mockMentors.map((mentor) => (
+                    <MentorCard 
+                      key={mentor.id} 
+                      mentor={mentor} 
+                      onStartChat={handleStartMentorChat}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Your Focus Area
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userProgress && (
+                  <>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium">Level Progress</span>
+                        <Badge>{userProgress.currentLevel}</Badge>
+                      </div>
+                      <Progress value={65} className="h-2" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {userProgress.totalXp} XP earned
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Next Goal</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {userProgress.nextFocus}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">CRI Status</h4>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <span className="text-sm">{userProgress.criScore.toFixed(1)} / 100</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Skill Focus</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {userProgress.skillGaps.map((skill, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+
+                <Button 
+                  onClick={() => navigate('/mentor')} 
+                  className="w-full gap-2"
+                  variant="outline"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Ask Maya for Help
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Course Card Component
+function CourseCard({ 
+  course, 
+  onSave, 
+  isHighlighted = false,
+  showGapFiller = false
+}: { 
+  course: Course; 
+  onSave: (id: string, saved: boolean) => void;
+  isHighlighted?: boolean;
+  showGapFiller?: boolean;
+}) {
+  return (
+    <Card className={`transition-all duration-200 hover:shadow-lg ${
+      isHighlighted ? 'ring-2 ring-primary/20 bg-primary/5' : ''
+    }`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              {course.aiSuggested && (
+              {course.isAiRecommended && (
                 <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">
                   <Brain className="h-3 w-3 mr-1" />
-                  AI Suggested
+                  AI Pick
                 </Badge>
               )}
-              {course.skillGapFiller && (
+              {showGapFiller && (
                 <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs">
                   <Target className="h-3 w-3 mr-1" />
                   Gap Filler
                 </Badge>
               )}
-              {course.verified && (
-                <Badge className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-                  <Award className="h-3 w-3 mr-1" />
-                  Verified
-                </Badge>
-              )}
+              <Badge variant="outline" className={`text-xs ${
+                course.difficulty === 'Beginner' ? 'border-green-500 text-green-600' :
+                course.difficulty === 'Intermediate' ? 'border-yellow-500 text-yellow-600' :
+                'border-red-500 text-red-600'
+              }`}>
+                {course.difficulty}
+              </Badge>
             </div>
-            <CardTitle className="text-lg text-slate-100 group-hover:text-blue-300 transition-colors">
+            <CardTitle className="text-lg leading-tight mb-1">
               {course.title}
             </CardTitle>
-            <p className="text-sm text-slate-400 mt-1">{course.instructor} • {course.platform}</p>
+            <p className="text-sm text-muted-foreground">{course.platform}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleSaveItem(course.id)}
-            className="text-slate-400 hover:text-red-400"
+            onClick={() => onSave(course.id, course.isSaved || false)}
+            className="text-muted-foreground hover:text-red-500"
           >
-            <Heart className={`h-4 w-4 ${savedItems.has(course.id) ? 'fill-red-400 text-red-400' : ''}`} />
+            <Heart className={`h-4 w-4 ${course.isSaved ? 'fill-red-500 text-red-500' : ''}`} />
           </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-slate-300 line-clamp-2">{course.description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
         
-        {/* Tags and Badges */}
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
-            Layer {course.layer}
-          </Badge>
-          <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
-            {course.category}
-          </Badge>
-          <Badge variant="outline" className={`${
-            course.difficulty === 'Beginner' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30' :
-            course.difficulty === 'Intermediate' ? 'bg-amber-600/20 text-amber-300 border-amber-500/30' :
-            'bg-red-600/20 text-red-300 border-red-500/30'
-          }`}>
-            {course.difficulty}
-          </Badge>
-        </div>
-
-        {/* Tags */}
+        {/* Skills */}
         <div className="flex flex-wrap gap-1">
-          {course.tags.slice(0, 3).map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs bg-slate-700 text-slate-300">
+          {course.skill_tags.slice(0, 3).map((tag, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
               {tag}
             </Badge>
           ))}
-          {course.tags.length > 3 && (
-            <Badge variant="secondary" className="text-xs bg-slate-700 text-slate-300">
-              +{course.tags.length - 3}
+          {course.skill_tags.length > 3 && (
+            <Badge variant="secondary" className="text-xs">
+              +{course.skill_tags.length - 3}
             </Badge>
           )}
         </div>
@@ -469,102 +788,89 @@ export default function Explore() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-yellow-400" />
-            <span className="text-slate-300">{course.xpReward} XP</span>
-          </div>
-          {course.criBoost && (
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
-              <span className="text-slate-300">+{course.criBoost} CRI</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-400" />
-            <span className="text-slate-300">{course.duration}</span>
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            <span>{course.xpReward} XP</span>
           </div>
           <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-yellow-400" />
-            <span className="text-slate-300">{course.rating} ({course.enrollments})</span>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+            <span>+{course.criBoost} CRI</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-500" />
+            <span>{course.duration}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Star className="h-4 w-4 text-yellow-500" />
+            <span>{course.rating?.toFixed(1)}</span>
           </div>
         </div>
 
-        {/* Price and Action */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-          <span className="font-semibold text-slate-200">{course.cost}</span>
+        {/* Reasoning */}
+        {course.reasoning && (
+          <div className="p-2 bg-muted rounded-md">
+            <p className="text-xs text-muted-foreground italic">
+              💡 {course.reasoning}
+            </p>
+          </div>
+        )}
+
+        {/* Action */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <span className="font-semibold">{course.cost}</span>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="text-slate-300 border-slate-600">
-              <Plus className="h-3 w-3 mr-1" />
-              Save
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-500 text-white" size="sm">
-              <Play className="h-4 w-4 mr-2" />
-              Start
+            <Button size="sm" variant="outline" asChild>
+              <a href={course.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3 w-3 mr-1" />
+                View
+              </a>
             </Button>
           </div>
         </div>
       </CardContent>
     </Card>
   );
+}
 
-  const MentorCard = ({ mentor }: { mentor: Mentor }) => (
-    <Card className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all duration-200 group">
+// Mentor Card Component
+function MentorCard({ 
+  mentor, 
+  onStartChat 
+}: { 
+  mentor: Mentor; 
+  onStartChat: (name: string) => void;
+}) {
+  return (
+    <Card className="transition-all duration-200 hover:shadow-lg">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1">
-            <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-              <User className="h-6 w-6 text-slate-300" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                {mentor.nextLayerSpecialist && (
-                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Next Layer
-                  </Badge>
-                )}
-                {mentor.topRated && (
-                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs">
-                    <Star className="h-3 w-3 mr-1" />
-                    Top Rated
-                  </Badge>
-                )}
-                {mentor.verified && (
-                  <Badge className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
-                    <Award className="h-3 w-3 mr-1" />
-                    Verified
-                  </Badge>
-                )}
-              </div>
-              <CardTitle className="text-lg text-slate-100 group-hover:text-purple-300 transition-colors">
-                {mentor.name}
-              </CardTitle>
-              <p className="text-sm text-slate-400">{mentor.title}</p>
-              <p className="text-xs text-slate-500">{mentor.company}</p>
-            </div>
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+            {mentor.name.split(' ').map(n => n[0]).join('')}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => toggleSaveItem(mentor.id)}
-            className="text-slate-400 hover:text-red-400"
-          >
-            <Heart className={`h-4 w-4 ${savedItems.has(mentor.id) ? 'fill-red-400 text-red-400' : ''}`} />
-          </Button>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle className="text-lg">{mentor.name}</CardTitle>
+              {mentor.verified && (
+                <Award className="h-4 w-4 text-blue-500" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{mentor.title}</p>
+            <p className="text-sm text-muted-foreground">{mentor.company}</p>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-slate-300 line-clamp-2">{mentor.bio}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{mentor.bio}</p>
         
-        {/* Expertise Tags */}
-        <div className="flex flex-wrap gap-2">
+        {/* Expertise */}
+        <div className="flex flex-wrap gap-1">
           {mentor.expertise.slice(0, 3).map((skill, index) => (
-            <Badge key={index} variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
+            <Badge key={index} variant="outline" className="text-xs">
               {skill}
             </Badge>
           ))}
           {mentor.expertise.length > 3 && (
-            <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
-              +{mentor.expertise.length - 3} more
+            <Badge variant="outline" className="text-xs">
+              +{mentor.expertise.length - 3}
             </Badge>
           )}
         </div>
@@ -572,265 +878,36 @@ export default function Explore() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-yellow-400" />
-            <span className="text-slate-300">{mentor.rating} ({mentor.reviews})</span>
+            <Star className="h-4 w-4 text-yellow-500" />
+            <span>{mentor.rating} ({mentor.reviews})</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-400" />
-            <span className="text-slate-300">{mentor.responseTime}</span>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+            <span>+{mentor.criBoost} CRI</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-slate-400" />
-            <span className="text-slate-300">{mentor.location}</span>
+            <Clock className="h-4 w-4 text-blue-500" />
+            <span>{mentor.responseTime}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-emerald-400" />
-            <span className="text-slate-300">{mentor.availableSlots} slots</span>
+            <Calendar className="h-4 w-4 text-purple-500" />
+            <span>{mentor.availableSlots} slots</span>
           </div>
         </div>
 
-        {/* Price and Action */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-700">
-          <span className="font-semibold text-slate-200">
-            {mentor.hourlyRate ? `$${mentor.hourlyRate}/hr` : 'Contact for pricing'}
-          </span>
-          <Button className="bg-purple-600 hover:bg-purple-500 text-white" size="sm">
-            <Users className="h-4 w-4 mr-2" />
-            Book Session
+        {/* Action */}
+        <div className="flex items-center justify-between pt-2 border-t">
+          <span className="font-semibold">${mentor.hourlyRate}/hr</span>
+          <Button 
+            size="sm" 
+            onClick={() => onStartChat(mentor.name)}
+            className="gap-2"
+          >
+            <MessageCircle className="h-3 w-3" />
+            Ask for Advice
           </Button>
         </div>
       </CardContent>
     </Card>
-  );
-
-  return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
-      <div className="container mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
-            🌟 Explore Learning Paths
-          </h1>
-          <p className="text-slate-400 text-lg">
-            Discover courses, mentors, and resources tailored to your learning journey and skill gaps
-          </p>
-        </div>
-
-        {/* User Progress Context */}
-        <Card className="bg-gradient-to-r from-slate-800 to-slate-700 border-slate-600 rounded-xl shadow-lg mb-6">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-blue-400" />
-                  <span className="text-slate-300">Current Layer: <span className="font-semibold text-white">{userLayer}</span></span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Lock className="h-5 w-5 text-amber-400" />
-                  <span className="text-slate-300">Next Layer Skills: <span className="font-semibold text-amber-300">{skillGaps.join(', ')}</span></span>
-                </div>
-              </div>
-              <Badge className="bg-blue-600 hover:bg-blue-500">
-                <Sparkles className="h-3 w-3 mr-1" />
-                AI Personalized
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Search and Filters */}
-        <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search courses, mentors, or skills..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400"
-                />
-              </div>
-
-              {/* Category Filter */}
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[200px] bg-slate-700 border-slate-600 text-slate-100">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="frontend">Frontend</SelectItem>
-                  <SelectItem value="backend">Backend</SelectItem>
-                  <SelectItem value="cloud">Cloud</SelectItem>
-                  <SelectItem value="devops">DevOps</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Sort By */}
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-slate-100">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="relevance">Relevance</SelectItem>
-                  <SelectItem value="xp">XP Reward</SelectItem>
-                  <SelectItem value="cri">CRI Boost</SelectItem>
-                  <SelectItem value="rating">Rating</SelectItem>
-                  <SelectItem value="popularity">Popularity</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Verified Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="verified-only"
-                  checked={showVerifiedOnly}
-                  onCheckedChange={setShowVerifiedOnly}
-                />
-                <Label htmlFor="verified-only" className="text-slate-300">Verified Only</Label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-slate-800 border-slate-700">
-            <TabsTrigger value="courses" className="data-[state=active]:bg-slate-700">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Courses
-            </TabsTrigger>
-            <TabsTrigger value="mentors" className="data-[state=active]:bg-slate-700">
-              <Users className="h-4 w-4 mr-2" />
-              Mentors
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Courses Tab */}
-          <TabsContent value="courses" className="space-y-8">
-            {/* AI Suggested Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Brain className="h-5 w-5 text-blue-400" />
-                <h2 className="text-2xl font-semibold text-slate-100">Suggested for You</h2>
-                <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">AI Curated</Badge>
-              </div>
-              <p className="text-slate-400">Courses tailored to your current progress and career goals</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getSuggestedCourses().map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
-            </div>
-
-            {/* Skill Gap Fillers */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-orange-400" />
-                <h2 className="text-2xl font-semibold text-slate-100">Skill Gap Fillers</h2>
-                <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white">Unlock Next Layer</Badge>
-              </div>
-              <p className="text-slate-400">Complete these to unlock Layer {userLayer + 1} in your skill tree</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getSkillGapCourses().map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
-            </div>
-
-            {/* All Courses */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-slate-100">All Courses</h2>
-                <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
-                  {getFilteredCourses().length} courses
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getFilteredCourses().map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Mentors Tab */}
-          <TabsContent value="mentors" className="space-y-8">
-            {/* Top-Rated Mentors */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-400" />
-                <h2 className="text-2xl font-semibold text-slate-100">Top-Rated Mentors</h2>
-                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">Highest Rated</Badge>
-              </div>
-              <p className="text-slate-400">Industry experts with exceptional mentoring track records</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getTopRatedMentors().map((mentor) => (
-                  <MentorCard key={mentor.id} mentor={mentor} />
-                ))}
-              </div>
-            </div>
-
-            {/* Next Layer Specialists */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-purple-400" />
-                <h2 className="text-2xl font-semibold text-slate-100">Next Layer Specialists</h2>
-                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">Layer {userLayer + 1}</Badge>
-              </div>
-              <p className="text-slate-400">Mentors specializing in skills you need for your next advancement</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getNextLayerMentors().map((mentor) => (
-                  <MentorCard key={mentor.id} mentor={mentor} />
-                ))}
-              </div>
-            </div>
-
-            {/* All Mentors */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-slate-100">All Mentors</h2>
-                <Badge variant="outline" className="bg-slate-700 border-slate-600 text-slate-300">
-                  {getFilteredMentors().length} mentors
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getFilteredMentors().map((mentor) => (
-                  <MentorCard key={mentor.id} mentor={mentor} />
-                ))}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Saved Items Quick Access */}
-        {savedItems.size > 0 && (
-          <Card className="bg-slate-800 border-slate-700 rounded-xl shadow-lg mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-100">
-                <Bookmark className="h-5 w-5 text-purple-400" />
-                Saved Items ({savedItems.size})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 flex-wrap">
-                {Array.from(savedItems).map((itemId) => {
-                  const course = mockCourses.find(c => c.id === itemId);
-                  const mentor = mockMentors.find(m => m.id === itemId);
-                  const item = course || mentor;
-                  
-                  return item ? (
-                    <Badge key={itemId} variant="outline" className="bg-purple-600/20 border-purple-500/30 text-purple-300">
-                      {course ? course.title : mentor?.name}
-                    </Badge>
-                  ) : null;
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
   );
 }
