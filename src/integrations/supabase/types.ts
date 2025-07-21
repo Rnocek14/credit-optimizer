@@ -846,6 +846,60 @@ export type Database = {
           },
         ]
       }
+      salary_insights: {
+        Row: {
+          career_path_id: string
+          created_at: string
+          created_by: string | null
+          data_source: string | null
+          experience_level: string
+          id: string
+          location_id: string
+          notes: string | null
+          reported_salary: number
+          source: string
+        }
+        Insert: {
+          career_path_id: string
+          created_at?: string
+          created_by?: string | null
+          data_source?: string | null
+          experience_level: string
+          id?: string
+          location_id: string
+          notes?: string | null
+          reported_salary: number
+          source: string
+        }
+        Update: {
+          career_path_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_source?: string | null
+          experience_level?: string
+          id?: string
+          location_id?: string
+          notes?: string | null
+          reported_salary?: number
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_insights_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_insights_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_courses: {
         Row: {
           course_id: string
