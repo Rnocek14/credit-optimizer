@@ -81,7 +81,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   goalSkillIds
 }) => {
   const [showVisaEligibility, setShowVisaEligibility] = useState(false);
-  const [sortBy, setSortBy] = useState<'roi' | 'colAdjustedRoi' | 'jobMarket'>('roi');
+  const [sortBy, setSortBy] = useState<'roi' | 'colAdjustedRoi' | 'jobMarket' | 'lqi'>('roi');
   
   // Mock current user region for visa calculations
   const currentUserRegion = 'india';
@@ -148,6 +148,15 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
     const colAdjustedROI = uplift / (totalCost * location.costOfLiving);
     const isVisaEligible = location.visaEligible[currentUserRegion as keyof typeof location.visaEligible];
     
+    // Calculate LQI components
+    const roiScore = roi;
+    const colScore = 100 - (location.costOfLiving * 100);
+    const jobMarketScore = location.jobMarket === 'High' ? 100 : location.jobMarket === 'Medium' ? 65 : 30;
+    const visaScore = isVisaEligible ? 100 : 30;
+    
+    // LQI formula: (ROI × 0.4) + (COL Score × 0.25) + (Job Market Score × 0.25) + (Visa Score × 0.10)
+    const lqi = (roiScore * 0.4) + (colScore * 0.25) + (jobMarketScore * 0.25) + (visaScore * 0.10);
+    
     return {
       ...location,
       adjustedSalary,
@@ -156,9 +165,15 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
       colAdjustedROI,
       totalCost,
       totalMonths,
-      isVisaEligible
+      isVisaEligible,
+      lqi,
+      roiScore,
+      colScore,
+      jobMarketScore,
+      visaScore
     };
   }).sort((a, b) => {
+    if (sortBy === 'lqi') return b.lqi - a.lqi;
     if (sortBy === 'colAdjustedRoi') return b.colAdjustedROI - a.colAdjustedROI;
     if (sortBy === 'jobMarket') {
       const jobMarketOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
@@ -170,6 +185,11 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   // Find top locations for different metrics
   const topROILocations = [...locationROIData].sort((a, b) => b.roi - a.roi).slice(0, 2);
   const topCOLROILocations = [...locationROIData].sort((a, b) => b.colAdjustedROI - a.colAdjustedROI).slice(0, 2);
+  const topLQILocation = [...locationROIData].sort((a, b) => b.lqi - a.lqi)[0];
+  const lqiRange = {
+    min: Math.min(...locationROIData.map(l => l.lqi)),
+    max: Math.max(...locationROIData.map(l => l.lqi))
+  };
 
   return (
     <TooltipProvider>
@@ -212,6 +232,12 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                 className={`px-3 py-1 text-xs rounded ${sortBy === 'jobMarket' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
               >
                 Sort by Jobs
+              </button>
+              <button
+                onClick={() => setSortBy('lqi')}
+                className={`px-3 py-1 text-xs rounded ${sortBy === 'lqi' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+              >
+                Sort by LQI
               </button>
             </div>
           </div>
@@ -292,6 +318,25 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
                     </span>
                   </div>
 
+                  {/* LQI Score */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs cursor-help">🏆</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-sm">LQI Breakdown:</p>
+                          <p>ROI {location.roiScore.toFixed(1)}× | COL {location.colScore.toFixed(0)} | Job {location.jobMarketScore} | Visa {location.visaScore}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <span className="text-xs text-muted-foreground">LQI</span>
+                    </div>
+                    <span className="text-sm font-bold text-amber-600">
+                      {location.lqi.toFixed(1)}
+                    </span>
+                  </div>
+
                   {/* Job Availability */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
@@ -358,6 +403,21 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
 
         {/* Summary Stats */}
         <div className="mt-6 pt-4 border-t">
+          <div className="grid grid-cols-2 gap-4 text-center mb-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Top LQI Region</p>
+              <p className="font-semibold text-sm">
+                🌍 {topLQILocation?.emoji} {topLQILocation?.label} (LQI {topLQILocation?.lqi.toFixed(1)})
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">LQI Range</p>
+              <p className="font-semibold text-sm">
+                {lqiRange.min.toFixed(1)} – {lqiRange.max.toFixed(1)}
+              </p>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-xs text-muted-foreground">Best ROI</p>
@@ -383,7 +443,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
             </div>
           </div>
           <p className="text-xs text-muted-foreground text-center mt-4">
-            *Based on regional adjustments and cost of living factors
+            *LQI combines ROI, cost of living, job market, and visa factors for comprehensive ranking
           </p>
         </div>
       </CardContent>
