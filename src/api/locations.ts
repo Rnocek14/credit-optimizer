@@ -38,7 +38,7 @@ export interface LocationMetrics {
  * Fetch all active locations from Supabase
  */
 export const fetchLocations = async (): Promise<LocationData[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('locations')
     .select('*')
     .eq('active', true)
@@ -49,7 +49,7 @@ export const fetchLocations = async (): Promise<LocationData[]> => {
     throw new Error('Failed to fetch locations');
   }
   
-  return data.map(location => ({
+  return data.map((location: any) => ({
     ...location,
     coordinates: location.coordinates as [number, number],
     visa_eligibility: location.visa_eligibility as Record<string, boolean>
@@ -60,7 +60,7 @@ export const fetchLocations = async (): Promise<LocationData[]> => {
  * Fetch continent bounds for map auto-focusing
  */
 export const fetchContinentBounds = async (): Promise<ContinentBoundsData[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('continent_bounds')
     .select('*');
   
@@ -69,7 +69,7 @@ export const fetchContinentBounds = async (): Promise<ContinentBoundsData[]> => 
     return [];
   }
   
-  return data.map(bound => ({
+  return data.map((bound: any) => ({
     continent: bound.continent,
     bounds: bound.bounds as { center: [number, number]; scale: number }
   }));
@@ -83,7 +83,7 @@ export const fetchFilteredLocations = async (filters: {
   visa_eligible_from?: string;
   job_market?: string;
 }): Promise<LocationData[]> => {
-  let query = supabase
+  let query = (supabase as any)
     .from('locations')
     .select('*')
     .eq('active', true);
@@ -103,7 +103,7 @@ export const fetchFilteredLocations = async (filters: {
     throw new Error('Failed to fetch filtered locations');
   }
   
-  let filteredData = data.map(location => ({
+  let filteredData = data.map((location: any) => ({
     ...location,
     coordinates: location.coordinates as [number, number],
     visa_eligibility: location.visa_eligibility as Record<string, boolean>

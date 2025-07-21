@@ -84,7 +84,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   const { data: locations = [], isLoading: locationsLoading } = useQuery({
     queryKey: ['locations'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('locations')
         .select('*')
         .eq('active', true)
@@ -95,7 +95,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
         throw error;
       }
       
-      return data.map(location => ({
+      return data.map((location: any) => ({
         ...location,
         coordinates: location.coordinates as [number, number],
         visa_eligibility: location.visa_eligibility as Record<string, boolean>
@@ -107,7 +107,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
   const { data: continentBounds = [] } = useQuery({
     queryKey: ['continent-bounds'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('continent_bounds')
         .select('*');
       
@@ -116,7 +116,7 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
         return [];
       }
       
-      return data.map(bound => ({
+      return data.map((bound: any) => ({
         continent: bound.continent,
         bounds: bound.bounds as { center: [number, number]; scale: number }
       })) as ContinentBounds[];
