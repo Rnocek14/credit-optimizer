@@ -28,6 +28,7 @@ import MentorInbox from "./pages/MentorInbox";
 import ResumeEmbed from "./pages/ResumeEmbed";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Analytics from "./pages/Analytics";
+import MentorChat from "./pages/MentorChat";
 import AdminBadges from "./pages/AdminBadges";
 import EmbedExplorer from "./pages/EmbedExplorer";
 import AdminModeration from "./pages/AdminModeration";
@@ -138,7 +139,15 @@ const App = () => (
             } 
           />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/mentor" element={<MentorInbox />} />
+        <Route 
+          path="/mentor" 
+          element={
+            <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+              <MentorChat />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/mentor-inbox" element={<MentorInbox />} />
         <Route path="/embed/:resumeId" element={<ResumeEmbed />} />
         <Route path="/embed-generator" element={<EmbedGenerator />} />
         <Route 
