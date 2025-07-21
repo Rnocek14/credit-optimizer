@@ -39,7 +39,7 @@ const SkillTree = () => {
   const navigate = useNavigate();
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategories, setActiveCategories] = useState<string[]>(['Technical', 'Soft Skills', 'Career', 'Tools']);
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [showOnlyRecommended, setShowOnlyRecommended] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
@@ -59,6 +59,29 @@ const SkillTree = () => {
       return data as Skill[];
     }
   });
+
+  // Fetch unique categories from skills
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['skill-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('skills')
+        .select('category')
+        .not('category', 'is', null);
+      
+      if (error) throw error;
+      
+      const uniqueCategories = [...new Set(data.map(item => item.category))];
+      return uniqueCategories;
+    }
+  });
+
+  // Initialize activeCategories with all categories once they're loaded
+  useEffect(() => {
+    if (categories.length > 0 && activeCategories.length === 0) {
+      setActiveCategories(categories);
+    }
+  }, [categories, activeCategories.length]);
 
   // Fetch user progress with auth helper
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
@@ -184,7 +207,7 @@ const SkillTree = () => {
       });
   };
 
-  if (skillsLoading || progressLoading || edgesLoading) {
+  if (skillsLoading || progressLoading || edgesLoading || categoriesLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -270,6 +293,7 @@ const SkillTree = () => {
         showGoalPathOnly={showGoalPathOnly}
         onGoalPathOnlyToggle={setShowGoalPathOnly}
         skillCounts={skillCounts}
+        availableCategories={categories}
       />
 
       {/* Interactive Skill Tree */}

@@ -29,14 +29,50 @@ interface SkillTreeFiltersProps {
     inProgress: number;
     recommended: number;
   };
+  availableCategories: string[];
 }
 
-const categories = [
-  { name: 'Technical', color: 'bg-blue-100 text-blue-800', icon: '🧠' },
-  { name: 'Soft Skills', color: 'bg-green-100 text-green-800', icon: '💡' },
-  { name: 'Career', color: 'bg-purple-100 text-purple-800', icon: '🎯' },
-  { name: 'Tools', color: 'bg-orange-100 text-orange-800', icon: '🛠️' }
-];
+// Category icons mapping
+const getCategoryIcon = (category: string) => {
+  const iconMap: { [key: string]: string } = {
+    'API': '🔗',
+    'Backend': '⚙️',
+    'Cloud': '☁️',
+    'Design': '🎨',
+    'DevOps': '🚀',
+    'Framework': '🛠️',
+    'Markup': '📝',
+    'Programming': '💻',
+    'Quality': '✅',
+    'Styling': '🎭',
+    'Technical': '🧠',
+    'Soft Skills': '💡',
+    'Career': '🎯',
+    'Tools': '🛠️'
+  };
+  return iconMap[category] || '📚';
+};
+
+// Category colors mapping
+const getCategoryColor = (category: string) => {
+  const colorMap: { [key: string]: string } = {
+    'API': 'bg-blue-100 text-blue-800',
+    'Backend': 'bg-green-100 text-green-800',
+    'Cloud': 'bg-cyan-100 text-cyan-800',
+    'Design': 'bg-pink-100 text-pink-800',
+    'DevOps': 'bg-purple-100 text-purple-800',
+    'Framework': 'bg-orange-100 text-orange-800',
+    'Markup': 'bg-yellow-100 text-yellow-800',
+    'Programming': 'bg-indigo-100 text-indigo-800',
+    'Quality': 'bg-emerald-100 text-emerald-800',
+    'Styling': 'bg-rose-100 text-rose-800',
+    'Technical': 'bg-blue-100 text-blue-800',
+    'Soft Skills': 'bg-green-100 text-green-800',
+    'Career': 'bg-purple-100 text-purple-800',
+    'Tools': 'bg-orange-100 text-orange-800'
+  };
+  return colorMap[category] || 'bg-gray-100 text-gray-800';
+};
 
 export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
   searchTerm,
@@ -53,7 +89,8 @@ export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
   onRecommendedNextToggle,
   showGoalPathOnly,
   onGoalPathOnlyToggle,
-  skillCounts
+  skillCounts,
+  availableCategories
 }) => {
   return (
     <Card className="mb-6">
@@ -82,19 +119,19 @@ export const SkillTreeFilters: React.FC<SkillTreeFiltersProps> = ({
         <div>
           <Label className="text-sm font-medium mb-3 block">Categories</Label>
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+            {availableCategories.map((category) => (
               <Badge
-                key={category.name}
-                variant={activeCategories.includes(category.name) ? "default" : "outline"}
+                key={category}
+                variant={activeCategories.includes(category) ? "default" : "outline"}
                 className={`cursor-pointer transition-all ${
-                  activeCategories.includes(category.name) 
-                    ? category.color 
+                  activeCategories.includes(category) 
+                    ? getCategoryColor(category)
                     : 'hover:bg-muted'
                 }`}
-                onClick={() => onCategoryToggle(category.name)}
+                onClick={() => onCategoryToggle(category)}
               >
-                <span className="mr-1">{category.icon}</span>
-                {category.name}
+                <span className="mr-1">{getCategoryIcon(category)}</span>
+                {category}
               </Badge>
             ))}
           </div>
