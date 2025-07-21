@@ -40,6 +40,7 @@ interface InteractiveSkillTreeProps {
   layoutMode?: string;
   careerPathName?: string;
   showPivotPaths?: boolean;
+  onSkillRate?: (skillId: string) => void;
 }
 
 export const InteractiveSkillTree = React.memo(({
@@ -55,7 +56,8 @@ export const InteractiveSkillTree = React.memo(({
   showMinimap = true,
   layoutMode = 'hierarchy',
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  onSkillRate
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -119,6 +121,7 @@ export const InteractiveSkillTree = React.memo(({
         onSkillClick={onSkillClick}
         careerPathName={careerPathName}
         showPivotPaths={showPivotPaths}
+        onSkillRate={onSkillRate}
       />
     </SkillTreeErrorBoundary>
   );

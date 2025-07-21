@@ -10,6 +10,10 @@ import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
 import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { LocationDropdown } from '@/components/LocationDropdown';
 import { LocationROIExplorer } from '@/components/LocationROIExplorer';
+import { SkillTreeSearch } from '@/components/SkillTreeSearch';
+import { SkillTreeProgressBar } from '@/components/SkillTreeProgressBar';
+import { SkillTreeGameification } from '@/components/SkillTreeGameification';
+import { SkillRatingModal } from '@/components/SkillRatingModal';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -56,6 +60,8 @@ const SkillTree = () => {
   const [selectedLocation, setSelectedLocation] = useState('united-states');
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
   const [showPivotPaths, setShowPivotPaths] = useState(false);
+  const [skillRatingModal, setSkillRatingModal] = useState<{ skill: Skill; rating?: number; notes?: string } | null>(null);
+  const [userSkillRatings, setUserSkillRatings] = useState<Map<string, { rating: number; notes: string; confidence: number }>>(new Map());
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -378,6 +384,50 @@ const SkillTree = () => {
       });
   };
 
+  const handleSkillRating = (skillId: string) => {
+    const skill = skills.find(s => s.id === skillId);
+    if (skill) {
+      const currentRating = userSkillRatings.get(skillId);
+      setSkillRatingModal({
+        skill,
+        rating: currentRating?.rating,
+        notes: currentRating?.notes
+      });
+    }
+  };
+
+  const handleSaveSkillRating = (rating: number, notes: string, confidence: number) => {
+    if (skillRatingModal?.skill) {
+      setUserSkillRatings(prev => new Map(prev.set(skillRatingModal.skill.id, { rating, notes, confidence })));
+      toast({
+        title: "Rating Saved",
+        description: `Your ${rating}/5 rating for ${skillRatingModal.skill.name} has been saved.`
+      });
+    }
+  };
+
+  const handleSkillFocus = (skillId: string) => {
+    const skill = skills.find(s => s.id === skillId);
+    if (skill) {
+      setSelectedSkill(skill);
+      // Auto-scroll to skill in tree
+      const element = document.querySelector(`[data-skill-id="${skillId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
+  // Mock user data for gamification
+  const mockUserLevel = Math.max(1, Math.floor(skillCounts.completed / 5) + 1);
+  const mockTotalXP = skillCounts.completed * 100 + skillCounts.inProgress * 50;
+  const mockStreakDays = 7; // Mock streak
+  const mockAchievements = [
+    { id: '1', name: 'First Steps', description: 'Completed your first skill', icon: '🚀', earned: skillCounts.completed > 0, earnedAt: new Date() },
+    { id: '2', name: 'Getting Started', description: 'Completed 5 skills', icon: '🎯', earned: skillCounts.completed >= 5 },
+    { id: '3', name: 'Streak Master', description: '7 day learning streak', icon: '🔥', earned: mockStreakDays >= 7 },
+  ];
+
   // Show error state if there are critical errors
   if (skillsError) {
     return (
@@ -446,6 +496,44 @@ const SkillTree = () => {
               {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Enhanced Header Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Progress & Search */}
+        <div className="lg:col-span-2 space-y-4">
+          <SkillTreeSearch
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onSkillSelect={handleSkillFocus}
+            skills={skills}
+            filteredSkills={filteredSkills}
+          />
+          
+          <SkillTreeProgressBar
+            totalSkills={skillCounts.total}
+            completedSkills={skillCounts.completed}
+            inProgressSkills={skillCounts.inProgress}
+            goalSkills={goalSkills.length}
+            completedGoalSkills={goalSkills.filter(id => userProgress.find(p => p.skill_id === id)?.status === 'completed').length}
+            recommendedSkills={skillCounts.recommended}
+            isLoading={skillsLoading || progressLoading}
+          />
+        </div>
+
+        {/* Gamification Panel */}
+        <div>
+          <SkillTreeGameification
+            userLevel={mockUserLevel}
+            totalXP={mockTotalXP}
+            xpForNextLevel={(mockUserLevel + 1) * 500}
+            currentLevelXP={mockTotalXP % 500}
+            streakDays={mockStreakDays}
+            skillsCompleted={skillCounts.completed}
+            achievements={mockAchievements}
+            showMini={true}
+          />
         </div>
       </div>
 

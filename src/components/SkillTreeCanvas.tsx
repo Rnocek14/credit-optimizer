@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EnhancedSkillTreeNode } from './EnhancedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
+import { SkillTreeMinimap } from './SkillTreeMinimap';
+import { SkillTreeControls } from './SkillTreeControls';
 
 // Enhanced performance tracking with feature monitoring
 const performanceTracker = {
@@ -74,6 +76,7 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
   careerPathName?: string;
   showPivotPaths?: boolean;
+  onSkillRate?: (skillId: string) => void;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -88,7 +91,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  onSkillRate
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -98,6 +102,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
+  const [showMinimap, setShowMinimap] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
@@ -523,27 +528,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Enhanced Zoom Controls */}
-      <div className="absolute top-4 left-4 z-20 flex gap-2">
-        <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
-          onClick={() => setZoomLevel(prev => Math.min(prev * 1.2, 3))}
-        >
-          Zoom In
-        </button>
-        <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
-          onClick={() => setZoomLevel(prev => Math.max(prev * 0.8, 0.2))}
-        >
-          Zoom Out
-        </button>
-        <button
-          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
-          onClick={fitToView}
-        >
-          Fit to View
-        </button>
-      </div>
+      {/* Enhanced Controls */}
+      <SkillTreeControls
+        zoomLevel={zoomLevel}
+        onZoomIn={() => setZoomLevel(prev => Math.min(prev * 1.2, 3))}
+        onZoomOut={() => setZoomLevel(prev => Math.max(prev * 0.8, 0.2))}
+        onFitToView={fitToView}
+        onReset={() => {
+          setZoomLevel(0.8);
+          setPanOffset({ x: 0, y: 0 });
+        }}
+        onToggleMinimap={() => setShowMinimap(!showMinimap)}
+        showMinimap={showMinimap}
+      />
 
       {/* Enhanced Stats Display */}
       <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
@@ -695,6 +692,26 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           );
         })}
       </div>
+
+      {/* Minimap */}
+      {showMinimap && (
+        <SkillTreeMinimap
+          skills={filteredSkills}
+          skillPositions={skillPositions}
+          userProgress={userProgress}
+          goalSkills={goalSkills}
+          checkpointSkills={checkpointSkills}
+          recommendedSkills={recommendedSkills}
+          currentViewport={{
+            x: panOffset.x,
+            y: panOffset.y,
+            zoom: zoomLevel,
+            width: containerDimensions.width,
+            height: containerDimensions.height
+          }}
+          onViewportChange={(x, y) => setPanOffset({ x, y })}
+        />
+      )}
 
       {/* Pivot Path Modal */}
       {selectedPivotPath && (
