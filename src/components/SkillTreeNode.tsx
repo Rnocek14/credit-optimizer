@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 
 interface SkillTreeNodeProps {
   skill: {
@@ -27,7 +27,7 @@ interface SkillTreeNodeProps {
   isInPath?: boolean;
 }
 
-export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
+export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
   skill,
   userProgress,
   position,
@@ -135,4 +135,4 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = ({
       )}
     </div>
   );
-};
+});

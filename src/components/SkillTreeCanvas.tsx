@@ -1,6 +1,56 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { SkillTreeNode } from './SkillTreeNode';
+
+// Performance tracking utilities
+const performanceTracker = {
+  startTime: 0,
+  frameCount: 0,
+  lastFrameTime: 0,
+  
+  startTracking() {
+    this.startTime = performance.now();
+    this.frameCount = 0;
+    this.lastFrameTime = performance.now();
+  },
+  
+  trackFrame() {
+    this.frameCount++;
+    const currentTime = performance.now();
+    const deltaTime = currentTime - this.lastFrameTime;
+    this.lastFrameTime = currentTime;
+    
+    if (this.frameCount % 30 === 0) {
+      const avgFrameTime = (currentTime - this.startTime) / this.frameCount;
+      const fps = 1000 / deltaTime;
+      console.log(`[SkillTree Performance] Avg Frame Time: ${avgFrameTime.toFixed(2)}ms, Current FPS: ${fps.toFixed(1)}`);
+    }
+  },
+  
+  endTracking() {
+    const totalTime = performance.now() - this.startTime;
+    const avgFps = this.frameCount / (totalTime / 1000);
+    console.log(`[SkillTree Performance] Total render time: ${totalTime.toFixed(2)}ms, Avg FPS: ${avgFps.toFixed(1)}, Total frames: ${this.frameCount}`);
+  }
+};
+
+// Debounce utility
+function useDebounce<T extends (...args: any[]) => any>(
+  callback: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  
+  return useCallback((...args: Parameters<T>) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+}
 
 interface SkillTreeCanvasProps {
   skills: Array<{
@@ -29,7 +79,7 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
 }
 
-export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
+export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   skills,
   userProgress,
   skillEdges,
@@ -45,7 +95,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [containerDimensions, setContainerDimensions] = useState({ width: 1200, height: 800 });
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
+  const [renderStartTime, setRenderStartTime] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const animationFrameRef = useRef<number>();
 
   // Memoized category colors for consistent theming
   const getCategoryColor = useCallback((category: string) => {
@@ -242,7 +294,40 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return positions;
   }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
 
-  // Auto-fit to view on layout changes
+  // Debounced fit-to-view for performance
+  const debouncedFitToView = useDebounce(() => {
+    if (skillPositions.size === 0) return;
+
+    const positions = Array.from(skillPositions.values());
+    const xs = positions.map(p => p.x);
+    const ys = positions.map(p => p.y);
+    
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    const contentWidth = maxX - minX + 120;
+    const contentHeight = maxY - minY + 100;
+    const padding = 50;
+
+    const viewportWidth = containerDimensions.width - padding * 2;
+    const viewportHeight = containerDimensions.height - padding * 2;
+
+    const scaleX = viewportWidth / contentWidth;
+    const scaleY = viewportHeight / contentHeight;
+    const newZoom = Math.min(scaleX, scaleY, 1.2);
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const offsetX = containerDimensions.width / 2 - centerX * newZoom;
+    const offsetY = containerDimensions.height / 2 - centerY * newZoom;
+
+    setZoomLevel(newZoom);
+    setPanOffset({ x: offsetX, y: offsetY });
+  }, 150);
+
+  // Immediate fit-to-view for button clicks
   const fitToView = useCallback(() => {
     if (skillPositions.size === 0) return;
 
@@ -275,29 +360,59 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     setPanOffset({ x: offsetX, y: offsetY });
   }, [skillPositions, containerDimensions]);
 
-  // Auto-fit on layout changes
+  // Auto-fit on layout changes with debouncing
   useEffect(() => {
+    setRenderStartTime(performance.now());
+    performanceTracker.startTracking();
+    
     const timeoutId = setTimeout(() => {
       requestAnimationFrame(() => {
-        fitToView();
+        debouncedFitToView();
+        performanceTracker.endTracking();
       });
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [fitToView, filteredSkills.length]);
+  }, [debouncedFitToView, filteredSkills.length]);
 
-  // Container resize handling
+  // Performance tracking for zoom/pan
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setContainerDimensions({ width: rect.width, height: rect.height });
+    const trackPerformance = () => {
+      performanceTracker.trackFrame();
+      animationFrameRef.current = requestAnimationFrame(trackPerformance);
+    };
+    
+    if (isDragging || Math.abs(zoomLevel - 0.8) > 0.01) {
+      trackPerformance();
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
+  }, [isDragging, zoomLevel]);
 
-    handleResize();
+  // Debounced container resize handling
+  const debouncedResize = useDebounce(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setContainerDimensions({ width: rect.width, height: rect.height });
+    }
+  }, 100);
+
+  useEffect(() => {
+    const handleResize = () => {
+      debouncedResize();
+    };
+
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setContainerDimensions({ width: rect.width, height: rect.height });
+    }
+    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [debouncedResize]);
 
   // Mouse drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -320,18 +435,55 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     setIsDragging(false);
   }, []);
 
-  // Bezier path calculation for smooth arrows
-  const calculateBezierPath = useCallback((fromX: number, fromY: number, toX: number, toY: number) => {
-    const dx = toX - fromX;
-    const dy = toY - fromY;
+  // Memoized arrow paths to prevent unnecessary SVG redraws
+  const arrowPaths = useMemo(() => {
+    const paths = new Map<string, string>();
     
-    const controlPoint1X = fromX;
-    const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
-    const controlPoint2X = toX;
-    const controlPoint2Y = toY - Math.abs(dy) * 0.3;
+    skillEdges.forEach(edge => {
+      const from = skillPositions.get(edge.prerequisite_skill_id);
+      const to = skillPositions.get(edge.skill_id);
+      if (!from || !to) return;
+      
+      const fromX = from.x + 60;
+      const fromY = from.y + 80;
+      const toX = to.x + 60;
+      const toY = to.y;
+      
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      
+      const controlPoint1X = fromX;
+      const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
+      const controlPoint2X = toX;
+      const controlPoint2Y = toY - Math.abs(dy) * 0.3;
+      
+      const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
+      paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
+    });
     
-    return `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
-  }, []);
+    return paths;
+  }, [skillEdges, skillPositions]);
+
+  // Performance benchmark logging
+  useEffect(() => {
+    if (renderStartTime > 0) {
+      const renderTime = performance.now() - renderStartTime;
+      console.log(`[SkillTree Benchmark] Rendered ${filteredSkills.length} skills in ${renderTime.toFixed(2)}ms`);
+      
+      // Benchmark categories
+      if (filteredSkills.length <= 12) {
+        console.log(`[Benchmark] Small tree (≤12 skills): ${renderTime.toFixed(2)}ms - Target: <100ms`);
+      } else if (filteredSkills.length <= 25) {
+        console.log(`[Benchmark] Medium tree (13-25 skills): ${renderTime.toFixed(2)}ms - Target: <200ms`);
+      } else if (filteredSkills.length <= 50) {
+        console.log(`[Benchmark] Large tree (26-50 skills): ${renderTime.toFixed(2)}ms - Target: <400ms`);
+      } else {
+        console.log(`[Benchmark] XL tree (50+ skills): ${renderTime.toFixed(2)}ms - Consider virtualization`);
+      }
+      
+      setRenderStartTime(0);
+    }
+  }, [filteredSkills.length, renderStartTime]);
 
   return (
     <div 
@@ -400,30 +552,17 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           </marker>
         </defs>
         
-        {skillEdges.map(edge => {
-          const from = skillPositions.get(edge.prerequisite_skill_id);
-          const to = skillPositions.get(edge.skill_id);
-          if (!from || !to) return null;
-          
-          const fromX = from.x + 60;
-          const fromY = from.y + 80;
-          const toX = to.x + 60;
-          const toY = to.y;
-          
-          const pathData = calculateBezierPath(fromX, fromY, toX, toY);
-          
-          return (
-            <path
-              key={`${edge.prerequisite_skill_id}-${edge.skill_id}`}
-              d={pathData}
-              stroke="#64748b"
-              strokeWidth="2"
-              fill="none"
-              markerEnd="url(#arrowhead)"
-              opacity="0.7"
-            />
-          );
-        })}
+        {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => (
+          <path
+            key={edgeKey}
+            d={pathData}
+            stroke="#64748b"
+            strokeWidth="2"
+            fill="none"
+            markerEnd="url(#arrowhead)"
+            opacity="0.7"
+          />
+        ))}
       </svg>
 
       {/* Node Layer */}
@@ -462,4 +601,4 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       </div>
     </div>
   );
-};
+});
