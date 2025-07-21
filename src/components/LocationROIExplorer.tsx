@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MapPin, DollarSign, TrendingUp, Clock, Receipt, Lightbulb, Briefcase, Globe, Filter, MessageSquare, Plus } from 'lucide-react';
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
+import { SalaryContributionModal } from './SalaryContributionModal';
 
 interface LocationROIExplorerProps {
   selectedCareerPathId: string | null;
@@ -438,9 +439,15 @@ export const LocationROIExplorer: React.FC<LocationROIExplorerProps> = ({
             <MapPin className="h-5 w-5" />
             🌍 Relocation ROI Explorer
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Compare {careerPath.title} earning potential across different locations
-          </p>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Compare {careerPath.title} earning potential across different locations
+            </p>
+            <SalaryContributionModal 
+              selectedCareerPathId={selectedCareerPathId}
+              locations={locations.map(loc => ({ id: loc.id, label: loc.label, emoji: loc.emoji }))}
+            />
+          </div>
           
           {/* Filter Controls */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/30">
