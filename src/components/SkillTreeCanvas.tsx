@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
+import { validateSkillTree, getSafeSkillTreeData, calculateSkillDepthsSafely } from '@/lib/skillTreeValidation';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 // Simplified performance tracking
 const performanceTracker = {
@@ -98,6 +100,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [keyboardFocused, setKeyboardFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
@@ -184,29 +188,39 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
-  // Memoized skill depth calculation for hierarchical layout
+  // Data validation with improved error handling
+  const validationResult = useMemo(() => {
+    return validateSkillTree(filteredSkills, skillEdges);
+  }, [filteredSkills, skillEdges]);
+
+  // Update validation errors with user notifications
+  useEffect(() => {
+    if (validationResult.errors.length > 0) {
+      setValidationErrors(validationResult.errors);
+      console.warn('Skill tree validation errors:', validationResult.errors);
+      
+      // Show critical error notification for first error only (to avoid spam)
+      if (validationResult.errors.length === 1) {
+        console.error(`🚨 Skill Tree Error: ${validationResult.errors[0]}`);
+      } else {
+        console.error(`🚨 Skill Tree: ${validationResult.errors.length} data integrity issues detected`);
+      }
+    } else {
+      setValidationErrors([]);
+    }
+
+    if (validationResult.warnings.length > 0) {
+      console.info('Skill tree validation warnings:', validationResult.warnings);
+      // Non-critical warnings are just logged for debugging
+    }
+  }, [validationResult]);
+
+  // Safe skill depth calculation using new validation system
   const getSkillDepthMap = useCallback(() => {
     if (!filteredSkills.length || !skillEdges.length) return new Map();
     
-    const depthMap = new Map();
-    const visited = new Set();
-
-    const dfs = (skillId: string, depth: number) => {
-      if (visited.has(skillId)) return;
-      visited.add(skillId);
-      depthMap.set(skillId, depth);
-      
-      const children = skillEdges.filter(e => e.prerequisite_skill_id === skillId);
-      children.forEach(edge => dfs(edge.skill_id, depth + 1));
-    };
-
-    // Start DFS from skills with no prerequisites
-    const skillsWithPrereqs = new Set(skillEdges.map(e => e.skill_id));
-    const rootSkills = filteredSkills.filter(skill => !skillsWithPrereqs.has(skill.id));
-    
-    rootSkills.forEach(skill => dfs(skill.id, 0));
-    
-    return depthMap;
+    // Use the safer depth calculation with circular dependency detection
+    return calculateSkillDepthsSafely(filteredSkills, skillEdges);
   }, [filteredSkills, skillEdges]);
 
   // Memoized hierarchical layout generation
@@ -508,6 +522,55 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setSelectedPivotPath(branch);
   }, []);
 
+  // Keyboard navigation setup
+  const keyboardNavigationItems = useMemo(() => 
+    filteredSkills.map(skill => ({ id: skill.id, name: skill.name })),
+    [filteredSkills]
+  );
+
+  const {
+    selectedIndex: keyboardSelectedIndex,
+    focusSelectedItem,
+    setSelectedIndex: setKeyboardSelectedIndex
+  } = useKeyboardNavigation({
+    items: keyboardNavigationItems,
+    onSelect: (item, index) => {
+      const skill = filteredSkills[index];
+      if (skill) {
+        handleSkillClick(skill);
+        setKeyboardFocused(true);
+      }
+    },
+    onEscape: () => {
+      setKeyboardFocused(false);
+      if (containerRef.current) {
+        containerRef.current.focus();
+      }
+    },
+    onSearch: (query) => {
+      // Find first skill matching search query
+      const matchIndex = filteredSkills.findIndex(skill => 
+        skill.name.toLowerCase().startsWith(query.toLowerCase())
+      );
+      if (matchIndex >= 0) {
+        setKeyboardSelectedIndex(matchIndex);
+        const skill = filteredSkills[matchIndex];
+        handleSkillClick(skill);
+      }
+    },
+    disabled: selectedPivotPath !== null, // Disable when modal is open
+    gridColumns: Math.ceil(Math.sqrt(filteredSkills.length)) // Dynamic grid layout
+  });
+
+  // Handle container focus for keyboard navigation
+  const handleContainerFocus = useCallback(() => {
+    setKeyboardFocused(true);
+  }, []);
+
+  const handleContainerBlur = useCallback(() => {
+    setKeyboardFocused(false);
+  }, []);
+
   // Simplified performance logging
   useEffect(() => {
     performanceTracker.log(`Rendered ${filteredSkills.length} skills`);
@@ -522,7 +585,37 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onFocus={handleContainerFocus}
+      onBlur={handleContainerBlur}
+      tabIndex={0}
+      role="application"
+      aria-label="Interactive Skill Tree - Use arrow keys to navigate, Enter to select skills, Escape to exit"
+      aria-describedby="skill-tree-instructions"
     >
+      {/* Validation Error Display */}
+      {validationErrors.length > 0 && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-lg shadow">
+          <strong>Data Issues Detected:</strong>
+          <ul className="text-sm mt-1">
+            {validationErrors.slice(0, 3).map((error, index) => (
+              <li key={index}>• {error}</li>
+            ))}
+            {validationErrors.length > 3 && (
+              <li>• ... and {validationErrors.length - 3} more issues</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Hidden instructions for screen readers */}
+      <div id="skill-tree-instructions" className="sr-only">
+        Interactive skill tree with {filteredSkills.length} skills. 
+        Use arrow keys to navigate between skills, Enter or Space to select, 
+        Escape to exit selection mode. Type to search for skills by name.
+        {keyboardFocused && keyboardNavigationItems[keyboardSelectedIndex] && 
+          ` Currently focused: ${keyboardNavigationItems[keyboardSelectedIndex].name}`
+        }
+      </div>
       {/* Zoom Controls */}
       <div className="absolute top-4 left-4 z-20 flex gap-2">
         <button
@@ -551,6 +644,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           <div>Skills: {filteredSkills.length}</div>
           <div>Categories: {availableCategories.length}</div>
           <div>Zoom: {Math.round(zoomLevel * 100)}%</div>
+          {keyboardFocused && (
+            <div className="text-blue-600 font-medium">
+              Keyboard Mode: {keyboardSelectedIndex + 1}/{filteredSkills.length}
+            </div>
+          )}
+          {validationResult.warnings.length > 0 && (
+            <div className="text-amber-600 text-xs">
+              ⚠️ {validationResult.warnings.length} warnings
+            </div>
+          )}
         </div>
       </div>
 
@@ -652,7 +755,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           transformOrigin: '0 0'
         }}
       >
-        {filteredSkills.map(skill => {
+        {filteredSkills.map((skill, index) => {
           const position = skillPositions.get(skill.id);
           if (!position) return null;
           
@@ -660,24 +763,46 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           const isRecommended = recommendedSkills.includes(skill.id);
           const hasCourses = skillsWithCourses.includes(skill.id);
           const isInPath = highlightedSkillPath.includes(skill.id);
+          const isKeyboardSelected = keyboardFocused && index === keyboardSelectedIndex;
           
           return (
-            <OptimizedSkillTreeNode
+            <div
               key={skill.id}
-              skill={skill}
-              userProgress={progress}
-              position={position}
-              onClick={() => handleSkillClick(skill)}
-              categoryColor={getCategoryColor(skill.category)}
-              isRecommended={isRecommended}
-              isGoalSkill={goalSkills.includes(skill.id)}
-              isCheckpoint={checkpointSkills.includes(skill.id)}
-              hasCourses={hasCourses}
-              size="medium"
-              isInPath={isInPath}
-              onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
-              careerPathName={careerPathName}
-            />
+              data-skill-index={index}
+              data-skill-id={skill.id}
+              tabIndex={isKeyboardSelected ? 0 : -1}
+              className={`focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg ${
+                isKeyboardSelected ? 'ring-2 ring-blue-400 ring-offset-2' : ''
+              }`}
+              style={{
+                position: 'absolute',
+                left: position.x - 2,
+                top: position.y - 2,
+                width: 124,
+                height: 84,
+                zIndex: isKeyboardSelected ? 100 : 10
+              }}
+              role="button"
+              aria-label={`Skill: ${skill.name}, Category: ${skill.category}, Level: ${skill.difficulty_level}${
+                progress ? `, Status: ${progress.status}` : ''
+              }`}
+            >
+              <OptimizedSkillTreeNode
+                skill={skill}
+                userProgress={progress}
+                position={{ x: 2, y: 2 }}
+                onClick={() => handleSkillClick(skill)}
+                categoryColor={getCategoryColor(skill.category)}
+                isRecommended={isRecommended}
+                isGoalSkill={goalSkills.includes(skill.id)}
+                isCheckpoint={checkpointSkills.includes(skill.id)}
+                hasCourses={hasCourses}
+                size="medium"
+                isInPath={isInPath || isKeyboardSelected}
+                onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
+                careerPathName={careerPathName}
+              />
+            </div>
           );
         })}
       </div>
