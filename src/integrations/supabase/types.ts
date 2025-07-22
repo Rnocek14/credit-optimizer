@@ -1447,6 +1447,53 @@ export type Database = {
           },
         ]
       }
+      user_step_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          status: string | null
+          step_id: string | null
+          updated_at: string
+          user_id: string
+          verified: boolean | null
+          verified_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          step_id?: string | null
+          updated_at?: string
+          user_id: string
+          verified?: boolean | null
+          verified_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          step_id?: string | null
+          updated_at?: string
+          user_id?: string
+          verified?: boolean | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_step_progress_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_xp: {
         Row: {
           created_at: string
