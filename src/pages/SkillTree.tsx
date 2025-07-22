@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
@@ -10,15 +10,11 @@ import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
 import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { LocationDropdown } from '@/components/LocationDropdown';
 import { LocationROIExplorer } from '@/components/LocationROIExplorer';
-import { CareerProgressMeter } from '@/components/CareerProgressMeter';
-import { CheckpointCommitmentModal } from '@/components/CheckpointCommitmentModal';
-import { useCareerSelection } from '@/hooks/useCareerSelection';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
-import { useSampleCareerData } from '@/hooks/useSampleCareerData';
 
 interface Skill {
   id: string;
@@ -61,302 +57,299 @@ const SkillTree = () => {
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
   const [showPivotPaths, setShowPivotPaths] = useState(false);
 
-  // Use ref to track if categories have been initialized
-  const hasInitializedCategories = useRef(false);
-
-  // Initialize career selection hook with stable reference
-  const careerSelection = useCareerSelection();
-  const {
-    careerPaths,
-    selectedCareerPath: careerSelectedCareerPath,
-    activeSelection,
-    userProgress: careerUserProgress,
-    progressData,
-    showCheckpointModal,
-    checkpointSkill,
-    selectCareerPath,
-    checkForCheckpoint,
-    getSkillClassification,
-    getAvailablePathsForCheckpoint,
-    setShowCheckpointModal,
-    isLoading: careerLoading
-  } = careerSelection;
-
-  // Fetch skills with stable cache and fallbacks
+  // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
-      console.log('[SkillTree] Fetching skills...');
-      try {
-        const { data, error } = await supabase
-          .from('skills')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
-        console.log(`[SkillTree] Loaded ${data?.length || 0} skills`);
-        return data as Skill[];
-      } catch (error) {
-        console.error('[SkillTree] Skills fetch failed:', error);
-        // Return stable fallback skills for demo
-        return [
-          { id: '1', name: 'JavaScript', category: 'Programming', description: 'Programming language', difficulty_level: 2, xp_value: 20, slug: 'javascript' },
-          { id: '2', name: 'React', category: 'Programming', description: 'Frontend framework', difficulty_level: 3, xp_value: 30, slug: 'react' },
-          { id: '3', name: 'Figma', category: 'Design', description: 'Design tool', difficulty_level: 2, xp_value: 25, slug: 'figma' },
-          { id: '4', name: 'Adobe XD', category: 'Design', description: 'Design tool', difficulty_level: 2, xp_value: 25, slug: 'adobe-xd' },
-          { id: '5', name: 'User Research', category: 'Design', description: 'User research methods', difficulty_level: 3, xp_value: 35, slug: 'user-research' }
-        ] as Skill[];
+      console.log('Fetching skills...');
+      const { data, error } = await supabase
+        .from('skills')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Skills fetch error:', error);
+        throw error;
       }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    refetchOnWindowFocus: false
+      console.log('Skills fetched:', data?.length || 0);
+      return data as Skill[];
+    }
   });
 
-  // Fetch categories with fallbacks and stable cache
+  // Fetch categories with error handling
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['skill-categories'],
     queryFn: async () => {
-      console.log('[SkillTree] Fetching categories...');
-      try {
-        const { data, error } = await supabase
-          .from('skills')
-          .select('category')
-          .not('category', 'is', null)
-          .neq('category', '');
-        
-        if (error) throw error;
-        
-        const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
-        console.log(`[SkillTree] Loaded categories:`, uniqueCategories);
-        return uniqueCategories;
-      } catch (error) {
-        console.error('[SkillTree] Categories fetch failed:', error);
-        return ['Programming', 'Design', 'Data', 'Product', 'Marketing'];
+      console.log('Fetching categories...');
+      const { data, error } = await supabase
+        .from('skills')
+        .select('category')
+        .not('category', 'is', null);
+      
+      if (error) {
+        console.error('Categories fetch error:', error);
+        throw error;
       }
-    },
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    refetchOnWindowFocus: false
+      
+      const uniqueCategories = [...new Set(data.map(item => item.category))];
+      console.log('Categories fetched:', uniqueCategories);
+      return uniqueCategories;
+    }
   });
 
-  // Initialize activeCategories with all categories once they're loaded (prevent infinite loop)
+  // Initialize activeCategories with all categories once they're loaded
   useEffect(() => {
-    if (!hasInitializedCategories.current && categories.length > 0 && activeCategories.length === 0) {
+    if (categories.length > 0 && activeCategories.length === 0) {
       setActiveCategories(categories);
-      hasInitializedCategories.current = true;
     }
-  }, [categories.length]); // Only depend on categories.length, not categories array
+  }, [categories, activeCategories.length]);
 
-  // Fetch user progress with stable cache and fallbacks
+  // Fetch user progress with better error handling
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ['user-skill-progress'],
     queryFn: async () => {
-      console.log('[SkillTree] Fetching user progress...');
-      try {
-        const user = await getCurrentUser();
-        if (!user) {
-          console.log('[SkillTree] No user found, creating demo progress');
-          // Create stable mock progress for demo
-          return skills.slice(0, Math.min(skills.length, 8)).map((skill, index): UserProgress => ({
-            skill_id: skill.id,
-            status: index < 2 ? 'completed' : 
-                   index < 4 ? 'in_progress' : 
-                   index < 6 ? 'available' : 'locked',
-            xp_earned: index < 2 ? skill.xp_value : 
-                      index < 4 ? Math.floor(skill.xp_value * 0.6) : 0,
-            cri_score: index < 2 ? 85 + (index * 5) : undefined,
-            verification_source: index < 2 ? 'demo' : undefined,
-          }));
-        }
-
-        const { data, error } = await supabase
-          .from('user_skill_progress')
-          .select('*')
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
-        
-        console.log(`[SkillTree] Loaded ${data?.length || 0} progress records`);
-        
-        return (data || []).map(item => ({
-          skill_id: item.skill_id,
-          status: item.status as 'locked' | 'available' | 'in_progress' | 'completed',
-          xp_earned: item.xp_earned || 0,
-          cri_score: item.cri_score || undefined,
-          verification_source: item.verification_source || undefined,
-        }));
-      } catch (error) {
-        console.error('[SkillTree] Progress fetch failed:', error);
-        // Return stable fallback progress
-        return skills.slice(0, Math.min(skills.length, 5)).map((skill, index): UserProgress => ({
+      console.log('Fetching user progress...');
+      const user = await getCurrentUser();
+      if (!user) {
+        console.log('No user found, creating mock progress');
+        // Create mock progress for demo purposes
+        return skills.slice(0, 5).map((skill, index) => ({
           skill_id: skill.id,
-          status: index < 2 ? 'completed' : 'available',
-          xp_earned: index < 2 ? skill.xp_value : 0,
-          cri_score: index < 2 ? 80 + Math.random() * 15 : undefined,
-          verification_source: index < 2 ? 'fallback' : undefined,
-        }));
+          status: index < 2 ? 'completed' : index < 4 ? 'in_progress' : 'available',
+          xp_earned: index < 2 ? skill.xp_value : index < 4 ? Math.floor(skill.xp_value * 0.5) : 0,
+        })) as UserProgress[];
       }
+
+      const { data, error } = await supabase
+        .from('user_skill_progress')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (error) {
+        console.error('Progress fetch error:', error);
+        throw error;
+      }
+      console.log('User progress fetched:', data?.length || 0);
+      return data as UserProgress[];
     },
-    enabled: skills.length > 0,
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false
+    enabled: !!skills.length
   });
 
-  // Fetch skill edges with fallbacks and stable cache
+  // Fetch skill edges with error handling
   const { data: skillEdges = [], isLoading: edgesLoading } = useQuery({
     queryKey: ['skill-edges'],
     queryFn: async () => {
-      console.log('[SkillTree] Fetching skill edges...');
-      try {
-        const { data, error } = await supabase
-          .from('skill_graph_edges')
-          .select('*');
-        
-        if (error) throw error;
-        
-        console.log(`[SkillTree] Loaded ${data?.length || 0} skill edges`);
-        return data as SkillEdge[];
-      } catch (error) {
-        console.error('[SkillTree] Edges fetch failed:', error);
-        // Return stable fallback edges
-        return [
-          { prerequisite_skill_id: '1', skill_id: '2' },
-          { prerequisite_skill_id: '2', skill_id: '5' }
-        ] as SkillEdge[];
+      console.log('Fetching skill edges...');
+      const { data, error } = await supabase
+        .from('skill_graph_edges')
+        .select('*');
+      
+      if (error) {
+        console.error('Skill edges fetch error:', error);
+        throw error;
       }
-    },
-    enabled: skills.length > 0,
-    staleTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false
+      console.log('Skill edges fetched:', data?.length || 0);
+      return data as SkillEdge[];
+    }
   });
 
-  // Fetch skills with courses with stable cache
+  // Fetch skills with courses
   const { data: skillsWithCourses = [], isLoading: skillsWithCoursesLoading } = useQuery({
     queryKey: ['skills-with-courses'],
     queryFn: async () => {
-      console.log('[SkillTree] Fetching skills with courses...');
-      try {
-        const { data, error } = await supabase
-          .from('course_skill_map')
-          .select('skill_id');
-        
-        if (error) throw error;
-        
-        console.log(`[SkillTree] Loaded ${data?.length || 0} course mappings`);
-        return data?.map(item => item.skill_id) || [];
-      } catch (error) {
-        console.error('[SkillTree] Course mappings fetch failed:', error);
-        return skills.slice(0, 3).map(skill => skill.id); // Fallback
+      console.log('Fetching skills with courses...');
+      const { data, error } = await supabase
+        .from('course_skill_map')
+        .select('skill_id');
+      
+      if (error) {
+        console.error('Skills with courses fetch error:', error);
+        throw error;
       }
-    },
-    enabled: skills.length > 0,
-    staleTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false
+      console.log('Skills with courses fetched:', data?.length || 0);
+      return data?.map(item => item.skill_id) || [];
+    }
   });
 
-  // Initialize sample career data
-  const { isCreating: creatingCareerData, skillsLoaded, pathsExist } = useSampleCareerData();
+  // Mock recommended skills for now
+  const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
-  // Use career hook's user progress if available, otherwise fall back to existing (stable memoization)
-  const effectiveUserProgress = useMemo(() => {
-    return careerUserProgress?.length > 0 
-      ? careerUserProgress.map(p => ({
-          skill_id: p.skill_id,
-          status: p.status as 'locked' | 'available' | 'in_progress' | 'completed',
-          xp_earned: p.xp_earned,
-          cri_score: (p as any).cri_score || undefined,
-          verification_source: (p as any).verification_source || undefined
-        }))
-      : userProgress;
-  }, [careerUserProgress, userProgress]);
+  // Fixed career steps query - using proper UUID validation and error handling
+  const { data: careerSteps = [] } = useQuery({
+    queryKey: ['career-steps', selectedCareerPath],
+    queryFn: async () => {
+      if (!selectedCareerPath) return [];
+      
+      // Validate if selectedCareerPath is a valid UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (!uuidRegex.test(selectedCareerPath)) {
+        console.log('Career path is not a UUID, using mock data for:', selectedCareerPath);
+        // Return mock UX Designer skills for non-UUID career paths
+        return [
+          { title: 'User Research', category: 'Design', is_checkpoint: false },
+          { title: 'Wireframing', category: 'Design', is_checkpoint: true },
+          { title: 'Prototyping', category: 'Design', is_checkpoint: false },
+          { title: 'Figma', category: 'Design', is_checkpoint: false },
+          { title: 'Adobe Creative Suite', category: 'Design', is_checkpoint: true },
+          { title: 'Information Architecture', category: 'Design', is_checkpoint: false },
+          { title: 'Usability Testing', category: 'Design', is_checkpoint: false },
+          { title: 'Design Systems', category: 'Design', is_checkpoint: true }
+        ];
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('roadmap_steps')
+          .select('*')
+          .eq('user_id', selectedCareerPath)
+          .order('order_index');
+        
+        if (error) {
+          console.error('Career steps fetch error:', error);
+          return [];
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Unexpected error fetching career steps:', err);
+        return [];
+      }
+    },
+    enabled: !!selectedCareerPath,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes to reduce re-fetching
+  });
 
-  // Stable recommended skills (memoized)
-  const recommendedSkills = useMemo(() => {
-    return skills.slice(0, 3).map(skill => skill.id);
-  }, [skills]);
+  // Fixed career path data query with proper error handling
+  const { data: selectedCareerPathData } = useQuery({
+    queryKey: ['career-path-data', selectedCareerPath],
+    queryFn: async () => {
+      if (!selectedCareerPath) return null;
+      
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (!uuidRegex.test(selectedCareerPath)) {
+        // Return mock UX Designer data for non-UUID career paths
+        return {
+          id: selectedCareerPath,
+          title: 'UX Designer',
+          average_salary: 78000
+        };
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('career_paths')
+          .select('*')
+          .eq('id', selectedCareerPath)
+          .single();
+        
+        if (error) {
+          console.error('Career path fetch error:', error);
+          return null;
+        }
+        
+        return data;
+      } catch (err) {
+        console.error('Unexpected error fetching career path:', err);
+        return null;
+      }
+    },
+    enabled: !!selectedCareerPath,
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
+  });
 
-  // Enhanced goal skills using career selection with stable fallback
-  const goalSkills = useMemo(() => {
-    if (careerSelectedCareerPath?.required_skill_ids?.length > 0) {
-      return careerSelectedCareerPath.required_skill_ids;
+  // Memoized goal skills to prevent unnecessary recalculations
+  const goalSkills = React.useMemo(() => {
+    if (!careerSteps.length) {
+      // Default UX Designer skills
+      return skills
+        .filter(skill => 
+          skill.category === 'Design' || 
+          skill.name.toLowerCase().includes('figma') ||
+          skill.name.toLowerCase().includes('adobe') ||
+          skill.name.toLowerCase().includes('research') ||
+          skill.name.toLowerCase().includes('wireframe') ||
+          skill.name.toLowerCase().includes('prototype')
+        )
+        .slice(0, 8)
+        .map(skill => skill.id);
     }
     
-    if (skills.length === 0) return [];
-    
-    // Default UX Designer skills as stable fallback
+    // Map career steps to actual skills
+    const stepNames = careerSteps.map(step => step.title.toLowerCase());
     return skills
       .filter(skill => 
-        skill.category === 'Design' || 
-        skill.name.toLowerCase().includes('figma') ||
-        skill.name.toLowerCase().includes('adobe') ||
-        skill.name.toLowerCase().includes('research') ||
-        skill.name.toLowerCase().includes('wireframe') ||
-        skill.name.toLowerCase().includes('prototype')
+        stepNames.some(stepName => 
+          skill.name.toLowerCase().includes(stepName) ||
+          stepName.includes(skill.name.toLowerCase())
+        )
       )
-      .slice(0, 8)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath?.required_skill_ids, skills]);
+  }, [careerSteps, skills]);
 
-  // Enhanced checkpoint skills with stable fallback
-  const checkpointSkills = useMemo(() => {
-    if (careerSelectedCareerPath?.checkpoint_skill_id) {
-      return [careerSelectedCareerPath.checkpoint_skill_id];
+  // Memoized checkpoint skills
+  const checkpointSkills = React.useMemo(() => {
+    if (!careerSteps.length) {
+      // Default checkpoints for UX Designer
+      return skills
+        .filter(skill => 
+          skill.name.toLowerCase().includes('wireframe') ||
+          skill.name.toLowerCase().includes('adobe') ||
+          skill.name.toLowerCase().includes('design system')
+        )
+        .map(skill => skill.id);
     }
     
-    if (skills.length === 0) return [];
-    
-    // Default checkpoints for UX Designer as stable fallback
+    const checkpointSteps = careerSteps.filter(step => (step as any).is_checkpoint === true);
+    const stepNames = checkpointSteps.map(step => step.title.toLowerCase());
     return skills
       .filter(skill => 
-        skill.name.toLowerCase().includes('wireframe') ||
-        skill.name.toLowerCase().includes('adobe') ||
-        skill.name.toLowerCase().includes('design system')
+        stepNames.some(stepName => 
+          skill.name.toLowerCase().includes(stepName) ||
+          stepName.includes(skill.name.toLowerCase())
+        )
       )
-      .slice(0, 3)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath?.checkpoint_skill_id, skills]);
+  }, [careerSteps, skills]);
 
-  // Stable handle skill click function
-  const handleSkillClick = useCallback((skill: Skill) => {
-    setSelectedSkill(skill);
+  // Filter skills based on current filters
+  const filteredSkills = skills.filter(skill => {
+    const progress = userProgress.find(p => p.skill_id === skill.id);
     
-    // Check if this skill triggers a checkpoint
-    const progress = effectiveUserProgress.find(p => p.skill_id === skill.id);
-    if (progress?.status === 'completed' && checkForCheckpoint) {
-      checkForCheckpoint(skill.id);
-    }
-  }, [effectiveUserProgress, checkForCheckpoint]);
+    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = activeCategories.includes(skill.category);
+    const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
+    const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
+    const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
+    const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
+    
+    return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
+  });
 
-  // Stable career path select handler
-  const handleCareerPathSelect = useCallback((pathId: string) => {
-    selectCareerPath(pathId);
-    toast({
-      title: "Career Path Selected",
-      description: "Your skill tree has been updated to focus on your chosen career path.",
-    });
-  }, [selectCareerPath, toast]);
+  // Calculate skill counts
+  const skillCounts = {
+    total: skills.length,
+    completed: userProgress.filter(p => p.status === 'completed').length,
+    inProgress: userProgress.filter(p => p.status === 'in_progress').length,
+    recommended: recommendedSkills.length,
+    withCourses: skillsWithCourses.length
+  };
 
-  // Stable checkpoint path select handler
-  const handleCheckpointPathSelect = useCallback((pathId: string) => {
-    selectCareerPath(pathId);
-    setShowCheckpointModal(false);
-    toast({
-      title: "Career Specialization Chosen",
-      description: "You've successfully committed to your career specialization path!",
-    });
-  }, [selectCareerPath, setShowCheckpointModal, toast]);
-
-  // Stable category toggle handler
-  const handleCategoryToggle = useCallback((category: string) => {
+  const handleCategoryToggle = (category: string) => {
     setActiveCategories(prev => 
       prev.includes(category) 
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
-  }, []);
+  };
 
-  // Stable plan skill handler
-  const handlePlanSkill = useCallback((skillId: string) => {
+  const handleSkillClick = (skill: Skill) => {
+    setSelectedSkill(skill);
+  };
+
+  const handlePlanSkill = (skillId: string) => {
     const skill = skills.find(s => s.id === skillId);
     if (skill) {
       navigate('/mentor-chat', { 
@@ -365,14 +358,13 @@ const SkillTree = () => {
         } 
       });
     }
-  }, [skills, navigate]);
+  };
 
-  // Stable helper functions
-  const getSkillProgress = useCallback((skillId: string) => {
+  const getSkillProgress = (skillId: string) => {
     return userProgress.find(p => p.skill_id === skillId);
-  }, [userProgress]);
+  };
 
-  const getSkillPrerequisites = useCallback((skillId: string) => {
+  const getSkillPrerequisites = (skillId: string) => {
     return skillEdges
       .filter(edge => edge.skill_id === skillId)
       .map(edge => {
@@ -384,99 +376,21 @@ const SkillTree = () => {
           completed: progress?.status === 'completed'
         };
       });
-  }, [skillEdges, skills, getSkillProgress]);
+  };
 
-  // Filter skills based on current filters with improved debugging and defensive logic
-  const filteredSkills = useMemo(() => {
-    return skills.filter(skill => {
-      const progress = userProgress.find(p => p.skill_id === skill.id);
-      
-      const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Defensive category matching - handle null/undefined categories
-      const matchesCategory = activeCategories.length === 0 || !skill.category || activeCategories.includes(skill.category);
-      
-      const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
-      const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
-      const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
-      const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
-      
-      const pass = matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
-
-      // Debug logging for filtered out skills
-      if (!pass) {
-        console.log('Skill filtered out:', {
-          name: skill.name,
-          category: skill.category,
-          matchesSearch,
-          matchesCategory,
-          matchesRecommended,
-          matchesUnlocked,
-          matchesRecommendedNext,
-          matchesGoalPath,
-          activeCategories: activeCategories.length,
-          searchTerm
-        });
-      }
-
-      return pass;
-    });
-  }, [skills, userProgress, searchTerm, activeCategories, showOnlyRecommended, recommendedSkills, showUnlockedOnly, showRecommendedNext, goalSkills, showGoalPathOnly]);
-
-  // Calculate skill counts (stable memoization)
-  const skillCounts = useMemo(() => ({
-    total: skills.length,
-    completed: userProgress.filter(p => p.status === 'completed').length,
-    inProgress: userProgress.filter(p => p.status === 'in_progress').length,
-    recommended: recommendedSkills.length,
-    withCourses: skillsWithCourses.length
-  }), [skills.length, userProgress, recommendedSkills.length, skillsWithCourses.length]);
-
-  // Reset all filters function
-  const handleResetFilters = useCallback(() => {
-    setSearchTerm('');
-    setActiveCategories(categories); // Reset to all categories
-    setShowOnlyRecommended(false);
-    setShowUnlockedOnly(false);
-    setShowRecommendedNext(false);
-    setShowGoalPathOnly(false);
-    setFocusMode(false);
-    console.log('Filters reset - all categories active:', categories);
-    toast({
-      title: "Filters Reset",
-      description: "All filters have been cleared and categories reset.",
-    });
-  }, [categories, toast]);
-
-  // Test mode - bypass all filters
-  const [testMode, setTestMode] = useState(false);
-  const displayedSkills = useMemo(() => {
-    if (testMode) {
-      console.log('Test mode active - showing all skills:', skills.length);
-      return skills;
-    }
-    return filteredSkills;
-  }, [testMode, skills, filteredSkills]);
-
-  // Improved loading logic - allow rendering with just skills loaded
-  const isInitialLoading = skillsLoading && skills.length === 0;
-  const isDataReady = !skillsLoading && skills.length > 0;
-  
-  console.log('[SkillTree] Render state:', {
-    skillsLoaded: skills.length,
-    categoriesLoaded: categories.length,
-    filteredSkillsCount: filteredSkills.length,
-    skillEdgesCount: skillEdges.length,
-    isDataReady
-  });
-  
   // Show error state if there are critical errors
   if (skillsError) {
-    console.error('[SkillTree] Critical error, showing fallback UI:', skillsError);
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-red-800 text-lg font-semibold mb-2">Error Loading Skills</h2>
+          <p className="text-red-700">Unable to load the skill tree. Please try refreshing the page.</p>
+        </div>
+      </div>
+    );
   }
-  
-  if (isInitialLoading) {
+
+  if (skillsLoading || progressLoading || edgesLoading || categoriesLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -501,7 +415,6 @@ const SkillTree = () => {
             <h1 className="text-3xl font-bold">Skill Tree</h1>
             <p className="text-muted-foreground">
               Visualize your learning journey and discover courses for each skill
-              {!pathsExist && creatingCareerData && " • Setting up career data..."}
             </p>
           </div>
         </div>
@@ -511,27 +424,10 @@ const SkillTree = () => {
             onLocationChange={setSelectedLocation}
           />
           <CareerGoalDropdown 
-            selectedCareerPath={careerSelectedCareerPath?.id || null}
-            onCareerPathChange={handleCareerPathSelect}
+            selectedCareerPath={selectedCareerPath}
+            onCareerPathChange={setSelectedCareerPath}
           />
           <div className="flex items-center gap-2">
-            {/* Debug Controls */}
-            <Button 
-              variant={testMode ? "default" : "outline"}
-              size="sm" 
-              onClick={() => setTestMode(!testMode)}
-              className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-            >
-              🧪 {testMode ? 'Exit Test' : 'Test Mode'}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleResetFilters}
-              className="bg-blue-100 text-blue-800 hover:bg-blue-200"
-            >
-              🔄 Reset Filters
-            </Button>
             <ExportTreeButton containerRef={skillTreeRef} />
             <Button 
               variant={showPivotPaths ? "default" : "outline"}
@@ -553,15 +449,6 @@ const SkillTree = () => {
         </div>
       </div>
 
-      {/* Career Progress Meter */}
-      {careerSelectedCareerPath && (
-        <CareerProgressMeter
-          selectedCareerPath={careerSelectedCareerPath}
-          progressData={progressData}
-          userLocation={selectedLocation}
-        />
-      )}
-
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-blue-50 p-4 rounded-lg">
@@ -570,7 +457,6 @@ const SkillTree = () => {
             <span className="text-sm font-medium text-blue-900">Total Skills</span>
           </div>
           <div className="text-2xl font-bold text-blue-600">{skillCounts.total}</div>
-          {testMode && <div className="text-xs text-yellow-600">Test: {displayedSkills.length} shown</div>}
         </div>
         <div className="bg-green-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -599,153 +485,101 @@ const SkillTree = () => {
             <span className="text-sm font-medium text-cyan-900">With Courses</span>
           </div>
           <div className="text-2xl font-bold text-cyan-600">{skillCounts.withCourses}</div>
-          {testMode && <div className="text-xs text-yellow-600">Filtered: {filteredSkills.length}</div>}
         </div>
       </div>
 
-      {/* Show content when data is ready */}
-      {isDataReady && (
-        <>
-          {/* Filters */}
-          <SkillTreeFilters
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            activeCategories={activeCategories}
-            onCategoryToggle={handleCategoryToggle}
-            showOnlyRecommended={showOnlyRecommended}
-            onRecommendedToggle={setShowOnlyRecommended}
-            focusMode={focusMode}
-            onFocusModeToggle={setFocusMode}
-            showUnlockedOnly={showUnlockedOnly}
-            onUnlockedOnlyToggle={setShowUnlockedOnly}
-            showRecommendedNext={showRecommendedNext}
-            onRecommendedNextToggle={setShowRecommendedNext}
-            showGoalPathOnly={showGoalPathOnly}
-            onGoalPathOnlyToggle={setShowGoalPathOnly}
-            skillCounts={skillCounts}
+      {/* Filters */}
+      <SkillTreeFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        activeCategories={activeCategories}
+        onCategoryToggle={handleCategoryToggle}
+        showOnlyRecommended={showOnlyRecommended}
+        onRecommendedToggle={setShowOnlyRecommended}
+        focusMode={focusMode}
+        onFocusModeToggle={setFocusMode}
+        showUnlockedOnly={showUnlockedOnly}
+        onUnlockedOnlyToggle={setShowUnlockedOnly}
+        showRecommendedNext={showRecommendedNext}
+        onRecommendedNextToggle={setShowRecommendedNext}
+        showGoalPathOnly={showGoalPathOnly}
+        onGoalPathOnlyToggle={setShowGoalPathOnly}
+        skillCounts={skillCounts}
+        availableCategories={categories}
+      />
+
+      {/* Performance Test Section */}
+      {showPerformanceTest && <SkillTreePerformanceTest />}
+
+      {/* Main Content with Skill Tree and ROI Panel */}
+      <div className="flex gap-6">
+        {/* Interactive Skill Tree */}
+        <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
+          <InteractiveSkillTree
+            skills={skills}
+            userProgress={userProgress}
+            skillEdges={skillEdges}
+            filteredSkills={filteredSkills}
+            recommendedSkills={recommendedSkills}
+            goalSkills={goalSkills}
+            checkpointSkills={checkpointSkills}
             availableCategories={categories}
+            onSkillClick={handleSkillClick}
+            careerPathName={selectedCareerPathData?.title}
+            showPivotPaths={showPivotPaths}
           />
+        </div>
 
-          {/* Performance Test Section */}
-          {showPerformanceTest && <SkillTreePerformanceTest />}
-
-          {/* Main Content with Skill Tree and ROI Panel */}
-          <div className="flex gap-6">
-            {/* Interactive Skill Tree */}
-            <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
-              <InteractiveSkillTree
-                skills={skills}
-                userProgress={effectiveUserProgress}
-                skillEdges={skillEdges}
-                filteredSkills={displayedSkills}
-                recommendedSkills={recommendedSkills}
-                goalSkills={goalSkills}
-                checkpointSkills={checkpointSkills}
-                availableCategories={categories}
-                onSkillClick={handleSkillClick}
-                careerPathName={careerSelectedCareerPath?.title}
-                showPivotPaths={showPivotPaths}
-                selectedCareerPath={careerSelectedCareerPath}
-                careerPaths={careerPaths}
-                getSkillClassification={getSkillClassification}
-                onCareerPathSelect={handleCareerPathSelect}
-              />
-            </div>
-
-            {/* ROI Panel */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 justify-end">
-                <Button
-                  variant={!showRelocationExplorer ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowRelocationExplorer(false)}
-                  className="flex items-center gap-2"
-                >
-                  <Focus className="h-4 w-4" />
-                  🎯 Focused ROI
-                </Button>
-                <Button
-                  variant={showRelocationExplorer ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowRelocationExplorer(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Globe className="h-4 w-4" />
-                  🌍 Relocation Explorer
-                </Button>
-              </div>
-
-              {!showRelocationExplorer ? (
-                <CareerROIPanel 
-                  selectedCareerPath={careerSelectedCareerPath?.id || null}
-                  goalSkillIds={goalSkills}
-                  selectedLocation={selectedLocation}
-                />
-              ) : (
-                <LocationROIExplorer
-                  selectedCareerPathId={careerSelectedCareerPath?.id || null}
-                  goalSkillIds={goalSkills}
-                  selectedLocation={selectedLocation}
-                  onLocationSelect={setSelectedLocation}
-                />
-              )}
-            </div>
+        {/* ROI Panel */}
+        <div className="space-y-4">
+          {/* Toggle between focused and relocation explorer */}
+          <div className="flex items-center gap-2 justify-end">
+            <Button
+              variant={!showRelocationExplorer ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRelocationExplorer(false)}
+              className="flex items-center gap-2"
+            >
+              <Focus className="h-4 w-4" />
+              🎯 Focused ROI
+            </Button>
+            <Button
+              variant={showRelocationExplorer ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRelocationExplorer(true)}
+              className="flex items-center gap-2"
+            >
+              <Globe className="h-4 w-4" />
+              🌍 Relocation Explorer
+            </Button>
           </div>
 
-          {/* Skill Detail Side Panel */}
-          <SkillDetailSidePanel
-            skill={selectedSkill}
-            userProgress={selectedSkill ? getSkillProgress(selectedSkill.id) : undefined}
-            prerequisites={selectedSkill ? getSkillPrerequisites(selectedSkill.id) : []}
-            open={!!selectedSkill}
-            onClose={() => setSelectedSkill(null)}
-            onPlanSkill={handlePlanSkill}
-          />
-
-          {/* Checkpoint Commitment Modal */}
-          <CheckpointCommitmentModal
-            isOpen={showCheckpointModal}
-            onClose={() => setShowCheckpointModal(false)}
-            checkpointSkill={checkpointSkill || { id: '', name: '', category: '' }}
-            availablePaths={getAvailablePathsForCheckpoint?.() || []}
-            onPathSelect={handleCheckpointPathSelect}
-            currentLocation={selectedLocation}
-          />
-        </>
-      )}
-
-      {/* Enhanced empty state for filtered skills */}
-      {isDataReady && !testMode && filteredSkills.length === 0 && (
-        <div className="text-center text-muted-foreground py-10 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-lg mb-4">⚠️ No skills matched your current filters</p>
-          <div className="space-y-2 text-sm">
-            <p>Active filters: Search="{searchTerm}", Categories={activeCategories.length}, ShowRecommended={showOnlyRecommended.toString()}</p>
-            <p>Try the "Reset Filters" button above or enable "Test Mode" to see all skills.</p>
-          </div>
-          <Button onClick={handleResetFilters} className="mt-4">
-            🔄 Reset All Filters
-          </Button>
+          {!showRelocationExplorer ? (
+            <CareerROIPanel 
+              selectedCareerPath={selectedCareerPath}
+              goalSkillIds={goalSkills}
+              selectedLocation={selectedLocation}
+            />
+          ) : (
+            <LocationROIExplorer
+              selectedCareerPathId={selectedCareerPath}
+              goalSkillIds={goalSkills}
+              selectedLocation={selectedLocation}
+              onLocationSelect={setSelectedLocation}
+            />
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Test mode indicator */}
-      {testMode && (
-        <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 rounded-lg p-3 shadow-lg z-50">
-          <p className="text-yellow-800 font-medium">🧪 Test Mode Active</p>
-          <p className="text-yellow-700 text-sm">Showing all {skills.length} skills (filters bypassed)</p>
-        </div>
-      )}
-
-      {/* Loading message when data is still loading but we have some content */}
-      {!isDataReady && (
-        <div className="flex items-center justify-center h-96 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-blue-800">Loading skill tree data...</p>
-            {creatingCareerData && <p className="text-blue-600 text-sm">Setting up career paths...</p>}
-          </div>
-        </div>
-      )}
+      {/* Skill Detail Side Panel */}
+      <SkillDetailSidePanel
+        skill={selectedSkill}
+        userProgress={selectedSkill ? getSkillProgress(selectedSkill.id) : undefined}
+        prerequisites={selectedSkill ? getSkillPrerequisites(selectedSkill.id) : []}
+        open={!!selectedSkill}
+        onClose={() => setSelectedSkill(null)}
+        onPlanSkill={handlePlanSkill}
+      />
     </div>
   );
 };

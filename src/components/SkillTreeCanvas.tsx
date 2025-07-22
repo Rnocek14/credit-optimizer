@@ -78,15 +78,6 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
   careerPathName?: string;
   showPivotPaths?: boolean;
-  // New career-oriented props
-  selectedCareerPath?: any;
-  careerPaths?: any[];
-  getSkillClassification?: (skillId: string) => {
-    isRequiredSkill?: boolean;
-    isOptionalSkill?: boolean;
-    isPivotSkill?: boolean;
-  };
-  onCareerPathSelect?: (pathId: string) => void;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -101,12 +92,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
-  showPivotPaths = false,
-  // New career-oriented props
-  selectedCareerPath,
-  careerPaths = [],
-  getSkillClassification,
-  onCareerPathSelect
+  showPivotPaths = false
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -401,20 +387,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     };
   }, [skillPositions, containerDimensions]);
 
-  const fitToViewInitialized = useRef(false);
-
+  // Update fit-to-view ref
   useEffect(() => {
-    if (fitToViewInitialized.current) return;
-
-    if (skillPositions.size > 0 && containerDimensions.width && containerDimensions.height) {
-      fitToViewRef.current = createFitToView();
-      fitToViewInitialized.current = true;
-    }
-  }, [
-    skillPositions.size,
-    containerDimensions.width,
-    containerDimensions.height
-  ]);
+    fitToViewRef.current = createFitToView();
+  }, [createFitToView]);
 
   // Debounced fit-to-view for automatic layout changes
   const debouncedFitToView = useDebounce(() => {
@@ -430,12 +406,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, []);
 
-  // Fixed: Use ref to prevent infinite loop - only run once when data is ready
-  const hasDataRef = useRef(false);
-  
+  // FIXED: Remove problematic dependency that causes infinite loop
   useEffect(() => {
-    if (filteredSkills.length > 0 && skillPositions.size > 0 && !hasDataRef.current) {
-      hasDataRef.current = true;
+    if (filteredSkills.length > 0 && skillPositions.size > 0) {
       const timeoutId = setTimeout(() => {
         requestAnimationFrame(() => {
           if (fitToViewRef.current) {
@@ -445,7 +418,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, []); // Empty deps - only run on mount
+  }, [filteredSkills.length, skillPositions.size]); // Only depend on counts, not functions
 
   // Container resize handling with stable reference
   const handleResize = useCallback(() => {

@@ -30,33 +30,14 @@ export interface AuthProfile {
   [key: string]: any;
 }
 
-// Generate a proper UUID v4
-const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
-
-// Predefined demo user UUIDs for consistency
-const DEMO_USERS = {
-  'aisha@demo.com': '2b458624-d498-4cca-a63d-9341cc20e363',
-  'mateo@demo.com': '3c459625-e499-5ddb-b64d-a442dd21f474',
-  'jade@demo.com': '4d56a736-f5aa-6eec-c75e-b553ee32e585'
-};
-
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
   // Check for dev user first
   const storedDevUser = localStorage.getItem("devUser");
   if (storedDevUser) {
     const parsedDevUser = JSON.parse(storedDevUser);
-    
-    // Ensure proper UUID format for dev user
-    const userId = DEMO_USERS[parsedDevUser.email as keyof typeof DEMO_USERS] || generateUUID();
-    
-    window.__devUser__ = { ...parsedDevUser, id: userId };
+    window.__devUser__ = parsedDevUser;
     return {
-      id: userId,
+      id: parsedDevUser.id,
       email: parsedDevUser.email,
       role: parsedDevUser.role,
       name: parsedDevUser.name,
@@ -65,9 +46,8 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   }
 
   if (window.__devUser__) {
-    const userId = DEMO_USERS[window.__devUser__.email as keyof typeof DEMO_USERS] || window.__devUser__.id;
     return {
-      id: userId,
+      id: window.__devUser__.id,
       email: window.__devUser__.email,
       role: window.__devUser__.role,
       name: window.__devUser__.name,
