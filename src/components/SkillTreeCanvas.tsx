@@ -420,9 +420,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, []);
 
-  // FIXED: Remove problematic dependency that causes infinite loop
+  // Fixed: Use ref to prevent infinite loop - only run once when data is ready
+  const hasDataRef = useRef(false);
+  
   useEffect(() => {
-    if (filteredSkills.length > 0 && skillPositions.size > 0) {
+    if (filteredSkills.length > 0 && skillPositions.size > 0 && !hasDataRef.current) {
+      hasDataRef.current = true;
       const timeoutId = setTimeout(() => {
         requestAnimationFrame(() => {
           if (fitToViewRef.current) {
@@ -432,7 +435,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }, 500);
       return () => clearTimeout(timeoutId);
     }
-  }, [filteredSkills.length, skillPositions.size]); // Only depend on counts, not functions
+  }, []); // Empty deps - only run on mount
 
   // Container resize handling with stable reference
   const handleResize = useCallback(() => {
