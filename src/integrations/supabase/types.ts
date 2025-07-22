@@ -219,6 +219,7 @@ export type Database = {
           advanced_roles: string[] | null
           average_salary: number | null
           certifications: string[] | null
+          checkpoint_skill_id: string | null
           common_entry_roles: string[] | null
           created_at: string
           education_required: string | null
@@ -227,14 +228,19 @@ export type Database = {
           industry: string | null
           key_skills: string[] | null
           level: string | null
+          optional_skill_ids: string[] | null
+          required_skill_ids: string[] | null
+          roi_score: number | null
           summary: string | null
           title: string
+          track: string | null
           updated_at: string
         }
         Insert: {
           advanced_roles?: string[] | null
           average_salary?: number | null
           certifications?: string[] | null
+          checkpoint_skill_id?: string | null
           common_entry_roles?: string[] | null
           created_at?: string
           education_required?: string | null
@@ -243,14 +249,19 @@ export type Database = {
           industry?: string | null
           key_skills?: string[] | null
           level?: string | null
+          optional_skill_ids?: string[] | null
+          required_skill_ids?: string[] | null
+          roi_score?: number | null
           summary?: string | null
           title: string
+          track?: string | null
           updated_at?: string
         }
         Update: {
           advanced_roles?: string[] | null
           average_salary?: number | null
           certifications?: string[] | null
+          checkpoint_skill_id?: string | null
           common_entry_roles?: string[] | null
           created_at?: string
           education_required?: string | null
@@ -259,8 +270,12 @@ export type Database = {
           industry?: string | null
           key_skills?: string[] | null
           level?: string | null
+          optional_skill_ids?: string[] | null
+          required_skill_ids?: string[] | null
+          roi_score?: number | null
           summary?: string | null
           title?: string
+          track?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -796,6 +811,7 @@ export type Database = {
           order_index: number | null
           prerequisites: string[] | null
           priority: string | null
+          skill_keywords: string[] | null
           success_metrics: string | null
           timeline: string | null
           title: string
@@ -813,6 +829,7 @@ export type Database = {
           order_index?: number | null
           prerequisites?: string[] | null
           priority?: string | null
+          skill_keywords?: string[] | null
           success_metrics?: string | null
           timeline?: string | null
           title: string
@@ -830,6 +847,7 @@ export type Database = {
           order_index?: number | null
           prerequisites?: string[] | null
           priority?: string | null
+          skill_keywords?: string[] | null
           success_metrics?: string | null
           timeline?: string | null
           title?: string
@@ -845,6 +863,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      roadmap_steps_backup: {
+        Row: {
+          category: string | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          estimated_duration: string | null
+          id: string | null
+          order_index: number | null
+          prerequisites: string[] | null
+          priority: string | null
+          success_metrics: string | null
+          timeline: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string | null
+          order_index?: number | null
+          prerequisites?: string[] | null
+          priority?: string | null
+          success_metrics?: string | null
+          timeline?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string | null
+          order_index?: number | null
+          prerequisites?: string[] | null
+          priority?: string | null
+          success_metrics?: string | null
+          timeline?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       salary_insights: {
         Row: {
@@ -1163,6 +1235,50 @@ export type Database = {
             columns: ["badge_type_id"]
             isOneToOne: false
             referencedRelation: "badge_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_career_selections: {
+        Row: {
+          career_path_id: string
+          checkpoint_reached: boolean | null
+          created_at: string
+          id: string
+          is_active: boolean
+          pivot_choices: Json | null
+          selected_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          career_path_id: string
+          checkpoint_reached?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pivot_choices?: Json | null
+          selected_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          career_path_id?: string
+          checkpoint_reached?: boolean | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          pivot_choices?: Json | null
+          selected_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_career_selections_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
             referencedColumns: ["id"]
           },
         ]
