@@ -194,89 +194,68 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
-  // Calculate hierarchical levels for skills using topological sort
   const getSkillLevels = useCallback(() => {
     const levels = new Map<string, number>();
-    
-    // Log filtered skills for debugging
-    console.log('🔍 Filtered Skills used in layout:', filteredSkills.map(s => ({ id: s.id, name: s.name })));
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
 
     const filteredSkillIds = new Set(filteredSkills.map(s => s.id));
-    console.log('🔍 Filtered Skill IDs:', Array.from(filteredSkillIds));
-    
-    // Only consider edges where both skills are in filtered set
     const validEdges = skillEdges.filter(
       edge =>
         filteredSkillIds.has(edge.skill_id) &&
         filteredSkillIds.has(edge.prerequisite_skill_id)
     );
-    
-    console.log('📊 Valid edges count:', validEdges.length);
-    console.log('📊 Valid edges:', validEdges.map(e => `${e.prerequisite_skill_id} -> ${e.skill_id}`));
 
-    // Topological sort approach: calculate in-degree for each skill
-    const inDegree = new Map<string, number>();
-    
-    // Initialize all filtered skills with in-degree 0
-    filteredSkills.forEach(skill => {
-      inDegree.set(skill.id, 0);
-    });
-    
-    // Count prerequisites (in-degree) for each skill
-    validEdges.forEach(edge => {
-      const currentDegree = inDegree.get(edge.skill_id) || 0;
-      inDegree.set(edge.skill_id, currentDegree + 1);
-    });
-    
-    console.log('📊 In-degrees:', Array.from(inDegree.entries()));
-    
-    // Start with skills that have no prerequisites (in-degree = 0)
-    const queue: Array<{ skillId: string; level: number }> = [];
-    
-    filteredSkills.forEach(skill => {
-      const degree = inDegree.get(skill.id) || 0;
-      if (degree === 0) {
-        levels.set(skill.id, 0);
-        queue.push({ skillId: skill.id, level: 0 });
+    const getPrereqs = (skillId: string) =>
+      validEdges.filter(e => e.skill_id === skillId).map(e => e.prerequisite_skill_id);
+
+    const calculateDepth = (skillId: string): number => {
+      if (visited.has(skillId)) return levels.get(skillId)!;
+      if (visiting.has(skillId)) {
+        console.warn(`⚠️ Cycle detected for skill ${skillId}`);
+        return 0;
       }
-    });
-    
-    console.log('🌱 Root skills (level 0):', queue.map(q => q.skillId));
-    
-    // Process queue: assign levels based on prerequisites
-    while (queue.length > 0) {
-      const { skillId, level } = queue.shift()!;
-      
-      // Find all skills that depend on this skill
-      const dependentEdges = validEdges.filter(edge => edge.prerequisite_skill_id === skillId);
-      
-      dependentEdges.forEach(edge => {
-        const dependentSkillId = edge.skill_id;
-        const currentDegree = inDegree.get(dependentSkillId) || 0;
-        
-        if (currentDegree > 0) {
-          // Reduce in-degree
-          inDegree.set(dependentSkillId, currentDegree - 1);
-          
-          // If all prerequisites are processed, assign level
-          if (currentDegree - 1 === 0) {
-            const newLevel = level + 1;
-            levels.set(dependentSkillId, newLevel);
-            queue.push({ skillId: dependentSkillId, level: newLevel });
-          }
-        }
-      });
-    }
-    
-    // Handle any remaining skills (cycles or disconnected)
+
+      visiting.add(skillId);
+      const prereqs = getPrereqs(skillId);
+
+      if (prereqs.length === 0) {
+        levels.set(skillId, 0);
+      } else {
+        const maxPrereqDepth = Math.max(...prereqs.map(pid => calculateDepth(pid)));
+        levels.set(skillId, maxPrereqDepth + 1);
+      }
+
+      visiting.delete(skillId);
+      visited.add(skillId);
+      return levels.get(skillId)!;
+    };
+
     filteredSkills.forEach(skill => {
       if (!levels.has(skill.id)) {
-        console.warn(`⚠️ Skill ${skill.id} (${skill.name}) not processed, assigning level 0`);
-        levels.set(skill.id, 0);
+        calculateDepth(skill.id);
       }
     });
+
+    // Push disconnected/orphaned nodes to maxLevel + 1
+    const maxAssigned = Math.max(...Array.from(levels.values()));
+    const connectedIds = new Set(validEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id]));
+
+    filteredSkills.forEach(skill => {
+      if (!levels.has(skill.id)) {
+        const isOrphan = !connectedIds.has(skill.id);
+        const fallbackLevel = isOrphan ? maxAssigned + 1 : 0;
+        levels.set(skill.id, fallbackLevel);
+      }
+    });
+
+    const levelStats = Array.from(levels.entries()).reduce((acc, [, level]) => {
+      acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
     
-    console.log('🧱 Final Skill Levels:', Array.from(levels.entries()));
+    console.log('📊 Final Level Distribution:', levelStats);
+    console.log('🧠 Computed Skill Levels:', [...levels.entries()]);
     
     return levels;
   }, [filteredSkills, skillEdges]);
