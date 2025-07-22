@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,7 +117,8 @@ const SkillTree = () => {
         const { data, error } = await supabase
           .from('skills')
           .select('category')
-          .not('category', 'is', null);
+          .not('category', 'is', null)
+          .neq('category', '');
         
         if (error) throw error;
         
@@ -391,7 +391,16 @@ const SkillTree = () => {
 
   // Improved loading logic - show partial content when possible
   const isInitialLoading = skillsLoading && skills.length === 0;
-  const isDataReady = skills.length > 0 && categories.length > 0;
+  const isDataReady = skills.length > 0;
+  
+  if (!isDataReady) {
+    console.warn('[SkillTree] Waiting on data: ', { 
+      skillsLoaded: skills.length, 
+      categoriesLoaded: categories.length,
+      skillsLoading,
+      categoriesLoading 
+    });
+  }
   
   if (isInitialLoading) {
     return (
