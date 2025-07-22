@@ -193,6 +193,8 @@ const SkillTree = () => {
           skill_id: skill.id,
           status: index < 2 ? 'completed' : 'available',
           xp_earned: index < 2 ? skill.xp_value : 0,
+          cri_score: index < 2 ? 80 + Math.random() * 15 : undefined,
+          verification_source: index < 2 ? 'fallback' : undefined,
         }));
       }
     },
@@ -263,8 +265,8 @@ const SkillTree = () => {
           skill_id: p.skill_id,
           status: p.status as 'locked' | 'available' | 'in_progress' | 'completed',
           xp_earned: p.xp_earned,
-          cri_score: p.cri_score,
-          verification_source: p.verification_source
+          cri_score: (p as any).cri_score || undefined,
+          verification_source: (p as any).verification_source || undefined
         }))
       : userProgress;
   }, [careerUserProgress, userProgress]);
