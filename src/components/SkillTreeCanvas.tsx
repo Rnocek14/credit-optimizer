@@ -194,6 +194,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
+  // Enhanced getSkillLevels with better orphaned skill handling
   const getSkillLevels = useCallback(() => {
     const levels = new Map<string, number>();
     const visited = new Set<string>();
@@ -231,21 +232,73 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       return levels.get(skillId)!;
     };
 
+    // First pass: Calculate levels for connected skills
     filteredSkills.forEach(skill => {
       if (!levels.has(skill.id)) {
         calculateDepth(skill.id);
       }
     });
 
-    // Push disconnected/orphaned nodes to maxLevel + 1
-    const maxAssigned = Math.max(...Array.from(levels.values()));
+    // Enhanced orphaned skill handling
     const connectedIds = new Set(validEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id]));
+    const orphanedSkills = filteredSkills.filter(skill => !connectedIds.has(skill.id));
+    
+    if (orphanedSkills.length > 0) {
+      console.log(`🔗 Found ${orphanedSkills.length} orphaned skills:`, orphanedSkills.map(s => s.name));
+      
+      // Categorize orphaned skills by category and difficulty
+      const categoryLevels = new Map<string, number>();
+      const foundationCategories = ['Markup', 'Styling', 'Programming'];
+      const advancedCategories = ['Framework', 'Backend', 'Cloud', 'DevOps'];
+      
+      orphanedSkills.forEach(skill => {
+        let suggestedLevel = 0;
+        
+        // Place foundation skills at level 0-1
+        if (foundationCategories.includes(skill.category)) {
+          suggestedLevel = skill.difficulty_level <= 2 ? 0 : 1;
+        }
+        // Place advanced skills at level 2-3
+        else if (advancedCategories.includes(skill.category)) {
+          suggestedLevel = skill.difficulty_level <= 3 ? 2 : 3;
+        }
+        // Use difficulty level as a guide for other categories
+        else {
+          suggestedLevel = Math.max(0, skill.difficulty_level - 1);
+        }
+        
+        levels.set(skill.id, suggestedLevel);
+        console.log(`📍 Placed orphaned skill ${skill.name} (${skill.category}, difficulty ${skill.difficulty_level}) at level ${suggestedLevel}`);
+      });
+    }
 
-    filteredSkills.forEach(skill => {
-      if (!levels.has(skill.id)) {
-        const isOrphan = !connectedIds.has(skill.id);
-        const fallbackLevel = isOrphan ? maxAssigned + 1 : 0;
-        levels.set(skill.id, fallbackLevel);
+    // Validate and adjust level distribution
+    const levelCounts = new Map<number, number>();
+    const maxLevel = Math.max(...Array.from(levels.values()));
+    
+    for (let i = 0; i <= maxLevel; i++) {
+      levelCounts.set(i, 0);
+    }
+    
+    levels.forEach(level => {
+      levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
+    });
+
+    // Rebalance if any level has too many skills (more than 12)
+    levelCounts.forEach((count, level) => {
+      if (count > 12) {
+        const skillsAtLevel = filteredSkills.filter(skill => levels.get(skill.id) === level);
+        const overflow = count - 12;
+        
+        // Move some skills to the next level
+        const skillsToMove = skillsAtLevel
+          .sort((a, b) => b.difficulty_level - a.difficulty_level)
+          .slice(0, overflow);
+        
+        skillsToMove.forEach(skill => {
+          levels.set(skill.id, level + 1);
+          console.log(`⚖️ Moved ${skill.name} from level ${level} to ${level + 1} for rebalancing`);
+        });
       }
     });
 
@@ -255,7 +308,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }, {} as Record<number, number>);
     
     console.log('📊 Final Level Distribution:', levelStats);
-    console.log('🧠 Computed Skill Levels:', [...levels.entries()]);
+    console.log('🔗 Skill Graph Completeness:', {
+      totalSkills: filteredSkills.length,
+      totalEdges: validEdges.length,
+      connectedSkills: connectedIds.size,
+      orphanedSkills: orphanedSkills.length,
+      orphanedSkillNames: orphanedSkills.map(s => s.name)
+    });
     
     return levels;
   }, [filteredSkills, skillEdges]);
@@ -282,23 +341,28 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       skillsByLevel.get(level)!.push(skill);
     });
 
-    // Layout constants - improved spacing and positioning
+    // Enhanced layout constants with better spacing
     const nodeWidth = 80;
     const nodeHeight = 80;
-    const horizontalSpacing = 140; // Increased from 120
-    const verticalSpacing = 220; // Increased from 150 to 220
-    const baseX = 80; // Increased padding
-    const baseY = 140; // Increased from 80 to 140
-    const containerPadding = 60; // Added container padding
+    const horizontalSpacing = 160; // Increased from 140
+    const verticalSpacing = 240; // Increased from 220
+    const baseX = 100; // Increased padding
+    const baseY = 160; // Increased from 140
+    const containerPadding = 80; // Increased padding
 
-    // Position skills level by level
+    // Position skills level by level with improved distribution
     for (let level = 0; level <= maxLevel; level++) {
       const skillsAtLevel = skillsByLevel.get(level) || [];
 
       if (skillsAtLevel.length === 0) continue;
 
-      // Remove category sorting - keep natural order for better flow
-      skillsAtLevel.sort((a, b) => a.name.localeCompare(b.name));
+      // Sort by category first, then by name for consistent positioning
+      skillsAtLevel.sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return a.name.localeCompare(b.name);
+      });
 
       const totalWidth = skillsAtLevel.length * nodeWidth + (skillsAtLevel.length - 1) * horizontalSpacing;
       const availableWidth = containerDimensions.width - (containerPadding * 2);
@@ -308,7 +372,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         const x = startX + index * (nodeWidth + horizontalSpacing);
         const y = baseY + level * verticalSpacing;
 
-        positions.set(skill.id, { x, y, level }); // Include level for debugging
+        positions.set(skill.id, { x, y, level, isOrphaned: false }); // Track orphaned status
       });
     }
 
@@ -329,13 +393,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     });
 
     return positions;
-  }, [filteredSkills, skillEdges, getSkillLevels, containerDimensions.width]);
+  }, [filteredSkills, getSkillLevels, containerDimensions.width]);
 
-  // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
     if (position) {
-      const targetX = containerDimensions.width / 2 - (position.x + 40) * zoomLevel; // Center of 80px node
+      const targetX = containerDimensions.width / 2 - (position.x + 40) * zoomLevel;
       const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
       
       setPanOffset({ x: targetX, y: targetY });
@@ -343,7 +406,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     onSkillClick(skill);
   }, [skillPositions, containerDimensions, zoomLevel, onSkillClick]);
 
-  // Optimized fit-to-view function with stable reference
   const createFitToView = useCallback(() => {
     return () => {
       if (skillPositions.size === 0) return;
@@ -403,7 +465,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             fitToViewRef.current();
           }
         });
-      }, 600); // Slightly longer delay for animations to settle
+      }, 600);
       return () => clearTimeout(timeoutId);
     }
   }, [filteredSkills.length, skillPositions.size]);
@@ -559,7 +621,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         showMinimap={showMinimap}
       />
 
-      {/* Enhanced Stats Display with Level Information */}
+      {/* Enhanced Stats Display with Connection Information */}
       <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
         <div className="text-sm space-y-1">
           <div className="flex justify-between">
@@ -567,8 +629,20 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             <span className="font-medium">{filteredSkills.length}</span>
           </div>
           <div className="flex justify-between">
-            <span>Categories:</span>
-            <span className="font-medium">{availableCategories.length}</span>
+            <span>Edges:</span>
+            <span className="font-medium">{skillEdges.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Connected:</span>
+            <span className="font-medium text-green-600">
+              {new Set(skillEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id])).size}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Orphaned:</span>
+            <span className="font-medium text-orange-600">
+              {filteredSkills.length - new Set(skillEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id])).size}
+            </span>
           </div>
           <div className="flex justify-between">
             <span>Goals:</span>
@@ -582,9 +656,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             <span>Zoom:</span>
             <span className="font-medium">{Math.round(zoomLevel * 100)}%</span>
           </div>
-          <div className="border-t pt-1 mt-1">
-            <div className="text-xs text-gray-600">Levels: 0-{Math.max(...Array.from(skillPositions.values()).map(p => p.level || 0))}</div>
-          </div>
         </div>
       </div>
 
@@ -595,7 +666,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             key={level}
             className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium border"
             style={{ 
-              transform: `translateY(${140 + level * 220}px)` 
+              transform: `translateY(${160 + level * 240}px)` 
             }}
           >
             Level {level}
