@@ -577,6 +577,42 @@ export type Database = {
           },
         ]
       }
+      job_outcomes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          next_path_ids: string[] | null
+          preferred_cri: number | null
+          region_availability: string[] | null
+          required_skills: string[] | null
+          salary_range: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          next_path_ids?: string[] | null
+          preferred_cri?: number | null
+          region_availability?: string[] | null
+          required_skills?: string[] | null
+          salary_range?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          next_path_ids?: string[] | null
+          preferred_cri?: number | null
+          region_availability?: string[] | null
+          required_skills?: string[] | null
+          salary_range?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           active: boolean
