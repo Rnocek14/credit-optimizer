@@ -21,7 +21,7 @@ interface CheckpointCommitmentModalProps {
     average_salary?: number;
     roi_score?: number;
     estimated_time?: string;
-    required_skills: string[];
+    required_skill_ids: string[];
     description?: string;
   }>;
   onPathSelect: (pathId: string) => void;
@@ -174,7 +174,7 @@ export const CheckpointCommitmentModal: React.FC<CheckpointCommitmentModalProps>
                             </div>
                           )}
                           <div className="text-muted-foreground">
-                            {path.required_skills.length} required skills
+                            {path.required_skill_ids.length} required skills
                           </div>
                         </div>
                         

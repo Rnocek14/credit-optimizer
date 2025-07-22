@@ -78,6 +78,15 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
   careerPathName?: string;
   showPivotPaths?: boolean;
+  // New career-oriented props
+  selectedCareerPath?: any;
+  careerPaths?: any[];
+  getSkillClassification?: (skillId: string) => {
+    isRequiredSkill?: boolean;
+    isOptionalSkill?: boolean;
+    isPivotSkill?: boolean;
+  };
+  onCareerPathSelect?: (pathId: string) => void;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -92,7 +101,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  // New career-oriented props
+  selectedCareerPath,
+  careerPaths = [],
+  getSkillClassification,
+  onCareerPathSelect
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });

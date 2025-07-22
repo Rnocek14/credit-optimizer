@@ -40,8 +40,8 @@ export const useSampleCareerData = () => {
           roi_score: path.roi_score,
           summary: path.description,
           key_skills: path.required_skills,
-          required_skill_ids: '{}', // Empty array for now
-          optional_skill_ids: '{}', // Empty array for now
+          required_skill_ids: [], // Empty array for now
+          optional_skill_ids: [], // Empty array for now
         })));
 
       if (error) {

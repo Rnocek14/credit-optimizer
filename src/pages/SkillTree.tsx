@@ -586,7 +586,7 @@ const SkillTree = () => {
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
           <InteractiveSkillTree
             skills={skills}
-            userProgress={effectiveUserProgress}
+            userProgress={effectiveUserProgress as any}
             skillEdges={skillEdges}
             filteredSkills={filteredSkills}
             recommendedSkills={recommendedSkills}
@@ -660,7 +660,7 @@ const SkillTree = () => {
         isOpen={showCheckpointModal}
         onClose={() => setShowCheckpointModal(false)}
         checkpointSkill={checkpointSkill || { id: '', name: '', category: '' }}
-        availablePaths={getAvailablePathsForCheckpoint()}
+        availablePaths={getAvailablePathsForCheckpoint?.() || []}
         onPathSelect={handleCheckpointPathSelect}
         currentLocation={selectedLocation}
       />
