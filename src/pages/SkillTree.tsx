@@ -288,15 +288,26 @@ const SkillTree = () => {
       .map(skill => skill.id);
   }, [careerSteps, skills]);
 
-  // Find the capstone skill (final goal in the roadmap)
-  const capstoneSkillId = React.useMemo(() => {
-    if (!careerSteps.length || !skills.length) return null;
-    const lastStep = careerSteps[careerSteps.length - 1];
-    const match = skills.find(skill =>
-      skill.name.toLowerCase().includes(lastStep.title.toLowerCase())
-    );
-    return match?.id || null;
+  // Find the capstone skills (final goals in the roadmap)
+  const capstoneSkillIds = React.useMemo(() => {
+    if (!careerSteps.length || !skills.length) return [];
+
+    const lastSteps = careerSteps.slice(-2);
+    const stepNames = lastSteps.map(step => step.title.toLowerCase());
+
+    return skills
+      .filter(skill =>
+        stepNames.some(stepName =>
+          skill.name.toLowerCase().includes(stepName) || stepName.includes(skill.name.toLowerCase())
+        )
+      )
+      .map(skill => skill.id);
   }, [careerSteps, skills]);
+  
+  // Get the primary capstone skill (the very last one)
+  const capstoneSkillId = React.useMemo(() => {
+    return capstoneSkillIds.length > 0 ? capstoneSkillIds[0] : null;
+  }, [capstoneSkillIds]);
 
   // Memoized checkpoint skills
   const checkpointSkills = React.useMemo(() => {
