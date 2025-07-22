@@ -162,7 +162,7 @@ export function useKeyboardNavigation({
       
       liveRegion.textContent = announcement;
     }
-  }, [items]);
+  }, [items.length]); // Only depend on items.length, not the entire items array
 
   // Setup event listeners
   useEffect(() => {
