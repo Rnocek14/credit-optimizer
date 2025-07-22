@@ -249,9 +249,12 @@ const SkillTree = () => {
 
   // Enhanced goal skills using career selection with fallback
   const goalSkills = React.useMemo(() => {
-    if (careerSelectedCareerPath && careerSelectedCareerPath.required_skill_ids?.length > 0) {
+    if (careerSelectedCareerPath?.required_skill_ids?.length > 0) {
       return careerSelectedCareerPath.required_skill_ids;
     }
+    
+    // Only compute fallback if we have skills and no career path selected
+    if (skills.length === 0) return [];
     
     // Default UX Designer skills as fallback
     return skills
@@ -265,13 +268,16 @@ const SkillTree = () => {
       )
       .slice(0, 8)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath, skills]);
+  }, [careerSelectedCareerPath?.id, careerSelectedCareerPath?.required_skill_ids, skills.length]);
 
   // Enhanced checkpoint skills with fallback
   const checkpointSkills = React.useMemo(() => {
     if (careerSelectedCareerPath?.checkpoint_skill_id) {
       return [careerSelectedCareerPath.checkpoint_skill_id];
     }
+    
+    // Only compute fallback if we have skills and no career path selected
+    if (skills.length === 0) return [];
     
     // Default checkpoints for UX Designer as fallback
     return skills
@@ -282,7 +288,7 @@ const SkillTree = () => {
       )
       .slice(0, 3)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath, skills]);
+  }, [careerSelectedCareerPath?.id, careerSelectedCareerPath?.checkpoint_skill_id, skills.length]);
 
   // Handle skill completion and check for checkpoints
   const handleSkillClick = (skill: Skill) => {
