@@ -1,5 +1,5 @@
 
-import React, { memo, useRef, useEffect } from 'react';
+import React, { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Progress } from './ui/progress';
 
@@ -27,7 +27,6 @@ interface EnhancedSkillTreeNodeProps {
   isInPath?: boolean;
   onHover?: (isHovering: boolean) => void;
   careerPathName?: string;
-  onPositionUpdate?: (skillId: string, position: {centerX: number, centerY: number}) => void;
 }
 
 export const EnhancedSkillTreeNode: React.FC<EnhancedSkillTreeNodeProps> = memo(({
@@ -43,23 +42,10 @@ export const EnhancedSkillTreeNode: React.FC<EnhancedSkillTreeNodeProps> = memo(
   size = 'medium',
   isInPath = false,
   onHover,
-  careerPathName,
-  onPositionUpdate
+  careerPathName
 }) => {
   const status = userProgress?.status || 'locked';
   const progressPercentage = userProgress ? (userProgress.xp_earned / skill.xp_value) * 100 : 0;
-  const nodeRef = useRef<HTMLDivElement>(null);
-
-  // Report real DOM position to parent
-  useEffect(() => {
-    if (nodeRef.current && onPositionUpdate) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      onPositionUpdate(skill.id, {
-        centerX: rect.left + rect.width / 2,
-        centerY: rect.top + rect.height / 2
-      });
-    }
-  }, [position, skill.id, onPositionUpdate]);
 
   const sizeClasses = {
     small: 'w-16 h-16 text-xs',
@@ -165,7 +151,6 @@ export const EnhancedSkillTreeNode: React.FC<EnhancedSkillTreeNodeProps> = memo(
         <Tooltip>
           <TooltipTrigger asChild>
             <div
-              ref={nodeRef}
               className={`
                 absolute cursor-pointer rounded-lg border-2 flex flex-col items-center justify-center
                 font-medium text-center p-2 hover:scale-105 hover:shadow-lg
