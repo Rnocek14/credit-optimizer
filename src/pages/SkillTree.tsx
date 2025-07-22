@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -387,20 +386,41 @@ const SkillTree = () => {
       });
   }, [skillEdges, skills, getSkillProgress]);
 
-  // Filter skills based on current filters (stable memoization)
+  // Filter skills based on current filters with improved debugging and defensive logic
   const filteredSkills = useMemo(() => {
     return skills.filter(skill => {
       const progress = userProgress.find(p => p.skill_id === skill.id);
       
       const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = activeCategories.length === 0 || activeCategories.includes(skill.category);
+      
+      // Defensive category matching - handle null/undefined categories
+      const matchesCategory = activeCategories.length === 0 || !skill.category || activeCategories.includes(skill.category);
+      
       const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
       const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
       const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
       const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
       
-      return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
+      const pass = matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
+
+      // Debug logging for filtered out skills
+      if (!pass) {
+        console.log('Skill filtered out:', {
+          name: skill.name,
+          category: skill.category,
+          matchesSearch,
+          matchesCategory,
+          matchesRecommended,
+          matchesUnlocked,
+          matchesRecommendedNext,
+          matchesGoalPath,
+          activeCategories: activeCategories.length,
+          searchTerm
+        });
+      }
+
+      return pass;
     });
   }, [skills, userProgress, searchTerm, activeCategories, showOnlyRecommended, recommendedSkills, showUnlockedOnly, showRecommendedNext, goalSkills, showGoalPathOnly]);
 
@@ -412,6 +432,32 @@ const SkillTree = () => {
     recommended: recommendedSkills.length,
     withCourses: skillsWithCourses.length
   }), [skills.length, userProgress, recommendedSkills.length, skillsWithCourses.length]);
+
+  // Reset all filters function
+  const handleResetFilters = useCallback(() => {
+    setSearchTerm('');
+    setActiveCategories(categories); // Reset to all categories
+    setShowOnlyRecommended(false);
+    setShowUnlockedOnly(false);
+    setShowRecommendedNext(false);
+    setShowGoalPathOnly(false);
+    setFocusMode(false);
+    console.log('Filters reset - all categories active:', categories);
+    toast({
+      title: "Filters Reset",
+      description: "All filters have been cleared and categories reset.",
+    });
+  }, [categories, toast]);
+
+  // Test mode - bypass all filters
+  const [testMode, setTestMode] = useState(false);
+  const displayedSkills = useMemo(() => {
+    if (testMode) {
+      console.log('Test mode active - showing all skills:', skills.length);
+      return skills;
+    }
+    return filteredSkills;
+  }, [testMode, skills, filteredSkills]);
 
   // Improved loading logic - allow rendering with just skills loaded
   const isInitialLoading = skillsLoading && skills.length === 0;
@@ -469,6 +515,23 @@ const SkillTree = () => {
             onCareerPathChange={handleCareerPathSelect}
           />
           <div className="flex items-center gap-2">
+            {/* Debug Controls */}
+            <Button 
+              variant={testMode ? "default" : "outline"}
+              size="sm" 
+              onClick={() => setTestMode(!testMode)}
+              className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+            >
+              🧪 {testMode ? 'Exit Test' : 'Test Mode'}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleResetFilters}
+              className="bg-blue-100 text-blue-800 hover:bg-blue-200"
+            >
+              🔄 Reset Filters
+            </Button>
             <ExportTreeButton containerRef={skillTreeRef} />
             <Button 
               variant={showPivotPaths ? "default" : "outline"}
@@ -507,6 +570,7 @@ const SkillTree = () => {
             <span className="text-sm font-medium text-blue-900">Total Skills</span>
           </div>
           <div className="text-2xl font-bold text-blue-600">{skillCounts.total}</div>
+          {testMode && <div className="text-xs text-yellow-600">Test: {displayedSkills.length} shown</div>}
         </div>
         <div className="bg-green-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -535,6 +599,7 @@ const SkillTree = () => {
             <span className="text-sm font-medium text-cyan-900">With Courses</span>
           </div>
           <div className="text-2xl font-bold text-cyan-600">{skillCounts.withCourses}</div>
+          {testMode && <div className="text-xs text-yellow-600">Filtered: {filteredSkills.length}</div>}
         </div>
       </div>
 
@@ -572,7 +637,7 @@ const SkillTree = () => {
                 skills={skills}
                 userProgress={effectiveUserProgress}
                 skillEdges={skillEdges}
-                filteredSkills={filteredSkills}
+                filteredSkills={displayedSkills}
                 recommendedSkills={recommendedSkills}
                 goalSkills={goalSkills}
                 checkpointSkills={checkpointSkills}
@@ -649,10 +714,25 @@ const SkillTree = () => {
         </>
       )}
 
-      {/* Empty state for filtered skills */}
-      {isDataReady && filteredSkills.length === 0 && (
-        <div className="text-center text-muted-foreground py-10">
-          <p>⚠️ No skills matched your filters. Try resetting filters or check your skill data.</p>
+      {/* Enhanced empty state for filtered skills */}
+      {isDataReady && !testMode && filteredSkills.length === 0 && (
+        <div className="text-center text-muted-foreground py-10 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-lg mb-4">⚠️ No skills matched your current filters</p>
+          <div className="space-y-2 text-sm">
+            <p>Active filters: Search="{searchTerm}", Categories={activeCategories.length}, ShowRecommended={showOnlyRecommended.toString()}</p>
+            <p>Try the "Reset Filters" button above or enable "Test Mode" to see all skills.</p>
+          </div>
+          <Button onClick={handleResetFilters} className="mt-4">
+            🔄 Reset All Filters
+          </Button>
+        </div>
+      )}
+
+      {/* Test mode indicator */}
+      {testMode && (
+        <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 rounded-lg p-3 shadow-lg z-50">
+          <p className="text-yellow-800 font-medium">🧪 Test Mode Active</p>
+          <p className="text-yellow-700 text-sm">Showing all {skills.length} skills (filters bypassed)</p>
         </div>
       )}
 
