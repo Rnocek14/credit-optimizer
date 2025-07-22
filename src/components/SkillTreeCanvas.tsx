@@ -5,6 +5,7 @@ import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
 import { SkillTreeMinimap } from './SkillTreeMinimap';
 import { SkillSearchOverlay } from './SkillSearchOverlay';
+import { RoadmapOverlay } from './RoadmapOverlay';
 import { validateSkillTree, getSafeSkillTreeData, calculateSkillDepthsSafely } from '@/lib/skillTreeValidation';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
@@ -49,6 +50,17 @@ interface SkillBranch {
   reasoning: string;
 }
 
+interface RoadmapStepSkill {
+  skill_id: string;
+  roadmap_step_id: string;
+  roadmap_steps: {
+    title: string;
+    order_index: number;
+    is_checkpoint: boolean;
+    is_capstone: boolean;
+  };
+}
+
 interface SkillTreeCanvasProps {
   skills: Array<{
     id: string;
@@ -79,6 +91,7 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
   careerPathName?: string;
   showPivotPaths?: boolean;
+  roadmapStepSkills?: RoadmapStepSkill[];
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -94,7 +107,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  roadmapStepSkills = []
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -108,6 +122,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [keyboardFocused, setKeyboardFocused] = useState(false);
   const [searchOverlayVisible, setSearchOverlayVisible] = useState(false);
   const [searchHighlightedSkills, setSearchHighlightedSkills] = useState<string[]>([]);
+  const [showRoadmapOverlay, setShowRoadmapOverlay] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
@@ -922,6 +937,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         onSkillSelect={handleSearchSkillSelect}
         onHighlightSkills={setSearchHighlightedSkills}
         selectedSkillId={keyboardFocused ? keyboardNavigationItems[keyboardSelectedIndex]?.id : undefined}
+      />
+
+      {/* Roadmap Overlay */}
+      <RoadmapOverlay
+        roadmapStepSkills={roadmapStepSkills}
+        skillPositions={skillPositions}
+        zoomLevel={zoomLevel}
+        panOffset={panOffset}
+        showOverlay={showRoadmapOverlay}
+        onToggleOverlay={() => setShowRoadmapOverlay(!showRoadmapOverlay)}
       />
 
       {/* Pivot Path Modal */}

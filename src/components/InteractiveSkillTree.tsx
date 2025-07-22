@@ -26,6 +26,17 @@ interface SkillEdge {
   prerequisite_skill_id: string;
 }
 
+interface RoadmapStepSkill {
+  skill_id: string;
+  roadmap_step_id: string;
+  roadmap_steps: {
+    title: string;
+    order_index: number;
+    is_checkpoint: boolean;
+    is_capstone: boolean;
+  };
+}
+
 interface InteractiveSkillTreeProps {
   skills: Skill[];
   userProgress: UserProgress[];
@@ -41,6 +52,7 @@ interface InteractiveSkillTreeProps {
   layoutMode?: string;
   careerPathName?: string;
   showPivotPaths?: boolean;
+  roadmapStepSkills?: RoadmapStepSkill[];
 }
 
 export const InteractiveSkillTree = React.memo(({
@@ -57,7 +69,8 @@ export const InteractiveSkillTree = React.memo(({
   showMinimap = true,
   layoutMode = 'hierarchy',
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  roadmapStepSkills = []
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -118,6 +131,7 @@ export const InteractiveSkillTree = React.memo(({
         onSkillClick={onSkillClick}
         careerPathName={careerPathName}
         showPivotPaths={showPivotPaths}
+        roadmapStepSkills={roadmapStepSkills}
       />
     </SkillTreeErrorBoundary>
   );

@@ -519,20 +519,21 @@ const SkillTree = () => {
       <div className="flex gap-6">
         {/* Interactive Skill Tree */}
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
-          <InteractiveSkillTree
-            skills={skills}
-            userProgress={userProgress}
-            skillEdges={skillEdges}
-            filteredSkills={filteredSkills}
-            recommendedSkills={recommendedSkills}
-            goalSkills={goalSkills}
-            checkpointSkills={checkpointSkills}
-            capstoneSkillIds={capstoneSkillIds}
-            availableCategories={categories}
-            onSkillClick={handleSkillClick}
-            careerPathName={selectedCareerPathData?.title}
-            showPivotPaths={showPivotPaths}
-          />
+           <InteractiveSkillTree
+             skills={skills}
+             userProgress={userProgress}
+             skillEdges={skillEdges}
+             filteredSkills={filteredSkills}
+             recommendedSkills={recommendedSkills}
+             goalSkills={goalSkills}
+             checkpointSkills={checkpointSkills}
+             capstoneSkillIds={capstoneSkillIds}
+             availableCategories={categories}
+             onSkillClick={handleSkillClick}
+             careerPathName={selectedCareerPathData?.title}
+             showPivotPaths={showPivotPaths}
+             roadmapStepSkills={roadmapStepSkills}
+           />
         </div>
 
         {/* ROI Panel */}
