@@ -177,20 +177,26 @@ export const useSampleCareerData = () => {
 
   // Auto-trigger creation/update when conditions are met
   useEffect(() => {
+    // Prevent infinite loops by checking if mutation has already succeeded
+    if (createOrUpdateSampleData.isSuccess) {
+      return;
+    }
+
     const shouldTrigger = !pathsLoading && 
                          !skillsLoading && 
                          skills.length > 0 && 
                          !createOrUpdateSampleData.isPending &&
+                         !createOrUpdateSampleData.isError &&
                          (
                            (existingPaths && existingPaths.length === 0) || 
-                           needsSkillMapping
+                           (needsSkillMapping && existingPaths && existingPaths.length > 0)
                          );
 
     if (shouldTrigger) {
       console.log('[SampleCareerData] Triggering career data creation/update...');
       createOrUpdateSampleData.mutate();
     }
-  }, [pathsLoading, skillsLoading, existingPaths, needsSkillMapping, skills.length]);
+  }, [pathsLoading, skillsLoading, existingPaths?.length, needsSkillMapping, skills.length, createOrUpdateSampleData.isSuccess]);
 
   return {
     isCreating: createOrUpdateSampleData.isPending || pathsLoading,
