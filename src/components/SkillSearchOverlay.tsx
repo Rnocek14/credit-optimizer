@@ -127,6 +127,9 @@ export const SkillSearchOverlay: React.FC<SkillSearchOverlayProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isVisible) return;
+      
+      // Don't handle keys if user is typing in the search input
+      if (e.target === searchInputRef.current) return;
 
       switch (e.key) {
         case 'Escape':
