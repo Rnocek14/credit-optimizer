@@ -1,3 +1,4 @@
+
 import { useEffect, useCallback, useRef } from 'react';
 
 export interface KeyboardNavigationState {
@@ -32,6 +33,10 @@ export function useKeyboardNavigation({
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (disabled || items.length === 0) return;
+
+    // Don't handle keys if user is typing in any input field
+    const target = event.target as HTMLElement;
+    if (['input', 'textarea'].includes(target.tagName.toLowerCase()) || target.isContentEditable) return;
 
     const currentIndex = selectedIndexRef.current;
     const maxIndex = items.length - 1;
