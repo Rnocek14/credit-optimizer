@@ -205,7 +205,15 @@ const SkillTree = () => {
   const { isCreating: creatingCareerData } = useSampleCareerData();
 
   // Use career hook's user progress if available, otherwise fall back to existing
-  const effectiveUserProgress = careerUserProgress?.length > 0 ? careerUserProgress : userProgress;
+  const effectiveUserProgress = careerUserProgress?.length > 0 
+    ? careerUserProgress.map(p => ({
+        skill_id: p.skill_id,
+        status: p.status as 'locked' | 'available' | 'in_progress' | 'completed',
+        xp_earned: p.xp_earned,
+        cri_score: p.cri_score,
+        verification_source: p.verification_source
+      }))
+    : userProgress;
 
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
