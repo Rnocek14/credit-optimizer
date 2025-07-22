@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
@@ -64,7 +65,8 @@ const SkillTree = () => {
   // Use ref to track if categories have been initialized
   const hasInitializedCategories = useRef(false);
 
-  // Initialize career selection hook
+  // Initialize career selection hook with stable reference
+  const careerSelection = useCareerSelection();
   const {
     careerPaths,
     selectedCareerPath: careerSelectedCareerPath,
@@ -79,9 +81,9 @@ const SkillTree = () => {
     getAvailablePathsForCheckpoint,
     setShowCheckpointModal,
     isLoading: careerLoading
-  } = useCareerSelection();
+  } = careerSelection;
 
-  // Fetch skills with better error handling and fallbacks
+  // Fetch skills with stable cache and fallbacks
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
@@ -98,17 +100,21 @@ const SkillTree = () => {
         return data as Skill[];
       } catch (error) {
         console.error('[SkillTree] Skills fetch failed:', error);
-        // Return fallback skills for demo
+        // Return stable fallback skills for demo
         return [
           { id: '1', name: 'JavaScript', category: 'Programming', description: 'Programming language', difficulty_level: 2, xp_value: 20, slug: 'javascript' },
           { id: '2', name: 'React', category: 'Programming', description: 'Frontend framework', difficulty_level: 3, xp_value: 30, slug: 'react' },
           { id: '3', name: 'Figma', category: 'Design', description: 'Design tool', difficulty_level: 2, xp_value: 25, slug: 'figma' },
+          { id: '4', name: 'Adobe XD', category: 'Design', description: 'Design tool', difficulty_level: 2, xp_value: 25, slug: 'adobe-xd' },
+          { id: '5', name: 'User Research', category: 'Design', description: 'User research methods', difficulty_level: 3, xp_value: 35, slug: 'user-research' }
         ] as Skill[];
       }
-    }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false
   });
 
-  // Fetch categories with fallbacks
+  // Fetch categories with fallbacks and stable cache
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['skill-categories'],
     queryFn: async () => {
@@ -129,18 +135,20 @@ const SkillTree = () => {
         console.error('[SkillTree] Categories fetch failed:', error);
         return ['Programming', 'Design', 'Data', 'Product', 'Marketing'];
       }
-    }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchOnWindowFocus: false
   });
 
-  // Initialize activeCategories with all categories once they're loaded (fixed infinite loop)
+  // Initialize activeCategories with all categories once they're loaded (prevent infinite loop)
   useEffect(() => {
     if (!hasInitializedCategories.current && categories.length > 0 && activeCategories.length === 0) {
       setActiveCategories(categories);
       hasInitializedCategories.current = true;
     }
-  }, [categories]);
+  }, [categories.length]); // Only depend on categories.length, not categories array
 
-  // Fetch user progress with better error handling and fallbacks
+  // Fetch user progress with stable cache and fallbacks
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ['user-skill-progress'],
     queryFn: async () => {
@@ -149,8 +157,8 @@ const SkillTree = () => {
         const user = await getCurrentUser();
         if (!user) {
           console.log('[SkillTree] No user found, creating demo progress');
-          // Create comprehensive mock progress for demo
-          return skills.slice(0, 8).map((skill, index): UserProgress => ({
+          // Create stable mock progress for demo
+          return skills.slice(0, Math.min(skills.length, 8)).map((skill, index): UserProgress => ({
             skill_id: skill.id,
             status: index < 2 ? 'completed' : 
                    index < 4 ? 'in_progress' : 
@@ -171,7 +179,6 @@ const SkillTree = () => {
         
         console.log(`[SkillTree] Loaded ${data?.length || 0} progress records`);
         
-        // Ensure proper typing
         return (data || []).map(item => ({
           skill_id: item.skill_id,
           status: item.status as 'locked' | 'available' | 'in_progress' | 'completed',
@@ -181,18 +188,20 @@ const SkillTree = () => {
         }));
       } catch (error) {
         console.error('[SkillTree] Progress fetch failed:', error);
-        // Return fallback progress
-        return skills.slice(0, 5).map((skill, index): UserProgress => ({
+        // Return stable fallback progress
+        return skills.slice(0, Math.min(skills.length, 5)).map((skill, index): UserProgress => ({
           skill_id: skill.id,
           status: index < 2 ? 'completed' : 'available',
           xp_earned: index < 2 ? skill.xp_value : 0,
         }));
       }
     },
-    enabled: !skillsLoading
+    enabled: skills.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false
   });
 
-  // Fetch skill edges with fallbacks
+  // Fetch skill edges with fallbacks and stable cache
   const { data: skillEdges = [], isLoading: edgesLoading } = useQuery({
     queryKey: ['skill-edges'],
     queryFn: async () => {
@@ -208,13 +217,19 @@ const SkillTree = () => {
         return data as SkillEdge[];
       } catch (error) {
         console.error('[SkillTree] Edges fetch failed:', error);
-        return [] as SkillEdge[];
+        // Return stable fallback edges
+        return [
+          { prerequisite_skill_id: '1', skill_id: '2' },
+          { prerequisite_skill_id: '2', skill_id: '5' }
+        ] as SkillEdge[];
       }
     },
-    enabled: !skillsLoading
+    enabled: skills.length > 0,
+    staleTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false
   });
 
-  // Fetch skills with courses
+  // Fetch skills with courses with stable cache
   const { data: skillsWithCourses = [], isLoading: skillsWithCoursesLoading } = useQuery({
     queryKey: ['skills-with-courses'],
     queryFn: async () => {
@@ -230,17 +245,19 @@ const SkillTree = () => {
         return data?.map(item => item.skill_id) || [];
       } catch (error) {
         console.error('[SkillTree] Course mappings fetch failed:', error);
-        return [];
+        return skills.slice(0, 3).map(skill => skill.id); // Fallback
       }
     },
-    enabled: !skillsLoading
+    enabled: skills.length > 0,
+    staleTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false
   });
 
   // Initialize sample career data
   const { isCreating: creatingCareerData, skillsLoaded, pathsExist } = useSampleCareerData();
 
-  // Use career hook's user progress if available, otherwise fall back to existing (memoized)
-  const effectiveUserProgress = React.useMemo(() => {
+  // Use career hook's user progress if available, otherwise fall back to existing (stable memoization)
+  const effectiveUserProgress = useMemo(() => {
     return careerUserProgress?.length > 0 
       ? careerUserProgress.map(p => ({
           skill_id: p.skill_id,
@@ -252,21 +269,20 @@ const SkillTree = () => {
       : userProgress;
   }, [careerUserProgress, userProgress]);
 
-  // Mock recommended skills for now (memoized)
-  const recommendedSkills = React.useMemo(() => {
+  // Stable recommended skills (memoized)
+  const recommendedSkills = useMemo(() => {
     return skills.slice(0, 3).map(skill => skill.id);
   }, [skills]);
 
-  // Enhanced goal skills using career selection with fallback
-  const goalSkills = React.useMemo(() => {
+  // Enhanced goal skills using career selection with stable fallback
+  const goalSkills = useMemo(() => {
     if (careerSelectedCareerPath?.required_skill_ids?.length > 0) {
       return careerSelectedCareerPath.required_skill_ids;
     }
     
-    // Only compute fallback if we have skills and no career path selected
     if (skills.length === 0) return [];
     
-    // Default UX Designer skills as fallback
+    // Default UX Designer skills as stable fallback
     return skills
       .filter(skill => 
         skill.category === 'Design' || 
@@ -278,18 +294,17 @@ const SkillTree = () => {
       )
       .slice(0, 8)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath?.id, careerSelectedCareerPath?.required_skill_ids, skills.length]);
+  }, [careerSelectedCareerPath?.required_skill_ids, skills]);
 
-  // Enhanced checkpoint skills with fallback
-  const checkpointSkills = React.useMemo(() => {
+  // Enhanced checkpoint skills with stable fallback
+  const checkpointSkills = useMemo(() => {
     if (careerSelectedCareerPath?.checkpoint_skill_id) {
       return [careerSelectedCareerPath.checkpoint_skill_id];
     }
     
-    // Only compute fallback if we have skills and no career path selected
     if (skills.length === 0) return [];
     
-    // Default checkpoints for UX Designer as fallback
+    // Default checkpoints for UX Designer as stable fallback
     return skills
       .filter(skill => 
         skill.name.toLowerCase().includes('wireframe') ||
@@ -298,10 +313,10 @@ const SkillTree = () => {
       )
       .slice(0, 3)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath?.id, careerSelectedCareerPath?.checkpoint_skill_id, skills.length]);
+  }, [careerSelectedCareerPath?.checkpoint_skill_id, skills]);
 
-  // Handle skill completion and check for checkpoints
-  const handleSkillClick = (skill: Skill) => {
+  // Stable handle skill click function
+  const handleSkillClick = useCallback((skill: Skill) => {
     setSelectedSkill(skill);
     
     // Check if this skill triggers a checkpoint
@@ -309,35 +324,38 @@ const SkillTree = () => {
     if (progress?.status === 'completed' && checkForCheckpoint) {
       checkForCheckpoint(skill.id);
     }
-  };
+  }, [effectiveUserProgress, checkForCheckpoint]);
 
-  const handleCareerPathSelect = (pathId: string) => {
+  // Stable career path select handler
+  const handleCareerPathSelect = useCallback((pathId: string) => {
     selectCareerPath(pathId);
     toast({
       title: "Career Path Selected",
       description: "Your skill tree has been updated to focus on your chosen career path.",
     });
-  };
+  }, [selectCareerPath, toast]);
 
-  // Handle checkpoint modal path selection
-  const handleCheckpointPathSelect = (pathId: string) => {
+  // Stable checkpoint path select handler
+  const handleCheckpointPathSelect = useCallback((pathId: string) => {
     selectCareerPath(pathId);
     setShowCheckpointModal(false);
     toast({
       title: "Career Specialization Chosen",
       description: "You've successfully committed to your career specialization path!",
     });
-  };
+  }, [selectCareerPath, setShowCheckpointModal, toast]);
 
-  const handleCategoryToggle = (category: string) => {
+  // Stable category toggle handler
+  const handleCategoryToggle = useCallback((category: string) => {
     setActiveCategories(prev => 
       prev.includes(category) 
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
-  };
+  }, []);
 
-  const handlePlanSkill = (skillId: string) => {
+  // Stable plan skill handler
+  const handlePlanSkill = useCallback((skillId: string) => {
     const skill = skills.find(s => s.id === skillId);
     if (skill) {
       navigate('/mentor-chat', { 
@@ -346,13 +364,14 @@ const SkillTree = () => {
         } 
       });
     }
-  };
+  }, [skills, navigate]);
 
-  const getSkillProgress = (skillId: string) => {
+  // Stable helper functions
+  const getSkillProgress = useCallback((skillId: string) => {
     return userProgress.find(p => p.skill_id === skillId);
-  };
+  }, [userProgress]);
 
-  const getSkillPrerequisites = (skillId: string) => {
+  const getSkillPrerequisites = useCallback((skillId: string) => {
     return skillEdges
       .filter(edge => edge.skill_id === skillId)
       .map(edge => {
@@ -364,10 +383,10 @@ const SkillTree = () => {
           completed: progress?.status === 'completed'
         };
       });
-  };
+  }, [skillEdges, skills, getSkillProgress]);
 
-  // Filter skills based on current filters (memoized to prevent infinite re-renders)
-  const filteredSkills = React.useMemo(() => {
+  // Filter skills based on current filters (stable memoization)
+  const filteredSkills = useMemo(() => {
     return skills.filter(skill => {
       const progress = userProgress.find(p => p.skill_id === skill.id);
       
@@ -383,8 +402,8 @@ const SkillTree = () => {
     });
   }, [skills, userProgress, searchTerm, activeCategories, showOnlyRecommended, recommendedSkills, showUnlockedOnly, showRecommendedNext, goalSkills, showGoalPathOnly]);
 
-  // Calculate skill counts (memoized)
-  const skillCounts = React.useMemo(() => ({
+  // Calculate skill counts (stable memoization)
+  const skillCounts = useMemo(() => ({
     total: skills.length,
     completed: userProgress.filter(p => p.status === 'completed').length,
     inProgress: userProgress.filter(p => p.status === 'in_progress').length,
@@ -392,12 +411,7 @@ const SkillTree = () => {
     withCourses: skillsWithCourses.length
   }), [skills.length, userProgress, recommendedSkills.length, skillsWithCourses.length]);
 
-  // Show error state if there are critical errors
-  if (skillsError) {
-    console.error('[SkillTree] Critical error, showing fallback UI:', skillsError);
-  }
-
-  // Improved loading logic - show partial content when possible
+  // Improved loading logic - allow rendering with just skills loaded
   const isInitialLoading = skillsLoading && skills.length === 0;
   const isDataReady = !skillsLoading && skills.length > 0;
   
@@ -409,19 +423,9 @@ const SkillTree = () => {
     isDataReady
   });
   
-  // Debug logging
-  if (skills.length === 0) console.warn("🚨 No skills loaded!");
-  if (filteredSkills.length === 0) console.warn("⚠️ Filtered skills is empty!");
-  if (skillEdges.length === 0) console.warn("⚠️ No skill edges!");
-  if (userProgress.length === 0) console.warn("⚠️ No user progress!");
-  
-  if (!isDataReady) {
-    console.warn('[SkillTree] Waiting on data: ', { 
-      skillsLoaded: skills.length, 
-      categoriesLoaded: categories.length,
-      skillsLoading,
-      categoriesLoading 
-    });
+  // Show error state if there are critical errors
+  if (skillsError) {
+    console.error('[SkillTree] Critical error, showing fallback UI:', skillsError);
   }
   
   if (isInitialLoading) {
@@ -532,7 +536,7 @@ const SkillTree = () => {
         </div>
       </div>
 
-      {/* Show partial UI even during data loading */}
+      {/* Show content when data is ready */}
       {isDataReady && (
         <>
           {/* Filters */}
@@ -643,6 +647,7 @@ const SkillTree = () => {
         </>
       )}
 
+      {/* Empty state for filtered skills */}
       {isDataReady && filteredSkills.length === 0 && (
         <div className="text-center text-muted-foreground py-10">
           <p>⚠️ No skills matched your filters. Try resetting filters or check your skill data.</p>

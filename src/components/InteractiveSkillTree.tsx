@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
@@ -72,15 +72,27 @@ export const InteractiveSkillTree = React.memo(({
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
 
-  // Improved loading logic with better validation
-  useEffect(() => {
+  // Stable validation with improved loading logic
+  const hasValidData = useMemo(() => {
     const hasSkills = skills && skills.length > 0;
     const hasFilteredSkills = filteredSkills && filteredSkills.length > 0;
     const hasUserProgress = userProgress && Array.isArray(userProgress);
     const hasEdges = skillEdges && Array.isArray(skillEdges);
     const hasCategories = availableCategories && Array.isArray(availableCategories);
 
-    if (hasSkills && hasFilteredSkills && hasUserProgress && hasEdges && hasCategories) {
+    return {
+      hasSkills,
+      hasFilteredSkills,
+      hasUserProgress,
+      hasEdges,
+      hasCategories,
+      isComplete: hasSkills && hasFilteredSkills && hasUserProgress && hasEdges
+    };
+  }, [skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length]);
+
+  // Improved loading logic - don't require categories for data ready state
+  useEffect(() => {
+    if (hasValidData.isComplete) {
       const loadTime = performance.now() - loadStartTime;
       console.log(`[SkillTree] Load completed in ${loadTime.toFixed(2)}ms`);
       console.log('[SkillTree] Data validation:', {
@@ -92,7 +104,7 @@ export const InteractiveSkillTree = React.memo(({
       });
       setIsLoading(false);
     }
-  }, [skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length, loadStartTime]);
+  }, [hasValidData.isComplete, loadStartTime, skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length]);
 
   console.log('InteractiveSkillTree render:', {
     skillsCount: skills?.length || 0,
@@ -100,11 +112,12 @@ export const InteractiveSkillTree = React.memo(({
     edgesCount: skillEdges?.length || 0,
     categoriesCount: availableCategories?.length || 0,
     userProgressCount: userProgress?.length || 0,
-    isLoading
+    isLoading,
+    hasValidData
   });
 
   // Validate required props with better error messages
-  if (!skills || !Array.isArray(skills)) {
+  if (!hasValidData.hasSkills) {
     console.error('InteractiveSkillTree: skills prop is required and must be an array');
     return (
       <div className="flex items-center justify-center h-96 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -113,7 +126,7 @@ export const InteractiveSkillTree = React.memo(({
     );
   }
 
-  if (!filteredSkills || !Array.isArray(filteredSkills)) {
+  if (!hasValidData.hasFilteredSkills) {
     console.error('InteractiveSkillTree: filteredSkills prop is required and must be an array');
     return (
       <div className="flex items-center justify-center h-96 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -122,7 +135,7 @@ export const InteractiveSkillTree = React.memo(({
     );
   }
 
-  if (!userProgress || !Array.isArray(userProgress)) {
+  if (!hasValidData.hasUserProgress) {
     console.error('InteractiveSkillTree: userProgress prop is required and must be an array');
     return (
       <div className="flex items-center justify-center h-96 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -132,29 +145,48 @@ export const InteractiveSkillTree = React.memo(({
   }
 
   // Show loading skeleton only when actually loading or data is incomplete
-  if (isLoading || skills.length === 0 || filteredSkills.length === 0) {
+  if (isLoading || !hasValidData.isComplete) {
     return <LoadingSkeleton nodeCount={Math.min(skills.length || 12, 12)} />;
   }
 
+  // Stable props for SkillTreeCanvas
+  const stableSkillTreeProps = useMemo(() => ({
+    skills,
+    userProgress,
+    skillEdges,
+    filteredSkills,
+    recommendedSkills,
+    goalSkills,
+    checkpointSkills,
+    availableCategories,
+    onSkillClick,
+    careerPathName,
+    showPivotPaths,
+    selectedCareerPath,
+    careerPaths,
+    getSkillClassification,
+    onCareerPathSelect
+  }), [
+    skills,
+    userProgress,
+    skillEdges,
+    filteredSkills,
+    recommendedSkills,
+    goalSkills,
+    checkpointSkills,
+    availableCategories,
+    onSkillClick,
+    careerPathName,
+    showPivotPaths,
+    selectedCareerPath,
+    careerPaths,
+    getSkillClassification,
+    onCareerPathSelect
+  ]);
+
   return (
     <SkillTreeErrorBoundary>
-      <SkillTreeCanvas
-        skills={skills}
-        userProgress={userProgress}
-        skillEdges={skillEdges}
-        filteredSkills={filteredSkills}
-        recommendedSkills={recommendedSkills}
-        goalSkills={goalSkills}
-        checkpointSkills={checkpointSkills}
-        availableCategories={availableCategories}
-        onSkillClick={onSkillClick}
-        careerPathName={careerPathName}
-        showPivotPaths={showPivotPaths}
-        selectedCareerPath={selectedCareerPath}
-        careerPaths={careerPaths}
-        getSkillClassification={getSkillClassification}
-        onCareerPathSelect={onCareerPathSelect}
-      />
+      <SkillTreeCanvas {...stableSkillTreeProps} />
     </SkillTreeErrorBoundary>
   );
 });
