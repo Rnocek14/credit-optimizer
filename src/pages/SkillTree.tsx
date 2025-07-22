@@ -189,7 +189,7 @@ const SkillTree = () => {
         }));
       }
     },
-    enabled: !!skills.length
+    enabled: !skillsLoading
   });
 
   // Fetch skill edges with fallbacks
@@ -210,7 +210,8 @@ const SkillTree = () => {
         console.error('[SkillTree] Edges fetch failed:', error);
         return [] as SkillEdge[];
       }
-    }
+    },
+    enabled: !skillsLoading
   });
 
   // Fetch skills with courses
@@ -231,7 +232,8 @@ const SkillTree = () => {
         console.error('[SkillTree] Course mappings fetch failed:', error);
         return [];
       }
-    }
+    },
+    enabled: !skillsLoading
   });
 
   // Initialize sample career data
@@ -366,7 +368,7 @@ const SkillTree = () => {
     
     const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeCategories.includes(skill.category);
+    const matchesCategory = activeCategories.length === 0 || activeCategories.includes(skill.category);
     const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
     const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
     const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
@@ -391,7 +393,13 @@ const SkillTree = () => {
 
   // Improved loading logic - show partial content when possible
   const isInitialLoading = skillsLoading && skills.length === 0;
-  const isDataReady = skills.length > 0;
+  const isDataReady = !skillsLoading && !categoriesLoading && skills.length > 0 && categories.length > 0;
+  
+  // Debug logging
+  if (skills.length === 0) console.warn("🚨 No skills loaded!");
+  if (filteredSkills.length === 0) console.warn("⚠️ Filtered skills is empty!");
+  if (skillEdges.length === 0) console.warn("⚠️ No skill edges!");
+  if (userProgress.length === 0) console.warn("⚠️ No user progress!");
   
   if (!isDataReady) {
     console.warn('[SkillTree] Waiting on data: ', { 
