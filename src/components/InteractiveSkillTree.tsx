@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
@@ -71,8 +71,15 @@ export const InteractiveSkillTree = React.memo(({
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
-
-  // Stable validation with improved loading logic
+  
+  // FIXED: Add ref guards to prevent infinite updates
+  const hasSetLoadingFalse = useRef(false);
+  const renderCount = useRef(0);
+  
+  // Track render cycles for debugging
+  renderCount.current += 1;
+  
+  // FIXED: Stabilize validation with better memoization - avoid array length dependencies
   const hasValidData = useMemo(() => {
     const hasSkills = skills && skills.length > 0;
     const hasFilteredSkills = filteredSkills && filteredSkills.length > 0;
@@ -80,40 +87,65 @@ export const InteractiveSkillTree = React.memo(({
     const hasEdges = skillEdges && Array.isArray(skillEdges);
     const hasCategories = availableCategories && Array.isArray(availableCategories);
 
+    const isComplete = hasSkills && hasFilteredSkills && hasUserProgress && hasEdges;
+    
+    console.log(`[InteractiveSkillTree] Render #${renderCount.current} - Data validation:`, {
+      hasSkills,
+      hasFilteredSkills,
+      hasUserProgress,
+      hasEdges,
+      hasCategories,
+      isComplete,
+      skillsCount: skills?.length || 0,
+      filteredCount: filteredSkills?.length || 0
+    });
+
     return {
       hasSkills,
       hasFilteredSkills,
       hasUserProgress,
       hasEdges,
       hasCategories,
-      isComplete: hasSkills && hasFilteredSkills && hasUserProgress && hasEdges
+      isComplete
     };
-  }, [skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length]);
+  }, [
+    skills?.length > 0, // Use boolean instead of length
+    filteredSkills?.length > 0, // Use boolean instead of length
+    !!userProgress, // Use boolean
+    !!skillEdges, // Use boolean
+    !!availableCategories // Use boolean
+  ]);
 
-  // Improved loading logic - don't require categories for data ready state
+  // FIXED: Improved loading logic with ref guard to prevent infinite updates
   useEffect(() => {
-    if (hasValidData.isComplete) {
+    console.log(`[InteractiveSkillTree] useEffect triggered - isComplete: ${hasValidData.isComplete}, hasSetLoadingFalse: ${hasSetLoadingFalse.current}`);
+    
+    if (hasValidData.isComplete && !hasSetLoadingFalse.current) {
+      hasSetLoadingFalse.current = true;
       const loadTime = performance.now() - loadStartTime;
       console.log(`[SkillTree] Load completed in ${loadTime.toFixed(2)}ms`);
-      console.log('[SkillTree] Data validation:', {
-        skillsCount: skills.length,
-        filteredSkillsCount: filteredSkills.length,
-        userProgressCount: userProgress.length,
-        edgesCount: skillEdges.length,
-        categoriesCount: availableCategories.length
+      
+      // FIXED: Add guard to prevent unnecessary state update
+      setIsLoading(currentLoading => {
+        if (currentLoading === false) {
+          console.log('[InteractiveSkillTree] Prevented unnecessary setIsLoading(false) call');
+          return currentLoading;
+        }
+        console.log('[InteractiveSkillTree] Setting isLoading to false');
+        return false;
       });
-      setIsLoading(false);
     }
-  }, [hasValidData.isComplete, loadStartTime, skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length]);
+  }, [hasValidData.isComplete, loadStartTime]); // FIXED: Only depend on stable values
 
-  console.log('InteractiveSkillTree render:', {
+  console.log(`[InteractiveSkillTree] Render #${renderCount.current}:`, {
     skillsCount: skills?.length || 0,
     filteredSkillsCount: filteredSkills?.length || 0,
     edgesCount: skillEdges?.length || 0,
     categoriesCount: availableCategories?.length || 0,
     userProgressCount: userProgress?.length || 0,
     isLoading,
-    hasValidData
+    hasValidData,
+    hasSetLoadingFalse: hasSetLoadingFalse.current
   });
 
   // Validate required props with better error messages
@@ -146,6 +178,7 @@ export const InteractiveSkillTree = React.memo(({
 
   // Show loading skeleton only when actually loading or data is incomplete
   if (isLoading || !hasValidData.isComplete) {
+    console.log('[InteractiveSkillTree] Showing loading skeleton');
     return <LoadingSkeleton nodeCount={Math.min(skills.length || 12, 12)} />;
   }
 
@@ -184,6 +217,8 @@ export const InteractiveSkillTree = React.memo(({
     onCareerPathSelect
   ]);
 
+  console.log('[InteractiveSkillTree] Rendering SkillTreeCanvas');
+  
   return (
     <SkillTreeErrorBoundary>
       <SkillTreeCanvas {...stableSkillTreeProps} />
