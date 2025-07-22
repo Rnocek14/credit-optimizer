@@ -776,7 +776,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               stroke={strokeColor}
               strokeWidth={isHovered ? "3" : "2"}
               fill="none"
-              strokeOpacity={isHovered ? "0.9" : "0.6"}
+              strokeOpacity={isHovered ? "1.0" : "0.8"}
               className={isHovered ? "skill-arrow-flow" : "transition-all duration-300"}
               markerEnd="url(#arrowhead)"
             />
