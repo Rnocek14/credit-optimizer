@@ -109,6 +109,16 @@ export const InteractiveSkillTree = React.memo(({
 
   return (
     <SkillTreeErrorBoundary>
+      <pre className="bg-gray-100 text-sm p-4 max-h-[300px] overflow-scroll rounded-lg shadow-inner mb-4">
+        <strong>Debug Data Preview</strong>
+        {"\n\n"}
+        Skills:{" "}
+        {JSON.stringify(filteredSkills.map(s => ({ id: s.id, name: s.name, category: s.category })), null, 2)}
+        {"\n\n"}
+        Edges:{" "}
+        {JSON.stringify(skillEdges, null, 2)}
+      </pre>
+      
       <SkillTreeCanvas
         skills={skills}
         userProgress={userProgress || []}
