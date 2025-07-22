@@ -25,11 +25,6 @@ interface OptimizedSkillTreeNodeProps {
   isInPath?: boolean;
   onHover?: (isHovering: boolean) => void;
   careerPathName?: string;
-  // New career-oriented props
-  isRequiredSkill?: boolean;
-  isOptionalSkill?: boolean;
-  isPivotSkill?: boolean;
-  trackName?: string;
 }
 
 export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = memo(({
@@ -45,11 +40,7 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
   size = 'medium',
   isInPath = false,
   onHover,
-  careerPathName,
-  isRequiredSkill = false,
-  isOptionalSkill = false,
-  isPivotSkill = false,
-  trackName
+  careerPathName
 }) => {
   const status = userProgress?.status || 'locked';
   
@@ -127,37 +118,6 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
           )}
         </div>
         
-        {/* Career path requirement indicators (top-left) */}
-        <div className="absolute -top-1 -left-1 flex gap-1">
-          {isRequiredSkill && (
-            <span 
-              className="w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold border border-white" 
-              title="Required Skill for Career Path"
-              style={{ fontSize: '8px' }}
-            >
-              !
-            </span>
-          )}
-          {isOptionalSkill && (
-            <span 
-              className="w-4 h-4 bg-blue-400 text-white text-xs rounded-full flex items-center justify-center border border-white" 
-              title="Optional Skill for Career Path"
-              style={{ fontSize: '8px' }}
-            >
-              ✨
-            </span>
-          )}
-          {isPivotSkill && (
-            <span 
-              className="w-4 h-4 bg-purple-500 text-white text-xs rounded-full flex items-center justify-center border border-white" 
-              title="Career Pivot Point"
-              style={{ fontSize: '8px' }}
-            >
-              🔄
-            </span>
-          )}
-        </div>
-
         {/* Status indicators */}
         <div className="absolute -top-1 -right-1 flex gap-1">
           {isGoalSkill && (
