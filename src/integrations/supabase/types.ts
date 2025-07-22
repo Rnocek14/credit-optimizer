@@ -1274,6 +1274,51 @@ export type Database = {
         }
         Relationships: []
       }
+      step_equivalents: {
+        Row: {
+          created_at: string | null
+          cri_difference: number | null
+          equivalent_step_id: string | null
+          id: string
+          match_reason: string | null
+          skill_overlap_percentage: number | null
+          step_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cri_difference?: number | null
+          equivalent_step_id?: string | null
+          id?: string
+          match_reason?: string | null
+          skill_overlap_percentage?: number | null
+          step_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cri_difference?: number | null
+          equivalent_step_id?: string | null
+          id?: string
+          match_reason?: string | null
+          skill_overlap_percentage?: number | null
+          step_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "step_equivalents_equivalent_step_id_fkey"
+            columns: ["equivalent_step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_equivalents_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transcripts: {
         Row: {
           created_at: string
