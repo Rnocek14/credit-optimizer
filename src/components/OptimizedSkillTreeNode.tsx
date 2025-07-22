@@ -20,6 +20,7 @@ interface OptimizedSkillTreeNodeProps {
   isRecommended?: boolean;
   isGoalSkill?: boolean;
   isCheckpoint?: boolean;
+  isCapstone?: boolean;
   hasCourses?: boolean;
   size?: 'small' | 'medium' | 'large';
   isInPath?: boolean;
@@ -36,6 +37,7 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
   isRecommended = false,
   isGoalSkill = false,
   isCheckpoint = false,
+  isCapstone = false,
   hasCourses = false,
   size = 'medium',
   isInPath = false,
@@ -46,6 +48,9 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
   
   // Optimized animation classes - use subtle glow instead of aggressive pulse
   const getAnimationClasses = () => {
+    if (isCapstone) {
+      return 'capstone-glow'; // Special glow for capstone skill
+    }
     if (isGoalSkill) {
       return 'goal-skill-glow'; // Custom CSS animation defined below
     }
@@ -70,10 +75,17 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
 
   return (
     <>
-      <style>{`
+<style>{`
         .goal-skill-glow {
           animation: subtle-glow 3s ease-in-out infinite;
           box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .capstone-glow {
+          animation: capstone-glow 3s ease-in-out infinite;
+          box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+          border-color: gold !important;
+          border-width: 2px;
         }
         
         .checkpoint-highlight {
@@ -87,6 +99,15 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
           }
           50% {
             box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+          }
+        }
+        
+        @keyframes capstone-glow {
+          0%, 100% {
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+          }
+          50% {
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.8);
           }
         }
       `}</style>
@@ -120,6 +141,11 @@ export const OptimizedSkillTreeNode: React.FC<OptimizedSkillTreeNodeProps> = mem
         
         {/* Status indicators */}
         <div className="absolute -top-1 -right-1 flex gap-1">
+          {isCapstone && (
+            <span className="w-4 h-4 flex items-center justify-center bg-yellow-400 rounded-full border border-white" title="Capstone Skill">
+              👑
+            </span>
+          )}
           {isGoalSkill && (
             <span className="w-3 h-3 bg-blue-500 rounded-full border border-white" title="Goal Skill" />
           )}

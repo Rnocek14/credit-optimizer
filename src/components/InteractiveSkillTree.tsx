@@ -34,6 +34,7 @@ interface InteractiveSkillTreeProps {
   recommendedSkills: string[];
   goalSkills?: string[];
   checkpointSkills?: string[];
+  capstoneSkillId?: string;
   availableCategories: string[];
   onSkillClick?: (skill: Skill) => void;
   showMinimap?: boolean;
@@ -50,6 +51,7 @@ export const InteractiveSkillTree = React.memo(({
   recommendedSkills,
   goalSkills = [],
   checkpointSkills = [],
+  capstoneSkillId,
   availableCategories,
   onSkillClick,
   showMinimap = true,
@@ -111,6 +113,7 @@ export const InteractiveSkillTree = React.memo(({
         recommendedSkills={recommendedSkills || []}
         goalSkills={goalSkills}
         checkpointSkills={checkpointSkills}
+        capstoneSkillId={capstoneSkillId}
         availableCategories={availableCategories || []}
         onSkillClick={onSkillClick}
         careerPathName={careerPathName}

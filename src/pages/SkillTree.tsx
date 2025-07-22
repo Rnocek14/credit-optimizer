@@ -288,6 +288,16 @@ const SkillTree = () => {
       .map(skill => skill.id);
   }, [careerSteps, skills]);
 
+  // Find the capstone skill (final goal in the roadmap)
+  const capstoneSkillId = React.useMemo(() => {
+    if (!careerSteps.length || !skills.length) return null;
+    const lastStep = careerSteps[careerSteps.length - 1];
+    const match = skills.find(skill =>
+      skill.name.toLowerCase().includes(lastStep.title.toLowerCase())
+    );
+    return match?.id || null;
+  }, [careerSteps, skills]);
+
   // Memoized checkpoint skills
   const checkpointSkills = React.useMemo(() => {
     if (!careerSteps.length) {
@@ -523,6 +533,7 @@ const SkillTree = () => {
             recommendedSkills={recommendedSkills}
             goalSkills={goalSkills}
             checkpointSkills={checkpointSkills}
+            capstoneSkillId={capstoneSkillId}
             availableCategories={categories}
             onSkillClick={handleSkillClick}
             careerPathName={selectedCareerPathData?.title}
