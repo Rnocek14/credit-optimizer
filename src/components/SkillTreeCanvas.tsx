@@ -516,14 +516,50 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Enhanced arrow paths with correct node dimensions and hierarchical flow
+  // Enhanced arrow paths with comprehensive debugging
   const arrowPaths = useMemo(() => {
-    const paths = new Map<string, string>();
+    console.log('🔍 DEBUGGING ARROW PATHS:');
+    console.log(`Total skillEdges: ${skillEdges.length}`);
+    console.log(`Total skillPositions: ${skillPositions.size}`);
+    console.log(`Filtered skills count: ${filteredSkills.length}`);
     
-    skillEdges.forEach(edge => {
+    // Log all skill IDs in skillPositions
+    const positionSkillIds = Array.from(skillPositions.keys());
+    console.log('📍 Skills with positions:', positionSkillIds.slice(0, 5), '... (showing first 5)');
+    
+    // Log all skill IDs in skillEdges
+    const edgeSkillIds = skillEdges.flatMap(edge => [edge.prerequisite_skill_id, edge.skill_id]);
+    const uniqueEdgeSkillIds = [...new Set(edgeSkillIds)];
+    console.log('🔗 Unique skill IDs in edges:', uniqueEdgeSkillIds.slice(0, 5), '... (showing first 5)');
+    
+    // Find missing skills
+    const missingFromSkills = uniqueEdgeSkillIds.filter(id => !positionSkillIds.includes(id));
+    const missingToSkills = uniqueEdgeSkillIds.filter(id => !positionSkillIds.includes(id));
+    
+    console.log(`❌ Missing skill IDs from positions: ${missingFromSkills.length}`, missingFromSkills.slice(0, 3));
+    
+    const paths = new Map<string, string>();
+    let processedEdges = 0;
+    let skippedEdges = 0;
+    
+    skillEdges.forEach((edge, index) => {
       const from = skillPositions.get(edge.prerequisite_skill_id);
       const to = skillPositions.get(edge.skill_id);
-      if (!from || !to) return;
+      
+      if (!from || !to) {
+        skippedEdges++;
+        if (index < 3) { // Log first few failures for debugging
+          console.log(`⚠️ Skipped edge ${index}: ${edge.prerequisite_skill_id} -> ${edge.skill_id}`, {
+            hasFrom: !!from,
+            hasTo: !!to,
+            fromSkill: skills.find(s => s.id === edge.prerequisite_skill_id)?.name || 'NOT FOUND',
+            toSkill: skills.find(s => s.id === edge.skill_id)?.name || 'NOT FOUND'
+          });
+        }
+        return;
+      }
+      
+      processedEdges++;
       
       // Node dimensions: 80px x 80px (w-20 h-20)
       const nodeWidth = 80;
@@ -548,8 +584,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
     });
     
+    console.log(`✅ Processed edges: ${processedEdges}`);
+    console.log(`❌ Skipped edges: ${skippedEdges}`);
+    console.log(`📊 Success rate: ${((processedEdges / skillEdges.length) * 100).toFixed(1)}%`);
+    
     return paths;
-  }, [skillEdges, skillPositions]);
+  }, [skillEdges, skillPositions, skills]);
 
   // Enhanced pivot paths
   const pivotPaths = useMemo(() => {
