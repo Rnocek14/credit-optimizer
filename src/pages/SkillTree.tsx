@@ -174,50 +174,45 @@ const SkillTree = () => {
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
-  // Fixed career steps query - using proper UUID validation and error handling
-  const { data: careerSteps = [] } = useQuery({
-    queryKey: ['career-steps', selectedCareerPath],
+  // Fetch roadmap step skills with proper SQL joins
+  const { data: roadmapStepSkills = [] } = useQuery({
+    queryKey: ['roadmap-step-skills', selectedCareerPath],
     queryFn: async () => {
       if (!selectedCareerPath) return [];
       
-      // Validate if selectedCareerPath is a valid UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      
-      if (!uuidRegex.test(selectedCareerPath)) {
-        console.log('Career path is not a UUID, using mock data for:', selectedCareerPath);
-        // Return mock UX Designer skills for non-UUID career paths
-        return [
-          { title: 'User Research', category: 'Design', is_checkpoint: false },
-          { title: 'Wireframing', category: 'Design', is_checkpoint: true },
-          { title: 'Prototyping', category: 'Design', is_checkpoint: false },
-          { title: 'Figma', category: 'Design', is_checkpoint: false },
-          { title: 'Adobe Creative Suite', category: 'Design', is_checkpoint: true },
-          { title: 'Information Architecture', category: 'Design', is_checkpoint: false },
-          { title: 'Usability Testing', category: 'Design', is_checkpoint: false },
-          { title: 'Design Systems', category: 'Design', is_checkpoint: true }
-        ];
-      }
+      console.log('Fetching roadmap step skills for career path:', selectedCareerPath);
       
       try {
         const { data, error } = await supabase
-          .from('roadmap_steps')
-          .select('*')
-          .eq('user_id', selectedCareerPath)
-          .order('order_index');
+          .from('roadmap_step_skills')
+          .select(`
+            skill_id,
+            roadmap_step_id,
+            roadmap_steps (
+              title,
+              order_index,
+              is_checkpoint,
+              is_capstone,
+              career_path_id
+            )
+          `)
+          .eq('roadmap_steps.career_path_id', selectedCareerPath)
+          .order('roadmap_steps.order_index');
         
         if (error) {
-          console.error('Career steps fetch error:', error);
+          console.error('Roadmap step skills fetch error:', error);
           return [];
         }
         
-        return data;
+        console.log('Roadmap step skills fetched:', data?.length || 0);
+        return data || [];
       } catch (err) {
-        console.error('Unexpected error fetching career steps:', err);
+        console.error('Unexpected error fetching roadmap step skills:', err);
         return [];
       }
     },
     enabled: !!selectedCareerPath,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes to reduce re-fetching
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   // Fixed career path data query with proper error handling
@@ -259,10 +254,10 @@ const SkillTree = () => {
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
-  // Memoized goal skills to prevent unnecessary recalculations
+  // Memoized goal skills using new roadmap step skills
   const goalSkills = React.useMemo(() => {
-    if (!careerSteps.length) {
-      // Default UX Designer skills
+    if (!roadmapStepSkills.length) {
+      // Default UX Designer skills when no roadmap is available
       return skills
         .filter(skill => 
           skill.category === 'Design' || 
@@ -276,42 +271,27 @@ const SkillTree = () => {
         .map(skill => skill.id);
     }
     
-    // Map career steps to actual skills
-    const stepNames = careerSteps.map(step => step.title.toLowerCase());
-    return skills
-      .filter(skill => 
-        stepNames.some(stepName => 
-          skill.name.toLowerCase().includes(stepName) ||
-          stepName.includes(skill.name.toLowerCase())
-        )
-      )
-      .map(skill => skill.id);
-  }, [careerSteps, skills]);
+    // Extract skill IDs from roadmap step skills
+    return roadmapStepSkills.map(item => item.skill_id);
+  }, [roadmapStepSkills, skills]);
 
-  // Find the capstone skills (final goals in the roadmap)
+  // Find the capstone skills using roadmap step skills
   const capstoneSkillIds = React.useMemo(() => {
-    if (!careerSteps.length || !skills.length) return [];
+    if (!roadmapStepSkills.length) return [];
 
-    const lastSteps = careerSteps.slice(-2);
-    const stepNames = lastSteps.map(step => step.title.toLowerCase());
-
-    return skills
-      .filter(skill =>
-        stepNames.some(stepName =>
-          skill.name.toLowerCase().includes(stepName) || stepName.includes(skill.name.toLowerCase())
-        )
-      )
-      .map(skill => skill.id);
-  }, [careerSteps, skills]);
+    return roadmapStepSkills
+      .filter(item => item.roadmap_steps?.is_capstone === true)
+      .map(item => item.skill_id);
+  }, [roadmapStepSkills]);
   
   // Get the primary capstone skill (the very last one)
   const capstoneSkillId = React.useMemo(() => {
     return capstoneSkillIds.length > 0 ? capstoneSkillIds[0] : null;
   }, [capstoneSkillIds]);
 
-  // Memoized checkpoint skills
+  // Memoized checkpoint skills using roadmap step skills
   const checkpointSkills = React.useMemo(() => {
-    if (!careerSteps.length) {
+    if (!roadmapStepSkills.length) {
       // Default checkpoints for UX Designer
       return skills
         .filter(skill => 
@@ -322,17 +302,10 @@ const SkillTree = () => {
         .map(skill => skill.id);
     }
     
-    const checkpointSteps = careerSteps.filter(step => (step as any).is_checkpoint === true);
-    const stepNames = checkpointSteps.map(step => step.title.toLowerCase());
-    return skills
-      .filter(skill => 
-        stepNames.some(stepName => 
-          skill.name.toLowerCase().includes(stepName) ||
-          stepName.includes(skill.name.toLowerCase())
-        )
-      )
-      .map(skill => skill.id);
-  }, [careerSteps, skills]);
+    return roadmapStepSkills
+      .filter(item => item.roadmap_steps?.is_checkpoint === true)
+      .map(item => item.skill_id);
+  }, [roadmapStepSkills, skills]);
 
   // Filter skills based on current filters
   const filteredSkills = skills.filter(skill => {
@@ -390,15 +363,10 @@ const SkillTree = () => {
     console.log('SkillTree capstone debug:', {
       capstoneSkillIds,
       capstoneSkillsInFiltered: capstoneSkillIds.filter(id => filteredSkills.some(skill => skill.id === id)),
-      careerSteps: careerSteps.slice(-2).map(step => step.title),
-      matchingSkills: skills.filter(skill =>
-        careerSteps.slice(-2).some(step =>
-          skill.name.toLowerCase().includes(step.title.toLowerCase()) || 
-          step.title.toLowerCase().includes(skill.name.toLowerCase())
-        )
-      ).map(s => ({ id: s.id, name: s.name }))
+      roadmapSteps: roadmapStepSkills.filter(item => item.roadmap_steps?.is_capstone).map(item => item.roadmap_steps?.title),
+      totalRoadmapSkills: roadmapStepSkills.length
     });
-  }, [capstoneSkillIds, filteredSkills, careerSteps, skills]);
+  }, [capstoneSkillIds, filteredSkills, roadmapStepSkills]);
 
   const getSkillPrerequisites = (skillId: string) => {
     return skillEdges
