@@ -368,11 +368,20 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const availableWidth = containerDimensions.width - (containerPadding * 2);
       const startX = Math.max(baseX, (availableWidth - totalWidth) / 2 + containerPadding);
 
+      // Critical fix: Ensure Y positioning correctly reflects computed levels
+      const levelY = baseY + level * verticalSpacing;
+      
+      console.log(`🎯 Positioning Level ${level}: ${skillsAtLevel.length} skills at Y=${levelY}`, 
+        skillsAtLevel.map(s => s.name));
+
       skillsAtLevel.forEach((skill, index) => {
         const x = startX + index * (nodeWidth + horizontalSpacing);
-        const y = baseY + level * verticalSpacing;
+        const y = levelY; // Use levelY consistently
+        
+        const skillLevel = skillLevels.get(skill.id);
+        console.log(`📍 ${skill.name}: computed level=${skillLevel}, positioned level=${level}, Y=${y}`);
 
-        positions.set(skill.id, { x, y, level, isOrphaned: false }); // Track orphaned status
+        positions.set(skill.id, { x, y, level: skillLevel || 0, isOrphaned: false });
       });
     }
 
