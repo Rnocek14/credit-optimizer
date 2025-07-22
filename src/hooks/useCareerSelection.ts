@@ -75,10 +75,10 @@ export const useCareerSelection = () => {
         return data as CareerPath[];
       } catch (error) {
         console.error('[CareerSelection] Career paths fetch failed:', error);
-        // Return fallback career paths
+        // Return fallback career paths with proper UUID
         return [
           {
-            id: 'ux-designer-fallback',
+            id: 'a0b1c2d3-e4f5-6789-abcd-ef0123456789',
             title: 'UX Designer',
             track: 'design',
             level: 'entry',
