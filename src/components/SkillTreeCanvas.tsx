@@ -559,10 +559,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         className="absolute inset-0 pointer-events-none"
         width={containerDimensions.width}
         height={containerDimensions.height}
-        style={{
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
-          transformOrigin: '0 0'
-        }}
       >
         <defs>
           <marker
@@ -593,53 +589,59 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           </marker>
         </defs>
         
-        {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => {
-          const [prerequisiteId, skillId] = edgeKey.split('-');
-          const fromSkill = skills.find(s => s.id === prerequisiteId);
-          const toSkill = skills.find(s => s.id === skillId);
-          const isHovered = hoveredArrows.includes(edgeKey);
-          
-          const strokeColor = toSkill ? getCategoryColor(toSkill.category) : '#9ca3af';
-          
-          return (
-            <path
-              key={edgeKey}
-              d={pathData}
-              stroke={strokeColor}
-              strokeWidth="2"
-              fill="none"
-              strokeOpacity={isHovered ? "0.9" : "0.6"}
-              className={isHovered ? "skill-arrow-flow" : ""}
-              markerEnd="url(#arrowhead)"
-            />
-          );
-        })}
+        <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}>
+          {Array.from(arrowPaths.entries()).map(([edgeKey, pathData]) => {
+            const [prerequisiteId, skillId] = edgeKey.split('-');
+            const fromSkill = skills.find(s => s.id === prerequisiteId);
+            const toSkill = skills.find(s => s.id === skillId);
+            const isHovered = hoveredArrows.includes(edgeKey);
+            
+            const strokeColor = toSkill ? getCategoryColor(toSkill.category) : '#9ca3af';
+            
+            return (
+              <path
+                key={edgeKey}
+                d={pathData}
+                stroke={strokeColor}
+                strokeWidth="2"
+                fill="none"
+                strokeOpacity={isHovered ? "0.9" : "0.6"}
+                className={isHovered ? "skill-arrow-flow" : ""}
+                markerEnd="url(#arrowhead)"
+              />
+            );
+          })}
+        </g>
 
         {/* Pivot Path Arrows */}
-        {showPivotPaths && Array.from(pivotPaths.entries()).map(([pivotKey, { path: pathData, branch }]) => {
-          const typeColors = {
-            pivot: '#fbbf24', // Gold/yellow for pivots
-            branch: '#10b981', // Green for branches
-            backtrack: '#f97316' // Orange for backtrack
-          };
-          
-          const strokeColor = typeColors[branch.type];
-          
-          return (
-            <path
-              key={pivotKey}
-              d={pathData}
-              stroke={strokeColor}
-              strokeWidth="2"
-              fill="none"
-              strokeOpacity="0.8"
-              strokeDasharray="8,4"
-              className="cursor-pointer hover:stroke-opacity-100 pointer-events-auto"
-              markerEnd="url(#pivot-arrowhead)"
-              onClick={() => handlePivotPathClick(branch)}
-            />
-          );
-        })}
+        {showPivotPaths && (
+          <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}>
+            {Array.from(pivotPaths.entries()).map(([pivotKey, { path: pathData, branch }]) => {
+              const typeColors = {
+                pivot: '#fbbf24', // Gold/yellow for pivots
+                branch: '#10b981', // Green for branches
+                backtrack: '#f97316' // Orange for backtrack
+              };
+              
+              const strokeColor = typeColors[branch.type];
+              
+              return (
+                <path
+                  key={pivotKey}
+                  d={pathData}
+                  stroke={strokeColor}
+                  strokeWidth="2"
+                  fill="none"
+                  strokeOpacity="0.8"
+                  strokeDasharray="8,4"
+                  className="cursor-pointer hover:stroke-opacity-100 pointer-events-auto"
+                  markerEnd="url(#pivot-arrowhead)"
+                  onClick={() => handlePivotPathClick(branch)}
+                />
+              );
+            })}
+          </g>
+        )}
       </svg>
 
       {/* Optimized Node Layer */}
