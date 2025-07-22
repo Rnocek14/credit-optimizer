@@ -43,7 +43,6 @@ import SalaryInsights from "./pages/SalaryInsights";
 import ResumeAnalytics from "./pages/ResumeAnalytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
-import SkillTreeTest from "./components/SkillTreeTest";
 
 const queryClient = new QueryClient();
 
@@ -186,7 +185,6 @@ const App = () => (
         <Route path="/admin/moderation" element={<AdminModeration />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
-        <Route path="/skill-tree-test" element={<SkillTreeTest />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
         <Route 
           path="/resume-analytics" 

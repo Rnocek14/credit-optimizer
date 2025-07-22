@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { EnhancedSkillTreeNode } from './EnhancedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
-import { SkillTreeMinimap } from './SkillTreeMinimap';
-import { SkillTreeControls } from './SkillTreeControls';
 
 // Enhanced performance tracking with feature monitoring
 const performanceTracker = {
@@ -76,7 +74,6 @@ interface SkillTreeCanvasProps {
   skillsWithCourses?: string[];
   careerPathName?: string;
   showPivotPaths?: boolean;
-  onSkillRate?: (skillId: string) => void;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -91,8 +88,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
-  showPivotPaths = false,
-  onSkillRate
+  showPivotPaths = false
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -102,7 +98,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [highlightedSkillPath, setHighlightedSkillPath] = useState<string[]>([]);
   const [hoveredArrows, setHoveredArrows] = useState<string[]>([]);
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
-  const [showMinimap, setShowMinimap] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
@@ -194,227 +189,151 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, [getPrerequisitePath, skillEdges]);
 
-  // Enhanced getSkillLevels with better orphaned skill handling
-  const getSkillLevels = useCallback(() => {
-    const levels = new Map<string, number>();
-    const visited = new Set<string>();
-    const visiting = new Set<string>();
+  // Memoized skill depth calculation for hierarchical layout
+  const getSkillDepthMap = useCallback(() => {
+    if (!filteredSkills.length || !skillEdges.length) return new Map();
+    
+    const depthMap = new Map();
+    const visited = new Set();
 
-    const filteredSkillIds = new Set(filteredSkills.map(s => s.id));
-    const validEdges = skillEdges.filter(
-      edge =>
-        filteredSkillIds.has(edge.skill_id) &&
-        filteredSkillIds.has(edge.prerequisite_skill_id)
-    );
-
-    const getPrereqs = (skillId: string) =>
-      validEdges.filter(e => e.skill_id === skillId).map(e => e.prerequisite_skill_id);
-
-    const calculateDepth = (skillId: string): number => {
-      if (visited.has(skillId)) return levels.get(skillId)!;
-      if (visiting.has(skillId)) {
-        console.warn(`⚠️ Cycle detected for skill ${skillId}`);
-        return 0;
-      }
-
-      visiting.add(skillId);
-      const prereqs = getPrereqs(skillId);
-
-      if (prereqs.length === 0) {
-        levels.set(skillId, 0);
-      } else {
-        const maxPrereqDepth = Math.max(...prereqs.map(pid => calculateDepth(pid)));
-        levels.set(skillId, maxPrereqDepth + 1);
-      }
-
-      visiting.delete(skillId);
+    const dfs = (skillId: string, depth: number) => {
+      if (visited.has(skillId)) return;
       visited.add(skillId);
-      return levels.get(skillId)!;
+      depthMap.set(skillId, depth);
+      
+      const children = skillEdges.filter(e => e.prerequisite_skill_id === skillId);
+      children.forEach(edge => dfs(edge.skill_id, depth + 1));
     };
 
-    // First pass: Calculate levels for connected skills
-    filteredSkills.forEach(skill => {
-      if (!levels.has(skill.id)) {
-        calculateDepth(skill.id);
-      }
-    });
-
-    // Enhanced orphaned skill handling
-    const connectedIds = new Set(validEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id]));
-    const orphanedSkills = filteredSkills.filter(skill => !connectedIds.has(skill.id));
+    const skillsWithPrereqs = new Set(skillEdges.map(e => e.skill_id));
+    const rootSkills = filteredSkills.filter(skill => !skillsWithPrereqs.has(skill.id));
     
-    if (orphanedSkills.length > 0) {
-      console.log(`🔗 Found ${orphanedSkills.length} orphaned skills:`, orphanedSkills.map(s => s.name));
-      
-      // Categorize orphaned skills by category and difficulty
-      const categoryLevels = new Map<string, number>();
-      const foundationCategories = ['Markup', 'Styling', 'Programming'];
-      const advancedCategories = ['Framework', 'Backend', 'Cloud', 'DevOps'];
-      
-      orphanedSkills.forEach(skill => {
-        let suggestedLevel = 0;
-        
-        // Place foundation skills at level 0-1
-        if (foundationCategories.includes(skill.category)) {
-          suggestedLevel = skill.difficulty_level <= 2 ? 0 : 1;
-        }
-        // Place advanced skills at level 2-3
-        else if (advancedCategories.includes(skill.category)) {
-          suggestedLevel = skill.difficulty_level <= 3 ? 2 : 3;
-        }
-        // Use difficulty level as a guide for other categories
-        else {
-          suggestedLevel = Math.max(0, skill.difficulty_level - 1);
-        }
-        
-        levels.set(skill.id, suggestedLevel);
-        console.log(`📍 Placed orphaned skill ${skill.name} (${skill.category}, difficulty ${skill.difficulty_level}) at level ${suggestedLevel}`);
-      });
-    }
-
-    // Validate and adjust level distribution
-    const levelCounts = new Map<number, number>();
-    const maxLevel = Math.max(...Array.from(levels.values()));
+    rootSkills.forEach(skill => dfs(skill.id, 0));
     
-    for (let i = 0; i <= maxLevel; i++) {
-      levelCounts.set(i, 0);
-    }
-    
-    levels.forEach(level => {
-      levelCounts.set(level, (levelCounts.get(level) || 0) + 1);
-    });
-
-    // Rebalance if any level has too many skills (more than 12)
-    levelCounts.forEach((count, level) => {
-      if (count > 12) {
-        const skillsAtLevel = filteredSkills.filter(skill => levels.get(skill.id) === level);
-        const overflow = count - 12;
-        
-        // Move some skills to the next level
-        const skillsToMove = skillsAtLevel
-          .sort((a, b) => b.difficulty_level - a.difficulty_level)
-          .slice(0, overflow);
-        
-        skillsToMove.forEach(skill => {
-          levels.set(skill.id, level + 1);
-          console.log(`⚖️ Moved ${skill.name} from level ${level} to ${level + 1} for rebalancing`);
-        });
-      }
-    });
-
-    const levelStats = Array.from(levels.entries()).reduce((acc, [, level]) => {
-      acc[level] = (acc[level] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
-    
-    console.log('📊 Final Level Distribution:', levelStats);
-    console.log('🔗 Skill Graph Completeness:', {
-      totalSkills: filteredSkills.length,
-      totalEdges: validEdges.length,
-      connectedSkills: connectedIds.size,
-      orphanedSkills: orphanedSkills.length,
-      orphanedSkillNames: orphanedSkills.map(s => s.name)
-    });
-    
-    return levels;
+    return depthMap;
   }, [filteredSkills, skillEdges]);
 
+  // Enhanced hierarchical layout with better spacing
   const skillPositions = useMemo(() => {
     if (!filteredSkills.length) return new Map();
 
     const positions = new Map();
-    const skillLevels = getSkillLevels();
+    const depthMap = getSkillDepthMap();
 
-    console.log('⛰️ Levels used for layout:', Array.from(skillLevels.entries()));
-
-    // Group skills by their hierarchical level
-    const skillsByLevel = new Map<number, any[]>();
-    let maxLevel = 0;
+    const levelMap = new Map();
+    const disconnectedSkills = [];
 
     filteredSkills.forEach(skill => {
-      const level = skillLevels.get(skill.id) || 0;
-      maxLevel = Math.max(maxLevel, level);
-
-      if (!skillsByLevel.has(level)) {
-        skillsByLevel.set(level, []);
+      const depth = depthMap.get(skill.id);
+      if (depth !== undefined) {
+        if (!levelMap.has(depth)) levelMap.set(depth, []);
+        levelMap.get(depth).push(skill);
+      } else {
+        disconnectedSkills.push(skill);
       }
-      skillsByLevel.get(level)!.push(skill);
     });
 
-    // Enhanced layout constants with better spacing
-    const nodeWidth = 80;
-    const nodeHeight = 80;
-    const horizontalSpacing = 160; // Increased from 140
-    const verticalSpacing = 240; // Increased from 220
-    const baseX = 100; // Increased padding
-    const baseY = 160; // Increased from 140
-    const containerPadding = 80; // Increased padding
+    const levelHeight = 200; // Increased spacing for better animation visibility
+    const nodeWidth = 140; // Wider nodes for better content display
+    const nodeSpacing = 50; // More spacing between nodes
+    const categorySpacing = 20; // Enhanced category separation
+    const baseY = 120;
+    const canvasWidth = containerDimensions.width;
 
-    // Position skills level by level with improved distribution
-    for (let level = 0; level <= maxLevel; level++) {
-      const skillsAtLevel = skillsByLevel.get(level) || [];
-
-      if (skillsAtLevel.length === 0) continue;
-
-      // Sort by category first, then by name for consistent positioning
-      skillsAtLevel.sort((a, b) => {
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
+    const sortSkillsByCategory = (skills: any[]) => {
+      return skills.sort((a, b) => {
+        const categoryA = a.category || 'Unknown';
+        const categoryB = b.category || 'Unknown';
+        if (categoryA !== categoryB) {
+          return categoryA.localeCompare(categoryB);
         }
         return a.name.localeCompare(b.name);
       });
+    };
 
-      const totalWidth = skillsAtLevel.length * nodeWidth + (skillsAtLevel.length - 1) * horizontalSpacing;
-      const availableWidth = containerDimensions.width - (containerPadding * 2);
-      const startX = Math.max(baseX, (availableWidth - totalWidth) / 2 + containerPadding);
-
-      // Critical fix: Ensure Y positioning correctly reflects computed levels
-      const levelY = baseY + level * verticalSpacing;
+    Array.from(levelMap.entries()).forEach(([depth, skillList]) => {
+      const sortedSkills = sortSkillsByCategory(skillList);
+      const skillCount = sortedSkills.length;
       
-      console.log(`🎯 Positioning Level ${level}: ${skillsAtLevel.length} skills at Y=${levelY}`, 
-        skillsAtLevel.map(s => s.name));
+      let totalWidth = skillCount * nodeWidth + (skillCount - 1) * nodeSpacing;
+      
+      let currentCategory = null;
+      let categoryTransitions = 0;
+      sortedSkills.forEach(skill => {
+        if (currentCategory && skill.category !== currentCategory) {
+          categoryTransitions++;
+        }
+        currentCategory = skill.category;
+      });
+      totalWidth += categoryTransitions * categorySpacing;
 
-      skillsAtLevel.forEach((skill, index) => {
-        const x = startX + index * (nodeWidth + horizontalSpacing);
-        const y = levelY; // Use levelY consistently
-        
-        const skillLevel = skillLevels.get(skill.id);
-        console.log(`📍 ${skill.name}: computed level=${skillLevel}, positioned level=${level}, Y=${y}`);
+      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
+      const y = baseY + depth * levelHeight;
 
-        positions.set(skill.id, { x, y, level: skillLevel || 0, isOrphaned: false });
+      let currentX = startX;
+      let lastCategory = null;
+
+      sortedSkills.forEach((skill) => {
+        if (lastCategory && skill.category !== lastCategory) {
+          currentX += categorySpacing;
+        }
+
+        positions.set(skill.id, { x: currentX, y });
+        currentX += nodeWidth + nodeSpacing;
+        lastCategory = skill.category;
+      });
+    });
+
+    // Handle disconnected skills with better positioning
+    if (disconnectedSkills.length > 0) {
+      const maxDepth = Math.max(...Array.from(depthMap.values()), -1);
+      const disconnectedY = baseY + (maxDepth + 2) * levelHeight;
+      
+      const sortedDisconnected = sortSkillsByCategory(disconnectedSkills);
+      const skillCount = sortedDisconnected.length;
+      
+      let totalWidth = skillCount * nodeWidth + (skillCount - 1) * nodeSpacing;
+      let currentCategory = null;
+      let categoryTransitions = 0;
+      sortedDisconnected.forEach(skill => {
+        if (currentCategory && skill.category !== currentCategory) {
+          categoryTransitions++;
+        }
+        currentCategory = skill.category;
+      });
+      totalWidth += categoryTransitions * categorySpacing;
+
+      const startX = Math.max(60, (canvasWidth - totalWidth) / 2);
+      let currentX = startX;
+      let lastCategory = null;
+
+      sortedDisconnected.forEach((skill) => {
+        if (lastCategory && skill.category !== lastCategory) {
+          currentX += categorySpacing;
+        }
+
+        positions.set(skill.id, { x: currentX, y: disconnectedY });
+        currentX += nodeWidth + nodeSpacing;
+        lastCategory = skill.category;
       });
     }
 
-    const levelStats = Array.from(skillsByLevel.entries()).map(([level, group]) => ({
-      level,
-      count: group.length,
-      skills: group.map(s => s.name)
-    }));
-    console.log('📊 Enhanced Skill Level Distribution:', levelStats);
-
-    console.log('Hierarchical layout completed with improved spacing:', {
-      totalSkills: filteredSkills.length,
-      maxLevel,
-      levelDistribution: levelStats,
-      verticalSpacing,
-      baseY,
-      containerPadding
-    });
-
     return positions;
-  }, [filteredSkills, getSkillLevels, containerDimensions.width]);
+  }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
 
+  // Enhanced skill click with better centering
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
     if (position) {
-      const targetX = containerDimensions.width / 2 - (position.x + 40) * zoomLevel;
-      const targetY = containerDimensions.height / 2 - (position.y + 40) * zoomLevel;
+      const targetX = containerDimensions.width / 2 - (position.x + 70) * zoomLevel;
+      const targetY = containerDimensions.height / 2 - (position.y + 50) * zoomLevel;
       
       setPanOffset({ x: targetX, y: targetY });
     }
     onSkillClick(skill);
   }, [skillPositions, containerDimensions, zoomLevel, onSkillClick]);
 
+  // Optimized fit-to-view function with stable reference
   const createFitToView = useCallback(() => {
     return () => {
       if (skillPositions.size === 0) return;
@@ -474,7 +393,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             fitToViewRef.current();
           }
         });
-      }, 600);
+      }, 600); // Slightly longer delay for animations to settle
       return () => clearTimeout(timeoutId);
     }
   }, [filteredSkills.length, skillPositions.size]);
@@ -516,7 +435,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Enhanced arrow paths with proper node connections
+  // Enhanced arrow paths with better animations
   const arrowPaths = useMemo(() => {
     const paths = new Map<string, string>();
     
@@ -525,20 +444,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(edge.skill_id);
       if (!from || !to) return;
       
-      // Node dimensions: 80px x 80px (w-20 h-20)
-      const nodeWidth = 80;
-      const nodeHeight = 80;
-      
-      // Calculate connection points (center bottom of 'from' node to center top of 'to' node)
-      const fromX = from.x + nodeWidth / 2;
-      const fromY = from.y + nodeHeight; // Bottom of from node
-      const toX = to.x + nodeWidth / 2;
-      const toY = to.y; // Top of to node
+      const fromX = from.x + 70;
+      const fromY = from.y + 100;
+      const toX = to.x + 70;
+      const toY = to.y;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
-      // Create smooth bezier curve for hierarchical flow
       const controlPoint1X = fromX;
       const controlPoint1Y = fromY + Math.abs(dy) * 0.4;
       const controlPoint2X = toX;
@@ -562,24 +475,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const to = skillPositions.get(branch.to_skill_id);
       if (!from || !to) return;
       
-      // Node dimensions: 80px x 80px
-      const nodeWidth = 80;
-      const nodeHeight = 80;
-      
-      // Center-to-center connections for pivot paths
-      const fromX = from.x + nodeWidth / 2;
-      const fromY = from.y + nodeHeight / 2;
-      const toX = to.x + nodeWidth / 2;
-      const toY = to.y + nodeHeight / 2;
+      const fromX = from.x + 70;
+      const fromY = from.y + 50;
+      const toX = to.x + 70;
+      const toY = to.y + 50;
       
       const dx = toX - fromX;
       const dy = toY - fromY;
       
-      // Create arched path for pivot connections
       const controlPoint1X = fromX + dx * 0.3;
-      const controlPoint1Y = fromY - 50; // Arc upward
+      const controlPoint1Y = fromY - 40;
       const controlPoint2X = toX - dx * 0.3;
-      const controlPoint2Y = toY - 50;
+      const controlPoint2Y = toY - 40;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`pivot-${branch.from_skill_id}-${branch.to_skill_id}`, { path: pathData, branch });
@@ -616,21 +523,29 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Enhanced Controls */}
-      <SkillTreeControls
-        zoomLevel={zoomLevel}
-        onZoomIn={() => setZoomLevel(prev => Math.min(prev * 1.2, 3))}
-        onZoomOut={() => setZoomLevel(prev => Math.max(prev * 0.8, 0.2))}
-        onFitToView={fitToView}
-        onReset={() => {
-          setZoomLevel(0.8);
-          setPanOffset({ x: 0, y: 0 });
-        }}
-        onToggleMinimap={() => setShowMinimap(!showMinimap)}
-        showMinimap={showMinimap}
-      />
+      {/* Enhanced Zoom Controls */}
+      <div className="absolute top-4 left-4 z-20 flex gap-2">
+        <button
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
+          onClick={() => setZoomLevel(prev => Math.min(prev * 1.2, 3))}
+        >
+          Zoom In
+        </button>
+        <button
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
+          onClick={() => setZoomLevel(prev => Math.max(prev * 0.8, 0.2))}
+        >
+          Zoom Out
+        </button>
+        <button
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm font-medium"
+          onClick={fitToView}
+        >
+          Fit to View
+        </button>
+      </div>
 
-      {/* Enhanced Stats Display with Connection Information */}
+      {/* Enhanced Stats Display */}
       <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
         <div className="text-sm space-y-1">
           <div className="flex justify-between">
@@ -638,20 +553,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             <span className="font-medium">{filteredSkills.length}</span>
           </div>
           <div className="flex justify-between">
-            <span>Edges:</span>
-            <span className="font-medium">{skillEdges.length}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Connected:</span>
-            <span className="font-medium text-green-600">
-              {new Set(skillEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id])).size}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Orphaned:</span>
-            <span className="font-medium text-orange-600">
-              {filteredSkills.length - new Set(skillEdges.flatMap(e => [e.skill_id, e.prerequisite_skill_id])).size}
-            </span>
+            <span>Categories:</span>
+            <span className="font-medium">{availableCategories.length}</span>
           </div>
           <div className="flex justify-between">
             <span>Goals:</span>
@@ -668,26 +571,15 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         </div>
       </div>
 
-      {/* Level Indicators - Visual guides for debugging */}
-      <div className="absolute left-4 top-20 z-10 space-y-2">
-        {Array.from(new Set(Array.from(skillPositions.values()).map(p => p.level || 0))).sort().map(level => (
-          <div 
-            key={level}
-            className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium border"
-            style={{ 
-              transform: `translateY(${160 + level * 240}px)` 
-            }}
-          >
-            Level {level}
-          </div>
-        ))}
-      </div>
-
       {/* Enhanced SVG Layer for Arrows with better animations */}
       <svg
         className="absolute inset-0 pointer-events-none"
         width={containerDimensions.width}
         height={containerDimensions.height}
+        style={{
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
+          transformOrigin: '0 0'
+        }}
       >
         <defs>
           <marker
@@ -732,7 +624,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               stroke={strokeColor}
               strokeWidth={isHovered ? "3" : "2"}
               fill="none"
-              strokeOpacity={isHovered ? "1.0" : "0.8"}
+              strokeOpacity={isHovered ? "0.9" : "0.6"}
               className={isHovered ? "skill-arrow-flow" : "transition-all duration-300"}
               markerEnd="url(#arrowhead)"
             />
@@ -799,31 +691,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               isInPath={isInPath}
               onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
               careerPathName={careerPathName}
-              
             />
           );
         })}
       </div>
-
-      {/* Minimap */}
-      {showMinimap && (
-        <SkillTreeMinimap
-          skills={filteredSkills}
-          skillPositions={skillPositions}
-          userProgress={userProgress}
-          goalSkills={goalSkills}
-          checkpointSkills={checkpointSkills}
-          recommendedSkills={recommendedSkills}
-          currentViewport={{
-            x: panOffset.x,
-            y: panOffset.y,
-            zoom: zoomLevel,
-            width: containerDimensions.width,
-            height: containerDimensions.height
-          }}
-          onViewportChange={(x, y) => setPanOffset({ x, y })}
-        />
-      )}
 
       {/* Pivot Path Modal */}
       {selectedPivotPath && (
