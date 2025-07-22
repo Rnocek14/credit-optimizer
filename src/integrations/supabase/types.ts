@@ -799,8 +799,45 @@ export type Database = {
         }
         Relationships: []
       }
+      roadmap_step_skills: {
+        Row: {
+          created_at: string
+          id: string
+          roadmap_step_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          roadmap_step_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          roadmap_step_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_step_skills_roadmap_step_id_fkey"
+            columns: ["roadmap_step_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_step_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roadmap_steps: {
         Row: {
+          career_path_id: string | null
           category: string | null
           completed: boolean | null
           completed_at: string | null
@@ -808,6 +845,8 @@ export type Database = {
           description: string | null
           estimated_duration: string | null
           id: string
+          is_capstone: boolean | null
+          is_checkpoint: boolean | null
           order_index: number | null
           prerequisites: string[] | null
           priority: string | null
@@ -819,6 +858,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          career_path_id?: string | null
           category?: string | null
           completed?: boolean | null
           completed_at?: string | null
@@ -826,6 +866,8 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          is_capstone?: boolean | null
+          is_checkpoint?: boolean | null
           order_index?: number | null
           prerequisites?: string[] | null
           priority?: string | null
@@ -837,6 +879,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          career_path_id?: string | null
           category?: string | null
           completed?: boolean | null
           completed_at?: string | null
@@ -844,6 +887,8 @@ export type Database = {
           description?: string | null
           estimated_duration?: string | null
           id?: string
+          is_capstone?: boolean | null
+          is_checkpoint?: boolean | null
           order_index?: number | null
           prerequisites?: string[] | null
           priority?: string | null
@@ -855,6 +900,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "roadmap_steps_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "roadmap_steps_user_id_fkey"
             columns: ["user_id"]
