@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -304,13 +303,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       skillsByLevel.get(level)!.push(skill);
     });
 
-    // Layout constants
+    // Layout constants - improved spacing and positioning
     const nodeWidth = 80;
     const nodeHeight = 80;
-    const horizontalSpacing = 120;
-    const verticalSpacing = 150;
-    const baseX = 60;
-    const baseY = 80;
+    const horizontalSpacing = 140; // Increased from 120
+    const verticalSpacing = 220; // Increased from 150 to 220
+    const baseX = 80; // Increased padding
+    const baseY = 140; // Increased from 80 to 140
+    const containerPadding = 60; // Added container padding
 
     // Position skills level by level
     for (let level = 0; level <= maxLevel; level++) {
@@ -318,34 +318,35 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
       if (skillsAtLevel.length === 0) continue;
 
-      skillsAtLevel.sort((a, b) => {
-        if (a.category !== b.category) {
-          return a.category.localeCompare(b.category);
-        }
-        return a.name.localeCompare(b.name);
-      });
+      // Remove category sorting - keep natural order for better flow
+      skillsAtLevel.sort((a, b) => a.name.localeCompare(b.name));
 
       const totalWidth = skillsAtLevel.length * nodeWidth + (skillsAtLevel.length - 1) * horizontalSpacing;
-      const startX = Math.max(baseX, (containerDimensions.width - totalWidth) / 2);
+      const availableWidth = containerDimensions.width - (containerPadding * 2);
+      const startX = Math.max(baseX, (availableWidth - totalWidth) / 2 + containerPadding);
 
       skillsAtLevel.forEach((skill, index) => {
         const x = startX + index * (nodeWidth + horizontalSpacing);
         const y = baseY + level * verticalSpacing;
 
-        positions.set(skill.id, { x, y });
+        positions.set(skill.id, { x, y, level }); // Include level for debugging
       });
     }
 
     const levelStats = Array.from(skillsByLevel.entries()).map(([level, group]) => ({
       level,
-      count: group.length
+      count: group.length,
+      skills: group.map(s => s.name)
     }));
-    console.log('📊 Skill Level Distribution:', levelStats);
+    console.log('📊 Enhanced Skill Level Distribution:', levelStats);
 
-    console.log('Hierarchical layout completed:', {
+    console.log('Hierarchical layout completed with improved spacing:', {
       totalSkills: filteredSkills.length,
       maxLevel,
-      levelDistribution: levelStats
+      levelDistribution: levelStats,
+      verticalSpacing,
+      baseY,
+      containerPadding
     });
 
     return positions;
@@ -487,11 +488,11 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       const dx = toX - fromX;
       const dy = toY - fromY;
       
-      // Create smooth bezier curve for hierarchical flow
+      // Create smooth bezier curve for hierarchical flow - adjusted for increased spacing
       const controlPoint1X = fromX;
-      const controlPoint1Y = fromY + Math.abs(dy) * 0.3;
+      const controlPoint1Y = fromY + Math.abs(dy) * 0.4; // Increased control point distance
       const controlPoint2X = toX;
-      const controlPoint2Y = toY - Math.abs(dy) * 0.3;
+      const controlPoint2Y = toY - Math.abs(dy) * 0.4;
       
       const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
       paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
@@ -579,7 +580,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         showMinimap={showMinimap}
       />
 
-      {/* Enhanced Stats Display */}
+      {/* Enhanced Stats Display with Level Information */}
       <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-sm border rounded-lg p-3 shadow-lg">
         <div className="text-sm space-y-1">
           <div className="flex justify-between">
@@ -602,7 +603,25 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
             <span>Zoom:</span>
             <span className="font-medium">{Math.round(zoomLevel * 100)}%</span>
           </div>
+          <div className="border-t pt-1 mt-1">
+            <div className="text-xs text-gray-600">Levels: 0-{Math.max(...Array.from(skillPositions.values()).map(p => p.level || 0))}</div>
+          </div>
         </div>
+      </div>
+
+      {/* Level Indicators - Visual guides for debugging */}
+      <div className="absolute left-4 top-20 z-10 space-y-2">
+        {Array.from(new Set(Array.from(skillPositions.values()).map(p => p.level || 0))).sort().map(level => (
+          <div 
+            key={level}
+            className="bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium border"
+            style={{ 
+              transform: `translateY(${140 + level * 220}px)` 
+            }}
+          >
+            Level {level}
+          </div>
+        ))}
       </div>
 
       {/* Enhanced SVG Layer for Arrows with better animations */}
