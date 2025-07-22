@@ -1,9 +1,8 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Enhanced Skill Tree Animations */
+/* Skill Tree Animations */
 @keyframes skill-path-pulse {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
@@ -15,70 +14,33 @@
 
 @keyframes goal-glow {
   0%, 100% {
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.4);
   }
   50% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.4);
-  }
-}
-
-@keyframes checkpoint-highlight {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(236, 72, 153, 0.9);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 30px rgba(251, 191, 36, 0.6);
   }
 }
 
 @keyframes arrow-flow {
   0% {
-    stroke-dasharray: 8 4;
+    stroke-dasharray: 5 5;
     stroke-dashoffset: 0;
   }
   100% {
-    stroke-dashoffset: 12;
-  }
-}
-
-@keyframes recommended-pulse {
-  0%, 100% {
-    box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.7);
+    stroke-dashoffset: 10;
   }
 }
 
 .skill-path-pulse {
-  animation: skill-path-pulse 1.5s ease-in-out infinite;
+  animation: skill-path-pulse 2s infinite;
 }
 
 .skill-goal-glow {
   animation: goal-glow 2s ease-in-out infinite;
 }
 
-.checkpoint-pulse {
-  animation: checkpoint-highlight 1.5s ease-in-out infinite;
-}
-
 .skill-arrow-flow {
   animation: arrow-flow 1s linear infinite;
-}
-
-.recommended-glow {
-  animation: recommended-pulse 2s ease-in-out infinite;
-}
-
-/* Enhanced Interactive Effects */
-.skill-node-hover {
-  transform: scale(1.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.skill-node-active {
-  transform: scale(0.98);
-  transition: all 0.1s ease-in-out;
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -183,7 +145,7 @@ All colors MUST be HSL.
   }
 }
 
-/* Enhanced Interactive SkillTree Polish Effects */
+/* Interactive SkillTree Polish Effects */
 @layer utilities {
   .skill-arrow-flow {
     stroke-dasharray: 8 4;
@@ -210,19 +172,5 @@ All colors MUST be HSL.
     50% {
       box-shadow: 0 0 16px hsl(var(--primary) / 0.6);
     }
-  }
-
-  /* Enhanced node interactions */
-  .skill-node {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .skill-node:hover {
-    transform: scale(1.05);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  }
-
-  .skill-node:active {
-    transform: scale(0.98);
   }
 }
