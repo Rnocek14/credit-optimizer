@@ -688,10 +688,6 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         className="absolute inset-0 pointer-events-none"
         width={containerDimensions.width}
         height={containerDimensions.height}
-        style={{
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
-          transformOrigin: '0 0'
-        }}
       >
         <defs>
           <marker
