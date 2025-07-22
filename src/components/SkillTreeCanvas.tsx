@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
 import { SkillPivotModal } from './SkillPivotModal';
+import { SkillTreeMinimap } from './SkillTreeMinimap';
+import { SkillSearchOverlay } from './SkillSearchOverlay';
 import { validateSkillTree, getSafeSkillTreeData, calculateSkillDepthsSafely } from '@/lib/skillTreeValidation';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
@@ -102,6 +104,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [selectedPivotPath, setSelectedPivotPath] = useState<SkillBranch | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [keyboardFocused, setKeyboardFocused] = useState(false);
+  const [searchOverlayVisible, setSearchOverlayVisible] = useState(false);
+  const [searchHighlightedSkills, setSearchHighlightedSkills] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
@@ -522,6 +526,75 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setSelectedPivotPath(branch);
   }, []);
 
+  // Minimap and Search handlers
+  const skillTreeBounds = useMemo(() => {
+    if (skillPositions.size === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+    
+    const positions = Array.from(skillPositions.values());
+    const xs = positions.map(p => p.x);
+    const ys = positions.map(p => p.y);
+    
+    return {
+      minX: Math.min(...xs),
+      maxX: Math.max(...xs),
+      minY: Math.min(...ys),
+      maxY: Math.max(...ys)
+    };
+  }, [skillPositions]);
+
+  const handleZoomToSkill = useCallback((skillId: string) => {
+    const skill = filteredSkills.find(s => s.id === skillId);
+    if (skill) {
+      handleSkillClick(skill);
+    }
+  }, [filteredSkills, handleSkillClick]);
+
+  const handleSearchToggle = useCallback(() => {
+    setSearchOverlayVisible(!searchOverlayVisible);
+    if (searchOverlayVisible) {
+      setSearchHighlightedSkills([]);
+    }
+  }, [searchOverlayVisible]);
+
+  const handleSearchSkillSelect = useCallback((skillId: string) => {
+    const skill = filteredSkills.find(s => s.id === skillId);
+    if (skill) {
+      handleSkillClick(skill);
+    }
+  }, [filteredSkills, handleSkillClick]);
+
+  // Prepare data for components
+  const minimapSkills = useMemo(() => {
+    return filteredSkills.map(skill => {
+      const position = skillPositions.get(skill.id);
+      const progress = userProgress.find(p => p.skill_id === skill.id);
+      
+      return {
+        id: skill.id,
+        name: skill.name,
+        category: skill.category,
+        position: position || { x: 0, y: 0 },
+        status: progress?.status || 'locked',
+      };
+    });
+  }, [filteredSkills, skillPositions, userProgress]);
+
+  const searchableSkills = useMemo(() => {
+    return filteredSkills.map(skill => {
+      const position = skillPositions.get(skill.id);
+      const progress = userProgress.find(p => p.skill_id === skill.id);
+      
+      return {
+        id: skill.id,
+        name: skill.name,
+        category: skill.category,
+        description: skill.description,
+        position: position || { x: 0, y: 0 },
+        status: progress?.status || 'locked',
+      };
+    });
+  }, [filteredSkills, skillPositions, userProgress]);
+
   // Keyboard navigation setup
   const keyboardNavigationItems = useMemo(() => 
     filteredSkills.map(skill => ({ id: skill.id, name: skill.name })),
@@ -548,14 +621,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       }
     },
     onSearch: (query) => {
-      // Find first skill matching search query
-      const matchIndex = filteredSkills.findIndex(skill => 
-        skill.name.toLowerCase().startsWith(query.toLowerCase())
-      );
-      if (matchIndex >= 0) {
-        setKeyboardSelectedIndex(matchIndex);
-        const skill = filteredSkills[matchIndex];
-        handleSkillClick(skill);
+      if (query === '/') {
+        // Open search overlay on '/' key
+        setSearchOverlayVisible(true);
+      } else {
+        // Find first skill matching search query
+        const matchIndex = filteredSkills.findIndex(skill => 
+          skill.name.toLowerCase().startsWith(query.toLowerCase())
+        );
+        if (matchIndex >= 0) {
+          setKeyboardSelectedIndex(matchIndex);
+          const skill = filteredSkills[matchIndex];
+          handleSkillClick(skill);
+        }
       }
     },
     disabled: selectedPivotPath !== null, // Disable when modal is open
@@ -635,6 +713,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           onClick={fitToView}
         >
           Fit to View
+        </button>
+        <button
+          className="px-3 py-2 bg-white border rounded shadow hover:bg-gray-50 text-sm"
+          onClick={handleSearchToggle}
+          title="Search skills (or press '/' key)"
+        >
+          Search
         </button>
       </div>
 
@@ -763,6 +848,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           const isRecommended = recommendedSkills.includes(skill.id);
           const hasCourses = skillsWithCourses.includes(skill.id);
           const isInPath = highlightedSkillPath.includes(skill.id);
+          const isSearchHighlighted = searchHighlightedSkills.includes(skill.id);
           const isKeyboardSelected = keyboardFocused && index === keyboardSelectedIndex;
           
           return (
@@ -798,7 +884,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
                 isCheckpoint={checkpointSkills.includes(skill.id)}
                 hasCourses={hasCourses}
                 size="medium"
-                isInPath={isInPath || isKeyboardSelected}
+                isInPath={isInPath || isKeyboardSelected || isSearchHighlighted}
                 onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
                 careerPathName={careerPathName}
               />
@@ -806,6 +892,34 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
           );
         })}
       </div>
+
+      {/* Minimap */}
+      <SkillTreeMinimap
+        skills={minimapSkills}
+        selectedSkillId={keyboardFocused ? keyboardNavigationItems[keyboardSelectedIndex]?.id : undefined}
+        zoomLevel={zoomLevel}
+        panOffset={panOffset}
+        containerDimensions={containerDimensions}
+        skillTreeBounds={skillTreeBounds}
+        onZoomToSkill={handleZoomToSkill}
+        onViewportChange={(zoom, pan) => {
+          setZoomLevel(zoom);
+          setPanOffset(pan);
+        }}
+      />
+
+      {/* Search Overlay */}
+      <SkillSearchOverlay
+        skills={searchableSkills}
+        isVisible={searchOverlayVisible}
+        onClose={() => {
+          setSearchOverlayVisible(false);
+          setSearchHighlightedSkills([]);
+        }}
+        onSkillSelect={handleSearchSkillSelect}
+        onHighlightSkills={setSearchHighlightedSkills}
+        selectedSkillId={keyboardFocused ? keyboardNavigationItems[keyboardSelectedIndex]?.id : undefined}
+      />
 
       {/* Pivot Path Modal */}
       {selectedPivotPath && (
