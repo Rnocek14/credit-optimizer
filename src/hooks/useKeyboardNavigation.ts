@@ -139,8 +139,25 @@ export function useKeyboardNavigation({
     }
   }, []);
 
-  // Announce current selection for screen readers
-  const announceSelection = useCallback(() => {
+  // REMOVED: duplicate announceSelection function - using stable version below
+
+  // Setup event listeners
+  useEffect(() => {
+    if (disabled) return;
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      
+      // Cleanup search timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [handleKeyDown, disabled]);
+
+  // FIXED: Prevent infinite loop by stabilizing announceSelection dependencies
+  const announceSelectionStable = useCallback(() => {
     const currentItem = items[selectedIndexRef.current];
     if (currentItem) {
       const announcement = `Selected skill: ${currentItem.name}. ${selectedIndexRef.current + 1} of ${items.length}`;
@@ -162,29 +179,14 @@ export function useKeyboardNavigation({
       
       liveRegion.textContent = announcement;
     }
-  }, [items]);
+  }, [items.length]); // Only depend on items.length, not the items array itself
 
-  // Setup event listeners
-  useEffect(() => {
-    if (disabled) return;
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      
-      // Cleanup search timeout
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [handleKeyDown, disabled]);
-
-  // Announce selection changes
+  // Announce selection changes - with stable dependency
   useEffect(() => {
     if (!disabled && items.length > 0) {
-      announceSelection();
+      announceSelectionStable();
     }
-  }, [announceSelection, disabled, items.length]);
+  }, [announceSelectionStable, disabled, items.length]);
 
   return {
     selectedIndex: selectedIndexRef.current,
