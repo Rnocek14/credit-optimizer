@@ -138,7 +138,7 @@ const SkillTree = () => {
       setActiveCategories(categories);
       hasInitializedCategories.current = true;
     }
-  }, [categories, activeCategories.length]);
+  }, [categories]);
 
   // Fetch user progress with better error handling and fallbacks
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
