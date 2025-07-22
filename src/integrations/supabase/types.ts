@@ -280,6 +280,45 @@ export type Database = {
         }
         Relationships: []
       }
+      career_step_skills: {
+        Row: {
+          created_at: string | null
+          id: string
+          importance_score: number | null
+          skill_id: string | null
+          step_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          importance_score?: number | null
+          skill_id?: string | null
+          step_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          importance_score?: number | null
+          skill_id?: string | null
+          step_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_step_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_step_skills_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_steps: {
         Row: {
           career_path_id: string | null
