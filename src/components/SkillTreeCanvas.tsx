@@ -59,7 +59,7 @@ interface SkillTreeCanvasProps {
     description?: string;
     slug: string;
   }>;
-  capstoneSkillId?: string;
+  capstoneSkillIds?: string[];
   userProgress: Array<{
     skill_id: string;
     status: 'locked' | 'available' | 'in_progress' | 'completed';
@@ -89,7 +89,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   recommendedSkills,
   goalSkills = [],
   checkpointSkills = [],
-  capstoneSkillId,
+  capstoneSkillIds = [],
   availableCategories,
   onSkillClick,
   skillsWithCourses = [],
@@ -884,7 +884,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
                 isRecommended={isRecommended}
                 isGoalSkill={goalSkills.includes(skill.id)}
                 isCheckpoint={checkpointSkills.includes(skill.id)}
-                isCapstone={capstoneSkillId === skill.id}
+                isCapstone={capstoneSkillIds.includes(skill.id)}
                 hasCourses={hasCourses}
                 size="medium"
                 isInPath={isInPath || isKeyboardSelected || isSearchHighlighted}

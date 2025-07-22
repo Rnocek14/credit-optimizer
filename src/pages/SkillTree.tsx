@@ -385,6 +385,21 @@ const SkillTree = () => {
     return userProgress.find(p => p.skill_id === skillId);
   };
 
+  // Debug capstone skills
+  React.useEffect(() => {
+    console.log('SkillTree capstone debug:', {
+      capstoneSkillIds,
+      capstoneSkillsInFiltered: capstoneSkillIds.filter(id => filteredSkills.some(skill => skill.id === id)),
+      careerSteps: careerSteps.slice(-2).map(step => step.title),
+      matchingSkills: skills.filter(skill =>
+        careerSteps.slice(-2).some(step =>
+          skill.name.toLowerCase().includes(step.title.toLowerCase()) || 
+          step.title.toLowerCase().includes(skill.name.toLowerCase())
+        )
+      ).map(s => ({ id: s.id, name: s.name }))
+    });
+  }, [capstoneSkillIds, filteredSkills, careerSteps, skills]);
+
   const getSkillPrerequisites = (skillId: string) => {
     return skillEdges
       .filter(edge => edge.skill_id === skillId)
@@ -544,7 +559,7 @@ const SkillTree = () => {
             recommendedSkills={recommendedSkills}
             goalSkills={goalSkills}
             checkpointSkills={checkpointSkills}
-            capstoneSkillId={capstoneSkillId}
+            capstoneSkillIds={capstoneSkillIds}
             availableCategories={categories}
             onSkillClick={handleSkillClick}
             careerPathName={selectedCareerPathData?.title}
