@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -125,7 +126,7 @@ const SkillTree = () => {
     }
   }, [categories, activeCategories.length]);
 
-  // Fetch user progress with better error handling
+  // Fetch user progress with better error handling and proper typing
   const { data: userProgress = [], isLoading: progressLoading } = useQuery({
     queryKey: ['user-skill-progress'],
     queryFn: async () => {
@@ -133,12 +134,12 @@ const SkillTree = () => {
       const user = await getCurrentUser();
       if (!user) {
         console.log('No user found, creating mock progress');
-        // Create mock progress for demo purposes
-        return skills.slice(0, 5).map((skill, index) => ({
+        // Create mock progress for demo purposes with proper typing
+        return skills.slice(0, 5).map((skill, index): UserProgress => ({
           skill_id: skill.id,
           status: index < 2 ? 'completed' : index < 4 ? 'in_progress' : 'available',
           xp_earned: index < 2 ? skill.xp_value : index < 4 ? Math.floor(skill.xp_value * 0.5) : 0,
-        })) as UserProgress[];
+        }));
       }
 
       const { data, error } = await supabase
@@ -151,7 +152,15 @@ const SkillTree = () => {
         throw error;
       }
       console.log('User progress fetched:', data?.length || 0);
-      return data as UserProgress[];
+      
+      // Ensure proper typing by mapping the database result
+      return (data || []).map(item => ({
+        skill_id: item.skill_id,
+        status: item.status as 'locked' | 'available' | 'in_progress' | 'completed',
+        xp_earned: item.xp_earned || 0,
+        cri_score: item.cri_score || undefined,
+        verification_source: item.verification_source || undefined,
+      }));
     },
     enabled: !!skills.length
   });
@@ -192,161 +201,51 @@ const SkillTree = () => {
     }
   });
 
-  // Mock recommended skills for now
-  const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
-
-  // Fixed career steps query - using proper UUID validation and error handling
-  const { data: careerSteps = [] } = useQuery({
-    queryKey: ['career-steps', selectedCareerPath],
-    queryFn: async () => {
-      if (!selectedCareerPath) return [];
-      
-      // Validate if selectedCareerPath is a valid UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      
-      if (!uuidRegex.test(selectedCareerPath)) {
-        console.log('Career path is not a UUID, using mock data for:', selectedCareerPath);
-        // Return mock UX Designer skills for non-UUID career paths
-        return [
-          { title: 'User Research', category: 'Design', is_checkpoint: false },
-          { title: 'Wireframing', category: 'Design', is_checkpoint: true },
-          { title: 'Prototyping', category: 'Design', is_checkpoint: false },
-          { title: 'Figma', category: 'Design', is_checkpoint: false },
-          { title: 'Adobe Creative Suite', category: 'Design', is_checkpoint: true },
-          { title: 'Information Architecture', category: 'Design', is_checkpoint: false },
-          { title: 'Usability Testing', category: 'Design', is_checkpoint: false },
-          { title: 'Design Systems', category: 'Design', is_checkpoint: true }
-        ];
-      }
-      
-      try {
-        const { data, error } = await supabase
-          .from('roadmap_steps')
-          .select('*')
-          .eq('user_id', selectedCareerPath)
-          .order('order_index');
-        
-        if (error) {
-          console.error('Career steps fetch error:', error);
-          return [];
-        }
-        
-        return data;
-      } catch (err) {
-        console.error('Unexpected error fetching career steps:', err);
-        return [];
-      }
-    },
-    enabled: !!selectedCareerPath,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes to reduce re-fetching
-  });
-
-  // Fixed career path data query with proper error handling
-  const { data: selectedCareerPathData } = useQuery({
-    queryKey: ['career-path-data', selectedCareerPath],
-    queryFn: async () => {
-      if (!selectedCareerPath) return null;
-      
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      
-      if (!uuidRegex.test(selectedCareerPath)) {
-        // Return mock UX Designer data for non-UUID career paths
-        return {
-          id: selectedCareerPath,
-          title: 'UX Designer',
-          average_salary: 78000
-        };
-      }
-      
-      try {
-        const { data, error } = await supabase
-          .from('career_paths')
-          .select('*')
-          .eq('id', selectedCareerPath)
-          .single();
-        
-        if (error) {
-          console.error('Career path fetch error:', error);
-          return null;
-        }
-        
-        return data;
-      } catch (err) {
-        console.error('Unexpected error fetching career path:', err);
-        return null;
-      }
-    },
-    enabled: !!selectedCareerPath,
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-  });
-
   // Initialize sample career data if needed
   const { isCreating: creatingCareerData } = useSampleCareerData();
 
   // Use career hook's user progress if available, otherwise fall back to existing
   const effectiveUserProgress = careerUserProgress?.length > 0 ? careerUserProgress : userProgress;
 
-  // Enhanced goal skills using career selection
+  // Mock recommended skills for now
+  const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
+
+  // Enhanced goal skills using career selection with fallback
   const goalSkills = React.useMemo(() => {
-    if (careerSelectedCareerPath) {
-      return careerSelectedCareerPath.required_skill_ids || [];
+    if (careerSelectedCareerPath && careerSelectedCareerPath.required_skill_ids?.length > 0) {
+      return careerSelectedCareerPath.required_skill_ids;
     }
     
-    if (!careerSteps.length) {
-      // Default UX Designer skills
-      return skills
-        .filter(skill => 
-          skill.category === 'Design' || 
-          skill.name.toLowerCase().includes('figma') ||
-          skill.name.toLowerCase().includes('adobe') ||
-          skill.name.toLowerCase().includes('research') ||
-          skill.name.toLowerCase().includes('wireframe') ||
-          skill.name.toLowerCase().includes('prototype')
-        )
-        .slice(0, 8)
-        .map(skill => skill.id);
-    }
-    
-    // Map career steps to actual skills
-    const stepNames = careerSteps.map(step => step.title.toLowerCase());
+    // Default UX Designer skills as fallback
     return skills
       .filter(skill => 
-        stepNames.some(stepName => 
-          skill.name.toLowerCase().includes(stepName) ||
-          stepName.includes(skill.name.toLowerCase())
-        )
+        skill.category === 'Design' || 
+        skill.name.toLowerCase().includes('figma') ||
+        skill.name.toLowerCase().includes('adobe') ||
+        skill.name.toLowerCase().includes('research') ||
+        skill.name.toLowerCase().includes('wireframe') ||
+        skill.name.toLowerCase().includes('prototype')
       )
+      .slice(0, 8)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath, careerSteps, skills]);
+  }, [careerSelectedCareerPath, skills]);
 
-  // Enhanced checkpoint skills
+  // Enhanced checkpoint skills with fallback
   const checkpointSkills = React.useMemo(() => {
     if (careerSelectedCareerPath?.checkpoint_skill_id) {
       return [careerSelectedCareerPath.checkpoint_skill_id];
     }
     
-    if (!careerSteps.length) {
-      // Default checkpoints for UX Designer
-      return skills
-        .filter(skill => 
-          skill.name.toLowerCase().includes('wireframe') ||
-          skill.name.toLowerCase().includes('adobe') ||
-          skill.name.toLowerCase().includes('design system')
-        )
-        .map(skill => skill.id);
-    }
-    
-    const checkpointSteps = careerSteps.filter(step => (step as any).is_checkpoint === true);
-    const stepNames = checkpointSteps.map(step => step.title.toLowerCase());
+    // Default checkpoints for UX Designer as fallback
     return skills
       .filter(skill => 
-        stepNames.some(stepName => 
-          skill.name.toLowerCase().includes(stepName) ||
-          stepName.includes(skill.name.toLowerCase())
-        )
+        skill.name.toLowerCase().includes('wireframe') ||
+        skill.name.toLowerCase().includes('adobe') ||
+        skill.name.toLowerCase().includes('design system')
       )
+      .slice(0, 3)
       .map(skill => skill.id);
-  }, [careerSelectedCareerPath, careerSteps, skills]);
+  }, [careerSelectedCareerPath, skills]);
 
   // Handle skill completion and check for checkpoints
   const handleSkillClick = (skill: Skill) => {
@@ -354,7 +253,7 @@ const SkillTree = () => {
     
     // Check if this skill triggers a checkpoint
     const progress = effectiveUserProgress.find(p => p.skill_id === skill.id);
-    if (progress?.status === 'completed') {
+    if (progress?.status === 'completed' && checkForCheckpoint) {
       checkForCheckpoint(skill.id);
     }
   };
@@ -450,7 +349,10 @@ const SkillTree = () => {
     );
   }
 
-  if (skillsLoading || progressLoading || edgesLoading || categoriesLoading || careerLoading || creatingCareerData) {
+  // Improved loading state with better conditions
+  const isLoading = skillsLoading || progressLoading || edgesLoading || categoriesLoading || careerLoading || creatingCareerData;
+  
+  if (isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -586,7 +488,7 @@ const SkillTree = () => {
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
           <InteractiveSkillTree
             skills={skills}
-            userProgress={effectiveUserProgress as any}
+            userProgress={effectiveUserProgress}
             skillEdges={skillEdges}
             filteredSkills={filteredSkills}
             recommendedSkills={recommendedSkills}
@@ -596,7 +498,6 @@ const SkillTree = () => {
             onSkillClick={handleSkillClick}
             careerPathName={careerSelectedCareerPath?.title}
             showPivotPaths={showPivotPaths}
-            // New career-oriented props
             selectedCareerPath={careerSelectedCareerPath}
             careerPaths={careerPaths}
             getSkillClassification={getSkillClassification}
@@ -606,7 +507,6 @@ const SkillTree = () => {
 
         {/* ROI Panel */}
         <div className="space-y-4">
-          {/* Toggle between focused and relocation explorer */}
           <div className="flex items-center gap-2 justify-end">
             <Button
               variant={!showRelocationExplorer ? "default" : "outline"}

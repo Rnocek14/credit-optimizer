@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,9 +136,9 @@ export const useCareerSelection = () => {
     }
   });
 
-  // Calculate progress data
+  // Calculate progress data with improved error handling
   const calculateProgress = (): CareerProgressData => {
-    if (!selectedCareerPath || !userProgress.length) {
+    if (!selectedCareerPath) {
       return {
         completionPercentage: 0,
         requiredSkillsCompleted: 0,
@@ -147,23 +148,43 @@ export const useCareerSelection = () => {
       };
     }
 
+    // Handle empty or missing skill arrays
+    const requiredSkillIds = selectedCareerPath.required_skill_ids || [];
+    const optionalSkillIds = selectedCareerPath.optional_skill_ids || [];
+    
+    if (requiredSkillIds.length === 0 && optionalSkillIds.length === 0) {
+      console.log('No skills mapped for career path:', selectedCareerPath.title);
+      return {
+        completionPercentage: 0,
+        requiredSkillsCompleted: 0,
+        totalRequiredSkills: 0,
+        optionalSkillsCompleted: 0,
+        totalOptionalSkills: 0,
+        estimatedTimeRemaining: 'Skills mapping pending',
+        currentROI: selectedCareerPath.roi_score
+      };
+    }
+
     const completedSkillIds = userProgress
       .filter(p => p.status === 'completed')
       .map(p => p.skill_id);
 
-    const requiredSkillsCompleted = selectedCareerPath.required_skill_ids
+    const requiredSkillsCompleted = requiredSkillIds
       .filter(skillId => completedSkillIds.includes(skillId)).length;
 
-    const optionalSkillsCompleted = selectedCareerPath.optional_skill_ids
+    const optionalSkillsCompleted = optionalSkillIds
       .filter(skillId => completedSkillIds.includes(skillId)).length;
 
-    const totalRequiredSkills = selectedCareerPath.required_skill_ids.length;
-    const totalOptionalSkills = selectedCareerPath.optional_skill_ids.length;
+    const totalRequiredSkills = requiredSkillIds.length;
+    const totalOptionalSkills = optionalSkillIds.length;
 
     // Calculate completion percentage (required skills weighted more heavily)
-    const requiredProgress = totalRequiredSkills > 0 ? (requiredSkillsCompleted / totalRequiredSkills) : 1;
-    const optionalProgress = totalOptionalSkills > 0 ? (optionalSkillsCompleted / totalOptionalSkills) : 0;
-    const completionPercentage = Math.round((requiredProgress * 0.8 + optionalProgress * 0.2) * 100);
+    let completionPercentage = 0;
+    if (totalRequiredSkills > 0) {
+      const requiredProgress = requiredSkillsCompleted / totalRequiredSkills;
+      const optionalProgress = totalOptionalSkills > 0 ? (optionalSkillsCompleted / totalOptionalSkills) : 0;
+      completionPercentage = Math.round((requiredProgress * 0.8 + optionalProgress * 0.2) * 100);
+    }
 
     // Estimate time remaining (mock calculation)
     const remainingSkills = totalRequiredSkills - requiredSkillsCompleted;
@@ -191,13 +212,16 @@ export const useCareerSelection = () => {
     }
   };
 
-  // Get skill classification for a skill ID
+  // Get skill classification for a skill ID with improved fallback
   const getSkillClassification = (skillId: string) => {
     if (!selectedCareerPath) return {};
     
+    const requiredSkillIds = selectedCareerPath.required_skill_ids || [];
+    const optionalSkillIds = selectedCareerPath.optional_skill_ids || [];
+    
     return {
-      isRequiredSkill: selectedCareerPath.required_skill_ids.includes(skillId),
-      isOptionalSkill: selectedCareerPath.optional_skill_ids.includes(skillId),
+      isRequiredSkill: requiredSkillIds.includes(skillId),
+      isOptionalSkill: optionalSkillIds.includes(skillId),
       isPivotSkill: skillId === selectedCareerPath.checkpoint_skill_id
     };
   };
