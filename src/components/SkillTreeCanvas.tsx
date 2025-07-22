@@ -401,16 +401,20 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     };
   }, [skillPositions, containerDimensions]);
 
-  // FIXED: Use a ref guard to prevent infinite re-assignments
   const fitToViewInitialized = useRef(false);
-  
+
   useEffect(() => {
-    // Only update the ref if it hasn't been initialized or if the data structure really changed
-    if (!fitToViewInitialized.current || (skillPositions.size > 0 && containerDimensions.width > 0)) {
+    if (fitToViewInitialized.current) return;
+
+    if (skillPositions.size > 0 && containerDimensions.width && containerDimensions.height) {
       fitToViewRef.current = createFitToView();
       fitToViewInitialized.current = true;
     }
-  }, [skillPositions.size, containerDimensions.width, containerDimensions.height]); // Only depend on primitive values
+  }, [
+    skillPositions.size,
+    containerDimensions.width,
+    containerDimensions.height
+  ]);
 
   // Debounced fit-to-view for automatic layout changes
   const debouncedFitToView = useDebounce(() => {
