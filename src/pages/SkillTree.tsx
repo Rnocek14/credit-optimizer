@@ -62,6 +62,9 @@ const SkillTree = () => {
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
   const [showPivotPaths, setShowPivotPaths] = useState(false);
 
+  // Use ref to track if categories have been initialized
+  const hasInitializedCategories = useRef(false);
+
   // Initialize career selection hook
   const {
     careerPaths,
@@ -129,10 +132,11 @@ const SkillTree = () => {
     }
   });
 
-  // Initialize activeCategories with all categories once they're loaded
+  // Initialize activeCategories with all categories once they're loaded (fixed infinite loop)
   useEffect(() => {
-    if (categories.length > 0 && activeCategories.length === 0) {
+    if (!hasInitializedCategories.current && categories.length > 0 && activeCategories.length === 0) {
       setActiveCategories(categories);
+      hasInitializedCategories.current = true;
     }
   }, [categories, activeCategories.length]);
 
