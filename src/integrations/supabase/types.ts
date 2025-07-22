@@ -280,6 +280,71 @@ export type Database = {
         }
         Relationships: []
       }
+      career_steps: {
+        Row: {
+          career_path_id: string | null
+          created_at: string
+          description: string | null
+          estimated_cost: string | null
+          estimated_time: string | null
+          id: string
+          is_terminal: boolean | null
+          linked_job_titles: string[] | null
+          prerequisites: string[] | null
+          proof_method: string | null
+          skill_ids: string[] | null
+          step_order: number
+          step_type: string | null
+          substitutions: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          career_path_id?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          is_terminal?: boolean | null
+          linked_job_titles?: string[] | null
+          prerequisites?: string[] | null
+          proof_method?: string | null
+          skill_ids?: string[] | null
+          step_order: number
+          step_type?: string | null
+          substitutions?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          career_path_id?: string | null
+          created_at?: string
+          description?: string | null
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          is_terminal?: boolean | null
+          linked_job_titles?: string[] | null
+          prerequisites?: string[] | null
+          proof_method?: string | null
+          skill_ids?: string[] | null
+          step_order?: number
+          step_type?: string | null
+          substitutions?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_steps_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_tracks: {
         Row: {
           created_at: string
