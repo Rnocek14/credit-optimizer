@@ -134,16 +134,20 @@ export const SkillSearchOverlay: React.FC<SkillSearchOverlayProps> = ({
           onClose();
           break;
         case 'ArrowDown':
-          e.preventDefault();
-          setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+          if (!isSearchFocused) {
+            e.preventDefault();
+            setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+          }
           break;
         case 'ArrowUp':
-          e.preventDefault();
-          setSelectedIndex(prev => Math.max(prev - 1, 0));
+          if (!isSearchFocused) {
+            e.preventDefault();
+            setSelectedIndex(prev => Math.max(prev - 1, 0));
+          }
           break;
         case 'Enter':
-          e.preventDefault();
-          if (searchResults[selectedIndex]) {
+          if (!isSearchFocused && searchResults[selectedIndex]) {
+            e.preventDefault();
             handleSkillSelect(searchResults[selectedIndex].id);
           }
           break;
