@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
@@ -40,6 +39,15 @@ interface InteractiveSkillTreeProps {
   layoutMode?: string;
   careerPathName?: string;
   showPivotPaths?: boolean;
+  // New career-oriented props
+  selectedCareerPath?: any;
+  careerPaths?: any[];
+  getSkillClassification?: (skillId: string) => {
+    isRequiredSkill?: boolean;
+    isOptionalSkill?: boolean;
+    isPivotSkill?: boolean;
+  };
+  onCareerPathSelect?: (pathId: string) => void;
 }
 
 export const InteractiveSkillTree = React.memo(({
@@ -55,7 +63,12 @@ export const InteractiveSkillTree = React.memo(({
   showMinimap = true,
   layoutMode = 'hierarchy',
   careerPathName,
-  showPivotPaths = false
+  showPivotPaths = false,
+  // New career-oriented props
+  selectedCareerPath,
+  careerPaths = [],
+  getSkillClassification,
+  onCareerPathSelect
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -115,6 +128,11 @@ export const InteractiveSkillTree = React.memo(({
         onSkillClick={onSkillClick}
         careerPathName={careerPathName}
         showPivotPaths={showPivotPaths}
+        // Pass through new career-oriented props
+        selectedCareerPath={selectedCareerPath}
+        careerPaths={careerPaths}
+        getSkillClassification={getSkillClassification}
+        onCareerPathSelect={onCareerPathSelect}
       />
     </SkillTreeErrorBoundary>
   );

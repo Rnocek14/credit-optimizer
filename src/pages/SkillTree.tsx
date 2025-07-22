@@ -10,11 +10,15 @@ import { CareerGoalDropdown } from '@/components/CareerGoalDropdown';
 import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { LocationDropdown } from '@/components/LocationDropdown';
 import { LocationROIExplorer } from '@/components/LocationROIExplorer';
+import { CareerProgressMeter } from '@/components/CareerProgressMeter';
+import { CheckpointCommitmentModal } from '@/components/CheckpointCommitmentModal';
+import { useCareerSelection } from '@/hooks/useCareerSelection';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
+import { useSampleCareerData } from '@/hooks/useSampleCareerData';
 
 interface Skill {
   id: string;
@@ -56,6 +60,23 @@ const SkillTree = () => {
   const [selectedLocation, setSelectedLocation] = useState('united-states');
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
   const [showPivotPaths, setShowPivotPaths] = useState(false);
+
+  // Initialize career selection hook
+  const {
+    careerPaths,
+    selectedCareerPath: careerSelectedCareerPath,
+    activeSelection,
+    userProgress: careerUserProgress,
+    progressData,
+    showCheckpointModal,
+    checkpointSkill,
+    selectCareerPath,
+    checkForCheckpoint,
+    getSkillClassification,
+    getAvailablePathsForCheckpoint,
+    setShowCheckpointModal,
+    isLoading: careerLoading
+  } = useCareerSelection();
 
   // Fetch skills with better error handling
   const { data: skills = [], isLoading: skillsLoading, error: skillsError } = useQuery({
@@ -259,8 +280,18 @@ const SkillTree = () => {
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
 
-  // Memoized goal skills to prevent unnecessary recalculations
+  // Initialize sample career data if needed
+  const { isCreating: creatingCareerData } = useSampleCareerData();
+
+  // Use career hook's user progress if available, otherwise fall back to existing
+  const effectiveUserProgress = careerUserProgress?.length > 0 ? careerUserProgress : userProgress;
+
+  // Enhanced goal skills using career selection
   const goalSkills = React.useMemo(() => {
+    if (careerSelectedCareerPath) {
+      return careerSelectedCareerPath.required_skill_ids || [];
+    }
+    
     if (!careerSteps.length) {
       // Default UX Designer skills
       return skills
@@ -286,10 +317,14 @@ const SkillTree = () => {
         )
       )
       .map(skill => skill.id);
-  }, [careerSteps, skills]);
+  }, [careerSelectedCareerPath, careerSteps, skills]);
 
-  // Memoized checkpoint skills
+  // Enhanced checkpoint skills
   const checkpointSkills = React.useMemo(() => {
+    if (careerSelectedCareerPath?.checkpoint_skill_id) {
+      return [careerSelectedCareerPath.checkpoint_skill_id];
+    }
+    
     if (!careerSteps.length) {
       // Default checkpoints for UX Designer
       return skills
@@ -311,30 +346,35 @@ const SkillTree = () => {
         )
       )
       .map(skill => skill.id);
-  }, [careerSteps, skills]);
+  }, [careerSelectedCareerPath, careerSteps, skills]);
 
-  // Filter skills based on current filters
-  const filteredSkills = skills.filter(skill => {
-    const progress = userProgress.find(p => p.skill_id === skill.id);
+  // Handle skill completion and check for checkpoints
+  const handleSkillClick = (skill: Skill) => {
+    setSelectedSkill(skill);
     
-    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeCategories.includes(skill.category);
-    const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
-    const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
-    const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
-    const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
-    
-    return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
-  });
+    // Check if this skill triggers a checkpoint
+    const progress = effectiveUserProgress.find(p => p.skill_id === skill.id);
+    if (progress?.status === 'completed') {
+      checkForCheckpoint(skill.id);
+    }
+  };
 
-  // Calculate skill counts
-  const skillCounts = {
-    total: skills.length,
-    completed: userProgress.filter(p => p.status === 'completed').length,
-    inProgress: userProgress.filter(p => p.status === 'in_progress').length,
-    recommended: recommendedSkills.length,
-    withCourses: skillsWithCourses.length
+  const handleCareerPathSelect = (pathId: string) => {
+    selectCareerPath(pathId);
+    toast({
+      title: "Career Path Selected",
+      description: "Your skill tree has been updated to focus on your chosen career path.",
+    });
+  };
+
+  // Handle checkpoint modal path selection
+  const handleCheckpointPathSelect = (pathId: string) => {
+    selectCareerPath(pathId);
+    setShowCheckpointModal(false);
+    toast({
+      title: "Career Specialization Chosen",
+      description: "You've successfully committed to your career specialization path!",
+    });
   };
 
   const handleCategoryToggle = (category: string) => {
@@ -343,10 +383,6 @@ const SkillTree = () => {
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
-  };
-
-  const handleSkillClick = (skill: Skill) => {
-    setSelectedSkill(skill);
   };
 
   const handlePlanSkill = (skillId: string) => {
@@ -378,6 +414,30 @@ const SkillTree = () => {
       });
   };
 
+  // Filter skills based on current filters
+  const filteredSkills = skills.filter(skill => {
+    const progress = userProgress.find(p => p.skill_id === skill.id);
+    
+    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = activeCategories.includes(skill.category);
+    const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
+    const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
+    const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
+    const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
+    
+    return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
+  });
+
+  // Calculate skill counts
+  const skillCounts = {
+    total: skills.length,
+    completed: userProgress.filter(p => p.status === 'completed').length,
+    inProgress: userProgress.filter(p => p.status === 'in_progress').length,
+    recommended: recommendedSkills.length,
+    withCourses: skillsWithCourses.length
+  };
+
   // Show error state if there are critical errors
   if (skillsError) {
     return (
@@ -390,7 +450,7 @@ const SkillTree = () => {
     );
   }
 
-  if (skillsLoading || progressLoading || edgesLoading || categoriesLoading) {
+  if (skillsLoading || progressLoading || edgesLoading || categoriesLoading || careerLoading || creatingCareerData) {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
@@ -424,8 +484,8 @@ const SkillTree = () => {
             onLocationChange={setSelectedLocation}
           />
           <CareerGoalDropdown 
-            selectedCareerPath={selectedCareerPath}
-            onCareerPathChange={setSelectedCareerPath}
+            selectedCareerPath={careerSelectedCareerPath?.id || null}
+            onCareerPathChange={handleCareerPathSelect}
           />
           <div className="flex items-center gap-2">
             <ExportTreeButton containerRef={skillTreeRef} />
@@ -448,6 +508,15 @@ const SkillTree = () => {
           </div>
         </div>
       </div>
+
+      {/* Career Progress Meter */}
+      {careerSelectedCareerPath && (
+        <CareerProgressMeter
+          selectedCareerPath={careerSelectedCareerPath}
+          progressData={progressData}
+          userLocation={selectedLocation}
+        />
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -517,7 +586,7 @@ const SkillTree = () => {
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
           <InteractiveSkillTree
             skills={skills}
-            userProgress={userProgress}
+            userProgress={effectiveUserProgress}
             skillEdges={skillEdges}
             filteredSkills={filteredSkills}
             recommendedSkills={recommendedSkills}
@@ -525,8 +594,13 @@ const SkillTree = () => {
             checkpointSkills={checkpointSkills}
             availableCategories={categories}
             onSkillClick={handleSkillClick}
-            careerPathName={selectedCareerPathData?.title}
+            careerPathName={careerSelectedCareerPath?.title}
             showPivotPaths={showPivotPaths}
+            // New career-oriented props
+            selectedCareerPath={careerSelectedCareerPath}
+            careerPaths={careerPaths}
+            getSkillClassification={getSkillClassification}
+            onCareerPathSelect={handleCareerPathSelect}
           />
         </div>
 
@@ -556,13 +630,13 @@ const SkillTree = () => {
 
           {!showRelocationExplorer ? (
             <CareerROIPanel 
-              selectedCareerPath={selectedCareerPath}
+              selectedCareerPath={careerSelectedCareerPath?.id || null}
               goalSkillIds={goalSkills}
               selectedLocation={selectedLocation}
             />
           ) : (
             <LocationROIExplorer
-              selectedCareerPathId={selectedCareerPath}
+              selectedCareerPathId={careerSelectedCareerPath?.id || null}
               goalSkillIds={goalSkills}
               selectedLocation={selectedLocation}
               onLocationSelect={setSelectedLocation}
@@ -579,6 +653,16 @@ const SkillTree = () => {
         open={!!selectedSkill}
         onClose={() => setSelectedSkill(null)}
         onPlanSkill={handlePlanSkill}
+      />
+
+      {/* Checkpoint Commitment Modal */}
+      <CheckpointCommitmentModal
+        isOpen={showCheckpointModal}
+        onClose={() => setShowCheckpointModal(false)}
+        checkpointSkill={checkpointSkill || { id: '', name: '', category: '' }}
+        availablePaths={getAvailablePathsForCheckpoint()}
+        onPathSelect={handleCheckpointPathSelect}
+        currentLocation={selectedLocation}
       />
     </div>
   );
