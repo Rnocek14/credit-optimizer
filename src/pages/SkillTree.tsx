@@ -239,19 +239,23 @@ const SkillTree = () => {
   // Initialize sample career data
   const { isCreating: creatingCareerData, skillsLoaded, pathsExist } = useSampleCareerData();
 
-  // Use career hook's user progress if available, otherwise fall back to existing
-  const effectiveUserProgress = careerUserProgress?.length > 0 
-    ? careerUserProgress.map(p => ({
-        skill_id: p.skill_id,
-        status: p.status as 'locked' | 'available' | 'in_progress' | 'completed',
-        xp_earned: p.xp_earned,
-        cri_score: p.cri_score,
-        verification_source: p.verification_source
-      }))
-    : userProgress;
+  // Use career hook's user progress if available, otherwise fall back to existing (memoized)
+  const effectiveUserProgress = React.useMemo(() => {
+    return careerUserProgress?.length > 0 
+      ? careerUserProgress.map(p => ({
+          skill_id: p.skill_id,
+          status: p.status as 'locked' | 'available' | 'in_progress' | 'completed',
+          xp_earned: p.xp_earned,
+          cri_score: p.cri_score,
+          verification_source: p.verification_source
+        }))
+      : userProgress;
+  }, [careerUserProgress, userProgress]);
 
-  // Mock recommended skills for now
-  const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
+  // Mock recommended skills for now (memoized)
+  const recommendedSkills = React.useMemo(() => {
+    return skills.slice(0, 3).map(skill => skill.id);
+  }, [skills]);
 
   // Enhanced goal skills using career selection with fallback
   const goalSkills = React.useMemo(() => {
@@ -362,29 +366,31 @@ const SkillTree = () => {
       });
   };
 
-  // Filter skills based on current filters
-  const filteredSkills = skills.filter(skill => {
-    const progress = userProgress.find(p => p.skill_id === skill.id);
-    
-    const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = activeCategories.length === 0 || activeCategories.includes(skill.category);
-    const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
-    const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
-    const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
-    const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
-    
-    return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
-  });
+  // Filter skills based on current filters (memoized to prevent infinite re-renders)
+  const filteredSkills = React.useMemo(() => {
+    return skills.filter(skill => {
+      const progress = userProgress.find(p => p.skill_id === skill.id);
+      
+      const matchesSearch = skill.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           skill.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = activeCategories.length === 0 || activeCategories.includes(skill.category);
+      const matchesRecommended = !showOnlyRecommended || recommendedSkills.includes(skill.id);
+      const matchesUnlocked = !showUnlockedOnly || (progress?.status !== 'locked');
+      const matchesRecommendedNext = !showRecommendedNext || recommendedSkills.includes(skill.id);
+      const matchesGoalPath = !showGoalPathOnly || goalSkills.includes(skill.id);
+      
+      return matchesSearch && matchesCategory && matchesRecommended && matchesUnlocked && matchesRecommendedNext && matchesGoalPath;
+    });
+  }, [skills, userProgress, searchTerm, activeCategories, showOnlyRecommended, recommendedSkills, showUnlockedOnly, showRecommendedNext, goalSkills, showGoalPathOnly]);
 
-  // Calculate skill counts
-  const skillCounts = {
+  // Calculate skill counts (memoized)
+  const skillCounts = React.useMemo(() => ({
     total: skills.length,
     completed: userProgress.filter(p => p.status === 'completed').length,
     inProgress: userProgress.filter(p => p.status === 'in_progress').length,
     recommended: recommendedSkills.length,
     withCourses: skillsWithCourses.length
-  };
+  }), [skills.length, userProgress, recommendedSkills.length, skillsWithCourses.length]);
 
   // Show error state if there are critical errors
   if (skillsError) {
