@@ -399,7 +399,15 @@ const SkillTree = () => {
 
   // Improved loading logic - show partial content when possible
   const isInitialLoading = skillsLoading && skills.length === 0;
-  const isDataReady = !skillsLoading && !categoriesLoading && skills.length > 0 && categories.length > 0;
+  const isDataReady = !skillsLoading && skills.length > 0;
+  
+  console.log('[SkillTree] Render state:', {
+    skillsLoaded: skills.length,
+    categoriesLoaded: categories.length,
+    filteredSkillsCount: filteredSkills.length,
+    skillEdgesCount: skillEdges.length,
+    isDataReady
+  });
   
   // Debug logging
   if (skills.length === 0) console.warn("🚨 No skills loaded!");
@@ -633,6 +641,12 @@ const SkillTree = () => {
             currentLocation={selectedLocation}
           />
         </>
+      )}
+
+      {isDataReady && filteredSkills.length === 0 && (
+        <div className="text-center text-muted-foreground py-10">
+          <p>⚠️ No skills matched your filters. Try resetting filters or check your skill data.</p>
+        </div>
       )}
 
       {/* Loading message when data is still loading but we have some content */}
