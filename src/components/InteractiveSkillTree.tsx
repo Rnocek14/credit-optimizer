@@ -92,7 +92,7 @@ export const InteractiveSkillTree = React.memo(({
       });
       setIsLoading(false);
     }
-  }, [skills, filteredSkills, userProgress, skillEdges, availableCategories, loadStartTime]);
+  }, [skills.length, filteredSkills.length, userProgress.length, skillEdges.length, availableCategories.length, loadStartTime]);
 
   console.log('InteractiveSkillTree render:', {
     skillsCount: skills?.length || 0,
