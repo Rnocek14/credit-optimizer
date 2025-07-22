@@ -105,6 +105,18 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const [showMinimap, setShowMinimap] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
+  
+  // Real DOM positions for accurate arrow connections
+  const [realNodePositions, setRealNodePositions] = useState<Map<string, {centerX: number, centerY: number}>>(new Map());
+  
+  // Callback to update real node positions from DOM
+  const updateNodePosition = useCallback((skillId: string, position: {centerX: number, centerY: number}) => {
+    setRealNodePositions(prev => {
+      const newMap = new Map(prev);
+      newMap.set(skillId, position);
+      return newMap;
+    });
+  }, []);
 
   // Fetch skill branches for pivot paths with proper caching
   const { data: skillBranches = [] } = useQuery({
@@ -516,42 +528,58 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     setIsDragging(false);
   }, []);
 
-  // Enhanced arrow paths with comprehensive debugging
+  // Enhanced arrow paths using real DOM positions for accurate connections
   const arrowPaths = useMemo(() => {
-    console.log('🔍 DEBUGGING ARROW PATHS:');
+    console.log('🔍 ARROW PATHS - Using Real DOM Positions:');
     console.log(`Total skillEdges: ${skillEdges.length}`);
-    console.log(`Total skillPositions: ${skillPositions.size}`);
-    console.log(`Filtered skills count: ${filteredSkills.length}`);
-    
-    // Log all skill IDs in skillPositions
-    const positionSkillIds = Array.from(skillPositions.keys());
-    console.log('📍 Skills with positions:', positionSkillIds.slice(0, 5), '... (showing first 5)');
-    
-    // Log all skill IDs in skillEdges
-    const edgeSkillIds = skillEdges.flatMap(edge => [edge.prerequisite_skill_id, edge.skill_id]);
-    const uniqueEdgeSkillIds = [...new Set(edgeSkillIds)];
-    console.log('🔗 Unique skill IDs in edges:', uniqueEdgeSkillIds.slice(0, 5), '... (showing first 5)');
-    
-    // Find missing skills
-    const missingFromSkills = uniqueEdgeSkillIds.filter(id => !positionSkillIds.includes(id));
-    const missingToSkills = uniqueEdgeSkillIds.filter(id => !positionSkillIds.includes(id));
-    
-    console.log(`❌ Missing skill IDs from positions: ${missingFromSkills.length}`, missingFromSkills.slice(0, 3));
+    console.log(`Real DOM positions: ${realNodePositions.size}`);
+    console.log(`Calculated positions: ${skillPositions.size}`);
     
     const paths = new Map<string, string>();
     let processedEdges = 0;
     let skippedEdges = 0;
     
     skillEdges.forEach((edge, index) => {
-      const from = skillPositions.get(edge.prerequisite_skill_id);
-      const to = skillPositions.get(edge.skill_id);
+      // Try real DOM positions first, fallback to calculated positions
+      const fromReal = realNodePositions.get(edge.prerequisite_skill_id);
+      const toReal = realNodePositions.get(edge.skill_id);
+      const fromCalc = skillPositions.get(edge.prerequisite_skill_id);
+      const toCalc = skillPositions.get(edge.skill_id);
       
-      if (!from || !to) {
+      // Use real positions if available, otherwise fallback to calculated
+      let fromPos, toPos;
+      
+      if (fromReal && toReal) {
+        // Convert real screen coordinates to canvas coordinates
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        if (containerRect) {
+          fromPos = {
+            x: (fromReal.centerX - containerRect.left - panOffset.x) / zoomLevel,
+            y: (fromReal.centerY - containerRect.top - panOffset.y) / zoomLevel
+          };
+          toPos = {
+            x: (toReal.centerX - containerRect.left - panOffset.x) / zoomLevel,
+            y: (toReal.centerY - containerRect.top - panOffset.y) / zoomLevel
+          };
+        } else {
+          // Fallback to calculated positions
+          fromPos = fromCalc ? { x: fromCalc.x + 40, y: fromCalc.y + 80 } : null;
+          toPos = toCalc ? { x: toCalc.x + 40, y: toCalc.y } : null;
+        }
+      } else {
+        // Use calculated positions as fallback
+        fromPos = fromCalc ? { x: fromCalc.x + 40, y: fromCalc.y + 80 } : null;
+        toPos = toCalc ? { x: toCalc.x + 40, y: toCalc.y } : null;
+      }
+      
+      if (!fromPos || !toPos) {
         skippedEdges++;
-        if (index < 3) { // Log first few failures for debugging
+        if (index < 3) {
           console.log(`⚠️ Skipped edge ${index}: ${edge.prerequisite_skill_id} -> ${edge.skill_id}`, {
-            hasFrom: !!from,
-            hasTo: !!to,
+            hasRealFrom: !!fromReal,
+            hasRealTo: !!toReal,
+            hasCalcFrom: !!fromCalc,
+            hasCalcTo: !!toCalc,
             fromSkill: skills.find(s => s.id === edge.prerequisite_skill_id)?.name || 'NOT FOUND',
             toSkill: skills.find(s => s.id === edge.skill_id)?.name || 'NOT FOUND'
           });
@@ -561,35 +589,26 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       
       processedEdges++;
       
-      // Node dimensions: 80px x 80px (w-20 h-20)
-      const nodeWidth = 80;
-      const nodeHeight = 80;
+      const dx = toPos.x - fromPos.x;
+      const dy = toPos.y - fromPos.y;
       
-      // Calculate connection points (center bottom of 'from' node to center top of 'to' node)
-      const fromX = from.x + nodeWidth / 2;
-      const fromY = from.y + nodeHeight; // Bottom of from node
-      const toX = to.x + nodeWidth / 2;
-      const toY = to.y; // Top of to node
+      // Create smooth bezier curve for hierarchical flow
+      const controlPoint1X = fromPos.x;
+      const controlPoint1Y = fromPos.y + Math.abs(dy) * 0.4;
+      const controlPoint2X = toPos.x;
+      const controlPoint2Y = toPos.y - Math.abs(dy) * 0.4;
       
-      const dx = toX - fromX;
-      const dy = toY - fromY;
-      
-      // Create smooth bezier curve for hierarchical flow - adjusted for increased spacing
-      const controlPoint1X = fromX;
-      const controlPoint1Y = fromY + Math.abs(dy) * 0.4; // Increased control point distance
-      const controlPoint2X = toX;
-      const controlPoint2Y = toY - Math.abs(dy) * 0.4;
-      
-      const pathData = `M ${fromX} ${fromY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toX} ${toY}`;
+      const pathData = `M ${fromPos.x} ${fromPos.y} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${toPos.x} ${toPos.y}`;
       paths.set(`${edge.prerequisite_skill_id}-${edge.skill_id}`, pathData);
     });
     
     console.log(`✅ Processed edges: ${processedEdges}`);
     console.log(`❌ Skipped edges: ${skippedEdges}`);
     console.log(`📊 Success rate: ${((processedEdges / skillEdges.length) * 100).toFixed(1)}%`);
+    console.log(`🎯 Using real DOM positions: ${Array.from(realNodePositions.keys()).length > 0 ? 'YES' : 'NO'}`);
     
     return paths;
-  }, [skillEdges, skillPositions, skills]);
+  }, [skillEdges, skillPositions, realNodePositions, panOffset, zoomLevel, skills]);
 
   // Enhanced pivot paths
   const pivotPaths = useMemo(() => {
@@ -843,6 +862,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
               isInPath={isInPath}
               onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
               careerPathName={careerPathName}
+              onPositionUpdate={updateNodePosition}
             />
           );
         })}
