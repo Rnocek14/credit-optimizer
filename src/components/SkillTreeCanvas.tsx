@@ -647,17 +647,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return positions;
   }, [pivotRoadmapSteps, skillPositions, skills]);
 
-  // Notify parent of camera state changes including pivot positions
+  // Notify parent of camera state changes
   useEffect(() => {
     if (onCameraStateChange && skillPositions.size > 0) {
       onCameraStateChange({
         skillPositions,
-        pivotStepPositions: integratedPivotPositions,
         zoomLevel,
         panOffset
       });
     }
-  }, [onCameraStateChange, skillPositions, integratedPivotPositions, zoomLevel, panOffset]);
+  }, [onCameraStateChange, skillPositions, zoomLevel, panOffset]);
 
   // Auto-fit view when first loaded
   useEffect(() => {
@@ -1306,47 +1305,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           );
         })}
 
-        {/* Pivot Roadmap Steps */}
-        {Array.from(integratedPivotPositions.entries()).map(([stepId, position]) => {
-          const step = pivotRoadmapSteps.find(s => s.id === stepId);
-          if (!step) return null;
-          
-          return (
-            <div
-              key={`pivot-step-${stepId}`}
-              style={{
-                position: 'absolute',
-                left: position.x - 75,
-                top: position.y - 30,
-                width: 150,
-                height: 60,
-                zIndex: 15 // Above skill nodes but below career steps
-              }}
-              className="cursor-pointer"
-              onClick={() => {
-                console.log('Clicked pivot step:', step);
-              }}
-            >
-              {/* Step background with purple pivot styling */}
-              <div className="w-full h-full relative border-2 border-purple-500 border-dashed bg-background/90 rounded-lg animate-pulse flex items-center justify-center">
-                {/* Pivot indicator */}
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-                
-                {/* Step content */}
-                <div className="text-center px-2">
-                  <div className="text-xs font-medium text-foreground truncate">
-                    {step.title.length > 18 ? `${step.title.slice(0, 18)}...` : step.title}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {step.pivotSource}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {/* Pivot roadmaps now handled by separate React Flow component */}
 
         {/* Career Step Nodes */}
         {(showGoalPathOnly ? careerSteps.filter(step => goalPath.includes(step.id)) : careerSteps).map((step, i) => {
