@@ -23,58 +23,32 @@ export const useCareerSteps = (careerPathId: string | null) => {
       
       console.log('Fetching career steps with levels for career path:', careerPathId);
       
-      // Use direct query for now since function isn't recognized in types
+      // Query the new career_steps_with_levels view
       const { data: stepsData, error } = await supabase
-        .from('career_steps')
-        .select('*')
+        .from('career_steps_with_levels')
+        .select('id, title, prerequisites, level, step_order, is_terminal, estimated_time, career_path_id')
         .eq('career_path_id', careerPathId)
-        .order('order_index');
+        .order('level', { ascending: true });
       
       if (error) {
         console.error('Career steps fetch error:', error);
         throw error;
       }
       
-      // Calculate levels based on prerequisites
-      const steps = stepsData || [];
-      const stepsWithLevels: CareerStep[] = [];
-      const processedIds = new Set<string>();
+      // Map the view data to our CareerStep interface
+      const stepsWithLevels: CareerStep[] = (stepsData || []).map(step => ({
+        id: step.id,
+        title: step.title,
+        prerequisites: step.prerequisites || [],
+        level: step.level,
+        career_path_id: step.career_path_id,
+        order_index: step.step_order,
+        is_capstone: step.is_terminal,
+        estimated_duration: step.estimated_time,
+        completed: false // This would need to come from user progress if needed
+      }));
       
-      // Process steps iteratively by dependency levels
-      let currentLevel = 0;
-      let remainingSteps = [...steps];
-      
-      while (remainingSteps.length > 0 && currentLevel < 10) {
-        const levelSteps = remainingSteps.filter(step => {
-          if (!step.prerequisites || step.prerequisites.length === 0) {
-            return currentLevel === 0;
-          }
-          return step.prerequisites.every(prereqId => processedIds.has(prereqId));
-        });
-        
-        if (levelSteps.length === 0) break;
-        
-        levelSteps.forEach(step => {
-          stepsWithLevels.push({
-            ...step,
-            level: currentLevel
-          });
-          processedIds.add(step.id);
-        });
-        
-        remainingSteps = remainingSteps.filter(step => !processedIds.has(step.id));
-        currentLevel++;
-      }
-      
-      // Add any remaining steps at the highest level
-      remainingSteps.forEach(step => {
-        stepsWithLevels.push({
-          ...step,
-          level: currentLevel
-        });
-      });
-      
-      console.log('Career steps with levels calculated:', stepsWithLevels.length);
+      console.log('Career steps with levels from view:', stepsWithLevels.length);
       return stepsWithLevels;
     },
     enabled: !!careerPathId,
