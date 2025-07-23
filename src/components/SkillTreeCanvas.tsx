@@ -901,20 +901,17 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
         {/* Career Step Arrows */}
         <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}>
-          {Array.from(careerStepArrows.entries()).map(([edgeKey, pathData]) => {
-            return (
-              <path
-                key={`career-${edgeKey}`}
-                d={pathData}
-                stroke="hsl(var(--primary))"
-                strokeWidth="3"
-                fill="none"
-                strokeOpacity="0.7"
-                strokeDasharray="5,3"
-                markerEnd="url(#arrowhead)"
-              />
-            );
-          })}
+          {Array.from(careerStepArrows.entries()).map(([key, pathData]) => (
+            <path
+              key={`career-${key}`}
+              d={pathData}
+              stroke="#4b5563"
+              strokeWidth="2"
+              fill="none"
+              strokeOpacity="0.6"
+              markerEnd="url(#arrowhead)"
+            />
+          ))}
         </g>
 
         {/* Pivot Path Arrows */}
