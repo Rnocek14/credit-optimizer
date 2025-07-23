@@ -107,9 +107,33 @@ interface SkillTreeCanvasProps {
   // New props to expose camera state and positions
   onCameraStateChange?: (state: {
     skillPositions: Map<string, { x: number; y: number }>;
+    pivotStepPositions?: Map<string, { x: number; y: number }>;
     zoomLevel: number;
     panOffset: { x: number; y: number };
   }) => void;
+  activePivotPaths?: Array<{
+    new_career: string;
+    shared_skills: string[];
+    missing_skills: string[];
+    roi_score: number;
+    estimated_time: string;
+    estimated_cost: string;
+    reasoning: string;
+  }>;
+  pivotStepPositions?: Map<string, { x: number; y: number }>;
+  pivotRoadmapSteps?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    skills_needed?: string[];
+    skills_already_have?: string[];
+    estimated_time?: string;
+    estimated_cost?: string;
+    learning_resources?: any[];
+    x?: number;
+    y?: number;
+    pivotSource: string;
+  }>;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
@@ -128,7 +152,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   showPivotPaths = false,
   roadmapStepSkills = [],
   careerSteps = [],
-  onCameraStateChange
+  onCameraStateChange,
+  activePivotPaths = [],
+  pivotStepPositions = new Map(),
+  pivotRoadmapSteps = []
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -571,16 +598,66 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     }
   }, []);
 
-  // Notify parent of camera state changes
+  // Calculate integrated pivot step positions
+  const integratedPivotPositions = useMemo(() => {
+    const positions = new Map<string, { x: number; y: number }>();
+    
+    if (pivotRoadmapSteps.length === 0) return positions;
+    
+    pivotRoadmapSteps.forEach((step, index) => {
+      // Find related skills for positioning
+      const relatedSkills = [
+        ...(step.skills_needed || []),
+        ...(step.skills_already_have || [])
+      ];
+      
+      // Find the best skill position to branch from
+      let bestPosition = { x: 300, y: 150 }; // default position
+      let bestScore = 0;
+      
+      skillPositions.forEach((position, skillId) => {
+        const skill = skills.find(s => s.id === skillId);
+        if (!skill) return;
+        
+        // Score based on skill name matching
+        const skillName = skill.name.toLowerCase();
+        const matchScore = relatedSkills.reduce((score, neededSkill) => {
+          const needed = neededSkill.toLowerCase();
+          if (skillName.includes(needed) || needed.includes(skillName)) {
+            return score + 2;
+          }
+          if (skillName.split(' ').some(word => needed.includes(word))) {
+            return score + 1;
+          }
+          return score;
+        }, 0);
+        
+        if (matchScore > bestScore) {
+          bestScore = matchScore;
+          bestPosition = {
+            x: position.x + 200 + (index * 50), // Offset to the right
+            y: position.y - 100 - (index * 30)  // Offset above with stacking
+          };
+        }
+      });
+      
+      positions.set(step.id, bestPosition);
+    });
+    
+    return positions;
+  }, [pivotRoadmapSteps, skillPositions, skills]);
+
+  // Notify parent of camera state changes including pivot positions
   useEffect(() => {
     if (onCameraStateChange && skillPositions.size > 0) {
       onCameraStateChange({
         skillPositions,
+        pivotStepPositions: integratedPivotPositions,
         zoomLevel,
         panOffset
       });
     }
-  }, [onCameraStateChange, skillPositions, zoomLevel, panOffset]);
+  }, [onCameraStateChange, skillPositions, integratedPivotPositions, zoomLevel, panOffset]);
 
   // Auto-fit view when first loaded
   useEffect(() => {
@@ -725,6 +802,86 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     
     return paths;
   }, [skillBranches, skillPositions, showPivotPaths]);
+
+  // Memoized pivot roadmap step edges
+  const pivotRoadmapEdges = useMemo(() => {
+    if (pivotRoadmapSteps.length === 0) return new Map<string, string>();
+    
+    const edges = new Map<string, string>();
+    
+    // Group steps by pivot source
+    const stepsByPivot = new Map<string, typeof pivotRoadmapSteps>();
+    pivotRoadmapSteps.forEach(step => {
+      if (!stepsByPivot.has(step.pivotSource)) {
+        stepsByPivot.set(step.pivotSource, []);
+      }
+      stepsByPivot.get(step.pivotSource)!.push(step);
+    });
+    
+    // Create sequential connections within each pivot roadmap
+    stepsByPivot.forEach((steps, pivotSource) => {
+      const sortedSteps = steps.sort((a, b) => a.title.localeCompare(b.title));
+      
+      for (let i = 0; i < sortedSteps.length - 1; i++) {
+        const from = sortedSteps[i];
+        const to = sortedSteps[i + 1];
+        
+        const fromPos = integratedPivotPositions.get(from.id);
+        const toPos = integratedPivotPositions.get(to.id);
+        
+        if (fromPos && toPos) {
+          const fromX = fromPos.x + 75;
+          const fromY = fromPos.y + 30;
+          const toX = toPos.x + 75;
+          const toY = toPos.y;
+          
+          // Create curved path
+          const controlX = (fromX + toX) / 2;
+          const controlY = fromY - 40;
+          
+          const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`;
+          edges.set(`${from.id}-${to.id}`, pathData);
+        }
+      }
+      
+      // Connect first step to related skills
+      if (sortedSteps.length > 0) {
+        const firstStep = sortedSteps[0];
+        const relatedSkills = [
+          ...(firstStep.skills_needed || []),
+          ...(firstStep.skills_already_have || [])
+        ];
+        
+        skillPositions.forEach((skillPos, skillId) => {
+          const skill = skills.find(s => s.id === skillId);
+          if (!skill) return;
+          
+          const isRelated = relatedSkills.some(neededSkill => 
+            skill.name.toLowerCase().includes(neededSkill.toLowerCase()) ||
+            neededSkill.toLowerCase().includes(skill.name.toLowerCase())
+          );
+          
+          if (isRelated) {
+            const stepPos = integratedPivotPositions.get(firstStep.id);
+            if (stepPos) {
+              const fromX = skillPos.x + 60;
+              const fromY = skillPos.y + 20;
+              const toX = stepPos.x + 10;
+              const toY = stepPos.y + 30;
+              
+              const controlX = (fromX + toX) / 2;
+              const controlY = (fromY + toY) / 2 - 30;
+              
+              const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`;
+              edges.set(`skill-${skillId}-${firstStep.id}`, pathData);
+            }
+          }
+        });
+      }
+    });
+    
+    return edges;
+  }, [pivotRoadmapSteps, integratedPivotPositions, skillPositions, skills]);
 
   // Handle pivot path click
   const handlePivotPathClick = useCallback((branch: SkillBranch) => {
@@ -1069,6 +1226,23 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             })}
           </g>
         )}
+
+        {/* Pivot Roadmap Edges */}
+        <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}>
+          {Array.from((pivotRoadmapEdges || new Map()).entries()).map(([edgeKey, pathData]) => (
+            <path
+              key={`pivot-edge-${edgeKey}`}
+              d={pathData}
+              stroke="#8b5cf6"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+              fill="none"
+              markerEnd="url(#pivot-arrowhead)"
+              opacity="0.7"
+              className="animate-pulse"
+            />
+          ))}
+        </g>
       </svg>
 
       {/* Optimized Node Layer */}
@@ -1128,6 +1302,48 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                 onHover={(isHovering) => handleSkillHover(skill.id, isHovering)}
                 careerPathName={careerPathName}
               />
+            </div>
+          );
+        })}
+
+        {/* Pivot Roadmap Steps */}
+        {Array.from(integratedPivotPositions.entries()).map(([stepId, position]) => {
+          const step = pivotRoadmapSteps.find(s => s.id === stepId);
+          if (!step) return null;
+          
+          return (
+            <div
+              key={`pivot-step-${stepId}`}
+              style={{
+                position: 'absolute',
+                left: position.x - 75,
+                top: position.y - 30,
+                width: 150,
+                height: 60,
+                zIndex: 15 // Above skill nodes but below career steps
+              }}
+              className="cursor-pointer"
+              onClick={() => {
+                console.log('Clicked pivot step:', step);
+              }}
+            >
+              {/* Step background with purple pivot styling */}
+              <div className="w-full h-full relative border-2 border-purple-500 border-dashed bg-background/90 rounded-lg animate-pulse flex items-center justify-center">
+                {/* Pivot indicator */}
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center animate-pulse">
+                  <span className="text-white text-xs font-bold">P</span>
+                </div>
+                
+                {/* Step content */}
+                <div className="text-center px-2">
+                  <div className="text-xs font-medium text-foreground truncate">
+                    {step.title.length > 18 ? `${step.title.slice(0, 18)}...` : step.title}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {step.pivotSource}
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })}

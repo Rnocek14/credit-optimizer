@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
-import { PivotRoadmapOverlay } from './PivotRoadmapOverlay';
+import { PivotRoadmapManager } from './PivotRoadmapManager';
 import { usePivotRoadmaps } from '@/hooks/usePivotRoadmaps';
 
 interface Skill {
@@ -87,6 +87,17 @@ export const InteractiveSkillTree = React.memo(({
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
+  const [pivotRoadmapSteps, setPivotRoadmapSteps] = useState<Array<{
+    id: string;
+    title: string;
+    description?: string;
+    skills_needed?: string[];
+    skills_already_have?: string[];
+    estimated_time?: string;
+    estimated_cost?: string;
+    learning_resources?: any[];
+    pivotSource: string;
+  }>>([]);
   
   // Pivot roadmap management
   const {
@@ -103,9 +114,25 @@ export const InteractiveSkillTree = React.memo(({
   // Camera state for pivot overlay
   const [cameraState, setCameraState] = useState({
     skillPositions: new Map<string, { x: number; y: number }>(),
+    pivotStepPositions: new Map<string, { x: number; y: number }>(),
     zoomLevel: 1,
     panOffset: { x: 0, y: 0 }
   });
+
+  // Handler to update camera state with proper typing
+  const handleCameraStateChange = (state: {
+    skillPositions: Map<string, { x: number; y: number }>;
+    pivotStepPositions?: Map<string, { x: number; y: number }>;
+    zoomLevel: number;
+    panOffset: { x: number; y: number };
+  }) => {
+    setCameraState({
+      skillPositions: state.skillPositions,
+      pivotStepPositions: state.pivotStepPositions || new Map(),
+      zoomLevel: state.zoomLevel,
+      panOffset: state.panOffset
+    });
+  };
   
   // Enhanced skill click handler that can generate pivot paths
   const handleSkillClick = (skill: any) => {
@@ -180,21 +207,17 @@ export const InteractiveSkillTree = React.memo(({
           showPivotPaths={showPivotPaths}
           roadmapStepSkills={roadmapStepSkills}
           careerSteps={careerSteps}
-          onCameraStateChange={setCameraState}
+          onCameraStateChange={handleCameraStateChange}
+          activePivotPaths={activePivotPaths}
+          pivotRoadmapSteps={pivotRoadmapSteps}
         />
         
-        {/* Pivot Roadmap Overlay */}
-        <PivotRoadmapOverlay
+        {/* Pivot Roadmap Manager */}
+        <PivotRoadmapManager
           activePivotPaths={activePivotPaths}
-          skillPositions={cameraState.skillPositions}
-          zoomLevel={cameraState.zoomLevel}
-          panOffset={cameraState.panOffset}
-          showOverlay={showPivotOverlay}
-          onToggleOverlay={togglePivotOverlay}
-          onPivotStepClick={(step) => {
-            console.log('Clicked pivot step:', step);
-            // Handle pivot step click - could open detail modal
-          }}
+          onRoadmapStepsGenerated={setPivotRoadmapSteps}
+          visible={showPivotOverlay}
+          onToggleVisibility={togglePivotOverlay}
         />
       </div>
     </SkillTreeErrorBoundary>
