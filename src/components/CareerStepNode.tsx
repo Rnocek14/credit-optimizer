@@ -16,7 +16,7 @@ interface CareerStepNodeProps {
   isInProgress?: boolean;
   isInPath?: boolean;
   onClick?: (step: any) => void;
-  zoomLevel: number;
+  zoomLevel?: number;
 }
 
 export const CareerStepNode: React.FC<CareerStepNodeProps> = ({
@@ -26,7 +26,7 @@ export const CareerStepNode: React.FC<CareerStepNodeProps> = ({
   isInProgress = false,
   isInPath = false,
   onClick,
-  zoomLevel
+  zoomLevel = 1
 }) => {
   const handleClick = () => {
     onClick?.(step);

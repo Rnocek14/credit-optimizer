@@ -489,6 +489,11 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return positions;
   }, [careerSteps, containerDimensions.width, showGoalPathOnly, goalPath]);
 
+  // Helper function to normalize step IDs consistently
+  const normalizeStepId = (id: string | number): string => {
+    return String(id).trim();
+  };
+
   useEffect(() => {
     console.log("📍 careerStepPositions:", Array.from(careerStepPositions.entries()));
   }, [careerStepPositions]);
@@ -1114,20 +1119,30 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
         {/* Career Step Nodes */}
         {(showGoalPathOnly ? careerSteps.filter(step => goalPath.includes(step.id)) : careerSteps).map((step, i) => {
-          console.log("🧩 Checking step:", step.title, "ID:", step.id, "→ Found position?", !!careerStepPositions.get(step.id.trim()));
-          console.log("💡 Keys in positions map:", Array.from(careerStepPositions.keys()));
+          const normalizedId = normalizeStepId(step.id);
+          console.log("🧩 Checking step:", step.title, "Raw ID:", step.id, "Normalized ID:", normalizedId);
+          console.log("🔍 ID comparison - Raw chars:", JSON.stringify(step.id), "Normalized chars:", JSON.stringify(normalizedId));
           
-          const position = careerStepPositions.get(step.id.trim());
+          let position = careerStepPositions.get(normalizedId);
           
+          // Failsafe positioning if position not found
           if (!position) {
-            console.log("❌ Position not found for:", step.id, "typeof:", typeof step.id);
-            console.warn("⚠️ Missing position for career step:", step.title, "with ID:", step.id);
-            console.warn("↳ Available position keys:", Array.from(careerStepPositions.keys()));
-            console.warn("↳ Step ID type:", typeof step.id, "Value:", step.id);
-            return null;
+            console.warn("❌ Position not found for step:", step.title, "with ID:", step.id);
+            console.warn("💡 Available position keys:", Array.from(careerStepPositions.keys()));
+            console.warn("🔧 Character-by-character comparison:");
+            Array.from(careerStepPositions.keys()).forEach(key => {
+              const match = key === normalizedId;
+              console.warn(`   Key: "${key}" (${JSON.stringify(key)}) === "${normalizedId}" (${JSON.stringify(normalizedId)}) → ${match}`);
+            });
+            
+            // Fallback positioning to prevent complete disappearance
+            const fallbackX = 100 + (i * 200);
+            const fallbackY = containerDimensions.height * 0.3 + (step.level || 0) * 120;
+            position = { x: fallbackX, y: fallbackY };
+            console.warn("🆘 Using fallback position:", position);
+          } else {
+            console.log("✅ Found position for career step:", step.title, "at", position);
           }
-          
-          console.log("✅ Rendering career step:", step.title);
 
           return (
             <CareerStepNode
