@@ -402,7 +402,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
       let currentX = startX;
       sortedSteps.forEach((step) => {
-        positions.set(step.id, { x: currentX, y });
+        positions.set(String(step.id), { x: currentX, y });
         currentX += stepWidth + stepSpacing;
       });
     });
@@ -1016,9 +1016,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
         {/* Career Step Nodes */}
         {careerSteps.map((step, i) => {
-          const position = careerStepPositions.get(step.id);
+          const position = careerStepPositions.get(String(step.id));
           if (!position) {
-            console.warn("⚠️ Skipping step with no position:", step.title, "ID:", step.id);
+            console.warn("⚠️ Missing position for:", step.title, "id:", step.id);
+            console.log("↳ All step IDs in Map:", [...careerStepPositions.keys()]);
             return null;
           }
 
