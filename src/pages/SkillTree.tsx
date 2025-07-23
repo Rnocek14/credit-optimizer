@@ -175,8 +175,67 @@ const SkillTree = () => {
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
 
-  // Fetch career steps with hierarchical levels
-  const { data: careerSteps = [] } = useCareerSteps(selectedCareerPath);
+  // Fetch Data Analyst career path ID
+  const { data: dataAnalystPath } = useQuery({
+    queryKey: ['data-analyst-career-path'],
+    queryFn: async () => {
+      console.log('Fetching Data Analyst career path...');
+      const { data, error } = await supabase
+        .from('career_paths')
+        .select('id')
+        .eq('title', 'Data Analyst')
+        .single();
+      
+      if (error) {
+        console.error('Data Analyst career path fetch error:', error);
+        return null;
+      }
+      console.log('Data Analyst career path ID:', data?.id);
+      return data;
+    }
+  });
+
+  // Fetch career steps for Data Analyst
+  const { data: careerSteps = [] } = useQuery({
+    queryKey: ['data-analyst-career-steps', dataAnalystPath?.id],
+    queryFn: async () => {
+      if (!dataAnalystPath?.id) return [];
+      
+      console.log('Fetching career steps for Data Analyst...');
+      const { data, error } = await supabase
+        .from('career_steps')
+        .select('*')
+        .eq('career_path_id', dataAnalystPath.id)
+        .order('step_order');
+      
+      if (error) {
+        console.error('Career steps fetch error:', error);
+        return [];
+      }
+      
+      // Transform to match CareerStep interface expected by SkillTreeCanvas
+      const transformedSteps = (data || []).map((step, index) => ({
+        id: step.id,
+        title: step.title,
+        description: step.description,
+        order_index: step.step_order,
+        prerequisites: step.prerequisites || [],
+        level: Math.floor(index / 3), // Simple level calculation - 3 steps per level
+        career_path_id: step.career_path_id,
+        is_checkpoint: false, // career_steps doesn't have this field
+        is_capstone: step.is_terminal,
+        estimated_duration: step.estimated_time,
+        completed: false
+      }));
+      
+      console.log('🧩 Loaded steps', transformedSteps);
+      return transformedSteps;
+    },
+    enabled: !!dataAnalystPath?.id
+  });
+
+  // Fetch career steps with hierarchical levels for selected career path
+  const { data: selectedCareerSteps = [] } = useCareerSteps(selectedCareerPath);
 
   // Fetch roadmap step skills with proper SQL joins
   const { data: roadmapStepSkills = [] } = useQuery({
