@@ -39,37 +39,34 @@ interface PivotFlowVisualizationProps {
   className?: string;
 }
 
-// Enhanced test node to debug rendering issues
+// ULTIMATE DEBUG NODE - Must be visible!
 const SimpleTestNode = ({ data }: any) => {
-  console.log('🔴 SimpleTestNode rendering with data:', data);
+  console.log('🚨🚨🚨 SimpleTestNode RENDERING!!!', data);
+  console.error('🚨🚨🚨 SimpleTestNode RENDERING!!!', data); // Use error to make it more visible
+  
+  // Force absolute positioning to ensure visibility
   return (
     <div 
       style={{ 
-        padding: '12px', 
-        background: '#ffcccb', 
-        border: '3px solid #ff0000', 
-        borderRadius: '8px',
-        minWidth: '220px',
-        fontSize: '14px',
+        position: 'absolute',
+        top: '50px',
+        left: '50px',
+        padding: '20px', 
+        background: '#ff0000', 
+        border: '5px solid #000000', 
+        borderRadius: '10px',
+        minWidth: '300px',
+        fontSize: '16px',
         fontWeight: 'bold',
-        boxShadow: '0 4px 8px rgba(255,0,0,0.3)',
-        position: 'relative',
-        zIndex: 1000
+        color: '#ffffff',
+        zIndex: 9999,
+        boxShadow: '0 0 20px rgba(255,0,0,1)'
       }}
-      className="test-node-debug"
     >
-      <div style={{ color: '#000', marginBottom: '4px' }}>
-        🔴 TEST NODE: {data.title || 'No Title'}
-      </div>
-      <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>
-        {data.description || 'No Description'}
-      </div>
-      <div style={{ color: '#0066cc', fontSize: '10px' }}>
-        Source: {data.pivotSource || 'Unknown'} | Step: {data.stepIndex || '?'}/{data.totalSteps || '?'}
-      </div>
-      <div style={{ color: '#009900', fontSize: '10px' }}>
-        ID: {data.id || 'No ID'}
-      </div>
+      <div>🚨 FORCED TEST NODE 🚨</div>
+      <div>Title: {data?.title || 'NO TITLE'}</div>
+      <div>ID: {data?.id || 'NO ID'}</div>
+      <div>Type: {data?.type || 'NO TYPE'}</div>
     </div>
   );
 };
@@ -226,19 +223,28 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
 
   return (
     <div className={`h-96 bg-background border rounded-lg overflow-hidden ${className}`}>
-      {/* Debug Info */}
-      <div className="absolute top-2 left-2 z-10 bg-yellow-100 p-2 text-xs rounded">
-        Nodes: {updatedNodes.length} | Edges: {edges.length}
-        <br/>
-        NodeTypes: {Object.keys(nodeTypes).join(', ')}
-        <br/>
-        Container Size: {updatedNodes.length > 0 ? 'Has nodes' : 'No nodes'}
+      {/* ULTIMATE DEBUG INFO */}
+      <div className="absolute top-2 left-2 z-50 bg-yellow-200 p-3 text-sm rounded border-2 border-black">
+        <div>🔥 REACTFLOW DEBUG STATUS:</div>
+        <div>Nodes: {updatedNodes.length} | Edges: {edges.length}</div>
+        <div>NodeTypes: {Object.keys(nodeTypes).join(', ')}</div>
+        <div>First Node Type: {updatedNodes[0]?.type}</div>
+        <div>Container Ready: {updatedNodes.length > 0 ? 'YES' : 'NO'}</div>
+        {updatedNodes.length > 0 && (
+          <div>Node IDs: {updatedNodes.map(n => n.id).join(', ')}</div>
+        )}
       </div>
       
-      {/* Temporary raw node display for debugging */}
+      {/* FORCE RENDER A TEST NODE OUTSIDE REACTFLOW */}
+      <div className="absolute top-32 left-2 z-50">
+        <SimpleTestNode data={{ title: "FORCED OUTSIDE REACTFLOW", id: "test-outside" }} />
+      </div>
+      
+      {/* Raw node data dump */}
       {updatedNodes.length > 0 && (
-        <div className="absolute top-20 left-2 z-10 bg-red-100 p-2 text-xs rounded max-w-xs">
-          First Node: {JSON.stringify(updatedNodes[0], null, 2).substring(0, 200)}...
+        <div className="absolute bottom-2 left-2 z-50 bg-blue-100 p-2 text-xs rounded max-w-md">
+          <strong>Raw Node Data:</strong>
+          <pre>{JSON.stringify(updatedNodes[0], null, 1).substring(0, 300)}...</pre>
         </div>
       )}
       
@@ -256,6 +262,11 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
           padding: 40,
           minZoom: 0.1,
           maxZoom: 2,
+        }}
+        onInit={(instance) => {
+          console.log('🔥 ReactFlow onInit:', instance);
+          console.log('🔥 ReactFlow nodes on init:', updatedNodes);
+          console.log('🔥 ReactFlow nodeTypes on init:', nodeTypes);
         }}
         proOptions={{ hideAttribution: true }}
         className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 w-full h-full"
