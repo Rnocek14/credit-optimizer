@@ -317,6 +317,13 @@ export type Database = {
             referencedRelation: "career_steps"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "career_step_skills_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps_with_levels"
+            referencedColumns: ["id"]
+          },
         ]
       }
       career_steps: {
@@ -1347,10 +1354,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "step_equivalents_equivalent_step_id_fkey"
+            columns: ["equivalent_step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps_with_levels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "step_equivalents_step_id_fkey"
             columns: ["step_id"]
             isOneToOne: false
             referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_equivalents_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps_with_levels"
             referencedColumns: ["id"]
           },
         ]
@@ -1612,6 +1633,13 @@ export type Database = {
             referencedRelation: "career_steps"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_step_progress_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps_with_levels"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_xp: {
@@ -1670,7 +1698,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      career_steps_with_levels: {
+        Row: {
+          career_path_id: string | null
+          estimated_time: string | null
+          id: string | null
+          is_terminal: boolean | null
+          level: number | null
+          prerequisites: string[] | null
+          step_order: number | null
+          title: string | null
+        }
+        Insert: {
+          career_path_id?: string | null
+          estimated_time?: string | null
+          id?: string | null
+          is_terminal?: boolean | null
+          level?: never
+          prerequisites?: string[] | null
+          step_order?: number | null
+          title?: string | null
+        }
+        Update: {
+          career_path_id?: string | null
+          estimated_time?: string | null
+          id?: string | null
+          is_terminal?: boolean | null
+          level?: never
+          prerequisites?: string[] | null
+          step_order?: number | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_steps_career_path_id_fkey"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       award_xp: {
@@ -1747,6 +1815,10 @@ export type Database = {
       get_user_role: {
         Args: { user_id_param: string }
         Returns: string
+      }
+      refresh_career_steps_with_levels: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       suggest_badges_for_user: {
         Args: { user_uuid: string }
