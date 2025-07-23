@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from '
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OptimizedSkillTreeNode } from './OptimizedSkillTreeNode';
+import { CareerStepNode } from './CareerStepNode';
 import { SkillPivotModal } from './SkillPivotModal';
 import { SkillTreeMinimap } from './SkillTreeMinimap';
 import { SkillSearchOverlay } from './SkillSearchOverlay';
@@ -92,6 +93,15 @@ interface SkillTreeCanvasProps {
   careerPathName?: string;
   showPivotPaths?: boolean;
   roadmapStepSkills?: RoadmapStepSkill[];
+  careerSteps?: Array<{
+    id: string;
+    title: string;
+    level: number;
+    is_checkpoint?: boolean;
+    is_capstone?: boolean;
+    estimated_duration?: string;
+    completed?: boolean;
+  }>;
 }
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
@@ -108,7 +118,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   skillsWithCourses = [],
   careerPathName,
   showPivotPaths = false,
-  roadmapStepSkills = []
+  roadmapStepSkills = [],
+  careerSteps = []
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -356,6 +367,43 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
     return positions;
   }, [filteredSkills, getSkillDepthMap, containerDimensions.width]);
+
+  // Career step positions based on their hierarchical levels
+  const careerStepPositions = useMemo(() => {
+    if (!careerSteps.length) return new Map();
+
+    const positions = new Map();
+    const levelHeight = 200; // More space for career steps
+    const stepWidth = 150;
+    const stepSpacing = 60;
+    const baseY = 50; // Start above skills
+    const canvasWidth = containerDimensions.width;
+
+    // Group career steps by level
+    const levelMap = new Map();
+    careerSteps.forEach(step => {
+      if (!levelMap.has(step.level)) levelMap.set(step.level, []);
+      levelMap.get(step.level).push(step);
+    });
+
+    // Position career steps by level
+    Array.from(levelMap.entries()).forEach(([level, stepList]) => {
+      const sortedSteps = stepList.sort((a, b) => a.title.localeCompare(b.title));
+      const stepCount = sortedSteps.length;
+      
+      const totalWidth = stepCount * stepWidth + (stepCount - 1) * stepSpacing;
+      const startX = Math.max(50, (canvasWidth - totalWidth) / 2);
+      const y = baseY + level * levelHeight;
+
+      let currentX = startX;
+      sortedSteps.forEach((step) => {
+        positions.set(step.id, { x: currentX, y });
+        currentX += stepWidth + stepSpacing;
+      });
+    });
+
+    return positions;
+  }, [careerSteps, containerDimensions.width]);
 
   // Auto-scroll to center skill on click
   const handleSkillClick = useCallback((skill: any) => {
@@ -907,6 +955,27 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
                 careerPathName={careerPathName}
               />
             </div>
+          );
+        })}
+
+        {/* Career Step Nodes */}
+        {careerSteps.map((step) => {
+          const position = careerStepPositions.get(step.id);
+          if (!position) return null;
+          
+          return (
+            <CareerStepNode
+              key={step.id}
+              step={step}
+              position={position}
+              isCompleted={step.completed}
+              isInProgress={false} // TODO: Add progress tracking
+              onClick={(clickedStep) => {
+                console.log('Career step clicked:', clickedStep);
+                // TODO: Add step detail modal or handling
+              }}
+              zoomLevel={zoomLevel}
+            />
           );
         })}
       </div>

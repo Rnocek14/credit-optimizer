@@ -1683,6 +1683,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      calculate_career_step_levels: {
+        Args: { career_path_id_param: string }
+        Returns: {
+          id: string
+          title: string
+          description: string
+          order_index: number
+          prerequisites: string[]
+          level: number
+          career_path_id: string
+          is_checkpoint: boolean
+          is_capstone: boolean
+          estimated_duration: string
+          completed: boolean
+          created_at: string
+          updated_at: string
+        }[]
+      }
       generate_user_roadmap: {
         Args: { user_id_param: string }
         Returns: Json

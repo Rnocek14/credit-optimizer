@@ -53,6 +53,15 @@ interface InteractiveSkillTreeProps {
   careerPathName?: string;
   showPivotPaths?: boolean;
   roadmapStepSkills?: RoadmapStepSkill[];
+  careerSteps?: Array<{
+    id: string;
+    title: string;
+    level: number;
+    is_checkpoint?: boolean;
+    is_capstone?: boolean;
+    estimated_duration?: string;
+    completed?: boolean;
+  }>;
 }
 
 export const InteractiveSkillTree = React.memo(({
@@ -70,7 +79,8 @@ export const InteractiveSkillTree = React.memo(({
   layoutMode = 'hierarchy',
   careerPathName,
   showPivotPaths = false,
-  roadmapStepSkills = []
+  roadmapStepSkills = [],
+  careerSteps = []
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
@@ -132,6 +142,7 @@ export const InteractiveSkillTree = React.memo(({
         careerPathName={careerPathName}
         showPivotPaths={showPivotPaths}
         roadmapStepSkills={roadmapStepSkills}
+        careerSteps={careerSteps}
       />
     </SkillTreeErrorBoundary>
   );

@@ -23,33 +23,59 @@ export const useCareerSteps = (careerPathId: string | null) => {
       
       console.log('Fetching career steps with levels for career path:', careerPathId);
       
-      // Recursive SQL query to calculate step levels based on prerequisites
-      const { data, error } = await supabase.rpc('calculate_career_step_levels', {
-        career_path_id_param: careerPathId
-      });
+      // Use direct query for now since function isn't recognized in types
+      const { data: stepsData, error } = await supabase
+        .from('career_steps')
+        .select('*')
+        .eq('career_path_id', careerPathId)
+        .order('order_index');
       
       if (error) {
-        console.error('Career steps with levels fetch error:', error);
-        // Fallback to basic query without levels
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('career_steps')
-          .select('*')
-          .eq('career_path_id', careerPathId)
-          .order('order_index');
-        
-        if (fallbackError) {
-          throw fallbackError;
-        }
-        
-        // Calculate basic levels based on order_index as fallback
-        return (fallbackData || []).map((step, index) => ({
-          ...step,
-          level: Math.floor(index / 3) // Simple grouping by 3s
-        })) as CareerStep[];
+        console.error('Career steps fetch error:', error);
+        throw error;
       }
       
-      console.log('Career steps with levels fetched:', data?.length || 0);
-      return (data || []) as CareerStep[];
+      // Calculate levels based on prerequisites
+      const steps = stepsData || [];
+      const stepsWithLevels: CareerStep[] = [];
+      const processedIds = new Set<string>();
+      
+      // Process steps iteratively by dependency levels
+      let currentLevel = 0;
+      let remainingSteps = [...steps];
+      
+      while (remainingSteps.length > 0 && currentLevel < 10) {
+        const levelSteps = remainingSteps.filter(step => {
+          if (!step.prerequisites || step.prerequisites.length === 0) {
+            return currentLevel === 0;
+          }
+          return step.prerequisites.every(prereqId => processedIds.has(prereqId));
+        });
+        
+        if (levelSteps.length === 0) break;
+        
+        levelSteps.forEach(step => {
+          stepsWithLevels.push({
+            ...step,
+            level: currentLevel
+          });
+          processedIds.add(step.id);
+        });
+        
+        remainingSteps = remainingSteps.filter(step => !processedIds.has(step.id));
+        currentLevel++;
+      }
+      
+      // Add any remaining steps at the highest level
+      remainingSteps.forEach(step => {
+        stepsWithLevels.push({
+          ...step,
+          level: currentLevel
+        });
+      });
+      
+      console.log('Career steps with levels calculated:', stepsWithLevels.length);
+      return stepsWithLevels;
     },
     enabled: !!careerPathId,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes

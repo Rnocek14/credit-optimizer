@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import { getCurrentUser } from '@/lib/authHelper';
+import { useCareerSteps } from '@/hooks/useCareerSteps';
 
 interface Skill {
   id: string;
@@ -173,6 +174,9 @@ const SkillTree = () => {
 
   // Mock recommended skills for now
   const recommendedSkills = skills.slice(0, 3).map(skill => skill.id);
+
+  // Fetch career steps with hierarchical levels
+  const { data: careerSteps = [] } = useCareerSteps(selectedCareerPath);
 
   // Fetch roadmap step skills with proper SQL joins
   const { data: roadmapStepSkills = [] } = useQuery({
@@ -530,10 +534,11 @@ const SkillTree = () => {
              capstoneSkillIds={capstoneSkillIds}
              availableCategories={categories}
              onSkillClick={handleSkillClick}
-             careerPathName={selectedCareerPathData?.title}
-             showPivotPaths={showPivotPaths}
-             roadmapStepSkills={roadmapStepSkills}
-           />
+        careerPathName={selectedCareerPathData?.title}
+        showPivotPaths={showPivotPaths}
+        roadmapStepSkills={roadmapStepSkills}
+        careerSteps={careerSteps}
+      />
         </div>
 
         {/* ROI Panel */}
