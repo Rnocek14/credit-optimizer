@@ -410,6 +410,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return positions;
   }, [careerSteps, containerDimensions.width]);
 
+  useEffect(() => {
+    console.log("📍 careerStepPositions:", Array.from(careerStepPositions.entries()));
+  }, [careerStepPositions]);
+
   // Auto-scroll to center skill on click
   const handleSkillClick = useCallback((skill: any) => {
     const position = skillPositions.get(skill.id);
