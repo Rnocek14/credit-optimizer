@@ -39,8 +39,30 @@ interface PivotFlowVisualizationProps {
   className?: string;
 }
 
+// Simple test node to debug rendering
+const SimpleTestNode = ({ data }: any) => {
+  return (
+    <div style={{ 
+      padding: '10px', 
+      background: 'white', 
+      border: '2px solid red', 
+      borderRadius: '4px',
+      minWidth: '200px',
+      fontSize: '12px'
+    }}>
+      <strong style={{ color: 'black' }}>{data.title || 'No Title'}</strong>
+      <br />
+      <small style={{ color: 'gray' }}>{data.description || 'No Description'}</small>
+      <br />
+      <small style={{ color: 'blue' }}>Source: {data.pivotSource || 'Unknown'}</small>
+    </div>
+  );
+};
+
+// Use simple test nodes for now to debug
 const nodeTypes = {
-  pivotStep: PivotStepNode,
+  pivotStep: SimpleTestNode,
+  default: undefined,
 };
 
 const edgeTypes = {
