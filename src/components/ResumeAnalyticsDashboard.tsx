@@ -26,6 +26,7 @@ import {
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import { useToast } from "@/hooks/use-toast";
 import { usePivotRecommendations } from "@/hooks/usePivotRecommendations";
+import { testAllEdgeFunctions } from "@/lib/edgeFunctionTests";
 
 interface UserStats {
   totalXp: number;
@@ -247,6 +248,38 @@ export default function ResumeAnalyticsDashboard() {
     refetchPivots();
   };
 
+  const handleTestEdgeFunctions = async () => {
+    console.log("🧪 Testing edge functions...");
+    toast({
+      title: "🧪 Testing Edge Functions",
+      description: "Running tests... Check console for results.",
+    });
+    
+    try {
+      const results = await testAllEdgeFunctions();
+      
+      if (results.allPassed) {
+        toast({
+          title: "✅ All Tests Passed!",
+          description: "Both edge functions are working correctly.",
+        });
+      } else {
+        toast({
+          title: "❌ Some Tests Failed",
+          description: "Check console for detailed error information.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Test execution failed:", error);
+      toast({
+        title: "❌ Test Execution Failed",
+        description: "An error occurred while running tests.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleShare = () => {
     toast({
       title: "🚀 Share Feature Coming Soon!",
@@ -293,6 +326,9 @@ export default function ResumeAnalyticsDashboard() {
             <p className="text-muted-foreground">Your learning journey insights</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={handleTestEdgeFunctions} variant="outline" className="gap-2">
+              🧪 Test Functions
+            </Button>
             <Button onClick={handleExplorePivots} variant="outline" className="gap-2" disabled={pivotLoading}>
               {pivotLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
