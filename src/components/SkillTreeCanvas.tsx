@@ -1015,20 +1015,24 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         })}
 
         {/* Career Step Nodes */}
-        {careerSteps.map((step) => {
+        {careerSteps.map((step, i) => {
           const position = careerStepPositions.get(step.id);
-          if (!position) return null;
-          
+          if (!position) {
+            console.warn("⚠️ Skipping step with no position:", step.title, "ID:", step.id);
+            return null;
+          }
+
+          console.log("✅ Rendering step:", step.title, "→", position);
+
           return (
             <CareerStepNode
               key={step.id}
               step={step}
               position={position}
               isCompleted={step.completed}
-              isInProgress={false} // TODO: Add progress tracking
+              isInProgress={false}
               onClick={(clickedStep) => {
-                console.log('Career step clicked:', clickedStep);
-                // TODO: Add step detail modal or handling
+                console.log("📌 Clicked career step:", clickedStep.title);
               }}
               zoomLevel={zoomLevel}
             />
