@@ -138,6 +138,10 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const fitToViewRef = useRef<() => void>();
 
+  useEffect(() => {
+    console.log("🧩 careerSteps data loaded:", careerSteps);
+  }, [careerSteps]);
+
   // Fetch skill branches for pivot paths with proper caching
   const { data: skillBranches = [] } = useQuery({
     queryKey: ['skill-branches'],
