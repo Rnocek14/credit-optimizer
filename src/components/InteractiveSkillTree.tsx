@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { PivotRoadmapOverlay } from './PivotRoadmapOverlay';
+import { usePivotRoadmaps } from '@/hooks/usePivotRoadmaps';
 
 interface Skill {
   id: string;
@@ -85,6 +87,39 @@ export const InteractiveSkillTree = React.memo(({
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
+  
+  // Pivot roadmap management
+  const {
+    activePivotPaths,
+    showPivotOverlay,
+    addPivotPath,
+    removePivotPath,
+    clearAllPivotPaths,
+    togglePivotOverlay,
+    generateMockPivotFromSkill
+  } = usePivotRoadmaps();
+
+  
+  // Camera state for pivot overlay
+  const [cameraState, setCameraState] = useState({
+    skillPositions: new Map<string, { x: number; y: number }>(),
+    zoomLevel: 1,
+    panOffset: { x: 0, y: 0 }
+  });
+  
+  // Enhanced skill click handler that can generate pivot paths
+  const handleSkillClick = (skill: any) => {
+    // Call original handler
+    if (onSkillClick) {
+      onSkillClick(skill);
+    }
+    
+    // Generate mock pivot path for demonstration
+    if (showPivotPaths) {
+      const mockPivot = generateMockPivotFromSkill(skill.name);
+      addPivotPath(mockPivot);
+    }
+  };
 
   // Simplified loading logic to prevent rapid state changes
   useEffect(() => {
@@ -129,22 +164,39 @@ export const InteractiveSkillTree = React.memo(({
 
   return (
     <SkillTreeErrorBoundary>
-      <SkillTreeCanvas
-        skills={skills}
-        userProgress={userProgress || []}
-        skillEdges={skillEdges || []}
-        filteredSkills={filteredSkills}
-        recommendedSkills={recommendedSkills || []}
-        goalSkills={goalSkills}
-        checkpointSkills={checkpointSkills}
-        capstoneSkillIds={capstoneSkillIds}
-        availableCategories={availableCategories || []}
-        onSkillClick={onSkillClick}
-        careerPathName={careerPathName}
-        showPivotPaths={showPivotPaths}
-        roadmapStepSkills={roadmapStepSkills}
-        careerSteps={careerSteps}
-      />
+      <div className="relative">
+        <SkillTreeCanvas
+          skills={skills}
+          userProgress={userProgress || []}
+          skillEdges={skillEdges || []}
+          filteredSkills={filteredSkills}
+          recommendedSkills={recommendedSkills || []}
+          goalSkills={goalSkills}
+          checkpointSkills={checkpointSkills}
+          capstoneSkillIds={capstoneSkillIds}
+          availableCategories={availableCategories || []}
+          onSkillClick={handleSkillClick}
+          careerPathName={careerPathName}
+          showPivotPaths={showPivotPaths}
+          roadmapStepSkills={roadmapStepSkills}
+          careerSteps={careerSteps}
+          onCameraStateChange={setCameraState}
+        />
+        
+        {/* Pivot Roadmap Overlay */}
+        <PivotRoadmapOverlay
+          activePivotPaths={activePivotPaths}
+          skillPositions={cameraState.skillPositions}
+          zoomLevel={cameraState.zoomLevel}
+          panOffset={cameraState.panOffset}
+          showOverlay={showPivotOverlay}
+          onToggleOverlay={togglePivotOverlay}
+          onPivotStepClick={(step) => {
+            console.log('Clicked pivot step:', step);
+            // Handle pivot step click - could open detail modal
+          }}
+        />
+      </div>
     </SkillTreeErrorBoundary>
   );
 });

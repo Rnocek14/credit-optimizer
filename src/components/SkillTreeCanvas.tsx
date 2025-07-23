@@ -104,24 +104,31 @@ interface SkillTreeCanvasProps {
     estimated_duration?: string;
     completed?: boolean;
   }>;
+  // New props to expose camera state and positions
+  onCameraStateChange?: (state: {
+    skillPositions: Map<string, { x: number; y: number }>;
+    zoomLevel: number;
+    panOffset: { x: number; y: number };
+  }) => void;
 }
 
-export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
+export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   skills,
   userProgress,
   skillEdges,
   filteredSkills,
-  recommendedSkills,
+  capstoneSkillIds = [],
+  recommendedSkills = [],
   goalSkills = [],
   checkpointSkills = [],
-  capstoneSkillIds = [],
   availableCategories,
   onSkillClick,
   skillsWithCourses = [],
   careerPathName,
   showPivotPaths = false,
   roadmapStepSkills = [],
-  careerSteps = []
+  careerSteps = [],
+  onCameraStateChange
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -564,16 +571,24 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     }
   }, []);
 
-  // FIXED: Remove problematic dependency that causes infinite loop
+  // Notify parent of camera state changes
+  useEffect(() => {
+    if (onCameraStateChange && skillPositions.size > 0) {
+      onCameraStateChange({
+        skillPositions,
+        zoomLevel,
+        panOffset
+      });
+    }
+  }, [onCameraStateChange, skillPositions, zoomLevel, panOffset]);
+
+  // Auto-fit view when first loaded
   useEffect(() => {
     if (filteredSkills.length > 0 && skillPositions.size > 0) {
       const timeoutId = setTimeout(() => {
-        requestAnimationFrame(() => {
-          if (fitToViewRef.current) {
-            fitToViewRef.current();
-          }
-        });
-      }, 500);
+        fitToViewRef.current?.();
+      }, 100);
+      
       return () => clearTimeout(timeoutId);
     }
   }, [filteredSkills.length, skillPositions.size]); // Only depend on counts, not functions
@@ -1214,4 +1229,4 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       )}
     </div>
   );
-});
+};
