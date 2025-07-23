@@ -102,6 +102,13 @@ export const InteractiveSkillTree = React.memo(({
     generateMockPivotFromSkill
   } = usePivotRoadmaps(showPivotPaths);
 
+  console.log('🔍 InteractiveSkillTree DEBUG:', {
+    showPivotPaths,
+    showPivotOverlay,
+    activePivotPathsCount: activePivotPaths.length,
+    activePivotPaths
+  });
+
   // Camera state for skill tree
   const [cameraState, setCameraState] = useState({
     skillPositions: new Map<string, { x: number; y: number }>(),
@@ -201,12 +208,18 @@ export const InteractiveSkillTree = React.memo(({
 
       {/* React Flow-based Pivot Roadmap Manager */}
       {showPivotPaths && (
-        <PivotFlowManager
-          activePivotPaths={activePivotPaths}
-          visible={showPivotOverlay}
-          onToggleVisibility={togglePivotOverlay}
-          className="mt-6"
-        />
+        <div className="bg-red-100 border-2 border-red-500 p-4 rounded">
+          <p className="text-red-800 font-bold">DEBUG: PivotFlowManager should render here</p>
+          <p>showPivotPaths: {String(showPivotPaths)}</p>
+          <p>showPivotOverlay: {String(showPivotOverlay)}</p>
+          <p>activePivotPaths: {activePivotPaths.length}</p>
+          <PivotFlowManager
+            activePivotPaths={activePivotPaths}
+            visible={showPivotOverlay}
+            onToggleVisibility={togglePivotOverlay}
+            className="mt-6"
+          />
+        </div>
       )}
     </div>
   );

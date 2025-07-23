@@ -34,8 +34,19 @@ export const usePivotRoadmaps = (externalVisible?: boolean) => {
   const [activePivotPaths, setActivePivotPaths] = useState<PivotPath[]>([]);
   const [showPivotOverlay, setShowPivotOverlay] = useState(false);
 
+  console.log('🎯 usePivotRoadmaps DEBUG:', {
+    externalVisible,
+    showPivotOverlay,
+    activePivotPathsCount: activePivotPaths.length
+  });
+
   // Update overlay visibility when external control changes
   React.useEffect(() => {
+    console.log('🔄 usePivotRoadmaps useEffect triggered:', {
+      externalVisible,
+      currentActivePaths: activePivotPaths.length
+    });
+    
     if (externalVisible !== undefined) {
       setShowPivotOverlay(externalVisible);
       
@@ -63,6 +74,7 @@ export const usePivotRoadmaps = (externalVisible?: boolean) => {
           }
         ];
         setActivePivotPaths(samplePivots);
+        console.log('✅ Sample pivots added:', samplePivots);
       } else if (!externalVisible) {
         console.log('🔄 Pivot mode disabled');
       }
