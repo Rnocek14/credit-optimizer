@@ -1115,7 +1115,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
         {/* Career Step Nodes */}
         {(showGoalPathOnly ? careerSteps.filter(step => goalPath.includes(step.id)) : careerSteps).map((step, i) => {
           // Use step.id directly (should already be a string from the database)
-          const position = careerStepPositions.get(step.id);
+          const position = careerStepPositions.get(String(step.id).trim());
           
           if (!position) {
             console.warn("⚠️ Missing position for career step:", step.title, "with ID:", step.id);
