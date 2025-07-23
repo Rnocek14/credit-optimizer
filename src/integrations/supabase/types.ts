@@ -317,13 +317,6 @@ export type Database = {
             referencedRelation: "career_steps"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "career_step_skills_step_id_fkey"
-            columns: ["step_id"]
-            isOneToOne: false
-            referencedRelation: "career_steps_with_levels"
-            referencedColumns: ["id"]
-          },
         ]
       }
       career_steps: {
@@ -1354,24 +1347,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "step_equivalents_equivalent_step_id_fkey"
-            columns: ["equivalent_step_id"]
-            isOneToOne: false
-            referencedRelation: "career_steps_with_levels"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "step_equivalents_step_id_fkey"
             columns: ["step_id"]
             isOneToOne: false
             referencedRelation: "career_steps"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "step_equivalents_step_id_fkey"
-            columns: ["step_id"]
-            isOneToOne: false
-            referencedRelation: "career_steps_with_levels"
             referencedColumns: ["id"]
           },
         ]
@@ -1633,13 +1612,6 @@ export type Database = {
             referencedRelation: "career_steps"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_step_progress_step_id_fkey"
-            columns: ["step_id"]
-            isOneToOne: false
-            referencedRelation: "career_steps_with_levels"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_xp: {
@@ -1709,35 +1681,7 @@ export type Database = {
           step_order: number | null
           title: string | null
         }
-        Insert: {
-          career_path_id?: string | null
-          estimated_time?: string | null
-          id?: string | null
-          is_terminal?: boolean | null
-          level?: never
-          prerequisites?: string[] | null
-          step_order?: number | null
-          title?: string | null
-        }
-        Update: {
-          career_path_id?: string | null
-          estimated_time?: string | null
-          id?: string | null
-          is_terminal?: boolean | null
-          level?: never
-          prerequisites?: string[] | null
-          step_order?: number | null
-          title?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "career_steps_career_path_id_fkey"
-            columns: ["career_path_id"]
-            isOneToOne: false
-            referencedRelation: "career_paths"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
@@ -1757,12 +1701,13 @@ export type Database = {
           id: string
           title: string
           description: string
-          order_index: number
+          step_order: number
           prerequisites: string[]
           level: number
           career_path_id: string
           is_checkpoint: boolean
           is_capstone: boolean
+          is_terminal: boolean
           estimated_duration: string
           completed: boolean
           created_at: string
