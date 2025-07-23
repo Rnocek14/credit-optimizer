@@ -188,6 +188,11 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
 
   return (
     <div className={`h-96 bg-background border rounded-lg overflow-hidden ${className}`}>
+      {/* Debug Info */}
+      <div className="absolute top-2 left-2 z-10 bg-yellow-100 p-2 text-xs rounded">
+        Nodes: {updatedNodes.length} | Edges: {edges.length}
+      </div>
+      
       <ReactFlow
         nodes={updatedNodes}
         edges={edges}
@@ -199,12 +204,13 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
         connectionMode={ConnectionMode.Strict}
         fitView
         fitViewOptions={{
-          padding: 20,
-          minZoom: 0.5,
-          maxZoom: 1.5,
+          padding: 40,
+          minZoom: 0.1,
+          maxZoom: 2,
         }}
         proOptions={{ hideAttribution: true }}
         className="bg-gradient-to-br from-blue-50/50 to-purple-50/50"
+        defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
       >
         <Controls 
           showZoom={true}
