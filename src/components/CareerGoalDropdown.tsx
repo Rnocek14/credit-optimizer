@@ -31,24 +31,24 @@ export const CareerGoalDropdown: React.FC<CareerGoalDropdownProps> = ({
     }
   });
 
-  // Demo fallback - if no career paths available, provide mock data
-  const mockCareerPaths = [
-    { id: 'ux-designer', title: 'UX Designer', average_salary: 78000 },
-    { id: 'software-engineer', title: 'Software Engineer', average_salary: 95000 },
-    { id: 'product-manager', title: 'Product Manager', average_salary: 115000 },
-    { id: 'data-analyst', title: 'Data Analyst', average_salary: 72000 }
-  ];
+  console.log('📊 Career paths data:', { careerPaths, selectedCareerPath });
 
-  const availablePaths = careerPaths.length > 0 ? careerPaths : mockCareerPaths;
+  const availablePaths = careerPaths;
 
-  // Default to UX Designer for Aisha Khan (demo user)
+  // Default to Data Analyst for career step visualization
   React.useEffect(() => {
     if (!selectedCareerPath && availablePaths.length > 0) {
-      const uxDesignerPath = availablePaths.find(path => 
-        path.title.toLowerCase().includes('ux designer')
+      // Find the actual Data Analyst career path by title
+      const dataAnalystPath = availablePaths.find(path => 
+        path.title === 'Data Analyst'
       );
-      if (uxDesignerPath) {
-        onCareerPathChange(uxDesignerPath.id);
+      if (dataAnalystPath) {
+        console.log('🎯 Auto-selecting Data Analyst career path:', dataAnalystPath.id);
+        onCareerPathChange(dataAnalystPath.id);
+      } else {
+        // Fallback to first available path
+        console.log('🔄 Data Analyst not found, selecting first path:', availablePaths[0].id);
+        onCareerPathChange(availablePaths[0].id);
       }
     }
   }, [availablePaths, selectedCareerPath, onCareerPathChange]);

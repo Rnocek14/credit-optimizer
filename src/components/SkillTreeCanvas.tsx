@@ -429,7 +429,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
   // Career step positions based on their hierarchical levels
   const careerStepPositions = useMemo(() => {
-    if (!careerSteps.length) return new Map();
+    if (!careerSteps.length) {
+      console.log('🏗️ No career steps available for positioning');
+      return new Map();
+    }
+
+    console.log('🏗️ Positioning career steps:', careerSteps.length, 'steps');
+    console.log('→ Steps data:', careerSteps.map(s => ({ id: s.id, title: s.title, level: s.level, is_terminal: s.is_terminal })));
 
     const positions = new Map();
     const levelHeight = 200; // More space for career steps
@@ -442,6 +448,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     let stepsToRender = careerSteps;
     if (showGoalPathOnly && goalPath.length > 0) {
       stepsToRender = careerSteps.filter(step => goalPath.includes(step.id));
+      console.log('🎯 Filtering to goal path:', stepsToRender.length, 'steps');
     }
 
     // Group career steps by level
@@ -451,8 +458,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       levelMap.get(step.level).push(step);
     });
 
-    // Ensure terminal steps are positioned at the bottom-most level
-    const maxLevel = Math.max(...Array.from(levelMap.keys()));
+    console.log('📊 Level mapping:', Array.from(levelMap.entries()).map(([level, steps]) => ({ level, count: steps.length })));
     
     // Position career steps by level
     Array.from(levelMap.entries()).forEach(([level, stepList]) => {
@@ -472,11 +478,14 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
       let currentX = startX;
       sortedSteps.forEach((step) => {
-        positions.set(String(step.id), { x: currentX, y });
+        // Use step.id directly (it's already a string from the database)
+        positions.set(step.id, { x: currentX, y });
+        console.log(`📍 Positioned step "${step.title}" (${step.id}) at (${currentX}, ${y})`);
         currentX += stepWidth + stepSpacing;
       });
     });
 
+    console.log('🗺️ Final career step positions:', Array.from(positions.entries()));
     return positions;
   }, [careerSteps, containerDimensions.width, showGoalPathOnly, goalPath]);
 
@@ -1105,25 +1114,29 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
         {/* Career Step Nodes */}
         {(showGoalPathOnly ? careerSteps.filter(step => goalPath.includes(step.id)) : careerSteps).map((step, i) => {
-          const position = careerStepPositions.get(String(step.id));
+          // Use step.id directly (should already be a string from the database)
+          const position = careerStepPositions.get(step.id);
+          
           if (!position) {
-            console.warn("⚠️ Missing position for:", step.title, "id:", step.id);
-            console.log("↳ All step IDs in Map:", [...careerStepPositions.keys()]);
+            console.warn("⚠️ Missing position for career step:", step.title, "with ID:", step.id);
+            console.log("↳ Available position keys:", [...careerStepPositions.keys()]);
+            console.log("↳ Step ID type:", typeof step.id, "Value:", step.id);
             return null;
           }
 
-          console.log("✅ Rendering step:", step.title, "→", position);
+          console.log("✅ Rendering career step:", step.title, "at position:", position);
 
           return (
             <CareerStepNode
               key={step.id}
               step={step}
               position={position}
-              isCompleted={step.completed}
+              isCompleted={step.completed || false}
               isInProgress={false}
               isInPath={goalPath.includes(step.id)}
               onClick={(clickedStep) => {
                 console.log("📌 Clicked career step:", clickedStep.title);
+                // TODO: Add navigation to career step details
               }}
               zoomLevel={zoomLevel}
             />

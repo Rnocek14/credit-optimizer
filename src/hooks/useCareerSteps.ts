@@ -22,7 +22,7 @@ export const useCareerSteps = (careerPathId: string | null) => {
     queryFn: async () => {
       if (!careerPathId) return [];
       
-      console.log('Fetching career steps with levels for career path:', careerPathId);
+      console.log('🔍 Fetching career steps with levels for career path:', careerPathId);
       
       // Query the new career_steps_with_levels view
       const { data: stepsData, error } = await supabase
@@ -50,7 +50,13 @@ export const useCareerSteps = (careerPathId: string | null) => {
         completed: false // This would need to come from user progress if needed
       }));
       
-      console.log('Career steps with levels from view:', stepsWithLevels.length);
+      console.log('📚 Career steps fetched successfully:', stepsWithLevels.length, 'steps');
+      console.log('→ Sample data:', stepsWithLevels.slice(0, 3).map(s => ({ 
+        id: s.id, 
+        title: s.title, 
+        level: s.level, 
+        is_terminal: s.is_terminal 
+      })));
       return stepsWithLevels;
     },
     enabled: !!careerPathId,
