@@ -1,16 +1,12 @@
-/* Ensure ReactFlow styles are not overridden */
+/* ReactFlow container fixes */
 .react-flow {
   width: 100% !important;
   height: 100% !important;
 }
 
+/* DO NOT override node styles - let custom nodes control their own styling */
 .react-flow__node {
-  width: auto !important;
-  height: auto !important;
-  background: white !important;
-  border: 1px solid #ccc !important;
-  border-radius: 4px !important;
-  padding: 8px !important;
+  /* Remove all forced overrides to allow custom node styling */
 }
 
 .react-flow__edge {

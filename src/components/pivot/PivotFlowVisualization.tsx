@@ -39,22 +39,37 @@ interface PivotFlowVisualizationProps {
   className?: string;
 }
 
-// Simple test node to debug rendering
+// Enhanced test node to debug rendering issues
 const SimpleTestNode = ({ data }: any) => {
+  console.log('🔴 SimpleTestNode rendering with data:', data);
   return (
-    <div style={{ 
-      padding: '10px', 
-      background: 'white', 
-      border: '2px solid red', 
-      borderRadius: '4px',
-      minWidth: '200px',
-      fontSize: '12px'
-    }}>
-      <strong style={{ color: 'black' }}>{data.title || 'No Title'}</strong>
-      <br />
-      <small style={{ color: 'gray' }}>{data.description || 'No Description'}</small>
-      <br />
-      <small style={{ color: 'blue' }}>Source: {data.pivotSource || 'Unknown'}</small>
+    <div 
+      style={{ 
+        padding: '12px', 
+        background: '#ffcccb', 
+        border: '3px solid #ff0000', 
+        borderRadius: '8px',
+        minWidth: '220px',
+        fontSize: '14px',
+        fontWeight: 'bold',
+        boxShadow: '0 4px 8px rgba(255,0,0,0.3)',
+        position: 'relative',
+        zIndex: 1000
+      }}
+      className="test-node-debug"
+    >
+      <div style={{ color: '#000', marginBottom: '4px' }}>
+        🔴 TEST NODE: {data.title || 'No Title'}
+      </div>
+      <div style={{ color: '#666', fontSize: '12px', marginBottom: '4px' }}>
+        {data.description || 'No Description'}
+      </div>
+      <div style={{ color: '#0066cc', fontSize: '10px' }}>
+        Source: {data.pivotSource || 'Unknown'} | Step: {data.stepIndex || '?'}/{data.totalSteps || '?'}
+      </div>
+      <div style={{ color: '#009900', fontSize: '10px' }}>
+        ID: {data.id || 'No ID'}
+      </div>
     </div>
   );
 };
@@ -244,7 +259,7 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
         }}
         proOptions={{ hideAttribution: true }}
         className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 w-full h-full"
-        defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
       >
         <Controls 
           showZoom={true}
