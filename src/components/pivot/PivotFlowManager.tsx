@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Route, Eye, EyeOff, X, RefreshCw, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { PivotFlowVisualization } from './PivotFlowVisualization';
+import { ReactFlowTest } from './ReactFlowTest';
 
 interface PivotRoadmapStep {
   id: string;
@@ -281,6 +282,12 @@ export const PivotFlowManager: React.FC<PivotFlowManagerProps> = ({
             })}
           </div>
         )}
+      </div>
+
+      {/* ReactFlow Test */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">ReactFlow Test (for debugging)</h3>
+        <ReactFlowTest />
       </div>
 
       {/* Flow Visualization */}

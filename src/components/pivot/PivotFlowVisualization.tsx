@@ -11,6 +11,7 @@ import {
   ConnectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import './ReactFlowStyles.css';
 
 import PivotStepNode from './PivotStepNode';
 import PivotEdge from './PivotEdge';
@@ -191,7 +192,18 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
       {/* Debug Info */}
       <div className="absolute top-2 left-2 z-10 bg-yellow-100 p-2 text-xs rounded">
         Nodes: {updatedNodes.length} | Edges: {edges.length}
+        <br/>
+        NodeTypes: {Object.keys(nodeTypes).join(', ')}
+        <br/>
+        Container Size: {updatedNodes.length > 0 ? 'Has nodes' : 'No nodes'}
       </div>
+      
+      {/* Temporary raw node display for debugging */}
+      {updatedNodes.length > 0 && (
+        <div className="absolute top-20 left-2 z-10 bg-red-100 p-2 text-xs rounded max-w-xs">
+          First Node: {JSON.stringify(updatedNodes[0], null, 2).substring(0, 200)}...
+        </div>
+      )}
       
       <ReactFlow
         nodes={updatedNodes}
@@ -209,7 +221,7 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
           maxZoom: 2,
         }}
         proOptions={{ hideAttribution: true }}
-        className="bg-gradient-to-br from-blue-50/50 to-purple-50/50"
+        className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 w-full h-full"
         defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
       >
         <Controls 
