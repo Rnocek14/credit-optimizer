@@ -102,11 +102,13 @@ export const InteractiveSkillTree = React.memo(({
     generateMockPivotFromSkill
   } = usePivotRoadmaps(showPivotPaths);
 
-  console.log('🔍 InteractiveSkillTree DEBUG:', {
+  console.log('🔍 InteractiveSkillTree RENDER DEBUG:', {
     showPivotPaths,
     showPivotOverlay,
     activePivotPathsCount: activePivotPaths.length,
-    activePivotPaths
+    activePivotPaths,
+    componentRendering: true,
+    timestamp: new Date().toISOString()
   });
 
   // Camera state for skill tree
