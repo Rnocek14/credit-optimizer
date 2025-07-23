@@ -27,6 +27,7 @@ import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import { useToast } from "@/hooks/use-toast";
 import { usePivotRecommendations } from "@/hooks/usePivotRecommendations";
 import { testAllEdgeFunctions } from "@/lib/edgeFunctionTests";
+import { testPivotToRoadmapWorkflow, testMultiplePivotScenarios } from "@/lib/pivotRoadmapTests";
 
 interface UserStats {
   totalXp: number;
@@ -280,6 +281,47 @@ export default function ResumeAnalyticsDashboard() {
     }
   };
 
+  const handleTestPivotRoadmap = async () => {
+    console.log("🔄 Testing Pivot -> Roadmap Workflow...");
+    toast({
+      title: "🔄 Testing Pivot Workflow",
+      description: "Testing pivot path to roadmap generation... Check console for results.",
+    });
+    
+    try {
+      const result = await testPivotToRoadmapWorkflow();
+      
+      if (result.success) {
+        toast({
+          title: "✅ Pivot Workflow Test Passed!",
+          description: `Generated roadmap for ${result.pivot?.new_career} pivot.`,
+        });
+        
+        // Also test multiple scenarios
+        const multiResults = await testMultiplePivotScenarios();
+        const successCount = multiResults.filter(r => r.success).length;
+        
+        toast({
+          title: "📊 Multi-Scenario Results",
+          description: `${successCount}/${multiResults.length} pivot scenarios succeeded.`,
+        });
+      } else {
+        toast({
+          title: "❌ Pivot Workflow Test Failed",
+          description: "Check console for detailed error information.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Pivot workflow test failed:", error);
+      toast({
+        title: "❌ Test Execution Failed",
+        description: "An error occurred while testing pivot workflow.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleShare = () => {
     toast({
       title: "🚀 Share Feature Coming Soon!",
@@ -328,6 +370,9 @@ export default function ResumeAnalyticsDashboard() {
           <div className="flex gap-2">
             <Button onClick={handleTestEdgeFunctions} variant="outline" className="gap-2">
               🧪 Test Functions
+            </Button>
+            <Button onClick={handleTestPivotRoadmap} variant="outline" className="gap-2">
+              🔄 Test Pivot Workflow
             </Button>
             <Button onClick={handleExplorePivots} variant="outline" className="gap-2" disabled={pivotLoading}>
               {pivotLoading ? (
