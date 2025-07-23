@@ -1705,8 +1705,6 @@ export type Database = {
           prerequisites: string[]
           level: number
           career_path_id: string
-          is_checkpoint: boolean
-          is_capstone: boolean
           is_terminal: boolean
           estimated_duration: string
           completed: boolean
