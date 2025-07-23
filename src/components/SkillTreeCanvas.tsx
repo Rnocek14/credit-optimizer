@@ -479,7 +479,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
       let currentX = startX;
       sortedSteps.forEach((step) => {
         // Use step.id directly (it's already a string from the database)
-        positions.set(step.id, { x: currentX, y });
+        positions.set(step.id.trim(), { x: currentX, y });
         console.log(`📍 Positioned step "${step.title}" (${step.id}) at (${currentX}, ${y})`);
         currentX += stepWidth + stepSpacing;
       });
@@ -1114,17 +1114,20 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
 
         {/* Career Step Nodes */}
         {(showGoalPathOnly ? careerSteps.filter(step => goalPath.includes(step.id)) : careerSteps).map((step, i) => {
-          // Use step.id directly (should already be a string from the database)
-          const position = careerStepPositions.get(String(step.id).trim());
+          console.log("🧩 Checking step:", step.title, "ID:", step.id, "→ Found position?", !!careerStepPositions.get(step.id.trim()));
+          console.log("💡 Keys in positions map:", Array.from(careerStepPositions.keys()));
+          
+          const position = careerStepPositions.get(step.id.trim());
           
           if (!position) {
+            console.log("❌ Position not found for:", step.id, "typeof:", typeof step.id);
             console.warn("⚠️ Missing position for career step:", step.title, "with ID:", step.id);
-            console.log("↳ Available position keys:", [...careerStepPositions.keys()]);
-            console.log("↳ Step ID type:", typeof step.id, "Value:", step.id);
+            console.warn("↳ Available position keys:", Array.from(careerStepPositions.keys()));
+            console.warn("↳ Step ID type:", typeof step.id, "Value:", step.id);
             return null;
           }
-
-          console.log("✅ Rendering career step:", step.title, "at position:", position);
+          
+          console.log("✅ Rendering career step:", step.title);
 
           return (
             <CareerStepNode

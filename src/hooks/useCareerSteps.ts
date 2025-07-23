@@ -38,7 +38,7 @@ export const useCareerSteps = (careerPathId: string | null) => {
       
       // Map the view data to our CareerStep interface
       const stepsWithLevels: CareerStep[] = (stepsData || []).map(step => ({
-        id: step.id,
+        id: String(step.id).trim(),
         title: step.title,
         prerequisites: step.prerequisites || [],
         level: step.level,
