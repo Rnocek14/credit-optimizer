@@ -50,6 +50,8 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
   pivotRoadmapSteps,
   className = '',
 }) => {
+  console.log('🔍 PivotFlowVisualization received pivotRoadmapSteps:', pivotRoadmapSteps);
+  
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   // Group steps by pivot source
@@ -73,6 +75,8 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
 
   // Convert roadmap steps to React Flow nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
+    console.log('🔍 Converting steps to nodes/edges. stepsByPivot:', stepsByPivot);
+    
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     
@@ -81,6 +85,8 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
     let pivotIndex = 0;
 
     stepsByPivot.forEach((steps, pivotSource) => {
+      console.log(`🔍 Processing pivot: ${pivotSource} with ${steps.length} steps`);
+      
       const stepSpacing = 180; // Vertical spacing between steps
       const xPosition = pivotIndex * pivotSpacing;
       
@@ -89,8 +95,10 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
         const isStart = stepIndex === 0;
         const isGoal = stepIndex === steps.length - 1;
         
+        console.log(`🔍 Creating node for step ${stepIndex}: ${step.title} at (${xPosition}, ${yPosition})`);
+        
         // Create node
-        nodes.push({
+        const newNode = {
           id: step.id,
           type: 'pivotStep',
           position: { x: xPosition, y: yPosition },
@@ -103,12 +111,15 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
           },
           draggable: false,
           selectable: true,
-        });
+        };
+        
+        nodes.push(newNode);
+        console.log(`🔍 Added node:`, newNode);
         
         // Create edge to next step
         if (stepIndex < steps.length - 1) {
           const nextStep = steps[stepIndex + 1];
-          edges.push({
+          const newEdge = {
             id: `${step.id}-${nextStep.id}`,
             source: step.id,
             target: nextStep.id,
@@ -123,7 +134,9 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
             data: {
               animated: true,
             },
-          });
+          };
+          edges.push(newEdge);
+          console.log(`🔍 Added edge:`, newEdge);
         }
       });
       
@@ -134,6 +147,9 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
         pivotIndex = 0;
       }
     });
+    
+    console.log(`🔍 Final nodes count: ${nodes.length}`, nodes);
+    console.log(`🔍 Final edges count: ${edges.length}`, edges);
     
     return { initialNodes: nodes, initialEdges: edges };
   }, [stepsByPivot]);

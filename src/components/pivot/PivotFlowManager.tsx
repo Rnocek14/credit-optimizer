@@ -54,9 +54,11 @@ export const PivotFlowManager: React.FC<PivotFlowManagerProps> = ({
   // Combine all roadmap steps for visualization
   const allRoadmapSteps = useMemo(() => {
     const steps: PivotRoadmapStep[] = [];
-    generatedRoadmaps.forEach((roadmapSteps) => {
+    generatedRoadmaps.forEach((roadmapSteps, key) => {
+      console.log(`🔍 Adding roadmap steps for ${key}:`, roadmapSteps);
       steps.push(...roadmapSteps);
     });
+    console.log(`🔍 Total allRoadmapSteps:`, steps.length, steps);
     return steps;
   }, [generatedRoadmaps]);
 
@@ -83,26 +85,38 @@ export const PivotFlowManager: React.FC<PivotFlowManagerProps> = ({
         }
       });
 
+      console.log('🔍 Raw edge function response:', { data, error });
+
       if (error) {
         throw new Error(`Failed to generate roadmap: ${error.message}`);
       }
 
       if (!data.success || !data.roadmaps) {
+        console.error('🔍 Invalid response structure:', data);
         throw new Error('Invalid roadmap response');
       }
 
+      console.log('🔍 Roadmaps data:', data.roadmaps);
+      console.log('🔍 Fastest path:', data.roadmaps.fastest_path);
+      console.log('🔍 Steps:', data.roadmaps.fastest_path?.steps);
+
       // Convert roadmap steps
-      const roadmapSteps = (data.roadmaps.fastest_path?.steps || []).map((step: any, index: number) => ({
-        id: `pivot_${pivotKey}_${index}`,
-        title: step.title,
-        description: step.description,
-        skills_needed: step.skills_needed || [],
-        skills_already_have: step.skills_already_have || [],
-        estimated_time: step.estimated_time,
-        estimated_cost: step.estimated_cost,
-        learning_resources: step.learning_resources || [],
-        pivotSource: pivot.new_career
-      })) as PivotRoadmapStep[];
+      const roadmapSteps = (data.roadmaps.fastest_path?.steps || []).map((step: any, index: number) => {
+        console.log(`🔍 Processing step ${index}:`, step);
+        return {
+          id: `pivot_${pivotKey}_${index}`,
+          title: step.title,
+          description: step.description,
+          skills_needed: step.skills_needed || [],
+          skills_already_have: step.skills_already_have || [],
+          estimated_time: step.estimated_time,
+          estimated_cost: step.estimated_cost,
+          learning_resources: step.learning_resources || [],
+          pivotSource: pivot.new_career
+        };
+      }) as PivotRoadmapStep[];
+
+      console.log('🔍 Converted roadmap steps:', roadmapSteps);
 
       setGeneratedRoadmaps(prev => new Map(prev).set(pivotKey, roadmapSteps));
       setExpandedPivots(prev => new Set(prev).add(pivotKey));
