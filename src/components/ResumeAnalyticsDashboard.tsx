@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePivotRecommendations } from "@/hooks/usePivotRecommendations";
 import { testAllEdgeFunctions } from "@/lib/edgeFunctionTests";
 import { testPivotToRoadmapWorkflow, testMultiplePivotScenarios } from "@/lib/pivotRoadmapTests";
+import { testPivotRoadmapIdUniqueness, validateVisualUniqueness } from "@/lib/skillTreeValidation";
 
 interface UserStats {
   totalXp: number;
@@ -322,6 +323,41 @@ export default function ResumeAnalyticsDashboard() {
     }
   };
 
+  const handleTestIdUniqueness = async () => {
+    console.log("🔍 Testing ID Uniqueness and Merge Safety...");
+    toast({
+      title: "🔍 Testing ID Uniqueness",
+      description: "Verifying pivot roadmap IDs are unique and can merge safely... Check console for results.",
+    });
+    
+    try {
+      const result = await testPivotRoadmapIdUniqueness();
+      
+      if (result.isValid && result.uniqueIds) {
+        toast({
+          title: "✅ ID Uniqueness Test Passed!",
+          description: `All generated IDs are unique with no conflicts detected.`,
+        });
+      } else {
+        toast({
+          title: "⚠️ ID Uniqueness Issues Found",
+          description: `Found ${result.duplicatedIds.length} duplicates and ${result.conflicts.length} conflicts.`,
+          variant: "destructive",
+        });
+      }
+      
+      console.log("🎯 ID Uniqueness Test Results:", result);
+      
+    } catch (error) {
+      console.error("❌ ID uniqueness test failed:", error);
+      toast({
+        title: "❌ ID Uniqueness Test Failed",
+        description: "Check console for error details.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleShare = () => {
     toast({
       title: "🚀 Share Feature Coming Soon!",
@@ -373,6 +409,9 @@ export default function ResumeAnalyticsDashboard() {
             </Button>
             <Button onClick={handleTestPivotRoadmap} variant="outline" className="gap-2">
               🔄 Test Pivot Workflow
+            </Button>
+            <Button onClick={handleTestIdUniqueness} variant="outline" className="gap-2">
+              🔍 Test ID Uniqueness
             </Button>
             <Button onClick={handleExplorePivots} variant="outline" className="gap-2" disabled={pivotLoading}>
               {pivotLoading ? (

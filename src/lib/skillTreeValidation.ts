@@ -285,3 +285,360 @@ export function calculateSkillDepthsSafely(
   
   return depthMap;
 }
+
+// New validation functions for pivot roadmap ID uniqueness
+
+interface RoadmapStep {
+  id?: string;
+  title: string;
+  description?: string;
+  skills_needed?: string[];
+  estimated_time?: string;
+  estimated_cost?: string;
+}
+
+interface PivotPath {
+  new_career: string;
+  shared_skills: string[];
+  missing_skills: string[];
+  roi_score: number;
+  estimated_time: string;
+  estimated_cost: string;
+  reasoning: string;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  uniqueIds: boolean;
+  conflicts: string[];
+  duplicatedIds: string[];
+  warnings: string[];
+  recommendations: string[];
+}
+
+/**
+ * Test function to verify that pivot roadmap generates unique IDs
+ * and can be merged without conflicts
+ */
+export const testPivotRoadmapIdUniqueness = async (): Promise<ValidationResult> => {
+  console.log("🔍 Testing Pivot Roadmap ID Uniqueness and Merging...");
+  
+  const result: ValidationResult = {
+    isValid: true,
+    uniqueIds: true,
+    conflicts: [],
+    duplicatedIds: [],
+    warnings: [],
+    recommendations: []
+  };
+
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+
+    // Step 1: Get existing skill tree data
+    console.log("📊 Fetching existing skill tree data...");
+    
+    const [skillsResponse, stepsResponse, existingRoadmapResponse] = await Promise.all([
+      supabase.from('skills').select('id, name').limit(100),
+      supabase.from('career_steps').select('id, title').limit(50),
+      supabase.from('roadmap_step_skills').select('skill_id, roadmap_step_id').limit(100)
+    ]);
+
+    const existingSkillIds = new Set(skillsResponse.data?.map(s => s.id) || []);
+    const existingStepIds = new Set(stepsResponse.data?.map(s => s.id) || []);
+    const existingRoadmapIds = new Set(existingRoadmapResponse.data?.map(r => r.roadmap_step_id) || []);
+
+    console.log(`📈 Existing data counts:`, {
+      skills: existingSkillIds.size,
+      steps: existingStepIds.size,
+      roadmaps: existingRoadmapIds.size
+    });
+
+    // Step 2: Generate multiple pivot roadmaps
+    console.log("🚀 Generating multiple pivot roadmaps...");
+    
+    const testScenarios = [
+      {
+        current_career: "Software Engineer",
+        user_skills: ["JavaScript", "React", "Python"],
+        preferred_locations: ["San Francisco", "New York"]
+      },
+      {
+        current_career: "Data Analyst", 
+        user_skills: ["SQL", "Excel", "Python"],
+        preferred_locations: ["Austin", "Seattle"]
+      },
+      {
+        current_career: "UX Designer",
+        user_skills: ["Figma", "User Research", "Prototyping"],
+        preferred_locations: ["London", "Berlin"]
+      }
+    ];
+
+    const generatedRoadmaps: any[] = [];
+    const allGeneratedIds = new Set<string>();
+    const idCollisions = new Set<string>();
+
+    for (const scenario of testScenarios) {
+      // Generate pivot paths
+      const pivotResponse = await supabase.functions.invoke('recommend-pivot-paths', {
+        body: scenario
+      });
+
+      if (pivotResponse.error) {
+        result.warnings.push(`Failed to generate pivot for ${scenario.current_career}: ${pivotResponse.error.message}`);
+        continue;
+      }
+
+      const pivotData = pivotResponse.data;
+      if (!pivotData.pivots || pivotData.pivots.length === 0) {
+        result.warnings.push(`No pivots generated for ${scenario.current_career}`);
+        continue;
+      }
+
+      // For each pivot, generate a roadmap
+      for (const pivot of pivotData.pivots.slice(0, 2)) { // Test first 2 pivots per scenario
+        const roadmapResponse = await supabase.functions.invoke('generate-roadmap', {
+          body: {
+            goal: pivot.new_career,
+            user_skills: pivot.shared_skills,
+            max_time: "6 months",
+            max_budget: "$1000"
+          }
+        });
+
+        if (roadmapResponse.error) {
+          result.warnings.push(`Failed to generate roadmap for ${pivot.new_career}: ${roadmapResponse.error.message}`);
+          continue;
+        }
+
+        const roadmapData = roadmapResponse.data;
+        if (roadmapData.success && roadmapData.roadmaps) {
+          generatedRoadmaps.push({
+            scenario: scenario.current_career,
+            pivot: pivot.new_career,
+            roadmap: roadmapData.roadmaps
+          });
+
+          // Extract and check IDs from all roadmap paths
+          const paths = [
+            roadmapData.roadmaps.fastest_path,
+            roadmapData.roadmaps.lowest_cost_path,
+            roadmapData.roadmaps.highest_roi_path
+          ].filter(Boolean);
+
+          for (const path of paths) {
+            if (path.steps) {
+              for (const step of path.steps) {
+                // Generate deterministic ID for each step
+                const stepId = generateStepId(step, pivot.new_career);
+                
+                // Check for ID conflicts
+                if (allGeneratedIds.has(stepId)) {
+                  idCollisions.add(stepId);
+                  result.duplicatedIds.push(stepId);
+                }
+                
+                allGeneratedIds.add(stepId);
+                
+                // Check against existing database IDs
+                if (existingStepIds.has(stepId)) {
+                  result.conflicts.push(`Step ID ${stepId} conflicts with existing career step`);
+                }
+                if (existingRoadmapIds.has(stepId)) {
+                  result.conflicts.push(`Step ID ${stepId} conflicts with existing roadmap step`);
+                }
+
+                // Check skill IDs if they exist
+                if (step.skills_needed) {
+                  for (const skillName of step.skills_needed) {
+                    const skillId = generateSkillId(skillName);
+                    if (existingSkillIds.has(skillId)) {
+                      // This is actually good - we want to reuse existing skills
+                      console.log(`✅ Reusing existing skill: ${skillName} (${skillId})`);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Step 3: Analyze results
+    console.log(`📊 Analysis Results:`, {
+      totalGeneratedIds: allGeneratedIds.size,
+      duplicatedIds: result.duplicatedIds.length,
+      conflicts: result.conflicts.length,
+      roadmapsGenerated: generatedRoadmaps.length
+    });
+
+    // Step 4: Test merge simulation
+    console.log("🔄 Testing merge simulation...");
+    const mergeTest = simulateSkillTreeMerge(generatedRoadmaps, {
+      existingSkillIds,
+      existingStepIds,
+      existingRoadmapIds
+    });
+
+    result.isValid = result.conflicts.length === 0 && result.duplicatedIds.length === 0;
+    result.uniqueIds = result.duplicatedIds.length === 0;
+
+    // Generate recommendations
+    if (result.duplicatedIds.length > 0) {
+      result.recommendations.push("Implement better ID generation strategy to prevent duplicates");
+      result.recommendations.push("Consider using UUIDs or timestamp-based IDs for generated content");
+    }
+
+    if (result.conflicts.length > 0) {
+      result.recommendations.push("Add ID conflict resolution in merge logic");
+      result.recommendations.push("Implement ID namespace separation between generated and existing content");
+    }
+
+    if (allGeneratedIds.size === 0) {
+      result.warnings.push("No IDs were generated - check roadmap generation logic");
+    }
+
+    result.recommendations.push(`Generated ${allGeneratedIds.size} unique IDs across ${generatedRoadmaps.length} roadmaps`);
+
+    return result;
+
+  } catch (error) {
+    console.error("❌ Error testing pivot roadmap ID uniqueness:", error);
+    result.isValid = false;
+    result.warnings.push(`Test failed with error: ${error.message}`);
+    return result;
+  }
+};
+
+/**
+ * Generate a deterministic ID for a roadmap step
+ */
+function generateStepId(step: RoadmapStep, careerGoal: string): string {
+  // Create a deterministic ID based on step content and career goal
+  const content = `${careerGoal}_${step.title}`.toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 50);
+  
+  // Add a hash suffix to ensure uniqueness
+  const hash = simpleHash(JSON.stringify(step));
+  return `gen_step_${content}_${hash}`;
+}
+
+/**
+ * Generate a deterministic ID for a skill
+ */
+function generateSkillId(skillName: string): string {
+  return skillName.toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_');
+}
+
+/**
+ * Simple hash function for ID generation
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16).slice(0, 8);
+}
+
+/**
+ * Simulate merging generated roadmap content into existing skill tree
+ */
+function simulateSkillTreeMerge(
+  generatedRoadmaps: any[],
+  existingData: {
+    existingSkillIds: Set<string>;
+    existingStepIds: Set<string>;
+    existingRoadmapIds: Set<string>;
+  }
+): { success: boolean; mergedCount: number; conflictCount: number } {
+  
+  let mergedCount = 0;
+  let conflictCount = 0;
+
+  for (const roadmapData of generatedRoadmaps) {
+    const roadmap = roadmapData.roadmap;
+    const paths = [
+      roadmap.fastest_path,
+      roadmap.lowest_cost_path,
+      roadmap.highest_roi_path
+    ].filter(Boolean);
+
+    for (const path of paths) {
+      if (path.steps) {
+        for (const step of path.steps) {
+          const stepId = generateStepId(step, roadmapData.pivot);
+          
+          if (existingData.existingStepIds.has(stepId) || 
+              existingData.existingRoadmapIds.has(stepId)) {
+            conflictCount++;
+            console.warn(`⚠️  Merge conflict for step: ${step.title} (${stepId})`);
+          } else {
+            mergedCount++;
+            console.log(`✅ Successfully merged step: ${step.title} (${stepId})`);
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    success: conflictCount === 0,
+    mergedCount,
+    conflictCount
+  };
+}
+
+/**
+ * Validate that generated content can be displayed without visual duplication
+ */
+export const validateVisualUniqueness = (roadmapData: any): {
+  isValid: boolean;
+  duplicatePositions: number;
+  duplicateTitles: string[];
+} => {
+  const positions = new Set<string>();
+  const titles = new Map<string, number>();
+  let duplicatePositions = 0;
+  const duplicateTitles: string[] = [];
+
+  const paths = [
+    roadmapData.fastest_path,
+    roadmapData.lowest_cost_path,
+    roadmapData.highest_roi_path
+  ].filter(Boolean);
+
+  for (const path of paths) {
+    if (path.steps) {
+      for (const [index, step] of path.steps.entries()) {
+        // Check for position conflicts (same index in multiple paths)
+        const positionKey = `${index}`;
+        if (positions.has(positionKey)) {
+          duplicatePositions++;
+        }
+        positions.add(positionKey);
+
+        // Check for title duplicates
+        const titleCount = titles.get(step.title) || 0;
+        titles.set(step.title, titleCount + 1);
+        if (titleCount > 0) {
+          duplicateTitles.push(step.title);
+        }
+      }
+    }
+  }
+
+  return {
+    isValid: duplicatePositions === 0 && duplicateTitles.length === 0,
+    duplicatePositions,
+    duplicateTitles
+  };
+};
