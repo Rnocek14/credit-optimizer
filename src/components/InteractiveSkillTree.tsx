@@ -59,6 +59,7 @@ interface InteractiveSkillTreeProps {
     level: number;
     is_checkpoint?: boolean;
     is_capstone?: boolean;
+    is_terminal?: boolean;
     estimated_duration?: string;
     completed?: boolean;
   }>;

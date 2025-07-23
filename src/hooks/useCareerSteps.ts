@@ -11,6 +11,7 @@ export interface CareerStep {
   career_path_id: string;
   is_checkpoint?: boolean;
   is_capstone?: boolean;
+  is_terminal?: boolean;
   estimated_duration?: string;
   completed?: boolean;
 }
@@ -44,6 +45,7 @@ export const useCareerSteps = (careerPathId: string | null) => {
         career_path_id: step.career_path_id,
         order_index: step.step_order,
         is_capstone: step.is_terminal,
+        is_terminal: step.is_terminal,
         estimated_duration: step.estimated_time,
         completed: false // This would need to come from user progress if needed
       }));
