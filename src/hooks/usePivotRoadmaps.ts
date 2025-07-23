@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface PivotPath {
   new_career: string;
@@ -30,9 +30,44 @@ interface PivotRoadmapStep {
   pivotSource: string;
 }
 
-export const usePivotRoadmaps = () => {
+export const usePivotRoadmaps = (externalVisible?: boolean) => {
   const [activePivotPaths, setActivePivotPaths] = useState<PivotPath[]>([]);
   const [showPivotOverlay, setShowPivotOverlay] = useState(false);
+
+  // Update overlay visibility when external control changes
+  React.useEffect(() => {
+    if (externalVisible !== undefined) {
+      setShowPivotOverlay(externalVisible);
+      
+      // Add sample pivot paths when enabled for demonstration
+      if (externalVisible && activePivotPaths.length === 0) {
+        console.log('🚀 Pivot mode enabled - adding sample pivot paths');
+        const samplePivots: PivotPath[] = [
+          {
+            new_career: 'Data Scientist',
+            shared_skills: ['Python', 'Statistics', 'Analysis'],
+            missing_skills: ['Machine Learning', 'Deep Learning', 'TensorFlow'],
+            roi_score: 1.8,
+            estimated_time: '8 months',
+            estimated_cost: '$1500',
+            reasoning: 'High-demand field with excellent growth potential'
+          },
+          {
+            new_career: 'Frontend Developer',
+            shared_skills: ['JavaScript', 'HTML', 'CSS'],
+            missing_skills: ['React', 'TypeScript', 'Testing'],
+            roi_score: 1.4,
+            estimated_time: '5 months',
+            estimated_cost: '$900',
+            reasoning: 'Strong job market with remote opportunities'
+          }
+        ];
+        setActivePivotPaths(samplePivots);
+      } else if (!externalVisible) {
+        console.log('🔄 Pivot mode disabled');
+      }
+    }
+  }, [externalVisible, activePivotPaths.length]);
 
   // Add a pivot path to active list
   const addPivotPath = useCallback((pivotPath: PivotPath) => {

@@ -108,7 +108,7 @@ export const InteractiveSkillTree = React.memo(({
     clearAllPivotPaths,
     togglePivotOverlay,
     generateMockPivotFromSkill
-  } = usePivotRoadmaps();
+  } = usePivotRoadmaps(showPivotPaths);
 
   
   // Camera state for pivot overlay
@@ -142,7 +142,8 @@ export const InteractiveSkillTree = React.memo(({
     }
     
     // Generate mock pivot path for demonstration
-    if (showPivotPaths) {
+    if (showPivotPaths || showPivotOverlay) {
+      console.log(`🎯 Generating pivot path for skill: ${skill.name}`);
       const mockPivot = generateMockPivotFromSkill(skill.name);
       addPivotPath(mockPivot);
     }

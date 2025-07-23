@@ -188,9 +188,11 @@ export const PivotRoadmapManager: React.FC<PivotRoadmapManagerProps> = ({
         <h3 className="text-sm font-semibold text-foreground">Pivot Roadmaps</h3>
         
         {activePivotPaths.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No active pivot paths. Use the skill tree to explore pivots.
-          </p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>💡 <strong>Pivot Mode Active!</strong></p>
+            <p>Click any skill in the tree to explore career pivot opportunities.</p>
+            <p>Sample pivots will load automatically.</p>
+          </div>
         ) : (
           <div className="space-y-2">
             {activePivotPaths.map((pivot, index) => {
