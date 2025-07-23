@@ -19,10 +19,13 @@ import {
   Zap,
   Award,
   Brain,
-  GraduationCap
+  GraduationCap,
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import { useToast } from "@/hooks/use-toast";
+import { usePivotRecommendations } from "@/hooks/usePivotRecommendations";
 
 interface UserStats {
   totalXp: number;
@@ -227,12 +230,36 @@ export default function ResumeAnalyticsDashboard() {
     enabled: !!userId
   });
 
+  // Pivot recommendations with mock data
+  const { 
+    data: pivotRecommendations, 
+    isLoading: pivotLoading, 
+    refetch: refetchPivots 
+  } = usePivotRecommendations({
+    current_career: "UX Designer",
+    user_skills: ["Figma", "UI Design", "User Research", "HTML", "CSS"],
+    preferred_locations: ["Remote", "Europe"],
+    enabled: false // Only trigger manually
+  });
+
+  const handleExplorePivots = () => {
+    console.log("🔍 Exploring career pivots...");
+    refetchPivots();
+  };
+
   const handleShare = () => {
     toast({
       title: "🚀 Share Feature Coming Soon!",
       description: "Public analytics sharing will be available soon.",
     });
   };
+
+  // Log pivot results when available
+  useEffect(() => {
+    if (pivotRecommendations) {
+      console.log("✨ Pivot recommendations received:", pivotRecommendations);
+    }
+  }, [pivotRecommendations]);
 
   if (isLoading) {
     return <div className="space-y-6">
@@ -265,10 +292,20 @@ export default function ResumeAnalyticsDashboard() {
             </h2>
             <p className="text-muted-foreground">Your learning journey insights</p>
           </div>
-          <Button onClick={handleShare} variant="outline" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share Insights
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExplorePivots} variant="outline" className="gap-2" disabled={pivotLoading}>
+              {pivotLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              🔁 Explore Career Pivots
+            </Button>
+            <Button onClick={handleShare} variant="outline" className="gap-2">
+              <Share2 className="h-4 w-4" />
+              Share Insights
+            </Button>
+          </div>
         </div>
 
         {/* Key Stats Cards */}
