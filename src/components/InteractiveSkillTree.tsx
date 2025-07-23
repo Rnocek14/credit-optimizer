@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SkillTreeCanvas } from './SkillTreeCanvas';
 import { SkillTreeErrorBoundary } from './SkillTreeErrorBoundary';
 import { LoadingSkeleton } from './LoadingSkeleton';
-import { PivotRoadmapManager } from './PivotRoadmapManager';
+import { PivotFlowManager } from './pivot/PivotFlowManager';
 import { usePivotRoadmaps } from '@/hooks/usePivotRoadmaps';
 
 interface Skill {
@@ -65,6 +64,8 @@ interface InteractiveSkillTreeProps {
     estimated_duration?: string;
     completed?: boolean;
   }>;
+  focusMode?: boolean;
+  skillsWithCourses?: string[];
 }
 
 export const InteractiveSkillTree = React.memo(({
@@ -83,21 +84,12 @@ export const InteractiveSkillTree = React.memo(({
   careerPathName,
   showPivotPaths = false,
   roadmapStepSkills = [],
-  careerSteps = []
+  careerSteps = [],
+  focusMode = false,
+  skillsWithCourses = []
 }: InteractiveSkillTreeProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadStartTime] = useState(performance.now());
-  const [pivotRoadmapSteps, setPivotRoadmapSteps] = useState<Array<{
-    id: string;
-    title: string;
-    description?: string;
-    skills_needed?: string[];
-    skills_already_have?: string[];
-    estimated_time?: string;
-    estimated_cost?: string;
-    learning_resources?: any[];
-    pivotSource: string;
-  }>>([]);
   
   // Pivot roadmap management
   const {
@@ -110,32 +102,28 @@ export const InteractiveSkillTree = React.memo(({
     generateMockPivotFromSkill
   } = usePivotRoadmaps(showPivotPaths);
 
-  
-  // Camera state for pivot overlay
+  // Camera state for skill tree
   const [cameraState, setCameraState] = useState({
     skillPositions: new Map<string, { x: number; y: number }>(),
-    pivotStepPositions: new Map<string, { x: number; y: number }>(),
     zoomLevel: 1,
     panOffset: { x: 0, y: 0 }
   });
 
-  // Handler to update camera state with proper typing
-  const handleCameraStateChange = (state: {
+  // Handler to update camera state
+  const handleCameraStateChange = useCallback((state: {
     skillPositions: Map<string, { x: number; y: number }>;
-    pivotStepPositions?: Map<string, { x: number; y: number }>;
     zoomLevel: number;
     panOffset: { x: number; y: number };
   }) => {
     setCameraState({
       skillPositions: state.skillPositions,
-      pivotStepPositions: state.pivotStepPositions || new Map(),
       zoomLevel: state.zoomLevel,
       panOffset: state.panOffset
     });
-  };
-  
+  }, []);
+   
   // Enhanced skill click handler that can generate pivot paths
-  const handleSkillClick = (skill: any) => {
+  const handleSkillClick = useCallback((skill: Skill) => {
     // Call original handler
     if (onSkillClick) {
       onSkillClick(skill);
@@ -147,7 +135,7 @@ export const InteractiveSkillTree = React.memo(({
       const mockPivot = generateMockPivotFromSkill(skill.name);
       addPivotPath(mockPivot);
     }
-  };
+  }, [onSkillClick, showPivotPaths, showPivotOverlay, generateMockPivotFromSkill, addPivotPath]);
 
   // Simplified loading logic to prevent rapid state changes
   useEffect(() => {
@@ -180,48 +168,47 @@ export const InteractiveSkillTree = React.memo(({
     console.error('InteractiveSkillTree: filteredSkills prop is required and must be an array');
     return (
       <div className="flex items-center justify-center h-96 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p className="text-yellow-800">No filtered skills available</p>
+        <p className="text-yellow-800">No filtered skills data available</p>
       </div>
     );
   }
 
-  // Show loading skeleton only if actually loading
-  if (isLoading && skills.length === 0) {
-    return <LoadingSkeleton nodeCount={Math.min(skills.length || 12, 12)} />;
+  if (isLoading) {
+    return <LoadingSkeleton />;
   }
 
   return (
-    <SkillTreeErrorBoundary>
-      <div className="relative">
+    <div className="space-y-6">
+      <SkillTreeErrorBoundary>
         <SkillTreeCanvas
           skills={skills}
-          userProgress={userProgress || []}
-          skillEdges={skillEdges || []}
           filteredSkills={filteredSkills}
-          recommendedSkills={recommendedSkills || []}
-          goalSkills={goalSkills}
-          checkpointSkills={checkpointSkills}
-          capstoneSkillIds={capstoneSkillIds}
-          availableCategories={availableCategories || []}
+          skillEdges={skillEdges}
+          userProgress={userProgress}
+          recommendedSkills={recommendedSkills}
+          skillsWithCourses={skillsWithCourses}
           onSkillClick={handleSkillClick}
-          careerPathName={careerPathName}
+          availableCategories={availableCategories}
+          goalSkills={goalSkills}
+          capstoneSkillIds={capstoneSkillIds}
+          checkpointSkills={checkpointSkills}
           showPivotPaths={showPivotPaths}
           roadmapStepSkills={roadmapStepSkills}
           careerSteps={careerSteps}
           onCameraStateChange={handleCameraStateChange}
-          activePivotPaths={activePivotPaths}
-          pivotRoadmapSteps={pivotRoadmapSteps}
         />
-        
-        {/* Pivot Roadmap Manager */}
-        <PivotRoadmapManager
+      </SkillTreeErrorBoundary>
+
+      {/* React Flow-based Pivot Roadmap Manager */}
+      {showPivotPaths && (
+        <PivotFlowManager
           activePivotPaths={activePivotPaths}
-          onRoadmapStepsGenerated={setPivotRoadmapSteps}
           visible={showPivotOverlay}
           onToggleVisibility={togglePivotOverlay}
+          className="mt-6"
         />
-      </div>
-    </SkillTreeErrorBoundary>
+      )}
+    </div>
   );
 });
 
