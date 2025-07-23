@@ -750,6 +750,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pivot_exploration_events: {
+        Row: {
+          current_career: string
+          estimated_cost: string | null
+          estimated_time: string | null
+          id: string
+          missing_skills: string[]
+          pivoted_career: string
+          reasoning: string | null
+          roi_score: number | null
+          shared_skills: string[]
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          current_career: string
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          missing_skills?: string[]
+          pivoted_career: string
+          reasoning?: string | null
+          roi_score?: number | null
+          shared_skills?: string[]
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          current_career?: string
+          estimated_cost?: string | null
+          estimated_time?: string | null
+          id?: string
+          missing_skills?: string[]
+          pivoted_career?: string
+          reasoning?: string | null
+          roi_score?: number | null
+          shared_skills?: string[]
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null
