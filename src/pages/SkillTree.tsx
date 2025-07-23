@@ -431,6 +431,8 @@ const SkillTree = () => {
     );
   }
 
+  console.log('🔍 SkillTree render - showPivotPaths:', showPivotPaths);
+  
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -477,8 +479,13 @@ const SkillTree = () => {
               <TestTube className="h-4 w-4 mr-2" />
               {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
             </Button>
-          </div>
         </div>
+      </div>
+
+      {/* DEBUG: Show current state */}
+      <div className="bg-yellow-100 border border-yellow-300 p-2 rounded mb-4">
+        <p className="text-sm">🐛 DEBUG: showPivotPaths = {String(showPivotPaths)}</p>
+      </div>
       </div>
 
       {/* Quick Stats */}

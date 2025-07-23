@@ -194,26 +194,74 @@ Focus on practical, actionable steps. Use actual data from the provided schemas.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-mini-2025-04-14',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
-            content: 'You are an expert career path analyst. Generate practical, data-driven roadmaps. Return only valid JSON.'
+            content: 'You are an expert career path analyst. Generate practical, data-driven roadmaps. Return ONLY valid JSON without any markdown formatting or extra text.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 3000,
+        temperature: 0.3,
+        max_tokens: 4000,
       }),
     });
 
     if (!openAIResponse.ok) {
-      const error = await openAIResponse.text();
-      console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${error}`);
+      const errorText = await openAIResponse.text();
+      console.error('OpenAI API error:', {
+        status: openAIResponse.status,
+        statusText: openAIResponse.statusText,
+        error: errorText
+      });
+      
+      // If rate limited, return a simpler fallback response
+      if (openAIResponse.status === 429) {
+        console.log('Rate limited, returning fallback roadmap');
+        return new Response(JSON.stringify({
+          success: true,
+          roadmaps: {
+            fastest_path: {
+              total_time: max_time || "6 months",
+              total_cost: max_budget || "$1000",
+              roi_score: 7.5,
+              steps: [
+                {
+                  title: "Foundation Building",
+                  description: "Build core skills needed for " + goal,
+                  skills_needed: user_skills.length > 0 ? [user_skills[0] + " Advanced"] : ["Core Skills"],
+                  skills_already_have: user_skills,
+                  learning_resources: [{
+                    title: "Online Course Platform",
+                    provider: "Coursera/Udemy",
+                    cost: "$99",
+                    duration: "8 weeks",
+                    reasoning: "Structured learning path"
+                  }],
+                  estimated_time: "8 weeks",
+                  estimated_cost: "$99"
+                }
+              ],
+              reasoning: "Simplified path due to API limitations"
+            }
+          },
+          metadata: {
+            goal,
+            user_skills,
+            max_time,
+            max_budget,
+            generated_at: new Date().toISOString(),
+            fallback: true
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`OpenAI API error: ${errorText}`);
     }
 
     const openAIData = await openAIResponse.json();

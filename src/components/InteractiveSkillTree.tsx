@@ -188,6 +188,13 @@ export const InteractiveSkillTree = React.memo(({
 
   return (
     <div className="space-y-6">
+      {/* DEBUG: Show pivot status in InteractiveSkillTree */}
+      <div className="bg-blue-100 border border-blue-300 p-2 rounded">
+        <p className="text-sm">🔍 InteractiveSkillTree: showPivotPaths = {String(showPivotPaths)}</p>
+        <p className="text-sm">🔍 activePivotPaths.length = {activePivotPaths.length}</p>
+        <p className="text-sm">🔍 showPivotOverlay = {String(showPivotOverlay)}</p>
+      </div>
+
       <SkillTreeErrorBoundary>
         <SkillTreeCanvas
           skills={skills}
@@ -208,10 +215,10 @@ export const InteractiveSkillTree = React.memo(({
         />
       </SkillTreeErrorBoundary>
 
-      {/* React Flow-based Pivot Roadmap Manager */}
+      {/* ALWAYS show pivot manager when showPivotPaths is true */}
       {showPivotPaths && (
         <div className="bg-red-100 border-2 border-red-500 p-4 rounded">
-          <p className="text-red-800 font-bold">DEBUG: PivotFlowManager should render here</p>
+          <p className="text-red-800 font-bold">🚀 PIVOT MODE ACTIVATED!</p>
           <p>showPivotPaths: {String(showPivotPaths)}</p>
           <p>showPivotOverlay: {String(showPivotOverlay)}</p>
           <p>activePivotPaths: {activePivotPaths.length}</p>
