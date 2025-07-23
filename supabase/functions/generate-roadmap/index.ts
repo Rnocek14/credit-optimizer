@@ -221,10 +221,18 @@ Focus on practical, actionable steps. Use actual data from the provided schemas.
 
     console.log('Generated roadmap content:', generatedContent);
 
-    // Parse the JSON response
+    // Parse the JSON response, handling markdown code blocks
     let roadmapData;
     try {
-      roadmapData = JSON.parse(generatedContent);
+      // Remove markdown code blocks if present
+      let cleanContent = generatedContent.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      roadmapData = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
       console.error('Raw response:', generatedContent);
