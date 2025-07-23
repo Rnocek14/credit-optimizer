@@ -97,6 +97,7 @@ interface SkillTreeCanvasProps {
     id: string;
     title: string;
     level: number;
+    prerequisites?: string[];
     is_checkpoint?: boolean;
     is_capstone?: boolean;
     estimated_duration?: string;
@@ -553,6 +554,38 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
     return paths;
   }, [skillEdges, skillPositions]);
 
+  const careerStepArrows = useMemo(() => {
+    const paths = new Map<string, string>();
+
+    careerSteps.forEach((step) => {
+      if (!step.prerequisites || step.prerequisites.length === 0) return;
+
+      step.prerequisites.forEach((prereqId) => {
+        const from = careerStepPositions.get(prereqId);
+        const to = careerStepPositions.get(step.id);
+        if (!from || !to) return;
+
+        const fromX = from.x + 75;
+        const fromY = from.y + 60;
+        const toX = to.x + 75;
+        const toY = to.y;
+
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+
+        const control1X = fromX;
+        const control1Y = fromY + dy * 0.3;
+        const control2X = toX;
+        const control2Y = toY - dy * 0.3;
+
+        const path = `M ${fromX} ${fromY} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${toX} ${toY}`;
+        paths.set(`${prereqId}-${step.id}`, path);
+      });
+    });
+
+    return paths;
+  }, [careerSteps, careerStepPositions]);
+
   // Memoized pivot path arrows
   const pivotPaths = useMemo(() => {
     if (!showPivotPaths) return new Map<string, { path: string; branch: SkillBranch }>();
@@ -860,6 +893,24 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = memo(({
                 fill="none"
                 strokeOpacity={isHovered ? "0.9" : "0.6"}
                 className={isHovered ? "skill-arrow-flow" : ""}
+                markerEnd="url(#arrowhead)"
+              />
+            );
+          })}
+        </g>
+
+        {/* Career Step Arrows */}
+        <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}>
+          {Array.from(careerStepArrows.entries()).map(([edgeKey, pathData]) => {
+            return (
+              <path
+                key={`career-${edgeKey}`}
+                d={pathData}
+                stroke="hsl(var(--primary))"
+                strokeWidth="3"
+                fill="none"
+                strokeOpacity="0.7"
+                strokeDasharray="5,3"
                 markerEnd="url(#arrowhead)"
               />
             );
