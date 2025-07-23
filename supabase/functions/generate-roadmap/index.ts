@@ -194,7 +194,7 @@ Focus on practical, actionable steps. Use actual data from the provided schemas.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4.1-mini-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -221,22 +221,29 @@ Focus on practical, actionable steps. Use actual data from the provided schemas.
 
     console.log('Generated roadmap content:', generatedContent);
 
-    // Parse the JSON response, handling markdown code blocks
+    // Parse the JSON response, handling markdown code blocks and other formatting
     let roadmapData;
     try {
-      // Remove markdown code blocks if present
+      // Clean the content thoroughly
       let cleanContent = generatedContent.trim();
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.replace(/^```json\n/, '').replace(/\n```$/, '');
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.replace(/^```\n/, '').replace(/\n```$/, '');
-      }
+      
+      // Remove various markdown code block formats
+      cleanContent = cleanContent.replace(/^```json\s*\n?/, '');
+      cleanContent = cleanContent.replace(/^```\s*\n?/, '');
+      cleanContent = cleanContent.replace(/\n?\s*```\s*$/, '');
+      
+      // Remove any leading/trailing whitespace again
+      cleanContent = cleanContent.trim();
+      
+      console.log('Cleaned content preview:', cleanContent.substring(0, 200) + '...');
       
       roadmapData = JSON.parse(cleanContent);
+      console.log('Successfully parsed JSON with keys:', Object.keys(roadmapData));
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
-      console.error('Raw response:', generatedContent);
-      throw new Error('Invalid JSON response from AI');
+      console.error('Raw response length:', generatedContent.length);
+      console.error('Raw response preview:', generatedContent.substring(0, 500));
+      throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
     }
 
     return new Response(JSON.stringify({

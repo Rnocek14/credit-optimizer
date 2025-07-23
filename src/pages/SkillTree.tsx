@@ -461,10 +461,13 @@ const SkillTree = () => {
             <Button 
               variant={showPivotPaths ? "default" : "outline"}
               size="sm" 
-              onClick={() => setShowPivotPaths(!showPivotPaths)}
+              onClick={() => {
+                console.log('🔥 PIVOT BUTTON CLICKED! Current state:', showPivotPaths, 'Will become:', !showPivotPaths);
+                setShowPivotPaths(!showPivotPaths);
+              }}
             >
               <Route className="h-4 w-4 mr-2" />
-              Show Pivot Paths
+              {showPivotPaths ? 'Hide' : 'Show'} Pivot Paths
             </Button>
             <Button 
               variant="outline" 
