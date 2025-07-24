@@ -1,7 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
-import { useForceDirectedLayout } from './ForceDirectedLayout';
 
 export const useGraphOrchestrator = () => {
   const {
@@ -119,10 +118,24 @@ export const useGraphOrchestrator = () => {
   const createStepNodes = useCallback((stepsByLevel: Record<number, any[]>) => {
     const nodes: Node[] = [];
     
-    // Simple grid positioning - force layout will handle the rest
-    let nodeIndex = 0;
     Object.entries(stepsByLevel).forEach(([level, steps]) => {
-      steps.forEach((step) => {
+      const levelNum = parseInt(level);
+      const stepsPerRow = 4; // Fixed 4 steps per row for consistency
+      const nodeWidth = 200;
+      const nodeSpacing = 280; // Wide spacing to prevent overlap
+      const rowSpacing = 180;
+      
+      steps.forEach((step, index) => {
+        const row = Math.floor(index / stepsPerRow);
+        const col = index % stepsPerRow;
+        
+        // Center each row
+        const totalRowWidth = Math.min(steps.length, stepsPerRow) * nodeSpacing;
+        const startX = -totalRowWidth / 2 + nodeSpacing / 2;
+        
+        const x = startX + (col * nodeSpacing);
+        const y = 400 + (levelNum * 200) + (row * rowSpacing); // Start career steps at y=400
+
         const stepProgress = displayControls.showProgress ? 
           userProgress?.find(p => p.stepId === step.id) : null;
         const isCompleted = stepProgress?.status === 'completed';
@@ -134,7 +147,7 @@ export const useGraphOrchestrator = () => {
         nodes.push({
           id: step.id,
           type: 'careerStep',
-          position: { x: (nodeIndex % 10) * 200, y: Math.floor(nodeIndex / 10) * 150 }, // Simple grid
+          position: { x, y },
           data: {
             ...step,
             isCompleted,
@@ -159,7 +172,6 @@ export const useGraphOrchestrator = () => {
               .filter(Boolean),
           } as Record<string, unknown>,
         });
-        nodeIndex++;
       });
     });
 
@@ -170,9 +182,22 @@ export const useGraphOrchestrator = () => {
     if (!displayControls.showSkills) return [];
     
     const nodes: Node[] = [];
-    let nodeIndex = 0;
+    const skillsPerRow = 8;
+    const nodeSpacing = 220;
+    const rowSpacing = 150;
     
-    skills.forEach((skill) => {
+    skills.forEach((skill, index) => {
+      const row = Math.floor(index / skillsPerRow);
+      const col = index % skillsPerRow;
+      
+      // Center each row
+      const rowSkills = skills.slice(row * skillsPerRow, (row + 1) * skillsPerRow);
+      const totalRowWidth = rowSkills.length * nodeSpacing;
+      const startX = -totalRowWidth / 2 + nodeSpacing / 2;
+      
+      const x = startX + (col * nodeSpacing);
+      const y = 50 + (row * rowSpacing); // Start skills at top (y=50)
+      
       const skillProgress = displayControls.showProgress ? 
         userProgress?.find(p => p.skillId === skill.id) : null;
       const isCompleted = skillProgress?.status === 'completed';
@@ -184,7 +209,7 @@ export const useGraphOrchestrator = () => {
       nodes.push({
         id: `skill-${skill.id}`,
         type: 'skill',
-        position: { x: (nodeIndex % 12) * 160, y: 50 + Math.floor(nodeIndex / 12) * 130 }, // Simple grid
+        position: { x, y },
         data: {
           ...skill,
           isCompleted,
@@ -197,7 +222,6 @@ export const useGraphOrchestrator = () => {
           isFoundational: ['Programming', 'Framework', 'Tools'].includes(skill.category),
         } as Record<string, unknown>,
       });
-      nodeIndex++;
     });
 
     return nodes;
@@ -418,8 +442,6 @@ export const useGraphOrchestrator = () => {
     return edges;
   }, [careerSteps, userProgress, stepSkillMappings, displayControls, courses, skills]);
 
-  const { applyForceDirectedLayout } = useForceDirectedLayout();
-
   // Main orchestration function
   const generateGraph = useCallback(() => {
     const stepsByLevel = careerSteps.reduce((acc, step) => {
@@ -428,7 +450,7 @@ export const useGraphOrchestrator = () => {
       return acc;
     }, {} as Record<number, any[]>);
 
-    const initialNodes = [
+    const allNodes = [
       ...createStepNodes(stepsByLevel),
       ...createSkillNodes(),
       ...createCourseNodes(),
@@ -438,18 +460,9 @@ export const useGraphOrchestrator = () => {
       ...createPivotNodes(),
     ];
 
-    const allEdges = createEdges(initialNodes);
+    const allEdges = createEdges(allNodes);
 
-    // Apply force-directed layout to prevent overlapping
-    const layoutedNodes = applyForceDirectedLayout({
-      nodes: initialNodes,
-      edges: allEdges,
-      width: 2000,
-      height: 1500,
-      iterations: 100
-    });
-
-    return { nodes: layoutedNodes, edges: allEdges };
+    return { nodes: allNodes, edges: allEdges };
   }, [
     careerSteps,
     createStepNodes,
@@ -459,8 +472,7 @@ export const useGraphOrchestrator = () => {
     createCertificationNodes,
     createJobNodes,
     createPivotNodes,
-    createEdges,
-    applyForceDirectedLayout
+    createEdges
   ]);
 
   return {
