@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
-import { SimpleSkillTree } from '@/components/SimpleSkillTree';
+import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
 import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
 import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest';
 import { ExportTreeButton } from '@/components/ExportTreeButton';
@@ -486,7 +486,6 @@ const SkillTree = () => {
       <div className="bg-yellow-100 border border-yellow-300 p-2 rounded mb-4">
         <p className="text-sm">🐛 DEBUG: showPivotPaths = {String(showPivotPaths)}</p>
       </div>
-      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -552,15 +551,27 @@ const SkillTree = () => {
 
       {/* Main Content with Skill Tree and ROI Panel */}
       <div className="flex gap-6">
-        {/* Simple Skill Tree */}
+        {/* Interactive Skill Tree with Pivot Support */}
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
-           <SimpleSkillTree
-             skills={filteredSkills}
+           <InteractiveSkillTree
+             skills={skills}
              userProgress={userProgress}
              skillEdges={skillEdges}
-             careerSteps={selectedCareerSteps}
-             careerPathName={selectedCareerPathData?.title || "Your Career Path"}
+             filteredSkills={filteredSkills}
+             recommendedSkills={recommendedSkills}
+             goalSkills={goalSkills}
+             checkpointSkills={checkpointSkills}
+             capstoneSkillIds={capstoneSkillIds}
+             availableCategories={categories}
              onSkillClick={handleSkillClick}
+             showMinimap={true}
+             layoutMode="hierarchy"
+             careerPathName={selectedCareerPathData?.title || "Your Career Path"}
+             showPivotPaths={showPivotPaths}
+             roadmapStepSkills={roadmapStepSkills}
+             careerSteps={selectedCareerSteps}
+             focusMode={focusMode}
+             skillsWithCourses={skillsWithCourses}
            />
         </div>
 
@@ -602,6 +613,7 @@ const SkillTree = () => {
               onLocationSelect={setSelectedLocation}
             />
           )}
+        </div>
         </div>
       </div>
 
