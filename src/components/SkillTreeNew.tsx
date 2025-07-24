@@ -11,9 +11,10 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-// New architecture components
+// Enhanced architecture components
 import { SkillTreeProvider, useSkillTree } from '@/contexts/SkillTreeContext';
-import { useGraphOrchestrator } from './SkillTree/GraphOrchestrator';
+import { ProgressiveDisclosureProvider } from './SkillTree/ProgressiveDisclosure';
+import { useTreeLayoutEngine } from './SkillTree/TreeLayoutEngine';
 import { GraphControls } from './SkillTree/GraphControls';
 
 // Custom Node Types - Complete 6-node architecture
@@ -23,6 +24,7 @@ import { JobNode } from './SkillTree/JobNode';
 import { CourseNode } from './SkillTree/CourseNode';
 import { ProjectNode } from './SkillTree/ProjectNode';
 import { CertificationNode } from './SkillTree/CertificationNode';
+import { ClusterNode } from './SkillTree/ClusterNode';
 
 const nodeTypes = {
   careerStep: SkillTreeStepNode,
@@ -31,13 +33,16 @@ const nodeTypes = {
   course: CourseNode,
   project: ProjectNode,
   certification: CertificationNode,
+  cluster: ClusterNode,
 };
 
 // Main component wrapped with context
 export const SkillTreeNew: React.FC = () => {
   return (
     <SkillTreeProvider>
-      <SkillTreeCanvas />
+      <ProgressiveDisclosureProvider>
+        <SkillTreeCanvas />
+      </ProgressiveDisclosureProvider>
     </SkillTreeProvider>
   );
 };
@@ -47,20 +52,20 @@ const SkillTreeCanvas: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  const { selectedCareerPath, dataLoaded, loading } = useSkillTree();
-  const { generateGraph } = useGraphOrchestrator();
+  const { selectedCareerPath, dataLoaded, loading, displayControls, updateDisplayControls } = useSkillTree();
+  const { generateTreeLayout } = useTreeLayoutEngine();
 
-  // Generate graph when data changes
+  // Generate enhanced tree when data changes
   useEffect(() => {
     if (dataLoaded && selectedCareerPath) {
-      const { nodes: newNodes, edges: newEdges } = generateGraph();
+      const { nodes: newNodes, edges: newEdges } = generateTreeLayout();
       setNodes(newNodes);
       setEdges(newEdges);
     } else {
       setNodes([]);
       setEdges([]);
     }
-  }, [dataLoaded, selectedCareerPath, generateGraph, setNodes, setEdges]);
+  }, [dataLoaded, selectedCareerPath, generateTreeLayout, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),

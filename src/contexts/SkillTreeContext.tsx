@@ -88,6 +88,8 @@ export interface DisplayControls {
   showJobs: boolean;
   showPivots: boolean;
   showProgress: boolean;
+  viewMode: 'branched' | 'clustered' | 'traditional';
+  pathHighlighting: boolean;
 }
 
 export interface GraphLayout {
@@ -149,9 +151,11 @@ const initialState: SkillTreeState = {
     showCourses: false,
     showProjects: false,
     showCertifications: false,
-    showJobs: false,
+    showJobs: true,
     showPivots: false,
     showProgress: true,
+    viewMode: 'branched',
+    pathHighlighting: true,
   },
   graphLayout: {
     type: 'hierarchical',

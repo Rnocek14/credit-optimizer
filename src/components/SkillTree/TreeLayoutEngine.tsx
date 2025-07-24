@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
-import { useConnectionEngine } from './ConnectionEngine';
+import { useTreeBranchEngine } from './TreeBranchEngine';
+import { useSmartClusterEngine } from './SmartClusterEngine';
+import { usePathHighlighter } from './PathHighlighter';
 
 export const useTreeLayoutEngine = () => {
   const {
@@ -17,7 +19,10 @@ export const useTreeLayoutEngine = () => {
     userProgress
   } = useSkillTree();
 
-  const { generateConnections } = useConnectionEngine();
+  // Use enhanced engines
+  const { generateBranchedTree } = useTreeBranchEngine();
+  const { generateSmartClusters } = useSmartClusterEngine();
+  const { highlightPath, getRecommendedPath } = usePathHighlighter();
 
   // Define skill categories with simpler color mapping
   const skillCategories = useMemo(() => ({
@@ -233,28 +238,56 @@ export const useTreeLayoutEngine = () => {
     return nodes;
   }, [displayControls, courses, projects, certifications]);
 
-  // Main generation function using new connection engine
+  // Enhanced generation function with multiple layout modes
   const generateTreeLayout = useCallback(() => {
-    const allNodes = [
-      ...createJobNode(),
-      ...createSkillNodes(),
-      ...createCareerStepNodes(),
-      ...createSupportingNodes(),
-    ];
-
-    const allEdges = generateConnections(allNodes, []);
-
-    return { nodes: allNodes, edges: allEdges };
+    const layoutMode = displayControls.viewMode || 'branched';
+    
+    let result: { nodes: Node[], edges: Edge[] };
+    
+    switch (layoutMode) {
+      case 'clustered':
+        result = generateSmartClusters();
+        break;
+      case 'traditional':
+        // Fallback to traditional layout
+        const allNodes = [
+          ...createJobNode(),
+          ...createSkillNodes(),
+          ...createCareerStepNodes(),
+          ...createSupportingNodes(),
+        ];
+        result = { nodes: allNodes, edges: [] };
+        break;
+      case 'branched':
+      default:
+        result = generateBranchedTree();
+        break;
+    }
+    
+    // Apply path highlighting if recommended path exists
+    const recommendedPath = getRecommendedPath();
+    if (recommendedPath && displayControls.showProgress) {
+      return highlightPath(result.nodes, result.edges, recommendedPath.id);
+    }
+    
+    return result;
   }, [
+    displayControls.viewMode,
+    displayControls.showProgress,
+    generateSmartClusters,
+    generateBranchedTree,
     createJobNode,
     createSkillNodes,
     createCareerStepNodes,
     createSupportingNodes,
-    generateConnections
+    getRecommendedPath,
+    highlightPath
   ]);
 
   return {
     generateTreeLayout,
-    skillCategories
+    skillCategories,
+    generateBranchedTree,
+    generateSmartClusters
   };
 };

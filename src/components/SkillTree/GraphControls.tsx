@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, MapPin, Target, BookOpen, Code, Award, Briefcase, GitBranch, RotateCcw } from 'lucide-react';
+import { Brain, MapPin, Target, BookOpen, Code, Award, Briefcase, GitBranch, RotateCcw, TreePine, Grid3X3, Network } from 'lucide-react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
 
 export const GraphControls: React.FC = () => {
@@ -194,6 +194,33 @@ export const GraphControls: React.FC = () => {
                   Progress
                 </Label>
               </div>
+            </div>
+          </div>
+
+          {/* View Mode Controls */}
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium mb-3 block">View Mode</Label>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[
+                { id: 'branched', name: 'Tree View', icon: TreePine },
+                { id: 'clustered', name: 'Clusters', icon: Grid3X3 },
+                { id: 'traditional', name: 'Traditional', icon: Network }
+              ].map(mode => {
+                const Icon = mode.icon;
+                const isActive = displayControls.viewMode === mode.id;
+                return (
+                  <Button
+                    key={mode.id}
+                    variant={isActive ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => updateDisplayControls({ viewMode: mode.id as any })}
+                    className="flex items-center gap-2"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {mode.name}
+                  </Button>
+                );
+              })}
             </div>
           </div>
 
