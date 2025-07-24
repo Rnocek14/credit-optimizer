@@ -118,24 +118,11 @@ export const useGraphOrchestrator = () => {
 
   const createStepNodes = useCallback((stepsByLevel: Record<number, any[]>) => {
     const nodes: Node[] = [];
-    const { NODE_WIDTH, MIN_SPACING_X, MIN_SPACING_Y, activeLayers } = layoutParams;
     
-    const stepLayer = activeLayers.find(l => l.type === 'careerSteps');
-    if (!stepLayer) return nodes;
-
+    // Simple grid positioning - force layout will handle the rest
+    let nodeIndex = 0;
     Object.entries(stepsByLevel).forEach(([level, steps]) => {
-      const levelNum = parseInt(level);
-      const stepsPerRow = Math.min(5, steps.length); // Max 5 steps per row
-      const rowHeight = NODE_WIDTH + MIN_SPACING_Y;
-      
-      steps.forEach((step, index) => {
-        const row = Math.floor(index / stepsPerRow);
-        const col = index % stepsPerRow;
-        const rowSteps = steps.slice(row * stepsPerRow, (row + 1) * stepsPerRow);
-        
-        const x = (col - (rowSteps.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X);
-        const y = stepLayer.y + (levelNum * rowHeight) + (row * rowHeight);
-
+      steps.forEach((step) => {
         const stepProgress = displayControls.showProgress ? 
           userProgress?.find(p => p.stepId === step.id) : null;
         const isCompleted = stepProgress?.status === 'completed';
@@ -147,7 +134,7 @@ export const useGraphOrchestrator = () => {
         nodes.push({
           id: step.id,
           type: 'careerStep',
-          position: { x, y },
+          position: { x: (nodeIndex % 10) * 200, y: Math.floor(nodeIndex / 10) * 150 }, // Simple grid
           data: {
             ...step,
             isCompleted,
@@ -172,70 +159,45 @@ export const useGraphOrchestrator = () => {
               .filter(Boolean),
           } as Record<string, unknown>,
         });
+        nodeIndex++;
       });
     });
 
     return nodes;
-  }, [stepSkillMappings, skills, userProgress, displayControls.showProgress, layoutParams]);
+  }, [stepSkillMappings, skills, userProgress, displayControls.showProgress]);
 
   const createSkillNodes = useCallback(() => {
     if (!displayControls.showSkills) return [];
     
     const nodes: Node[] = [];
-    const { NODE_WIDTH, MIN_SPACING_X, MIN_SPACING_Y, activeLayers } = layoutParams;
+    let nodeIndex = 0;
     
-    const skillLayer = activeLayers.find(l => l.type === 'skills');
-    if (!skillLayer) return nodes;
-    
-    // Group skills by category and create smart clusters
-    const skillCategories = [...new Set(skills.map(s => s.category))];
-    const foundationalSkills = ['Programming', 'Framework', 'Tools'];
-    const maxSkillsPerRow = 8;
-    
-    let currentRow = 0;
-    let skillsInCurrentRow = 0;
-    
-    skillCategories.forEach((category, catIndex) => {
-      const categorySkills = skills.filter(s => s.category === category);
-      const isFoundational = foundationalSkills.includes(category);
+    skills.forEach((skill) => {
+      const skillProgress = displayControls.showProgress ? 
+        userProgress?.find(p => p.skillId === skill.id) : null;
+      const isCompleted = skillProgress?.status === 'completed';
       
-      categorySkills.forEach((skill, skillIndex) => {
-        // Start new row if we've hit the limit
-        if (skillsInCurrentRow >= maxSkillsPerRow) {
-          currentRow++;
-          skillsInCurrentRow = 0;
-        }
-        
-        const x = (skillsInCurrentRow - (Math.min(maxSkillsPerRow, categorySkills.length) - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X);
-        const y = skillLayer.y + (isFoundational ? 0 : MIN_SPACING_Y) + (currentRow * (NODE_WIDTH + MIN_SPACING_Y));
-        
-        const skillProgress = displayControls.showProgress ? 
-          userProgress?.find(p => p.skillId === skill.id) : null;
-        const isCompleted = skillProgress?.status === 'completed';
-        
-        const difficultyLevel = skill.difficulty_level || 1;
-        const estimatedWeeks = difficultyLevel <= 2 ? '1-2 weeks' : 
-                              difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks';
-        
-        nodes.push({
-          id: `skill-${skill.id}`,
-          type: 'skill',
-          position: { x, y },
-          data: {
-            ...skill,
-            isCompleted,
-            isLocked: false,
-            progress: skillProgress,
-            difficultyLevel: difficultyLevel <= 2 ? 'beginner' : 
-                           difficultyLevel <= 4 ? 'intermediate' : 'advanced',
-            estimatedWeeks,
-            trackCategory: category,
-            isFoundational,
-          } as Record<string, unknown>,
-        });
-        
-        skillsInCurrentRow++;
+      const difficultyLevel = skill.difficulty_level || 1;
+      const estimatedWeeks = difficultyLevel <= 2 ? '1-2 weeks' : 
+                            difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks';
+      
+      nodes.push({
+        id: `skill-${skill.id}`,
+        type: 'skill',
+        position: { x: (nodeIndex % 12) * 160, y: 50 + Math.floor(nodeIndex / 12) * 130 }, // Simple grid
+        data: {
+          ...skill,
+          isCompleted,
+          isLocked: false,
+          progress: skillProgress,
+          difficultyLevel: difficultyLevel <= 2 ? 'beginner' : 
+                         difficultyLevel <= 4 ? 'intermediate' : 'advanced',
+          estimatedWeeks,
+          trackCategory: skill.category,
+          isFoundational: ['Programming', 'Framework', 'Tools'].includes(skill.category),
+        } as Record<string, unknown>,
       });
+      nodeIndex++;
     });
 
     return nodes;

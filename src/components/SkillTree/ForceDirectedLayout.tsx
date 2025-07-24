@@ -87,10 +87,10 @@ export const useForceDirectedLayout = () => {
           const dx = nodeA.x - nodeB.x;
           const dy = nodeA.y - nodeB.y;
           const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          const minDistance = Math.max(nodeA.width, nodeA.height) + 40; // Minimum separation
+          const minDistance = Math.max(nodeA.width, nodeA.height) + 60; // Increased minimum separation
           
-          if (distance < minDistance * 2) {
-            const repulsion = (minDistance * minDistance) / (distance * distance);
+          if (distance < minDistance * 1.5) {
+            const repulsion = (minDistance * minDistance) / (distance * distance) * 2; // Increased repulsion
             forceX += (dx / distance) * repulsion * alpha;
             forceY += (dy / distance) * repulsion * alpha;
           }
