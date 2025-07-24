@@ -12,6 +12,7 @@ import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { ResumePreview } from "@/components/ResumePreview";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
+import { CareerGraphTest } from "@/components/CareerGraphTest";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -331,6 +332,11 @@ export default function Dashboard() {
           {/* Analytics Dashboard */}
           <div className="mt-8">
             <ResumeAnalyticsDashboard />
+          </div>
+
+          {/* Career Graph Test Suite */}
+          <div className="mt-8">
+            <CareerGraphTest />
           </div>
 
           {/* Resume Preview for Aisha Khan */}
