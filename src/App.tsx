@@ -42,6 +42,7 @@ import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
 import SalaryInsights from "./pages/SalaryInsights";
 import ResumeAnalytics from "./pages/ResumeAnalytics";
+import MarketIntelligence from "./pages/MarketIntelligence";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -89,6 +90,7 @@ const App = () => (
           <Route path="/discover" element={<Discover />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/salary-insights" element={<SalaryInsights />} />
+          <Route path="/market-intelligence" element={<MarketIntelligence />} />
           <Route path="/teach" element={<Teach />} />
           <Route 
             path="/saved" 
