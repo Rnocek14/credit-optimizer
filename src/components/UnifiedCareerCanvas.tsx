@@ -50,31 +50,59 @@ interface UnifiedCareerCanvasProps {
   onLayoutCalculating?: (isCalculating: boolean) => void;
 }
 
-const generateFocusedEdges = (
+const generateVisibleEdges = (
   relationships: CareerRelationship[],
   focusedNodeId: string | null
 ): Edge[] => {
-  // If no focus, show no edges to avoid chaos
-  if (!focusedNodeId) {
-    return [];
+  // If focused, show connections to focused node
+  if (focusedNodeId) {
+    const focusedRelationships = relationships
+      .filter(rel => rel.from === focusedNodeId || rel.to === focusedNodeId)
+      .slice(0, 15); // Limit to prevent overwhelming display
+
+    return focusedRelationships.map((rel, index) => ({
+      id: `edge-${focusedNodeId}-${index}`,
+      source: rel.from,
+      target: rel.to,
+      type: getEdgeTypeForRelationship(rel.type),
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+      style: getEdgeStyleForRelationship(rel.type, rel.weight),
+      label: rel.weight >= 4 ? getEdgeLabelForRelationship(rel.type) : '',
+      animated: rel.weight >= 5,
+    }));
   }
 
-  // Show only relationships connected to the focused node
-  const focusedRelationships = relationships
-    .filter(rel => rel.from === focusedNodeId || rel.to === focusedNodeId)
-    .slice(0, 15); // Limit to prevent overwhelming display
+  // If no focus, show a subset of important relationships to provide structure
+  const importantRelationships = relationships
+    .filter(rel => (rel.weight || 1) >= 4) // Only show high-weight relationships
+    .sort((a, b) => (b.weight || 1) - (a.weight || 1)) // Sort by weight descending
+    .slice(0, 25); // Limit to 25 most important connections
 
-  return focusedRelationships.map((rel, index) => ({
-    id: `edge-${focusedNodeId}-${index}`,
+  console.log('📊 Showing default edges:', {
+    totalRelationships: relationships.length,
+    filteredCount: importantRelationships.length,
+    byType: importantRelationships.reduce((acc, rel) => {
+      acc[rel.type] = (acc[rel.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  });
+
+  return importantRelationships.map((rel, index) => ({
+    id: `edge-default-${index}`,
     source: rel.from,
     target: rel.to,
     type: getEdgeTypeForRelationship(rel.type),
     markerEnd: {
       type: MarkerType.ArrowClosed,
     },
-    style: getEdgeStyleForRelationship(rel.type, rel.weight),
-    label: rel.weight >= 4 ? getEdgeLabelForRelationship(rel.type) : '',
-    animated: rel.weight >= 5,
+    style: {
+      ...getEdgeStyleForRelationship(rel.type, rel.weight),
+      opacity: 0.4, // Make default edges more subtle
+    },
+    label: rel.weight >= 5 ? getEdgeLabelForRelationship(rel.type) : '',
+    animated: false, // No animation for default edges
   }));
 };
 
@@ -152,9 +180,9 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     return calculateHierarchicalLayout(data, relationships);
   }, [data, relationships]);
 
-  // Generate focused edges based on current focus
+  // Generate visible edges based on current focus
   const calculatedEdges = useMemo(() => {
-    return generateFocusedEdges(relationships, focusedNodeId);
+    return generateVisibleEdges(relationships, focusedNodeId);
   }, [relationships, focusedNodeId]);
 
   // Update nodes when data changes
@@ -205,24 +233,37 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     setShowFocusMode(false);
   }, []);
 
-  // Enhanced nodes with focus highlighting
+  // Enhanced nodes with focus highlighting and error handling
   const enhancedNodes = useMemo(() => {
-    return nodes.map(node => ({
-      ...node,
-      style: {
-        ...node.style,
-        opacity: focusedNodeId 
-          ? (node.id === focusedNodeId || 
-             relationships.some(rel => 
-               (rel.from === focusedNodeId && rel.to === node.id) ||
-               (rel.to === focusedNodeId && rel.from === node.id)
-             )) ? 1 : 0.3
-          : 1,
-        transform: node.id === focusedNodeId ? 'scale(1.1)' : 'scale(1)',
-        transition: 'all 0.2s ease-in-out',
-        zIndex: node.id === focusedNodeId ? 1000 : 1,
+    return nodes.map(node => {
+      // Add error handling for missing data
+      if (!node.data) {
+        console.warn(`⚠️ Node ${node.id} missing data, providing fallback`);
+        node.data = {
+          title: 'Missing Data',
+          name: 'Missing Data',
+          description: 'This node has missing or invalid data'
+        };
       }
-    }));
+
+      return {
+        ...node,
+        style: {
+          ...node.style,
+          opacity: focusedNodeId 
+            ? (node.id === focusedNodeId || 
+               relationships.some(rel => 
+                 (rel.from === focusedNodeId && rel.to === node.id) ||
+                 (rel.to === focusedNodeId && rel.from === node.id)
+               )) ? 1 : 0.3
+            : 1,
+          transform: node.id === focusedNodeId ? 'scale(1.05)' : 'scale(1)',
+          transition: 'all 0.2s ease-in-out',
+          zIndex: node.id === focusedNodeId ? 1000 : 1,
+          border: node.id === focusedNodeId ? '2px solid hsl(var(--primary))' : undefined,
+        }
+      };
+    });
   }, [nodes, focusedNodeId, relationships]);
 
   return (

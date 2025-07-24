@@ -637,13 +637,23 @@ export class ForceDirectedLayout {
   }
 }
 
-// Stable hierarchical layout implementation
+// Stable hierarchical layout implementation with proper data transformation
 export const calculateHierarchicalLayout = (
   data: UnifiedCareerData,
   relationships: CareerRelationship[]
 ): Node[] => {
+  console.log('🔧 Starting hierarchical layout calculation:', {
+    skills: data.skills.length,
+    courses: data.courses.length,
+    projects: data.projects.length,
+    certifications: data.certifications.length,
+    jobs: data.jobs.length,
+    careerSteps: data.careerSteps.length,
+    relationships: relationships.length
+  });
+
   const nodes: Node[] = [];
-  const nodeSpacing = { x: 280, y: 200 };
+  const nodeSpacing = { x: 300, y: 180 };
   
   // Define hierarchy levels with better spacing
   const hierarchyLevels = [
@@ -651,44 +661,137 @@ export const calculateHierarchicalLayout = (
     { types: ['course'], y: 350, label: 'Courses', color: '#10B981' },
     { types: ['project'], y: 600, label: 'Projects', color: '#F59E0B' },
     { types: ['certification'], y: 850, label: 'Certifications', color: '#8B5CF6' },
-    { types: ['job'], y: 1100, label: 'Career Paths', color: '#EF4444' },
-    { types: ['careerStep'], y: 1350, label: 'Career Steps', color: '#6B7280' }
+    { types: ['careerStep'], y: 1100, label: 'Career Steps', color: '#6B7280' },
+    { types: ['job'], y: 1350, label: 'Career Paths', color: '#EF4444' }
   ];
 
   hierarchyLevels.forEach((level, levelIndex) => {
     level.types.forEach(type => {
       const items = getItemsByType(data, type);
+      console.log(`📋 Processing ${type}:`, items.length, 'items');
+      
       if (items.length === 0) return;
       
-      const itemsPerRow = Math.min(Math.ceil(Math.sqrt(items.length)), 6); // Max 6 per row
+      const itemsPerRow = Math.min(Math.ceil(Math.sqrt(items.length * 1.5)), 8); // Optimized layout
       
       items.forEach((item, index) => {
         const row = Math.floor(index / itemsPerRow);
         const col = index % itemsPerRow;
         
         // Center items horizontally with proper spacing
-        const totalWidth = (itemsPerRow - 1) * nodeSpacing.x;
+        const totalWidth = Math.max((itemsPerRow - 1) * nodeSpacing.x, 0);
         const startX = -totalWidth / 2;
         
+        // Use original database ID without prefixes for relationship mapping
+        const nodeId = item.id;
+        
+        const transformedData = transformNodeDataForType(type, item);
+        
+        console.log(`🎯 Creating node:`, {
+          id: nodeId,
+          type,
+          dataKeys: Object.keys(transformedData),
+          position: { x: startX + col * nodeSpacing.x, y: level.y + row * 140 }
+        });
+        
         nodes.push({
-          id: `${type}-${item.id}`,
+          id: nodeId, // Keep original ID for relationship mapping
           type,
           position: {
             x: startX + col * nodeSpacing.x,
-            y: level.y + row * 120 // Better vertical spacing between rows
+            y: level.y + row * 140
           },
-          data: {
-            ...item,
-            category: type,
-            hierarchyLevel: levelIndex,
-            levelColor: level.color
-          }
+          data: transformedData
         });
       });
     });
   });
 
+  console.log('✅ Hierarchical layout complete:', {
+    totalNodes: nodes.length,
+    nodeTypes: nodes.reduce((acc, node) => {
+      acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  });
+
   return nodes;
+};
+
+// Enhanced data transformation function for each node type
+const transformNodeDataForType = (type: string, item: any): any => {
+  switch (type) {
+    case 'skill':
+      return {
+        name: item.name || 'Unnamed Skill',
+        category: item.category || 'General',
+        description: item.description || 'No description available'
+      };
+    
+    case 'course':
+      return {
+        title: item.title || 'Unnamed Course',
+        description: item.description || 'No description available',
+        platform: item.platform || 'Unknown Platform',
+        cost: item.cost || 'Unknown Cost',
+        difficulty: item.difficulty || 'Unknown',
+        skillTags: item.skill_tags || [],
+        url: item.url,
+        isRecommended: true // Courses from DB are recommended
+      };
+    
+    case 'project':
+      return {
+        title: item.title || 'Unnamed Project',
+        description: item.description || 'No description available',
+        difficulty: item.difficulty || 'unknown',
+        estimatedTime: item.estimated_time || 'Unknown duration',
+        skillsDemonstrated: item.skills_demonstrated || [],
+        projectType: item.project_type || 'portfolio',
+        status: 'available' // Default status
+      };
+    
+    case 'certification':
+      return {
+        title: item.title || 'Unnamed Certification',
+        issuer: item.issuer || 'Unknown Issuer',
+        description: item.description || 'No description available',
+        cost: item.cost || 'Unknown Cost',
+        validity: item.validity || 'Unknown Validity',
+        skillsValidated: item.skills_validated || [],
+        recognitionLevel: 'industry', // Default level
+        examDetails: { duration: 'Unknown', format: 'Unknown' }
+      };
+    
+    case 'careerStep':
+      return {
+        title: item.title || 'Unnamed Step',
+        description: item.description || 'No description available',
+        level: item.level || 1,
+        isTerminal: item.is_terminal || false,
+        estimatedDuration: '4-6 weeks', // Default duration
+        prerequisites: item.prerequisites || [],
+        skills: item.skills || []
+      };
+    
+    case 'job':
+      return {
+        title: item.title || 'Unnamed Position',
+        description: item.description || 'No description available',
+        level: item.level || 'Entry',
+        industry: item.industry || 'Technology',
+        salary: item.average_salary || 50000,
+        roiScore: Number(item.roi_score) || 5,
+        growthOutlook: item.growth_outlook || 'Stable',
+        requiredSkills: item.required_skill_ids || [],
+        isGoal: false, // Default value
+        isCurrent: false // Default value
+      };
+    
+    default:
+      console.warn(`⚠️ Unknown node type: ${type}`);
+      return item;
+  }
 };
 
 // Helper function to get items by type
