@@ -179,6 +179,72 @@ export type Database = {
         }
         Relationships: []
       }
+      career_graph_edges: {
+        Row: {
+          created_at: string | null
+          data_source: string | null
+          difficulty_multiplier: number | null
+          edge_type: string
+          from_id: string
+          from_type: string
+          id: string
+          importance_weight: number | null
+          last_validated: string | null
+          monetary_cost: number | null
+          pivot_via: string | null
+          reasoning: string | null
+          roi_score: number | null
+          substitution_group_id: string | null
+          success_rate: number | null
+          time_cost_hours: number | null
+          to_id: string
+          to_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_source?: string | null
+          difficulty_multiplier?: number | null
+          edge_type: string
+          from_id: string
+          from_type: string
+          id?: string
+          importance_weight?: number | null
+          last_validated?: string | null
+          monetary_cost?: number | null
+          pivot_via?: string | null
+          reasoning?: string | null
+          roi_score?: number | null
+          substitution_group_id?: string | null
+          success_rate?: number | null
+          time_cost_hours?: number | null
+          to_id: string
+          to_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_source?: string | null
+          difficulty_multiplier?: number | null
+          edge_type?: string
+          from_id?: string
+          from_type?: string
+          id?: string
+          importance_weight?: number | null
+          last_validated?: string | null
+          monetary_cost?: number | null
+          pivot_via?: string | null
+          reasoning?: string | null
+          roi_score?: number | null
+          substitution_group_id?: string | null
+          success_rate?: number | null
+          time_cost_hours?: number | null
+          to_id?: string
+          to_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       career_location_multipliers: {
         Row: {
           career_path_id: string
@@ -427,6 +493,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      certification_skills: {
+        Row: {
+          certification_id: string | null
+          created_at: string | null
+          id: string
+          importance_weight: number | null
+          skill_id: string | null
+          validation_level: string | null
+        }
+        Insert: {
+          certification_id?: string | null
+          created_at?: string | null
+          id?: string
+          importance_weight?: number | null
+          skill_id?: string | null
+          validation_level?: string | null
+        }
+        Update: {
+          certification_id?: string | null
+          created_at?: string | null
+          id?: string
+          importance_weight?: number | null
+          skill_id?: string | null
+          validation_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_skills_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certification_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certifications: {
+        Row: {
+          cost: number | null
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          exam_url: string | null
+          id: string
+          industry_recognition: string | null
+          issuer: string
+          prep_time_hours: number | null
+          skills_validated: string[] | null
+          title: string
+          updated_at: string | null
+          validity_years: number | null
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          exam_url?: string | null
+          id?: string
+          industry_recognition?: string | null
+          issuer: string
+          prep_time_hours?: number | null
+          skills_validated?: string[] | null
+          title: string
+          updated_at?: string | null
+          validity_years?: number | null
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          exam_url?: string | null
+          id?: string
+          industry_recognition?: string | null
+          issuer?: string
+          prep_time_hours?: number | null
+          skills_validated?: string[] | null
+          title?: string
+          updated_at?: string | null
+          validity_years?: number | null
+        }
+        Relationships: []
       }
       continent_bounds: {
         Row: {
@@ -792,6 +948,84 @@ export type Database = {
         }
         Relationships: []
       }
+      pivot_points: {
+        Row: {
+          average_salary_change: number | null
+          created_at: string | null
+          estimated_cost: number | null
+          estimated_transition_time: string | null
+          from_job_id: string | null
+          id: string
+          intermediate_roles: string[] | null
+          market_demand_score: number | null
+          pivot_mechanism: string | null
+          pivot_type: string | null
+          reasoning: string | null
+          recommended_courses: string[] | null
+          required_skills: string[] | null
+          roi_score: number | null
+          skill_overlap_percentage: number | null
+          success_rate: number | null
+          to_job_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          average_salary_change?: number | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          estimated_transition_time?: string | null
+          from_job_id?: string | null
+          id?: string
+          intermediate_roles?: string[] | null
+          market_demand_score?: number | null
+          pivot_mechanism?: string | null
+          pivot_type?: string | null
+          reasoning?: string | null
+          recommended_courses?: string[] | null
+          required_skills?: string[] | null
+          roi_score?: number | null
+          skill_overlap_percentage?: number | null
+          success_rate?: number | null
+          to_job_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          average_salary_change?: number | null
+          created_at?: string | null
+          estimated_cost?: number | null
+          estimated_transition_time?: string | null
+          from_job_id?: string | null
+          id?: string
+          intermediate_roles?: string[] | null
+          market_demand_score?: number | null
+          pivot_mechanism?: string | null
+          pivot_type?: string | null
+          reasoning?: string | null
+          recommended_courses?: string[] | null
+          required_skills?: string[] | null
+          roi_score?: number | null
+          skill_overlap_percentage?: number | null
+          success_rate?: number | null
+          to_job_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pivot_points_from_job_id_fkey"
+            columns: ["from_job_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pivot_points_to_job_id_fkey"
+            columns: ["to_job_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null
@@ -870,6 +1104,93 @@ export type Database = {
           willing_to_relocate?: boolean | null
           work_preferences?: string | null
           years_experience?: number | null
+        }
+        Relationships: []
+      }
+      project_skills: {
+        Row: {
+          created_at: string | null
+          demonstration_level: string | null
+          id: string
+          importance_weight: number | null
+          project_id: string | null
+          skill_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          demonstration_level?: string | null
+          id?: string
+          importance_weight?: number | null
+          project_id?: string | null
+          skill_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          demonstration_level?: string | null
+          id?: string
+          importance_weight?: number | null
+          project_id?: string | null
+          skill_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_skills_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          demo_url: string | null
+          description: string | null
+          difficulty: string | null
+          estimated_time_hours: number | null
+          github_url: string | null
+          id: string
+          project_type: string | null
+          skills_demonstrated: string[] | null
+          technologies: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          demo_url?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_time_hours?: number | null
+          github_url?: string | null
+          id?: string
+          project_type?: string | null
+          skills_demonstrated?: string[] | null
+          technologies?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          demo_url?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_time_hours?: number | null
+          github_url?: string | null
+          id?: string
+          project_type?: string | null
+          skills_demonstrated?: string[] | null
+          technologies?: string[] | null
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1464,6 +1785,63 @@ export type Database = {
           },
         ]
       }
+      user_career_progress: {
+        Row: {
+          completion_date: string | null
+          created_at: string | null
+          cri_contribution: number | null
+          id: string
+          importance_to_goal: number | null
+          node_id: string
+          node_type: string
+          notes: string | null
+          priority_level: number | null
+          progress_percentage: number | null
+          status: string
+          target_completion_date: string | null
+          updated_at: string | null
+          user_id: string
+          verification_method: string | null
+          verification_url: string | null
+        }
+        Insert: {
+          completion_date?: string | null
+          created_at?: string | null
+          cri_contribution?: number | null
+          id?: string
+          importance_to_goal?: number | null
+          node_id: string
+          node_type: string
+          notes?: string | null
+          priority_level?: number | null
+          progress_percentage?: number | null
+          status: string
+          target_completion_date?: string | null
+          updated_at?: string | null
+          user_id: string
+          verification_method?: string | null
+          verification_url?: string | null
+        }
+        Update: {
+          completion_date?: string | null
+          created_at?: string | null
+          cri_contribution?: number | null
+          id?: string
+          importance_to_goal?: number | null
+          node_id?: string
+          node_type?: string
+          notes?: string | null
+          priority_level?: number | null
+          progress_percentage?: number | null
+          status?: string
+          target_completion_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+          verification_method?: string | null
+          verification_url?: string | null
+        }
+        Relationships: []
+      }
       user_career_selections: {
         Row: {
           career_path_id: string
@@ -1502,6 +1880,77 @@ export type Database = {
           {
             foreignKeyName: "user_career_selections_career_path_id_fkey"
             columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_cri_scores: {
+        Row: {
+          blocking_factors: string[] | null
+          certification_completion_percentage: number | null
+          created_at: string | null
+          current_cri_score: number | null
+          estimated_time_to_ready: string | null
+          experience_score: number | null
+          experience_years: number | null
+          id: string
+          last_calculated: string | null
+          next_priority_items: string[] | null
+          project_completion_percentage: number | null
+          readiness_level: string | null
+          required_cri_score: number | null
+          skill_completion_percentage: number | null
+          step_completion_percentage: number | null
+          target_job_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          blocking_factors?: string[] | null
+          certification_completion_percentage?: number | null
+          created_at?: string | null
+          current_cri_score?: number | null
+          estimated_time_to_ready?: string | null
+          experience_score?: number | null
+          experience_years?: number | null
+          id?: string
+          last_calculated?: string | null
+          next_priority_items?: string[] | null
+          project_completion_percentage?: number | null
+          readiness_level?: string | null
+          required_cri_score?: number | null
+          skill_completion_percentage?: number | null
+          step_completion_percentage?: number | null
+          target_job_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          blocking_factors?: string[] | null
+          certification_completion_percentage?: number | null
+          created_at?: string | null
+          current_cri_score?: number | null
+          estimated_time_to_ready?: string | null
+          experience_score?: number | null
+          experience_years?: number | null
+          id?: string
+          last_calculated?: string | null
+          next_priority_items?: string[] | null
+          project_completion_percentage?: number | null
+          readiness_level?: string | null
+          required_cri_score?: number | null
+          skill_completion_percentage?: number | null
+          step_completion_percentage?: number | null
+          target_job_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_cri_scores_target_job_id_fkey"
+            columns: ["target_job_id"]
             isOneToOne: false
             referencedRelation: "career_paths"
             referencedColumns: ["id"]
