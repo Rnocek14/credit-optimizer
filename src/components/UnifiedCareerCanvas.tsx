@@ -176,8 +176,50 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
 
   // Calculate stable hierarchical layout
   const calculatedNodes = useMemo(() => {
-    console.log('🎯 Using stable hierarchical layout');
-    return calculateHierarchicalLayout(data, relationships);
+    console.log('🎯 Starting layout calculation with data:', {
+      skills: data?.skills?.length || 0,
+      jobs: data?.jobs?.length || 0,
+      courses: data?.courses?.length || 0,
+      projects: data?.projects?.length || 0,
+      certifications: data?.certifications?.length || 0,
+      careerSteps: data?.careerSteps?.length || 0,
+      relationships: relationships?.length || 0,
+    });
+
+    console.log('📊 Raw data samples:', {
+      firstSkill: data?.skills?.[0],
+      firstJob: data?.jobs?.[0],
+      firstCourse: data?.courses?.[0],
+    });
+
+    const layoutResult = calculateHierarchicalLayout(data, relationships);
+    
+    console.log('📍 Layout calculation complete:', {
+      nodeCount: layoutResult.length,
+      nodeTypes: layoutResult.reduce((acc, node) => {
+        acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      sampleNode: layoutResult[0],
+      allNodeIds: layoutResult.map(n => n.id).slice(0, 10)
+    });
+
+    // If no nodes generated, create a test node to verify React Flow works
+    if (layoutResult.length === 0) {
+      console.warn('⚠️ No nodes generated! Creating test node to verify React Flow functionality');
+      return [{
+        id: 'test-node-1',
+        type: 'skill',
+        position: { x: 0, y: 0 },
+        data: {
+          name: 'Test Skill',
+          category: 'Testing',
+          description: 'This is a test node to verify React Flow functionality'
+        }
+      }];
+    }
+
+    return layoutResult;
   }, [data, relationships]);
 
   // Generate visible edges based on current focus
@@ -187,15 +229,38 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
 
   // Update nodes when data changes
   useEffect(() => {
+    console.log('🔄 Setting nodes in React Flow:', {
+      calculatedNodesCount: calculatedNodes.length,
+      firstNode: calculatedNodes[0],
+      allNodeTypes: calculatedNodes.map(n => n.type)
+    });
+    
     setNodes(calculatedNodes);
+    
     // Auto-fit view after layout
     setTimeout(() => fitView({ duration: 600, padding: 0.2 }), 100);
   }, [calculatedNodes, setNodes, fitView]);
 
   // Update edges when focus changes
   useEffect(() => {
+    console.log('🔗 Setting edges in React Flow:', {
+      calculatedEdgesCount: calculatedEdges.length,
+      sampleEdges: calculatedEdges.slice(0, 3)
+    });
+    
     setEdges(calculatedEdges);
   }, [calculatedEdges, setEdges]);
+
+  // Debug React Flow state
+  useEffect(() => {
+    console.log('📊 Current React Flow state:', {
+      nodesInState: nodes.length,
+      edgesInState: edges.length,
+      nodeTypes: nodes.map(n => n.type),
+      nodeIds: nodes.map(n => n.id).slice(0, 10),
+      focusedNodeId
+    });
+  }, [nodes, edges, focusedNodeId]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
