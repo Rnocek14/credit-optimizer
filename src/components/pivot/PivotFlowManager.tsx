@@ -98,17 +98,25 @@ export const PivotFlowManager: React.FC<PivotFlowManagerProps> = ({
         throw new Error(`Failed to generate roadmap: ${error.message}`);
       }
 
-      if (!data.success || !data.roadmaps) {
+      // Handle both old and new response formats
+      let roadmapData;
+      if (data.success && data.roadmaps) {
+        // Old format
+        roadmapData = data.roadmaps;
+      } else if (data.fastest_path) {
+        // New format (direct from edge function)
+        roadmapData = data;
+      } else {
         console.error('🔍 Invalid response structure:', data);
         throw new Error('Invalid roadmap response');
       }
 
-      console.log('🔍 Roadmaps data:', data.roadmaps);
-      console.log('🔍 Fastest path:', data.roadmaps.fastest_path);
-      console.log('🔍 Steps:', data.roadmaps.fastest_path?.steps);
+      console.log('🔍 Roadmaps data:', roadmapData);
+      console.log('🔍 Fastest path:', roadmapData.fastest_path);
+      console.log('🔍 Steps:', roadmapData.fastest_path?.steps);
 
       // Convert roadmap steps
-      const roadmapSteps = (data.roadmaps.fastest_path?.steps || []).map((step: any, index: number) => {
+      const roadmapSteps = (roadmapData.fastest_path?.steps || []).map((step: any, index: number) => {
         console.log(`🔍 Processing step ${index}:`, step);
         return {
           id: `pivot_${pivotKey}_${index}`,
