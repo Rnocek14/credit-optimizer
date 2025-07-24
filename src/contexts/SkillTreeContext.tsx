@@ -265,16 +265,20 @@ export const SkillTreeProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (pathsError) throw pathsError;
 
       // Then check which ones have steps
-      const { data: stepsCount, error: stepsError } = await supabase
+      const { data: stepsData, error: stepsError } = await supabase
         .from('career_steps')
-        .select('career_path_id, count')
+        .select('career_path_id')
         .not('career_path_id', 'is', null);
 
       if (stepsError) throw stepsError;
 
+      // Get unique career path IDs that have steps
+      const pathIdsWithSteps = [...new Set(stepsData?.map(s => s.career_path_id) || [])];
+      console.log('Career path IDs with steps:', pathIdsWithSteps);
+
       // Filter paths that have steps
       const pathsWithSteps = (allPaths || [])
-        .filter(path => stepsCount?.some(sc => sc.career_path_id === path.id))
+        .filter(path => pathIdsWithSteps.includes(path.id))
         .map(path => ({
           id: path.id,
           title: path.title,
