@@ -637,82 +637,114 @@ export class ForceDirectedLayout {
   }
 }
 
-// Stable hierarchical layout implementation with proper data transformation
+// SIMPLIFIED hierarchical layout with debugging and error handling
 export const calculateHierarchicalLayout = (
   data: UnifiedCareerData,
   relationships: CareerRelationship[]
 ): Node[] => {
-  console.log('🔧 Starting hierarchical layout calculation:', {
-    skills: data.skills.length,
-    courses: data.courses.length,
-    projects: data.projects.length,
-    certifications: data.certifications.length,
-    jobs: data.jobs.length,
-    careerSteps: data.careerSteps.length,
-    relationships: relationships.length
+  console.log('🔧 Starting SIMPLIFIED hierarchical layout calculation');
+  console.log('📊 Input data check:', {
+    dataExists: !!data,
+    skills: data?.skills?.length || 0,
+    courses: data?.courses?.length || 0,
+    projects: data?.projects?.length || 0,
+    certifications: data?.certifications?.length || 0,
+    jobs: data?.jobs?.length || 0,
+    careerSteps: data?.careerSteps?.length || 0,
+    relationships: relationships?.length || 0
   });
+
+  // Early return if no data
+  if (!data) {
+    console.error('❌ No data provided to layout calculation');
+    return [];
+  }
 
   const nodes: Node[] = [];
-  const nodeSpacing = { x: 300, y: 180 };
   
-  // Define hierarchy levels with better spacing
-  const hierarchyLevels = [
-    { types: ['skill'], y: 100, label: 'Skills', color: '#3B82F6' },
-    { types: ['course'], y: 350, label: 'Courses', color: '#10B981' },
-    { types: ['project'], y: 600, label: 'Projects', color: '#F59E0B' },
-    { types: ['certification'], y: 850, label: 'Certifications', color: '#8B5CF6' },
-    { types: ['careerStep'], y: 1100, label: 'Career Steps', color: '#6B7280' },
-    { types: ['job'], y: 1350, label: 'Career Paths', color: '#EF4444' }
-  ];
-
-  hierarchyLevels.forEach((level, levelIndex) => {
-    level.types.forEach(type => {
-      const items = getItemsByType(data, type);
-      console.log(`📋 Processing ${type}:`, items.length, 'items');
+  // PHASE 1: Simple grid layout for skills first
+  if (data.skills && data.skills.length > 0) {
+    console.log('🎯 Creating skill nodes:', data.skills.length);
+    data.skills.forEach((skill, index) => {
+      const row = Math.floor(index / 4);
+      const col = index % 4;
       
-      if (items.length === 0) return;
-      
-      const itemsPerRow = Math.min(Math.ceil(Math.sqrt(items.length * 1.5)), 8); // Optimized layout
-      
-      items.forEach((item, index) => {
-        const row = Math.floor(index / itemsPerRow);
-        const col = index % itemsPerRow;
-        
-        // Center items horizontally with proper spacing
-        const totalWidth = Math.max((itemsPerRow - 1) * nodeSpacing.x, 0);
-        const startX = -totalWidth / 2;
-        
-        // Use original database ID without prefixes for relationship mapping
-        const nodeId = item.id;
-        
-        const transformedData = transformNodeDataForType(type, item);
-        
-        console.log(`🎯 Creating node:`, {
-          id: nodeId,
-          type,
-          dataKeys: Object.keys(transformedData),
-          position: { x: startX + col * nodeSpacing.x, y: level.y + row * 140 }
-        });
-        
-        nodes.push({
-          id: nodeId, // Keep original ID for relationship mapping
-          type,
-          position: {
-            x: startX + col * nodeSpacing.x,
-            y: level.y + row * 140
-          },
-          data: transformedData
-        });
+      nodes.push({
+        id: `skill-${skill.id}`,
+        type: 'skill',
+        position: {
+          x: col * 250,
+          y: row * 150
+        },
+        data: {
+          name: skill.name || 'Unknown Skill',
+          category: skill.category || 'General',
+          description: skill.description || ''
+        }
       });
     });
-  });
+  }
 
-  console.log('✅ Hierarchical layout complete:', {
+  // PHASE 2: Add jobs if available
+  if (data.jobs && data.jobs.length > 0) {
+    console.log('🎯 Creating job nodes:', data.jobs.length);
+    data.jobs.forEach((job, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      
+      nodes.push({
+        id: `job-${job.id}`,
+        type: 'job',
+        position: {
+          x: col * 300,
+          y: 400 + row * 200
+        },
+        data: {
+          title: job.title || 'Unknown Job',
+          level: job.level || 'Entry',
+          salary: job.average_salary || 50000,
+          roi_score: job.roi_score || 0,
+          growth_outlook: job.growth_outlook || 'Stable',
+          skill_ids: job.required_skill_ids || []
+        }
+      });
+    });
+  }
+
+  // PHASE 3: Add courses if available
+  if (data.courses && data.courses.length > 0) {
+    console.log('🎯 Creating course nodes:', data.courses.length);
+    data.courses.forEach((course, index) => {
+      const row = Math.floor(index / 4);
+      const col = index % 4;
+      
+      nodes.push({
+        id: `course-${course.id}`,
+        type: 'course',
+        position: {
+          x: col * 250,
+          y: 800 + row * 180
+        },
+        data: {
+          title: course.title || 'Unknown Course',
+          description: course.description || '',
+          platform: course.platform || 'Unknown',
+          cost: course.cost || 0,
+          difficulty: course.difficulty || 'Beginner',
+          skillTags: course.skill_tags || []
+        }
+      });
+    });
+  }
+
+  console.log('✅ SIMPLIFIED layout complete:', {
     totalNodes: nodes.length,
-    nodeTypes: nodes.reduce((acc, node) => {
-      acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
+    nodesByType: {
+      skills: nodes.filter(n => n.type === 'skill').length,
+      jobs: nodes.filter(n => n.type === 'job').length,
+      courses: nodes.filter(n => n.type === 'course').length
+    },
+    sampleNode: nodes[0]
   });
 
   return nodes;

@@ -174,53 +174,50 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [showFocusMode, setShowFocusMode] = useState(false);
   const { fitView } = useReactFlow();
 
-  // Calculate stable hierarchical layout
+  // SIMPLIFIED: Always create test nodes first to verify React Flow works
   const calculatedNodes = useMemo(() => {
-    console.log('🎯 Starting layout calculation with data:', {
-      skills: data?.skills?.length || 0,
-      jobs: data?.jobs?.length || 0,
-      courses: data?.courses?.length || 0,
-      projects: data?.projects?.length || 0,
-      certifications: data?.certifications?.length || 0,
-      careerSteps: data?.careerSteps?.length || 0,
-      relationships: relationships?.length || 0,
-    });
-
-    console.log('📊 Raw data samples:', {
-      firstSkill: data?.skills?.[0],
-      firstJob: data?.jobs?.[0],
-      firstCourse: data?.courses?.[0],
-    });
-
-    const layoutResult = calculateHierarchicalLayout(data, relationships);
+    console.log('🎯 SIMPLIFIED: Creating test nodes to verify React Flow');
     
-    console.log('📍 Layout calculation complete:', {
-      nodeCount: layoutResult.length,
-      nodeTypes: layoutResult.reduce((acc, node) => {
-        acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      sampleNode: layoutResult[0],
-      allNodeIds: layoutResult.map(n => n.id).slice(0, 10)
-    });
-
-    // If no nodes generated, create a test node to verify React Flow works
-    if (layoutResult.length === 0) {
-      console.warn('⚠️ No nodes generated! Creating test node to verify React Flow functionality');
-      return [{
-        id: 'test-node-1',
+    // Always create test nodes regardless of data to verify React Flow works
+    const testNodes = [
+      {
+        id: 'test-skill-1',
         type: 'skill',
         position: { x: 0, y: 0 },
         data: {
-          name: 'Test Skill',
-          category: 'Testing',
-          description: 'This is a test node to verify React Flow functionality'
+          name: 'JavaScript',
+          category: 'Programming',
+          description: 'Core programming language for web development'
         }
-      }];
-    }
+      },
+      {
+        id: 'test-skill-2',
+        type: 'skill',
+        position: { x: 250, y: 0 },
+        data: {
+          name: 'React',
+          category: 'Framework',
+          description: 'Popular JavaScript framework for building UIs'
+        }
+      },
+      {
+        id: 'test-job-1',
+        type: 'job',
+        position: { x: 0, y: 300 },
+        data: {
+          title: 'Frontend Developer',
+          level: 'Mid',
+          salary: 75000,
+          roi_score: 8.5,
+          growth_outlook: 'High',
+          skill_ids: ['test-skill-1', 'test-skill-2']
+        }
+      }
+    ];
 
-    return layoutResult;
-  }, [data, relationships]);
+    console.log('✅ Test nodes created:', testNodes.length);
+    return testNodes;
+  }, []);
 
   // Generate visible edges based on current focus
   const calculatedEdges = useMemo(() => {
