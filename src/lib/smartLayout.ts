@@ -41,18 +41,18 @@ const DEFAULT_OPTIONS: ForceDirectedLayoutOptions = {
   width: 1200,
   height: 800,
   strength: {
-    charge: -300,
-    link: 0.5,
+    charge: -100,        // Reduced from -300 for less repulsion
+    link: 0.2,           // Reduced from 0.5 for gentler connections
     collision: 1,
-    positioning: 0.8,
-    clustering: 0.3,
+    positioning: 0.4,    // Reduced from 0.8 for softer hierarchical pull
+    clustering: 0.2,     // Reduced from 0.3 for looser category grouping
   },
   distance: {
-    link: 150,
-    collision: 80,
+    link: 100,           // Reduced from 150 for shorter connections
+    collision: 120,      // Increased from 80 for more breathing room
   },
-  iterations: 300,
-  alpha: 0.3,
+  iterations: 150,       // Reduced from 300 to prevent over-simulation
+  alpha: 0.5,           // Increased from 0.3 for faster stabilization
 };
 
 export interface LayoutDebugCallback {
@@ -354,43 +354,54 @@ export class ForceDirectedLayout {
 
   private configureSimulation(): void {
     const { width, height, strength, distance } = this.options;
+    
+    // Adaptive force strength based on graph density
+    const density = this.links.length / Math.max(this.nodes.length, 1);
+    const densityMultiplier = density > 3 ? 0.5 : density > 2 ? 0.7 : 1; // Reduce forces for dense graphs
+    
+    console.log('📊 Graph Density Analysis:', {
+      nodes: this.nodes.length,
+      links: this.links.length,
+      density: density.toFixed(2),
+      densityMultiplier: densityMultiplier.toFixed(2)
+    });
 
     this.simulation
-      // Repulsion force to prevent overlapping
+      // Repulsion force to prevent overlapping (adaptive)
       .force(
         'charge',
         d3.forceManyBody()
-          .strength(strength.charge)
-          .distanceMax(200)
+          .strength(strength.charge * densityMultiplier)
+          .distanceMax(150) // Reduced from 200 for tighter control
       )
       
-      // Link force to connect related nodes
+      // Link force to connect related nodes (adaptive)
       .force(
         'link',
         d3.forceLink<LayoutNode, LayoutLink>()
           .id((d) => d.id)
           .distance((d) => distance.link * (1 / Math.sqrt(d.weight)))
-          .strength(strength.link)
+          .strength(strength.link * densityMultiplier)
       )
       
-      // Collision force to prevent overlap
+      // Collision force to prevent overlap (increased for dense graphs)
       .force(
         'collision',
         d3.forceCollide<LayoutNode>()
-          .radius((d) => d.size + distance.collision)
+          .radius((d) => d.size + distance.collision * (1 + density * 0.2)) // More space for dense graphs
           .strength(strength.collision)
       )
       
-      // Hierarchical positioning force
+      // Hierarchical positioning force (gentler for dense graphs)
       .force(
         'positioning',
-        this.createHierarchicalForce()
+        this.createHierarchicalForce(densityMultiplier)
       )
       
-      // Clustering force
+      // Clustering force (adaptive)
       .force(
         'clustering',
-        this.createClusteringForce()
+        this.createClusteringForce(densityMultiplier)
       )
       
       // Center force
@@ -400,16 +411,16 @@ export class ForceDirectedLayout {
       );
   }
 
-  private createHierarchicalForce(): d3.Force<LayoutNode, undefined> {
+  private createHierarchicalForce(densityMultiplier: number = 1): d3.Force<LayoutNode, undefined> {
     const { height, strength } = this.options;
     const levelHeight = height / 6; // 6 hierarchy levels
 
     return d3.forceY<LayoutNode>()
       .y((d) => d.hierarchyLevel * levelHeight + levelHeight / 2)
-      .strength(strength.positioning);
+      .strength(strength.positioning * densityMultiplier * 0.6); // Gentler hierarchical pull
   }
 
-  private createClusteringForce(): d3.Force<LayoutNode, undefined> {
+  private createClusteringForce(densityMultiplier: number = 1): d3.Force<LayoutNode, undefined> {
     const { width, strength } = this.options;
     const categories = [...new Set(this.nodes.map(n => n.category))];
     const clusterWidth = width / Math.max(categories.length, 1);
@@ -419,7 +430,7 @@ export class ForceDirectedLayout {
         const categoryIndex = categories.indexOf(d.category);
         return categoryIndex * clusterWidth + clusterWidth / 2;
       })
-      .strength(strength.clustering);
+      .strength(strength.clustering * densityMultiplier);
   }
 
   private convertToReactFlowNodes(): Node[] {

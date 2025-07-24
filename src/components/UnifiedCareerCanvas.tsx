@@ -266,8 +266,9 @@ const generateRelationshipEdges = (relationships: CareerRelationship[]): Edge[] 
     markerEnd: {
       type: MarkerType.ArrowClosed,
     },
-    style: getEdgeStyleForRelationship(rel.type),
-    label: getEdgeLabelForRelationship(rel.type),
+    style: getEdgeStyleForRelationship(rel.type, rel.weight),
+    label: rel.weight >= 4 ? getEdgeLabelForRelationship(rel.type) : '', // Only show labels for strong relationships
+    animated: rel.weight >= 5, // Animate only the strongest relationships
   }));
 };
 
@@ -281,13 +282,37 @@ const getEdgeTypeForRelationship = (type: string) => {
   }
 };
 
-const getEdgeStyleForRelationship = (type: string) => {
+const getEdgeStyleForRelationship = (type: string, weight: number = 1) => {
+  // Calculate opacity and stroke width based on weight
+  const opacity = Math.max(0.3, Math.min(1, weight / 5)); // Range: 0.3 to 1.0
+  const strokeWidth = Math.max(1, Math.min(4, weight)); // Range: 1 to 4
+  
   switch (type) {
-    case 'prerequisite': return { stroke: '#6b7280', strokeWidth: 2 };
-    case 'learningPath': return { stroke: '#3b82f6', strokeWidth: 2 };
-    case 'careerPath': return { stroke: '#10b981', strokeWidth: 3 };
-    case 'validation': return { stroke: '#f59e0b', strokeWidth: 2 };
-    default: return { stroke: '#6b7280', strokeWidth: 1 };
+    case 'prerequisite': return { 
+      stroke: '#6b7280', 
+      strokeWidth, 
+      opacity: opacity * 0.8 // Slightly more transparent
+    };
+    case 'learningPath': return { 
+      stroke: '#3b82f6', 
+      strokeWidth, 
+      opacity 
+    };
+    case 'careerPath': return { 
+      stroke: '#10b981', 
+      strokeWidth: strokeWidth + 1, // Career paths are more prominent
+      opacity 
+    };
+    case 'validation': return { 
+      stroke: '#f59e0b', 
+      strokeWidth, 
+      opacity 
+    };
+    default: return { 
+      stroke: '#6b7280', 
+      strokeWidth: 1, 
+      opacity: 0.4 
+    };
   }
 };
 

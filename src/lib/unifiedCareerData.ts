@@ -211,28 +211,39 @@ export const generateCareerRelationships = (data: UnifiedCareerData): CareerRela
     careerStepSkills: careerStepSkills.length
   });
 
-  // 1. Use real skill prerequisite relationships from skill_branches table
-  skillBranches.forEach((branch: any) => {
+  // 1. Filter and prioritize skill prerequisite relationships
+  const filteredSkillBranches = skillBranches
+    .filter((branch: any) => branch.recommended) // Only show recommended connections
+    .slice(0, Math.min(skillBranches.length, 50)); // Limit to 50 strongest connections
+
+  filteredSkillBranches.forEach((branch: any) => {
     relationships.push({
       from: branch.from_skill_id,
       to: branch.to_skill_id,
       type: 'prerequisite',
-      weight: branch.recommended ? 3 : 2,
+      weight: 5, // Higher weight for recommended branches
     });
   });
 
-  // 2. Use real course-skill relationships from course_skill_map table
-  courseSkillMaps.forEach((mapping: any) => {
+  // 2. Limit course-skill relationships to prevent overcrowding
+  const limitedCourseSkillMaps = courseSkillMaps
+    .slice(0, Math.min(courseSkillMaps.length, 30)); // Limit to 30 connections
+
+  limitedCourseSkillMaps.forEach((mapping: any) => {
     relationships.push({
       from: mapping.skill_id,
       to: mapping.course_id,
       type: 'learningPath',
-      weight: 4,
+      weight: 3,
     });
   });
 
-  // 3. Use real career step-skill relationships from career_step_skills table
-  careerStepSkills.forEach((stepSkill: any) => {
+  // 3. Filter career step-skill relationships by importance
+  const importantStepSkills = careerStepSkills
+    .filter((stepSkill: any) => (stepSkill.importance_score || 1) >= 3) // Only high importance
+    .slice(0, Math.min(careerStepSkills.length, 40)); // Limit to 40 connections
+
+  importantStepSkills.forEach((stepSkill: any) => {
     relationships.push({
       from: stepSkill.skill_id,
       to: stepSkill.step_id,
