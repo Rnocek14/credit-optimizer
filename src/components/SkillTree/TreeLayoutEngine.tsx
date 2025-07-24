@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
-import { Node, Edge, MarkerType } from '@xyflow/react';
+import { Node, Edge } from '@xyflow/react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
+import { useConnectionEngine } from './ConnectionEngine';
 
 export const useTreeLayoutEngine = () => {
   const {
@@ -15,6 +16,8 @@ export const useTreeLayoutEngine = () => {
     displayControls,
     userProgress
   } = useSkillTree();
+
+  const { generateConnections } = useConnectionEngine();
 
   // Define skill categories with simpler color mapping
   const skillCategories = useMemo(() => ({
@@ -230,120 +233,7 @@ export const useTreeLayoutEngine = () => {
     return nodes;
   }, [displayControls, courses, projects, certifications]);
 
-  // Create hierarchical progression edges
-  const createTreeEdges = useCallback((nodes: Node[]) => {
-    const edges: Edge[] = [];
-
-    // 1. Supporting Content → Skills (bottom to middle)
-    const skillNodes = nodes.filter(n => n.type === 'skill');
-    const courseNodes = nodes.filter(n => n.type === 'course');
-    const projectNodes = nodes.filter(n => n.type === 'project');
-    const certNodes = nodes.filter(n => n.type === 'certification');
-
-    // Connect courses to skills they teach
-    courseNodes.forEach(courseNode => {
-      skillNodes.slice(0, 2).forEach(skillNode => { // Connect to first few skills
-        edges.push({
-          id: `${courseNode.id}-${skillNode.id}`,
-          source: courseNode.id,
-          target: skillNode.id,
-          type: 'smoothstep',
-          style: {
-            stroke: '#8B5CF6',
-            strokeWidth: 2,
-            opacity: 0.5
-          }
-        });
-      });
-    });
-
-    // Connect projects to skills they validate
-    projectNodes.forEach(projectNode => {
-      skillNodes.slice(1, 3).forEach(skillNode => { // Connect to middle skills
-        edges.push({
-          id: `${projectNode.id}-${skillNode.id}`,
-          source: projectNode.id,
-          target: skillNode.id,
-          type: 'smoothstep',
-          style: {
-            stroke: '#F59E0B',
-            strokeWidth: 2,
-            opacity: 0.5
-          }
-        });
-      });
-    });
-
-    // 2. Skills → Career Steps (middle to upper middle)
-    const stepNodes = nodes.filter(n => n.type === 'careerStep');
-    
-    stepSkillMappings.forEach(mapping => {
-      if (mapping.importance_score >= 7) {
-        const skill = skills.find(s => s.id === mapping.skill_id);
-        const categoryColor = skillCategories[skill?.category || 'Programming']?.color || '#3B82F6';
-        
-        edges.push({
-          id: `skill-${mapping.skill_id}-${mapping.step_id}`,
-          source: `skill-${mapping.skill_id}`,
-          target: mapping.step_id,
-          type: 'straight',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { 
-            stroke: categoryColor,
-            strokeWidth: 3,
-            opacity: 0.7
-          }
-        });
-      }
-    });
-
-    // 3. Career Step Prerequisites (within career steps layer)
-    careerSteps.forEach(step => {
-      step.prerequisites?.forEach(prereqId => {
-        const isUnlocked = !step.prerequisites || 
-          step.prerequisites.every(id => userProgress?.find(p => p.stepId === id)?.status === 'completed');
-        
-        edges.push({
-          id: `${prereqId}-${step.id}`,
-          source: prereqId,
-          target: step.id,
-          type: 'straight',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { 
-            stroke: isUnlocked ? '#10B981' : '#6B7280',
-            strokeWidth: 2,
-            opacity: isUnlocked ? 1 : 0.4
-          },
-          animated: isUnlocked
-        });
-      });
-    });
-
-    // 4. Career Steps → Job Goal (upper middle to top)
-    const jobNode = nodes.find(n => n.type === 'job');
-    if (jobNode && displayControls.showJobs) {
-      // Connect all career steps to job goal
-      stepNodes.forEach(stepNode => {
-        edges.push({
-          id: `${stepNode.id}-${jobNode.id}`,
-          source: stepNode.id,
-          target: jobNode.id,
-          type: 'straight',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: {
-            stroke: '#10B981',
-            strokeWidth: 4,
-            opacity: 0.8
-          },
-          animated: true
-        });
-      });
-    }
-
-    return edges;
-  }, [careerSteps, userProgress, stepSkillMappings, displayControls, skills, skillCategories]);
-
-  // Main generation function
+  // Main generation function using new connection engine
   const generateTreeLayout = useCallback(() => {
     const allNodes = [
       ...createJobNode(),
@@ -352,7 +242,7 @@ export const useTreeLayoutEngine = () => {
       ...createSupportingNodes(),
     ];
 
-    const allEdges = createTreeEdges(allNodes);
+    const allEdges = generateConnections(allNodes, []);
 
     return { nodes: allNodes, edges: allEdges };
   }, [
@@ -360,7 +250,7 @@ export const useTreeLayoutEngine = () => {
     createSkillNodes,
     createCareerStepNodes,
     createSupportingNodes,
-    createTreeEdges
+    generateConnections
   ]);
 
   return {
