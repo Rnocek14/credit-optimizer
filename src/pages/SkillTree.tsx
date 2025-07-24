@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SkillTreeFilters } from '@/components/SkillTreeFilters';
-import { InteractiveSkillTree } from '@/components/InteractiveSkillTree';
+import { SimpleSkillTree } from '@/components/SimpleSkillTree';
 import { SkillDetailSidePanel } from '@/components/SkillDetailSidePanel';
 import { SkillTreePerformanceTest } from '@/components/SkillTreePerformanceTest';
 import { ExportTreeButton } from '@/components/ExportTreeButton';
@@ -552,24 +552,16 @@ const SkillTree = () => {
 
       {/* Main Content with Skill Tree and ROI Panel */}
       <div className="flex gap-6">
-        {/* Interactive Skill Tree */}
+        {/* Simple Skill Tree */}
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
-           <InteractiveSkillTree
-             skills={skills}
+           <SimpleSkillTree
+             skills={filteredSkills}
              userProgress={userProgress}
              skillEdges={skillEdges}
-             filteredSkills={filteredSkills}
-             recommendedSkills={recommendedSkills}
-             goalSkills={goalSkills}
-             checkpointSkills={checkpointSkills}
-             capstoneSkillIds={capstoneSkillIds}
-             availableCategories={categories}
+             careerSteps={selectedCareerSteps}
+             careerPathName={selectedCareerPathData?.title || "Your Career Path"}
              onSkillClick={handleSkillClick}
-        careerPathName={selectedCareerPathData?.title}
-        showPivotPaths={showPivotPaths}
-        roadmapStepSkills={roadmapStepSkills}
-        careerSteps={selectedCareerSteps}
-      />
+           />
         </div>
 
         {/* ROI Panel */}
