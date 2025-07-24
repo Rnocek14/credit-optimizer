@@ -174,118 +174,73 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [showFocusMode, setShowFocusMode] = useState(false);
   const { fitView } = useReactFlow();
 
-  // Create nodes from real data OR fallback to test nodes
+  // PHASE 1 DEBUGGING: Force simple test nodes to verify React Flow rendering
   const calculatedNodes = useMemo(() => {
-    console.log('🎯 Calculating nodes from data:', {
-      hasData: !!data,
-      skills: data?.skills?.length || 0,
-      jobs: data?.jobs?.length || 0,
-      courses: data?.courses?.length || 0,
-      projects: data?.projects?.length || 0,
-      certifications: data?.certifications?.length || 0
-    });
+    console.log('🚀 PHASE 1 DEBUG: Creating minimal test nodes to verify React Flow');
     
-    // If we have real data, use it
-    if (data && (data.skills?.length > 0 || data.jobs?.length > 0 || data.courses?.length > 0)) {
-      console.log('✅ Using real data for layout');
-      return calculateHierarchicalLayout(data, relationships);
-    }
-    
-    // Otherwise create comprehensive test nodes to verify all components work
-    console.log('🎯 Using comprehensive test nodes to verify all components');
-    const testNodes = [
+    const debugNodes = [
       {
-        id: 'test-skill-1',
+        id: 'debug-skill-1',
         type: 'skill',
         position: { x: 100, y: 100 },
         data: {
           name: 'JavaScript',
           category: 'Programming',
-          description: 'Core programming language for web development'
+          description: 'JavaScript programming language'
         }
       },
       {
-        id: 'test-skill-2',
+        id: 'debug-skill-2',
         type: 'skill',
-        position: { x: 400, y: 100 },
+        position: { x: 350, y: 100 },
         data: {
           name: 'React',
           category: 'Framework',
-          description: 'Popular JavaScript framework for building UIs'
+          description: 'React framework for building UIs'
         }
       },
       {
-        id: 'test-job-1',
+        id: 'debug-job-1', 
         type: 'job',
-        position: { x: 700, y: 100 },
+        position: { x: 100, y: 300 },
         data: {
           title: 'Frontend Developer',
-          description: 'Build user interfaces and web applications',
+          description: 'Build user interfaces',
           level: 'Mid',
           industry: 'Technology',
           averageSalary: 75000,
           roiScore: 8,
           growthOutlook: 'High',
-          requiredSkillIds: ['test-skill-1', 'test-skill-2'],
+          requiredSkillIds: ['debug-skill-1'],
           isGoal: false,
           isCurrent: false
-        }
-      },
-      {
-        id: 'test-course-1',
-        type: 'course',
-        position: { x: 100, y: 400 },
-        data: {
-          title: 'React Fundamentals',
-          description: 'Learn the basics of React development',
-          platform: 'Udemy',
-          cost: '$49',
-          difficulty: 'Beginner',
-          skillTags: ['React', 'JavaScript'],
-          isRecommended: true,
-          userProgress: 'not_started'
-        }
-      },
-      {
-        id: 'test-project-1',
-        type: 'project',
-        position: { x: 400, y: 400 },
-        data: {
-          title: 'Todo App',
-          description: 'Build a React todo application with state management',
-          difficulty: 'Beginner',
-          estimatedTime: '1-2 weeks',
-          skillsDemonstrated: ['React', 'JavaScript', 'CSS'],
-          projectType: 'practice',
-          isCompleted: false,
-          isInProgress: false
-        }
-      },
-      {
-        id: 'test-cert-1',
-        type: 'certification',
-        position: { x: 700, y: 400 },
-        data: {
-          title: 'React Developer Certification',
-          issuer: 'Meta',
-          description: 'Official React certification from Meta',
-          cost: '$150',
-          validityYears: 2,
-          skillsValidated: ['React', 'JavaScript', 'JSX'],
-          industryRecognition: 'high',
-          isEarned: false
         }
       }
     ];
 
-    console.log('✅ Test nodes created:', testNodes.length);
-    return testNodes;
-  }, [data, relationships]);
+    console.log('✅ DEBUG: Simple test nodes created:', {
+      count: debugNodes.length,
+      positions: debugNodes.map(n => ({ id: n.id, position: n.position }))
+    });
+    
+    return debugNodes;
+  }, []);
 
-  // Generate visible edges based on current focus
+  // Generate simple debug edges for test nodes
   const calculatedEdges = useMemo(() => {
-    return generateVisibleEdges(relationships, focusedNodeId);
-  }, [relationships, focusedNodeId]);
+    console.log('🔗 Creating simple debug edge between test nodes');
+    return [
+      {
+        id: 'debug-edge-1',
+        source: 'debug-skill-1',
+        target: 'debug-job-1',
+        type: 'smoothstep',
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+        label: 'requires'
+      }
+    ];
+  }, []);
 
   // Update nodes when data changes
   useEffect(() => {
@@ -311,7 +266,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     setEdges(calculatedEdges);
   }, [calculatedEdges, setEdges]);
 
-  // Debug React Flow state
+  // Debug React Flow state and rendering issues
   useEffect(() => {
     console.log('📊 Current React Flow state:', {
       nodesInState: nodes.length,
@@ -320,6 +275,30 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       nodeIds: nodes.map(n => n.id).slice(0, 10),
       focusedNodeId
     });
+
+    // PHASE 1 DEBUGGING: Check if nodes have proper structure
+    nodes.forEach((node, index) => {
+      console.log(`🔍 Node ${index}:`, {
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        hasData: !!node.data,
+        dataKeys: node.data ? Object.keys(node.data) : []
+      });
+    });
+
+    // Check if nodeTypes are properly registered
+    console.log('🔧 Registered nodeTypes:', Object.keys(nodeTypes));
+    
+    // Check if there are any React Flow errors
+    const reactFlowContainer = document.querySelector('.react-flow');
+    if (reactFlowContainer) {
+      console.log('✅ React Flow container found');
+      const nodeElements = reactFlowContainer.querySelectorAll('.react-flow__node');
+      console.log(`📊 Rendered nodes in DOM: ${nodeElements.length}`);
+    } else {
+      console.log('❌ React Flow container not found');
+    }
   }, [nodes, edges, focusedNodeId]);
 
   const onConnect = useCallback(
