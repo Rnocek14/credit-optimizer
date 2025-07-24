@@ -1712,19 +1712,7 @@ export type Database = {
       }
     }
     Views: {
-      career_steps_with_levels: {
-        Row: {
-          career_path_id: string | null
-          estimated_time: string | null
-          id: string | null
-          is_terminal: boolean | null
-          level: number | null
-          prerequisites: string[] | null
-          step_order: number | null
-          title: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       award_xp: {
