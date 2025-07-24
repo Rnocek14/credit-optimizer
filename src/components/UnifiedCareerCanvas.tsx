@@ -343,11 +343,23 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         setIsCalculatingLayout(true);
         onLayoutCalculating?.(true);
         
+        console.log('🎯 Starting layout calculation:', {
+          mode: layoutMode,
+          nodeCount: Object.values(data).flat().length,
+          relationshipCount: relationships.length,
+          hasForceOptions: !!forceOptions
+        });
+        
         try {
+          const debugCallback = (debugData: any) => {
+            console.log('📊 Layout Debug:', debugData);
+          };
+
           const forceNodes = await calculateForceDirectedLayout(
             data,
             relationships,
-            forceOptions
+            forceOptions,
+            debugCallback
           );
           
           if (layoutMode === 'hybrid') {

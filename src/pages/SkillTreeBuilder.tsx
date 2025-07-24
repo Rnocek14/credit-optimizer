@@ -1,92 +1,79 @@
-import React, { useState, useCallback } from 'react';
-import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { LayoutControls, LayoutMode } from '@/components/LayoutControls';
+import { useState, useCallback } from 'react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { useUnifiedCareerData } from '@/hooks/useUnifiedCareerData';
-import { LoadingSkeleton } from '@/components/LoadingSkeleton';
-import { Card } from '@/components/ui/card';
+import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
+import { LayoutControls } from '@/components/LayoutControls';
+import { LayoutDebugPanel, LayoutDebugData } from '@/components/LayoutDebugPanel';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import { ReactFlowProvider } from '@xyflow/react';
+import { Loader2 } from 'lucide-react';
 
 const SkillTreeBuilder = () => {
-  const [selectedCareerPath, setSelectedCareerPath] = useState<string | undefined>();
+  const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('hierarchy');
+  const [layoutMode, setLayoutMode] = useState<'hierarchy' | 'force' | 'hybrid'>('hierarchy');
   const [forceStrength, setForceStrength] = useState(0.5);
-  const [animationSpeed, setAnimationSpeed] = useState(1.0);
-  const [isCalculatingLayout, setIsCalculatingLayout] = useState(false);
+  const [animationSpeed, setAnimationSpeed] = useState(1);
   const [showControls, setShowControls] = useState(false);
-  
-  const { data, relationships, loading, error, refetch } = useUnifiedCareerData(selectedCareerPath);
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [debugData, setDebugData] = useState<LayoutDebugData>({
+    status: 'idle',
+    nodeCount: 0,
+    edgeCount: 0,
+    simulationProgress: 0,
+    lastCalculationTime: 0,
+    errors: [],
+    warnings: [],
+    relationships: { strong: 0, medium: 0, weak: 0 },
+    forces: { charge: -300, link: 0.5, collision: 1, positioning: 0.8, clustering: 0.3 },
+    layoutMode: 'hierarchy'
+  });
 
-  const handleNodeClick = (nodeId: string, nodeType: string) => {
+  const { data, relationships, loading, error } = useUnifiedCareerData(selectedCareerPath);
+
+  const handleNodeClick = useCallback((nodeId: string, nodeType: string) => {
     setSelectedNodeId(nodeId);
     setSelectedNodeType(nodeType);
-    
-    // Find the node data
-    let nodeData = null;
-    switch (nodeType) {
-      case 'skill':
-        nodeData = data?.skills.find(s => s.id === nodeId);
-        break;
-      case 'job':
-        nodeData = data?.jobs.find(j => j.id === nodeId);
-        break;
-      case 'course':
-        nodeData = data?.courses.find(c => c.id === nodeId);
-        break;
-      case 'project':
-        nodeData = data?.projects.find(p => p.id === nodeId);
-        break;
-      case 'certification':
-        nodeData = data?.certifications.find(c => c.id === nodeId);
-        break;
-      case 'careerStep':
-        nodeData = data?.careerSteps.find(s => s.id === nodeId);
-        break;
-    }
-    
-    if (nodeData) {
-      const nodeName = nodeData.title || nodeData.name || 'Node';
-      toast.success(`Selected ${nodeType}: ${nodeName}`);
-    }
-  };
-
-  const handleCareerPathChange = (pathId: string) => {
-    setSelectedCareerPath(pathId === 'all' ? undefined : pathId);
-  };
-
-  const handleLayoutModeChange = useCallback((mode: LayoutMode) => {
-    setLayoutMode(mode);
-    toast.info(`Switched to ${mode} layout mode`);
+    console.log('🎯 Node clicked:', { nodeId, nodeType });
   }, []);
 
-  const handleRecalculateLayout = useCallback(() => {
-    // Trigger recalculation by changing a key prop
-    setIsCalculatingLayout(true);
-    toast.info('Recalculating layout...');
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    // This will be handled by the ReactFlow fitView function
-    toast.success('View reset');
+  const handleCareerPathChange = useCallback((pathId: string) => {
+    setSelectedCareerPath(pathId === 'all' ? null : pathId);
   }, []);
 
   if (loading) {
-    return <LoadingSkeleton />;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card className="p-6">
+          <CardContent className="flex items-center gap-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <div>
+              <p className="font-medium">Loading Career Data</p>
+              <p className="text-sm text-muted-foreground">
+                Fetching skills, courses, projects, and career paths...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center">
-          <p className="text-destructive mb-4">Error loading career data: {error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Retry
-          </Button>
+        <Card className="p-6">
+          <CardContent className="text-center">
+            <p className="text-destructive mb-4">Error loading career data</p>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
@@ -95,8 +82,10 @@ const SkillTreeBuilder = () => {
   if (!data) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center">
-          <p className="text-muted-foreground">No career data available</p>
+        <Card className="p-6">
+          <CardContent className="text-center">
+            <p className="text-muted-foreground">No career data available</p>
+          </CardContent>
         </Card>
       </div>
     );
@@ -135,6 +124,13 @@ const SkillTreeBuilder = () => {
             >
               Layout Controls
             </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+            >
+              Debug Panel
+            </Button>
           </div>
         </div>
 
@@ -170,54 +166,101 @@ const SkillTreeBuilder = () => {
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 relative">
-        <ReactFlowProvider>
-          <UnifiedCareerCanvas
-            data={data}
-            relationships={relationships}
-            selectedCareerPath={selectedCareerPath}
-            onNodeClick={handleNodeClick}
-            showMinimap={true}
-            layoutMode={layoutMode}
-            forceOptions={{
-              strength: {
-                charge: -300 * forceStrength,
-                link: 0.5 * forceStrength,
-                collision: 1,
-                positioning: 0.8,
-                clustering: 0.3 * forceStrength,
-              },
-              iterations: Math.floor(300 * animationSpeed),
+      <div className="flex-1 relative flex">
+        <div className="flex-1">
+          <ReactFlowProvider>
+            <UnifiedCareerCanvas
+              data={data}
+              relationships={relationships}
+              selectedCareerPath={selectedCareerPath}
+              onNodeClick={handleNodeClick}
+              showMinimap={true}
+              layoutMode={layoutMode}
+              forceOptions={{
+                strength: {
+                  charge: -300,
+                  link: forceStrength,
+                  collision: 1,
+                  positioning: 0.8,
+                  clustering: 0.3,
+                },
+                distance: {
+                  link: 150,
+                  collision: 80,
+                },
+                iterations: Math.round(300 * animationSpeed),
+                alpha: 0.3,
+              }}
+              onLayoutCalculating={(calculating) => {
+                setIsCalculating(calculating);
+                setDebugData(prev => ({
+                  ...prev,
+                  status: calculating ? 'calculating' : 'idle',
+                  nodeCount: Object.values(data).flat().length,
+                  edgeCount: relationships.length,
+                  layoutMode: layoutMode,
+                  forces: {
+                    charge: -300,
+                    link: forceStrength,
+                    collision: 1,
+                    positioning: 0.8,
+                    clustering: 0.3,
+                  }
+                }));
+              }}
+            />
+            
+            {showControls && (
+              <div className="absolute top-4 right-4 z-10">
+                <LayoutControls
+                  layoutMode={layoutMode}
+                  onLayoutModeChange={setLayoutMode}
+                  forceStrength={forceStrength}
+                  onForceStrengthChange={setForceStrength}
+                  animationSpeed={animationSpeed}
+                  onAnimationSpeedChange={setAnimationSpeed}
+                  isCalculating={isCalculating}
+                  onRecalculateLayout={() => {
+                    // Force recalculation by changing a key prop
+                    setSelectedCareerPath(prev => prev);
+                  }}
+                  onResetView={() => {
+                    // Reset view will be handled by React Flow
+                  }}
+                  nodeCount={Object.values(data).flat().length}
+                  edgeCount={relationships.length}
+                />
+              </div>
+            )}
+          </ReactFlowProvider>
+        </div>
+        
+        {/* Debug Panel */}
+        {showDebugPanel && (
+          <LayoutDebugPanel
+            debugData={debugData}
+            onClearLogs={() => {
+              setDebugData(prev => ({
+                ...prev,
+                errors: [],
+                warnings: []
+              }));
             }}
-            onLayoutCalculating={setIsCalculatingLayout}
+            onRecalculate={() => {
+              setSelectedCareerPath(prev => prev);
+            }}
+            onExportDebugData={() => {
+              const debugJson = JSON.stringify(debugData, null, 2);
+              const blob = new Blob([debugJson], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `layout-debug-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
           />
-          
-          {/* Layout Controls Panel */}
-          {showControls && (
-            <div className="absolute top-4 right-4 z-10">
-              <LayoutControls
-                layoutMode={layoutMode}
-                onLayoutModeChange={handleLayoutModeChange}
-                onRecalculateLayout={handleRecalculateLayout}
-                onResetView={handleResetView}
-                forceStrength={forceStrength}
-                onForceStrengthChange={setForceStrength}
-                animationSpeed={animationSpeed}
-                onAnimationSpeedChange={setAnimationSpeed}
-                isCalculating={isCalculatingLayout}
-                nodeCount={data ? 
-                  data.skills.length + 
-                  data.courses.length + 
-                  data.projects.length + 
-                  data.certifications.length + 
-                  data.careerSteps.length + 
-                  data.jobs.length : 0
-                }
-                edgeCount={relationships.length}
-              />
-            </div>
-          )}
-        </ReactFlowProvider>
+        )}
       </div>
     </div>
   );

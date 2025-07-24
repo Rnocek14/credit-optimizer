@@ -55,48 +55,195 @@ const DEFAULT_OPTIONS: ForceDirectedLayoutOptions = {
   alpha: 0.3,
 };
 
+export interface LayoutDebugCallback {
+  (data: {
+    status: 'start' | 'progress' | 'complete' | 'error';
+    progress?: number;
+    nodes?: number;
+    links?: number;
+    error?: string;
+    warning?: string;
+    simulationStats?: any;
+  }): void;
+}
+
 export class ForceDirectedLayout {
   private simulation: d3.Simulation<LayoutNode, LayoutLink>;
   private options: ForceDirectedLayoutOptions;
   private nodes: LayoutNode[] = [];
   private links: LayoutLink[] = [];
+  private debugCallback?: LayoutDebugCallback;
+  private startTime: number = 0;
 
-  constructor(options: Partial<ForceDirectedLayoutOptions> = {}) {
+  constructor(options: Partial<ForceDirectedLayoutOptions> = {}, debugCallback?: LayoutDebugCallback) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.simulation = d3.forceSimulation<LayoutNode, LayoutLink>();
+    this.debugCallback = debugCallback;
   }
 
   calculateLayout(
     data: UnifiedCareerData,
     relationships: CareerRelationship[]
   ): Promise<Node[]> {
-    return new Promise((resolve) => {
-      // Transform data into layout nodes
-      this.nodes = this.createLayoutNodes(data);
-      this.links = this.createLayoutLinks(relationships, this.nodes);
+    return new Promise((resolve, reject) => {
+      this.startTime = performance.now();
+      
+      try {
+        this.debugCallback?.({
+          status: 'start',
+          nodes: 0,
+          links: 0
+        });
 
-      // Configure simulation forces
-      this.configureSimulation();
+        // Transform data into layout nodes
+        this.nodes = this.createLayoutNodes(data);
+        this.links = this.createLayoutLinks(relationships, this.nodes);
 
-      // Start simulation
-      this.simulation
-        .nodes(this.nodes)
-        .force('link', d3.forceLink<LayoutNode, LayoutLink>(this.links))
-        .alpha(this.options.alpha)
-        .restart();
+        console.log('🚀 Force Layout Debug:', {
+          totalNodes: this.nodes.length,
+          totalLinks: this.links.length,
+          nodeTypes: this.nodes.reduce((acc, node) => {
+            acc[node.type] = (acc[node.type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          linkTypes: this.links.reduce((acc, link) => {
+            acc[link.type] = (acc[link.type] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>)
+        });
 
-      // Wait for simulation to stabilize
-      this.simulation.on('end', () => {
-        const reactFlowNodes = this.convertToReactFlowNodes();
-        resolve(reactFlowNodes);
-      });
+        this.debugCallback?.({
+          status: 'progress',
+          progress: 10,
+          nodes: this.nodes.length,
+          links: this.links.length
+        });
 
-      // Force early completion after max iterations
-      setTimeout(() => {
-        this.simulation.stop();
-        const reactFlowNodes = this.convertToReactFlowNodes();
-        resolve(reactFlowNodes);
-      }, this.options.iterations * 10);
+        // Validate data
+        if (this.nodes.length === 0) {
+          const error = 'No nodes available for layout calculation';
+          this.debugCallback?.({ status: 'error', error });
+          console.error('❌ Layout Error:', error);
+          reject(new Error(error));
+          return;
+        }
+
+        if (this.links.length === 0) {
+          const warning = 'No relationships found - layout will use position forces only';
+          this.debugCallback?.({ status: 'progress', warning, progress: 20 });
+          console.warn('⚠️ Layout Warning:', warning);
+        }
+
+        // Configure simulation forces
+        this.configureSimulation();
+
+        this.debugCallback?.({
+          status: 'progress',
+          progress: 30
+        });
+
+        // Track simulation progress
+        let iterationCount = 0;
+        const maxIterations = this.options.iterations;
+
+        this.simulation.on('tick', () => {
+          iterationCount++;
+          const progress = 30 + (iterationCount / maxIterations) * 60;
+          
+          if (iterationCount % 50 === 0) {
+            console.log(`🔄 Simulation Progress: ${Math.round(progress)}% (${iterationCount}/${maxIterations})`);
+            this.debugCallback?.({
+              status: 'progress',
+              progress,
+              simulationStats: {
+                iteration: iterationCount,
+                alpha: this.simulation.alpha(),
+                nodesWithPositions: this.nodes.filter(n => (n as any).x !== undefined && (n as any).y !== undefined).length
+              }
+            });
+          }
+        });
+
+        // Start simulation
+        this.simulation
+          .nodes(this.nodes)
+          .force('link', d3.forceLink<LayoutNode, LayoutLink>(this.links)
+            .id(d => d.id)
+            .strength(this.options.strength.link)
+            .distance(this.options.distance.link)
+          )
+          .alpha(this.options.alpha)
+          .restart();
+
+        // Wait for simulation to stabilize
+        this.simulation.on('end', () => {
+          const calculationTime = performance.now() - this.startTime;
+          console.log('✅ Force Layout Complete:', {
+            duration: `${calculationTime.toFixed(2)}ms`,
+            finalAlpha: this.simulation.alpha(),
+            iterations: iterationCount
+          });
+
+          const reactFlowNodes = this.convertToReactFlowNodes();
+          
+          this.debugCallback?.({
+            status: 'complete',
+            progress: 100,
+            simulationStats: {
+              duration: calculationTime,
+              finalAlpha: this.simulation.alpha(),
+              totalIterations: iterationCount,
+              nodesWithPositions: reactFlowNodes.length
+            }
+          });
+
+          resolve(reactFlowNodes);
+        });
+
+        // Force early completion after timeout
+        setTimeout(() => {
+          const calculationTime = performance.now() - this.startTime;
+          console.warn('⏰ Force Layout Timeout:', {
+            duration: `${calculationTime.toFixed(2)}ms`,
+            forcedStop: true,
+            iterations: iterationCount
+          });
+
+          this.simulation.stop();
+          const reactFlowNodes = this.convertToReactFlowNodes();
+          
+          this.debugCallback?.({
+            status: 'complete',
+            progress: 100,
+            warning: 'Layout calculation timed out',
+            simulationStats: {
+              duration: calculationTime,
+              timeout: true,
+              iterations: iterationCount
+            }
+          });
+
+          resolve(reactFlowNodes);
+        }, this.options.iterations * 10);
+
+      } catch (error) {
+        const calculationTime = performance.now() - this.startTime;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown layout error';
+        
+        console.error('💥 Force Layout Error:', {
+          error: errorMessage,
+          duration: `${calculationTime.toFixed(2)}ms`,
+          nodes: this.nodes.length,
+          links: this.links.length
+        });
+
+        this.debugCallback?.({
+          status: 'error',
+          error: errorMessage
+        });
+
+        reject(error);
+      }
     });
   }
 
@@ -483,8 +630,9 @@ export class ForceDirectedLayout {
 export const calculateForceDirectedLayout = async (
   data: UnifiedCareerData,
   relationships: CareerRelationship[],
-  options?: Partial<ForceDirectedLayoutOptions>
+  options?: Partial<ForceDirectedLayoutOptions>,
+  debugCallback?: LayoutDebugCallback
 ): Promise<Node[]> => {
-  const layout = new ForceDirectedLayout(options);
+  const layout = new ForceDirectedLayout(options, debugCallback);
   return layout.calculateLayout(data, relationships);
 };
