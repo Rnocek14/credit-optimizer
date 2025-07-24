@@ -78,17 +78,35 @@ export const SkillTreeNew: React.FC = () => {
 
   const loadCareerPaths = async () => {
     try {
+      // Only load career paths that have steps
       const { data, error } = await supabase
         .from('career_paths')
-        .select('id, title, summary')
+        .select(`
+          id, 
+          title, 
+          summary,
+          career_steps!inner(id)
+        `)
         .order('title');
 
       if (error) throw error;
-      setCareerPaths((data || []).map(item => ({
-        id: item.id,
-        title: item.title,
-        description: item.summary || ''
-      })));
+      
+      // Filter to only paths with steps and remove duplicates
+      const pathsWithSteps = (data || [])
+        .reduce((acc, item) => {
+          if (!acc.find(p => p.id === item.id)) {
+            acc.push({
+              id: item.id,
+              title: item.title,
+              description: item.summary || ''
+            });
+          }
+          return acc;
+        }, [] as CareerPath[]);
+      
+      setCareerPaths(pathsWithSteps);
+      
+      console.log('Loaded career paths with steps:', pathsWithSteps.length);
     } catch (error) {
       console.error('Error loading career paths:', error);
       toast.error('Failed to load career paths');
@@ -129,6 +147,11 @@ export const SkillTreeNew: React.FC = () => {
         skills: skillsData?.length,
         mappings: mappingsData?.length
       });
+
+      // Show message if no steps found
+      if (!stepsData || stepsData.length === 0) {
+        toast.error('No career steps found for this path. Try generating a new path or select a different one.');
+      }
 
     } catch (error) {
       console.error('Error loading career data:', error);
@@ -360,6 +383,27 @@ export const SkillTreeNew: React.FC = () => {
         {loading && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        )}
+
+        {!selectedCareerPath && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-2">Select a Career Path</h3>
+              <p className="text-muted-foreground">Choose a career path from the dropdown above to view its skill tree.</p>
+            </div>
+          </div>
+        )}
+
+        {selectedCareerPath && careerSteps.length === 0 && !loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-lg font-medium mb-2">No Steps Found</h3>
+              <p className="text-muted-foreground mb-4">This career path doesn't have any steps yet.</p>
+              <Button onClick={generateNewCareerPath}>
+                Generate Steps for This Path
+              </Button>
+            </div>
           </div>
         )}
 
