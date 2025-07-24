@@ -637,6 +637,73 @@ export class ForceDirectedLayout {
   }
 }
 
+// Stable hierarchical layout implementation
+export const calculateHierarchicalLayout = (
+  data: UnifiedCareerData,
+  relationships: CareerRelationship[]
+): Node[] => {
+  const nodes: Node[] = [];
+  const nodeSpacing = { x: 280, y: 200 };
+  
+  // Define hierarchy levels with better spacing
+  const hierarchyLevels = [
+    { types: ['skill'], y: 100, label: 'Skills', color: '#3B82F6' },
+    { types: ['course'], y: 350, label: 'Courses', color: '#10B981' },
+    { types: ['project'], y: 600, label: 'Projects', color: '#F59E0B' },
+    { types: ['certification'], y: 850, label: 'Certifications', color: '#8B5CF6' },
+    { types: ['job'], y: 1100, label: 'Career Paths', color: '#EF4444' },
+    { types: ['careerStep'], y: 1350, label: 'Career Steps', color: '#6B7280' }
+  ];
+
+  hierarchyLevels.forEach((level, levelIndex) => {
+    level.types.forEach(type => {
+      const items = getItemsByType(data, type);
+      if (items.length === 0) return;
+      
+      const itemsPerRow = Math.min(Math.ceil(Math.sqrt(items.length)), 6); // Max 6 per row
+      
+      items.forEach((item, index) => {
+        const row = Math.floor(index / itemsPerRow);
+        const col = index % itemsPerRow;
+        
+        // Center items horizontally with proper spacing
+        const totalWidth = (itemsPerRow - 1) * nodeSpacing.x;
+        const startX = -totalWidth / 2;
+        
+        nodes.push({
+          id: `${type}-${item.id}`,
+          type,
+          position: {
+            x: startX + col * nodeSpacing.x,
+            y: level.y + row * 120 // Better vertical spacing between rows
+          },
+          data: {
+            ...item,
+            category: type,
+            hierarchyLevel: levelIndex,
+            levelColor: level.color
+          }
+        });
+      });
+    });
+  });
+
+  return nodes;
+};
+
+// Helper function to get items by type
+const getItemsByType = (data: UnifiedCareerData, type: string): any[] => {
+  switch (type) {
+    case 'skill': return data.skills || [];
+    case 'course': return data.courses || [];
+    case 'project': return data.projects || [];
+    case 'certification': return data.certifications || [];
+    case 'job': return data.jobs || [];
+    case 'careerStep': return data.careerSteps || [];
+    default: return [];
+  }
+};
+
 // Helper function for calculating smart positioning
 export const calculateForceDirectedLayout = async (
   data: UnifiedCareerData,
@@ -644,6 +711,7 @@ export const calculateForceDirectedLayout = async (
   options?: Partial<ForceDirectedLayoutOptions>,
   debugCallback?: LayoutDebugCallback
 ): Promise<Node[]> => {
-  const layout = new ForceDirectedLayout(options, debugCallback);
-  return layout.calculateLayout(data, relationships);
+  // Return stable hierarchical layout instead of chaotic force-directed
+  console.log('🎯 Using stable hierarchical layout instead of force-directed');
+  return calculateHierarchicalLayout(data, relationships);
 };
