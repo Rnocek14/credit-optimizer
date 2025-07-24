@@ -174,36 +174,45 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [showFocusMode, setShowFocusMode] = useState(false);
   const { fitView } = useReactFlow();
 
-  // PHASE 2: Use real data with simplified layout
+  // PHASE 2: Use real data with simplified layout  
   const calculatedNodes = useMemo(() => {
-    console.log('🚀 PHASE 2: Creating nodes from real data using simplified layout');
+    console.log('🎯 CANVAS: Starting node calculation...');
+    console.log('🔍 CANVAS: Input data check:', {
+      hasData: !!data,
+      dataKeys: data ? Object.keys(data) : [],
+      skillsCount: data?.skills?.length || 0,
+      jobsCount: data?.jobs?.length || 0,
+      coursesCount: data?.courses?.length || 0,
+      relationshipsCount: relationships?.length || 0
+    });
+    
+    if (!data) {
+      console.warn('⚠️ CANVAS: No data provided to node calculation');
+      return [];
+    }
     
     if (onLayoutCalculating) {
       onLayoutCalculating(true);
     }
 
     try {
+      console.log('🔧 CANVAS: Calling calculateHierarchicalLayout...');
       // Use the simplified hierarchical layout with real data
       const nodes = calculateHierarchicalLayout(data, relationships);
       
-      console.log('✅ Real data nodes created:', {
-        count: nodes.length,
+      console.log('✅ CANVAS: Layout calculation complete:', {
+        nodesGenerated: nodes.length,
         nodesByType: nodes.reduce((acc, node) => {
           acc[node.type] = (acc[node.type] || 0) + 1;
           return acc;
         }, {} as Record<string, number>),
-        sampleNodes: nodes.slice(0, 3).map(n => ({ 
-          id: n.id, 
-          type: n.type, 
-          position: n.position,
-          hasData: !!n.data,
-          dataKeys: Object.keys(n.data || {})
-        }))
+        sampleNodeIds: nodes.slice(0, 5).map(n => n.id),
+        samplePositions: nodes.slice(0, 3).map(n => ({ id: n.id, position: n.position }))
       });
 
       return nodes;
     } catch (error) {
-      console.error('❌ Layout calculation error:', error);
+      console.error('❌ CANVAS: Layout calculation error:', error);
       return [];
     } finally {
       if (onLayoutCalculating) {

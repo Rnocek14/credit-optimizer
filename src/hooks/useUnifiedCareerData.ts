@@ -13,32 +13,36 @@ export const useUnifiedCareerData = (careerPathId?: string) => {
         setLoading(true);
         setError(null);
         
-        console.log('🔄 Loading unified career data...');
+        console.log('🚀 HOOK: Starting unified career data fetch...');
+        console.log('🔍 HOOK: CareerPathId:', careerPathId);
+        
         const careerData = await fetchUnifiedCareerData(careerPathId);
-        
-        console.log('📊 Generating relationships...');
-        const generatedRelationships = generateCareerRelationships(careerData);
-        
-        console.log('✅ Unified career data loaded:', {
-          skills: careerData.skills.length,
-          jobs: careerData.jobs.length,
-          courses: careerData.courses.length,
-          projects: careerData.projects.length,
-          certifications: careerData.certifications.length,
-          careerSteps: careerData.careerSteps.length,
-          relationships: generatedRelationships.length,
+        console.log('📦 HOOK: Raw data received:', {
+          skills: careerData?.skills?.length || 0,
+          jobs: careerData?.jobs?.length || 0,
+          courses: careerData?.courses?.length || 0,
+          projects: careerData?.projects?.length || 0,
+          certifications: careerData?.certifications?.length || 0,
+          careerSteps: careerData?.careerSteps?.length || 0,
         });
+        
+        const generatedRelationships = generateCareerRelationships(careerData);
+        console.log('🔗 HOOK: Relationships generated:', generatedRelationships.length);
         
         setData(careerData);
         setRelationships(generatedRelationships);
+        
+        console.log('✅ HOOK: Data and relationships set in state');
       } catch (err) {
-        console.error('❌ Error loading unified career data:', err);
+        console.error('❌ HOOK: Error loading unified career data:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
+        console.log('🏁 HOOK: Loading complete');
       }
     };
 
+    console.log('🎬 HOOK: useEffect triggered');
     loadData();
   }, [careerPathId]);
 
