@@ -498,10 +498,10 @@ export class ForceDirectedLayout {
           description: data.description,
           level: data.level,
           industry: data.industry,
-          averageSalary: data.average_salary,
-          roiScore: data.roi_score,
-          growthOutlook: data.growth_outlook,
-          requiredSkillIds: data.required_skill_ids,
+          averageSalary: data.averageSalary,
+          roiScore: data.roiScore,
+          growthOutlook: data.growthOutlook,
+          requiredSkillIds: data.requiredSkillIds,
         };
       default:
         return data;
@@ -512,12 +512,12 @@ export class ForceDirectedLayout {
   private calculateSkillImportance(skill: any, data: UnifiedCareerData): number {
     // Count how many jobs require this skill
     const jobsCount = data.jobs.filter(job => 
-      job.required_skill_ids.includes(skill.id)
+      job.requiredSkillIds.includes(skill.id)
     ).length;
     
     // Count how many courses teach this skill
     const coursesCount = data.courses.filter(course =>
-      course.skill_tags.some(tag => 
+      course.skillTags.some(tag => 
         tag.toLowerCase().includes(skill.name.toLowerCase())
       )
     ).length;
@@ -526,7 +526,7 @@ export class ForceDirectedLayout {
   }
 
   private calculateCourseImportance(course: any, data: UnifiedCareerData): number {
-    const skillCount = course.skill_tags.length;
+    const skillCount = course.skillTags.length;
     const difficultyWeight = course.difficulty === 'advanced' ? 3 : 
                            course.difficulty === 'intermediate' ? 2 : 1;
     
@@ -548,24 +548,24 @@ export class ForceDirectedLayout {
 
   private calculateCareerStepImportance(step: any, data: UnifiedCareerData): number {
     const skillCount = step.skills ? step.skills.length : 0;
-    const terminalWeight = step.is_terminal ? 3 : 1;
+    const terminalWeight = step.isTerminal ? 3 : 1;
     
     return skillCount + terminalWeight;
   }
 
   private calculateJobImportance(job: any, data: UnifiedCareerData): number {
-    const skillCount = job.required_skill_ids.length;
-    const salaryWeight = Math.log(job.average_salary / 10000);
-    const roiWeight = job.roi_score;
+    const skillCount = job.requiredSkillIds.length;
+    const salaryWeight = Math.log(job.averageSalary / 10000);
+    const roiWeight = job.roiScore;
     
     return skillCount + salaryWeight + roiWeight;
   }
 
   // Category inference methods
   private inferCourseCategory(course: any, skills: any[]): string {
-    if (course.skill_tags.length === 0) return 'General';
+    if (course.skillTags.length === 0) return 'General';
     
-    const firstSkillTag = course.skill_tags[0];
+    const firstSkillTag = course.skillTags[0];
     const matchingSkill = skills.find(s => 
       s.name.toLowerCase().includes(firstSkillTag.toLowerCase())
     );
@@ -670,7 +670,7 @@ export const calculateHierarchicalLayout = (
       const col = index % 4;
       
       nodes.push({
-        id: `skill-${skill.id}`,
+        id: skill.id, // Use original ID without prefix
         type: 'skill',
         position: {
           x: col * 250,
@@ -693,7 +693,7 @@ export const calculateHierarchicalLayout = (
       const col = index % 3;
       
       nodes.push({
-        id: `job-${job.id}`,
+        id: job.id, // Use original ID without prefix
         type: 'job',
         position: {
           x: col * 300,
@@ -704,10 +704,10 @@ export const calculateHierarchicalLayout = (
           description: job.description || '',
           level: job.level || 'Entry',
           industry: job.industry || 'Technology',
-          averageSalary: job.average_salary || 50000,
-          roiScore: job.roi_score || 0,
-          growthOutlook: job.growth_outlook || 'Stable',
-          requiredSkillIds: job.required_skill_ids || [],
+          averageSalary: job.averageSalary || 50000,
+          roiScore: job.roiScore || 0,
+          growthOutlook: job.growthOutlook || 'Stable',
+          requiredSkillIds: job.requiredSkillIds || [],
           isGoal: (job as any).is_goal || false,
           isCurrent: (job as any).is_current || false
         }
@@ -723,7 +723,7 @@ export const calculateHierarchicalLayout = (
       const col = index % 4;
       
       nodes.push({
-        id: `course-${course.id}`,
+        id: course.id, // Use original ID without prefix
         type: 'course',
         position: {
           x: col * 250,
@@ -735,7 +735,7 @@ export const calculateHierarchicalLayout = (
           platform: course.platform || 'Unknown',
           cost: course.cost || 0,
           difficulty: course.difficulty || 'Beginner',
-          skillTags: course.skill_tags || []
+          skillTags: course.skillTags || []
         }
       });
     });

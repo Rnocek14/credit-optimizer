@@ -174,73 +174,49 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [showFocusMode, setShowFocusMode] = useState(false);
   const { fitView } = useReactFlow();
 
-  // PHASE 1 DEBUGGING: Force simple test nodes to verify React Flow rendering
+  // PHASE 2: Use real data with simplified layout
   const calculatedNodes = useMemo(() => {
-    console.log('🚀 PHASE 1 DEBUG: Creating minimal test nodes to verify React Flow');
+    console.log('🚀 PHASE 2: Creating nodes from real data using simplified layout');
     
-    const debugNodes = [
-      {
-        id: 'debug-skill-1',
-        type: 'skill',
-        position: { x: 100, y: 100 },
-        data: {
-          name: 'JavaScript',
-          category: 'Programming',
-          description: 'JavaScript programming language'
-        }
-      },
-      {
-        id: 'debug-skill-2',
-        type: 'skill',
-        position: { x: 350, y: 100 },
-        data: {
-          name: 'React',
-          category: 'Framework',
-          description: 'React framework for building UIs'
-        }
-      },
-      {
-        id: 'debug-job-1', 
-        type: 'job',
-        position: { x: 100, y: 300 },
-        data: {
-          title: 'Frontend Developer',
-          description: 'Build user interfaces',
-          level: 'Mid',
-          industry: 'Technology',
-          averageSalary: 75000,
-          roiScore: 8,
-          growthOutlook: 'High',
-          requiredSkillIds: ['debug-skill-1'],
-          isGoal: false,
-          isCurrent: false
-        }
+    if (onLayoutCalculating) {
+      onLayoutCalculating(true);
+    }
+
+    try {
+      // Use the simplified hierarchical layout with real data
+      const nodes = calculateHierarchicalLayout(data, relationships);
+      
+      console.log('✅ Real data nodes created:', {
+        count: nodes.length,
+        nodesByType: nodes.reduce((acc, node) => {
+          acc[node.type] = (acc[node.type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        sampleNodes: nodes.slice(0, 3).map(n => ({ 
+          id: n.id, 
+          type: n.type, 
+          position: n.position,
+          hasData: !!n.data,
+          dataKeys: Object.keys(n.data || {})
+        }))
+      });
+
+      return nodes;
+    } catch (error) {
+      console.error('❌ Layout calculation error:', error);
+      return [];
+    } finally {
+      if (onLayoutCalculating) {
+        onLayoutCalculating(false);
       }
-    ];
+    }
+  }, [data, relationships, onLayoutCalculating]);
 
-    console.log('✅ DEBUG: Simple test nodes created:', {
-      count: debugNodes.length,
-      positions: debugNodes.map(n => ({ id: n.id, position: n.position }))
-    });
-    
-    return debugNodes;
-  }, []);
-
-  // Generate simple debug edges for test nodes
+  // Generate edges based on relationships and focus
   const calculatedEdges = useMemo(() => {
-    console.log('🔗 Creating simple debug edge between test nodes');
-    return [
-      {
-        id: 'debug-edge-1',
-        source: 'debug-skill-1',
-        target: 'debug-job-1',
-        type: 'smoothstep',
-        markerEnd: { type: MarkerType.ArrowClosed },
-        style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
-        label: 'requires'
-      }
-    ];
-  }, []);
+    console.log('🔗 Generating edges from relationships');
+    return generateVisibleEdges(relationships, focusedNodeId);
+  }, [relationships, focusedNodeId]);
 
   // Update nodes when data changes
   useEffect(() => {

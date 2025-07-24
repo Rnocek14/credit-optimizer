@@ -14,10 +14,10 @@ export interface UnifiedCareerData {
     description: string;
     level: string;
     industry: string;
-    average_salary: number;
-    roi_score: number;
-    growth_outlook: string;
-    required_skill_ids: string[];
+    averageSalary: number;
+    roiScore: number;
+    growthOutlook: string;
+    requiredSkillIds: string[];
   }>;
   courses: Array<{
     id: string;
@@ -26,7 +26,7 @@ export interface UnifiedCareerData {
     platform: string;
     cost: string;
     difficulty: string;
-    skill_tags: string[];
+    skillTags: string[];
     url?: string;
   }>;
   projects: Array<{
@@ -52,7 +52,7 @@ export interface UnifiedCareerData {
     title: string;
     description: string;
     level: number;
-    is_terminal: boolean;
+    isTerminal: boolean;
     prerequisites: string[];
     skills: Array<{ id: string; name: string; category: string; importance: number }>;
   }>;
@@ -148,10 +148,10 @@ export const fetchUnifiedCareerData = async (careerPathId?: string): Promise<Uni
       description: job.summary || '',
       level: job.level || 'Entry',
       industry: job.industry || 'Technology',
-      average_salary: job.average_salary || 50000,
-      roi_score: Number(job.roi_score) || 5,
-      growth_outlook: job.growth_outlook || 'Stable',
-      required_skill_ids: job.required_skill_ids || [],
+      averageSalary: job.average_salary || 50000, // Fixed: camelCase for React components
+      roiScore: Number(job.roi_score) || 5, // Fixed: camelCase for React components
+      growthOutlook: job.growth_outlook || 'Stable', // Fixed: camelCase for React components
+      requiredSkillIds: job.required_skill_ids || [], // Fixed: camelCase for React components
     })) || [],
 
     courses: courses?.map(course => ({
@@ -161,7 +161,7 @@ export const fetchUnifiedCareerData = async (careerPathId?: string): Promise<Uni
       platform: course.platform,
       cost: course.cost || 'Free',
       difficulty: course.difficulty || 'Beginner',
-      skill_tags: course.skill_tags || [],
+      skillTags: course.skill_tags || [], // Fixed: camelCase for React components
       url: course.url,
     })) || [],
 
@@ -173,7 +173,7 @@ export const fetchUnifiedCareerData = async (careerPathId?: string): Promise<Uni
       title: step.title,
       description: step.description || '',
       level: 1, // Will be calculated based on prerequisites
-      is_terminal: step.is_terminal || false,
+      isTerminal: step.is_terminal || false, // Fixed: camelCase for React components
       prerequisites: step.prerequisites || [],
       skills: step.career_step_skills?.map((css: any) => ({
         id: css.skills.id,
@@ -254,7 +254,7 @@ export const generateCareerRelationships = (data: UnifiedCareerData): CareerRela
 
   // 4. Generate career path relationships using job required skills
   data.jobs.forEach(job => {
-    job.required_skill_ids.forEach(skillId => {
+    job.requiredSkillIds.forEach(skillId => {
       relationships.push({
         from: skillId,
         to: job.id,
@@ -279,9 +279,9 @@ export const generateCareerRelationships = (data: UnifiedCareerData): CareerRela
     });
 
     // Connect terminal steps to jobs
-    if (step.is_terminal) {
+    if (step.isTerminal) {
       const relatedJobs = data.jobs.filter(job => 
-        job.required_skill_ids.some(skillId => 
+        job.requiredSkillIds.some(skillId => 
           step.skills.some(s => s.id === skillId)
         )
       );
@@ -343,7 +343,7 @@ const addProjectAndCertificationRelationships = (data: UnifiedCareerData, relati
   data.projects.forEach(project => {
     project.skills_demonstrated.forEach(skillName => {
       const relatedCourse = data.courses.find(c => 
-        c.skill_tags.some(tag => 
+        c.skillTags.some(tag => 
           tag.toLowerCase().includes(skillName.toLowerCase())
         )
       );
