@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
+import { useForceDirectedLayout } from './ForceDirectedLayout';
 
 export const useGraphOrchestrator = () => {
   const {
@@ -455,6 +456,8 @@ export const useGraphOrchestrator = () => {
     return edges;
   }, [careerSteps, userProgress, stepSkillMappings, displayControls, courses, skills]);
 
+  const { applyForceDirectedLayout } = useForceDirectedLayout();
+
   // Main orchestration function
   const generateGraph = useCallback(() => {
     const stepsByLevel = careerSteps.reduce((acc, step) => {
@@ -463,7 +466,7 @@ export const useGraphOrchestrator = () => {
       return acc;
     }, {} as Record<number, any[]>);
 
-    const allNodes = [
+    const initialNodes = [
       ...createStepNodes(stepsByLevel),
       ...createSkillNodes(),
       ...createCourseNodes(),
@@ -473,9 +476,18 @@ export const useGraphOrchestrator = () => {
       ...createPivotNodes(),
     ];
 
-    const allEdges = createEdges(allNodes);
+    const allEdges = createEdges(initialNodes);
 
-    return { nodes: allNodes, edges: allEdges };
+    // Apply force-directed layout to prevent overlapping
+    const layoutedNodes = applyForceDirectedLayout({
+      nodes: initialNodes,
+      edges: allEdges,
+      width: 2000,
+      height: 1500,
+      iterations: 100
+    });
+
+    return { nodes: layoutedNodes, edges: allEdges };
   }, [
     careerSteps,
     createStepNodes,
@@ -485,7 +497,8 @@ export const useGraphOrchestrator = () => {
     createCertificationNodes,
     createJobNodes,
     createPivotNodes,
-    createEdges
+    createEdges,
+    applyForceDirectedLayout
   ]);
 
   return {
