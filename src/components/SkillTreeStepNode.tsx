@@ -37,7 +37,6 @@ interface SkillTreeStepNodeProps {
 export const SkillTreeStepNode: React.FC<SkillTreeStepNodeProps> = memo(({ data }) => {
   const {
     title,
-    description,
     level,
     isTerminal,
     estimatedWeeks,
@@ -49,126 +48,64 @@ export const SkillTreeStepNode: React.FC<SkillTreeStepNodeProps> = memo(({ data 
     progress
   } = data;
 
-  // Get difficulty styling
-  const getDifficultyColor = () => {
-    switch (difficultyLevel) {
-      case 'beginner': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'advanced': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
-
-  // Get progress icon
-  const ProgressIcon = isCompleted ? CheckCircle : isInProgress ? Circle : isLocked ? Lock : Circle;
-  const progressColor = isCompleted ? 'text-green-500' : isInProgress ? 'text-yellow-500' : isLocked ? 'text-gray-400' : 'text-gray-300';
+  // Simple status icon
+  const StatusIcon = isCompleted ? CheckCircle : isInProgress ? Circle : isLocked ? Lock : Circle;
+  const statusColor = isCompleted ? 'text-green-500' : isInProgress ? 'text-blue-500' : isLocked ? 'text-gray-400' : 'text-gray-500';
 
   return (
     <div className="relative">
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3 h-3 !bg-primary/50"
+        className="w-2 h-2"
       />
       
       <Card className={cn(
-        "w-64 transition-all duration-300 border-2",
-        isCompleted && "border-green-500/50 bg-green-50/20 shadow-green-500/20",
-        isInProgress && "border-yellow-500/50 bg-yellow-50/20 shadow-yellow-500/20 animate-pulse",
-        isLocked && "border-muted bg-muted/30 opacity-60",
-        isTerminal && "border-yellow-500/70 bg-gradient-to-br from-yellow-50/30 to-amber-50/30",
-        !isLocked && !isCompleted && !isInProgress && "border-primary/30 hover:border-primary/60 hover:shadow-lg hover-scale"
+        "w-48 border transition-colors",
+        isCompleted && "border-green-500 bg-green-50",
+        isInProgress && "border-blue-500 bg-blue-50",
+        isLocked && "border-gray-300 bg-gray-50 opacity-70",
+        isTerminal && "border-yellow-500 bg-yellow-50",
+        !isLocked && !isCompleted && !isInProgress && !isTerminal && "border-gray-200 hover:border-gray-400"
       )}>
-        <CardContent className="p-4">
-          {/* Header with status icon and terminal indicator */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              {isTerminal && <Crown className="w-4 h-4 text-yellow-600" />}
-              {isCompleted && <CheckCircle className="w-4 h-4 text-green-500" />}
-              {isInProgress && <Circle className="w-4 h-4 text-yellow-500 animate-spin" />}
-              {isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-              {!isLocked && !isCompleted && !isInProgress && !isTerminal && <Circle className="w-4 h-4 text-primary" />}
-            </div>
-            
-            <div className="flex gap-1">
-              <Badge variant="secondary" className="text-xs animate-fade-in">
-                Level {level}
-              </Badge>
-              <Badge 
-                variant={difficultyLevel === 'advanced' ? 'destructive' : 
-                        difficultyLevel === 'intermediate' ? 'default' : 'secondary'}
-                className="text-xs animate-fade-in"
-              >
-                {difficultyLevel}
-              </Badge>
+        <CardContent className="p-3">
+          {/* Simple header */}
+          <div className="flex items-center justify-between mb-2">
+            <StatusIcon className={cn("w-4 h-4", statusColor)} />
+            <div className="flex gap-1 text-xs">
+              <span className="text-muted-foreground">L{level}</span>
+              {isTerminal && <Crown className="w-3 h-3 text-yellow-600" />}
             </div>
           </div>
           
           {/* Title */}
           <h3 className={cn(
-            "font-semibold text-sm mb-2 line-clamp-2",
-            isLocked ? "text-muted-foreground" : "text-foreground"
+            "font-medium text-sm mb-2",
+            isLocked ? "text-gray-500" : "text-gray-900"
           )}>
             {title}
           </h3>
           
-          {/* Description */}
-          {description && (
-            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-              {description}
-            </p>
-          )}
-          
-          {/* Time estimate */}
-          <div className="flex items-center gap-1 mb-3 p-2 bg-muted/50 rounded-md">
-            <Clock className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs font-medium">{estimatedWeeks}</span>
+          {/* Time and skills count */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{estimatedWeeks}</span>
+            </div>
+            
+            {skills?.length > 0 && (
+              <div className="flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                <span>{skills.length} skills</span>
+              </div>
+            )}
           </div>
           
-          {/* Skills count */}
-          {skills?.length > 0 && (
-            <div className="mb-3">
-              <div className="flex items-center gap-1 mb-2">
-                <Target className="w-3 h-3 text-muted-foreground" />
-                <span className="text-xs font-medium">Key Skills ({skills.length})</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {skills.slice(0, 3).map((skill) => (
-                  <Badge 
-                    key={skill.id} 
-                    variant="outline" 
-                    className="text-xs px-1 py-0"
-                    style={{
-                      opacity: 0.6 + (skill.importance * 0.4)
-                    }}
-                  >
-                    {skill.name}
-                  </Badge>
-                ))}
-                {skills.length > 3 && (
-                  <Badge variant="outline" className="text-xs px-1 py-0">
-                    +{skills.length - 3}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Terminal indicator */}
-          {isTerminal && (
-            <div className="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800">
-              <div className="flex items-center gap-1 text-yellow-700 dark:text-yellow-300">
-                <Target className="w-3 h-3" />
-                <span className="text-xs font-medium">Career Goal</span>
-              </div>
-            </div>
-          )}
-          
-          {/* Progress bar for in-progress items */}
+          {/* Progress bar */}
           {isInProgress && progress?.completion_percentage && (
-            <div className="mt-3 w-full bg-muted rounded-full h-1.5">
+            <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
               <div 
-                className="bg-yellow-500 h-1.5 rounded-full transition-all duration-500 animate-scale-in"
+                className="bg-blue-500 h-1 rounded-full transition-all"
                 style={{ width: `${progress.completion_percentage}%` }}
               />
             </div>
@@ -179,7 +116,7 @@ export const SkillTreeStepNode: React.FC<SkillTreeStepNodeProps> = memo(({ data 
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 !bg-primary/50"
+        className="w-2 h-2"
       />
     </div>
   );

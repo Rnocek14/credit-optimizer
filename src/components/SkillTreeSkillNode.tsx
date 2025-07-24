@@ -26,110 +26,72 @@ export const SkillTreeSkillNode: React.FC<SkillTreeSkillNodeProps> = memo(({ dat
   const { 
     name, 
     category, 
-    description, 
     isCompleted, 
     isLocked, 
     difficultyLevel, 
     estimatedWeeks, 
     trackCategory,
     isFoundational,
-    categoryColor = 'hsl(var(--primary))'
+    categoryColor = '#3B82F6'
   } = data;
 
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'Programming': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'Framework': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'Tools': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'Design': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-      'Data': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      'DevOps': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'Testing': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-  };
-
-  const getDifficultyColor = () => {
-    switch (difficultyLevel) {
-      case 'beginner': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';  
-      case 'advanced': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
-  };
-
-  const ProgressIcon = isCompleted ? CheckCircle : isLocked ? Lock : Circle;
-  const progressColor = isCompleted ? 'text-green-500' : isLocked ? 'text-gray-400' : 'text-gray-300';
+  const StatusIcon = isCompleted ? CheckCircle : isLocked ? Lock : Circle;
+  const statusColor = isCompleted ? 'text-green-500' : isLocked ? 'text-gray-400' : 'text-gray-500';
 
   return (
     <div className="relative">
       <Handle
         type="target"
         position={Position.Top}
-        className="w-3 h-3"
+        className="w-2 h-2"
         style={{ background: categoryColor }}
       />
       
       <Card className={cn(
-        "w-44 transition-all duration-300 border-2",
-        isCompleted && "border-green-500/50 bg-green-50/20 shadow-green-500/20",
-        isFoundational && "ring-2 ring-primary/20",
-        "hover:shadow-lg hover-scale"
-      )} style={{ borderColor: categoryColor + '40' }}>
-        <CardContent className="p-3">
-          {/* Header with status and category */}
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex items-center gap-2">
-              {isCompleted && <CheckCircle className="w-4 h-4 text-green-500" />}
-              {!isCompleted && <Circle className="w-4 h-4" style={{ color: categoryColor }} />}
-            </div>
-            
-            {/* Category badge */}
-            <Badge 
-              variant="outline"
-              className="text-xs animate-fade-in"
-              style={{ 
-                borderColor: categoryColor,
-                color: categoryColor
-              }}
-            >
-              {trackCategory}
-            </Badge>
+        "w-36 border transition-colors",
+        isCompleted && "border-green-500 bg-green-50",
+        isFoundational && "ring-1 ring-blue-300",
+        !isCompleted && "border-gray-200 hover:border-gray-400"
+      )}>
+        <CardContent className="p-2">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-2">
+            <StatusIcon className={cn("w-3 h-3", statusColor)} />
+            {isFoundational && <Star className="w-3 h-3 text-blue-500" />}
           </div>
           
           {/* Skill name */}
-          <h3 className="font-semibold text-sm mb-2 line-clamp-2">
+          <h3 className="font-medium text-xs mb-2 line-clamp-2">
             {name}
           </h3>
           
-          {/* Foundational indicator */}
-          {isFoundational && (
-            <div className="flex items-center gap-1 mb-2 text-xs font-medium text-primary">
-              <Star className="w-3 h-3" />
-              <span>Foundation</span>
-            </div>
-          )}
+          {/* Category and time */}
+          <div className="text-xs text-muted-foreground mb-1">
+            <span className="font-medium" style={{ color: categoryColor }}>
+              {trackCategory}
+            </span>
+          </div>
           
-          {/* Difficulty and time */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1 text-muted-foreground">
               <Clock className="w-3 h-3" />
               <span>{estimatedWeeks}</span>
             </div>
             
-            <Badge 
-              variant={difficultyLevel === 'advanced' ? 'destructive' : 
-                      difficultyLevel === 'intermediate' ? 'default' : 'secondary'}
-              className="text-xs"
-            >
+            <span className={cn(
+              "px-1 py-0.5 rounded text-xs",
+              difficultyLevel === 'advanced' ? 'bg-red-100 text-red-800' :
+              difficultyLevel === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-green-100 text-green-800'
+            )}>
               {difficultyLevel}
-            </Badge>
+            </span>
           </div>
           
-          {/* Progress bar for completed skills */}
+          {/* Progress indicator */}
           {isCompleted && (
-            <div className="mt-2 w-full bg-green-100 rounded-full h-1">
-              <div className="bg-green-500 h-1 rounded-full w-full animate-scale-in" />
+            <div className="mt-1 w-full bg-gray-200 rounded-full h-0.5">
+              <div className="bg-green-500 h-0.5 rounded-full w-full" />
             </div>
           )}
         </CardContent>
@@ -138,7 +100,7 @@ export const SkillTreeSkillNode: React.FC<SkillTreeSkillNodeProps> = memo(({ dat
       <Handle
         type="source"
         position={Position.Bottom}
-        className="w-3 h-3"
+        className="w-2 h-2"
         style={{ background: categoryColor }}
       />
     </div>

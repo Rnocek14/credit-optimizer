@@ -16,186 +16,139 @@ export const useTreeLayoutEngine = () => {
     userProgress
   } = useSkillTree();
 
-  // Define skill categories and their positions in the tree
+  // Define skill categories with simpler color mapping
   const skillCategories = useMemo(() => ({
-    'Programming': { 
-      angle: 0, 
-      color: 'hsl(var(--blue-500))',
-      radius: 300,
-      foundational: true 
-    },
-    'Framework': { 
-      angle: 90, 
-      color: 'hsl(var(--green-500))',
-      radius: 320,
-      foundational: true 
-    },
-    'Tools': { 
-      angle: 180, 
-      color: 'hsl(var(--purple-500))',
-      radius: 340,
-      foundational: true 
-    },
-    'Database': { 
-      angle: 270, 
-      color: 'hsl(var(--orange-500))',
-      radius: 360,
-      foundational: false 
-    },
-    'Cloud': { 
-      angle: 45, 
-      color: 'hsl(var(--cyan-500))',
-      radius: 380,
-      foundational: false 
-    },
-    'DevOps': { 
-      angle: 135, 
-      color: 'hsl(var(--red-500))',
-      radius: 400,
-      foundational: false 
-    },
-    'Soft Skills': { 
-      angle: 225, 
-      color: 'hsl(var(--yellow-500))',
-      radius: 420,
-      foundational: false 
-    },
-    'Leadership': { 
-      angle: 315, 
-      color: 'hsl(var(--pink-500))',
-      radius: 440,
-      foundational: false 
-    }
+    'Programming': { color: '#3B82F6', tier: 1 },
+    'Framework': { color: '#10B981', tier: 1 },
+    'Tools': { color: '#8B5CF6', tier: 2 },
+    'Database': { color: '#F59E0B', tier: 2 },
+    'Cloud': { color: '#06B6D4', tier: 3 },
+    'DevOps': { color: '#EF4444', tier: 3 },
+    'Soft Skills': { color: '#F59E0B', tier: 2 },
+    'Leadership': { color: '#EC4899', tier: 4 }
   }), []);
 
-  // Create tree-structured skill nodes
+  // Create hierarchical skill nodes - left to right progression
   const createSkillNodes = useCallback(() => {
     if (!displayControls.showSkills) return [];
     
     const nodes: Node[] = [];
-    const centerX = 0;
-    const centerY = 0;
     
-    // Group skills by category
-    const skillsByCategory = skills.reduce((acc, skill) => {
+    // Group skills by category and tier
+    const skillsByTier = skills.reduce((acc, skill) => {
       const category = skill.category || 'Programming';
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(skill);
+      const tier = skillCategories[category]?.tier || 1;
+      if (!acc[tier]) acc[tier] = [];
+      acc[tier].push({ ...skill, category });
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<number, any[]>);
 
-    Object.entries(skillsByCategory).forEach(([category, categorySkills]) => {
-      const categoryConfig = skillCategories[category] || skillCategories['Programming'];
-      const baseAngle = (categoryConfig.angle * Math.PI) / 180;
-      const baseRadius = categoryConfig.radius;
+    // Layout skills in vertical columns by tier (left to right progression)
+    Object.entries(skillsByTier).forEach(([tierStr, tierSkills]) => {
+      const tier = parseInt(tierStr);
+      const x = 200 + (tier - 1) * 250; // Horizontal progression
       
-      categorySkills.forEach((skill, index) => {
-        const skillProgress = displayControls.showProgress ? 
-          userProgress?.find(p => p.skillId === skill.id) : null;
-        const isCompleted = skillProgress?.status === 'completed';
-        const isInProgress = skillProgress?.status === 'in_progress';
+      // Group by category within tier for vertical clustering
+      const skillsByCategory = tierSkills.reduce((acc, skill) => {
+        if (!acc[skill.category]) acc[skill.category] = [];
+        acc[skill.category].push(skill);
+        return acc;
+      }, {} as Record<string, any[]>);
+      
+      let yOffset = 0;
+      Object.entries(skillsByCategory).forEach(([category, categorySkills]) => {
+        const categoryColor = skillCategories[category]?.color || '#3B82F6';
         
-        // Arrange skills in a spiral within their category
-        const angleOffset = (index * 0.3) - (categorySkills.length * 0.15);
-        const radiusOffset = Math.floor(index / 4) * 60;
-        const angle = baseAngle + angleOffset;
-        const radius = baseRadius + radiusOffset;
-        
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius;
-        
-        const difficultyLevel = skill.difficulty_level || 1;
-        
-        nodes.push({
-          id: `skill-${skill.id}`,
-          type: 'skill',
-          position: { x: x - 90, y: y - 60 }, // Center the node
-          data: {
-            ...skill,
-            isCompleted,
-            isInProgress,
-            isLocked: false,
-            progress: skillProgress,
-            difficultyLevel: difficultyLevel <= 2 ? 'beginner' : 
-                           difficultyLevel <= 4 ? 'intermediate' : 'advanced',
-            estimatedWeeks: difficultyLevel <= 2 ? '1-2 weeks' : 
-                           difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks',
-            trackCategory: category,
-            categoryColor: categoryConfig.color,
-            isFoundational: categoryConfig.foundational,
-          } as Record<string, unknown>,
+        (categorySkills as any[]).forEach((skill, index) => {
+          const skillProgress = displayControls.showProgress ? 
+            userProgress?.find(p => p.skillId === skill.id) : null;
+          const isCompleted = skillProgress?.status === 'completed';
+          const isInProgress = skillProgress?.status === 'in_progress';
+          
+          const y = yOffset + index * 120;
+          const difficultyLevel = skill.difficulty_level || 1;
+          
+          nodes.push({
+            id: `skill-${skill.id}`,
+            type: 'skill',
+            position: { x, y },
+            data: {
+              ...skill,
+              isCompleted,
+              isInProgress,
+              isLocked: false,
+              progress: skillProgress,
+              difficultyLevel: difficultyLevel <= 2 ? 'beginner' : 
+                             difficultyLevel <= 4 ? 'intermediate' : 'advanced',
+              estimatedWeeks: difficultyLevel <= 2 ? '1-2 weeks' : 
+                             difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks',
+              trackCategory: category,
+              categoryColor,
+              isFoundational: tier === 1,
+            } as Record<string, unknown>,
+          });
         });
+        
+        yOffset += (categorySkills as any[]).length * 120 + 50; // Add spacing between categories
       });
     });
 
     return nodes;
   }, [skills, displayControls.showSkills, displayControls.showProgress, userProgress, skillCategories]);
 
-  // Create hierarchical career step nodes
+  // Create career step nodes - right side final column
   const createCareerStepNodes = useCallback(() => {
     const nodes: Node[] = [];
-    const centerX = 0;
-    const centerY = 0;
     
-    // Group steps by level
-    const stepsByLevel = careerSteps.reduce((acc, step) => {
-      if (!acc[step.level]) acc[step.level] = [];
-      acc[step.level].push(step);
-      return acc;
-    }, {} as Record<number, any[]>);
-
-    Object.entries(stepsByLevel).forEach(([level, steps]) => {
-      const levelNum = parseInt(level);
-      const levelRadius = 600 + (levelNum * 150); // Career steps form outer rings
+    // Sort steps by level and position them in final column
+    const sortedSteps = [...careerSteps].sort((a, b) => a.level - b.level);
+    const x = 1200; // Final column position
+    
+    sortedSteps.forEach((step, index) => {
+      const y = index * 150;
       
-      steps.forEach((step, index) => {
-        const angle = (index * (2 * Math.PI)) / steps.length;
-        const x = centerX + Math.cos(angle) * levelRadius;
-        const y = centerY + Math.sin(angle) * levelRadius;
-        
-        const stepProgress = displayControls.showProgress ? 
-          userProgress?.find(p => p.stepId === step.id) : null;
-        const isCompleted = stepProgress?.status === 'completed';
-        const isInProgress = stepProgress?.status === 'in_progress';
-        
-        const prerequisitesMet = !step.prerequisites?.length || 
-          step.prerequisites.every(id => userProgress?.find(p => p.stepId === id)?.status === 'completed');
-        
-        nodes.push({
-          id: step.id,
-          type: 'careerStep',
-          position: { x: x - 100, y: y - 60 },
-          data: {
-            ...step,
-            isCompleted,
-            isInProgress,
-            isLocked: !prerequisitesMet && !isCompleted && !isInProgress,
-            progress: stepProgress,
-            difficultyLevel: step.level > 3 ? 'advanced' : step.level > 1 ? 'intermediate' : 'beginner',
-            estimatedWeeks: step.estimated_duration || '2-4 weeks',
-            skills: stepSkillMappings
-              .filter(m => m.step_id === step.id)
-              .map(m => {
-                const skill = skills.find(s => s.id === m.skill_id);
-                const skillProgress = displayControls.showProgress ? 
-                  userProgress?.find(p => p.skillId === skill?.id) : null;
-                return skill ? { 
-                  ...skill, 
-                  importance: m.importance_score,
-                  isCompleted: skillProgress?.status === 'completed',
-                  progress: skillProgress
-                } : null;
-              })
-              .filter(Boolean),
-          } as Record<string, unknown>,
-        });
+      const stepProgress = displayControls.showProgress ? 
+        userProgress?.find(p => p.stepId === step.id) : null;
+      const isCompleted = stepProgress?.status === 'completed';
+      const isInProgress = stepProgress?.status === 'in_progress';
+      
+      const prerequisitesMet = !step.prerequisites?.length || 
+        step.prerequisites.every(id => userProgress?.find(p => p.stepId === id)?.status === 'completed');
+      
+      nodes.push({
+        id: step.id,
+        type: 'careerStep',
+        position: { x, y },
+        data: {
+          ...step,
+          isCompleted,
+          isInProgress,
+          isLocked: !prerequisitesMet && !isCompleted && !isInProgress,
+          progress: stepProgress,
+          difficultyLevel: step.level > 3 ? 'advanced' : step.level > 1 ? 'intermediate' : 'beginner',
+          estimatedWeeks: step.estimated_duration || '2-4 weeks',
+          skills: stepSkillMappings
+            .filter(m => m.step_id === step.id)
+            .map(m => {
+              const skill = skills.find(s => s.id === m.skill_id);
+              const skillProgress = displayControls.showProgress ? 
+                userProgress?.find(p => p.skillId === skill?.id) : null;
+              return skill ? { 
+                ...skill, 
+                importance: m.importance_score,
+                isCompleted: skillProgress?.status === 'completed',
+                progress: skillProgress
+              } : null;
+            })
+            .filter(Boolean),
+        } as Record<string, unknown>,
       });
     });
 
     return nodes;
   }, [careerSteps, stepSkillMappings, skills, userProgress, displayControls.showProgress]);
 
-  // Create job goal node at the center
+  // Create job goal node at the far right
   const createJobNode = useCallback(() => {
     if (!displayControls.showJobs || !careerPaths.length) return [];
     
@@ -205,7 +158,7 @@ export const useTreeLayoutEngine = () => {
     return [{
       id: `job-${selectedPath.id}`,
       type: 'job',
-      position: { x: -100, y: -60 }, // Center position
+      position: { x: 1500, y: 100 }, // Far right position
       data: {
         title: selectedPath.title,
         description: selectedPath.description || '',
@@ -222,25 +175,20 @@ export const useTreeLayoutEngine = () => {
     }];
   }, [displayControls.showJobs, careerPaths, selectedCareerPath, skills]);
 
-  // Create supporting content nodes (courses, projects, certifications)
+  // Create supporting content nodes in dedicated rows
   const createSupportingNodes = useCallback(() => {
     const nodes: Node[] = [];
-    let courseIndex = 0;
-    let projectIndex = 0;
-    let certIndex = 0;
 
-    // Courses - placed in inner rings around skills
+    // Courses - bottom row
     if (displayControls.showCourses) {
       courses.forEach((course, index) => {
-        const angle = (index * (2 * Math.PI)) / courses.length;
-        const radius = 200; // Inner ring
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        const x = 200 + (index * 200);
+        const y = 600; // Bottom row
         
         nodes.push({
           id: `course-${course.id}`,
           type: 'course',
-          position: { x: x - 90, y: y - 60 },
+          position: { x, y },
           data: { 
             ...course,
             estimatedWeeks: course.difficulty === 'advanced' ? '6-12 weeks' : 
@@ -252,18 +200,16 @@ export const useTreeLayoutEngine = () => {
       });
     }
 
-    // Projects - placed between skill and career step rings
+    // Projects - middle row between skills and career steps
     if (displayControls.showProjects) {
       projects.forEach((project, index) => {
-        const angle = (index * (2 * Math.PI)) / projects.length + Math.PI / 4; // Offset from courses
-        const radius = 500;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        const x = 800 + (index * 200);
+        const y = 300;
         
         nodes.push({
           id: `project-${project.id}`,
           type: 'project',
-          position: { x: x - 90, y: y - 60 },
+          position: { x, y },
           data: { 
             ...project,
             estimatedWeeks: project.difficulty === 'advanced' ? '8-16 weeks' : 
@@ -275,18 +221,16 @@ export const useTreeLayoutEngine = () => {
       });
     }
 
-    // Certifications - outer ring with career steps
+    // Certifications - top row
     if (displayControls.showCertifications) {
       certifications.forEach((cert, index) => {
-        const angle = (index * (2 * Math.PI)) / certifications.length + Math.PI / 2;
-        const radius = 750;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
+        const x = 800 + (index * 200);
+        const y = -200; // Top row
         
         nodes.push({
           id: `cert-${cert.id}`,
           type: 'certification',
-          position: { x: x - 90, y: y - 60 },
+          position: { x, y },
           data: { 
             ...cert,
             estimatedWeeks: `${cert.exam_duration || '2-4 weeks'} prep`,
@@ -300,11 +244,46 @@ export const useTreeLayoutEngine = () => {
     return nodes;
   }, [displayControls, courses, projects, certifications]);
 
-  // Create enhanced edges with better visual hierarchy
+  // Create simple, clear progression edges
   const createTreeEdges = useCallback((nodes: Node[]) => {
     const edges: Edge[] = [];
 
-    // Step prerequisite edges with enhanced styling
+    // Skill tier progression edges - show learning progression
+    const skillNodes = nodes.filter(n => n.type === 'skill');
+    const skillsByTier = skillNodes.reduce((acc, node) => {
+      const category = node.data.category || 'Programming';
+      const tier = skillCategories[category as keyof typeof skillCategories]?.tier || 1;
+      if (!acc[tier]) acc[tier] = [];
+      acc[tier].push(node);
+      return acc;
+    }, {} as Record<number, Node[]>);
+
+    // Connect skills across tiers to show progression
+    for (let tier = 1; tier < 4; tier++) {
+      const currentTierSkills = skillsByTier[tier] || [];
+      const nextTierSkills = skillsByTier[tier + 1] || [];
+      
+      currentTierSkills.forEach(currentSkill => {
+        nextTierSkills.forEach(nextSkill => {
+          // Connect if they're related by category or importance
+          if (currentSkill.data.category === nextSkill.data.category) {
+            edges.push({
+              id: `tier-${currentSkill.id}-${nextSkill.id}`,
+              source: currentSkill.id,
+              target: nextSkill.id,
+              type: 'smoothstep',
+              style: {
+                stroke: currentSkill.data.categoryColor as string,
+                strokeWidth: 2,
+                opacity: 0.3
+              }
+            });
+          }
+        });
+      });
+    }
+
+    // Step prerequisite edges - clear dependency lines
     careerSteps.forEach(step => {
       step.prerequisites?.forEach(prereqId => {
         const isUnlocked = !step.prerequisites || 
@@ -314,59 +293,57 @@ export const useTreeLayoutEngine = () => {
           id: `${prereqId}-${step.id}`,
           source: prereqId,
           target: step.id,
-          type: 'smoothstep',
+          type: 'straight',
           markerEnd: { type: MarkerType.ArrowClosed },
           style: { 
-            stroke: isUnlocked ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
-            strokeWidth: isUnlocked ? 3 : 1,
-            opacity: isUnlocked ? 1 : 0.3,
-            strokeDasharray: isUnlocked ? 'none' : '5,5'
+            stroke: isUnlocked ? '#10B981' : '#6B7280',
+            strokeWidth: 3,
+            opacity: isUnlocked ? 1 : 0.5
           },
-          animated: isUnlocked,
-          data: { label: 'prerequisite', unlocked: isUnlocked }
+          animated: isUnlocked
         });
       });
     });
 
-    // Skill to step connections - curved and color-coded
+    // Skills to career steps - important connections only
     if (displayControls.showSkills) {
       stepSkillMappings.forEach(mapping => {
-        const skill = skills.find(s => s.id === mapping.skill_id);
-        const importance = mapping.importance_score || 1;
-        const category = skill?.category || 'Programming';
-        const categoryColor = skillCategories[category]?.color || 'hsl(var(--muted-foreground))';
-        
-        edges.push({
-          id: `skill-${mapping.skill_id}-${mapping.step_id}`,
-          source: `skill-${mapping.skill_id}`,
-          target: mapping.step_id,
-          type: 'smoothstep',
-          style: { 
-            stroke: categoryColor,
-            strokeWidth: Math.max(1, importance / 2),
-            opacity: 0.6 + (importance / 10)
-          },
-          data: { importance, category }
-        });
+        if (mapping.importance_score >= 7) { // Only show high-importance connections
+          const skill = skills.find(s => s.id === mapping.skill_id);
+          const categoryColor = skillCategories[skill?.category || 'Programming']?.color || '#3B82F6';
+          
+          edges.push({
+            id: `skill-${mapping.skill_id}-${mapping.step_id}`,
+            source: `skill-${mapping.skill_id}`,
+            target: mapping.step_id,
+            type: 'smoothstep',
+            style: { 
+              stroke: categoryColor,
+              strokeWidth: 2,
+              opacity: 0.6
+            }
+          });
+        }
       });
     }
 
-    // Job to career step connections - central goal connections
+    // Career steps to job goal - final connections
     const jobNode = nodes.find(n => n.type === 'job');
     if (jobNode && displayControls.showJobs) {
-      careerSteps.forEach(step => {
+      const terminalSteps = careerSteps.filter(step => step.is_terminal);
+      terminalSteps.forEach(step => {
         edges.push({
-          id: `job-${jobNode.id}-${step.id}`,
-          source: jobNode.id,
-          target: step.id,
-          type: 'smoothstep',
+          id: `step-${step.id}-${jobNode.id}`,
+          source: step.id,
+          target: jobNode.id,
+          type: 'straight',
+          markerEnd: { type: MarkerType.ArrowClosed },
           style: {
-            stroke: 'hsl(var(--primary))',
-            strokeWidth: 2,
-            opacity: 0.4,
-            strokeDasharray: '3,3'
+            stroke: '#10B981',
+            strokeWidth: 4,
+            opacity: 0.8
           },
-          data: { label: 'career path' }
+          animated: true
         });
       });
     }
