@@ -238,48 +238,112 @@ export const useTreeLayoutEngine = () => {
     return nodes;
   }, [displayControls, courses, projects, certifications]);
 
-  // Enhanced generation function with multiple layout modes
+  // Create edges between nodes
+  const createEdges = useCallback((nodes: Node[]): Edge[] => {
+    const edges: Edge[] = [];
+    
+    // Connect job to career steps
+    const jobNode = nodes.find(n => n.type === 'job');
+    const stepNodes = nodes.filter(n => n.type === 'careerStep');
+    
+    stepNodes.forEach(stepNode => {
+      if (jobNode) {
+        edges.push({
+          id: `edge-${jobNode.id}-${stepNode.id}`,
+          source: jobNode.id,
+          target: stepNode.id,
+          type: 'smoothstep',
+          style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 }
+        });
+      }
+    });
+    
+    // Connect career steps to skills
+    stepNodes.forEach(stepNode => {
+      const stepId = stepNode.id;
+      const relatedSkillMappings = stepSkillMappings.filter(m => m.step_id === stepId);
+      
+      relatedSkillMappings.forEach(mapping => {
+        const skillNode = nodes.find(n => n.id === `skill-${mapping.skill_id}`);
+        if (skillNode) {
+          edges.push({
+            id: `edge-${stepNode.id}-${skillNode.id}`,
+            source: stepNode.id,
+            target: skillNode.id,
+            type: 'smoothstep',
+            style: { 
+              stroke: 'hsl(var(--muted-foreground))', 
+              strokeWidth: 1,
+              strokeDasharray: mapping.importance_score > 7 ? '0' : '5,5'
+            }
+          });
+        }
+      });
+    });
+    
+    return edges;
+  }, [stepSkillMappings]);
+
+  // Simplified generation function that always works
   const generateTreeLayout = useCallback(() => {
-    const layoutMode = displayControls.viewMode || 'branched';
+    const layoutMode = displayControls.viewMode || 'traditional';
     
-    let result: { nodes: Node[], edges: Edge[] };
+    let nodes: Node[] = [];
+    let edges: Edge[] = [];
     
-    switch (layoutMode) {
-      case 'clustered':
-        result = generateSmartClusters();
-        break;
-      case 'traditional':
-        // Fallback to traditional layout
-        const allNodes = [
-          ...createJobNode(),
-          ...createSkillNodes(),
-          ...createCareerStepNodes(),
-          ...createSupportingNodes(),
-        ];
-        result = { nodes: allNodes, edges: [] };
-        break;
-      case 'branched':
-      default:
-        result = generateBranchedTree();
-        break;
+    // Always use working traditional layout as base
+    const jobNodes = createJobNode();
+    const stepNodes = createCareerStepNodes();
+    const skillNodes = createSkillNodes();
+    const supportingNodes = createSupportingNodes();
+    
+    nodes = [...jobNodes, ...stepNodes, ...skillNodes, ...supportingNodes];
+    edges = createEdges(nodes);
+    
+    // Try enhanced layouts with fallback
+    if (layoutMode === 'clustered') {
+      try {
+        const clusterResult = generateSmartClusters();
+        if (clusterResult.nodes.length > 0) {
+          nodes = clusterResult.nodes;
+          edges = clusterResult.edges;
+        }
+      } catch (error) {
+        console.warn('Cluster layout failed, using traditional layout');
+      }
+    } else if (layoutMode === 'branched') {
+      try {
+        const branchResult = generateBranchedTree();
+        if (branchResult.nodes.length > 0) {
+          nodes = branchResult.nodes;
+          edges = branchResult.edges;
+        }
+      } catch (error) {
+        console.warn('Branch layout failed, using traditional layout');
+      }
     }
     
-    // Apply path highlighting if recommended path exists
+    // Apply path highlighting if available
     const recommendedPath = getRecommendedPath();
     if (recommendedPath && displayControls.showProgress) {
-      return highlightPath(result.nodes, result.edges, recommendedPath.id);
+      try {
+        return highlightPath(nodes, edges, recommendedPath.id);
+      } catch (error) {
+        console.warn('Path highlighting failed');
+      }
     }
     
-    return result;
+    return { nodes, edges };
   }, [
     displayControls.viewMode,
     displayControls.showProgress,
+    createJobNode,
+    createCareerStepNodes,
+    createSkillNodes,
+    createSupportingNodes,
+    createEdges,
     generateSmartClusters,
     generateBranchedTree,
-    createJobNode,
-    createSkillNodes,
-    createCareerStepNodes,
-    createSupportingNodes,
     getRecommendedPath,
     highlightPath
   ]);

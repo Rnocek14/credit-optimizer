@@ -126,30 +126,23 @@ export const useSmartClusterEngine = () => {
       });
     });
 
-    // Calculate cluster positions using circular layout based on importance
+    // Calculate cluster positions using simple grid layout (fixed positioning)
     const clusters = Array.from(clusterMap.values())
-      .sort((a, b) => categoryImportance.get(b.category)! - categoryImportance.get(a.category)!);
+      .sort((a, b) => (categoryImportance.get(b.category) || 0) - (categoryImportance.get(a.category) || 0));
     
     const centerX = 600;
     const centerY = 400;
-    const baseRadius = 200;
+    const gridCols = 3;
+    const clusterSpacing = 300;
     
     clusters.forEach((cluster, index) => {
-      if (index === 0) {
-        // Most important cluster in center
-        cluster.center = { x: centerX, y: centerY };
-      } else {
-        // Arrange others in concentric circles
-        const ring = Math.ceil(index / 6); // 6 clusters per ring
-        const angleStep = (2 * Math.PI) / Math.min(6, clusters.length - (ring - 1) * 6);
-        const angle = ((index - 1) % 6) * angleStep;
-        const radius = baseRadius + ring * 150;
-        
-        cluster.center = {
-          x: centerX + Math.cos(angle) * radius,
-          y: centerY + Math.sin(angle) * radius
-        };
-      }
+      const col = index % gridCols;
+      const row = Math.floor(index / gridCols);
+      
+      cluster.center = {
+        x: centerX + (col - 1) * clusterSpacing,
+        y: centerY + row * clusterSpacing
+      };
     });
 
     return {
@@ -209,13 +202,14 @@ export const useSmartClusterEngine = () => {
           const isCompleted = skillProgress?.status === 'completed';
           const isInProgress = skillProgress?.status === 'in_progress';
 
-          // Position skills around cluster center
-          const angleStep = (2 * Math.PI) / cluster.skills.length;
-          const angle = skillIndex * angleStep;
-          const distance = cluster.radius + 60;
+          // Position skills in a simple grid around cluster
+          const skillsPerRow = 3;
+          const skillSpacing = 100;
+          const col = skillIndex % skillsPerRow;
+          const row = Math.floor(skillIndex / skillsPerRow);
           
-          const skillX = cluster.center.x + Math.cos(angle) * distance;
-          const skillY = cluster.center.y + Math.sin(angle) * distance;
+          const skillX = cluster.center.x + (col - 1) * skillSpacing;
+          const skillY = cluster.center.y + cluster.radius + 80 + row * 80;
 
           nodes.push({
             id: `skill-${skill.id}`,

@@ -323,22 +323,128 @@ export const useTreeBranchEngine = () => {
     return 'connects_to';
   };
 
-  // Main generation function
+  // Simplified generation function with fixed positioning
   const generateBranchedTree = useCallback(() => {
-    if (!treeStructure) {
+    if (!selectedCareerPath || !careerSteps.length) {
       return { nodes: [], edges: [] };
     }
 
-    const layout: BranchLayout = {
-      rootX: 600, // Center of viewport
-      rootY: 100, // Top margin
-      levelHeight: 200, // Vertical space between levels
-      branchSpacing: 250, // Horizontal space between siblings
-      nodeSpacing: 50 // Minimum space between nodes
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+
+    // Fixed layout parameters
+    const layout = {
+      rootX: 600,
+      rootY: 100,
+      levelHeight: 250,
+      branchSpacing: 300,
+      skillSpacing: 180
     };
 
-    return calculateTreePositions(treeStructure, layout);
-  }, [treeStructure, calculateTreePositions]);
+    // Create job node at top
+    const selectedPath = careerPaths.find(p => p.id === selectedCareerPath);
+    if (selectedPath) {
+      nodes.push({
+        id: `job-${selectedPath.id}`,
+        type: 'job',
+        position: { x: layout.rootX, y: layout.rootY },
+        data: {
+          title: selectedPath.title,
+          description: selectedPath.description,
+          level: 'Goal',
+          isGoal: true,
+        }
+      });
+    }
+
+    // Create career step nodes in second level
+    const sortedSteps = [...careerSteps].sort((a, b) => (a.level || 1) - (b.level || 1));
+    sortedSteps.forEach((step, index) => {
+      const stepProgress = userProgress?.find(p => p.stepId === step.id);
+      const isCompleted = stepProgress?.status === 'completed';
+      const isInProgress = stepProgress?.status === 'in_progress';
+
+      const stepX = layout.rootX + (index - sortedSteps.length / 2) * layout.branchSpacing;
+      const stepY = layout.rootY + layout.levelHeight;
+
+      nodes.push({
+        id: step.id,
+        type: 'careerStep',
+        position: { x: stepX, y: stepY },
+        data: {
+          ...step,
+          isCompleted,
+          isInProgress,
+          isLocked: false,
+          skills: stepSkillMappings
+            .filter(m => m.step_id === step.id)
+            .map(m => skills.find(s => s.id === m.skill_id))
+            .filter(Boolean)
+        }
+      });
+
+      // Connect job to step
+      if (selectedPath) {
+        edges.push({
+          id: `edge-job-${step.id}`,
+          source: `job-${selectedPath.id}`,
+          target: step.id,
+          type: 'smoothstep',
+          style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 }
+        });
+      }
+
+      // Create skill nodes for this step
+      const stepSkills = stepSkillMappings
+        .filter(m => m.step_id === step.id)
+        .map(m => ({ mapping: m, skill: skills.find(s => s.id === m.skill_id) }))
+        .filter(item => item.skill)
+        .slice(0, 4); // Limit to prevent overcrowding
+
+      stepSkills.forEach((item, skillIndex) => {
+        const skill = item.skill!;
+        const skillProgress = userProgress?.find(p => p.skillId === skill.id);
+        const isCompleted = skillProgress?.status === 'completed';
+        const isInProgress = skillProgress?.status === 'in_progress';
+
+        const skillX = stepX + (skillIndex - stepSkills.length / 2) * layout.skillSpacing;
+        const skillY = stepY + layout.levelHeight;
+
+        nodes.push({
+          id: `skill-${skill.id}`,
+          type: 'skill',
+          position: { x: skillX, y: skillY },
+          data: {
+            ...skill,
+            isCompleted,
+            isInProgress,
+            isLocked: false,
+            importance: item.mapping.importance_score,
+            stepId: step.id,
+            estimatedWeeks: skill.difficulty_level <= 2 ? '1-2 weeks' : 
+                           skill.difficulty_level <= 4 ? '2-4 weeks' : '4-8 weeks',
+            difficultyLevel: skill.difficulty_level <= 2 ? 'beginner' : 
+                           skill.difficulty_level <= 4 ? 'intermediate' : 'advanced',
+          }
+        });
+
+        // Connect step to skill
+        edges.push({
+          id: `edge-${step.id}-skill-${skill.id}`,
+          source: step.id,
+          target: `skill-${skill.id}`,
+          type: 'smoothstep',
+          style: { 
+            stroke: 'hsl(var(--muted-foreground))', 
+            strokeWidth: 1,
+            strokeDasharray: item.mapping.importance_score > 7 ? '0' : '5,5'
+          }
+        });
+      });
+    });
+
+    return { nodes, edges };
+  }, [selectedCareerPath, careerSteps, careerPaths, stepSkillMappings, skills, userProgress]);
 
   return {
     generateBranchedTree,
