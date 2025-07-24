@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_operation_cache: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          expires_at: string
+          id: string
+          input_hash: string
+          operation_type: string
+          result_data: Json
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          input_hash: string
+          operation_type: string
+          result_data: Json
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          input_hash?: string
+          operation_type?: string
+          result_data?: Json
+        }
+        Relationships: []
+      }
       ai_resume_drafts: {
         Row: {
           content: Json
@@ -880,6 +910,57 @@ export type Database = {
           updated_at?: string
           value?: string
           visa_eligibility?: Json
+        }
+        Relationships: []
+      }
+      market_trends: {
+        Row: {
+          ai_insights: Json | null
+          average_salary: number | null
+          career_path: string
+          competition_level: string | null
+          created_at: string
+          data_source: string | null
+          demand_score: number | null
+          growth_rate: number | null
+          id: string
+          job_postings_count: number | null
+          location: string
+          raw_data: Json | null
+          time_period: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_insights?: Json | null
+          average_salary?: number | null
+          career_path: string
+          competition_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          demand_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          job_postings_count?: number | null
+          location: string
+          raw_data?: Json | null
+          time_period?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_insights?: Json | null
+          average_salary?: number | null
+          career_path?: string
+          competition_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          demand_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          job_postings_count?: number | null
+          location?: string
+          raw_data?: Json | null
+          time_period?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
