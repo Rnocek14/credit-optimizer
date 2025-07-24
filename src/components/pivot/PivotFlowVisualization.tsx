@@ -85,7 +85,10 @@ export const PivotFlowVisualization: React.FC<PivotFlowVisualizationProps> = ({
   pivotRoadmapSteps,
   className = '',
 }) => {
-  console.log('🔍 PivotFlowVisualization received pivotRoadmapSteps:', pivotRoadmapSteps);
+  console.log('🔥🔥🔥 PivotFlowVisualization received pivotRoadmapSteps:', pivotRoadmapSteps);
+  console.log('🔥🔥🔥 pivotRoadmapSteps length:', pivotRoadmapSteps?.length);
+  console.log('🔥🔥🔥 pivotRoadmapSteps type:', typeof pivotRoadmapSteps);
+  console.error('🔥🔥🔥 FORCE LOG - PivotFlowVisualization data:', pivotRoadmapSteps);
   
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
