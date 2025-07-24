@@ -28,36 +28,63 @@ export const useTreeLayoutEngine = () => {
     'Leadership': { color: '#EC4899', tier: 4 }
   }), []);
 
-  // Create hierarchical skill nodes - left to right progression
+  // Create hierarchical skill tree with proper branching
   const createSkillNodes = useCallback(() => {
     if (!displayControls.showSkills) return [];
     
     const nodes: Node[] = [];
     
-    // Group skills by category and tier
-    const skillsByTier = skills.reduce((acc, skill) => {
-      const category = skill.category || 'Programming';
-      const tier = skillCategories[category]?.tier || 1;
-      if (!acc[tier]) acc[tier] = [];
-      acc[tier].push({ ...skill, category });
-      return acc;
-    }, {} as Record<number, any[]>);
-
-    // Layout skills in vertical columns by tier (left to right progression)
-    Object.entries(skillsByTier).forEach(([tierStr, tierSkills]) => {
-      const tier = parseInt(tierStr);
-      const x = 200 + (tier - 1) * 250; // Horizontal progression
+    // Build dependency tree structure
+    const skillDependencies = new Map();
+    const skillsByLevel = new Map();
+    
+    // Analyze skills and their relationships through career steps
+    skills.forEach(skill => {
+      const relatedMappings = stepSkillMappings.filter(m => m.skill_id === skill.id);
+      const steps = relatedMappings.map(m => careerSteps.find(s => s.id === m.step_id)).filter(Boolean);
       
-      // Group by category within tier for vertical clustering
-      const skillsByCategory = tierSkills.reduce((acc, skill) => {
+      // Determine skill level based on connected career steps
+      const avgStepLevel = steps.length > 0 
+        ? steps.reduce((sum, step) => sum + step.level, 0) / steps.length 
+        : 1;
+      
+      const skillLevel = Math.max(1, Math.floor(avgStepLevel));
+      
+      if (!skillsByLevel.has(skillLevel)) {
+        skillsByLevel.set(skillLevel, []);
+      }
+      skillsByLevel.get(skillLevel).push({
+        ...skill,
+        level: skillLevel,
+        relatedSteps: steps,
+        category: skill.category || 'Programming'
+      });
+    });
+
+    // Layout skills in a tree structure
+    const maxLevel = Math.max(...Array.from(skillsByLevel.keys()));
+    const rootX = 100;
+    const levelSpacing = 300;
+    
+    skillsByLevel.forEach((levelSkills, level) => {
+      const x = rootX + (level - 1) * levelSpacing;
+      
+      // Group by category within level
+      const categorizedSkills = levelSkills.reduce((acc, skill) => {
         if (!acc[skill.category]) acc[skill.category] = [];
         acc[skill.category].push(skill);
         return acc;
-      }, {} as Record<string, any[]>);
+      }, {});
       
-      let yOffset = 0;
-      Object.entries(skillsByCategory).forEach(([category, categorySkills]) => {
+      let totalSkillsPlaced = 0;
+      
+      Object.entries(categorizedSkills).forEach(([category, categorySkills]) => {
         const categoryColor = skillCategories[category]?.color || '#3B82F6';
+        const categorySize = (categorySkills as any[]).length;
+        
+        // Create branching pattern within category
+        const branchHeight = categorySize * 80;
+        const startY = totalSkillsPlaced * 80 - branchHeight / 2;
         
         (categorySkills as any[]).forEach((skill, index) => {
           const skillProgress = displayControls.showProgress ? 
@@ -65,13 +92,23 @@ export const useTreeLayoutEngine = () => {
           const isCompleted = skillProgress?.status === 'completed';
           const isInProgress = skillProgress?.status === 'in_progress';
           
-          const y = yOffset + index * 120;
+          // Create natural branching offsets
+          const branchOffset = (index - categorySize / 2) * 80;
+          const y = startY + branchOffset + (level * 50); // Add slight level variation
+          
+          // Add some randomness for organic feel while keeping structure
+          const xOffset = (Math.sin(index * 0.5) * 30);
+          const yOffset = (Math.cos(index * 0.3) * 20);
+          
           const difficultyLevel = skill.difficulty_level || 1;
           
           nodes.push({
             id: `skill-${skill.id}`,
             type: 'skill',
-            position: { x, y },
+            position: { 
+              x: x + xOffset, 
+              y: y + yOffset 
+            },
             data: {
               ...skill,
               isCompleted,
@@ -84,28 +121,34 @@ export const useTreeLayoutEngine = () => {
                              difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks',
               trackCategory: category,
               categoryColor,
-              isFoundational: tier === 1,
+              isFoundational: level === 1,
+              treeLevel: level,
             } as Record<string, unknown>,
           });
         });
         
-        yOffset += (categorySkills as any[]).length * 120 + 50; // Add spacing between categories
+        totalSkillsPlaced += categorySize;
       });
     });
 
     return nodes;
-  }, [skills, displayControls.showSkills, displayControls.showProgress, userProgress, skillCategories]);
+  }, [skills, displayControls.showSkills, displayControls.showProgress, userProgress, skillCategories, stepSkillMappings, careerSteps]);
 
-  // Create career step nodes - right side final column
+  // Create career step nodes in tree formation
   const createCareerStepNodes = useCallback(() => {
     const nodes: Node[] = [];
     
-    // Sort steps by level and position them in final column
-    const sortedSteps = [...careerSteps].sort((a, b) => a.level - b.level);
-    const x = 1200; // Final column position
+    // Build career step tree based on prerequisites
+    const stepHierarchy = new Map();
+    const processedSteps = new Set();
     
-    sortedSteps.forEach((step, index) => {
-      const y = index * 150;
+    // Find root steps (no prerequisites)
+    const rootSteps = careerSteps.filter(step => !step.prerequisites?.length);
+    const baseX = 1000; // Position after skills
+    
+    // Recursive function to position steps in tree structure
+    const positionStep = (step: any, parentX: number, parentY: number, level: number, siblingIndex: number, totalSiblings: number) => {
+      if (processedSteps.has(step.id)) return;
       
       const stepProgress = displayControls.showProgress ? 
         userProgress?.find(p => p.stepId === step.id) : null;
@@ -114,6 +157,16 @@ export const useTreeLayoutEngine = () => {
       
       const prerequisitesMet = !step.prerequisites?.length || 
         step.prerequisites.every(id => userProgress?.find(p => p.stepId === id)?.status === 'completed');
+      
+      // Calculate position in tree
+      const levelSpacing = 250;
+      const siblingSpacing = 150;
+      const x = parentX + levelSpacing;
+      
+      // Spread siblings vertically
+      const totalHeight = (totalSiblings - 1) * siblingSpacing;
+      const startY = parentY - totalHeight / 2;
+      const y = startY + siblingIndex * siblingSpacing;
       
       nodes.push({
         id: step.id,
@@ -141,24 +194,48 @@ export const useTreeLayoutEngine = () => {
               } : null;
             })
             .filter(Boolean),
+          treeLevel: level,
         } as Record<string, unknown>,
       });
+      
+      processedSteps.add(step.id);
+      
+      // Find children steps (steps that have this step as prerequisite)
+      const childSteps = careerSteps.filter(childStep => 
+        childStep.prerequisites?.includes(step.id)
+      );
+      
+      // Recursively position children
+      childSteps.forEach((childStep, index) => {
+        positionStep(childStep, x, y, level + 1, index, childSteps.length);
+      });
+    };
+    
+    // Start with root steps
+    rootSteps.forEach((rootStep, index) => {
+      positionStep(rootStep, baseX, index * 200, 0, index, rootSteps.length);
     });
 
     return nodes;
   }, [careerSteps, stepSkillMappings, skills, userProgress, displayControls.showProgress]);
 
-  // Create job goal node at the far right
+  // Create job goal node as the tree crown
   const createJobNode = useCallback(() => {
     if (!displayControls.showJobs || !careerPaths.length) return [];
     
     const selectedPath = careerPaths.find(p => p.id === selectedCareerPath);
     if (!selectedPath) return [];
     
+    // Position at the end of the career step tree
+    const terminalSteps = careerSteps.filter(step => step.is_terminal);
+    const avgTerminalX = terminalSteps.length > 0 
+      ? terminalSteps.reduce((sum, step) => sum + 1500, 0) / terminalSteps.length 
+      : 1700;
+    
     return [{
       id: `job-${selectedPath.id}`,
       type: 'job',
-      position: { x: 1500, y: 100 }, // Far right position
+      position: { x: avgTerminalX, y: 100 },
       data: {
         title: selectedPath.title,
         description: selectedPath.description || '',
@@ -173,17 +250,23 @@ export const useTreeLayoutEngine = () => {
         difficultyLevel: 'advanced',
       } as Record<string, unknown>,
     }];
-  }, [displayControls.showJobs, careerPaths, selectedCareerPath, skills]);
+  }, [displayControls.showJobs, careerPaths, selectedCareerPath, skills, careerSteps]);
 
-  // Create supporting content nodes in dedicated rows
+  // Create supporting content nodes organically placed
   const createSupportingNodes = useCallback(() => {
     const nodes: Node[] = [];
 
-    // Courses - bottom row
+    // Courses - positioned near related skills
     if (displayControls.showCourses) {
       courses.forEach((course, index) => {
-        const x = 200 + (index * 200);
-        const y = 600; // Bottom row
+        // Find a skill this course might relate to
+        const relatedSkillCategories = ['Programming', 'Framework', 'Tools'];
+        const categoryIndex = index % relatedSkillCategories.length;
+        const category = relatedSkillCategories[categoryIndex];
+        
+        // Position near skills of that category
+        const x = 50 + (index * 120) + (Math.sin(index) * 30);
+        const y = 400 + (index * 60) + (Math.cos(index) * 40);
         
         nodes.push({
           id: `course-${course.id}`,
@@ -200,11 +283,11 @@ export const useTreeLayoutEngine = () => {
       });
     }
 
-    // Projects - middle row between skills and career steps
+    // Projects - positioned between skill levels
     if (displayControls.showProjects) {
       projects.forEach((project, index) => {
-        const x = 800 + (index * 200);
-        const y = 300;
+        const x = 600 + (index * 150) + (Math.sin(index * 1.5) * 50);
+        const y = 200 + (index * 100) + (Math.cos(index * 1.2) * 60);
         
         nodes.push({
           id: `project-${project.id}`,
@@ -221,11 +304,11 @@ export const useTreeLayoutEngine = () => {
       });
     }
 
-    // Certifications - top row
+    // Certifications - positioned near career goals
     if (displayControls.showCertifications) {
       certifications.forEach((cert, index) => {
-        const x = 800 + (index * 200);
-        const y = -200; // Top row
+        const x = 1400 + (index * 120) + (Math.sin(index * 2) * 40);
+        const y = -100 + (index * 80) + (Math.cos(index * 1.8) * 50);
         
         nodes.push({
           id: `cert-${cert.id}`,
@@ -248,37 +331,39 @@ export const useTreeLayoutEngine = () => {
   const createTreeEdges = useCallback((nodes: Node[]) => {
     const edges: Edge[] = [];
 
-    // Skill tier progression edges - show learning progression
+    // Skill level progression - natural branching connections
     const skillNodes = nodes.filter(n => n.type === 'skill');
-    const skillsByTier = skillNodes.reduce((acc, node) => {
-      const category = node.data.category || 'Programming';
-      const tier = skillCategories[category as keyof typeof skillCategories]?.tier || 1;
-      if (!acc[tier]) acc[tier] = [];
-      acc[tier].push(node);
+    const skillsByLevel = skillNodes.reduce((acc, node) => {
+      const level = (node.data as any).treeLevel || 1;
+      if (!acc[level]) acc[level] = [];
+      acc[level].push(node);
       return acc;
     }, {} as Record<number, Node[]>);
 
-    // Connect skills across tiers to show progression
-    for (let tier = 1; tier < 4; tier++) {
-      const currentTierSkills = skillsByTier[tier] || [];
-      const nextTierSkills = skillsByTier[tier + 1] || [];
+    // Connect skills showing natural progression
+    for (let level = 1; level < 4; level++) {
+      const currentLevelSkills = skillsByLevel[level] || [];
+      const nextLevelSkills = skillsByLevel[level + 1] || [];
       
-      currentTierSkills.forEach(currentSkill => {
-        nextTierSkills.forEach(nextSkill => {
-          // Connect if they're related by category or importance
-          if (currentSkill.data.category === nextSkill.data.category) {
-            edges.push({
-              id: `tier-${currentSkill.id}-${nextSkill.id}`,
-              source: currentSkill.id,
-              target: nextSkill.id,
-              type: 'smoothstep',
-              style: {
-                stroke: currentSkill.data.categoryColor as string,
-                strokeWidth: 2,
-                opacity: 0.3
-              }
-            });
-          }
+      currentLevelSkills.forEach(currentSkill => {
+        // Find 1-2 related skills in next level
+        const relatedSkills = nextLevelSkills
+          .filter(nextSkill => (nextSkill.data as any).category === (currentSkill.data as any).category)
+          .slice(0, 2);
+        
+        relatedSkills.forEach(nextSkill => {
+          edges.push({
+            id: `skill-progression-${currentSkill.id}-${nextSkill.id}`,
+            source: currentSkill.id,
+            target: nextSkill.id,
+            type: 'smoothstep',
+            style: {
+              stroke: (currentSkill.data as any).categoryColor as string,
+              strokeWidth: 1.5,
+              opacity: 0.4,
+              strokeDasharray: '2,2'
+            }
+          });
         });
       });
     }
