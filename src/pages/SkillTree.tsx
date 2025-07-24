@@ -486,6 +486,7 @@ const SkillTree = () => {
       <div className="bg-yellow-100 border border-yellow-300 p-2 rounded mb-4">
         <p className="text-sm">🐛 DEBUG: showPivotPaths = {String(showPivotPaths)}</p>
       </div>
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -551,7 +552,7 @@ const SkillTree = () => {
 
       {/* Main Content with Skill Tree and ROI Panel */}
       <div className="flex gap-6">
-        {/* Interactive Skill Tree with Pivot Support */}
+        {/* Interactive Skill Tree */}
         <div ref={skillTreeRef} data-skill-tree-canvas className="flex-1">
            <InteractiveSkillTree
              skills={skills}
@@ -564,15 +565,11 @@ const SkillTree = () => {
              capstoneSkillIds={capstoneSkillIds}
              availableCategories={categories}
              onSkillClick={handleSkillClick}
-             showMinimap={true}
-             layoutMode="hierarchy"
-             careerPathName={selectedCareerPathData?.title || "Your Career Path"}
-             showPivotPaths={showPivotPaths}
-             roadmapStepSkills={roadmapStepSkills}
-             careerSteps={selectedCareerSteps}
-             focusMode={focusMode}
-             skillsWithCourses={skillsWithCourses}
-           />
+        careerPathName={selectedCareerPathData?.title}
+        showPivotPaths={showPivotPaths}
+        roadmapStepSkills={roadmapStepSkills}
+        careerSteps={selectedCareerSteps}
+      />
         </div>
 
         {/* ROI Panel */}
@@ -613,7 +610,6 @@ const SkillTree = () => {
               onLocationSelect={setSelectedLocation}
             />
           )}
-        </div>
         </div>
       </div>
 
