@@ -13,6 +13,7 @@ import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { ResumePreview } from "@/components/ResumePreview";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 import { CareerGraphTest } from "@/components/CareerGraphTest";
+import { OrphanedNodeReconnector } from "@/components/OrphanedNodeReconnector";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -336,7 +337,8 @@ export default function Dashboard() {
 
           {/* Career Graph Test Suite */}
           <div className="mt-8">
-            <CareerGraphTest />
+        <CareerGraphTest />
+        <OrphanedNodeReconnector />
           </div>
 
           {/* Resume Preview for Aisha Khan */}
