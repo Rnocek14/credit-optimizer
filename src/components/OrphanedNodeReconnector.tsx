@@ -3,15 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useCareerGraph } from '@/hooks/useCareerGraph';
+import { useAICareerGraph } from '@/hooks/useAICareerGraph';
 
 interface ReconnectionSummary {
-  skillEdges: number;
-  courseEdges: number;
-  jobEdges: number;
-  stepEdges: number;
-  projectEdges: number;
-  certificationEdges: number;
-  totalEdges: number;
+  skillsReconnected: number;
+  coursesReconnected: number;
+  stepsReconnected: number;
+  totalNewEdges: number;
   processedNodes: number;
 }
 
@@ -19,7 +17,7 @@ export const OrphanedNodeReconnector: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<ReconnectionSummary | null>(null);
   const [logs, setLogs] = useState<string[]>([]);
-  const { nodes, edges, loading: graphLoading } = useCareerGraph();
+  const { nodes, loading: graphLoading, getOrphanedNodes, findSemanticMatches } = useAICareerGraph();
 
   const addLog = (message: string) => {
     console.log(message);
@@ -32,13 +30,10 @@ export const OrphanedNodeReconnector: React.FC = () => {
     setSummary(null);
 
     const summary: ReconnectionSummary = {
-      skillEdges: 0,
-      courseEdges: 0,
-      jobEdges: 0,
-      stepEdges: 0,
-      projectEdges: 0,
-      certificationEdges: 0,
-      totalEdges: 0,
+      skillsReconnected: 0,
+      coursesReconnected: 0,
+      stepsReconnected: 0,
+      totalNewEdges: 0,
       processedNodes: 0
     };
 
@@ -50,13 +45,8 @@ export const OrphanedNodeReconnector: React.FC = () => {
         return;
       }
 
-      // Step 1: Find orphaned nodes
-      const connectedNodeIds = new Set([
-        ...edges.map(e => e.from_id),
-        ...edges.map(e => e.to_id)
-      ]);
-
-      const orphanedNodes = nodes.filter(node => !connectedNodeIds.has(node.id)).slice(0, 50);
+      // Step 1: Find orphaned nodes using AI Career Graph
+      const orphanedNodes = (await getOrphanedNodes()).slice(0, 50);
 
       if (orphanedNodes.length === 0) {
         addLog('✅ No orphaned nodes found!');
@@ -66,35 +56,26 @@ export const OrphanedNodeReconnector: React.FC = () => {
 
       addLog(`🔍 Found ${orphanedNodes.length} orphaned nodes to process`);
 
-      // Step 2: Process each orphaned node
+      // Step 2: Process each orphaned node using semantic GPT matching
       for (const orphan of orphanedNodes) {
-        addLog(`\n🔧 Processing ${orphan.type}:${orphan.id}`);
+        addLog(`\n🧠 Processing ${orphan.node_type}:${orphan.id}`);
         
-        const edgesCreated = await reconnectNode(orphan, nodes, addLog);
+        const edgesCreated = await reconnectNodeWithSemanticMatching(orphan, findSemanticMatches, addLog);
         
         // Update summary
-        switch (orphan.type) {
+        switch (orphan.node_type) {
           case 'skill':
-            summary.skillEdges += edgesCreated;
+            summary.skillsReconnected++;
             break;
           case 'course':
-            summary.courseEdges += edgesCreated;
-            break;
-          case 'job':
-            summary.jobEdges += edgesCreated;
+            summary.coursesReconnected++;
             break;
           case 'step':
-            summary.stepEdges += edgesCreated;
-            break;
-          case 'project':
-            summary.projectEdges += edgesCreated;
-            break;
-          case 'certification':
-            summary.certificationEdges += edgesCreated;
+            summary.stepsReconnected++;
             break;
         }
         
-        summary.totalEdges += edgesCreated;
+        summary.totalNewEdges += edgesCreated;
         summary.processedNodes++;
       }
 
@@ -111,9 +92,9 @@ export const OrphanedNodeReconnector: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>🔗 Orphaned Node Reconnector</CardTitle>
+        <CardTitle>🧠 Phase 2: Semantic Node Reconnector</CardTitle>
         <CardDescription>
-          Reconnect disconnected nodes in the career graph using semantic matching rules
+          Reconnect the next 50 orphaned nodes using GPT-4 semantic matching
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -122,21 +103,18 @@ export const OrphanedNodeReconnector: React.FC = () => {
           disabled={loading || graphLoading}
           className="w-full"
         >
-          {loading ? 'Reconnecting...' : graphLoading ? 'Loading Graph...' : 'Reconnect Orphaned Nodes'}
+          {loading ? '🧠 Running Phase 2...' : graphLoading ? 'Loading Graph...' : '🧠 Run Phase 2 Semantic Reconnection'}
         </Button>
 
         {summary && (
           <div className="space-y-2 p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold">📊 Reconnection Summary</h3>
+            <h3 className="font-semibold">📊 Phase 2 Summary</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>Processed Nodes: {summary.processedNodes}</div>
-              <div>Total Edges: {summary.totalEdges}</div>
-              <div>Skill Edges: {summary.skillEdges}</div>
-              <div>Course Edges: {summary.courseEdges}</div>
-              <div>Job Edges: {summary.jobEdges}</div>
-              <div>Step Edges: {summary.stepEdges}</div>
-              <div>Project Edges: {summary.projectEdges}</div>
-              <div>Certification Edges: {summary.certificationEdges}</div>
+              <div>Total New Edges: {summary.totalNewEdges}</div>
+              <div>Skills Reconnected: {summary.skillsReconnected}</div>
+              <div>Courses Reconnected: {summary.coursesReconnected}</div>
+              <div>Steps Reconnected: {summary.stepsReconnected}</div>
             </div>
           </div>
         )}
@@ -156,178 +134,111 @@ export const OrphanedNodeReconnector: React.FC = () => {
   );
 };
 
-// Helper functions for reconnection logic
-async function reconnectNode(orphan: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
+// Phase 2: Semantic GPT matching for reconnection
+async function reconnectNodeWithSemanticMatching(
+  orphan: any, 
+  findSemanticMatches: (nodeId: string, targetType: string, limit: number) => Promise<any[]>,
+  addLog: (msg: string) => void
+): Promise<number> {
   let edgesCreated = 0;
 
-  switch (orphan.type) {
-    case 'skill':
-      edgesCreated = await reconnectSkillNode(orphan, allNodes, addLog);
-      break;
-    case 'course':
-      edgesCreated = await reconnectCourseNode(orphan, allNodes, addLog);
-      break;
-    case 'job':
-      edgesCreated = await reconnectJobNode(orphan, allNodes, addLog);
-      break;
-    case 'step':
-      edgesCreated = await reconnectStepNode(orphan, allNodes, addLog);
-      break;
-    case 'project':
-      edgesCreated = await reconnectProjectNode(orphan, allNodes, addLog);
-      break;
-    case 'certification':
-      edgesCreated = await reconnectCertificationNode(orphan, allNodes, addLog);
-      break;
+  try {
+    switch (orphan.node_type) {
+      case 'skill':
+        edgesCreated = await reconnectSkillNodeSemantic(orphan, findSemanticMatches, addLog);
+        break;
+      case 'course':
+        edgesCreated = await reconnectCourseNodeSemantic(orphan, findSemanticMatches, addLog);
+        break;
+      case 'step':
+        edgesCreated = await reconnectStepNodeSemantic(orphan, findSemanticMatches, addLog);
+        break;
+      default:
+        addLog(`   ⚠️  Skipping ${orphan.node_type} - not supported in Phase 2`);
+    }
+  } catch (error) {
+    addLog(`   ❌ Error processing ${orphan.node_type}:${orphan.id}: ${error}`);
   }
 
   return edgesCreated;
 }
 
-async function reconnectSkillNode(skillNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
+async function reconnectSkillNodeSemantic(
+  skillNode: any, 
+  findSemanticMatches: (nodeId: string, targetType: string, limit: number) => Promise<any[]>,
+  addLog: (msg: string) => void
+): Promise<number> {
   let edgesCreated = 0;
-  const skillTitle = skillNode.title?.toLowerCase() || '';
-  const skillName = skillNode.data?.name?.toLowerCase() || skillTitle;
 
-  // Find courses that teach this skill
-  const teachingCourses = allNodes.filter((node: any) => 
-    node.type === 'course' && (
-      node.title?.toLowerCase().includes(skillName) ||
-      node.data?.skill_tags?.some((tag: string) => 
-        tag.toLowerCase().includes(skillName) || skillName.includes(tag.toLowerCase())
-      )
-    )
-  );
-
-  // Find steps that teach this skill
-  const teachingSteps = allNodes.filter((node: any) => 
-    node.type === 'step' && (
-      node.title?.toLowerCase().includes(skillName) ||
-      node.data?.skill_keywords?.some((keyword: string) => 
-        keyword.toLowerCase().includes(skillName) || skillName.includes(keyword.toLowerCase())
-      )
-    )
-  );
-
-  // Create edges
-  for (const course of teachingCourses.slice(0, 3)) { // Limit to avoid too many edges
-    await createEdge(course.id, course.type, skillNode.id, skillNode.type, 'teaches', addLog);
-    edgesCreated++;
+  // Find related courses (teaches relationship)
+  const courseMatches = await findSemanticMatches(skillNode.id, 'course', 3);
+  for (const match of courseMatches) {
+    if (match.relationshipType === 'teaches' || match.similarityScore > 70) {
+      await createSemanticEdge(match.targetId, 'course', skillNode.id, 'skill', 'teaches', addLog);
+      edgesCreated++;
+    }
   }
 
-  for (const step of teachingSteps.slice(0, 3)) {
-    await createEdge(step.id, step.type, skillNode.id, skillNode.type, 'teaches', addLog);
-    edgesCreated++;
+  // Find related skills (requires relationship)
+  const skillMatches = await findSemanticMatches(skillNode.id, 'skill', 3);
+  for (const match of skillMatches) {
+    if (match.relationshipType === 'requires' || match.similarityScore > 80) {
+      await createSemanticEdge(match.targetId, 'skill', skillNode.id, 'skill', 'requires', addLog);
+      edgesCreated++;
+    }
   }
 
   return edgesCreated;
 }
 
-async function reconnectCourseNode(courseNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
+async function reconnectCourseNodeSemantic(
+  courseNode: any, 
+  findSemanticMatches: (nodeId: string, targetType: string, limit: number) => Promise<any[]>,
+  addLog: (msg: string) => void
+): Promise<number> {
   let edgesCreated = 0;
-  const courseTitle = courseNode.title?.toLowerCase() || '';
-  const skillTags = courseNode.data?.skill_tags || [];
 
-  // Find skills this course teaches
-  const teachedSkills = allNodes.filter((node: any) => 
-    node.type === 'skill' && (
-      courseTitle.includes(node.data?.name?.toLowerCase() || node.title?.toLowerCase()) ||
-      skillTags.some((tag: string) => 
-        tag.toLowerCase().includes(node.data?.name?.toLowerCase() || node.title?.toLowerCase())
-      )
-    )
-  );
+  // Find related skills (teaches relationship)
+  const skillMatches = await findSemanticMatches(courseNode.id, 'skill', 5);
+  for (const match of skillMatches) {
+    if (match.relationshipType === 'teaches' || match.similarityScore > 70) {
+      await createSemanticEdge(courseNode.id, 'course', match.targetId, 'skill', 'teaches', addLog);
+      edgesCreated++;
+    }
+  }
 
-  // Create edges
-  for (const skill of teachedSkills.slice(0, 5)) {
-    await createEdge(courseNode.id, courseNode.type, skill.id, skill.type, 'teaches', addLog);
-    edgesCreated++;
+  // Find related steps (supports relationship)
+  const stepMatches = await findSemanticMatches(courseNode.id, 'step', 3);
+  for (const match of stepMatches) {
+    if (match.relationshipType === 'supports' || match.similarityScore > 75) {
+      await createSemanticEdge(courseNode.id, 'course', match.targetId, 'step', 'supports', addLog);
+      edgesCreated++;
+    }
   }
 
   return edgesCreated;
 }
 
-async function reconnectJobNode(jobNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
+async function reconnectStepNodeSemantic(
+  stepNode: any, 
+  findSemanticMatches: (nodeId: string, targetType: string, limit: number) => Promise<any[]>,
+  addLog: (msg: string) => void
+): Promise<number> {
   let edgesCreated = 0;
-  const jobTitle = jobNode.title?.toLowerCase() || '';
 
-  // Find skills that qualify for this job using keyword matching
-  const qualifyingSkills = allNodes.filter((node: any) => 
-    node.type === 'skill' && 
-    isJobRelevantSkill(jobTitle, node.data?.name?.toLowerCase() || node.title?.toLowerCase())
-  );
-
-  // Create edges
-  for (const skill of qualifyingSkills.slice(0, 8)) {
-    await createEdge(skill.id, skill.type, jobNode.id, jobNode.type, 'qualifies_for', addLog);
-    edgesCreated++;
+  // Find related skills (teaches relationship)
+  const skillMatches = await findSemanticMatches(stepNode.id, 'skill', 3);
+  for (const match of skillMatches) {
+    if (match.relationshipType === 'teaches' || match.similarityScore > 70) {
+      await createSemanticEdge(stepNode.id, 'step', match.targetId, 'skill', 'teaches', addLog);
+      edgesCreated++;
+    }
   }
 
   return edgesCreated;
 }
 
-async function reconnectStepNode(stepNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
-  let edgesCreated = 0;
-  const stepTitle = stepNode.title?.toLowerCase() || '';
-
-  // Find skills this step teaches
-  const teachedSkills = allNodes.filter((node: any) => 
-    node.type === 'skill' && 
-    stepTitle.includes(node.data?.name?.toLowerCase() || node.title?.toLowerCase())
-  );
-
-  // Create edges
-  for (const skill of teachedSkills.slice(0, 3)) {
-    await createEdge(stepNode.id, stepNode.type, skill.id, skill.type, 'teaches', addLog);
-    edgesCreated++;
-  }
-
-  return edgesCreated;
-}
-
-async function reconnectProjectNode(projectNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
-  let edgesCreated = 0;
-  const skillsDemonstrated = projectNode.data?.skills_demonstrated || [];
-
-  // Find skills this project validates
-  const validatedSkills = allNodes.filter((node: any) => 
-    node.type === 'skill' && 
-    skillsDemonstrated.some((skill: string) => 
-      skill.toLowerCase().includes(node.data?.name?.toLowerCase() || node.title?.toLowerCase())
-    )
-  );
-
-  // Create edges
-  for (const skill of validatedSkills.slice(0, 5)) {
-    await createEdge(projectNode.id, projectNode.type, skill.id, skill.type, 'validates', addLog);
-    edgesCreated++;
-  }
-
-  return edgesCreated;
-}
-
-async function reconnectCertificationNode(certNode: any, allNodes: any[], addLog: (msg: string) => void): Promise<number> {
-  let edgesCreated = 0;
-  const skillsValidated = certNode.data?.skills_validated || [];
-
-  // Find skills this certification validates
-  const validatedSkills = allNodes.filter((node: any) => 
-    node.type === 'skill' && 
-    skillsValidated.some((skill: string) => 
-      skill.toLowerCase().includes(node.data?.name?.toLowerCase() || node.title?.toLowerCase())
-    )
-  );
-
-  // Create edges
-  for (const skill of validatedSkills.slice(0, 5)) {
-    await createEdge(certNode.id, certNode.type, skill.id, skill.type, 'validates', addLog);
-    edgesCreated++;
-  }
-
-  return edgesCreated;
-}
-
-async function createEdge(
+async function createSemanticEdge(
   fromId: string, 
   fromType: string, 
   toId: string, 
@@ -335,6 +246,20 @@ async function createEdge(
   edgeType: string,
   addLog: (msg: string) => void
 ): Promise<void> {
+  // Check for existing edge to avoid duplicates
+  const { data: existingEdge } = await supabase
+    .from('career_graph_edges')
+    .select('id')
+    .eq('from_id', fromId)
+    .eq('to_id', toId)
+    .eq('edge_type', edgeType)
+    .single();
+
+  if (existingEdge) {
+    addLog(`   ⚠️  Skipping duplicate: ${fromType}:${fromId} → ${toType}:${toId} (${edgeType})`);
+    return;
+  }
+
   const { error } = await supabase
     .from('career_graph_edges')
     .insert({
@@ -346,39 +271,13 @@ async function createEdge(
       importance_weight: 1.0,
       time_cost_hours: 0,
       monetary_cost: 0,
-      difficulty_multiplier: 1.0
+      difficulty_multiplier: 1.0,
+      data_source: 'semantic_ai'
     });
 
   if (error) {
-    addLog(`❌ Error creating edge ${fromType}:${fromId} → ${toType}:${toId}: ${error.message}`);
+    addLog(`   ❌ Error: ${fromType}:${fromId} → ${toType}:${toId}: ${error.message}`);
   } else {
-    addLog(`   ${fromType}:${fromId} → ${toType}:${toId} (${edgeType})`);
+    addLog(`   ✅ ${fromType}:${fromId} → ${toType}:${toId} (${edgeType})`);
   }
-}
-
-function isJobRelevantSkill(jobTitle: string, skillName: string): boolean {
-  const jobSkillMappings: Record<string, string[]> = {
-    'data scientist': ['python', 'machine learning', 'statistics', 'sql', 'pandas', 'numpy', 'scikit-learn', 'tensorflow'],
-    'data analyst': ['sql', 'excel', 'tableau', 'python', 'statistics', 'power bi', 'r'],
-    'software engineer': ['programming', 'algorithms', 'data structures', 'java', 'python', 'javascript'],
-    'web developer': ['html', 'css', 'javascript', 'react', 'vue', 'angular', 'node.js'],
-    'devops': ['docker', 'kubernetes', 'aws', 'linux', 'terraform', 'jenkins', 'git'],
-    'product manager': ['product management', 'strategy', 'analytics', 'agile', 'scrum'],
-    'business analyst': ['business analysis', 'requirements', 'process improvement', 'sql'],
-    'marketing': ['marketing', 'digital marketing', 'seo', 'social media', 'analytics'],
-    'designer': ['design', 'ui', 'ux', 'figma', 'photoshop', 'illustrator'],
-    'project manager': ['project management', 'agile', 'scrum', 'planning', 'risk management']
-  };
-  
-  for (const [job, skills] of Object.entries(jobSkillMappings)) {
-    if (jobTitle.includes(job)) {
-      return skills.some(skill => 
-        skillName.includes(skill) || 
-        skill.includes(skillName) ||
-        (skillName.length > 3 && skill.includes(skillName.substring(0, skillName.length - 1)))
-      );
-    }
-  }
-  
-  return false;
 }
