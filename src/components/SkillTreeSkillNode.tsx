@@ -1,7 +1,9 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Clock, CheckCircle, Circle, Lock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { BookOpen, Clock, CheckCircle, Circle, Lock, Star } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SkillTreeSkillNodeData {
   name: string;
@@ -13,6 +15,7 @@ interface SkillTreeSkillNodeData {
   estimatedWeeks: string;
   trackCategory: string;
   isFoundational: boolean;
+  categoryColor?: string;
 }
 
 interface SkillTreeSkillNodeProps {
@@ -28,7 +31,9 @@ export const SkillTreeSkillNode: React.FC<SkillTreeSkillNodeProps> = memo(({ dat
     isLocked, 
     difficultyLevel, 
     estimatedWeeks, 
-    isFoundational 
+    trackCategory,
+    isFoundational,
+    categoryColor = 'hsl(var(--primary))'
   } = data;
 
   const getCategoryColor = (category: string) => {
@@ -57,65 +62,85 @@ export const SkillTreeSkillNode: React.FC<SkillTreeSkillNodeProps> = memo(({ dat
   const progressColor = isCompleted ? 'text-green-500' : isLocked ? 'text-gray-400' : 'text-gray-300';
 
   return (
-    <div className="group">
-      <Handle type="target" position={Position.Top} className="opacity-0 group-hover:opacity-100" />
+    <div className="relative">
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="w-3 h-3"
+        style={{ background: categoryColor }}
+      />
       
-      <div className={`
-        w-44 p-3 rounded-lg border border-border bg-background/80 backdrop-blur-sm
-        transition-all duration-200 hover:shadow-md hover:scale-105 relative
-        flex flex-col items-center text-center
-        ${isFoundational ? 'ring-2 ring-primary/20' : ''}
-        ${isCompleted ? 'border-green-500 bg-green-50 dark:bg-green-950' : ''}
-        ${isLocked ? 'opacity-60 border-gray-300' : ''}
-      `}>
-        {/* Progress indicator */}
-        <div className="absolute -top-2 -right-2">
-          <ProgressIcon className={`h-4 w-4 ${progressColor} bg-background rounded-full border border-background`} />
-        </div>
-
-        {/* Foundational indicator */}
-        {isFoundational && (
-          <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full"></div>
-        )}
-
-        {/* Icon */}
-        <div className="mb-2 p-2 rounded-full bg-muted">
-          <BookOpen className="h-4 w-4 text-muted-foreground" />
-        </div>
-
-        {/* Name */}
-        <h4 className="font-medium text-sm mb-1 leading-tight">
-          {name}
-        </h4>
-
-        {/* Badges */}
-        <div className="flex flex-wrap gap-1 mb-2 justify-center">
-          <Badge 
-            variant="secondary" 
-            className={`text-xs ${getCategoryColor(category)}`}
-          >
-            {category}
-          </Badge>
-          <Badge className={`text-xs ${getDifficultyColor()}`}>
-            {difficultyLevel}
-          </Badge>
-        </div>
-
-        {/* Time estimate */}
-        <div className="flex items-center gap-1 mb-2 px-2 py-1 bg-muted rounded text-xs">
-          <Clock className="h-3 w-3" />
-          <span>{estimatedWeeks}</span>
-        </div>
-
-        {/* Description */}
-        {description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {description}
-          </p>
-        )}
-      </div>
-
-      <Handle type="source" position={Position.Bottom} className="opacity-0 group-hover:opacity-100" />
+      <Card className={cn(
+        "w-44 transition-all duration-300 border-2",
+        isCompleted && "border-green-500/50 bg-green-50/20 shadow-green-500/20",
+        isFoundational && "ring-2 ring-primary/20",
+        "hover:shadow-lg hover-scale"
+      )} style={{ borderColor: categoryColor + '40' }}>
+        <CardContent className="p-3">
+          {/* Header with status and category */}
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {isCompleted && <CheckCircle className="w-4 h-4 text-green-500" />}
+              {!isCompleted && <Circle className="w-4 h-4" style={{ color: categoryColor }} />}
+            </div>
+            
+            {/* Category badge */}
+            <Badge 
+              variant="outline"
+              className="text-xs animate-fade-in"
+              style={{ 
+                borderColor: categoryColor,
+                color: categoryColor
+              }}
+            >
+              {trackCategory}
+            </Badge>
+          </div>
+          
+          {/* Skill name */}
+          <h3 className="font-semibold text-sm mb-2 line-clamp-2">
+            {name}
+          </h3>
+          
+          {/* Foundational indicator */}
+          {isFoundational && (
+            <div className="flex items-center gap-1 mb-2 text-xs font-medium text-primary">
+              <Star className="w-3 h-3" />
+              <span>Foundation</span>
+            </div>
+          )}
+          
+          {/* Difficulty and time */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{estimatedWeeks}</span>
+            </div>
+            
+            <Badge 
+              variant={difficultyLevel === 'advanced' ? 'destructive' : 
+                      difficultyLevel === 'intermediate' ? 'default' : 'secondary'}
+              className="text-xs"
+            >
+              {difficultyLevel}
+            </Badge>
+          </div>
+          
+          {/* Progress bar for completed skills */}
+          {isCompleted && (
+            <div className="mt-2 w-full bg-green-100 rounded-full h-1">
+              <div className="bg-green-500 h-1 rounded-full w-full animate-scale-in" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="w-3 h-3"
+        style={{ background: categoryColor }}
+      />
     </div>
   );
 });

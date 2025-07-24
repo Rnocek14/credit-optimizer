@@ -1,8 +1,9 @@
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Clock, Target, Lock, CheckCircle, Circle } from 'lucide-react';
+import { Crown, Clock, Target, Lock, CheckCircle, Circle, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Skill {
   id: string;
@@ -24,6 +25,9 @@ interface SkillTreeStepNodeData {
   isInProgress: boolean;
   isLocked: boolean;
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
+  progress?: {
+    completion_percentage?: number;
+  };
 }
 
 interface SkillTreeStepNodeProps {
@@ -41,7 +45,8 @@ export const SkillTreeStepNode: React.FC<SkillTreeStepNodeProps> = memo(({ data 
     isCompleted,
     isInProgress,
     isLocked,
-    difficultyLevel
+    difficultyLevel,
+    progress
   } = data;
 
   // Get difficulty styling
@@ -59,97 +64,123 @@ export const SkillTreeStepNode: React.FC<SkillTreeStepNodeProps> = memo(({ data 
   const progressColor = isCompleted ? 'text-green-500' : isInProgress ? 'text-yellow-500' : isLocked ? 'text-gray-400' : 'text-gray-300';
 
   return (
-    <div className="group">
-      <Handle type="target" position={Position.Top} className="opacity-0 group-hover:opacity-100" />
+    <div className="relative">
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-3 h-3 !bg-primary/50"
+      />
       
-      <Card className={`
-        w-64 p-4 border-2 transition-all duration-200 hover:shadow-lg relative
-        ${isLocked ? 'opacity-60 border-gray-300' : ''}
-        ${isCompleted ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950' : ''}
-        ${isInProgress ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-950' : ''}
-        ${isTerminal 
-          ? 'border-yellow-500 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950 dark:to-amber-950' 
-          : !isCompleted && !isInProgress ? 'border-border hover:border-primary' : ''
-        }
-      `}>
-        {/* Progress indicator in top-right */}
-        <div className="absolute -top-2 -right-2">
-          <ProgressIcon className={`h-5 w-5 ${progressColor} bg-background rounded-full border border-background`} />
-        </div>
-        {/* Header with difficulty and level badges */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              {isTerminal && <Crown className="h-4 w-4 text-yellow-600" />}
-              <Badge variant="secondary" className="text-xs">
+      <Card className={cn(
+        "w-64 transition-all duration-300 border-2",
+        isCompleted && "border-green-500/50 bg-green-50/20 shadow-green-500/20",
+        isInProgress && "border-yellow-500/50 bg-yellow-50/20 shadow-yellow-500/20 animate-pulse",
+        isLocked && "border-muted bg-muted/30 opacity-60",
+        isTerminal && "border-yellow-500/70 bg-gradient-to-br from-yellow-50/30 to-amber-50/30",
+        !isLocked && !isCompleted && !isInProgress && "border-primary/30 hover:border-primary/60 hover:shadow-lg hover-scale"
+      )}>
+        <CardContent className="p-4">
+          {/* Header with status icon and terminal indicator */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {isTerminal && <Crown className="w-4 h-4 text-yellow-600" />}
+              {isCompleted && <CheckCircle className="w-4 h-4 text-green-500" />}
+              {isInProgress && <Circle className="w-4 h-4 text-yellow-500 animate-spin" />}
+              {isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}
+              {!isLocked && !isCompleted && !isInProgress && !isTerminal && <Circle className="w-4 h-4 text-primary" />}
+            </div>
+            
+            <div className="flex gap-1">
+              <Badge variant="secondary" className="text-xs animate-fade-in">
                 Level {level}
               </Badge>
-              <Badge className={`text-xs ${getDifficultyColor()}`}>
+              <Badge 
+                variant={difficultyLevel === 'advanced' ? 'destructive' : 
+                        difficultyLevel === 'intermediate' ? 'default' : 'secondary'}
+                className="text-xs animate-fade-in"
+              >
                 {difficultyLevel}
               </Badge>
             </div>
-            <h3 className="font-semibold text-sm leading-tight mb-1">
-              {title}
-            </h3>
           </div>
-        </div>
-
-        {/* Description */}
-        {description && (
-          <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-            {description}
-          </p>
-        )}
-
-        {/* Time estimate - prominently displayed */}
-        <div className="flex items-center gap-1 mb-3 p-2 bg-muted rounded-md">
-          <Clock className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs font-medium">
-            {estimatedWeeks}
-          </span>
-        </div>
-
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Target className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs font-medium">Key Skills</span>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {skills.slice(0, 3).map((skill) => (
-                <Badge 
-                  key={skill.id} 
-                  variant="outline" 
-                  className="text-xs px-1 py-0"
-                  style={{
-                    opacity: 0.6 + (skill.importance * 0.4)
-                  }}
-                >
-                  {skill.name}
-                </Badge>
-              ))}
-              {skills.length > 3 && (
-                <Badge variant="outline" className="text-xs px-1 py-0">
-                  +{skills.length - 3}
-                </Badge>
-              )}
-            </div>
+          
+          {/* Title */}
+          <h3 className={cn(
+            "font-semibold text-sm mb-2 line-clamp-2",
+            isLocked ? "text-muted-foreground" : "text-foreground"
+          )}>
+            {title}
+          </h3>
+          
+          {/* Description */}
+          {description && (
+            <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+              {description}
+            </p>
+          )}
+          
+          {/* Time estimate */}
+          <div className="flex items-center gap-1 mb-3 p-2 bg-muted/50 rounded-md">
+            <Clock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-xs font-medium">{estimatedWeeks}</span>
           </div>
-        )}
-
-        {/* Terminal indicator */}
-        {isTerminal && (
-          <div className="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800">
-            <div className="flex items-center gap-1 text-yellow-700 dark:text-yellow-300">
-              <Target className="h-3 w-3" />
-              <span className="text-xs font-medium">Career Goal</span>
+          
+          {/* Skills count */}
+          {skills?.length > 0 && (
+            <div className="mb-3">
+              <div className="flex items-center gap-1 mb-2">
+                <Target className="w-3 h-3 text-muted-foreground" />
+                <span className="text-xs font-medium">Key Skills ({skills.length})</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {skills.slice(0, 3).map((skill) => (
+                  <Badge 
+                    key={skill.id} 
+                    variant="outline" 
+                    className="text-xs px-1 py-0"
+                    style={{
+                      opacity: 0.6 + (skill.importance * 0.4)
+                    }}
+                  >
+                    {skill.name}
+                  </Badge>
+                ))}
+                {skills.length > 3 && (
+                  <Badge variant="outline" className="text-xs px-1 py-0">
+                    +{skills.length - 3}
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          
+          {/* Terminal indicator */}
+          {isTerminal && (
+            <div className="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-center gap-1 text-yellow-700 dark:text-yellow-300">
+                <Target className="w-3 h-3" />
+                <span className="text-xs font-medium">Career Goal</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Progress bar for in-progress items */}
+          {isInProgress && progress?.completion_percentage && (
+            <div className="mt-3 w-full bg-muted rounded-full h-1.5">
+              <div 
+                className="bg-yellow-500 h-1.5 rounded-full transition-all duration-500 animate-scale-in"
+                style={{ width: `${progress.completion_percentage}%` }}
+              />
+            </div>
+          )}
+        </CardContent>
       </Card>
-
-      <Handle type="source" position={Position.Bottom} className="opacity-0 group-hover:opacity-100" />
+      
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 !bg-primary/50"
+      />
     </div>
   );
 });

@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { useSkillTree } from '@/contexts/SkillTreeContext';
+import { useTreeLayoutEngine } from './TreeLayoutEngine';
 
 export const useGraphOrchestrator = () => {
   const {
@@ -442,38 +443,12 @@ export const useGraphOrchestrator = () => {
     return edges;
   }, [careerSteps, userProgress, stepSkillMappings, displayControls, courses, skills]);
 
-  // Main orchestration function
+  const { generateTreeLayout } = useTreeLayoutEngine();
+
+  // Main orchestration function - now uses tree layout
   const generateGraph = useCallback(() => {
-    const stepsByLevel = careerSteps.reduce((acc, step) => {
-      if (!acc[step.level]) acc[step.level] = [];
-      acc[step.level].push(step);
-      return acc;
-    }, {} as Record<number, any[]>);
-
-    const allNodes = [
-      ...createStepNodes(stepsByLevel),
-      ...createSkillNodes(),
-      ...createCourseNodes(),
-      ...createProjectNodes(),
-      ...createCertificationNodes(),
-      ...createJobNodes(),
-      ...createPivotNodes(),
-    ];
-
-    const allEdges = createEdges(allNodes);
-
-    return { nodes: allNodes, edges: allEdges };
-  }, [
-    careerSteps,
-    createStepNodes,
-    createSkillNodes,
-    createCourseNodes,
-    createProjectNodes,
-    createCertificationNodes,
-    createJobNodes,
-    createPivotNodes,
-    createEdges
-  ]);
+    return generateTreeLayout();
+  }, [generateTreeLayout]);
 
   return {
     generateGraph,
