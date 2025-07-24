@@ -103,7 +103,7 @@ export const useGraphOrchestrator = () => {
             ...skill,
             isCompleted: skillProgress?.status === 'completed',
             progress: skillProgress,
-          },
+          } as Record<string, unknown>,
         });
       });
     });
@@ -129,7 +129,7 @@ export const useGraphOrchestrator = () => {
       id: `project-${project.id}`,
       type: 'project',
       position: { x: index * 250 - (projects.length * 125), y: -600 },
-      data: project,
+      data: { ...project } as Record<string, unknown>,
     }));
   }, [projects, displayControls.showProjects]);
 
@@ -140,7 +140,7 @@ export const useGraphOrchestrator = () => {
       id: `cert-${cert.id}`,
       type: 'certification',
       position: { x: index * 200 - (certifications.length * 100), y: -800 },
-      data: cert,
+      data: { ...cert } as Record<string, unknown>,
     }));
   }, [certifications, displayControls.showCertifications]);
 
@@ -167,7 +167,7 @@ export const useGraphOrchestrator = () => {
         growthOutlook: selectedPath.growth_outlook || 'Excellent',
         requiredSkillIds: skills.slice(0, 8).map(s => s.id),
         isGoal: true
-      },
+      } as Record<string, unknown>,
     }];
   }, [displayControls.showJobs, careerPaths, selectedCareerPath, careerSteps, skills, graphLayout, layoutParams]);
 
@@ -187,7 +187,7 @@ export const useGraphOrchestrator = () => {
         sharedSkills: pivot.shared_skills,
         missingSkills: pivot.missing_skills,
         isPivot: true
-      },
+      } as Record<string, unknown>,
     }));
   }, [displayControls.showPivots, pivotRecommendations]);
 
