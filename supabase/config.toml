@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.ai-mentor-chat]
 verify_jwt = true
+
+[functions.semantic-node-matcher]
+verify_jwt = false
+
+[functions.ai-path-validator]
+verify_jwt = false

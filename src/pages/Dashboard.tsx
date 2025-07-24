@@ -14,6 +14,7 @@ import { ResumePreview } from "@/components/ResumePreview";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 import { CareerGraphTest } from "@/components/CareerGraphTest";
 import { OrphanedNodeReconnector } from "@/components/OrphanedNodeReconnector";
+import { AICareerGraphManager } from "@/components/AICareerGraphManager";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -337,8 +338,9 @@ export default function Dashboard() {
 
           {/* Career Graph Test Suite */}
           <div className="mt-8">
-        <CareerGraphTest />
-        <OrphanedNodeReconnector />
+            <CareerGraphTest />
+            <OrphanedNodeReconnector />
+            <AICareerGraphManager />
           </div>
 
           {/* Resume Preview for Aisha Khan */}

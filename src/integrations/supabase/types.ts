@@ -245,6 +245,66 @@ export type Database = {
         }
         Relationships: []
       }
+      career_graph_nodes: {
+        Row: {
+          active: boolean | null
+          ai_confidence_score: number | null
+          ai_generated_description: string | null
+          category: string | null
+          cost_estimate: number | null
+          created_at: string
+          description: string | null
+          difficulty_level: number | null
+          estimated_time_hours: number | null
+          id: string
+          last_analyzed: string | null
+          node_type: string
+          original_id: string | null
+          original_table: string | null
+          semantic_tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          ai_confidence_score?: number | null
+          ai_generated_description?: string | null
+          category?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_time_hours?: number | null
+          id?: string
+          last_analyzed?: string | null
+          node_type: string
+          original_id?: string | null
+          original_table?: string | null
+          semantic_tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          ai_confidence_score?: number | null
+          ai_generated_description?: string | null
+          category?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_time_hours?: number | null
+          id?: string
+          last_analyzed?: string | null
+          node_type?: string
+          original_id?: string | null
+          original_table?: string | null
+          semantic_tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       career_location_multipliers: {
         Row: {
           career_path_id: string
