@@ -18,49 +18,135 @@ export const useGraphOrchestrator = () => {
     pivotRecommendations
   } = useSkillTree();
 
-  // Calculate layout parameters based on graph type
+  // Dynamic layout calculator based on enabled content
   const layoutParams = useMemo(() => {
-    // New hierarchical layout: Foundation to Career Goals (bottom to top)
-    const LEVEL_HEIGHT = graphLayout.direction === 'vertical' ? 200 : 150;
-    const LEVEL_WIDTH = graphLayout.direction === 'horizontal' ? 350 : 250;
-    const NODE_SPACING = 40;
-    const TRACK_SPACING = 300; // Space between learning tracks
+    const NODE_WIDTH = 180;
+    const NODE_HEIGHT = 120;
+    const MIN_SPACING_X = 60;
+    const MIN_SPACING_Y = 100;
+    const LAYER_GAP = 150; // Minimum gap between different layer types
     
-    return { LEVEL_HEIGHT, LEVEL_WIDTH, NODE_SPACING, TRACK_SPACING };
-  }, [graphLayout]);
+    // Calculate active layers and their requirements
+    const activeLayers = [];
+    let currentY = 50; // Start from bottom
+    
+    // Skills layer (foundation)
+    if (displayControls.showSkills) {
+      const skillCategories = [...new Set(skills.map(s => s.category))];
+      const maxSkillsPerRow = Math.min(8, skillCategories.length); // Limit skills per row
+      activeLayers.push({
+        type: 'skills',
+        y: currentY,
+        height: Math.ceil(skillCategories.length / maxSkillsPerRow) * (NODE_HEIGHT + MIN_SPACING_Y)
+      });
+      currentY += activeLayers[activeLayers.length - 1].height + LAYER_GAP;
+    }
+    
+    // Courses layer
+    if (displayControls.showCourses) {
+      const coursesPerRow = Math.min(6, courses.length);
+      activeLayers.push({
+        type: 'courses', 
+        y: currentY,
+        height: Math.ceil(courses.length / coursesPerRow) * (NODE_HEIGHT + MIN_SPACING_Y)
+      });
+      currentY += activeLayers[activeLayers.length - 1].height + LAYER_GAP;
+    }
+    
+    // Projects layer
+    if (displayControls.showProjects) {
+      activeLayers.push({
+        type: 'projects',
+        y: currentY,
+        height: NODE_HEIGHT + MIN_SPACING_Y
+      });
+      currentY += activeLayers[activeLayers.length - 1].height + LAYER_GAP;
+    }
+    
+    // Certifications layer
+    if (displayControls.showCertifications) {
+      activeLayers.push({
+        type: 'certifications',
+        y: currentY,
+        height: NODE_HEIGHT + MIN_SPACING_Y
+      });
+      currentY += activeLayers[activeLayers.length - 1].height + LAYER_GAP;
+    }
+    
+    // Career steps layer (dynamic height based on levels)
+    const maxLevel = careerSteps.length > 0 ? Math.max(...careerSteps.map(s => s.level)) : 0;
+    if (careerSteps.length > 0) {
+      activeLayers.push({
+        type: 'careerSteps',
+        y: currentY,
+        height: (maxLevel + 1) * (NODE_HEIGHT + MIN_SPACING_Y)
+      });
+      currentY += activeLayers[activeLayers.length - 1].height + LAYER_GAP;
+    }
+    
+    // Jobs layer (at the top)
+    if (displayControls.showJobs) {
+      activeLayers.push({
+        type: 'jobs',
+        y: currentY,
+        height: NODE_HEIGHT + MIN_SPACING_Y
+      });
+      currentY += activeLayers[activeLayers.length - 1].height;
+    }
+    
+    // Pivot layer (side by side with jobs)
+    if (displayControls.showPivots) {
+      const jobLayer = activeLayers.find(l => l.type === 'jobs');
+      activeLayers.push({
+        type: 'pivots',
+        y: jobLayer ? jobLayer.y - 50 : currentY,
+        height: NODE_HEIGHT + MIN_SPACING_Y
+      });
+    }
+    
+    return { 
+      NODE_WIDTH, 
+      NODE_HEIGHT, 
+      MIN_SPACING_X, 
+      MIN_SPACING_Y, 
+      LAYER_GAP,
+      activeLayers,
+      totalHeight: currentY
+    };
+  }, [graphLayout, displayControls, skills, courses, projects, certifications, careerSteps]);
 
-  // Node generation factories with new hierarchical approach
   const createStepNodes = useCallback((stepsByLevel: Record<number, any[]>) => {
     const nodes: Node[] = [];
-    const { LEVEL_HEIGHT, LEVEL_WIDTH, NODE_SPACING } = layoutParams;
+    const { NODE_WIDTH, MIN_SPACING_X, MIN_SPACING_Y, activeLayers } = layoutParams;
+    
+    const stepLayer = activeLayers.find(l => l.type === 'careerSteps');
+    if (!stepLayer) return nodes;
 
     Object.entries(stepsByLevel).forEach(([level, steps]) => {
       const levelNum = parseInt(level);
-      // Career steps now positioned in upper levels (600+ for senior roles)
-      const baseY = graphLayout.direction === 'vertical' ? 600 + (levelNum * LEVEL_HEIGHT) : 0;
-      const baseX = graphLayout.direction === 'horizontal' ? levelNum * LEVEL_WIDTH : 0;
-
+      const stepsPerRow = Math.min(5, steps.length); // Max 5 steps per row
+      const rowHeight = NODE_WIDTH + MIN_SPACING_Y;
+      
       steps.forEach((step, index) => {
-        const offsetX = graphLayout.direction === 'vertical' 
-          ? (index - (steps.length - 1) / 2) * (250 + NODE_SPACING)
-          : baseX;
-        const offsetY = graphLayout.direction === 'horizontal'
-          ? (index - (steps.length - 1) / 2) * (150 + NODE_SPACING)
-          : baseY;
+        const row = Math.floor(index / stepsPerRow);
+        const col = index % stepsPerRow;
+        const rowSteps = steps.slice(row * stepsPerRow, (row + 1) * stepsPerRow);
+        
+        const x = (col - (rowSteps.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X);
+        const y = stepLayer.y + (levelNum * rowHeight) + (row * rowHeight);
 
         const stepProgress = displayControls.showProgress ? 
           userProgress?.find(p => p.stepId === step.id) : null;
         const isCompleted = stepProgress?.status === 'completed';
         const isInProgress = stepProgress?.status === 'in_progress';
         
-        // Check if prerequisites are met for unlock status
         const prerequisitesMet = !step.prerequisites?.length || 
           step.prerequisites.every(id => userProgress?.find(p => p.stepId === id)?.status === 'completed');
         
         nodes.push({
           id: step.id,
           type: 'careerStep',
-          position: { x: offsetX, y: offsetY },
+          position: { x, y },
           data: {
             ...step,
             isCompleted,
@@ -89,34 +175,43 @@ export const useGraphOrchestrator = () => {
     });
 
     return nodes;
-  }, [stepSkillMappings, skills, userProgress, displayControls.showProgress, layoutParams, graphLayout]);
+  }, [stepSkillMappings, skills, userProgress, displayControls.showProgress, layoutParams]);
 
   const createSkillNodes = useCallback(() => {
     if (!displayControls.showSkills) return [];
     
     const nodes: Node[] = [];
-    const { TRACK_SPACING } = layoutParams;
+    const { NODE_WIDTH, MIN_SPACING_X, MIN_SPACING_Y, activeLayers } = layoutParams;
     
-    // Group skills by category and create learning tracks
+    const skillLayer = activeLayers.find(l => l.type === 'skills');
+    if (!skillLayer) return nodes;
+    
+    // Group skills by category and create smart clusters
     const skillCategories = [...new Set(skills.map(s => s.category))];
     const foundationalSkills = ['Programming', 'Framework', 'Tools'];
-    const advancedSkills = ['Data', 'DevOps', 'Design', 'Testing'];
+    const maxSkillsPerRow = 8;
+    
+    let currentRow = 0;
+    let skillsInCurrentRow = 0;
     
     skillCategories.forEach((category, catIndex) => {
       const categorySkills = skills.filter(s => s.category === category);
       const isFoundational = foundationalSkills.includes(category);
-      const baseY = isFoundational ? 50 : 200; // Foundational skills at bottom
       
       categorySkills.forEach((skill, skillIndex) => {
-        const trackX = (catIndex - (skillCategories.length - 1) / 2) * TRACK_SPACING;
-        const x = trackX + (skillIndex - (categorySkills.length - 1) / 2) * 180;
-        const y = baseY + (isFoundational ? 0 : 150);
+        // Start new row if we've hit the limit
+        if (skillsInCurrentRow >= maxSkillsPerRow) {
+          currentRow++;
+          skillsInCurrentRow = 0;
+        }
+        
+        const x = (skillsInCurrentRow - (Math.min(maxSkillsPerRow, categorySkills.length) - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X);
+        const y = skillLayer.y + (isFoundational ? 0 : MIN_SPACING_Y) + (currentRow * (NODE_WIDTH + MIN_SPACING_Y));
         
         const skillProgress = displayControls.showProgress ? 
           userProgress?.find(p => p.skillId === skill.id) : null;
         const isCompleted = skillProgress?.status === 'completed';
         
-        // Determine difficulty and time estimates
         const difficultyLevel = skill.difficulty_level || 1;
         const estimatedWeeks = difficultyLevel <= 2 ? '1-2 weeks' : 
                               difficultyLevel <= 4 ? '2-4 weeks' : '4-8 weeks';
@@ -128,7 +223,7 @@ export const useGraphOrchestrator = () => {
           data: {
             ...skill,
             isCompleted,
-            isLocked: false, // Skills are generally available to learn
+            isLocked: false,
             progress: skillProgress,
             difficultyLevel: difficultyLevel <= 2 ? 'beginner' : 
                            difficultyLevel <= 4 ? 'intermediate' : 'advanced',
@@ -137,6 +232,8 @@ export const useGraphOrchestrator = () => {
             isFoundational,
           } as Record<string, unknown>,
         });
+        
+        skillsInCurrentRow++;
       });
     });
 
@@ -146,35 +243,55 @@ export const useGraphOrchestrator = () => {
   const createCourseNodes = useCallback(() => {
     if (!displayControls.showCourses) return [];
     
-    // Position courses in learning layer (300-400y)
-    return courses.map((course, index) => ({
-      id: `course-${course.id}`,
-      type: 'course',
-      position: { x: (index - (courses.length - 1) / 2) * 220, y: 350 },
-      data: { 
-        ...course,
-        estimatedWeeks: course.difficulty === 'advanced' ? '6-12 weeks' : 
-                       course.difficulty === 'intermediate' ? '3-6 weeks' : '1-3 weeks',
-        difficultyLevel: course.difficulty || 'beginner',
-        isLocked: false, // Courses generally available
-      } as Record<string, unknown>,
-    }));
-  }, [courses, displayControls.showCourses]);
+    const { NODE_WIDTH, MIN_SPACING_X, MIN_SPACING_Y, activeLayers } = layoutParams;
+    const courseLayer = activeLayers.find(l => l.type === 'courses');
+    if (!courseLayer) return [];
+    
+    const coursesPerRow = 6;
+    
+    return courses.map((course, index) => {
+      const row = Math.floor(index / coursesPerRow);
+      const col = index % coursesPerRow;
+      const rowCourses = courses.slice(row * coursesPerRow, (row + 1) * coursesPerRow);
+      
+      const x = (col - (rowCourses.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X);
+      const y = courseLayer.y + (row * (NODE_WIDTH + MIN_SPACING_Y));
+      
+      return {
+        id: `course-${course.id}`,
+        type: 'course',
+        position: { x, y },
+        data: { 
+          ...course,
+          estimatedWeeks: course.difficulty === 'advanced' ? '6-12 weeks' : 
+                         course.difficulty === 'intermediate' ? '3-6 weeks' : '1-3 weeks',
+          difficultyLevel: course.difficulty || 'beginner',
+          isLocked: false,
+        } as Record<string, unknown>,
+      };
+    });
+  }, [courses, displayControls.showCourses, layoutParams]);
 
   const createProjectNodes = useCallback(() => {
     if (!displayControls.showProjects) return [];
     
-    // Position projects in practice layer (450-550y)
+    const { NODE_WIDTH, MIN_SPACING_X, activeLayers } = layoutParams;
+    const projectLayer = activeLayers.find(l => l.type === 'projects');
+    if (!projectLayer) return [];
+    
     return projects.map((project, index) => ({
       id: `project-${project.id}`,
       type: 'project',
-      position: { x: (index - (projects.length - 1) / 2) * 280, y: 500 },
+      position: { 
+        x: (index - (projects.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X), 
+        y: projectLayer.y 
+      },
       data: { 
         ...project,
         estimatedWeeks: project.difficulty === 'advanced' ? '8-16 weeks' : 
                        project.difficulty === 'intermediate' ? '4-8 weeks' : '2-4 weeks',
         difficultyLevel: project.difficulty || 'intermediate',
-        isLocked: false, // Projects can be started when ready
+        isLocked: false,
       } as Record<string, unknown>,
     }));
   }, [projects, displayControls.showProjects]);
@@ -182,34 +299,40 @@ export const useGraphOrchestrator = () => {
   const createCertificationNodes = useCallback(() => {
     if (!displayControls.showCertifications) return [];
     
-    // Position certifications in validation layer (550-600y)  
+    const { NODE_WIDTH, MIN_SPACING_X, activeLayers } = layoutParams;
+    const certLayer = activeLayers.find(l => l.type === 'certifications');
+    if (!certLayer) return [];
+    
     return certifications.map((cert, index) => ({
       id: `cert-${cert.id}`,
       type: 'certification',
-      position: { x: (index - (certifications.length - 1) / 2) * 250, y: 580 },
+      position: { 
+        x: (index - (certifications.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X), 
+        y: certLayer.y 
+      },
       data: { 
         ...cert,
         estimatedWeeks: `${cert.exam_duration || '2-4 weeks'} prep`,
         difficultyLevel: cert.industry_recognition === 'high' ? 'advanced' : 'intermediate',
-        isLocked: false, // Certs available when ready
+        isLocked: false,
       } as Record<string, unknown>,
     }));
-  }, [certifications, displayControls.showCertifications]);
+  }, [certifications, displayControls.showCertifications, layoutParams]);
 
   const createJobNodes = useCallback(() => {
     if (!displayControls.showJobs || !careerPaths.length) return [];
     
+    const { activeLayers } = layoutParams;
+    const jobLayer = activeLayers.find(l => l.type === 'jobs');
+    if (!jobLayer) return [];
+    
     const selectedPath = careerPaths.find(p => p.id === selectedCareerPath);
     if (!selectedPath) return [];
-
-    const maxLevel = Math.max(...careerSteps.map(s => s.level));
-    // Position career goals at the top (highest Y values)
-    const jobY = graphLayout.direction === 'vertical' ? 800 + (maxLevel * 200) : 0;
     
     return [{
       id: `job-${selectedPath.id}`,
       type: 'job',
-      position: { x: 0, y: jobY },
+      position: { x: 0, y: jobLayer.y },
       data: {
         title: selectedPath.title,
         description: selectedPath.description || '',
@@ -229,11 +352,17 @@ export const useGraphOrchestrator = () => {
   const createPivotNodes = useCallback(() => {
     if (!displayControls.showPivots || !pivotRecommendations?.length) return [];
     
-    // Position pivot options near current career level
+    const { NODE_WIDTH, MIN_SPACING_X, activeLayers } = layoutParams;
+    const pivotLayer = activeLayers.find(l => l.type === 'pivots');
+    if (!pivotLayer) return [];
+    
     return pivotRecommendations.map((pivot, index) => ({
       id: `pivot-${index}`,
       type: 'job', 
-      position: { x: (index - (pivotRecommendations.length - 1) / 2) * 350, y: 750 },
+      position: { 
+        x: (index - (pivotRecommendations.length - 1) / 2) * (NODE_WIDTH + MIN_SPACING_X), 
+        y: pivotLayer.y 
+      },
       data: {
         title: pivot.career_title,
         description: pivot.reasoning || '',
