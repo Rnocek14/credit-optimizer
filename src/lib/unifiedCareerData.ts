@@ -82,14 +82,31 @@ export const fetchUnifiedCareerData = async (careerPathId?: string): Promise<Uni
 
   if (careerPathsError) throw careerPathsError;
 
-  // Fetch recommended courses
+  // Fetch recommended courses with skill mappings
   const { data: courses, error: coursesError } = await supabase
     .from('recommended_courses')
-    .select('*')
+    .select(`
+      *,
+      course_skill_map (
+        skill_id,
+        skills (
+          id,
+          name,
+          category
+        )
+      )
+    `)
     .eq('active', true)
     .order('title');
 
   if (coursesError) throw coursesError;
+
+  // Fetch skill relationships
+  const { data: skillBranches, error: skillBranchesError } = await supabase
+    .from('skill_branches')
+    .select('*');
+
+  if (skillBranchesError) throw skillBranchesError;
 
   // Fetch career steps if specific path is selected
   let careerSteps: any[] = [];
@@ -167,133 +184,77 @@ export const fetchUnifiedCareerData = async (careerPathId?: string): Promise<Uni
     })),
   };
 
+  // Store relationship data for generateCareerRelationships
+  (transformedData as any).relationshipData = {
+    skillBranches: skillBranches || [],
+    courseSkillMaps: courses?.flatMap(c => c.course_skill_map || []) || [],
+    careerStepSkills: careerSteps.flatMap(s => s.career_step_skills || [])
+  };
+
   return transformedData;
 };
 
 export const generateCareerRelationships = (data: UnifiedCareerData): CareerRelationship[] => {
   const relationships: CareerRelationship[] = [];
+  const relationshipData = (data as any).relationshipData;
 
-  // 1. Generate prerequisite relationships between skills
-  // (Based on difficulty levels and categories)
-  data.skills.forEach(skill => {
-    const prerequisites = data.skills.filter(s => 
-      s.category === skill.category && 
-      s.difficulty_level < skill.difficulty_level
-    );
-    
-    prerequisites.forEach(prereq => {
-      relationships.push({
-        from: prereq.id,
-        to: skill.id,
-        type: 'prerequisite',
-        weight: 1,
-      });
+  if (!relationshipData) {
+    console.warn('No relationship data found, falling back to synthetic relationships');
+    return generateSyntheticRelationships(data);
+  }
+
+  const { skillBranches, courseSkillMaps, careerStepSkills } = relationshipData;
+
+  console.log('🔗 Generating relationships from database:', {
+    skillBranches: skillBranches.length,
+    courseSkillMaps: courseSkillMaps.length,
+    careerStepSkills: careerStepSkills.length
+  });
+
+  // 1. Use real skill prerequisite relationships from skill_branches table
+  skillBranches.forEach((branch: any) => {
+    relationships.push({
+      from: branch.from_skill_id,
+      to: branch.to_skill_id,
+      type: 'prerequisite',
+      weight: branch.recommended ? 3 : 2,
     });
   });
 
-  // 2. Generate learning path relationships (skills -> courses -> projects)
-  data.courses.forEach(course => {
-    // Connect relevant skills to courses
-    course.skill_tags.forEach(skillTag => {
-      const matchingSkill = data.skills.find(s => 
-        s.name.toLowerCase().includes(skillTag.toLowerCase()) ||
-        s.category.toLowerCase().includes(skillTag.toLowerCase())
-      );
-      
-      if (matchingSkill) {
-        relationships.push({
-          from: matchingSkill.id,
-          to: course.id,
-          type: 'learningPath',
-          weight: 2,
-        });
-      }
+  // 2. Use real course-skill relationships from course_skill_map table
+  courseSkillMaps.forEach((mapping: any) => {
+    relationships.push({
+      from: mapping.skill_id,
+      to: mapping.course_id,
+      type: 'learningPath',
+      weight: 4,
     });
   });
 
-  // 3. Connect courses to projects
-  data.projects.forEach(project => {
-    project.skills_demonstrated.forEach(skillName => {
-      const relatedCourse = data.courses.find(c => 
-        c.skill_tags.some(tag => 
-          tag.toLowerCase().includes(skillName.toLowerCase())
-        )
-      );
-      
-      if (relatedCourse) {
-        relationships.push({
-          from: relatedCourse.id,
-          to: project.id,
-          type: 'learningPath',
-          weight: 3,
-        });
-      }
+  // 3. Use real career step-skill relationships from career_step_skills table
+  careerStepSkills.forEach((stepSkill: any) => {
+    relationships.push({
+      from: stepSkill.skill_id,
+      to: stepSkill.step_id,
+      type: 'careerPath',
+      weight: stepSkill.importance_score || 3,
     });
   });
 
-  // 4. Generate career path relationships (skills/projects -> jobs)
+  // 4. Generate career path relationships using job required skills
   data.jobs.forEach(job => {
     job.required_skill_ids.forEach(skillId => {
-      const skill = data.skills.find(s => s.id === skillId);
-      if (skill) {
-        relationships.push({
-          from: skillId,
-          to: job.id,
-          type: 'careerPath',
-          weight: 5,
-        });
-      }
-    });
-
-    // Connect advanced projects to jobs
-    const relevantProjects = data.projects.filter(p => 
-      p.project_type === 'portfolio' && 
-      p.difficulty === 'advanced'
-    );
-    
-    relevantProjects.forEach(project => {
       relationships.push({
-        from: project.id,
+        from: skillId,
         to: job.id,
         type: 'careerPath',
-        weight: 4,
+        weight: 5,
       });
     });
   });
 
-  // 5. Generate validation relationships (projects -> certifications)
-  data.certifications.forEach(cert => {
-    cert.skills_validated.forEach(skillName => {
-      const relatedProject = data.projects.find(p => 
-        p.skills_demonstrated.some(s => 
-          s.toLowerCase().includes(skillName.toLowerCase())
-        )
-      );
-      
-      if (relatedProject) {
-        relationships.push({
-          from: relatedProject.id,
-          to: cert.id,
-          type: 'validation',
-          weight: 3,
-        });
-      }
-    });
-  });
-
-  // 6. Connect career steps
+  // 5. Connect career steps with prerequisites
   data.careerSteps.forEach(step => {
-    // Connect skills to career steps
-    step.skills.forEach(skill => {
-      relationships.push({
-        from: skill.id,
-        to: step.id,
-        type: 'careerPath',
-        weight: 3,
-      });
-    });
-
-    // Connect prerequisites
     step.prerequisites.forEach(prereqId => {
       const prereqStep = data.careerSteps.find(s => s.id === prereqId);
       if (prereqStep) {
@@ -301,7 +262,7 @@ export const generateCareerRelationships = (data: UnifiedCareerData): CareerRela
           from: prereqId,
           to: step.id,
           type: 'prerequisite',
-          weight: 2,
+          weight: 4,
         });
       }
     });
@@ -325,7 +286,87 @@ export const generateCareerRelationships = (data: UnifiedCareerData): CareerRela
     }
   });
 
+  // 6. Add some project and certification connections (keeping these synthetic for now)
+  addProjectAndCertificationRelationships(data, relationships);
+
+  console.log('✅ Generated relationships:', {
+    total: relationships.length,
+    byType: {
+      prerequisite: relationships.filter(r => r.type === 'prerequisite').length,
+      learningPath: relationships.filter(r => r.type === 'learningPath').length,
+      careerPath: relationships.filter(r => r.type === 'careerPath').length,
+      validation: relationships.filter(r => r.type === 'validation').length,
+    }
+  });
+
   return relationships;
+};
+
+// Fallback function for synthetic relationships
+const generateSyntheticRelationships = (data: UnifiedCareerData): CareerRelationship[] => {
+  const relationships: CareerRelationship[] = [];
+
+  // Basic skill prerequisite relationships based on difficulty
+  data.skills.forEach(skill => {
+    const prerequisites = data.skills.filter(s => 
+      s.category === skill.category && 
+      s.difficulty_level < skill.difficulty_level
+    );
+    
+    prerequisites.forEach(prereq => {
+      relationships.push({
+        from: prereq.id,
+        to: skill.id,
+        type: 'prerequisite',
+        weight: 1,
+      });
+    });
+  });
+
+  return relationships;
+};
+
+// Helper function to add project and certification relationships
+const addProjectAndCertificationRelationships = (data: UnifiedCareerData, relationships: CareerRelationship[]) => {
+  // Connect courses to projects
+  data.projects.forEach(project => {
+    project.skills_demonstrated.forEach(skillName => {
+      const relatedCourse = data.courses.find(c => 
+        c.skill_tags.some(tag => 
+          tag.toLowerCase().includes(skillName.toLowerCase())
+        )
+      );
+      
+      if (relatedCourse) {
+        relationships.push({
+          from: relatedCourse.id,
+          to: project.id,
+          type: 'learningPath',
+          weight: 3,
+        });
+      }
+    });
+  });
+
+  // Connect projects to certifications
+  data.certifications.forEach(cert => {
+    cert.skills_validated.forEach(skillName => {
+      const relatedProject = data.projects.find(p => 
+        p.skills_demonstrated.some(s => 
+          s.toLowerCase().includes(skillName.toLowerCase())
+        )
+      );
+      
+      if (relatedProject) {
+        relationships.push({
+          from: relatedProject.id,
+          to: cert.id,
+          type: 'validation',
+          weight: 3,
+        });
+      }
+    });
+  });
 };
 
 // Mock data generators for projects and certifications

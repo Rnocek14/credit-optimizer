@@ -14,7 +14,7 @@ const SkillTreeBuilder = () => {
   const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'hierarchy' | 'force' | 'hybrid'>('hierarchy');
+  const [layoutMode, setLayoutMode] = useState<'hierarchy' | 'force' | 'hybrid'>('force');
   const [forceStrength, setForceStrength] = useState(0.5);
   const [animationSpeed, setAnimationSpeed] = useState(1);
   const [showControls, setShowControls] = useState(false);
@@ -153,6 +153,12 @@ const SkillTreeBuilder = () => {
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
             {relationships.length} Connections
+          </Badge>
+          <Badge variant="secondary" className="px-3 py-1">
+            Layout: {layoutMode}
+          </Badge>
+          <Badge variant="secondary" className="px-3 py-1">
+            Real DB Relationships: {relationships.filter(r => r.weight && r.weight > 1).length}
           </Badge>
         </div>
 
