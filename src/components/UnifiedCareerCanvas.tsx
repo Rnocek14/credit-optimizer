@@ -12,8 +12,12 @@ import {
   Node,
   MarkerType,
   ConnectionMode,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+// Import smart layout functionality
+import { calculateForceDirectedLayout, ForceDirectedLayoutOptions } from '@/lib/smartLayout';
 
 // Import all node types
 import { JobNode } from './SkillTree/JobNode';
@@ -79,7 +83,7 @@ interface UnifiedCareerData {
     skills_demonstrated: string[];
     project_type: string;
   }>;
-  certifications?: Array<{
+  certifications: Array<{
     id: string;
     title: string;
     issuer: string;
@@ -88,7 +92,7 @@ interface UnifiedCareerData {
     validity: string;
     skills_validated: string[];
   }>;
-  careerSteps?: Array<{
+  careerSteps: Array<{
     id: string;
     title: string;
     description: string;
@@ -112,7 +116,9 @@ interface UnifiedCareerCanvasProps {
   selectedCareerPath?: string;
   onNodeClick?: (nodeId: string, nodeType: string) => void;
   showMinimap?: boolean;
-  layoutMode?: 'hierarchy' | 'force' | 'circular';
+  layoutMode?: 'hierarchy' | 'force' | 'hybrid';
+  forceOptions?: Partial<ForceDirectedLayoutOptions>;
+  onLayoutCalculating?: (isCalculating: boolean) => void;
 }
 
 // Layout algorithms
@@ -301,33 +307,103 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   selectedCareerPath,
   onNodeClick,
   showMinimap = true,
-  layoutMode = 'hierarchy'
+  layoutMode = 'hierarchy',
+  forceOptions,
+  onLayoutCalculating,
 }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [isCalculatingLayout, setIsCalculatingLayout] = useState(false);
+  const { fitView } = useReactFlow();
 
-  // Calculate layout based on data
+  // Calculate layout based on data and mode
   const calculatedNodes = useMemo(() => {
-    return calculateHierarchicalLayout(
-      data.skills,
-      data.jobs,
-      data.courses,
-      data.projects,
-      data.certifications || [],
-      data.careerSteps || []
-    );
-  }, [data]);
+    if (layoutMode === 'hierarchy') {
+      return calculateHierarchicalLayout(
+        data.skills,
+        data.jobs,
+        data.courses,
+        data.projects,
+        data.certifications,
+        data.careerSteps
+      );
+    }
+    return []; // Force-directed layout will be calculated separately
+  }, [data, layoutMode]);
 
   // Generate edges from relationships
   const calculatedEdges = useMemo(() => {
     return generateRelationshipEdges(relationships);
   }, [relationships]);
 
-  // Update nodes and edges when data changes
+  // Calculate force-directed layout when needed
   useEffect(() => {
-    setNodes(calculatedNodes);
+    const calculateLayout = async () => {
+      if (layoutMode === 'force' || layoutMode === 'hybrid') {
+        setIsCalculatingLayout(true);
+        onLayoutCalculating?.(true);
+        
+        try {
+          const forceNodes = await calculateForceDirectedLayout(
+            data,
+            relationships,
+            forceOptions
+          );
+          
+          if (layoutMode === 'hybrid') {
+            // For hybrid mode, blend hierarchical and force-directed positions
+            const hierarchicalNodes = calculateHierarchicalLayout(
+              data.skills,
+              data.jobs,
+              data.courses,
+              data.projects,
+              data.certifications,
+              data.careerSteps
+            );
+            
+            // Blend positions (70% force, 30% hierarchical)
+            const blendedNodes = forceNodes.map(forceNode => {
+              const hierarchicalNode = hierarchicalNodes.find(h => h.id === forceNode.id);
+              if (hierarchicalNode) {
+                return {
+                  ...forceNode,
+                  position: {
+                    x: forceNode.position.x * 0.7 + hierarchicalNode.position.x * 0.3,
+                    y: forceNode.position.y * 0.7 + hierarchicalNode.position.y * 0.3,
+                  },
+                };
+              }
+              return forceNode;
+            });
+            
+            setNodes(blendedNodes);
+          } else {
+            setNodes(forceNodes);
+          }
+          
+          // Auto-fit view after layout calculation
+          setTimeout(() => fitView({ duration: 800 }), 100);
+        } catch (error) {
+          console.error('Error calculating force-directed layout:', error);
+          // Fallback to hierarchical layout
+          setNodes(calculatedNodes);
+        } finally {
+          setIsCalculatingLayout(false);
+          onLayoutCalculating?.(false);
+        }
+      } else {
+        // Hierarchical layout
+        setNodes(calculatedNodes);
+      }
+    };
+
+    calculateLayout();
+  }, [data, relationships, layoutMode, forceOptions, calculatedNodes, setNodes, fitView, onLayoutCalculating]);
+
+  // Update edges when relationships change
+  useEffect(() => {
     setEdges(calculatedEdges);
-  }, [calculatedNodes, calculatedEdges, setNodes, setEdges]);
+  }, [calculatedEdges, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
