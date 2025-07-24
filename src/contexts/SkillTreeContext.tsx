@@ -256,32 +256,41 @@ export const SkillTreeProvider: React.FC<{ children: ReactNode }> = ({ children 
   // Actions
   const loadCareerPaths = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all career paths
+      const { data: allPaths, error: pathsError } = await supabase
         .from('career_paths')
-        .select(`
-          id, 
-          title, 
-          summary,
-          career_steps!inner(id)
-        `)
+        .select('id, title, summary')
         .order('title');
 
-      if (error) throw error;
-      
-      const pathsWithSteps = (data || [])
-        .reduce((acc, item) => {
-          if (!acc.find(p => p.id === item.id)) {
-            acc.push({
-              id: item.id,
-              title: item.title,
-              description: item.summary || ''
-            });
-          }
-          return acc;
-        }, [] as CareerPath[]);
+      if (pathsError) throw pathsError;
+
+      // Then check which ones have steps
+      const { data: stepsCount, error: stepsError } = await supabase
+        .from('career_steps')
+        .select('career_path_id, count')
+        .not('career_path_id', 'is', null);
+
+      if (stepsError) throw stepsError;
+
+      // Filter paths that have steps
+      const pathsWithSteps = (allPaths || [])
+        .filter(path => stepsCount?.some(sc => sc.career_path_id === path.id))
+        .map(path => ({
+          id: path.id,
+          title: path.title,
+          description: path.summary || ''
+        }));
       
       dispatch({ type: 'SET_CAREER_PATHS', payload: pathsWithSteps });
-      console.log('Loaded career paths:', pathsWithSteps.length);
+      console.log('Loaded career paths with steps:', pathsWithSteps.length);
+
+      // Auto-select "Data Analyst" if available and no path is currently selected
+      if (!state.selectedCareerPath && pathsWithSteps.length > 0) {
+        const dataAnalystPath = pathsWithSteps.find(p => p.title === 'Data Analyst');
+        const defaultPath = dataAnalystPath || pathsWithSteps[0];
+        console.log('Auto-selecting path:', defaultPath.title);
+        selectCareerPath(defaultPath.id);
+      }
     } catch (error) {
       console.error('Error loading career paths:', error);
       toast.error('Failed to load career paths');
