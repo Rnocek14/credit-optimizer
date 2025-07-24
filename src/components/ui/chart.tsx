@@ -65,6 +65,18 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+// CSS sanitization helper
+const sanitizeCSSValue = (value: string): string => {
+  // Only allow hex colors, rgb(a), hsl(a), and CSS color keywords
+  const colorRegex = /^(#[0-9a-fA-F]{3,8}|rgb\([^)]+\)|rgba\([^)]+\)|hsl\([^)]+\)|hsla\([^)]+\)|[a-zA-Z]+)$/;
+  return colorRegex.test(value) ? value : '';
+};
+
+const sanitizeCSSIdentifier = (identifier: string): string => {
+  // Only allow alphanumeric, hyphens, and underscores
+  return identifier.replace(/[^a-zA-Z0-9\-_]/g, '');
+};
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([_, config]) => config.theme || config.color
@@ -74,25 +86,34 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+  // Sanitize the chart ID
+  const sanitizedId = sanitizeCSSIdentifier(id);
+
+  // Build CSS safely without dangerouslySetInnerHTML
+  const cssText = Object.entries(THEMES)
+    .map(
+      ([theme, prefix]) => `
+${prefix} [data-chart="${sanitizedId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    const sanitizedKey = sanitizeCSSIdentifier(key);
+    const sanitizedColor = color ? sanitizeCSSValue(color) : '';
+    return sanitizedColor ? `  --color-${sanitizedKey}: ${sanitizedColor};` : null
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `
-          )
-          .join("\n"),
+    )
+    .join("\n");
+
+  return (
+    <style
+      dangerouslySetInnerHTML={{
+        __html: cssText,
       }}
     />
   )

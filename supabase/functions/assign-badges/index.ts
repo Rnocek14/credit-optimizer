@@ -36,11 +36,25 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { user_id } = await req.json();
+    const requestBody = await req.json();
+    const { user_id } = requestBody;
 
-    if (!user_id) {
+    // Input validation
+    if (!user_id || typeof user_id !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'user_id is required' }),
+        JSON.stringify({ error: 'Valid user_id (string) is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(user_id)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid user_id format' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

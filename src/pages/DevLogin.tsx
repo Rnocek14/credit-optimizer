@@ -35,6 +35,14 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Redirect to normal auth in production
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      navigate("/auth");
+      return;
+    }
+  }, [navigate]);
+
   const form = useForm<DevLoginData>({
     resolver: zodResolver(devLoginSchema),
     defaultValues: {
@@ -55,6 +63,17 @@ export default function DevLogin() {
   }, [navigate, toast]);
 
   const handleDevLogin = async (data: DevLoginData) => {
+    // Block dev login in production
+    if (!import.meta.env.DEV) {
+      toast({
+        title: "Dev mode disabled",
+        description: "Development login is only available in development environment",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const isAdmin = data.email === "founder@lifepath.dev" || data.email.includes("admin");

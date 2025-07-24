@@ -31,28 +31,31 @@ export interface AuthProfile {
 }
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  // Check for dev user first
-  const storedDevUser = localStorage.getItem("devUser");
-  if (storedDevUser) {
-    const parsedDevUser = JSON.parse(storedDevUser);
-    window.__devUser__ = parsedDevUser;
-    return {
-      id: parsedDevUser.id,
-      email: parsedDevUser.email,
-      role: parsedDevUser.role,
-      name: parsedDevUser.name,
-      isDevUser: true,
-    };
-  }
+  // Only allow dev mode in development environment
+  if (import.meta.env.DEV) {
+    // Check for dev user first
+    const storedDevUser = localStorage.getItem("devUser");
+    if (storedDevUser) {
+      const parsedDevUser = JSON.parse(storedDevUser);
+      window.__devUser__ = parsedDevUser;
+      return {
+        id: parsedDevUser.id,
+        email: parsedDevUser.email,
+        role: parsedDevUser.role,
+        name: parsedDevUser.name,
+        isDevUser: true,
+      };
+    }
 
-  if (window.__devUser__) {
-    return {
-      id: window.__devUser__.id,
-      email: window.__devUser__.email,
-      role: window.__devUser__.role,
-      name: window.__devUser__.name,
-      isDevUser: true,
-    };
+    if (window.__devUser__) {
+      return {
+        id: window.__devUser__.id,
+        email: window.__devUser__.email,
+        role: window.__devUser__.role,
+        name: window.__devUser__.name,
+        isDevUser: true,
+      };
+    }
   }
 
   // Fall back to real Supabase auth

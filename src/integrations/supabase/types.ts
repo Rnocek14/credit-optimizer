@@ -1098,60 +1098,6 @@ export type Database = {
           },
         ]
       }
-      roadmap_steps_backup: {
-        Row: {
-          category: string | null
-          completed: boolean | null
-          completed_at: string | null
-          created_at: string | null
-          description: string | null
-          estimated_duration: string | null
-          id: string | null
-          order_index: number | null
-          prerequisites: string[] | null
-          priority: string | null
-          success_metrics: string | null
-          timeline: string | null
-          title: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          category?: string | null
-          completed?: boolean | null
-          completed_at?: string | null
-          created_at?: string | null
-          description?: string | null
-          estimated_duration?: string | null
-          id?: string | null
-          order_index?: number | null
-          prerequisites?: string[] | null
-          priority?: string | null
-          success_metrics?: string | null
-          timeline?: string | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          category?: string | null
-          completed?: boolean | null
-          completed_at?: string | null
-          created_at?: string | null
-          description?: string | null
-          estimated_duration?: string | null
-          id?: string | null
-          order_index?: number | null
-          prerequisites?: string[] | null
-          priority?: string | null
-          success_metrics?: string | null
-          timeline?: string | null
-          title?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       salary_insights: {
         Row: {
           career_path_id: string
