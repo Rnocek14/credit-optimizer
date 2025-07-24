@@ -139,12 +139,75 @@ export const useAICareerGraph = () => {
         throw new Error(`Semantic matching failed: ${error.message}`);
       }
 
-      return data?.matches || [];
+      const rawMatches = data?.matches || [];
+      
+      // Validate and resolve target IDs to proper UUIDs
+      const validatedMatches: SemanticMatch[] = [];
+      
+      for (const match of rawMatches) {
+        const validatedTargetId = resolveToValidUUID(match.targetId, targetType);
+        
+        if (validatedTargetId) {
+          validatedMatches.push({
+            ...match,
+            targetId: validatedTargetId
+          });
+        } else {
+          console.warn(`⚠️ Skipped invalid match: ${match.targetId} (not a valid UUID)`);
+        }
+      }
+
+      return validatedMatches;
     } catch (err) {
       console.error('❌ Semantic matching error:', err);
       return [];
     }
-  }, []);
+  }, [nodes]);
+
+  // Helper function to resolve shorthand IDs to valid UUIDs
+  const resolveToValidUUID = useCallback((targetId: string, targetType: string): string | null => {
+    // Check if it's already a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (uuidRegex.test(targetId)) {
+      // Verify the UUID exists in our nodes
+      const foundNode = nodes.find(node => node.id === targetId && node.node_type === targetType);
+      return foundNode ? targetId : null;
+    }
+
+    // Handle shorthand formats like "13", "skill:30", etc.
+    let searchValue = targetId;
+    
+    // Remove type prefix if present (e.g., "skill:30" -> "30")
+    if (targetId.includes(':')) {
+      searchValue = targetId.split(':')[1];
+    }
+
+    // Try to find by index in filtered nodes of the target type
+    const nodesOfType = nodes.filter(node => node.node_type === targetType);
+    
+    // Try parsing as number for index-based lookup
+    const numericIndex = parseInt(searchValue, 10);
+    if (!isNaN(numericIndex) && numericIndex > 0 && numericIndex <= nodesOfType.length) {
+      return nodesOfType[numericIndex - 1]?.id || null;
+    }
+
+    // Try exact title match
+    const titleMatch = nodesOfType.find(node => 
+      node.title.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    if (titleMatch) {
+      return titleMatch.id;
+    }
+
+    // Try partial title match
+    const partialMatch = nodesOfType.find(node =>
+      searchValue.toLowerCase().includes(node.title.toLowerCase()) ||
+      node.title.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    
+    return partialMatch?.id || null;
+  }, [nodes]);
 
   // Validate a career path using AI
   const validatePath = useCallback(async (
