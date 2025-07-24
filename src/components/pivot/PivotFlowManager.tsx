@@ -54,12 +54,18 @@ export const PivotFlowManager: React.FC<PivotFlowManagerProps> = ({
 
   // Combine all roadmap steps for visualization
   const allRoadmapSteps = useMemo(() => {
+    console.log('🚨🚨🚨 allRoadmapSteps CALCULATION - generatedRoadmaps:', generatedRoadmaps);
+    console.log('🚨🚨🚨 generatedRoadmaps size:', generatedRoadmaps.size);
+    console.error('🚨🚨🚨 FORCE LOG - generatedRoadmaps:', generatedRoadmaps);
+    
     const steps: PivotRoadmapStep[] = [];
     generatedRoadmaps.forEach((roadmapSteps, key) => {
       console.log(`🔍 Adding roadmap steps for ${key}:`, roadmapSteps);
+      console.error(`🚨 FORCE - Adding roadmap steps for ${key}:`, roadmapSteps);
       steps.push(...roadmapSteps);
     });
     console.log(`🔍 Total allRoadmapSteps:`, steps.length, steps);
+    console.error(`🚨🚨🚨 FINAL allRoadmapSteps:`, steps.length, steps);
     return steps;
   }, [generatedRoadmaps]);
 
