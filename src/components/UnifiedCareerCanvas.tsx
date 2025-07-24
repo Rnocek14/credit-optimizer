@@ -174,16 +174,30 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [showFocusMode, setShowFocusMode] = useState(false);
   const { fitView } = useReactFlow();
 
-  // SIMPLIFIED: Always create test nodes first to verify React Flow works
+  // Create nodes from real data OR fallback to test nodes
   const calculatedNodes = useMemo(() => {
-    console.log('🎯 SIMPLIFIED: Creating test nodes to verify React Flow');
+    console.log('🎯 Calculating nodes from data:', {
+      hasData: !!data,
+      skills: data?.skills?.length || 0,
+      jobs: data?.jobs?.length || 0,
+      courses: data?.courses?.length || 0,
+      projects: data?.projects?.length || 0,
+      certifications: data?.certifications?.length || 0
+    });
     
-    // Always create test nodes regardless of data to verify React Flow works
+    // If we have real data, use it
+    if (data && (data.skills?.length > 0 || data.jobs?.length > 0 || data.courses?.length > 0)) {
+      console.log('✅ Using real data for layout');
+      return calculateHierarchicalLayout(data, relationships);
+    }
+    
+    // Otherwise create comprehensive test nodes to verify all components work
+    console.log('🎯 Using comprehensive test nodes to verify all components');
     const testNodes = [
       {
         id: 'test-skill-1',
         type: 'skill',
-        position: { x: 0, y: 0 },
+        position: { x: 100, y: 100 },
         data: {
           name: 'JavaScript',
           category: 'Programming',
@@ -193,7 +207,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       {
         id: 'test-skill-2',
         type: 'skill',
-        position: { x: 250, y: 0 },
+        position: { x: 400, y: 100 },
         data: {
           name: 'React',
           category: 'Framework',
@@ -203,21 +217,70 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       {
         id: 'test-job-1',
         type: 'job',
-        position: { x: 0, y: 300 },
+        position: { x: 700, y: 100 },
         data: {
           title: 'Frontend Developer',
+          description: 'Build user interfaces and web applications',
           level: 'Mid',
-          salary: 75000,
-          roi_score: 8.5,
-          growth_outlook: 'High',
-          skill_ids: ['test-skill-1', 'test-skill-2']
+          industry: 'Technology',
+          averageSalary: 75000,
+          roiScore: 8,
+          growthOutlook: 'High',
+          requiredSkillIds: ['test-skill-1', 'test-skill-2'],
+          isGoal: false,
+          isCurrent: false
+        }
+      },
+      {
+        id: 'test-course-1',
+        type: 'course',
+        position: { x: 100, y: 400 },
+        data: {
+          title: 'React Fundamentals',
+          description: 'Learn the basics of React development',
+          platform: 'Udemy',
+          cost: '$49',
+          difficulty: 'Beginner',
+          skillTags: ['React', 'JavaScript'],
+          isRecommended: true,
+          userProgress: 'not_started'
+        }
+      },
+      {
+        id: 'test-project-1',
+        type: 'project',
+        position: { x: 400, y: 400 },
+        data: {
+          title: 'Todo App',
+          description: 'Build a React todo application with state management',
+          difficulty: 'Beginner',
+          estimatedTime: '1-2 weeks',
+          skillsDemonstrated: ['React', 'JavaScript', 'CSS'],
+          projectType: 'practice',
+          isCompleted: false,
+          isInProgress: false
+        }
+      },
+      {
+        id: 'test-cert-1',
+        type: 'certification',
+        position: { x: 700, y: 400 },
+        data: {
+          title: 'React Developer Certification',
+          issuer: 'Meta',
+          description: 'Official React certification from Meta',
+          cost: '$150',
+          validityYears: 2,
+          skillsValidated: ['React', 'JavaScript', 'JSX'],
+          industryRecognition: 'high',
+          isEarned: false
         }
       }
     ];
 
     console.log('✅ Test nodes created:', testNodes.length);
     return testNodes;
-  }, []);
+  }, [data, relationships]);
 
   // Generate visible edges based on current focus
   const calculatedEdges = useMemo(() => {

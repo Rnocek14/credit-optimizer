@@ -701,11 +701,15 @@ export const calculateHierarchicalLayout = (
         },
         data: {
           title: job.title || 'Unknown Job',
+          description: job.description || '',
           level: job.level || 'Entry',
-          salary: job.average_salary || 50000,
-          roi_score: job.roi_score || 0,
-          growth_outlook: job.growth_outlook || 'Stable',
-          skill_ids: job.required_skill_ids || []
+          industry: job.industry || 'Technology',
+          averageSalary: job.average_salary || 50000,
+          roiScore: job.roi_score || 0,
+          growthOutlook: job.growth_outlook || 'Stable',
+          requiredSkillIds: job.required_skill_ids || [],
+          isGoal: (job as any).is_goal || false,
+          isCurrent: (job as any).is_current || false
         }
       });
     });
