@@ -17,6 +17,7 @@ import { SuggestedMarketMovesCard } from './SuggestedMarketMovesCard';
 import { MarketForecastPanel } from './MarketForecastPanel';
 import { RealTimeJobDataPanel } from './RealTimeJobDataPanel';
 import { HistoricalTrendsVisualization } from './HistoricalTrendsVisualization';
+import { PatternRecognitionPanel } from './PatternRecognitionPanel';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -140,11 +141,12 @@ export const MarketIntelligenceDashboard = () => {
       </div>
 
         <Tabs defaultValue="personalization" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="grid w-full grid-cols-11">
             <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
             <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
             <TabsTrigger value="historical">📈 Historical Trends</TabsTrigger>
             <TabsTrigger value="advanced">🔮 Advanced Analytics</TabsTrigger>
+            <TabsTrigger value="patterns">🧠 Pattern Recognition</TabsTrigger>
             <TabsTrigger value="trends">Trending Careers</TabsTrigger>
             <TabsTrigger value="salary">Salary Insights</TabsTrigger>
             <TabsTrigger value="compare">Compare Trends</TabsTrigger>
@@ -302,6 +304,41 @@ export const MarketIntelligenceDashboard = () => {
               location={selectedLocation?.value} 
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="patterns" className="space-y-6">
+          {selectedCareerPath && selectedLocation ? (
+            <PatternRecognitionPanel 
+              careerPath={selectedCareerPath.title} 
+              location={selectedLocation.value} 
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Pattern Recognition</CardTitle>
+                <CardDescription>
+                  Advanced AI-powered pattern detection and market analysis
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground">
+                  Please select both a career path and location to access pattern recognition features.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <CareerPathCombobox
+                    value={selectedCareerPath}
+                    onChange={setSelectedCareerPath}
+                    placeholder="Select career path..."
+                  />
+                  <LocationCombobox
+                    value={selectedLocation}
+                    onChange={setSelectedLocation}
+                    placeholder="Select location..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">

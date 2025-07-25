@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.job-market-aggregator]
 verify_jwt = false
+
+[functions.pattern-recognition-engine]
+verify_jwt = false
+
+[functions.alert-engine]
+verify_jwt = false

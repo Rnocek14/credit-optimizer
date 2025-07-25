@@ -255,6 +255,54 @@ export type Database = {
           },
         ]
       }
+      anomaly_detections: {
+        Row: {
+          anomaly_score: number
+          anomaly_type: string
+          baseline_value: number | null
+          career_path: string
+          created_at: string
+          current_value: number | null
+          detected_at: string
+          deviation_percentage: number | null
+          id: string
+          location: string
+          metadata: Json | null
+          resolved_at: string | null
+          severity: string
+        }
+        Insert: {
+          anomaly_score?: number
+          anomaly_type: string
+          baseline_value?: number | null
+          career_path: string
+          created_at?: string
+          current_value?: number | null
+          detected_at?: string
+          deviation_percentage?: number | null
+          id?: string
+          location: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Update: {
+          anomaly_score?: number
+          anomaly_type?: string
+          baseline_value?: number | null
+          career_path?: string
+          created_at?: string
+          current_value?: number | null
+          detected_at?: string
+          deviation_percentage?: number | null
+          id?: string
+          location?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       badge_types: {
         Row: {
           active: boolean
@@ -894,6 +942,39 @@ export type Database = {
           },
         ]
       }
+      economic_indicators: {
+        Row: {
+          created_at: string
+          data_source: string
+          id: string
+          indicator_name: string
+          indicator_value: number
+          location: string
+          recorded_at: string
+          time_period: string
+        }
+        Insert: {
+          created_at?: string
+          data_source?: string
+          id?: string
+          indicator_name: string
+          indicator_value: number
+          location: string
+          recorded_at?: string
+          time_period: string
+        }
+        Update: {
+          created_at?: string
+          data_source?: string
+          id?: string
+          indicator_name?: string
+          indicator_value?: number
+          location?: string
+          recorded_at?: string
+          time_period?: string
+        }
+        Relationships: []
+      }
       featured_gallery_curations: {
         Row: {
           active: boolean
@@ -1118,6 +1199,45 @@ export type Database = {
           threshold_value?: number | null
           triggered_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      market_correlations: {
+        Row: {
+          calculated_at: string
+          career_path_a: string
+          career_path_b: string
+          correlation_coefficient: number
+          correlation_type: string
+          created_at: string
+          id: string
+          location: string
+          strength: string
+          time_period: string
+        }
+        Insert: {
+          calculated_at?: string
+          career_path_a: string
+          career_path_b: string
+          correlation_coefficient?: number
+          correlation_type: string
+          created_at?: string
+          id?: string
+          location: string
+          strength: string
+          time_period?: string
+        }
+        Update: {
+          calculated_at?: string
+          career_path_a?: string
+          career_path_b?: string
+          correlation_coefficient?: number
+          correlation_type?: string
+          created_at?: string
+          id?: string
+          location?: string
+          strength?: string
+          time_period?: string
         }
         Relationships: []
       }
@@ -1378,6 +1498,48 @@ export type Database = {
           timezone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      pattern_recognition_results: {
+        Row: {
+          anomaly_score: number | null
+          career_path: string
+          confidence_score: number
+          created_at: string
+          detected_at: string
+          id: string
+          location: string
+          pattern_data: Json
+          pattern_type: string
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          anomaly_score?: number | null
+          career_path: string
+          confidence_score?: number
+          created_at?: string
+          detected_at?: string
+          id?: string
+          location: string
+          pattern_data?: Json
+          pattern_type: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          anomaly_score?: number | null
+          career_path?: string
+          confidence_score?: number
+          created_at?: string
+          detected_at?: string
+          id?: string
+          location?: string
+          pattern_data?: Json
+          pattern_type?: string
+          updated_at?: string
+          valid_until?: string | null
         }
         Relationships: []
       }
