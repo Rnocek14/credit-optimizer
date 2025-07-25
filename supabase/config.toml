@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.personalized-market-insights]
 verify_jwt = true
+
+[functions.demand-forecaster]
+verify_jwt = false
+
+[functions.job-market-aggregator]
+verify_jwt = false

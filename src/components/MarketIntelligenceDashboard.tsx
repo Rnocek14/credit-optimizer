@@ -14,6 +14,8 @@ import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
 import { MarketAlertSystem } from './MarketAlertSystem';
 import { CompareMarketTrendsPanel } from './CompareMarketTrendsPanel';
 import { SuggestedMarketMovesCard } from './SuggestedMarketMovesCard';
+import { MarketForecastPanel } from './MarketForecastPanel';
+import { RealTimeJobDataPanel } from './RealTimeJobDataPanel';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -136,17 +138,18 @@ export const MarketIntelligenceDashboard = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="personalization" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
-          <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
-          <TabsTrigger value="trends">Trending Careers</TabsTrigger>
-          <TabsTrigger value="salary">Salary Insights</TabsTrigger>
-          <TabsTrigger value="compare">Compare Trends</TabsTrigger>
-          <TabsTrigger value="export">Export & Reports</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="data">Raw Data</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="personalization" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-9">
+            <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
+            <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
+            <TabsTrigger value="advanced">🔮 Advanced Analytics</TabsTrigger>
+            <TabsTrigger value="trends">Trending Careers</TabsTrigger>
+            <TabsTrigger value="salary">Salary Insights</TabsTrigger>
+            <TabsTrigger value="compare">Compare Trends</TabsTrigger>
+            <TabsTrigger value="export">Export & Reports</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="data">Raw Data</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="personalization" className="space-y-6">
           <SuggestedMarketMovesCard />
@@ -280,6 +283,19 @@ export const MarketIntelligenceDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-6">
+          <div className="grid gap-6">
+            <MarketForecastPanel 
+              careerPath={selectedCareerPath?.title} 
+              location={selectedLocation?.value} 
+            />
+            <RealTimeJobDataPanel 
+              careerPath={selectedCareerPath?.title} 
+              location={selectedLocation?.value} 
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
