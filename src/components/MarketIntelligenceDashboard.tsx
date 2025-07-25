@@ -34,6 +34,8 @@ import { HistoricalTrendsVisualization } from './HistoricalTrendsVisualization';
 import { PatternRecognitionPanel } from './PatternRecognitionPanel';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { MarketDataSeeder } from './MarketDataSeeder';
+import { IntelligentWorkflowGuide } from './IntelligentWorkflowGuide';
+import { IntelligenceInsightsCard } from './IntelligenceInsightsCard';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -52,6 +54,7 @@ export const MarketIntelligenceDashboard = () => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [topCareers, setTopCareers] = useState<any[]>([]);
   const [salaryData, setSalaryData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -144,9 +147,8 @@ export const MarketIntelligenceDashboard = () => {
     }
   };
 
-  const getMetricValue = (value: number, suffix: string = '') => {
-    if (value === undefined || value === null) return 'N/A';
-    return `${value.toLocaleString()}${suffix}`;
+  const handleTabNavigation = (tab: string) => {
+    setActiveTab(tab);
   };
 
   // Overview Dashboard Component
@@ -157,6 +159,28 @@ export const MarketIntelligenceDashboard = () => {
 
     return (
       <div className="space-y-6">
+        {/* Intelligent Workflow & Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <IntelligentWorkflowGuide
+              selectedCareerPath={selectedCareerPath}
+              selectedLocation={selectedLocation}
+              analysis={analysis}
+              onNavigateToTab={handleTabNavigation}
+              onAnalysisRequest={handleMarketAnalysis}
+            />
+          </div>
+          <div>
+            <IntelligenceInsightsCard
+              selectedCareerPath={selectedCareerPath}
+              selectedLocation={selectedLocation}
+              analysis={analysis}
+              marketData={marketData}
+              onNavigateToTab={handleTabNavigation}
+            />
+          </div>
+        </div>
+
         {/* Data Seeder (only show if no data) */}
         {marketData.length === 0 && (
           <MarketDataSeeder />
@@ -295,10 +319,10 @@ export const MarketIntelligenceDashboard = () => {
                           <TrendingUp className="h-3 w-3 text-emerald-500" />
                           {career.growth_rate}% growth
                         </span>
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3 text-blue-500" />
-                          ${getMetricValue(career.average_salary)}
-                        </span>
+                         <span className="flex items-center gap-1">
+                           <DollarSign className="h-3 w-3 text-blue-500" />
+                           ${career.average_salary?.toLocaleString() || 'N/A'}
+                         </span>
                       </div>
                     </div>
                   </div>
@@ -379,7 +403,7 @@ export const MarketIntelligenceDashboard = () => {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
