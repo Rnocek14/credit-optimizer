@@ -24,16 +24,12 @@ export interface Recommendation {
 export interface UserMarketPreferences {
   id?: string;
   user_id?: string;
+  preferred_careers: string[];
   preferred_locations: string[];
-  preferred_industries: string[];
   salary_range_min?: number;
   salary_range_max?: number;
-  growth_preference?: 'stability' | 'growth' | 'high_growth';
-  risk_tolerance?: 'low' | 'medium' | 'high';
-  work_style?: 'remote' | 'hybrid' | 'onsite' | 'flexible';
-  career_stage?: 'entry' | 'mid' | 'senior' | 'executive';
-  learning_preferences?: Record<string, any>;
-  notification_preferences?: Record<string, any>;
+  alert_enabled?: boolean;
+  alert_frequency?: string;
 }
 
 export interface FeedbackData {
@@ -60,17 +56,62 @@ export const usePersonalizedInsights = () => {
         throw new Error('User not authenticated');
       }
 
-      // Load recommendations
-      const { data: recsData, error: recsError } = await supabase
-        .from('personalized_recommendations' as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('priority_score', { ascending: false });
+      // For now, create mock recommendations since personalized_recommendations table doesn't exist yet
+      const mockRecommendations: Recommendation[] = [
+        {
+          id: '1',
+          user_id: user.id,
+          recommendation_type: 'career_move',
+          priority_score: 85,
+          confidence_score: 92,
+          recommendation_data: {
+            title: "Transition to Senior Data Scientist",
+            description: "Based on your current skills and the strong demand for senior data scientists in San Francisco, this could be an excellent career move with 40% salary potential increase."
+          },
+          reasoning: "Your background in data analysis and machine learning aligns perfectly with current market demand for senior data scientists.",
+          action_required: "Start building MLOps experience through online courses and consider getting AWS or Google Cloud certifications.",
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          user_id: user.id,
+          recommendation_type: 'skill_development',
+          priority_score: 90,
+          confidence_score: 95,
+          recommendation_data: {
+            title: "Master MLOps and Cloud Platforms",
+            description: "Learning MLOps and cloud platforms could increase your market value by 35% and open doors to senior roles."
+          },
+          reasoning: "MLOps is the most in-demand skill for data scientists right now. Companies are willing to pay premium for this expertise.",
+          action_required: "Enroll in an MLOps course and start practicing with AWS SageMaker or Google Vertex AI.",
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        {
+          id: '3',
+          user_id: user.id,
+          recommendation_type: 'market_alert',
+          priority_score: 70,
+          confidence_score: 85,
+          recommendation_data: {
+            title: "Set Alert for Senior Data Science Roles",
+            description: "Get notified when senior data science positions open up at top tech companies in your preferred locations."
+          },
+          reasoning: "The market for senior data science roles is very active. Setting up alerts will help you catch opportunities quickly.",
+          action_required: "Configure market alerts to monitor senior data science openings at your target companies.",
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'active',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ];
 
-      if (recsError) {
-        throw new Error(`Failed to load recommendations: ${recsError.message}`);
-      }
+      setRecommendations(mockRecommendations);
 
       // Load preferences
       const { data: prefsData, error: prefsError } = await supabase
@@ -103,16 +144,12 @@ export const usePersonalizedInsights = () => {
         setPreferences({
           id: prefs.id,
           user_id: prefs.user_id,
+          preferred_careers: prefs.preferred_careers || [],
           preferred_locations: prefs.preferred_locations || [],
-          preferred_industries: prefs.preferred_industries || [],
           salary_range_min: prefs.salary_range_min,
           salary_range_max: prefs.salary_range_max,
-          growth_preference: prefs.growth_preference,
-          risk_tolerance: prefs.risk_tolerance,
-          work_style: prefs.work_style,
-          career_stage: prefs.career_stage,
-          learning_preferences: prefs.learning_preferences || {},
-          notification_preferences: prefs.notification_preferences || {}
+          alert_enabled: prefs.alert_enabled,
+          alert_frequency: prefs.alert_frequency
         });
       } else {
         setPreferences(null);
@@ -283,16 +320,12 @@ export const usePersonalizedInsights = () => {
         setPreferences({
           id: prefs.id,
           user_id: prefs.user_id,
+          preferred_careers: prefs.preferred_careers || [],
           preferred_locations: prefs.preferred_locations || [],
-          preferred_industries: prefs.preferred_industries || [],
           salary_range_min: prefs.salary_range_min,
           salary_range_max: prefs.salary_range_max,
-          growth_preference: prefs.growth_preference,
-          risk_tolerance: prefs.risk_tolerance,
-          work_style: prefs.work_style,
-          career_stage: prefs.career_stage,
-          learning_preferences: prefs.learning_preferences || {},
-          notification_preferences: prefs.notification_preferences || {}
+          alert_enabled: prefs.alert_enabled,
+          alert_frequency: prefs.alert_frequency
         });
       } else {
         setPreferences(null);
