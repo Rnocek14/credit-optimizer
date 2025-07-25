@@ -21,7 +21,7 @@ interface SmartSuggestionsWidgetProps {
   selectedCareerPath?: string;
   selectedLocation?: string;
   onSuggestionSelect?: (careerPath: string, location: string) => void;
-  onActionClick?: (action: string, careerPath?: string, location?: string) => void;
+  onActionClick?: (actionData: { type: string; careerPath: string; location: string }) => void;
 }
 
 interface SmartSuggestion {
@@ -348,7 +348,11 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
                     
                     // Call the action handler
                     if (onActionClick) {
-                      onActionClick('Analyze This Opportunity', suggestion.careerPath, suggestion.location);
+                      onActionClick({
+                        type: 'Analyze This Opportunity',
+                        careerPath: suggestion.careerPath,
+                        location: suggestion.location
+                      });
                     }
                   }}
                 >
