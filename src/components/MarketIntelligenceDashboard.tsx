@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
-import { MarketAlertSystem } from './MarketAlertSystem';
+import { EnhancedMarketAlertSystem } from './EnhancedMarketAlertSystem';
 import { CompareMarketTrendsPanel } from './CompareMarketTrendsPanel';
 import { SuggestedMarketMovesCard } from './SuggestedMarketMovesCard';
 import { MarketForecastPanel } from './MarketForecastPanel';
@@ -446,7 +446,7 @@ export const MarketIntelligenceDashboard = () => {
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-6">
-          <MarketAlertSystem />
+          <EnhancedMarketAlertSystem />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">

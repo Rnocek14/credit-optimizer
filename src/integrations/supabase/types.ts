@@ -92,6 +92,169 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_configurations: {
+        Row: {
+          alert_type: string
+          career_path: string
+          comparison_operator: string
+          created_at: string
+          id: string
+          is_active: boolean
+          location: string
+          metric_type: string
+          name: string
+          pattern_config: Json | null
+          threshold_value: number | null
+          time_window: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          career_path: string
+          comparison_operator?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location: string
+          metric_type: string
+          name: string
+          pattern_config?: Json | null
+          threshold_value?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          career_path?: string
+          comparison_operator?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location?: string
+          metric_type?: string
+          name?: string
+          pattern_config?: Json | null
+          threshold_value?: number | null
+          time_window?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      alert_history: {
+        Row: {
+          action_taken: string | null
+          alert_config_id: string
+          alert_message: string
+          confidence_score: number | null
+          created_at: string
+          false_positive: boolean | null
+          id: string
+          is_read: boolean
+          metric_value: number
+          read_at: string | null
+          threshold_value: number
+          triggered_at: string
+          user_feedback_rating: number | null
+          user_id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          alert_config_id: string
+          alert_message: string
+          confidence_score?: number | null
+          created_at?: string
+          false_positive?: boolean | null
+          id?: string
+          is_read?: boolean
+          metric_value: number
+          read_at?: string | null
+          threshold_value: number
+          triggered_at?: string
+          user_feedback_rating?: number | null
+          user_id: string
+        }
+        Update: {
+          action_taken?: string | null
+          alert_config_id?: string
+          alert_message?: string
+          confidence_score?: number | null
+          created_at?: string
+          false_positive?: boolean | null
+          id?: string
+          is_read?: boolean
+          metric_value?: number
+          read_at?: string | null
+          threshold_value?: number
+          triggered_at?: string
+          user_feedback_rating?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_history_alert_config_id_fkey"
+            columns: ["alert_config_id"]
+            isOneToOne: false
+            referencedRelation: "alert_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_performance_metrics: {
+        Row: {
+          accuracy_rate: number | null
+          alert_config_id: string
+          avg_response_time_hours: number | null
+          created_at: string
+          false_positives: number | null
+          id: string
+          period_end: string
+          period_start: string
+          relevant_alerts: number | null
+          total_alerts: number | null
+          user_engagement_score: number | null
+          user_id: string
+        }
+        Insert: {
+          accuracy_rate?: number | null
+          alert_config_id: string
+          avg_response_time_hours?: number | null
+          created_at?: string
+          false_positives?: number | null
+          id?: string
+          period_end: string
+          period_start: string
+          relevant_alerts?: number | null
+          total_alerts?: number | null
+          user_engagement_score?: number | null
+          user_id: string
+        }
+        Update: {
+          accuracy_rate?: number | null
+          alert_config_id?: string
+          avg_response_time_hours?: number | null
+          created_at?: string
+          false_positives?: number | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          relevant_alerts?: number | null
+          total_alerts?: number | null
+          user_engagement_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_performance_metrics_alert_config_id_fkey"
+            columns: ["alert_config_id"]
+            isOneToOne: false
+            referencedRelation: "alert_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       badge_types: {
         Row: {
           active: boolean
@@ -1162,6 +1325,57 @@ export type Database = {
           status?: string
           steps?: Json
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          delivery_delay_minutes: number | null
+          email_enabled: boolean
+          grouping_enabled: boolean
+          id: string
+          max_daily_alerts: number | null
+          priority_threshold: string | null
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_delay_minutes?: number | null
+          email_enabled?: boolean
+          grouping_enabled?: boolean
+          id?: string
+          max_daily_alerts?: number | null
+          priority_threshold?: string | null
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_delay_minutes?: number | null
+          email_enabled?: boolean
+          grouping_enabled?: boolean
+          id?: string
+          max_daily_alerts?: number | null
+          priority_threshold?: string | null
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2419,6 +2633,10 @@ export type Database = {
           source_id_param?: string
         }
         Returns: undefined
+      }
+      calculate_alert_accuracy: {
+        Args: { config_id: string; days_back?: number }
+        Returns: number
       }
       calculate_career_step_levels: {
         Args: { career_path_id_param: string }
