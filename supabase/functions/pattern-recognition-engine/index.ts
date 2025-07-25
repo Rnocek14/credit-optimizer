@@ -61,24 +61,15 @@ Deno.serve(async (req) => {
     const cutoffDate = new Date(Date.now() - parseDuration(timeframe));
     console.log("⏱️ Calculated Cutoff Date:", cutoffDate.toISOString());
 
-    // Normalize for case-insensitive matching
-    careerPath = careerPath.toLowerCase();
-    location = location.toLowerCase();
-    
-    console.log("🔍 Normalized Query:", {
-      careerPath,
-      location
-    });
-
     console.log(`Analyzing patterns for ${careerPath} in ${location} over ${timeframe}`);
 
-    // Fetch historical market data
+    // Fetch historical market data with case-insensitive matching
     const { data: marketData, error: marketError } = await supabase
       .from('market_trends_history')
       .select('*')
-      .eq('career_path', careerPath)
-      .eq('location', location)
-      .gte('recorded_at', new Date(Date.now() - parseDuration(timeframe)).toISOString())
+      .ilike('career_path', careerPath)
+      .ilike('location', location)
+      .gte('recorded_at', cutoffDate.toISOString())
       .order('recorded_at', { ascending: true });
 
     if (marketError) {
