@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, MapPin, DollarSign, Users, Zap } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
+import { usePersonalizedInsights } from '@/hooks/usePersonalizedInsights';
 import { useToast } from '@/hooks/use-toast';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
@@ -135,11 +136,9 @@ export const MarketIntelligenceDashboard = () => {
         </p>
       </div>
 
-      {/* Personalized Recommendations Section */}
-      <SuggestedMarketMovesCard />
-
-      <Tabs defaultValue="analysis" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+      <Tabs defaultValue="personalization" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
           <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
           <TabsTrigger value="trends">Trending Careers</TabsTrigger>
           <TabsTrigger value="salary">Salary Insights</TabsTrigger>
@@ -148,6 +147,10 @@ export const MarketIntelligenceDashboard = () => {
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="data">Raw Data</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="personalization" className="space-y-6">
+          <SuggestedMarketMovesCard />
+        </TabsContent>
 
         <TabsContent value="analysis" className="space-y-6">
           <Card>
