@@ -21,7 +21,7 @@ interface UnifiedActionHandlerProps {
   setSelectedCareerPath: (cp: CareerPath) => void;
   setSelectedLocation: (loc: Location) => void;
   setActiveTab: (tab: string) => void;
-  setSalaryAnalysisData: (data: any) => void;
+  setSalaryData: (data: any) => void;
   runComprehensiveAnalysis: (title: string, label: string, id: string, locId: string, value: string) => Promise<void>;
 }
 
@@ -31,7 +31,7 @@ export const useUnifiedActionHandler = ({
   setSelectedCareerPath,
   setSelectedLocation,
   setActiveTab,
-  setSalaryAnalysisData,
+  setSalaryData,
   runComprehensiveAnalysis
 }: UnifiedActionHandlerProps) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -190,7 +190,7 @@ export const useUnifiedActionHandler = ({
         const salaryData = await getSalaryInsights(targetCareerPath.title);
         
         if (salaryData) {
-          setSalaryAnalysisData(salaryData);
+          setSalaryData(salaryData);
           setSelectedCareerPath(targetCareerPath);
           
           toast({

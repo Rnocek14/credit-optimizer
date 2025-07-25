@@ -236,7 +236,7 @@ export const MarketIntelligenceDashboard = () => {
     setSelectedCareerPath,
     setSelectedLocation: (loc) => setSelectedLocation({...loc, emoji: loc.emoji || ''}),
     setActiveTab,
-    setSalaryAnalysisData,
+    setSalaryData,
     runComprehensiveAnalysis
   });
 
