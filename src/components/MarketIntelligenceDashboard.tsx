@@ -16,6 +16,7 @@ import { CompareMarketTrendsPanel } from './CompareMarketTrendsPanel';
 import { SuggestedMarketMovesCard } from './SuggestedMarketMovesCard';
 import { MarketForecastPanel } from './MarketForecastPanel';
 import { RealTimeJobDataPanel } from './RealTimeJobDataPanel';
+import { HistoricalTrendsVisualization } from './HistoricalTrendsVisualization';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -139,9 +140,10 @@ export const MarketIntelligenceDashboard = () => {
       </div>
 
         <Tabs defaultValue="personalization" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
             <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
+            <TabsTrigger value="historical">📈 Historical Trends</TabsTrigger>
             <TabsTrigger value="advanced">🔮 Advanced Analytics</TabsTrigger>
             <TabsTrigger value="trends">Trending Careers</TabsTrigger>
             <TabsTrigger value="salary">Salary Insights</TabsTrigger>
@@ -283,6 +285,10 @@ export const MarketIntelligenceDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="historical" className="space-y-6">
+          <HistoricalTrendsVisualization />
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
