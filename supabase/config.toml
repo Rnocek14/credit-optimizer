@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.market-trend-analyzer]
 verify_jwt = false
+
+[functions.personalized-market-insights]
+verify_jwt = true
