@@ -149,7 +149,7 @@ export const MarketIntelligenceDashboard = () => {
             <TabsTrigger value="salary">Salary Insights</TabsTrigger>
             <TabsTrigger value="compare">Compare Trends</TabsTrigger>
             <TabsTrigger value="export">Export & Reports</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="alerts">🚨 Smart Alerts</TabsTrigger>
             <TabsTrigger value="data">Raw Data</TabsTrigger>
           </TabsList>
 
