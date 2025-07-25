@@ -39,6 +39,11 @@ export const MarketIntelligenceExportPanel = ({
   // Fallback data fetching function
   const ensureDataAvailable = async () => {
     const currentData = localMarketData || marketData;
+    console.log('📊 Checking data availability:', { 
+      localMarketData: localMarketData?.length || 0, 
+      marketData: marketData?.length || 0,
+      currentData: currentData?.length || 0 
+    });
     
     if (!currentData || currentData.length === 0) {
       console.log('🔄 No market data available, attempting to fetch...');
@@ -46,11 +51,18 @@ export const MarketIntelligenceExportPanel = ({
       try {
         // Try using the parent's refresh function first
         if (onRefreshData) {
+          console.log('🔄 Using parent refresh function...');
           await onRefreshData();
-          return;
+          // After refresh, check if data is now available
+          const refreshedData = localMarketData || marketData;
+          if (refreshedData && refreshedData.length > 0) {
+            console.log('✅ Data available after refresh:', refreshedData.length, 'records');
+            return refreshedData;
+          }
         }
         
         // Fallback to direct fetch
+        console.log('🔄 Attempting direct fetch...');
         const freshData = await fetchMarketTrends();
         if (freshData && freshData.length > 0) {
           setLocalMarketData(freshData);
@@ -66,6 +78,7 @@ export const MarketIntelligenceExportPanel = ({
       }
     }
     
+    console.log('✅ Using existing data:', currentData.length, 'records');
     return currentData;
   };
 

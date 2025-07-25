@@ -53,22 +53,22 @@ export const useMarketIntelligence = () => {
     setError(null);
     
     try {
+      console.log('🔍 Fetching market trends...', { careerPathId, locationId });
+      
+      // Query market_trends directly since career_path_id and location_id are null
+      // Use the string fields career_path and location instead
       let query = supabase
         .from('market_trends')
-        .select(`
-          *,
-          career_paths!inner(id, title),
-          locations!inner(id, label, value)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (careerPathId) {
-        // First try UUID match, then fallback to string match for legacy data
+        // Get career path title to filter by
         const { data: careerPath } = await supabase
           .from('career_paths')
           .select('title')
           .eq('id', careerPathId)
-          .single();
+          .maybeSingle();
         
         if (careerPath) {
           query = query.or(`career_path.eq.${careerPath.title},career_path.ilike.%${careerPath.title}%`);
@@ -76,24 +76,25 @@ export const useMarketIntelligence = () => {
       }
       
       if (locationId) {
-        // First try UUID match, then fallback to string match for legacy data
+        // Get location value to filter by
         const { data: location } = await supabase
           .from('locations')
           .select('value, label')
           .eq('id', locationId)
-          .single();
+          .maybeSingle();
         
         if (location) {
           query = query.or(`location.eq.${location.value},location.eq.${location.label},location.ilike.%${location.label}%`);
         }
       }
 
-      const { data, error: fetchError } = await query.limit(50);
+      const { data, error: fetchError } = await query.limit(100);
 
       if (fetchError) {
         throw new Error(`Failed to fetch market trends: ${fetchError.message}`);
       }
 
+      console.log('✅ Market trends fetched:', data?.length || 0, 'records');
       setMarketData(data as MarketTrend[] || []);
       return data as MarketTrend[] || [];
     } catch (err) {
