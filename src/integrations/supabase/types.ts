@@ -918,6 +918,7 @@ export type Database = {
           ai_insights: Json | null
           average_salary: number | null
           career_path: string
+          career_path_id: string | null
           competition_level: string | null
           created_at: string
           data_source: string | null
@@ -926,6 +927,7 @@ export type Database = {
           id: string
           job_postings_count: number | null
           location: string
+          location_id: string | null
           raw_data: Json | null
           time_period: string | null
           updated_at: string
@@ -934,6 +936,7 @@ export type Database = {
           ai_insights?: Json | null
           average_salary?: number | null
           career_path: string
+          career_path_id?: string | null
           competition_level?: string | null
           created_at?: string
           data_source?: string | null
@@ -942,6 +945,7 @@ export type Database = {
           id?: string
           job_postings_count?: number | null
           location: string
+          location_id?: string | null
           raw_data?: Json | null
           time_period?: string | null
           updated_at?: string
@@ -950,6 +954,7 @@ export type Database = {
           ai_insights?: Json | null
           average_salary?: number | null
           career_path?: string
+          career_path_id?: string | null
           competition_level?: string | null
           created_at?: string
           data_source?: string | null
@@ -958,11 +963,27 @@ export type Database = {
           id?: string
           job_postings_count?: number | null
           location?: string
+          location_id?: string | null
           raw_data?: Json | null
           time_period?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_market_trends_career_path"
+            columns: ["career_path_id"]
+            isOneToOne: false
+            referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_market_trends_location"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mentor_feedback: {
         Row: {
