@@ -46,6 +46,7 @@ import { MarketPulseWidget } from './MarketPulseWidget';
 import { SmartSuggestionsWidget } from './SmartSuggestionsWidget';
 import { SmartSelectionPanel } from './SmartSelectionPanel';
 import { IntelligentActionBridge } from './IntelligentActionBridge';
+import { AnalysisLoadingState } from './AnalysisLoadingState';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -92,6 +93,8 @@ export const MarketIntelligenceDashboard = () => {
   const [patternRecognitionData, setPatternRecognitionData] = useState<any>(null);
   const [demandForecastData, setDemandForecastData] = useState<any>(null);
   const [allAnalysisComplete, setAllAnalysisComplete] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStage, setAnalysisStage] = useState<'initializing' | 'analyzing' | 'processing' | 'finalizing'>('initializing');
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -209,70 +212,139 @@ export const MarketIntelligenceDashboard = () => {
   const handleInsightAction = async (action: any) => {
     console.log('🎯 Insight Action Triggered:', action);
     
-    // Handle both new action object format and legacy string format
-    const actionType = typeof action === 'string' ? action : action.type;
-    const careerPath = typeof action === 'object' ? action.careerPath : undefined;
-    const location = typeof action === 'object' ? action.location : undefined;
+    // Show immediate loading feedback
+    setActionLoading(true);
+    setComprehensiveLoading(true);
     
-    console.log('🔍 Processing action:', { actionType, careerPath, location });
+    // Show immediate visual feedback with toast
+    toast({
+      title: "Processing Insight",
+      description: "Analyzing market opportunity...",
+      duration: 1000
+    });
     
-    if (actionType === 'Analyze This Market' && careerPath && location) {
-      console.log('🔍 Looking up career path:', careerPath);
-      console.log('🌍 Looking up location:', location);
+    try {
+      // Handle both new action object format and legacy string format
+      const actionType = typeof action === 'string' ? action : action.type;
+      const careerPath = typeof action === 'object' ? action.careerPath : undefined;
+      const location = typeof action === 'object' ? action.location : undefined;
       
-      setActionLoading(true);
-      setComprehensiveLoading(true);
+      console.log('🔍 Processing action:', { actionType, careerPath, location });
       
-      try {
-        // Look up career path
-        const { data: careerPaths } = await supabase
-          .from('career_paths')
-          .select('*')
-          .ilike('title', `%${careerPath}%`)
-          .limit(5);
+      if (actionType === 'Analyze This Market' && careerPath && location) {
+        console.log('🔍 Looking up career path:', careerPath);
+        console.log('🌍 Looking up location:', location);
         
-        console.log('📊 Career paths found:', careerPaths);
+        // Immediately switch to analysis tab for visual feedback
+        setActiveTab('analysis');
         
-        // Try exact match first, then fuzzy match
-        let matchedCareerPath = careerPaths?.find(cp => 
-          cp.title.toLowerCase() === careerPath.toLowerCase()
-        );
+        // Enhanced fuzzy matching with multiple strategies
+        const findCareerPath = async (searchTerm: string) => {
+          console.log('🔍 Searching for career path:', searchTerm);
+          
+          // Strategy 1: Exact match
+          let { data: exactMatch } = await supabase
+            .from('career_paths')
+            .select('*')
+            .ilike('title', searchTerm)
+            .limit(1);
+          
+          if (exactMatch && exactMatch.length > 0) {
+            console.log('✅ Found exact match:', exactMatch[0]);
+            return exactMatch[0];
+          }
+          
+          // Strategy 2: Contains match
+          let { data: containsMatch } = await supabase
+            .from('career_paths')
+            .select('*')
+            .ilike('title', `%${searchTerm}%`)
+            .limit(5);
+          
+          if (containsMatch && containsMatch.length > 0) {
+            // Find best match by similarity
+            const bestMatch = containsMatch.find(cp => 
+              cp.title.toLowerCase() === searchTerm.toLowerCase() ||
+              cp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              searchTerm.toLowerCase().includes(cp.title.toLowerCase())
+            ) || containsMatch[0];
+            
+            console.log('✅ Found contains match:', bestMatch);
+            return bestMatch;
+          }
+          
+          // Strategy 3: Word-based fuzzy matching for compound terms
+          if (searchTerm.includes(' ')) {
+            const words = searchTerm.split(' ');
+            for (const word of words) {
+              if (word.length > 3) { // Only search meaningful words
+                let { data: wordMatch } = await supabase
+                  .from('career_paths')
+                  .select('*')
+                  .ilike('title', `%${word}%`)
+                  .limit(3);
+                
+                if (wordMatch && wordMatch.length > 0) {
+                  console.log('✅ Found word-based match:', wordMatch[0]);
+                  return wordMatch[0];
+                }
+              }
+            }
+          }
+          
+          console.log('❌ No career path match found for:', searchTerm);
+          return null;
+        };
+
+        const findLocation = async (searchTerm: string) => {
+          console.log('🌍 Searching for location:', searchTerm);
+          
+          // Strategy 1: Exact match
+          let { data: exactMatch } = await supabase
+            .from('locations')
+            .select('*')
+            .or(`label.ilike.${searchTerm},value.ilike.${searchTerm}`)
+            .eq('active', true)
+            .limit(1);
+          
+          if (exactMatch && exactMatch.length > 0) {
+            console.log('✅ Found exact location match:', exactMatch[0]);
+            return exactMatch[0];
+          }
+          
+          // Strategy 2: Contains match
+          let { data: containsMatch } = await supabase
+            .from('locations')
+            .select('*')
+            .or(`label.ilike.%${searchTerm}%,value.ilike.%${searchTerm}%`)
+            .eq('active', true)
+            .limit(5);
+          
+          if (containsMatch && containsMatch.length > 0) {
+            const bestMatch = containsMatch.find(loc => 
+              loc.label.toLowerCase() === searchTerm.toLowerCase() ||
+              loc.value.toLowerCase() === searchTerm.toLowerCase() ||
+              loc.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              searchTerm.toLowerCase().includes(loc.label.toLowerCase())
+            ) || containsMatch[0];
+            
+            console.log('✅ Found location contains match:', bestMatch);
+            return bestMatch;
+          }
+          
+          console.log('❌ No location match found for:', searchTerm);
+          return null;
+        };
         
-        if (!matchedCareerPath && careerPaths && careerPaths.length > 0) {
-          // Fuzzy matching - find best match
-          matchedCareerPath = careerPaths.find(cp => 
-            cp.title.toLowerCase().includes(careerPath.toLowerCase()) ||
-            careerPath.toLowerCase().includes(cp.title.toLowerCase())
-          );
-        }
+        // Perform lookups in parallel
+        const [matchedCareerPath, matchedLocation] = await Promise.all([
+          findCareerPath(careerPath),
+          findLocation(location)
+        ]);
         
-        console.log('✅ Matched career path:', matchedCareerPath);
-        
-        // Look up location
-        const { data: locations } = await supabase
-          .from('locations')
-          .select('*')
-          .ilike('label', `%${location}%`)
-          .limit(5);
-        
-        console.log('🌍 Locations found:', locations);
-        
-        let matchedLocation = locations?.find(loc => 
-          loc.label.toLowerCase() === location.toLowerCase()
-        );
-        
-        if (!matchedLocation && locations && locations.length > 0) {
-          matchedLocation = locations.find(loc => 
-            loc.label.toLowerCase().includes(location.toLowerCase()) ||
-            location.toLowerCase().includes(loc.label.toLowerCase())
-          );
-        }
-        
-        console.log('📍 Matched location:', matchedLocation);
+        console.log('🎯 Final matches:', { matchedCareerPath, matchedLocation });
         
         if (matchedCareerPath && matchedLocation) {
-          console.log('🎯 Setting new selections and running analysis...');
-          
           // Clear all previous data immediately
           setAnalysis(null);
           setTopCareers([]);
@@ -283,7 +355,7 @@ export const MarketIntelligenceDashboard = () => {
           setRealTimeData([]);
           setAllAnalysisComplete(false);
           
-          // Update states sequentially to ensure proper completion
+          // Update states with proper data structures
           const newCareerPath = { id: matchedCareerPath.id, title: matchedCareerPath.title };
           const newLocation = {
             id: matchedLocation.id,
@@ -292,40 +364,77 @@ export const MarketIntelligenceDashboard = () => {
             emoji: matchedLocation.emoji
           };
           
-          // Set states
+          // Update UI state immediately
           setSelectedCareerPath(newCareerPath);
           setSelectedLocation(newLocation);
-          setActiveTab('analysis');
+          
+          // Show progress feedback
+          toast({
+            title: "Analysis Started",
+            description: `Analyzing ${newCareerPath.title} in ${newLocation.label}`,
+            duration: 2000
+          });
           
           console.log('🚀 Starting comprehensive analysis for:', newCareerPath.title, 'in', newLocation.label);
           
-          // Run comprehensive analysis with explicit parameters
-          await runComprehensiveAnalysis(newCareerPath.title, newLocation.label, newCareerPath.id, newLocation.id, newLocation.value);
+          // Run comprehensive analysis
+          await runComprehensiveAnalysis(
+            newCareerPath.title, 
+            newLocation.label, 
+            newCareerPath.id, 
+            newLocation.id, 
+            newLocation.value
+          );
           
         } else {
-          console.error('❌ Could not find matching career path or location');
+          const missingItems = [];
+          if (!matchedCareerPath) missingItems.push(`career path "${careerPath}"`);
+          if (!matchedLocation) missingItems.push(`location "${location}"`);
+          
+          console.error('❌ Could not find:', missingItems.join(' and '));
           toast({
             title: "Data Not Found",
-            description: `Could not find data for ${careerPath} in ${location}`,
-            variant: "destructive"
+            description: `Could not find ${missingItems.join(' and ')}. Please try selecting from the dropdowns.`,
+            variant: "destructive",
+            duration: 4000
           });
+          
+          // Revert tab if no matches found
+          setActiveTab('overview');
         }
-      } catch (error) {
-        console.error('❌ Action processing failed:', error);
+      } else if (actionType === 'View Salary Analysis') {
+        setActiveTab('research');
         toast({
-          title: "Action Failed",
-          description: "Failed to process insight action",
-          variant: "destructive"
+          title: "Salary Analysis",
+          description: "Loading salary insights...",
+          duration: 2000
         });
-      } finally {
-        setActionLoading(false);
-        setComprehensiveLoading(false);
+      } else if (actionType === 'Generate Strategy') {
+        setActiveTab('analysis');
+        toast({
+          title: "Strategy Generator",
+          description: "Generating personalized market strategy...",
+          duration: 2000
+        });
+      } else {
+        console.log('🔄 Handling legacy action format or unknown action:', actionType);
+        // Fall back to legacy handler for other actions
+        await legacyHandleInsightAction(actionType, careerPath, location);
       }
-    }
-    
-    // Handle other action types
-    if (actionType === 'View Salary Analysis') {
-      setActiveTab('research');
+    } catch (error) {
+      console.error('❌ Action processing failed:', error);
+      toast({
+        title: "Action Failed",
+        description: "Failed to process insight action. Please try again.",
+        variant: "destructive",
+        duration: 3000
+      });
+      
+      // Revert to overview on error
+      setActiveTab('overview');
+    } finally {
+      setActionLoading(false);
+      setComprehensiveLoading(false);
     }
   };
 
@@ -343,14 +452,29 @@ export const MarketIntelligenceDashboard = () => {
     console.log('🚀 Starting comprehensive analysis for:', careerPathTitle, 'in', locationLabel);
     
     try {
-      // Run market trend analysis
+      // Initialize progress tracking
+      setAnalysisProgress(0);
+      setAnalysisStage('initializing');
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
+      
+      // Stage 1: Market trend analysis
+      setAnalysisStage('analyzing');
+      setAnalysisProgress(20);
       console.log('📊 Running market trend analysis...');
+      
       const analysisResult = await analyzeMarketTrends(careerPathId, locationId);
       console.log('📊 Analysis result:', analysisResult);
-      if (analysisResult) setAnalysis(analysisResult);
+      if (analysisResult) {
+        setAnalysis(analysisResult);
+        setAnalysisProgress(40);
+      }
       
-      // Fetch additional data in parallel
+      // Stage 2: Fetch additional data in parallel
+      setAnalysisStage('processing');
+      setAnalysisProgress(50);
       console.log('📈 Fetching additional market data...');
+      
       const [historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
         getHistoricalTrends(careerPathTitle, locationValue, 6),
         fetchRealTimeJobData(careerPathTitle, locationValue),
@@ -367,41 +491,57 @@ export const MarketIntelligenceDashboard = () => {
         generateDemandForecast(careerPathTitle, locationValue, '6months')
       ]);
       
-      // Process results and set states
+      // Stage 3: Process results and set states
+      setAnalysisStage('finalizing');
+      setAnalysisProgress(70);
+      
       if (historicalResult.status === 'fulfilled' && historicalResult.value) {
         setHistoricalData(historicalResult.value);
         console.log('📈 Historical data set');
+        setAnalysisProgress(75);
       }
 
       if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
         setRealTimeData(realTimeResult.value);
         console.log('⚡ Real-time data set');
+        setAnalysisProgress(80);
       }
 
       if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
         setPatternRecognitionData(patternResult.value.data);
         console.log('🔍 Pattern recognition set');
+        setAnalysisProgress(85);
       }
 
       if (forecastResult.status === 'fulfilled' && forecastResult.value) {
         setDemandForecastData(forecastResult.value);
         console.log('🔮 Demand forecast set');
+        setAnalysisProgress(90);
       }
 
+      // Final stage
+      setAnalysisProgress(95);
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for final processing
+
       setAllAnalysisComplete(true);
+      setAnalysisProgress(100);
       console.log('✅ Comprehensive analysis completed successfully');
       
       toast({
-        title: "Analysis Complete",
+        title: "🎉 Analysis Complete!",
         description: `Market analysis for ${careerPathTitle} in ${locationLabel} is ready!`,
+        duration: 4000
       });
       
     } catch (error) {
       console.error('❌ Comprehensive analysis failed:', error);
+      setAnalysisProgress(0);
+      setAnalysisStage('initializing');
       toast({
         title: "Analysis Failed",
-        description: "Failed to complete comprehensive market analysis",
-        variant: "destructive"
+        description: "Failed to complete comprehensive market analysis. Please try again.",
+        variant: "destructive",
+        duration: 4000
       });
     }
   };
@@ -962,24 +1102,60 @@ export const MarketIntelligenceDashboard = () => {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="analysis" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analysis
-          </TabsTrigger>
-          <TabsTrigger value="research" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Research
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Alerts & Export
-          </TabsTrigger>
-        </TabsList>
+        <div className="relative">
+          <TabsList className="grid w-full grid-cols-4 h-12 p-1">
+            <TabsTrigger 
+              value="overview" 
+              className="flex items-center gap-2 relative transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Eye className="h-4 w-4" />
+              Overview
+              {actionLoading && activeTab === 'overview' && (
+                <div className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analysis" 
+              className="flex items-center gap-2 relative transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analysis
+              {(actionLoading || comprehensiveLoading) && activeTab === 'analysis' && (
+                <div className="absolute top-1 right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+              )}
+              {analysis && !actionLoading && !comprehensiveLoading && (
+                <div className="absolute top-1 right-1 h-2 w-2 bg-emerald-500 rounded-full" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="research" 
+              className="flex items-center gap-2 relative transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Brain className="h-4 w-4" />
+              Research
+              {salaryData && (
+                <div className="absolute top-1 right-1 h-2 w-2 bg-purple-500 rounded-full" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="alerts" 
+              className="flex items-center gap-2 relative transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Bell className="h-4 w-4" />
+              Alerts & Export
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Visual feedback for tab switching */}
+          {actionLoading && (
+            <div className="absolute top-0 left-0 right-0 bottom-0 bg-primary/5 rounded-lg flex items-center justify-center">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
+                Processing...
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
@@ -1027,14 +1203,12 @@ export const MarketIntelligenceDashboard = () => {
           </Card>
 
           {(actionLoading || comprehensiveLoading) ? (
-            <div className="space-y-4">
-              <LoadingSkeleton variant="dashboard" />
-              {comprehensiveLoading && (
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Running comprehensive market analysis...</p>
-                </div>
-              )}
-            </div>
+            <AnalysisLoadingState
+              careerPath={selectedCareerPath?.title}
+              location={selectedLocation?.label}
+              stage={analysisStage}
+              progress={analysisProgress || (comprehensiveLoading ? 65 : 35)}
+            />
           ) : analysis ? (
             <div className="grid gap-6">
               {/* Market Analysis Results */}

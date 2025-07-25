@@ -222,58 +222,70 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                 <button 
                   className="text-xs text-primary hover:text-primary/80 font-medium"
                   onClick={async () => {
-                    // Show specific toast for this action
+                    // Extract career path and location with better fallbacks
+                    const extractedCareerPath = insight.careerPath || 
+                      (insight.type === 'opportunity' && insight.description.includes('in') ? 
+                        insight.description.split(' in ')[0].replace(/^(High|Low|Growing|Declining)\s+(growth|demand|opportunity)\s+for\s+/i, '') : 
+                        selectedCareerPath);
+                    
+                    const extractedLocation = insight.location || 
+                      (insight.type === 'opportunity' && insight.description.includes('in') ? 
+                        insight.description.split(' in ')[1].split(' with')[0].trim() : 
+                        selectedLocation);
+
+                    console.log('🎯 TopMarketInsights: Action triggered with extracted data:', {
+                      action: insight.action,
+                      extractedCareerPath,
+                      extractedLocation,
+                      originalInsight: insight
+                    });
+
+                    // Show specific toast for this action - with extracted data
                     if (insight.action === 'Analyze This Market') {
                       toast({
-                        title: "Analyzing Market Opportunity",
-                        description: `Switching to analysis for ${insight.careerPath} in ${insight.location}`,
-                        duration: 2000,
+                        title: "🚀 Starting Market Analysis",
+                        description: `Analyzing ${extractedCareerPath} opportunities in ${extractedLocation}`,
+                        duration: 3000,
                       });
                     } else if (insight.action === 'View Salary Analysis') {
                       toast({
-                        title: "Loading Salary Analysis",
-                        description: `Analyzing salary trends for ${insight.careerPath}`,
+                        title: "💰 Loading Salary Analysis", 
+                        description: `Analyzing salary trends for ${extractedCareerPath}`,
                         duration: 2000,
                       });
                     } else if (insight.action === 'Generate Strategy') {
                       toast({
-                        title: "Generating Strategy",
+                        title: "🎯 Generating Strategy",
                         description: "Creating personalized market strategy...",
                         duration: 2000,
                       });
                     }
                     
-                    // Track the interaction
+                    // Track the interaction with extracted data
                     await trackInsightInteraction({
                       insight_id: insight.id,
                       insight_type: insight.type,
                       action_taken: insight.action === 'View Salary Analysis' ? 'view_salary_analysis' : 
                                    insight.action === 'Generate Strategy' ? 'generate_strategy' :
                                    insight.action === 'Analyze This Market' ? 'analyzed' : 'clicked',
-                      career_path: insight.careerPath || insight.type === 'opportunity' && insight.description.includes('in') ? 
-                                  insight.description.split(' in ')[0].replace(/^\w+\s+\w+\s+/, '') : undefined,
-                      location: insight.location || insight.type === 'opportunity' && insight.description.includes('in') ? 
-                               insight.description.split(' in ')[1].split(' with')[0] : undefined,
+                      career_path: extractedCareerPath,
+                      location: extractedLocation,
                       confidence_score: insight.confidence
                     });
                     
-                    // Call the action handler with the stored data
+                    // Call the action handler with extracted data
                     if (onActionClick) {
-                      console.log('🎯 Insight action clicked:', {
-                        action: insight.action,
-                        careerPath: insight.careerPath,
-                        location: insight.location,
-                        insight: insight
+                      console.log('🎯 Calling onActionClick with:', {
+                        type: insight.action,
+                        careerPath: extractedCareerPath,
+                        location: extractedLocation
                       });
                       
-                      // Create action object for new API
-                      const actionObj = {
+                      onActionClick({
                         type: insight.action,
-                        careerPath: insight.careerPath,
-                        location: insight.location
-                      };
-                      
-                      onActionClick(actionObj);
+                        careerPath: extractedCareerPath,
+                        location: extractedLocation
+                      });
                     }
                   }}
                 >
