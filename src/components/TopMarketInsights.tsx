@@ -31,6 +31,8 @@ interface Insight {
   confidence: number;
   impact: 'high' | 'medium' | 'low';
   action?: string;
+  careerPath?: string;
+  location?: string;
 }
 
 export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
@@ -70,7 +72,9 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
         description: `${topMarket.growth_rate}% growth rate in ${topMarket.location} with ${topMarket.job_postings_count} active positions.`,
         confidence: 85,
         impact: 'high',
-        action: 'Analyze This Market'
+        action: 'Analyze This Market',
+        careerPath: topMarket.career_path,
+        location: topMarket.location
       });
     }
 
@@ -89,7 +93,9 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
         description: `${topSalaryMarket.career_path} roles averaging $${topSalaryMarket.average_salary.toLocaleString()} annually.`,
         confidence: 90,
         impact: 'high',
-        action: 'View Salary Analysis'
+        action: 'View Salary Analysis',
+        careerPath: topSalaryMarket.career_path,
+        location: topSalaryMarket.location
       });
     }
 
@@ -227,11 +233,12 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                     
                     // Call the action handler
                     if (onActionClick) {
-                      const careerPath = insight.type === 'opportunity' && insight.description.includes('in') ? 
-                                        insight.description.split(' in ')[0].replace(/^\w+\s+\w+\s+/, '') : undefined;
-                      const location = insight.type === 'opportunity' && insight.description.includes('in') ? 
-                                      insight.description.split(' in ')[1].split(' with')[0] : undefined;
-                      onActionClick(insight.action, careerPath, location);
+                      console.log('🎯 Insight action clicked:', {
+                        action: insight.action,
+                        careerPath: insight.careerPath,
+                        location: insight.location
+                      });
+                      onActionClick(insight.action, insight.careerPath, insight.location);
                     }
                   }}
                 >

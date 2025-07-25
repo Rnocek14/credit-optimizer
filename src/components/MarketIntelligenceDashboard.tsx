@@ -207,14 +207,69 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
-    console.log('🎯 Action triggered:', action);
+    console.log('🎯 Action triggered:', action, 'with careerPath:', careerPath, 'location:', location);
     
     // Smart context extraction from action
     let workingCareerPath = selectedCareerPath;
     let workingLocation = selectedLocation;
 
-    // Try to extract context from action if selections are missing
+    // If we have direct career path and location from insight, use them first
+    if (careerPath || location) {
+      console.log('🔍 Attempting direct career path lookup...');
+      
+      if (careerPath) {
+        // Look up career path by title
+        const { data: careerPaths } = await supabase
+          .from('career_paths')
+          .select('id, title')
+          .ilike('title', `%${careerPath}%`)
+          .limit(1);
+        
+        if (careerPaths && careerPaths.length > 0) {
+          workingCareerPath = careerPaths[0];
+          setSelectedCareerPath(careerPaths[0]);
+          console.log('✅ Found career path:', careerPaths[0]);
+        } else {
+          console.log('⚠️ Career path not found, trying fuzzy match...');
+          // Try fuzzy matching with broader search
+          const { data: fuzzyPaths } = await supabase
+            .from('career_paths')
+            .select('id, title')
+            .limit(10);
+          
+          if (fuzzyPaths) {
+            const match = fuzzyPaths.find(p => 
+              p.title.toLowerCase().includes(careerPath.toLowerCase()) ||
+              careerPath.toLowerCase().includes(p.title.toLowerCase())
+            );
+            if (match) {
+              workingCareerPath = match;
+              setSelectedCareerPath(match);
+              console.log('✅ Fuzzy matched career path:', match);
+            }
+          }
+        }
+      }
+      
+      if (location) {
+        // Look up location by label or value
+        const { data: locations } = await supabase
+          .from('locations')
+          .select('id, label, value, emoji')
+          .or(`label.ilike.%${location}%,value.ilike.%${location}%`)
+          .limit(1);
+        
+        if (locations && locations.length > 0) {
+          workingLocation = locations[0];
+          setSelectedLocation(locations[0]);
+          console.log('✅ Found location:', locations[0]);
+        }
+      }
+    }
+
+    // Fallback to smart extraction if direct lookup didn't work
     if ((!workingCareerPath || !workingLocation) && (careerPath || location)) {
+      console.log('🔄 Falling back to smart extraction...');
       const { extractedCareerPath, extractedLocation } = await extractContextFromAction(action, `${careerPath || ''} ${location || ''}`);
       
       if (extractedCareerPath && !workingCareerPath) {
