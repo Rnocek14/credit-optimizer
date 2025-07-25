@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { TrendingUp, TrendingDown, Calendar, BarChart3, LineChart as LineChartIcon, AreaChart as AreaChartIcon, Download, Zap } from 'lucide-react';
 import { useEnhancedMarketIntelligence } from '@/hooks/useEnhancedMarketIntelligence';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
@@ -158,12 +157,12 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
     switch (chartType) {
       case 'area':
         return (
-          <ChartContainer config={chartConfig} className="h-96">
+          <ResponsiveContainer width="100%" height={384}>
             <AreaChart {...chartProps}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent formatter={formatTooltipValue} />} />
+              <Tooltip formatter={formatTooltipValue} />
               <Legend />
               {selectedCareerPaths.map((path, index) => (
                 <Area
@@ -177,17 +176,17 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
                 />
               ))}
             </AreaChart>
-          </ChartContainer>
+          </ResponsiveContainer>
         );
       
       case 'bar':
         return (
-          <ChartContainer config={chartConfig} className="h-96">
+          <ResponsiveContainer width="100%" height={384}>
             <BarChart {...chartProps}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent formatter={formatTooltipValue} />} />
+              <Tooltip formatter={formatTooltipValue} />
               <Legend />
               {selectedCareerPaths.map((path, index) => (
                 <Bar
@@ -197,17 +196,17 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
                 />
               ))}
             </BarChart>
-          </ChartContainer>
+          </ResponsiveContainer>
         );
       
       default:
         return (
-          <ChartContainer config={chartConfig} className="h-96">
+          <ResponsiveContainer width="100%" height={384}>
             <LineChart {...chartProps}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="month" className="text-xs" />
               <YAxis className="text-xs" />
-              <ChartTooltip content={<ChartTooltipContent formatter={formatTooltipValue} />} />
+              <Tooltip formatter={formatTooltipValue} />
               <Legend />
               {selectedCareerPaths.map((path, index) => (
                 <Line
@@ -221,7 +220,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
                 />
               ))}
             </LineChart>
-          </ChartContainer>
+          </ResponsiveContainer>
         );
     }
   };

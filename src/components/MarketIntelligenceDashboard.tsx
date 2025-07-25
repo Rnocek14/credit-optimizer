@@ -32,6 +32,8 @@ import { MarketForecastPanel } from './MarketForecastPanel';
 import { RealTimeJobDataPanel } from './RealTimeJobDataPanel';
 import { HistoricalTrendsVisualization } from './HistoricalTrendsVisualization';
 import { PatternRecognitionPanel } from './PatternRecognitionPanel';
+import { LoadingSkeleton } from './LoadingSkeleton';
+import { MarketDataSeeder } from './MarketDataSeeder';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -148,10 +150,20 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   // Overview Dashboard Component
-  const OverviewDashboard = () => (
-    <div className="space-y-6">
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  const OverviewDashboard = () => {
+    if (loading && marketData.length === 0) {
+      return <LoadingSkeleton variant="dashboard" />;
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Data Seeder (only show if no data) */}
+        {marketData.length === 0 && (
+          <MarketDataSeeder />
+        )}
+        
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-primary">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -210,20 +222,66 @@ export const MarketIntelligenceDashboard = () => {
       {/* Personalized Recommendations */}
       <SuggestedMarketMovesCard />
 
-      {/* Top Growing Careers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Market Opportunities
-          </CardTitle>
-          <CardDescription>
-            Highest growth potential careers in your selected markets
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {topCareers.slice(0, 5).map((career, index) => (
+        {/* Market Trends Overview */}
+        {marketData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Market Overview
+              </CardTitle>
+              <CardDescription>
+                Quick insights from your market intelligence data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-primary">
+                    {marketData.length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Markets Tracked</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-emerald-600">
+                    +{(marketData.reduce((acc, curr) => acc + curr.growth_rate, 0) / marketData.length).toFixed(1)}%
+                  </div>
+                  <p className="text-sm text-muted-foreground">Avg Growth</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {marketData.reduce((acc, curr) => acc + curr.job_postings_count, 0).toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Jobs</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    ${Math.round(marketData.reduce((acc, curr) => acc + curr.average_salary, 0) / marketData.length / 1000)}k
+                  </div>
+                  <p className="text-sm text-muted-foreground">Avg Salary</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Top Growing Careers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Market Opportunities
+            </CardTitle>
+            <CardDescription>
+              Highest growth potential careers in your selected markets
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <LoadingSkeleton variant="table" count={5} />
+            ) : (
+              <div className="grid gap-4">
+                {topCareers.slice(0, 5).map((career, index) => (
               <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -254,12 +312,14 @@ export const MarketIntelligenceDashboard = () => {
                   </Badge>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -346,7 +406,10 @@ export const MarketIntelligenceDashboard = () => {
 
         {/* Analysis Tab */}
         <TabsContent value="analysis" className="space-y-6">
-          <div className="grid gap-6">
+          {loading && !analysis ? (
+            <LoadingSkeleton variant="dashboard" />
+          ) : (
+            <div className="grid gap-6">
             {/* Market Analysis Results */}
             {analysis && (
               <Card>
@@ -491,11 +554,15 @@ export const MarketIntelligenceDashboard = () => {
               />
             </div>
           </div>
+          )}
         </TabsContent>
 
         {/* Research Tab */}
         <TabsContent value="research" className="space-y-6">
-          <div className="grid gap-6">
+          {loading && !salaryData ? (
+            <LoadingSkeleton variant="dashboard" />
+          ) : (
+            <div className="grid gap-6">
             {/* Salary Intelligence */}
             <Card>
               <CardHeader>
@@ -575,6 +642,7 @@ export const MarketIntelligenceDashboard = () => {
             {/* Compare Trends */}
             <CompareMarketTrendsPanel />
           </div>
+          )}
         </TabsContent>
 
         {/* Alerts & Export Tab */}
