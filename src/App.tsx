@@ -90,7 +90,14 @@ const App = () => (
           <Route path="/discover" element={<Discover />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/salary-insights" element={<SalaryInsights />} />
-          <Route path="/market-intelligence" element={<MarketIntelligence />} />
+          <Route 
+            path="/market-intelligence" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <MarketIntelligence />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/teach" element={<Teach />} />
           <Route 
             path="/saved" 
