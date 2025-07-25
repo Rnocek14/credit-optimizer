@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, MapPin, DollarSign, Users, Zap } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  MapPin, 
+  DollarSign, 
+  Users, 
+  Zap, 
+  BarChart3,
+  Target,
+  Bell,
+  Download,
+  Eye,
+  Brain,
+  Globe,
+  Activity
+} from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
-import { usePersonalizedInsights } from '@/hooks/usePersonalizedInsights';
 import { useToast } from '@/hooks/use-toast';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
@@ -39,11 +53,9 @@ export const MarketIntelligenceDashboard = () => {
 
   useEffect(() => {
     const loadInitialData = async () => {
-      console.log('🔄 Loading initial market data...');
       try {
-        await fetchMarketTrends(); // Load all market trends initially
+        await fetchMarketTrends();
         await loadTopCareers();
-        console.log('✅ Initial market data loaded successfully');
       } catch (error) {
         console.error('❌ Failed to load initial market data:', error);
         toast({
@@ -61,7 +73,6 @@ export const MarketIntelligenceDashboard = () => {
     try {
       const careers = await getTopGrowingCareers();
       setTopCareers(careers);
-      console.log('✅ Top careers loaded:', careers.length);
     } catch (error) {
       console.error('❌ Failed to load top careers:', error);
     }
@@ -111,432 +122,482 @@ export const MarketIntelligenceDashboard = () => {
     switch (trend) {
       case 'increasing':
       case 'rising':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
+        return <TrendingUp className="h-4 w-4 text-emerald-500" />;
       case 'decreasing':
       case 'declining':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
+        return <TrendingDown className="h-4 w-4 text-red-500" />;
       default:
-        return <Zap className="h-4 w-4 text-yellow-600" />;
+        return <Activity className="h-4 w-4 text-amber-500" />;
     }
   };
 
   const getCompetitionColor = (level: string) => {
     switch (level) {
       case 'low':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300';
       case 'high':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300';
     }
   };
 
-  return (
+  const getMetricValue = (value: number, suffix: string = '') => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${value.toLocaleString()}${suffix}`;
+  };
+
+  // Overview Dashboard Component
+  const OverviewDashboard = () => (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <h2 className="text-2xl font-bold">Market Intelligence Dashboard</h2>
-        <p className="text-muted-foreground">
-          Real-time market analysis and career insights powered by AI
-        </p>
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Markets</p>
+                <p className="text-2xl font-bold">{marketData.length}</p>
+              </div>
+              <Globe className="h-8 w-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-emerald-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Avg Growth Rate</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {marketData.length > 0 ? (marketData.reduce((acc, curr) => acc + curr.growth_rate, 0) / marketData.length).toFixed(1) : 0}%
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Avg Salary</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  ${marketData.length > 0 ? Math.round(marketData.reduce((acc, curr) => acc + curr.average_salary, 0) / marketData.length).toLocaleString() : 0}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {marketData.reduce((acc, curr) => acc + curr.job_postings_count, 0).toLocaleString()}
+                </p>
+              </div>
+              <Users className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-        <Tabs defaultValue="personalization" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-11">
-            <TabsTrigger value="personalization">💡 Personalized</TabsTrigger>
-            <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
-            <TabsTrigger value="historical">📈 Historical Trends</TabsTrigger>
-            <TabsTrigger value="advanced">🔮 Advanced Analytics</TabsTrigger>
-            <TabsTrigger value="patterns">🧠 Pattern Recognition</TabsTrigger>
-            <TabsTrigger value="trends">Trending Careers</TabsTrigger>
-            <TabsTrigger value="salary">Salary Insights</TabsTrigger>
-            <TabsTrigger value="compare">Compare Trends</TabsTrigger>
-            <TabsTrigger value="export">Export & Reports</TabsTrigger>
-            <TabsTrigger value="alerts">🚨 Smart Alerts</TabsTrigger>
-            <TabsTrigger value="data">Raw Data</TabsTrigger>
-          </TabsList>
+      {/* Personalized Recommendations */}
+      <SuggestedMarketMovesCard />
 
-        <TabsContent value="personalization" className="space-y-6">
-          <SuggestedMarketMovesCard />
-        </TabsContent>
-
-        <TabsContent value="analysis" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                AI Market Analysis
-              </CardTitle>
-              <CardDescription>
-                Get comprehensive market analysis for any career and location
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <CareerPathCombobox
-                  value={selectedCareerPath}
-                  onChange={setSelectedCareerPath}
-                  placeholder="Select career path..."
-                />
-                <LocationCombobox
-                  value={selectedLocation}
-                  onChange={setSelectedLocation}
-                  placeholder="Select location..."
-                />
-              </div>
-              <Button 
-                onClick={handleMarketAnalysis} 
-                disabled={loading}
-                className="w-full"
-              >
-                {loading ? 'Analyzing...' : 'Analyze Market'}
-              </Button>
-
-              {analysis && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Demand Trend</p>
-                          <p className="font-semibold flex items-center gap-2">
-                            {getTrendIcon(analysis.marketTrends.aiInsights.demandTrend)}
-                            {analysis.marketTrends.aiInsights.demandTrend}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          {analysis.marketTrends.demandScore}%
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Salary Trend</p>
-                          <p className="font-semibold flex items-center gap-2">
-                            {getTrendIcon(analysis.marketTrends.aiInsights.salaryTrend)}
-                            {analysis.marketTrends.aiInsights.salaryTrend}
-                          </p>
-                        </div>
-                        <Badge variant="secondary">
-                          {analysis.marketTrends.aiInsights.growthRate}%
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Competition</p>
-                          <p className="font-semibold">{analysis.marketTrends.competitionLevel}</p>
-                        </div>
-                        <Badge className={getCompetitionColor(analysis.marketTrends.competitionLevel)}>
-                          {analysis.marketTrends.aiInsights.marketSaturation}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {analysis?.marketTrends.aiInsights && (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">AI Insights</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <p className="font-medium mb-2">Key Market Drivers:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {analysis.marketTrends.aiInsights.keyDrivers.map((driver: string, index: number) => (
-                            <Badge key={index} variant="outline">{driver}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <p className="font-medium mb-2">Risk Factors:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {analysis.marketTrends.aiInsights.riskFactors.map((risk: string, index: number) => (
-                            <Badge key={index} variant="destructive">{risk}</Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="font-medium mb-2">Recommendation:</p>
-                        <p className="text-sm text-muted-foreground">
-                          {analysis.marketTrends.aiInsights.recommendation}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Confidence:</span>
-                        <Badge variant="secondary">
-                          {analysis.marketTrends.aiInsights.confidence}%
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="historical" className="space-y-6">
-          <HistoricalTrendsVisualization />
-        </TabsContent>
-
-        <TabsContent value="advanced" className="space-y-6">
-          <div className="grid gap-6">
-            <MarketForecastPanel 
-              careerPath={selectedCareerPath?.title} 
-              location={selectedLocation?.value} 
-            />
-            <RealTimeJobDataPanel 
-              careerPath={selectedCareerPath?.title} 
-              location={selectedLocation?.value} 
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="patterns" className="space-y-6">
-          {selectedCareerPath && selectedLocation ? (
-            <PatternRecognitionPanel 
-              careerPath={selectedCareerPath.title} 
-              location={selectedLocation.value} 
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Pattern Recognition</CardTitle>
-                <CardDescription>
-                  Advanced AI-powered pattern detection and market analysis
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Please select both a career path and location to access pattern recognition features.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <CareerPathCombobox
-                    value={selectedCareerPath}
-                    onChange={setSelectedCareerPath}
-                    placeholder="Select career path..."
-                  />
-                  <LocationCombobox
-                    value={selectedLocation}
-                    onChange={setSelectedLocation}
-                    placeholder="Select location..."
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Top Growing Careers
-              </CardTitle>
-              <CardDescription>
-                Careers with the highest growth rates and demand
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {topCareers.map((career, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
+      {/* Top Growing Careers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Market Opportunities
+          </CardTitle>
+          <CardDescription>
+            Highest growth potential careers in your selected markets
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            {topCareers.slice(0, 5).map((career, index) => (
+              <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
                       <h4 className="font-medium">{career.career_path}</h4>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3" />
+                          <TrendingUp className="h-3 w-3 text-emerald-500" />
                           {career.growth_rate}% growth
                         </span>
                         <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          ${career.average_salary?.toLocaleString() || 'N/A'}
+                          <DollarSign className="h-3 w-3 text-blue-500" />
+                          ${getMetricValue(career.average_salary)}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        Demand: {career.demand_score}%
-                      </Badge>
-                      <Badge className={getCompetitionColor(career.competition_level)}>
-                        {career.competition_level}
-                      </Badge>
-                    </div>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    {career.demand_score}% demand
+                  </Badge>
+                  <Badge className={getCompetitionColor(career.competition_level)}>
+                    {career.competition_level}
+                  </Badge>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Market Intelligence</h1>
+            <p className="text-muted-foreground">
+              AI-powered career market analysis and insights
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedCareerPath && selectedLocation && (
+              <Badge variant="outline" className="px-3 py-1">
+                <MapPin className="h-3 w-3 mr-1" />
+                {selectedCareerPath.title} in {selectedLocation.label}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Global Controls */}
+        <Card className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <CareerPathCombobox
+                value={selectedCareerPath}
+                onChange={setSelectedCareerPath}
+                placeholder="Select career path..."
+              />
+              <LocationCombobox
+                value={selectedLocation}
+                onChange={setSelectedLocation}
+                placeholder="Select location..."
+              />
+              <Button 
+                onClick={handleMarketAnalysis} 
+                disabled={loading || !selectedCareerPath || !selectedLocation}
+                className="w-full"
+              >
+                {loading ? (
+                  <>
+                    <Activity className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Run Analysis
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="analysis" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analysis
+          </TabsTrigger>
+          <TabsTrigger value="research" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Research
+          </TabsTrigger>
+          <TabsTrigger value="alerts" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Alerts & Export
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <OverviewDashboard />
         </TabsContent>
 
-        <TabsContent value="salary" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Salary Intelligence
-              </CardTitle>
-              <CardDescription>
-                Comprehensive salary analysis by location and career
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <CareerPathCombobox
-                    value={selectedCareerPath}
-                    onChange={setSelectedCareerPath}
-                    placeholder="Select career path for salary analysis..."
-                  />
-                </div>
-                <Button onClick={handleSalaryAnalysis} disabled={loading}>
-                  Analyze Salaries
-                </Button>
-              </div>
-
-              {salaryData && (
-                <div className="space-y-4">
+        {/* Analysis Tab */}
+        <TabsContent value="analysis" className="space-y-6">
+          <div className="grid gap-6">
+            {/* Market Analysis Results */}
+            {analysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Market Analysis Results
+                  </CardTitle>
+                  <CardDescription>
+                    AI-powered insights for {selectedCareerPath?.title} in {selectedLocation?.label}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Key Metrics */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <p className="text-sm text-muted-foreground">Average Salary</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          ${salaryData.averageSalary.toLocaleString()}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <p className="text-sm text-muted-foreground">Median Salary</p>
-                        <p className="text-2xl font-bold text-blue-600">
-                          ${salaryData.medianSalary.toLocaleString()}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <p className="text-sm text-muted-foreground">Data Points</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {salaryData.sampleSize}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {salaryData.topPayingLocation && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Top Paying Location</CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
+                      <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <span className="font-medium">{salaryData.topPayingLocation.location}</span>
+                          <div>
+                            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Demand Trend</p>
+                            <p className="text-xl font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-200">
+                              {getTrendIcon(analysis.marketTrends.aiInsights.demandTrend)}
+                              {analysis.marketTrends.aiInsights.demandTrend}
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-green-600">
-                              ${salaryData.topPayingLocation.average_salary.toLocaleString()}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {salaryData.topPayingLocation.growth_rate}% growth
-                            </p>
+                            <div className="text-2xl font-bold text-emerald-600">
+                              {analysis.marketTrends.demandScore}%
+                            </div>
+                            <Progress value={analysis.marketTrends.demandScore} className="w-16 mt-1" />
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="compare" className="space-y-6">
-          <CompareMarketTrendsPanel />
-        </TabsContent>
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Salary Trend</p>
+                            <p className="text-xl font-bold flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                              {getTrendIcon(analysis.marketTrends.aiInsights.salaryTrend)}
+                              {analysis.marketTrends.aiInsights.salaryTrend}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {analysis.marketTrends.aiInsights.growthRate}%
+                            </div>
+                            <Progress value={Math.abs(analysis.marketTrends.aiInsights.growthRate)} className="w-16 mt-1" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-        <TabsContent value="export" className="space-y-6">
-          <MarketIntelligenceExportPanel
-            selectedCareerPath={selectedCareerPath?.title}
-            selectedLocation={selectedLocation?.value}
-            marketData={marketData}
-            analysisData={analysis}
-            isLoading={loading}
-            onRefreshData={fetchMarketTrends}
-          />
-        </TabsContent>
-
-        <TabsContent value="alerts" className="space-y-6">
-          <EnhancedMarketAlertSystem />
-        </TabsContent>
-
-        <TabsContent value="data" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Market Data Overview
-              </CardTitle>
-              <CardDescription>
-                Raw market trend data from our database ({marketData.length} records)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {marketData.slice(0, 10).map((trend) => (
-                  <div key={trend.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{trend.career_path}</h4>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {trend.location}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">
-                          ${trend.average_salary.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {trend.growth_rate}% growth
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2">
-                      <Badge variant="outline">{trend.job_postings_count} jobs</Badge>
-                      <Badge variant="secondary">Demand: {trend.demand_score}%</Badge>
-                      <Badge className={getCompetitionColor(trend.competition_level)}>
-                        {trend.competition_level}
-                      </Badge>
-                    </div>
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Market Saturation</p>
+                            <p className="text-xl font-bold text-purple-800 dark:text-purple-200">
+                              {analysis.marketTrends.aiInsights.marketSaturation}
+                            </p>
+                          </div>
+                          <Badge className={getCompetitionColor(analysis.marketTrends.competitionLevel)}>
+                            {analysis.marketTrends.competitionLevel}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+
+                  {/* AI Insights */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">AI Market Intelligence</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="font-medium mb-3 text-emerald-700 dark:text-emerald-300">Market Drivers</p>
+                          <div className="space-y-2">
+                            {analysis.marketTrends.aiInsights.keyDrivers.map((driver: string, index: number) => (
+                              <Badge key={index} variant="outline" className="mr-2 mb-2">
+                                {driver}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium mb-3 text-red-700 dark:text-red-300">Risk Factors</p>
+                          <div className="space-y-2">
+                            {analysis.marketTrends.aiInsights.riskFactors.map((risk: string, index: number) => (
+                              <Badge key={index} variant="destructive" className="mr-2 mb-2">
+                                {risk}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <p className="font-medium mb-2">Strategic Recommendation</p>
+                        <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded">
+                          {analysis.marketTrends.aiInsights.recommendation}
+                        </p>
+                        <div className="flex items-center gap-2 mt-3">
+                          <span className="text-sm font-medium">Confidence Score:</span>
+                          <Badge variant="secondary">
+                            {analysis.marketTrends.aiInsights.confidence}%
+                          </Badge>
+                          <Progress value={analysis.marketTrends.aiInsights.confidence} className="w-20" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Historical Trends */}
+            <HistoricalTrendsVisualization />
+
+            {/* Pattern Recognition */}
+            {selectedCareerPath && selectedLocation && (
+              <PatternRecognitionPanel 
+                careerPath={selectedCareerPath.title} 
+                location={selectedLocation.value} 
+              />
+            )}
+
+            {/* Advanced Analytics */}
+            <div className="grid gap-6">
+              <MarketForecastPanel 
+                careerPath={selectedCareerPath?.title} 
+                location={selectedLocation?.value} 
+              />
+              <RealTimeJobDataPanel 
+                careerPath={selectedCareerPath?.title} 
+                location={selectedLocation?.value} 
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Research Tab */}
+        <TabsContent value="research" className="space-y-6">
+          <div className="grid gap-6">
+            {/* Salary Intelligence */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Salary Intelligence
+                </CardTitle>
+                <CardDescription>
+                  Comprehensive salary analysis and market positioning
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <Button onClick={handleSalaryAnalysis} disabled={loading || !selectedCareerPath}>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Analyze Salaries
+                  </Button>
+                </div>
+
+                {salaryData && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Average Salary</p>
+                          <p className="text-2xl font-bold text-emerald-600">
+                            ${salaryData.averageSalary.toLocaleString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Median Salary</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            ${salaryData.medianSalary.toLocaleString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                        <CardContent className="p-4 text-center">
+                          <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Sample Size</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            {salaryData.sampleSize}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {salaryData.topPayingLocation && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Top Paying Market</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              <span className="font-medium">{salaryData.topPayingLocation.location}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-emerald-600">
+                                ${salaryData.topPayingLocation.average_salary.toLocaleString()}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {salaryData.topPayingLocation.growth_rate}% growth
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Compare Trends */}
+            <CompareMarketTrendsPanel />
+          </div>
+        </TabsContent>
+
+        {/* Alerts & Export Tab */}
+        <TabsContent value="alerts" className="space-y-6">
+          <div className="grid gap-6">
+            <EnhancedMarketAlertSystem />
+            <MarketIntelligenceExportPanel
+              selectedCareerPath={selectedCareerPath?.title}
+              selectedLocation={selectedLocation?.value}
+              marketData={marketData}
+              analysisData={analysis}
+              isLoading={loading}
+              onRefreshData={fetchMarketTrends}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 
+      {/* Error Display */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-destructive bg-destructive/5">
           <CardContent className="p-4">
-            <p className="text-red-600 font-medium">Error: {error}</p>
+            <p className="text-destructive font-medium">Error: {error}</p>
           </CardContent>
         </Card>
       )}
