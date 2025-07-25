@@ -36,6 +36,10 @@ import { LoadingSkeleton } from './LoadingSkeleton';
 import { MarketDataSeeder } from './MarketDataSeeder';
 import { IntelligentWorkflowGuide } from './IntelligentWorkflowGuide';
 import { IntelligenceInsightsCard } from './IntelligenceInsightsCard';
+import { TopMarketInsights } from './TopMarketInsights';
+import { OpportunityScoreWidget } from './OpportunityScoreWidget';
+import { MarketPulseWidget } from './MarketPulseWidget';
+import { SmartSuggestionsWidget } from './SmartSuggestionsWidget';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -164,7 +168,60 @@ export const MarketIntelligenceDashboard = () => {
 
     return (
       <div className="space-y-6">
-        {/* Intelligent Workflow & Insights */}
+        {/* Intelligence-First Dashboard */}
+        
+        {/* Phase 1: Top 3 Market Insights (Lead with Intelligence) */}
+        <TopMarketInsights
+          marketData={marketData}
+          selectedCareerPath={selectedCareerPath?.title}
+          selectedLocation={selectedLocation?.value}
+        />
+
+        {/* Intelligence Surface: Core Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+          {/* Opportunity Score Widget */}
+          <div className="lg:col-span-1">
+            <OpportunityScoreWidget
+              marketData={marketData}
+              selectedCareerPath={selectedCareerPath?.title}
+              selectedLocation={selectedLocation?.value}
+            />
+          </div>
+
+          {/* Market Pulse Widget */}
+          <div className="lg:col-span-1">
+            <MarketPulseWidget
+              marketData={marketData}
+              selectedCareerPath={selectedCareerPath?.title}
+              selectedLocation={selectedLocation?.value}
+            />
+          </div>
+
+          {/* Smart Suggestions Widget */}
+          <div className="xl:col-span-2">
+            <SmartSuggestionsWidget
+              marketData={marketData}
+              selectedCareerPath={selectedCareerPath?.title}
+              selectedLocation={selectedLocation?.value}
+              onSuggestionSelect={(careerPath, location) => {
+                // Handle suggestion selection
+                toast({
+                  title: "Suggestion Selected",
+                  description: `Analyzing ${careerPath} in ${location}`,
+                });
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Data Seeder (only show if no data) */}
+        {marketData.length === 0 && (
+          <div className="border-2 border-dashed border-muted rounded-lg p-8">
+            <MarketDataSeeder />
+          </div>
+        )}
+
+        {/* Connected Intelligence: Workflow & Traditional Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <IntelligentWorkflowGuide
@@ -186,70 +243,51 @@ export const MarketIntelligenceDashboard = () => {
           </div>
         </div>
 
-        {/* Data Seeder (only show if no data) */}
-        {marketData.length === 0 && (
-          <MarketDataSeeder />
+        {/* Quick Market Intelligence Metrics */}
+        {marketData.length > 0 && (
+          <Card className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                Market Intelligence Score
+              </CardTitle>
+              <CardDescription>
+                Overall market health and opportunity assessment
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 border rounded-lg bg-card">
+                  <div className="text-2xl font-bold text-primary">
+                    {marketData.length}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Markets Tracked</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg bg-card">
+                  <div className="text-2xl font-bold text-emerald-600">
+                    +{(marketData.reduce((acc, curr) => acc + curr.growth_rate, 0) / marketData.length).toFixed(1)}%
+                  </div>
+                  <p className="text-sm text-muted-foreground">Avg Growth</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg bg-card">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {marketData.reduce((acc, curr) => acc + curr.job_postings_count, 0).toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Jobs</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg bg-card">
+                  <div className="text-2xl font-bold text-purple-600">
+                    ${Math.round(marketData.reduce((acc, curr) => acc + curr.average_salary, 0) / marketData.length / 1000)}k
+                  </div>
+                  <p className="text-sm text-muted-foreground">Avg Salary</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
-        
-        {/* Key Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-primary">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Markets</p>
-                <p className="text-2xl font-bold">{marketData.length}</p>
-              </div>
-              <Globe className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Growth Rate</p>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {marketData.length > 0 ? (marketData.reduce((acc, curr) => acc + curr.growth_rate, 0) / marketData.length).toFixed(1) : 0}%
-                </p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-emerald-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg Salary</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  ${marketData.length > 0 ? Math.round(marketData.reduce((acc, curr) => acc + curr.average_salary, 0) / marketData.length).toLocaleString() : 0}
-                </p>
-              </div>
-              <DollarSign className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {marketData.reduce((acc, curr) => acc + curr.job_postings_count, 0).toLocaleString()}
-                </p>
-              </div>
-              <Users className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Personalized Recommendations */}
-      <SuggestedMarketMovesCard />
+        {/* Personalized Recommendations */}
+        <SuggestedMarketMovesCard />
 
         {/* Market Trends Overview */}
         {marketData.length > 0 && (
