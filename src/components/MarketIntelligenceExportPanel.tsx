@@ -143,8 +143,9 @@ export const MarketIntelligenceExportPanel = ({
 
   const exportCSV = () => {
     try {
+      // Check if we have any data to export
       if (!marketData || marketData.length === 0) {
-        toast.error("No data available to export");
+        toast.error("No market data available to export. Please run market analysis first or check that market trends data has been loaded.");
         return;
       }
 

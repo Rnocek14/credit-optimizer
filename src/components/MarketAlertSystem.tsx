@@ -54,6 +54,28 @@ export const MarketAlertSystem = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Check for demo mode
+      const isDemoMode = !user;
+      const demoUserId = localStorage.getItem('devUser') || 'demo_user';
+      
+      if (isDemoMode) {
+        // Load demo preferences from localStorage
+        const demoPrefs = localStorage.getItem('demo_market_preferences');
+        if (demoPrefs) {
+          const parsedPrefs = JSON.parse(demoPrefs);
+          setPreferences({
+            ...parsedPrefs,
+            id: 'demo_preferences'
+          });
+        }
+        
+        // Load demo alerts
+        const demoAlerts = generateDemoAlerts(demoUserId);
+        setAlerts(demoAlerts);
+        return;
+      }
+      
       if (!user) return;
 
       // Load preferences
@@ -98,6 +120,15 @@ export const MarketAlertSystem = () => {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const isDemoMode = !user;
+      
+      if (isDemoMode) {
+        // Save to localStorage for demo mode
+        localStorage.setItem('demo_market_preferences', JSON.stringify(preferences));
+        toast.success('Demo preferences saved locally!');
+        return;
+      }
+      
       if (!user) {
         toast.error('Please log in to save preferences');
         return;
@@ -143,6 +174,19 @@ export const MarketAlertSystem = () => {
 
   const markAlertAsRead = async (alertId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const isDemoMode = !user;
+      
+      if (isDemoMode) {
+        // Just update local state for demo mode
+        setAlerts(prev => 
+          prev.map(alert => 
+            alert.id === alertId ? { ...alert, is_read: true } : alert
+          )
+        );
+        return;
+      }
+      
       await supabase
         .from('market_alerts')
         .update({ is_read: true })
@@ -156,6 +200,47 @@ export const MarketAlertSystem = () => {
     } catch (error) {
       console.error('Error marking alert as read:', error);
     }
+  };
+
+  // Generate demo alerts for demo users
+  const generateDemoAlerts = (userId: string) => {
+    const demoAlerts: MarketAlert[] = [
+      {
+        id: 'demo_1',
+        alert_type: 'salary_change',
+        career_path: 'Software Engineer',
+        location: 'california',
+        threshold_value: 120000,
+        current_value: 125000,
+        alert_message: 'Software Engineer salaries in California increased by 4.2% this month!',
+        is_read: false,
+        triggered_at: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+      },
+      {
+        id: 'demo_2',
+        alert_type: 'demand_shift',
+        career_path: 'Data Scientist',
+        location: 'new-york',
+        threshold_value: 70,
+        current_value: 78,
+        alert_message: 'Demand for Data Scientists in New York has surged - 8 new job postings this week!',
+        is_read: false,
+        triggered_at: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+      },
+      {
+        id: 'demo_3',
+        alert_type: 'new_opportunities',
+        career_path: 'Product Manager',
+        location: 'remote',
+        threshold_value: 50,
+        current_value: 62,
+        alert_message: 'Remote Product Manager opportunities increased by 24% this month.',
+        is_read: true,
+        triggered_at: new Date(Date.now() - 604800000).toISOString() // 1 week ago
+      }
+    ];
+    
+    return demoAlerts;
   };
 
   const getAlertIcon = (alertType: string) => {
