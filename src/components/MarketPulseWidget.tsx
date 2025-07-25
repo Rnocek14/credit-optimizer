@@ -20,6 +20,7 @@ interface MarketPulseWidgetProps {
   marketData: MarketTrend[];
   selectedCareerPath?: string;
   selectedLocation?: string;
+  onActionClick?: (action: string) => void;
 }
 
 interface PulsePattern {
@@ -35,7 +36,8 @@ interface PulsePattern {
 export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
   marketData,
   selectedCareerPath,
-  selectedLocation
+  selectedLocation,
+  onActionClick
 }) => {
   const [pulseAnimation, setPulseAnimation] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -281,7 +283,10 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         {/* Quick Actions */}
         {marketData.length > 0 && (
           <div className="pt-2">
-            <button className="w-full text-xs text-primary hover:text-primary/80 font-medium py-2 border border-primary/20 rounded-md hover:bg-primary/5 transition-all">
+            <button 
+              onClick={() => onActionClick?.('View Pattern Details')}
+              className="w-full text-xs text-primary hover:text-primary/80 font-medium py-2 border border-primary/20 rounded-md hover:bg-primary/5 transition-all"
+            >
               View Pattern Details →
             </button>
           </div>

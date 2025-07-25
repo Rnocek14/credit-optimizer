@@ -21,6 +21,7 @@ import {
   Activity
 } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
+import { useEnhancedMarketIntelligence } from '@/hooks/useEnhancedMarketIntelligence';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
@@ -54,6 +55,11 @@ export const MarketIntelligenceDashboard = () => {
     getSalaryInsights
   } = useMarketIntelligence();
 
+  const {
+    getHistoricalTrends,
+    fetchRealTimeJobData
+  } = useEnhancedMarketIntelligence();
+
   const [selectedCareerPath, setSelectedCareerPath] = useState<{ id: string; title: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; label: string; value: string; emoji: string } | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
@@ -61,6 +67,9 @@ export const MarketIntelligenceDashboard = () => {
   const [salaryData, setSalaryData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [actionLoading, setActionLoading] = useState(false);
+  const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
+  const [realTimeData, setRealTimeData] = useState<any[]>([]);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -163,7 +172,75 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
-    console.log('🔥 Action triggered:', { action, careerPath, location });
+    console.log('🎯 Action triggered:', action);
+    
+    if (!selectedCareerPath || !selectedLocation) {
+      toast({
+        title: "Missing Information",
+        description: "Please select both a career path and location first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Handle specific action routing
+    if (action === 'View Pattern Details') {
+      setActiveTab('analysis');
+      return;
+    }
+
+    setComprehensiveLoading(true);
+    setActionLoading(true);
+    
+    try {
+      // Run comprehensive analysis (all relevant analyses)
+      const [analysisResult, historicalResult, realTimeResult] = await Promise.allSettled([
+        analyzeMarketTrends(selectedCareerPath.id, selectedLocation.id),
+        getHistoricalTrends(selectedCareerPath.title, selectedLocation.value, 6),
+        fetchRealTimeJobData(selectedCareerPath.title, selectedLocation.value)
+      ]);
+
+      // Process analysis result
+      if (analysisResult.status === 'fulfilled' && analysisResult.value) {
+        setAnalysis(analysisResult.value);
+      }
+
+      // Process historical data
+      if (historicalResult.status === 'fulfilled' && historicalResult.value) {
+        setHistoricalData(historicalResult.value);
+      }
+
+      // Process real-time data
+      if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
+        setRealTimeData(realTimeResult.value);
+      }
+
+      console.log('✅ Comprehensive analysis completed, navigating to analysis tab');
+      
+      // Small delay to ensure state updates propagate
+      setTimeout(() => {
+        setActiveTab('analysis');
+      }, 100);
+      
+      toast({
+        title: "Comprehensive Analysis Complete",
+        description: "All market data has been analyzed. Check the Analysis tab for complete insights.",
+      });
+    } catch (error) {
+      console.error('❌ Comprehensive analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to complete comprehensive market analysis.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+      setComprehensiveLoading(false);
+    }
+  };
+
+  const legacyHandleInsightAction = async (action: string, careerPath?: string, location?: string) => {
+    console.log('🔥 Legacy action triggered:', { action, careerPath, location });
     setActionLoading(true);
     
     try {
@@ -360,6 +437,7 @@ export const MarketIntelligenceDashboard = () => {
               marketData={marketData}
               selectedCareerPath={selectedCareerPath?.title}
               selectedLocation={selectedLocation?.value}
+              onActionClick={handleInsightAction}
             />
           </div>
 
@@ -640,8 +718,15 @@ export const MarketIntelligenceDashboard = () => {
 
         {/* Analysis Tab */}
         <TabsContent value="analysis" className="space-y-6">
-          {(loading || actionLoading) && !analysis ? (
-            <LoadingSkeleton variant="dashboard" />
+          {(actionLoading || comprehensiveLoading) ? (
+            <div className="space-y-4">
+              <LoadingSkeleton variant="dashboard" />
+              {comprehensiveLoading && (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Running comprehensive market analysis...</p>
+                </div>
+              )}
+            </div>
           ) : analysis ? (
             <div className="grid gap-6">
               {/* Market Analysis Results */}
