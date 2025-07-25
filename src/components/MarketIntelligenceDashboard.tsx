@@ -220,156 +220,106 @@ export const MarketIntelligenceDashboard = () => {
       console.log('🔍 Looking up career path:', careerPath);
       console.log('🌍 Looking up location:', location);
       
-      // Clear existing analysis data immediately
-      setAnalysis(null);
-      setTopCareers([]);
-      setSalaryData(null);
-      setHistoricalData([]);
-      setPatternRecognitionData(null);
-      setDemandForecastData(null);
+      setActionLoading(true);
+      setComprehensiveLoading(true);
       
-      // Look up career path
-      const { data: careerPaths } = await supabase
-        .from('career_paths')
-        .select('*')
-        .ilike('title', `%${careerPath}%`)
-        .limit(5);
-      
-      console.log('📊 Career paths found:', careerPaths);
-      
-      // Try exact match first, then fuzzy match
-      let matchedCareerPath = careerPaths?.find(cp => 
-        cp.title.toLowerCase() === careerPath.toLowerCase()
-      );
-      
-      if (!matchedCareerPath && careerPaths && careerPaths.length > 0) {
-        // Fuzzy matching - find best match
-        matchedCareerPath = careerPaths.find(cp => 
-          cp.title.toLowerCase().includes(careerPath.toLowerCase()) ||
-          careerPath.toLowerCase().includes(cp.title.toLowerCase())
+      try {
+        // Look up career path
+        const { data: careerPaths } = await supabase
+          .from('career_paths')
+          .select('*')
+          .ilike('title', `%${careerPath}%`)
+          .limit(5);
+        
+        console.log('📊 Career paths found:', careerPaths);
+        
+        // Try exact match first, then fuzzy match
+        let matchedCareerPath = careerPaths?.find(cp => 
+          cp.title.toLowerCase() === careerPath.toLowerCase()
         );
-      }
-      
-      console.log('✅ Matched career path:', matchedCareerPath);
-      
-      // Look up location
-      const { data: locations } = await supabase
-        .from('locations')
-        .select('*')
-        .ilike('label', `%${location}%`)
-        .limit(5);
-      
-      console.log('🌍 Locations found:', locations);
-      
-      let matchedLocation = locations?.find(loc => 
-        loc.label.toLowerCase() === location.toLowerCase()
-      );
-      
-      if (!matchedLocation && locations && locations.length > 0) {
-        matchedLocation = locations.find(loc => 
-          loc.label.toLowerCase().includes(location.toLowerCase()) ||
-          location.toLowerCase().includes(loc.label.toLowerCase())
+        
+        if (!matchedCareerPath && careerPaths && careerPaths.length > 0) {
+          // Fuzzy matching - find best match
+          matchedCareerPath = careerPaths.find(cp => 
+            cp.title.toLowerCase().includes(careerPath.toLowerCase()) ||
+            careerPath.toLowerCase().includes(cp.title.toLowerCase())
+          );
+        }
+        
+        console.log('✅ Matched career path:', matchedCareerPath);
+        
+        // Look up location
+        const { data: locations } = await supabase
+          .from('locations')
+          .select('*')
+          .ilike('label', `%${location}%`)
+          .limit(5);
+        
+        console.log('🌍 Locations found:', locations);
+        
+        let matchedLocation = locations?.find(loc => 
+          loc.label.toLowerCase() === location.toLowerCase()
         );
-      }
-      
-      console.log('📍 Matched location:', matchedLocation);
-      
-      if (matchedCareerPath && matchedLocation) {
-        console.log('🎯 Setting new selections and running analysis...');
         
-        // Update states using functional updates to ensure they complete
-        setSelectedCareerPath(prev => {
-          console.log('🔄 Career path state update:', prev, '->', matchedCareerPath);
-          return matchedCareerPath;
-        });
+        if (!matchedLocation && locations && locations.length > 0) {
+          matchedLocation = locations.find(loc => 
+            loc.label.toLowerCase().includes(location.toLowerCase()) ||
+            location.toLowerCase().includes(loc.label.toLowerCase())
+          );
+        }
         
-        setSelectedLocation(prev => {
-          console.log('🔄 Location state update:', prev, '->', matchedLocation);
-          return matchedLocation;
-        });
+        console.log('📍 Matched location:', matchedLocation);
         
-        // Set active tab to analysis
-        setActiveTab('analysis');
-        
-        // Run analysis immediately with explicit parameters
-        setComprehensiveLoading(true);
-        setActionLoading(true);
-        
-        try {
-          console.log('🚀 Starting comprehensive analysis for:', matchedCareerPath.title, 'in', matchedLocation.label);
+        if (matchedCareerPath && matchedLocation) {
+          console.log('🎯 Setting new selections and running analysis...');
           
-          // Run market trend analysis
-          console.log('📊 Running market trend analysis...');
-          const analysisResult = await analyzeMarketTrends(matchedCareerPath.id, matchedLocation.id);
-          console.log('📊 Analysis result:', analysisResult);
-          setAnalysis(analysisResult);
+          // Clear all previous data immediately
+          setAnalysis(null);
+          setTopCareers([]);
+          setSalaryData(null);
+          setHistoricalData([]);
+          setPatternRecognitionData(null);
+          setDemandForecastData(null);
+          setRealTimeData([]);
+          setAllAnalysisComplete(false);
           
-          // Fetch additional data in parallel
-          console.log('📈 Fetching additional market data...');
-          const [historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
-            getHistoricalTrends(matchedCareerPath.title, matchedLocation.value, 6),
-            fetchRealTimeJobData(matchedCareerPath.title, matchedLocation.value),
-            // Pattern recognition analysis
-            supabase.functions.invoke('pattern-recognition-engine', {
-              body: {
-                careerPath: matchedCareerPath.title,
-                location: matchedLocation.value,
-                timeframe: '90d',
-                analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
-              }
-            }),
-            // Demand forecasting
-            generateDemandForecast(matchedCareerPath.title, matchedLocation.value, '6months')
-          ]);
+          // Update states sequentially to ensure proper completion
+          const newCareerPath = { id: matchedCareerPath.id, title: matchedCareerPath.title };
+          const newLocation = {
+            id: matchedLocation.id,
+            label: matchedLocation.label,
+            value: matchedLocation.value,
+            emoji: matchedLocation.emoji
+          };
           
-          // Process historical data
-          if (historicalResult.status === 'fulfilled' && historicalResult.value) {
-            setHistoricalData(historicalResult.value);
-            console.log('📈 Historical data set');
-          }
-
-          // Process real-time data
-          if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
-            setRealTimeData(realTimeResult.value);
-            console.log('⚡ Real-time data set');
-          }
-
-          // Process pattern recognition results
-          if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
-            setPatternRecognitionData(patternResult.value.data);
-            console.log('🔍 Pattern recognition set');
-          }
-
-          // Process demand forecast results  
-          if (forecastResult.status === 'fulfilled' && forecastResult.value) {
-            setDemandForecastData(forecastResult.value);
-            console.log('🔮 Demand forecast set');
-          }
-
-          console.log('✅ Comprehensive analysis completed successfully');
+          // Set states
+          setSelectedCareerPath(newCareerPath);
+          setSelectedLocation(newLocation);
+          setActiveTab('analysis');
+          
+          console.log('🚀 Starting comprehensive analysis for:', newCareerPath.title, 'in', newLocation.label);
+          
+          // Run comprehensive analysis with explicit parameters
+          await runComprehensiveAnalysis(newCareerPath.title, newLocation.label, newCareerPath.id, newLocation.id, newLocation.value);
+          
+        } else {
+          console.error('❌ Could not find matching career path or location');
           toast({
-            title: "Analysis Complete",
-            description: `Market analysis for ${matchedCareerPath.title} in ${matchedLocation.label} is ready!`,
-          });
-          
-        } catch (error) {
-          console.error('❌ Analysis failed:', error);
-          toast({
-            title: "Analysis Failed",
-            description: "Failed to complete market analysis",
+            title: "Data Not Found",
+            description: `Could not find data for ${careerPath} in ${location}`,
             variant: "destructive"
           });
-        } finally {
-          setActionLoading(false);
-          setComprehensiveLoading(false);
         }
-      } else {
-        console.error('❌ Could not find matching career path or location');
+      } catch (error) {
+        console.error('❌ Action processing failed:', error);
         toast({
-          title: "Data Not Found",
-          description: `Could not find data for ${careerPath} in ${location}`,
+          title: "Action Failed",
+          description: "Failed to process insight action",
           variant: "destructive"
         });
+      } finally {
+        setActionLoading(false);
+        setComprehensiveLoading(false);
       }
     }
     
@@ -389,6 +339,73 @@ export const MarketIntelligenceDashboard = () => {
     });
   };
 
+  const runComprehensiveAnalysis = async (careerPathTitle: string, locationLabel: string, careerPathId: string, locationId: string, locationValue: string) => {
+    console.log('🚀 Starting comprehensive analysis for:', careerPathTitle, 'in', locationLabel);
+    
+    try {
+      // Run market trend analysis
+      console.log('📊 Running market trend analysis...');
+      const analysisResult = await analyzeMarketTrends(careerPathId, locationId);
+      console.log('📊 Analysis result:', analysisResult);
+      if (analysisResult) setAnalysis(analysisResult);
+      
+      // Fetch additional data in parallel
+      console.log('📈 Fetching additional market data...');
+      const [historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
+        getHistoricalTrends(careerPathTitle, locationValue, 6),
+        fetchRealTimeJobData(careerPathTitle, locationValue),
+        // Pattern recognition analysis
+        supabase.functions.invoke('pattern-recognition-engine', {
+          body: {
+            careerPath: careerPathTitle,
+            location: locationValue,
+            timeframe: '90d',
+            analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+          }
+        }),
+        // Demand forecasting
+        generateDemandForecast(careerPathTitle, locationValue, '6months')
+      ]);
+      
+      // Process results and set states
+      if (historicalResult.status === 'fulfilled' && historicalResult.value) {
+        setHistoricalData(historicalResult.value);
+        console.log('📈 Historical data set');
+      }
+
+      if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
+        setRealTimeData(realTimeResult.value);
+        console.log('⚡ Real-time data set');
+      }
+
+      if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
+        setPatternRecognitionData(patternResult.value.data);
+        console.log('🔍 Pattern recognition set');
+      }
+
+      if (forecastResult.status === 'fulfilled' && forecastResult.value) {
+        setDemandForecastData(forecastResult.value);
+        console.log('🔮 Demand forecast set');
+      }
+
+      setAllAnalysisComplete(true);
+      console.log('✅ Comprehensive analysis completed successfully');
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Market analysis for ${careerPathTitle} in ${locationLabel} is ready!`,
+      });
+      
+    } catch (error) {
+      console.error('❌ Comprehensive analysis failed:', error);
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to complete comprehensive market analysis",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleQuickAnalyze = async (careerPath: any, location: any) => {
     setSelectedCareerPath(careerPath);
     setSelectedLocation(location);
@@ -396,7 +413,7 @@ export const MarketIntelligenceDashboard = () => {
     
     // Trigger comprehensive analysis immediately
     await handleInsightAction({
-      type: 'Quick Analysis',
+      type: 'Analyze This Market',
       careerPath: careerPath.title,
       location: location.label
     });
@@ -971,6 +988,44 @@ export const MarketIntelligenceDashboard = () => {
 
         {/* Analysis Tab */}
         <TabsContent value="analysis" className="space-y-6">
+          {/* Dynamic Analysis Header */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Market Analysis
+                {selectedCareerPath && selectedLocation && (
+                  <Badge variant="outline" className="ml-2">
+                    {selectedCareerPath.title} · {selectedLocation.label}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {selectedCareerPath && selectedLocation 
+                  ? `Comprehensive market intelligence for ${selectedCareerPath.title} in ${selectedLocation.label}`
+                  : "Select a career path and location to begin analysis"
+                }
+              </CardDescription>
+            </CardHeader>
+            {selectedCareerPath && selectedLocation && !analysis && !actionLoading && !comprehensiveLoading && (
+              <CardContent>
+                <Button 
+                  onClick={() => runComprehensiveAnalysis(
+                    selectedCareerPath.title, 
+                    selectedLocation.label, 
+                    selectedCareerPath.id, 
+                    selectedLocation.id, 
+                    selectedLocation.value
+                  )}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Run Comprehensive Analysis
+                </Button>
+              </CardContent>
+            )}
+          </Card>
+
           {(actionLoading || comprehensiveLoading) ? (
             <div className="space-y-4">
               <LoadingSkeleton variant="dashboard" />
@@ -1111,40 +1166,72 @@ export const MarketIntelligenceDashboard = () => {
               <HistoricalTrendsVisualization 
                 selectedCareerPaths={selectedCareerPath ? [selectedCareerPath] : []}
                 selectedLocation={selectedLocation || undefined}
+                autoData={historicalData}
+                autoTrigger={!!historicalData && historicalData.length > 0}
               />
 
               {/* Pattern Recognition */}
-              {selectedCareerPath && selectedLocation && (
-                <PatternRecognitionPanel 
-                  careerPath={selectedCareerPath.title} 
-                  location={selectedLocation.value}
-                  autoData={patternRecognitionData}
-                  autoTrigger={allAnalysisComplete}
-                />
-              )}
+              <PatternRecognitionPanel 
+                careerPath={selectedCareerPath?.title || ''} 
+                location={selectedLocation?.value || ''}
+                autoData={patternRecognitionData}
+                autoTrigger={!!patternRecognitionData}
+              />
 
               {/* Advanced Analytics */}
               <div className="grid gap-6">
                 <MarketForecastPanel 
-                  careerPath={selectedCareerPath?.title} 
-                  location={selectedLocation?.value}
+                  careerPath={selectedCareerPath?.title || ''} 
+                  location={selectedLocation?.value || ''}
                   autoData={demandForecastData}
-                  autoTrigger={allAnalysisComplete}
+                  autoTrigger={!!demandForecastData}
                 />
                 <RealTimeJobDataPanel 
-                  careerPath={selectedCareerPath?.title} 
-                  location={selectedLocation?.value}
+                  careerPath={selectedCareerPath?.title || ''} 
+                  location={selectedLocation?.value || ''}
                   autoData={realTimeData}
-                  autoTrigger={allAnalysisComplete}
+                  autoTrigger={!!realTimeData && realTimeData.length > 0}
                 />
               </div>
             </div>
+          ) : selectedCareerPath && selectedLocation ? (
+            <Card>
+              <CardContent className="p-8 text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                  <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Ready to Analyze</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Analysis ready for {selectedCareerPath.title} in {selectedLocation.label}
+                  </p>
+                  <Button 
+                    onClick={() => runComprehensiveAnalysis(
+                      selectedCareerPath.title, 
+                      selectedLocation.label, 
+                      selectedCareerPath.id, 
+                      selectedLocation.id, 
+                      selectedLocation.value
+                    )}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Start Analysis
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-muted-foreground">
-                  Select a career path and location, then click "Run Analysis" to see detailed market insights.
-                </p>
+              <CardContent className="p-8 text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                  <Target className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Get Started</h3>
+                  <p className="text-muted-foreground">
+                    Select a career path and location from the Overview tab to begin market analysis.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           )}

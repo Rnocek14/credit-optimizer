@@ -41,11 +41,15 @@ const generateMockHistoricalData = (careerPaths: string[], timeRange: string) =>
 interface HistoricalTrendsVisualizationProps {
   selectedCareerPaths?: Array<{ id: string; title: string }>;
   selectedLocation?: { id: string; label: string; value: string };
+  autoData?: any[];
+  autoTrigger?: boolean;
 }
 
 export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizationProps> = ({
   selectedCareerPaths: propCareerPaths = [],
-  selectedLocation: propLocation
+  selectedLocation: propLocation,
+  autoData,
+  autoTrigger
 }) => {
   const { getHistoricalTrends } = useEnhancedMarketIntelligence();
   
@@ -66,7 +70,22 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
     setSelectedLocation(propLocation || null);
   }, [propLocation]);
 
+  // Auto-populate data when provided from comprehensive analysis
   useEffect(() => {
+    if (autoData && autoTrigger && autoData.length > 0) {
+      console.log('🔥 Auto-populating historical trends data:', autoData);
+      setHistoricalData(autoData);
+      setIsLoadingData(false);
+      return;
+    }
+  }, [autoData, autoTrigger]);
+
+  useEffect(() => {
+    // Skip loading if we have auto data
+    if (autoData && autoTrigger) {
+      return;
+    }
+
     const loadHistoricalData = async () => {
       if (selectedCareerPaths.length === 0) {
         setHistoricalData([]);
@@ -91,7 +110,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
     };
 
     loadHistoricalData();
-  }, [selectedCareerPaths, selectedLocation, timeRange]);
+  }, [selectedCareerPaths, selectedLocation, timeRange, autoData, autoTrigger]);
 
   const chartConfig = useMemo(() => {
     const colors = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(120, 70%, 50%)', 'hsl(280, 70%, 50%)'];
