@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
@@ -161,37 +162,86 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
-    // Auto-select career path and location if provided
+    console.log('Action triggered:', { action, careerPath, location });
+    
+    // Auto-select career path if provided
+    let careerPathObj = selectedCareerPath;
     if (careerPath && !selectedCareerPath) {
-      // Find matching career path
-      const matchingCareer = topCareers.find(career => 
-        career.career_path.toLowerCase().includes(careerPath.toLowerCase())
-      );
-      if (matchingCareer) {
-        setSelectedCareerPath({ id: matchingCareer.career_path, title: matchingCareer.career_path });
+      // Fetch career path from database by title
+      const { data: careerPaths } = await supabase
+        .from('career_paths')
+        .select('id, title')
+        .ilike('title', `%${careerPath}%`)
+        .limit(1);
+      
+      if (careerPaths && careerPaths.length > 0) {
+        careerPathObj = { id: careerPaths[0].id, title: careerPaths[0].title };
+        setSelectedCareerPath(careerPathObj);
       }
     }
 
+    // Auto-select location if provided
+    let locationObj = selectedLocation;
     if (location && !selectedLocation) {
-      // Set location (simplified - in real app you'd fetch from locations table)
-      setSelectedLocation({ 
-        id: location, 
-        label: location, 
-        value: location.toLowerCase(), 
-        emoji: '📍' 
-      });
+      // Fetch location from database by label or value
+      const { data: locations } = await supabase
+        .from('locations')
+        .select('id, label, value, emoji')
+        .or(`label.ilike.%${location}%,value.ilike.%${location}%`)
+        .eq('active', true)
+        .limit(1);
+      
+      if (locations && locations.length > 0) {
+        locationObj = {
+          id: locations[0].id,
+          label: locations[0].label,
+          value: locations[0].value,
+          emoji: locations[0].emoji
+        };
+        setSelectedLocation(locationObj);
+      }
     }
 
-    // Handle different actions
+    // Handle different actions with the resolved data
     switch (action) {
       case 'View Salary Analysis':
-        await handleSalaryAnalysis();
-        setActiveTab('research');
+        if (careerPathObj) {
+          const result = await getSalaryInsights(careerPathObj.title);
+          if (result) {
+            setSalaryData(result);
+            setActiveTab('research');
+            toast({
+              title: "Salary Analysis Complete",
+              description: `Salary insights for ${careerPathObj.title} are ready`
+            });
+          }
+        } else {
+          toast({
+            title: "Missing Information",
+            description: "Please select a career path for salary analysis",
+            variant: "destructive"
+          });
+        }
         break;
       case 'Analyze This Market':
       case 'Analyze This Opportunity':
-        await handleMarketAnalysis();
-        setActiveTab('analysis');
+        if (careerPathObj && locationObj) {
+          const result = await analyzeMarketTrends(careerPathObj.id, locationObj.id);
+          if (result) {
+            setAnalysis(result);
+            setActiveTab('analysis');
+            toast({
+              title: "Analysis Complete",
+              description: `Market analysis for ${careerPathObj.title} in ${locationObj.label} is ready`
+            });
+          }
+        } else {
+          toast({
+            title: "Missing Information", 
+            description: "Please select both career path and location for market analysis",
+            variant: "destructive"
+          });
+        }
         break;
       case 'Generate Strategy':
         // Navigate to analysis tab and show strategy recommendations
