@@ -60,6 +60,7 @@ export const MarketIntelligenceDashboard = () => {
   const [topCareers, setTopCareers] = useState<any[]>([]);
   const [salaryData, setSalaryData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -162,7 +163,8 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
-    console.log('Action triggered:', { action, careerPath, location });
+    console.log('🔥 Action triggered:', { action, careerPath, location });
+    setActionLoading(true);
     
     try {
       // Auto-select career path if provided
@@ -257,8 +259,12 @@ export const MarketIntelligenceDashboard = () => {
             console.log('Market analysis result:', result);
             
             if (result) {
+              console.log('✅ Setting analysis result and navigating to analysis tab');
               setAnalysis(result);
-              setActiveTab('analysis');
+              // Small delay to ensure state updates properly
+              setTimeout(() => {
+                setActiveTab('analysis');
+              }, 100);
               toast({
                 title: "Analysis Complete",
                 description: `Market analysis for ${careerPathObj.title} in ${locationObj.label} is ready`
@@ -308,12 +314,14 @@ export const MarketIntelligenceDashboard = () => {
           console.log('Unknown action:', action);
       }
     } catch (error) {
-      console.error('Error in handleInsightAction:', error);
+      console.error('❌ Error in handleInsightAction:', error);
       toast({
         title: "Action Failed",
         description: "Something went wrong while processing your request. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -632,12 +640,11 @@ export const MarketIntelligenceDashboard = () => {
 
         {/* Analysis Tab */}
         <TabsContent value="analysis" className="space-y-6">
-          {loading && !analysis ? (
+          {(loading || actionLoading) && !analysis ? (
             <LoadingSkeleton variant="dashboard" />
-          ) : (
+          ) : analysis ? (
             <div className="grid gap-6">
-            {/* Market Analysis Results */}
-            {analysis && (
+              {/* Market Analysis Results */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -657,15 +664,15 @@ export const MarketIntelligenceDashboard = () => {
                           <div>
                             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Demand Trend</p>
                             <p className="text-xl font-bold flex items-center gap-2 text-emerald-800 dark:text-emerald-200">
-                              {getTrendIcon(analysis.marketTrends.aiInsights.demandTrend)}
-                              {analysis.marketTrends.aiInsights.demandTrend}
+                              {analysis?.marketTrends?.aiInsights?.demandTrend ? getTrendIcon(analysis.marketTrends.aiInsights.demandTrend) : <Activity className="h-4 w-4 text-amber-500" />}
+                              {analysis?.marketTrends?.aiInsights?.demandTrend || 'Analyzing...'}
                             </p>
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-emerald-600">
-                              {analysis.marketTrends.demandScore}%
+                              {analysis?.marketTrends?.demandScore || 0}%
                             </div>
-                            <Progress value={analysis.marketTrends.demandScore} className="w-16 mt-1" />
+                            <Progress value={analysis?.marketTrends?.demandScore || 0} className="w-16 mt-1" />
                           </div>
                         </div>
                       </CardContent>
@@ -677,15 +684,15 @@ export const MarketIntelligenceDashboard = () => {
                           <div>
                             <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Salary Trend</p>
                             <p className="text-xl font-bold flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                              {getTrendIcon(analysis.marketTrends.aiInsights.salaryTrend)}
-                              {analysis.marketTrends.aiInsights.salaryTrend}
+                              {analysis?.marketTrends?.aiInsights?.salaryTrend ? getTrendIcon(analysis.marketTrends.aiInsights.salaryTrend) : <Activity className="h-4 w-4 text-amber-500" />}
+                              {analysis?.marketTrends?.aiInsights?.salaryTrend || 'Analyzing...'}
                             </p>
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-blue-600">
-                              {analysis.marketTrends.aiInsights.growthRate}%
+                              {analysis?.marketTrends?.aiInsights?.growthRate || 0}%
                             </div>
-                            <Progress value={Math.abs(analysis.marketTrends.aiInsights.growthRate)} className="w-16 mt-1" />
+                            <Progress value={Math.abs(analysis?.marketTrends?.aiInsights?.growthRate || 0)} className="w-16 mt-1" />
                           </div>
                         </div>
                       </CardContent>
@@ -697,11 +704,11 @@ export const MarketIntelligenceDashboard = () => {
                           <div>
                             <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Market Saturation</p>
                             <p className="text-xl font-bold text-purple-800 dark:text-purple-200">
-                              {analysis.marketTrends.aiInsights.marketSaturation}
+                              {analysis?.marketTrends?.aiInsights?.marketSaturation || 'Analyzing...'}
                             </p>
                           </div>
-                          <Badge className={getCompetitionColor(analysis.marketTrends.competitionLevel)}>
-                            {analysis.marketTrends.competitionLevel}
+                          <Badge className={getCompetitionColor(analysis?.marketTrends?.competitionLevel || 'medium')}>
+                            {analysis?.marketTrends?.competitionLevel || 'Medium'}
                           </Badge>
                         </div>
                       </CardContent>
@@ -709,77 +716,90 @@ export const MarketIntelligenceDashboard = () => {
                   </div>
 
                   {/* AI Insights */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">AI Market Intelligence</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                          <p className="font-medium mb-3 text-emerald-700 dark:text-emerald-300">Market Drivers</p>
-                          <div className="space-y-2">
-                            {analysis.marketTrends.aiInsights.keyDrivers.map((driver: string, index: number) => (
-                              <Badge key={index} variant="outline" className="mr-2 mb-2">
-                                {driver}
-                              </Badge>
-                            ))}
+                  {analysis?.marketTrends?.aiInsights && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">AI Market Intelligence</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <p className="font-medium mb-3 text-emerald-700 dark:text-emerald-300">Market Drivers</p>
+                            <div className="space-y-2">
+                              {(analysis.marketTrends.aiInsights.keyDrivers || []).map((driver: string, index: number) => (
+                                <Badge key={index} variant="outline" className="mr-2 mb-2">
+                                  {driver}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <p className="font-medium mb-3 text-red-700 dark:text-red-300">Risk Factors</p>
+                            <div className="space-y-2">
+                              {(analysis.marketTrends.aiInsights.riskFactors || []).map((risk: string, index: number) => (
+                                <Badge key={index} variant="destructive" className="mr-2 mb-2">
+                                  {risk}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                        
-                        <div>
-                          <p className="font-medium mb-3 text-red-700 dark:text-red-300">Risk Factors</p>
-                          <div className="space-y-2">
-                            {analysis.marketTrends.aiInsights.riskFactors.map((risk: string, index: number) => (
-                              <Badge key={index} variant="destructive" className="mr-2 mb-2">
-                                {risk}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="border-t pt-4">
-                        <p className="font-medium mb-2">Strategic Recommendation</p>
-                        <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded">
-                          {analysis.marketTrends.aiInsights.recommendation}
-                        </p>
-                        <div className="flex items-center gap-2 mt-3">
-                          <span className="text-sm font-medium">Confidence Score:</span>
-                          <Badge variant="secondary">
-                            {analysis.marketTrends.aiInsights.confidence}%
-                          </Badge>
-                          <Progress value={analysis.marketTrends.aiInsights.confidence} className="w-20" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        {analysis.marketTrends.aiInsights.recommendation && (
+                          <div className="border-t pt-4">
+                            <p className="font-medium mb-2">Strategic Recommendation</p>
+                            <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded">
+                              {analysis.marketTrends.aiInsights.recommendation}
+                            </p>
+                            {analysis.marketTrends.aiInsights.confidence && (
+                              <div className="flex items-center gap-2 mt-3">
+                                <span className="text-sm font-medium">Confidence Score:</span>
+                                <Badge variant="secondary">
+                                  {analysis.marketTrends.aiInsights.confidence}%
+                                </Badge>
+                                <Progress value={analysis.marketTrends.aiInsights.confidence} className="w-20" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                 </CardContent>
               </Card>
-            )}
 
-            {/* Historical Trends */}
-            <HistoricalTrendsVisualization />
+              {/* Historical Trends */}
+              <HistoricalTrendsVisualization />
 
-            {/* Pattern Recognition */}
-            {selectedCareerPath && selectedLocation && (
-              <PatternRecognitionPanel 
-                careerPath={selectedCareerPath.title} 
-                location={selectedLocation.value} 
-              />
-            )}
+              {/* Pattern Recognition */}
+              {selectedCareerPath && selectedLocation && (
+                <PatternRecognitionPanel 
+                  careerPath={selectedCareerPath.title} 
+                  location={selectedLocation.value} 
+                />
+              )}
 
-            {/* Advanced Analytics */}
-            <div className="grid gap-6">
-              <MarketForecastPanel 
-                careerPath={selectedCareerPath?.title} 
-                location={selectedLocation?.value} 
-              />
-              <RealTimeJobDataPanel 
-                careerPath={selectedCareerPath?.title} 
-                location={selectedLocation?.value} 
-              />
+              {/* Advanced Analytics */}
+              <div className="grid gap-6">
+                <MarketForecastPanel 
+                  careerPath={selectedCareerPath?.title} 
+                  location={selectedLocation?.value} 
+                />
+                <RealTimeJobDataPanel 
+                  careerPath={selectedCareerPath?.title} 
+                  location={selectedLocation?.value} 
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground">
+                  Select a career path and location, then click "Run Analysis" to see detailed market insights.
+                </p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
