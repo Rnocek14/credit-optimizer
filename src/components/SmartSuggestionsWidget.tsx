@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, MapPin, Briefcase, Clock, Star } from 'lucide-react';
+import { useInsightTracking } from '@/hooks/useInsightTracking';
 
 interface MarketTrend {
   id: string;
@@ -19,6 +20,7 @@ interface SmartSuggestionsWidgetProps {
   selectedCareerPath?: string;
   selectedLocation?: string;
   onSuggestionSelect?: (careerPath: string, location: string) => void;
+  onActionClick?: (action: string, careerPath?: string, location?: string) => void;
 }
 
 interface SmartSuggestion {
@@ -45,8 +47,10 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
   marketData,
   selectedCareerPath,
   selectedLocation,
-  onSuggestionSelect
+  onSuggestionSelect,
+  onActionClick
 }) => {
+  const { trackInsightInteraction } = useInsightTracking();
   const generateSmartSuggestions = (): SmartSuggestion[] => {
     if (!marketData || marketData.length === 0) {
       return [{
@@ -313,7 +317,27 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
 
             {suggestion.confidence > 0 && (
               <div className="mt-3 pt-2 border-t">
-                <button className="text-xs text-primary hover:text-primary/80 font-medium">
+                <button 
+                  className="text-xs text-primary hover:text-primary/80 font-medium"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    
+                    // Track the interaction
+                    await trackInsightInteraction({
+                      insight_id: suggestion.id,
+                      insight_type: 'recommendation',
+                      action_taken: 'analyzed',
+                      career_path: suggestion.careerPath,
+                      location: suggestion.location,
+                      confidence_score: suggestion.confidence
+                    });
+                    
+                    // Call the action handler
+                    if (onActionClick) {
+                      onActionClick('Analyze This Opportunity', suggestion.careerPath, suggestion.location);
+                    }
+                  }}
+                >
                   Analyze This Opportunity →
                 </button>
               </div>

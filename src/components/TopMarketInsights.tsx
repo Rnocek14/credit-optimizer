@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertTriangle, Lightbulb } from 'lucide-react';
+import { useInsightTracking } from '@/hooks/useInsightTracking';
 
 interface MarketTrend {
   id: string;
@@ -19,6 +20,7 @@ interface TopMarketInsightsProps {
   marketData: MarketTrend[];
   selectedCareerPath?: string;
   selectedLocation?: string;
+  onActionClick?: (action: string, careerPath?: string, location?: string) => void;
 }
 
 interface Insight {
@@ -34,8 +36,10 @@ interface Insight {
 export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
   marketData,
   selectedCareerPath,
-  selectedLocation
+  selectedLocation,
+  onActionClick
 }) => {
+  const { trackInsightInteraction } = useInsightTracking();
   const generateInsights = (): Insight[] => {
     if (!marketData || marketData.length === 0) {
       return [{
@@ -204,7 +208,33 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
               </div>
               
               {insight.action && (
-                <button className="text-xs text-primary hover:text-primary/80 font-medium">
+                <button 
+                  className="text-xs text-primary hover:text-primary/80 font-medium"
+                  onClick={async () => {
+                    // Track the interaction
+                    await trackInsightInteraction({
+                      insight_id: insight.id,
+                      insight_type: insight.type,
+                      action_taken: insight.action === 'View Salary Analysis' ? 'view_salary_analysis' : 
+                                   insight.action === 'Generate Strategy' ? 'generate_strategy' :
+                                   insight.action === 'Analyze This Market' ? 'analyzed' : 'clicked',
+                      career_path: insight.type === 'opportunity' && insight.description.includes('in') ? 
+                                  insight.description.split(' in ')[0].replace(/^\w+\s+\w+\s+/, '') : undefined,
+                      location: insight.type === 'opportunity' && insight.description.includes('in') ? 
+                               insight.description.split(' in ')[1].split(' with')[0] : undefined,
+                      confidence_score: insight.confidence
+                    });
+                    
+                    // Call the action handler
+                    if (onActionClick) {
+                      const careerPath = insight.type === 'opportunity' && insight.description.includes('in') ? 
+                                        insight.description.split(' in ')[0].replace(/^\w+\s+\w+\s+/, '') : undefined;
+                      const location = insight.type === 'opportunity' && insight.description.includes('in') ? 
+                                      insight.description.split(' in ')[1].split(' with')[0] : undefined;
+                      onActionClick(insight.action, careerPath, location);
+                    }
+                  }}
+                >
                   {insight.action} →
                 </button>
               )}

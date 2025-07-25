@@ -160,6 +160,66 @@ export const MarketIntelligenceDashboard = () => {
     setActiveTab(tab);
   };
 
+  const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
+    // Auto-select career path and location if provided
+    if (careerPath && !selectedCareerPath) {
+      // Find matching career path
+      const matchingCareer = topCareers.find(career => 
+        career.career_path.toLowerCase().includes(careerPath.toLowerCase())
+      );
+      if (matchingCareer) {
+        setSelectedCareerPath({ id: matchingCareer.career_path, title: matchingCareer.career_path });
+      }
+    }
+
+    if (location && !selectedLocation) {
+      // Set location (simplified - in real app you'd fetch from locations table)
+      setSelectedLocation({ 
+        id: location, 
+        label: location, 
+        value: location.toLowerCase(), 
+        emoji: '📍' 
+      });
+    }
+
+    // Handle different actions
+    switch (action) {
+      case 'View Salary Analysis':
+        await handleSalaryAnalysis();
+        setActiveTab('research');
+        break;
+      case 'Analyze This Market':
+      case 'Analyze This Opportunity':
+        await handleMarketAnalysis();
+        setActiveTab('analysis');
+        break;
+      case 'Generate Strategy':
+        // Navigate to analysis tab and show strategy recommendations
+        setActiveTab('analysis');
+        toast({
+          title: "Strategy Generator",
+          description: "Generating personalized career strategy based on market insights",
+        });
+        break;
+      case 'Explore Alternatives':
+        setActiveTab('research');
+        toast({
+          title: "Exploring Alternatives",
+          description: "Analyzing alternative career paths and market opportunities",
+        });
+        break;
+      case 'Set Alert':
+        setActiveTab('alerts');
+        toast({
+          title: "Alert Setup",
+          description: "Setting up market alerts for this opportunity",
+        });
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
+  };
+
   // Overview Dashboard Component
   const OverviewDashboard = () => {
     if (loading && marketData.length === 0) {
@@ -175,6 +235,7 @@ export const MarketIntelligenceDashboard = () => {
           marketData={marketData}
           selectedCareerPath={selectedCareerPath?.title}
           selectedLocation={selectedLocation?.value}
+          onActionClick={handleInsightAction}
         />
 
         {/* Intelligence Surface: Core Widgets */}
@@ -210,6 +271,7 @@ export const MarketIntelligenceDashboard = () => {
                   description: `Analyzing ${careerPath} in ${location}`,
                 });
               }}
+              onActionClick={handleInsightAction}
             />
           </div>
         </div>

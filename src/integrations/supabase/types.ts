@@ -2594,6 +2594,54 @@ export type Database = {
           },
         ]
       }
+      user_insight_interactions: {
+        Row: {
+          action_taken: string | null
+          career_path: string | null
+          confidence_score: number | null
+          created_at: string
+          feedback_notes: string | null
+          feedback_rating: number | null
+          id: string
+          insight_id: string
+          insight_type: string
+          location: string | null
+          updated_at: string
+          user_id: string
+          was_helpful: boolean | null
+        }
+        Insert: {
+          action_taken?: string | null
+          career_path?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          feedback_notes?: string | null
+          feedback_rating?: number | null
+          id?: string
+          insight_id: string
+          insight_type: string
+          location?: string | null
+          updated_at?: string
+          user_id: string
+          was_helpful?: boolean | null
+        }
+        Update: {
+          action_taken?: string | null
+          career_path?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          feedback_notes?: string | null
+          feedback_rating?: number | null
+          id?: string
+          insight_id?: string
+          insight_type?: string
+          location?: string | null
+          updated_at?: string
+          user_id?: string
+          was_helpful?: boolean | null
+        }
+        Relationships: []
+      }
       user_market_preferences: {
         Row: {
           alert_enabled: boolean | null
