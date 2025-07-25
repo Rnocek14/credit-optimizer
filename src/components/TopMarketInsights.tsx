@@ -20,7 +20,7 @@ interface TopMarketInsightsProps {
   marketData: MarketTrend[];
   selectedCareerPath?: string;
   selectedLocation?: string;
-  onActionClick?: (action: string, careerPath?: string, location?: string) => void;
+  onActionClick?: (action: any) => void;
 }
 
 interface Insight {
@@ -43,6 +43,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
 }) => {
   const { trackInsightInteraction } = useInsightTracking();
   const generateInsights = (): Insight[] => {
+    console.log('🎯 TopMarketInsights: Generating insights from market data:', marketData);
     if (!marketData || marketData.length === 0) {
       return [{
         id: '1',
@@ -62,6 +63,8 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
       .filter(m => m.growth_rate > 15)
       .sort((a, b) => b.growth_rate - a.growth_rate)
       .slice(0, 3);
+
+    console.log('🚀 High growth markets found:', highGrowthMarkets);
 
     if (highGrowthMarkets.length > 0) {
       const topMarket = highGrowthMarkets[0];
@@ -231,14 +234,23 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                       confidence_score: insight.confidence
                     });
                     
-                    // Call the action handler
+                    // Call the action handler with the stored data
                     if (onActionClick) {
                       console.log('🎯 Insight action clicked:', {
                         action: insight.action,
                         careerPath: insight.careerPath,
-                        location: insight.location
+                        location: insight.location,
+                        insight: insight
                       });
-                      onActionClick(insight.action, insight.careerPath, insight.location);
+                      
+                      // Create action object for new API
+                      const actionObj = {
+                        type: insight.action,
+                        careerPath: insight.careerPath,
+                        location: insight.location
+                      };
+                      
+                      onActionClick(actionObj);
                     }
                   }}
                 >
