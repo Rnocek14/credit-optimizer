@@ -48,6 +48,7 @@ import { SmartSelectionPanel } from './SmartSelectionPanel';
 import { IntelligentActionBridge } from './IntelligentActionBridge';
 import { AnalysisLoadingState } from './AnalysisLoadingState';
 
+
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
   const {
@@ -88,6 +89,7 @@ export const MarketIntelligenceDashboard = () => {
   const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
+  
   
   // New state for comprehensive analysis results
   const [patternRecognitionData, setPatternRecognitionData] = useState<any>(null);
@@ -232,11 +234,17 @@ export const MarketIntelligenceDashboard = () => {
       console.log('🔍 Processing action:', { actionType, careerPath, location });
       
       if (actionType === 'Analyze This Market' && careerPath && location) {
-        console.log('🔍 Looking up career path:', careerPath);
-        console.log('🌍 Looking up location:', location);
+        console.log('🎯 Starting market analysis for:', careerPath, 'in', location);
         
-        // Immediately switch to analysis tab for visual feedback
+        // Immediate UI feedback
         setActiveTab('analysis');
+        setComprehensiveLoading(true);
+        
+        toast({
+          title: "Analyzing Market",
+          description: `Loading analysis for ${careerPath} in ${location}`,
+          duration: 2000
+        });
         
         // Enhanced fuzzy matching with multiple strategies
         const findCareerPath = async (searchTerm: string) => {
@@ -722,6 +730,7 @@ export const MarketIntelligenceDashboard = () => {
     }
   };
 
+
   // Overview Dashboard Component
   const OverviewDashboard = () => {
     if (loading && marketData.length === 0) {
@@ -795,7 +804,7 @@ export const MarketIntelligenceDashboard = () => {
                   description: `Analyzing ${careerPath} in ${location}`,
                 });
               }}
-              onActionClick={handleInsightAction}
+                  onActionClick={handleInsightAction}
             />
           </div>
         </div>
