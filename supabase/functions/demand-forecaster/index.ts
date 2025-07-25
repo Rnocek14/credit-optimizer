@@ -114,17 +114,25 @@ async function generateOpenAIForecast(careerPath: string, location: string, time
       4. Key factors that could impact the forecast
       5. Specific growth percentage prediction
       
-      Respond in JSON format:
+      Respond in JSON format matching this exact structure:
       {
-        "career_path": "${careerPath}",
-        "location": "${location}",
-        "time_horizon": "${timeHorizon}",
-        "predicted_growth": <percentage>,
-        "confidence_score": <0-100>,
-        "factors": ["factor1", "factor2", ...],
-        "trend_analysis": "detailed analysis",
-        "risk_factors": ["risk1", "risk2", ...],
-        "opportunities": ["opportunity1", "opportunity2", ...]
+        "demandProjection": {
+          "trend": "increasing|decreasing|stable",
+          "growthRate": <percentage number>,
+          "confidence": <0-100 number>
+        },
+        "salaryProjection": {
+          "expectedChange": <percentage number>,
+          "confidence": <0-100 number>
+        },
+        "marketFactors": ["factor1", "factor2", "factor3"],
+        "riskFactors": ["risk1", "risk2", "risk3"],
+        "opportunities": ["opportunity1", "opportunity2", "opportunity3"],
+        "timelineEvents": [
+          {"month": 1, "event": "event description", "impact": "positive|negative|neutral"}
+        ],
+        "recommendations": "detailed recommendations text",
+        "confidence": <0-100 overall confidence>
       }
     `;
 
@@ -139,7 +147,7 @@ async function generateOpenAIForecast(careerPath: string, location: string, time
         messages: [
           {
             role: 'system',
-            content: 'You are an expert market analyst specializing in career demand forecasting. Provide data-driven, realistic predictions based on historical trends and market factors.'
+            content: 'You are an expert market analyst specializing in career demand forecasting. Provide data-driven, realistic predictions based on historical trends and market factors. Always respond with valid JSON in the exact format requested.'
           },
           {
             role: 'user',
@@ -147,7 +155,7 @@ async function generateOpenAIForecast(careerPath: string, location: string, time
           }
         ],
         temperature: 0.3, // Lower temperature for more consistent predictions
-        max_tokens: 1000
+        max_tokens: 1500
       }),
     });
 
@@ -159,7 +167,14 @@ async function generateOpenAIForecast(careerPath: string, location: string, time
     const forecastText = data.choices[0].message.content;
     
     try {
-      return JSON.parse(forecastText);
+      const parsedForecast = JSON.parse(forecastText);
+      // Validate that the response has the expected structure
+      if (parsedForecast.demandProjection && parsedForecast.salaryProjection) {
+        return parsedForecast;
+      } else {
+        console.warn('OpenAI response missing expected structure, falling back to statistical forecast');
+        return generateStatisticalForecast(careerPath, location, timeHorizon, historicalData);
+      }
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
       return generateStatisticalForecast(careerPath, location, timeHorizon, historicalData);
@@ -195,16 +210,38 @@ function generateStatisticalForecast(careerPath: string, location: string, timeH
   const horizonMultiplier = timeHorizon.includes('6') ? 0.5 : timeHorizon.includes('24') ? 2 : 1;
   predictedGrowth *= horizonMultiplier;
 
+  // Determine trend direction
+  const trend = predictedGrowth > 5 ? 'increasing' : predictedGrowth < -5 ? 'decreasing' : 'stable';
+
+  // Generate timeline events
+  const timelineEvents = [];
+  const months = timeHorizon.includes('3') ? 3 : timeHorizon.includes('6') ? 6 : timeHorizon.includes('12') ? 12 : 24;
+  
+  for (let i = 1; i <= Math.min(months, 6); i++) {
+    const impact = Math.random() > 0.5 ? 'positive' : Math.random() > 0.3 ? 'neutral' : 'negative';
+    timelineEvents.push({
+      month: i,
+      event: `Market condition update for month ${i}`,
+      impact
+    });
+  }
+
   return {
-    career_path: careerPath,
-    location: location,
-    time_horizon: timeHorizon,
-    predicted_growth: Math.round(predictedGrowth * 10) / 10,
-    confidence_score: confidenceScore,
-    factors: getMarketFactors(careerPath),
-    trend_analysis: `Based on historical data analysis, ${careerPath} in ${location} shows ${predictedGrowth > 0 ? 'positive' : 'negative'} growth potential.`,
-    risk_factors: getRiskFactors(careerPath),
-    opportunities: getOpportunities(careerPath)
+    demandProjection: {
+      trend,
+      growthRate: Math.round(predictedGrowth * 10) / 10,
+      confidence: confidenceScore
+    },
+    salaryProjection: {
+      expectedChange: Math.round((predictedGrowth * 0.7) * 10) / 10, // Salary growth usually lower than demand growth
+      confidence: Math.max(40, confidenceScore - 10)
+    },
+    marketFactors: getMarketFactors(careerPath),
+    riskFactors: getRiskFactors(careerPath),
+    opportunities: getOpportunities(careerPath),
+    timelineEvents,
+    recommendations: `Based on analysis, ${careerPath} in ${location} shows ${trend} growth potential over the next ${timeHorizon}.`,
+    confidence: confidenceScore
   };
 }
 

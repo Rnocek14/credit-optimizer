@@ -110,7 +110,7 @@ export function MarketForecastPanel({ careerPath, location }: MarketForecastPane
           </Alert>
         )}
 
-        {forecast && (
+        {forecast && forecast.demandProjection && (
           <div className="space-y-6">
             {/* Demand & Salary Projections */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
