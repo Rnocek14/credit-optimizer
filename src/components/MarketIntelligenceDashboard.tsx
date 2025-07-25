@@ -250,6 +250,11 @@ export const MarketIntelligenceDashboard = () => {
       return;
     }
 
+    // Quick Analysis should trigger comprehensive analysis
+    if (action === 'Quick Analysis') {
+      console.log('🚀 Quick Analysis triggered - running comprehensive analysis');
+    }
+
     setComprehensiveLoading(true);
     setActionLoading(true);
     
