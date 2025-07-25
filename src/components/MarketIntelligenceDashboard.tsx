@@ -29,7 +29,7 @@ export const MarketIntelligenceDashboard = () => {
   const [salaryData, setSalaryData] = useState<any>(null);
 
   useEffect(() => {
-    fetchMarketTrends();
+    fetchMarketTrends(); // Load all market trends initially
     loadTopCareers();
   }, [fetchMarketTrends]);
 
@@ -48,7 +48,7 @@ export const MarketIntelligenceDashboard = () => {
       return;
     }
 
-    const result = await analyzeMarketTrends(selectedCareerPath.title, selectedLocation.value);
+    const result = await analyzeMarketTrends(selectedCareerPath.id, selectedLocation.id);
     if (result) {
       setAnalysis(result);
       toast({

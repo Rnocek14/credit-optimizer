@@ -48,22 +48,44 @@ export const useMarketIntelligence = () => {
   const [marketData, setMarketData] = useState<MarketTrend[]>([]);
 
   // Fetch market trends from database
-  const fetchMarketTrends = useCallback(async (careerPath?: string, location?: string) => {
+  const fetchMarketTrends = useCallback(async (careerPathId?: string, locationId?: string) => {
     setLoading(true);
     setError(null);
     
     try {
       let query = supabase
         .from('market_trends')
-        .select('*')
+        .select(`
+          *,
+          career_paths!inner(id, title),
+          locations!inner(id, label, value)
+        `)
         .order('created_at', { ascending: false });
 
-      if (careerPath) {
-        query = query.ilike('career_path', `%${careerPath}%`);
+      if (careerPathId) {
+        // First try UUID match, then fallback to string match for legacy data
+        const { data: careerPath } = await supabase
+          .from('career_paths')
+          .select('title')
+          .eq('id', careerPathId)
+          .single();
+        
+        if (careerPath) {
+          query = query.or(`career_path.eq.${careerPath.title},career_path.ilike.%${careerPath.title}%`);
+        }
       }
       
-      if (location) {
-        query = query.ilike('location', `%${location}%`);
+      if (locationId) {
+        // First try UUID match, then fallback to string match for legacy data
+        const { data: location } = await supabase
+          .from('locations')
+          .select('value, label')
+          .eq('id', locationId)
+          .single();
+        
+        if (location) {
+          query = query.or(`location.eq.${location.value},location.eq.${location.label},location.ilike.%${location.label}%`);
+        }
       }
 
       const { data, error: fetchError } = await query.limit(50);
@@ -85,15 +107,30 @@ export const useMarketIntelligence = () => {
   }, []);
 
   // Get AI-powered market analysis
-  const analyzeMarketTrends = useCallback(async (careerPath: string, location: string, timeframe: string = '6months') => {
+  const analyzeMarketTrends = useCallback(async (careerPathId: string, locationId: string, timeframe: string = '6months') => {
     setLoading(true);
     setError(null);
 
     try {
+      // Get career path and location details
+      const [careerPathResult, locationResult] = await Promise.all([
+        supabase.from('career_paths').select('title').eq('id', careerPathId).single(),
+        supabase.from('locations').select('value, label').eq('id', locationId).single()
+      ]);
+
+      if (careerPathResult.error || locationResult.error) {
+        throw new Error('Invalid career path or location selected');
+      }
+
+      const careerPath = careerPathResult.data.title;
+      const location = locationResult.data.value;
+
       console.log(`📊 Requesting market analysis for ${careerPath} in ${location}`);
       
       const { data, error: analysisError } = await supabase.functions.invoke('market-trend-analyzer', {
         body: {
+          careerPathId,
+          locationId,
           careerPath,
           location,
           timeframe

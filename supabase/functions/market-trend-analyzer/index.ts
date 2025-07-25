@@ -18,18 +18,26 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { careerPath, location, timeframe = '6months' } = await req.json();
+    const { careerPathId, locationId, careerPath, location, timeframe = '6months' } = await req.json();
 
     console.log(`📊 Analyzing market trends for: ${careerPath} in ${location}`);
 
-    // Fetch current market data from our database
-    const { data: marketData, error: marketError } = await supabase
+    // Fetch current market data from our database with both UUID and string fallback
+    let marketQuery = supabase
       .from('market_trends')
       .select('*')
-      .eq('career_path', careerPath)
-      .eq('location', location)
       .order('created_at', { ascending: false })
       .limit(10);
+
+    // Try UUID-based lookup first, then fallback to string matching for legacy data
+    if (careerPathId && locationId) {
+      marketQuery = marketQuery.or(`and(career_path.eq.${careerPath},location.eq.${location}),and(career_path.ilike.%${careerPath}%,location.ilike.%${location}%)`);
+    } else {
+      // Fallback to string matching
+      marketQuery = marketQuery.eq('career_path', careerPath).eq('location', location);
+    }
+
+    const { data: marketData, error: marketError } = await marketQuery;
 
     if (marketError) {
       console.error('❌ Market data fetch error:', marketError);
