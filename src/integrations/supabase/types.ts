@@ -913,6 +913,51 @@ export type Database = {
         }
         Relationships: []
       }
+      market_alerts: {
+        Row: {
+          alert_message: string
+          alert_type: string
+          career_path: string
+          created_at: string
+          current_value: number | null
+          id: string
+          is_read: boolean | null
+          location: string
+          previous_value: number | null
+          threshold_value: number | null
+          triggered_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_message: string
+          alert_type: string
+          career_path: string
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_read?: boolean | null
+          location: string
+          previous_value?: number | null
+          threshold_value?: number | null
+          triggered_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_message?: string
+          alert_type?: string
+          career_path?: string
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          is_read?: boolean | null
+          location?: string
+          previous_value?: number | null
+          threshold_value?: number | null
+          triggered_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_trends: {
         Row: {
           ai_insights: Json | null
@@ -984,6 +1029,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      market_trends_history: {
+        Row: {
+          ai_insights: Json | null
+          average_salary: number | null
+          career_path: string
+          competition_level: string | null
+          created_at: string
+          data_source: string | null
+          demand_score: number | null
+          growth_rate: number | null
+          id: string
+          job_postings_count: number | null
+          location: string
+          market_trend_id: string
+          raw_data: Json | null
+          recorded_at: string
+          time_period: string | null
+        }
+        Insert: {
+          ai_insights?: Json | null
+          average_salary?: number | null
+          career_path: string
+          competition_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          demand_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          job_postings_count?: number | null
+          location: string
+          market_trend_id: string
+          raw_data?: Json | null
+          recorded_at?: string
+          time_period?: string | null
+        }
+        Update: {
+          ai_insights?: Json | null
+          average_salary?: number | null
+          career_path?: string
+          competition_level?: string | null
+          created_at?: string
+          data_source?: string | null
+          demand_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          job_postings_count?: number | null
+          location?: string
+          market_trend_id?: string
+          raw_data?: Json | null
+          recorded_at?: string
+          time_period?: string | null
+        }
+        Relationships: []
       }
       mentor_feedback: {
         Row: {
@@ -2118,6 +2217,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_market_preferences: {
+        Row: {
+          alert_enabled: boolean | null
+          alert_frequency: string | null
+          created_at: string
+          id: string
+          preferred_careers: string[] | null
+          preferred_locations: string[] | null
+          salary_range_max: number | null
+          salary_range_min: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_enabled?: boolean | null
+          alert_frequency?: string | null
+          created_at?: string
+          id?: string
+          preferred_careers?: string[] | null
+          preferred_locations?: string[] | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_enabled?: boolean | null
+          alert_frequency?: string | null
+          created_at?: string
+          id?: string
+          preferred_careers?: string[] | null
+          preferred_locations?: string[] | null
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_skill_progress: {
         Row: {
