@@ -23,9 +23,9 @@ import {
 } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useEnhancedMarketIntelligence } from '@/hooks/useEnhancedMarketIntelligence';
+import { supabase } from '@/integrations/supabase/client';
 import { useSmartMarketSelection } from '@/hooks/useSmartMarketSelection';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
@@ -61,7 +61,8 @@ export const MarketIntelligenceDashboard = () => {
 
   const {
     getHistoricalTrends,
-    fetchRealTimeJobData
+    fetchRealTimeJobData,
+    generateDemandForecast
   } = useEnhancedMarketIntelligence();
 
   const {
@@ -259,11 +260,22 @@ export const MarketIntelligenceDashboard = () => {
     setActionLoading(true);
     
     try {
-      // Run comprehensive analysis (all relevant analyses)
-      const [analysisResult, historicalResult, realTimeResult] = await Promise.allSettled([
+      // Run comprehensive analysis (all relevant analyses including pattern recognition and forecasting)
+      const [analysisResult, historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
         analyzeMarketTrends(workingCareerPath.id, workingLocation.id),
         getHistoricalTrends(workingCareerPath.title, workingLocation.value, 6),
-        fetchRealTimeJobData(workingCareerPath.title, workingLocation.value)
+        fetchRealTimeJobData(workingCareerPath.title, workingLocation.value),
+        // Pattern recognition analysis
+        supabase.functions.invoke('pattern-recognition-engine', {
+          body: {
+            careerPath: workingCareerPath.title,
+            location: workingLocation.value,
+            timeframe: '90d',
+            analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+          }
+        }),
+        // Demand forecasting
+        generateDemandForecast(workingCareerPath.title, workingLocation.value, '6months')
       ]);
 
       // Process analysis result
@@ -279,6 +291,24 @@ export const MarketIntelligenceDashboard = () => {
       // Process real-time data
       if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
         setRealTimeData(realTimeResult.value);
+      }
+
+      // Process pattern recognition results
+      if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
+        console.log('✅ Pattern recognition analysis completed');
+        toast({
+          title: "Pattern Analysis Complete",
+          description: `Found ${patternResult.value.data.patterns?.length || 0} patterns and ${patternResult.value.data.anomalies?.length || 0} anomalies.`,
+        });
+      }
+
+      // Process demand forecast results  
+      if (forecastResult.status === 'fulfilled' && forecastResult.value) {
+        console.log('✅ Demand forecasting completed');
+        toast({
+          title: "Demand Forecast Complete",
+          description: "Market demand forecast has been generated successfully.",
+        });
       }
 
       console.log('✅ Comprehensive analysis completed, navigating to analysis tab');
