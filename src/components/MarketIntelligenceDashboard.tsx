@@ -147,6 +147,11 @@ export const MarketIntelligenceDashboard = () => {
     }
   };
 
+  const getMetricValue = (value: number, suffix: string = '') => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${value.toLocaleString()}${suffix}`;
+  };
+
   const handleTabNavigation = (tab: string) => {
     setActiveTab(tab);
   };
