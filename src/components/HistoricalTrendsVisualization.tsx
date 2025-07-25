@@ -376,11 +376,13 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {selectedCareerPaths.map((path) => {
-                  const pathData = historicalData.map(d => d[`${path.title}_${metric}`]).filter(Boolean);
+                  const pathData = historicalData.map(d => d[`${path.title}_${metric}`]).filter(v => v !== undefined && v !== null);
+                  if (pathData.length < 2) return null; // Skip if insufficient data
+                  
                   const latestValue = pathData[pathData.length - 1];
                   const previousValue = pathData[pathData.length - 2];
                   const trend = latestValue > previousValue ? 'up' : 'down';
-                  const changePercent = previousValue ? ((latestValue - previousValue) / previousValue * 100).toFixed(1) : 0;
+                  const changePercent = ((latestValue - previousValue) / previousValue * 100).toFixed(1);
                   
                   return (
                     <Card key={path.id}>
@@ -395,9 +397,9 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
                         </div>
                         <div className="space-y-1">
                           <p className="text-2xl font-bold">
-                            {metric === 'salary' ? `$${Math.round(latestValue).toLocaleString()}` : 
-                             metric === 'jobs' ? Math.round(latestValue).toLocaleString() : 
-                             `${latestValue.toFixed(1)}%`}
+                            {metric === 'salary' ? `$${Math.round(latestValue || 0).toLocaleString()}` : 
+                             metric === 'jobs' ? Math.round(latestValue || 0).toLocaleString() : 
+                             `${(latestValue || 0).toFixed(1)}%`}
                           </p>
                           <p className={`text-sm ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                             {trend === 'up' ? '+' : ''}{changePercent}% from last period
