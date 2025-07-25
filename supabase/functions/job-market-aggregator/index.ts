@@ -40,7 +40,7 @@ serve(async (req) => {
 
     console.log('✅ Job market data aggregated successfully');
 
-    return new Response(JSON.stringify(aggregatedData), {
+    return new Response(JSON.stringify({ data: aggregatedData }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
@@ -62,10 +62,25 @@ async function aggregateJobMarketData(careerPath: string, location: string, sour
   for (const source of sources) {
     try {
       const jobData = await fetchJobDataFromSource(source, careerPath, location);
-      aggregatedResults.push(jobData);
+      aggregatedResults.push({
+        source,
+        success: true,
+        data: {
+          jobCount: jobData.job_count,
+          averageSalary: jobData.average_salary,
+          companies: jobData.companies,
+          skills: jobData.skills,
+          insights: typeof jobData.insights === 'string' ? jobData.insights : JSON.stringify(jobData.insights),
+          lastFetched: jobData.updated_at
+        }
+      });
     } catch (error) {
       console.error(`⚠️ Failed to fetch data from ${source}:`, error);
-      // Continue with other sources even if one fails
+      aggregatedResults.push({
+        source,
+        success: false,
+        error: `Failed to fetch data from ${source}: ${error.message}`
+      });
     }
   }
 

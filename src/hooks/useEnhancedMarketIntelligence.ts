@@ -86,6 +86,8 @@ export function useEnhancedMarketIntelligence() {
     setForecastError(null);
     
     try {
+      console.log('🚀 Calling demand-forecaster edge function with:', { careerPath, location, timeHorizon });
+      
       const { data, error } = await supabase.functions.invoke('demand-forecaster', {
         body: {
           careerPath,
@@ -94,11 +96,18 @@ export function useEnhancedMarketIntelligence() {
         }
       });
 
-      if (error) throw error;
-      return data?.forecast || null;
+      console.log('📡 Edge function response:', { data, error });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+      
+      // The edge function returns the forecast data directly, not wrapped in .forecast
+      return data || null;
     } catch (error) {
       console.error('Error generating demand forecast:', error);
-      setForecastError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setForecastError(error instanceof Error ? error.message : 'Failed to generate forecast');
       return null;
     } finally {
       setLoadingForecasts(false);
@@ -113,6 +122,8 @@ export function useEnhancedMarketIntelligence() {
     setJobDataError(null);
     
     try {
+      console.log('🚀 Calling job-market-aggregator edge function with:', { careerPath, location });
+      
       const { data, error } = await supabase.functions.invoke('job-market-aggregator', {
         body: {
           careerPath,
@@ -121,11 +132,18 @@ export function useEnhancedMarketIntelligence() {
         }
       });
 
-      if (error) throw error;
-      return data?.data?.sources || [];
+      console.log('📡 Edge function response:', { data, error });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+      
+      // The edge function returns the data directly, not wrapped in nested objects
+      return data?.data || [];
     } catch (error) {
       console.error('Error fetching real-time job data:', error);
-      setJobDataError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setJobDataError(error instanceof Error ? error.message : 'Failed to fetch job data');
       return [];
     } finally {
       setLoadingJobData(false);

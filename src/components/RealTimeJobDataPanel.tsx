@@ -18,10 +18,17 @@ export function RealTimeJobDataPanel({ careerPath, location }: RealTimeJobDataPa
   const [selectedSource, setSelectedSource] = useState<string>('all');
 
   const handleFetchJobData = async () => {
-    if (!careerPath || !location) return;
+    console.log('📡 Fetch Job Data clicked:', { careerPath, location });
+    
+    if (!careerPath || !location) {
+      console.warn('❌ Missing required data:', { careerPath, location });
+      return;
+    }
     
     const result = await fetchRealTimeJobData(careerPath, location);
-    if (result) {
+    console.log('💼 Job data result:', result);
+    
+    if (result && result.length > 0) {
       setJobData(result);
     }
   };

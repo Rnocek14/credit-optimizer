@@ -19,9 +19,16 @@ export function MarketForecastPanel({ careerPath, location }: MarketForecastPane
   const [timeHorizon, setTimeHorizon] = useState('6months');
 
   const handleGenerateForecast = async () => {
-    if (!careerPath || !location) return;
+    console.log('🔮 Generate Forecast clicked:', { careerPath, location, timeHorizon });
+    
+    if (!careerPath || !location) {
+      console.warn('❌ Missing required data:', { careerPath, location });
+      return;
+    }
     
     const result = await generateDemandForecast(careerPath, location, timeHorizon);
+    console.log('📊 Forecast result:', result);
+    
     if (result) {
       setForecast(result);
     }
