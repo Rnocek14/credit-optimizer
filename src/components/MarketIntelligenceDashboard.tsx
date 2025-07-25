@@ -9,6 +9,8 @@ import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useToast } from '@/hooks/use-toast';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
+import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
+import { MarketAlertSystem } from './MarketAlertSystem';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -112,10 +114,12 @@ export const MarketIntelligenceDashboard = () => {
       </div>
 
       <Tabs defaultValue="analysis" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="analysis">Market Analysis</TabsTrigger>
           <TabsTrigger value="trends">Trending Careers</TabsTrigger>
           <TabsTrigger value="salary">Salary Insights</TabsTrigger>
+          <TabsTrigger value="export">Export & Reports</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="data">Raw Data</TabsTrigger>
         </TabsList>
 
@@ -373,6 +377,19 @@ export const MarketIntelligenceDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="export" className="space-y-6">
+          <MarketIntelligenceExportPanel
+            selectedCareerPath={selectedCareerPath?.title}
+            selectedLocation={selectedLocation?.value}
+            marketData={marketData}
+            analysisData={analysis}
+          />
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-6">
+          <MarketAlertSystem />
         </TabsContent>
 
         <TabsContent value="data" className="space-y-6">
