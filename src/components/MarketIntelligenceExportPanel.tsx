@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, Table, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import React from 'react';
 import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
 
 interface ExportPanelProps {
@@ -11,19 +12,72 @@ interface ExportPanelProps {
   selectedLocation?: string;
   marketData: any[];
   analysisData?: any;
+  isLoading?: boolean;
+  onRefreshData?: () => Promise<any>;
 }
 
 export const MarketIntelligenceExportPanel = ({ 
   selectedCareerPath, 
   selectedLocation, 
   marketData, 
-  analysisData 
+  analysisData,
+  isLoading = false,
+  onRefreshData
 }: ExportPanelProps) => {
   const [isExporting, setIsExporting] = useState(false);
+  const [localMarketData, setLocalMarketData] = useState(marketData);
+  const { fetchMarketTrends } = useMarketIntelligence();
+
+  // Update local data when props change
+  React.useEffect(() => {
+    if (marketData && marketData.length > 0) {
+      setLocalMarketData(marketData);
+      console.log('✅ Market data updated in export panel:', marketData.length, 'records');
+    }
+  }, [marketData]);
+
+  // Fallback data fetching function
+  const ensureDataAvailable = async () => {
+    const currentData = localMarketData || marketData;
+    
+    if (!currentData || currentData.length === 0) {
+      console.log('🔄 No market data available, attempting to fetch...');
+      
+      try {
+        // Try using the parent's refresh function first
+        if (onRefreshData) {
+          await onRefreshData();
+          return;
+        }
+        
+        // Fallback to direct fetch
+        const freshData = await fetchMarketTrends();
+        if (freshData && freshData.length > 0) {
+          setLocalMarketData(freshData);
+          console.log('✅ Fresh market data fetched:', freshData.length, 'records');
+          return freshData;
+        }
+        
+        throw new Error('No market data returned from fetch');
+      } catch (error) {
+        console.error('❌ Failed to fetch market data:', error);
+        toast.error('Unable to load market data for export. Please refresh the page and try again.');
+        return null;
+      }
+    }
+    
+    return currentData;
+  };
 
   const generatePDFReport = async () => {
     setIsExporting(true);
     try {
+      // Ensure we have data before generating report
+      const dataToExport = await ensureDataAvailable();
+      if (!dataToExport) {
+        setIsExporting(false);
+        return;
+      }
       // Create a comprehensive market report
       const reportData = {
         title: `Market Intelligence Report`,
@@ -32,7 +86,7 @@ export const MarketIntelligenceExportPanel = ({
           : 'Market Overview',
         generatedAt: new Date().toLocaleDateString(),
         summary: analysisData || {},
-        marketTrends: marketData.slice(0, 10), // Top 10 trends
+        marketTrends: (dataToExport || []).slice(0, 10), // Top 10 trends
         insights: [
           'Market demand is showing positive growth trends',
           'Remote work opportunities are expanding rapidly',
@@ -141,13 +195,18 @@ export const MarketIntelligenceExportPanel = ({
     }
   };
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
     try {
+      // Ensure we have data before exporting
+      const dataToExport = await ensureDataAvailable();
+      
       // Check if we have any data to export
-      if (!marketData || marketData.length === 0) {
-        toast.error("No market data available to export. Please run market analysis first or check that market trends data has been loaded.");
+      if (!dataToExport || dataToExport.length === 0) {
+        toast.error("No market data available to export. The database may be empty or there was an error loading data.");
         return;
       }
+
+      console.log('📊 Exporting CSV with', dataToExport.length, 'records');
 
       // Prepare CSV headers
       const headers = [
@@ -164,7 +223,7 @@ export const MarketIntelligenceExportPanel = ({
       ];
 
       // Prepare CSV rows
-      const rows = marketData.map(trend => [
+      const rows = dataToExport.map(trend => [
         trend.career_path || '',
         trend.location || '',
         trend.job_postings_count || 0,
@@ -193,7 +252,7 @@ export const MarketIntelligenceExportPanel = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("CSV data exported successfully!");
+      toast.success(`CSV exported successfully! ${dataToExport.length} records included.`);
     } catch (error) {
       console.error('CSV export error:', error);
       toast.error("Failed to export CSV data");
@@ -215,7 +274,7 @@ export const MarketIntelligenceExportPanel = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Button
             onClick={generatePDFReport}
-            disabled={isExporting}
+            disabled={isExporting || isLoading}
             className="flex items-center gap-2"
           >
             <FileText className="w-4 h-4" />
@@ -225,6 +284,7 @@ export const MarketIntelligenceExportPanel = ({
           <Button
             onClick={exportCSV}
             variant="outline"
+            disabled={isLoading}
             className="flex items-center gap-2"
           >
             <Table className="w-4 h-4" />
@@ -244,12 +304,25 @@ export const MarketIntelligenceExportPanel = ({
           <Badge variant="secondary">
             AI Insights
           </Badge>
+          {(localMarketData || marketData)?.length > 0 && (
+            <Badge variant="outline">
+              {(localMarketData || marketData).length} records available
+            </Badge>
+          )}
+          {isLoading && (
+            <Badge variant="secondary">
+              Loading data...
+            </Badge>
+          )}
         </div>
 
         <div className="text-sm text-muted-foreground">
           <p>• PDF reports include executive summary, trends analysis, and key insights</p>
-          <p>• CSV exports contain raw market data for further analysis</p>
+          <p>• CSV exports contain raw market data for further analysis ({(localMarketData || marketData)?.length || 0} records available)</p>
           <p>• All exports include timestamp and data source information</p>
+          {(!localMarketData && (!marketData || marketData.length === 0)) && (
+            <p className="text-amber-600 mt-2">• No market data currently loaded. Data will be fetched automatically during export.</p>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -32,13 +32,33 @@ export const MarketIntelligenceDashboard = () => {
   const [salaryData, setSalaryData] = useState<any>(null);
 
   useEffect(() => {
-    fetchMarketTrends(); // Load all market trends initially
-    loadTopCareers();
-  }, [fetchMarketTrends]);
+    const loadInitialData = async () => {
+      console.log('🔄 Loading initial market data...');
+      try {
+        await fetchMarketTrends(); // Load all market trends initially
+        await loadTopCareers();
+        console.log('✅ Initial market data loaded successfully');
+      } catch (error) {
+        console.error('❌ Failed to load initial market data:', error);
+        toast({
+          title: "Data Loading Error",
+          description: "Failed to load market data. Please refresh the page.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadInitialData();
+  }, []);
 
   const loadTopCareers = async () => {
-    const careers = await getTopGrowingCareers();
-    setTopCareers(careers);
+    try {
+      const careers = await getTopGrowingCareers();
+      setTopCareers(careers);
+      console.log('✅ Top careers loaded:', careers.length);
+    } catch (error) {
+      console.error('❌ Failed to load top careers:', error);
+    }
   };
 
   const handleMarketAnalysis = async () => {
@@ -391,6 +411,8 @@ export const MarketIntelligenceDashboard = () => {
             selectedLocation={selectedLocation?.value}
             marketData={marketData}
             analysisData={analysis}
+            isLoading={loading}
+            onRefreshData={fetchMarketTrends}
           />
         </TabsContent>
 
