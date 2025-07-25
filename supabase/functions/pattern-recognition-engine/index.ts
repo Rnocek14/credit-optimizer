@@ -54,7 +54,21 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { careerPath, location, timeframe = '90d', analysisTypes = ['seasonal', 'trend', 'volatility', 'anomaly'] }: PatternAnalysisRequest = await req.json();
+    let { careerPath, location, timeframe = '90d', analysisTypes = ['seasonal', 'trend', 'volatility', 'anomaly'] }: PatternAnalysisRequest = await req.json();
+
+    console.log("📥 Input Parameters:", JSON.stringify({ careerPath, location, timeframe, analysisTypes }));
+
+    const cutoffDate = new Date(Date.now() - parseDuration(timeframe));
+    console.log("⏱️ Calculated Cutoff Date:", cutoffDate.toISOString());
+
+    // Normalize for case-insensitive matching
+    careerPath = careerPath.toLowerCase();
+    location = location.toLowerCase();
+    
+    console.log("🔍 Normalized Query:", {
+      careerPath,
+      location
+    });
 
     console.log(`Analyzing patterns for ${careerPath} in ${location} over ${timeframe}`);
 
@@ -72,11 +86,27 @@ Deno.serve(async (req) => {
       throw marketError;
     }
 
-    if (!marketData || marketData.length < 5) {
-      console.log('Insufficient data for pattern analysis');
+    console.log("📊 Fetched Records Count:", marketData?.length || 0);
+    console.log("🕒 Timestamps:", marketData?.map(d => d.recorded_at) || []);
+    
+    // Temporarily disabled for testing - bypass early exit
+    // if (!marketData || marketData.length < 5) {
+    //   console.log('Insufficient data for pattern analysis');
+    //   return new Response(JSON.stringify({
+    //     success: false,
+    //     message: 'Insufficient historical data for pattern analysis',
+    //     patterns: [],
+    //     anomalies: []
+    //   }), {
+    //     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    //   });
+    // }
+
+    if (!marketData || marketData.length === 0) {
+      console.log('❌ No data found for analysis');
       return new Response(JSON.stringify({
         success: false,
-        message: 'Insufficient historical data for pattern analysis',
+        message: 'No historical data found for pattern analysis',
         patterns: [],
         anomalies: []
       }), {
@@ -90,26 +120,34 @@ Deno.serve(async (req) => {
     // Seasonal Analysis
     if (analysisTypes.includes('seasonal')) {
       const seasonalPattern = analyzeSeasonalPatterns(marketData);
+      console.log("🌸 Seasonal Pattern Result:", seasonalPattern);
       if (seasonalPattern) patterns.push(seasonalPattern);
     }
 
     // Trend Analysis
     if (analysisTypes.includes('trend')) {
       const trendPattern = analyzeTrends(marketData);
+      console.log("📈 Trend Analysis Result:", trendPattern);
       if (trendPattern) patterns.push(trendPattern);
     }
 
     // Volatility Analysis
     if (analysisTypes.includes('volatility')) {
       const volatilityPattern = analyzeVolatility(marketData);
+      console.log("📊 Volatility Pattern Result:", volatilityPattern);
       if (volatilityPattern) patterns.push(volatilityPattern);
     }
 
     // Anomaly Detection
     if (analysisTypes.includes('anomaly')) {
       const detectedAnomalies = detectAnomalies(marketData);
+      console.log("⚠️ Anomalies Found:", detectedAnomalies);
       anomalies.push(...detectedAnomalies);
     }
+
+    console.log("🎯 Final Results Summary:");
+    console.log("  - Patterns Found:", patterns.length);
+    console.log("  - Anomalies Found:", anomalies.length);
 
     // Store results in database
     await storePatternResults(supabase, careerPath, location, patterns);
