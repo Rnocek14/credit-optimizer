@@ -26,6 +26,7 @@ import { useEnhancedMarketIntelligence } from '@/hooks/useEnhancedMarketIntellig
 import { supabase } from '@/integrations/supabase/client';
 import { useSmartMarketSelection } from '@/hooks/useSmartMarketSelection';
 import { useToast } from '@/hooks/use-toast';
+import { useUnifiedActionHandler } from '@/components/UnifiedActionHandler';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
 import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
@@ -94,6 +95,7 @@ export const MarketIntelligenceDashboard = () => {
   // New state for comprehensive analysis results
   const [patternRecognitionData, setPatternRecognitionData] = useState<any>(null);
   const [demandForecastData, setDemandForecastData] = useState<any>(null);
+  const [salaryAnalysisData, setSalaryAnalysisData] = useState<any>(null);
   const [allAnalysisComplete, setAllAnalysisComplete] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStage, setAnalysisStage] = useState<'initializing' | 'analyzing' | 'processing' | 'finalizing'>('initializing');
@@ -128,6 +130,115 @@ export const MarketIntelligenceDashboard = () => {
       setSelectedLocation(autoSelectedLocation);
     }
   }, [autoSelectedLocation, selectedLocation, isSmartMode]);
+
+  const runComprehensiveAnalysis = async (careerPathTitle: string, locationLabel: string, careerPathId: string, locationId: string, locationValue: string) => {
+    console.log('🚀 Starting comprehensive analysis for:', careerPathTitle, 'in', locationLabel);
+    
+    try {
+      // Initialize progress tracking
+      setAnalysisProgress(0);
+      setAnalysisStage('initializing');
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
+      
+      // Stage 1: Market trend analysis
+      setAnalysisStage('analyzing');
+      setAnalysisProgress(20);
+      console.log('📊 Running market trend analysis...');
+      
+      const analysisResult = await analyzeMarketTrends(careerPathId, locationId);
+      console.log('📊 Analysis result:', analysisResult);
+      if (analysisResult) {
+        setAnalysis(analysisResult);
+        setAnalysisProgress(40);
+      }
+      
+      // Stage 2: Fetch additional data in parallel
+      setAnalysisStage('processing');
+      setAnalysisProgress(50);
+      console.log('📈 Fetching additional market data...');
+      
+      const [historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
+        getHistoricalTrends(careerPathTitle, locationValue, 6),
+        fetchRealTimeJobData(careerPathTitle, locationValue),
+        // Pattern recognition analysis
+        supabase.functions.invoke('pattern-recognition-engine', {
+          body: {
+            careerPath: careerPathTitle,
+            location: locationValue,
+            timeframe: '90d',
+            analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+          }
+        }),
+        // Demand forecasting
+        generateDemandForecast(careerPathTitle, locationValue, '6months')
+      ]);
+      
+      // Stage 3: Process results and set states
+      setAnalysisStage('finalizing');
+      setAnalysisProgress(70);
+      
+      if (historicalResult.status === 'fulfilled' && historicalResult.value) {
+        setHistoricalData(historicalResult.value);
+        console.log('📈 Historical data set');
+        setAnalysisProgress(75);
+      }
+
+      if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
+        setRealTimeData(realTimeResult.value);
+        console.log('⚡ Real-time data set');
+        setAnalysisProgress(80);
+      }
+
+      if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
+        setPatternRecognitionData(patternResult.value.data);
+        console.log('🔍 Pattern recognition set');
+        setAnalysisProgress(85);
+      }
+
+      if (forecastResult.status === 'fulfilled' && forecastResult.value) {
+        setDemandForecastData(forecastResult.value);
+        console.log('🔮 Demand forecast set');
+        setAnalysisProgress(90);
+      }
+
+      // Final stage
+      setAnalysisProgress(95);
+      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for final processing
+
+      setAllAnalysisComplete(true);
+      setAnalysisProgress(100);
+      console.log('✅ Comprehensive analysis completed successfully');
+      
+      toast({
+        title: "🎉 Analysis Complete!",
+        description: `Market analysis for ${careerPathTitle} in ${locationLabel} is ready!`,
+        duration: 4000
+      });
+      
+    } catch (error) {
+      console.error('❌ Comprehensive analysis failed:', error);
+      setAnalysisProgress(0);
+      setAnalysisStage('initializing');
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to complete comprehensive market analysis. Please try again.",
+        variant: "destructive",
+        duration: 4000
+      });
+    }
+  };
+
+  // Use unified action handler for consistent action processing
+  const { handleUnifiedAction, isLoading: unifiedActionLoading } = useUnifiedActionHandler({
+    selectedCareerPath,
+    selectedLocation,
+    setSelectedCareerPath,
+    setSelectedLocation: (loc) => setSelectedLocation({...loc, emoji: loc.emoji || ''}),
+    setActiveTab,
+    setSalaryAnalysisData,
+    runComprehensiveAnalysis
+  });
 
   const loadTopCareers = async () => {
     try {
@@ -456,103 +567,6 @@ export const MarketIntelligenceDashboard = () => {
     });
   };
 
-  const runComprehensiveAnalysis = async (careerPathTitle: string, locationLabel: string, careerPathId: string, locationId: string, locationValue: string) => {
-    console.log('🚀 Starting comprehensive analysis for:', careerPathTitle, 'in', locationLabel);
-    
-    try {
-      // Initialize progress tracking
-      setAnalysisProgress(0);
-      setAnalysisStage('initializing');
-      
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
-      
-      // Stage 1: Market trend analysis
-      setAnalysisStage('analyzing');
-      setAnalysisProgress(20);
-      console.log('📊 Running market trend analysis...');
-      
-      const analysisResult = await analyzeMarketTrends(careerPathId, locationId);
-      console.log('📊 Analysis result:', analysisResult);
-      if (analysisResult) {
-        setAnalysis(analysisResult);
-        setAnalysisProgress(40);
-      }
-      
-      // Stage 2: Fetch additional data in parallel
-      setAnalysisStage('processing');
-      setAnalysisProgress(50);
-      console.log('📈 Fetching additional market data...');
-      
-      const [historicalResult, realTimeResult, patternResult, forecastResult] = await Promise.allSettled([
-        getHistoricalTrends(careerPathTitle, locationValue, 6),
-        fetchRealTimeJobData(careerPathTitle, locationValue),
-        // Pattern recognition analysis
-        supabase.functions.invoke('pattern-recognition-engine', {
-          body: {
-            careerPath: careerPathTitle,
-            location: locationValue,
-            timeframe: '90d',
-            analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
-          }
-        }),
-        // Demand forecasting
-        generateDemandForecast(careerPathTitle, locationValue, '6months')
-      ]);
-      
-      // Stage 3: Process results and set states
-      setAnalysisStage('finalizing');
-      setAnalysisProgress(70);
-      
-      if (historicalResult.status === 'fulfilled' && historicalResult.value) {
-        setHistoricalData(historicalResult.value);
-        console.log('📈 Historical data set');
-        setAnalysisProgress(75);
-      }
-
-      if (realTimeResult.status === 'fulfilled' && realTimeResult.value) {
-        setRealTimeData(realTimeResult.value);
-        console.log('⚡ Real-time data set');
-        setAnalysisProgress(80);
-      }
-
-      if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
-        setPatternRecognitionData(patternResult.value.data);
-        console.log('🔍 Pattern recognition set');
-        setAnalysisProgress(85);
-      }
-
-      if (forecastResult.status === 'fulfilled' && forecastResult.value) {
-        setDemandForecastData(forecastResult.value);
-        console.log('🔮 Demand forecast set');
-        setAnalysisProgress(90);
-      }
-
-      // Final stage
-      setAnalysisProgress(95);
-      await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for final processing
-
-      setAllAnalysisComplete(true);
-      setAnalysisProgress(100);
-      console.log('✅ Comprehensive analysis completed successfully');
-      
-      toast({
-        title: "🎉 Analysis Complete!",
-        description: `Market analysis for ${careerPathTitle} in ${locationLabel} is ready!`,
-        duration: 4000
-      });
-      
-    } catch (error) {
-      console.error('❌ Comprehensive analysis failed:', error);
-      setAnalysisProgress(0);
-      setAnalysisStage('initializing');
-      toast({
-        title: "Analysis Failed",
-        description: "Failed to complete comprehensive market analysis. Please try again.",
-        variant: "destructive",
-        duration: 4000
-      });
-    }
-  };
 
   const handleQuickAnalyze = async (careerPath: any, location: any) => {
     setSelectedCareerPath(careerPath);
@@ -767,7 +781,7 @@ export const MarketIntelligenceDashboard = () => {
           marketData={marketData}
           selectedCareerPath={selectedCareerPath?.title}
           selectedLocation={selectedLocation?.value}
-          onActionClick={handleInsightAction}
+          onActionClick={handleUnifiedAction}
         />
 
         {/* Intelligence Surface: Core Widgets */}
@@ -787,7 +801,7 @@ export const MarketIntelligenceDashboard = () => {
               marketData={marketData}
               selectedCareerPath={selectedCareerPath?.title}
               selectedLocation={selectedLocation?.value}
-              onActionClick={handleInsightAction}
+              onActionClick={handleUnifiedAction}
             />
           </div>
 
@@ -804,7 +818,7 @@ export const MarketIntelligenceDashboard = () => {
                   description: `Analyzing ${careerPath} in ${location}`,
                 });
               }}
-                  onActionClick={handleInsightAction}
+                  onActionClick={handleUnifiedAction}
             />
           </div>
         </div>
