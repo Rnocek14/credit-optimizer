@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertTriangle, Lightbulb } from 'lucide-react';
 import { useInsightTracking } from '@/hooks/useInsightTracking';
+import { useToast } from '@/hooks/use-toast';
 
 interface MarketTrend {
   id: string;
@@ -42,6 +43,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
   onActionClick
 }) => {
   const { trackInsightInteraction } = useInsightTracking();
+  const { toast } = useToast();
   const generateInsights = (): Insight[] => {
     console.log('🎯 TopMarketInsights: Generating insights from market data:', marketData);
     if (!marketData || marketData.length === 0) {
@@ -220,6 +222,27 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                 <button 
                   className="text-xs text-primary hover:text-primary/80 font-medium"
                   onClick={async () => {
+                    // Show specific toast for this action
+                    if (insight.action === 'Analyze This Market') {
+                      toast({
+                        title: "Analyzing Market Opportunity",
+                        description: `Switching to analysis for ${insight.careerPath} in ${insight.location}`,
+                        duration: 2000,
+                      });
+                    } else if (insight.action === 'View Salary Analysis') {
+                      toast({
+                        title: "Loading Salary Analysis",
+                        description: `Analyzing salary trends for ${insight.careerPath}`,
+                        duration: 2000,
+                      });
+                    } else if (insight.action === 'Generate Strategy') {
+                      toast({
+                        title: "Generating Strategy",
+                        description: "Creating personalized market strategy...",
+                        duration: 2000,
+                      });
+                    }
+                    
                     // Track the interaction
                     await trackInsightInteraction({
                       insight_id: insight.id,
@@ -227,9 +250,9 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                       action_taken: insight.action === 'View Salary Analysis' ? 'view_salary_analysis' : 
                                    insight.action === 'Generate Strategy' ? 'generate_strategy' :
                                    insight.action === 'Analyze This Market' ? 'analyzed' : 'clicked',
-                      career_path: insight.type === 'opportunity' && insight.description.includes('in') ? 
+                      career_path: insight.careerPath || insight.type === 'opportunity' && insight.description.includes('in') ? 
                                   insight.description.split(' in ')[0].replace(/^\w+\s+\w+\s+/, '') : undefined,
-                      location: insight.type === 'opportunity' && insight.description.includes('in') ? 
+                      location: insight.location || insight.type === 'opportunity' && insight.description.includes('in') ? 
                                insight.description.split(' in ')[1].split(' with')[0] : undefined,
                       confidence_score: insight.confidence
                     });

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, MapPin, Briefcase, Clock, Star } from 'lucide-react';
 import { useInsightTracking } from '@/hooks/useInsightTracking';
+import { useToast } from '@/hooks/use-toast';
 
 interface MarketTrend {
   id: string;
@@ -51,6 +52,7 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
   onActionClick
 }) => {
   const { trackInsightInteraction } = useInsightTracking();
+  const { toast } = useToast();
   const generateSmartSuggestions = (): SmartSuggestion[] => {
     if (!marketData || marketData.length === 0) {
       return [{
@@ -232,6 +234,11 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
 
   const handleSuggestionClick = (suggestion: SmartSuggestion) => {
     if (onSuggestionSelect && suggestion.confidence > 0) {
+      toast({
+        title: "Suggestion Selected",
+        description: `Switching to ${suggestion.careerPath} in ${suggestion.location}`,
+        duration: 2000,
+      });
       onSuggestionSelect(suggestion.careerPath, suggestion.location);
     }
   };
@@ -321,6 +328,13 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
                   className="text-xs text-primary hover:text-primary/80 font-medium"
                   onClick={async (e) => {
                     e.stopPropagation();
+                    
+                    // Show specific toast for analyze action
+                    toast({
+                      title: "Analyzing Opportunity",
+                      description: `Loading analysis for ${suggestion.careerPath} in ${suggestion.location}`,
+                      duration: 2000,
+                    });
                     
                     // Track the interaction
                     await trackInsightInteraction({
