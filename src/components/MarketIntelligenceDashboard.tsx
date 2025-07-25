@@ -18,10 +18,12 @@ import {
   Eye,
   Brain,
   Globe,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useEnhancedMarketIntelligence } from '@/hooks/useEnhancedMarketIntelligence';
+import { useSmartMarketSelection } from '@/hooks/useSmartMarketSelection';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
@@ -42,6 +44,8 @@ import { TopMarketInsights } from './TopMarketInsights';
 import { OpportunityScoreWidget } from './OpportunityScoreWidget';
 import { MarketPulseWidget } from './MarketPulseWidget';
 import { SmartSuggestionsWidget } from './SmartSuggestionsWidget';
+import { SmartSelectionPanel } from './SmartSelectionPanel';
+import { IntelligentActionBridge } from './IntelligentActionBridge';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -60,8 +64,20 @@ export const MarketIntelligenceDashboard = () => {
     fetchRealTimeJobData
   } = useEnhancedMarketIntelligence();
 
+  const {
+    autoSelectedCareerPath,
+    autoSelectedLocation,
+    suggestions,
+    isSmartMode,
+    setIsSmartMode,
+    extractContextFromAction,
+    setAutoSelectedCareerPath,
+    setAutoSelectedLocation
+  } = useSmartMarketSelection();
+
   const [selectedCareerPath, setSelectedCareerPath] = useState<{ id: string; title: string } | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; label: string; value: string; emoji: string } | null>(null);
+  const [showSmartPanel, setShowSmartPanel] = useState(true);
   const [analysis, setAnalysis] = useState<any>(null);
   const [topCareers, setTopCareers] = useState<any[]>([]);
   const [salaryData, setSalaryData] = useState<any>(null);
@@ -88,6 +104,19 @@ export const MarketIntelligenceDashboard = () => {
     
     loadInitialData();
   }, []);
+
+  // Auto-select smart defaults when available
+  useEffect(() => {
+    if (isSmartMode && autoSelectedCareerPath && !selectedCareerPath) {
+      setSelectedCareerPath(autoSelectedCareerPath);
+    }
+  }, [autoSelectedCareerPath, selectedCareerPath, isSmartMode]);
+
+  useEffect(() => {
+    if (isSmartMode && autoSelectedLocation && !selectedLocation) {
+      setSelectedLocation(autoSelectedLocation);
+    }
+  }, [autoSelectedLocation, selectedLocation, isSmartMode]);
 
   const loadTopCareers = async () => {
     try {
@@ -174,11 +203,43 @@ export const MarketIntelligenceDashboard = () => {
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
     console.log('🎯 Action triggered:', action);
     
-    if (!selectedCareerPath || !selectedLocation) {
+    // Smart context extraction from action
+    let workingCareerPath = selectedCareerPath;
+    let workingLocation = selectedLocation;
+
+    // Try to extract context from action if selections are missing
+    if ((!workingCareerPath || !workingLocation) && (careerPath || location)) {
+      const { extractedCareerPath, extractedLocation } = await extractContextFromAction(action, `${careerPath || ''} ${location || ''}`);
+      
+      if (extractedCareerPath && !workingCareerPath) {
+        workingCareerPath = extractedCareerPath;
+        setSelectedCareerPath(extractedCareerPath);
+      }
+      
+      if (extractedLocation && !workingLocation) {
+        workingLocation = extractedLocation;
+        setSelectedLocation(extractedLocation);
+      }
+    }
+
+    // Still missing? Try smart defaults
+    if (!workingCareerPath && autoSelectedCareerPath) {
+      workingCareerPath = autoSelectedCareerPath;
+      setSelectedCareerPath(autoSelectedCareerPath);
+    }
+    
+    if (!workingLocation && autoSelectedLocation) {
+      workingLocation = autoSelectedLocation;
+      setSelectedLocation(autoSelectedLocation);
+    }
+
+    // Final validation
+    if (!workingCareerPath || !workingLocation) {
+      setShowSmartPanel(true);
       toast({
-        title: "Missing Information",
-        description: "Please select both a career path and location first.",
-        variant: "destructive",
+        title: "Smart Selection Available",
+        description: "Choose from our AI-powered market suggestions below to get started instantly.",
+        variant: "default",
       });
       return;
     }
@@ -195,9 +256,9 @@ export const MarketIntelligenceDashboard = () => {
     try {
       // Run comprehensive analysis (all relevant analyses)
       const [analysisResult, historicalResult, realTimeResult] = await Promise.allSettled([
-        analyzeMarketTrends(selectedCareerPath.id, selectedLocation.id),
-        getHistoricalTrends(selectedCareerPath.title, selectedLocation.value, 6),
-        fetchRealTimeJobData(selectedCareerPath.title, selectedLocation.value)
+        analyzeMarketTrends(workingCareerPath.id, workingLocation.id),
+        getHistoricalTrends(workingCareerPath.title, workingLocation.value, 6),
+        fetchRealTimeJobData(workingCareerPath.title, workingLocation.value)
       ]);
 
       // Process analysis result
@@ -236,7 +297,27 @@ export const MarketIntelligenceDashboard = () => {
     } finally {
       setActionLoading(false);
       setComprehensiveLoading(false);
+      setShowSmartPanel(false); // Hide smart panel after successful action
     }
+  };
+
+  const handleSmartSuggestionSelect = (careerPath: any, location: any) => {
+    setSelectedCareerPath(careerPath);
+    setSelectedLocation(location);
+    setShowSmartPanel(false);
+    toast({
+      title: "Smart Selection Applied",
+      description: `Selected ${careerPath.title} in ${location.label}`,
+    });
+  };
+
+  const handleQuickAnalyze = async (careerPath: any, location: any) => {
+    setSelectedCareerPath(careerPath);
+    setSelectedLocation(location);
+    setShowSmartPanel(false);
+    
+    // Trigger comprehensive analysis immediately
+    await handleInsightAction('Quick Analysis', careerPath.title, location.label);
   };
 
   const legacyHandleInsightAction = async (action: string, careerPath?: string, location?: string) => {
@@ -410,6 +491,27 @@ export const MarketIntelligenceDashboard = () => {
 
     return (
       <div className="space-y-6">
+        {/* Smart Selection Panel */}
+        {showSmartPanel && (
+          <SmartSelectionPanel
+            suggestions={suggestions}
+            onSuggestionSelect={handleSmartSuggestionSelect}
+            onQuickAnalyze={handleQuickAnalyze}
+            isVisible={showSmartPanel}
+          />
+        )}
+
+        {/* Intelligent Action Bridge */}
+        {comprehensiveLoading && (
+          <IntelligentActionBridge
+            isRunning={comprehensiveLoading}
+            careerPath={selectedCareerPath?.title}
+            location={selectedLocation?.label}
+            onComplete={() => {}}
+            selectedTab={activeTab}
+          />
+        )}
+
         {/* Intelligence-First Dashboard */}
         
         {/* Phase 1: Top 3 Market Insights (Lead with Intelligence) */}
@@ -654,37 +756,106 @@ export const MarketIntelligenceDashboard = () => {
           </div>
         </div>
 
-        {/* Global Controls */}
-        <Card className="bg-gradient-to-r from-primary/5 to-blue-500/5">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <CareerPathCombobox
-                value={selectedCareerPath}
-                onChange={setSelectedCareerPath}
-                placeholder="Select career path..."
-              />
-              <LocationCombobox
-                value={selectedLocation}
-                onChange={setSelectedLocation}
-                placeholder="Select location..."
-              />
-              <Button 
-                onClick={handleMarketAnalysis} 
-                disabled={loading || !selectedCareerPath || !selectedLocation}
-                className="w-full"
-              >
-                {loading ? (
-                  <>
-                    <Activity className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Run Analysis
-                  </>
+        {/* Smart Global Controls */}
+        <Card className="bg-gradient-to-r from-primary/5 to-secondary/5">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="h-5 w-5" />
+                  Market Intelligence Dashboard
+                  {isSmartMode && <Badge variant="secondary" className="ml-2">AI Mode</Badge>}
+                </CardTitle>
+                <CardDescription>
+                  {selectedCareerPath && selectedLocation 
+                    ? `Analyzing ${selectedCareerPath.title} opportunities in ${selectedLocation.label}`
+                    : "AI-powered career market analysis and insights"
+                  }
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsSmartMode(!isSmartMode)}
+                  className={isSmartMode ? "border-primary text-primary" : ""}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isSmartMode ? "Smart On" : "Smart Off"}
+                </Button>
+                <Button 
+                  onClick={handleMarketAnalysis}
+                  disabled={actionLoading || !selectedCareerPath || !selectedLocation}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {actionLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Analyze Market
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Career Path
+                  {autoSelectedCareerPath && !selectedCareerPath && (
+                    <Badge variant="outline" className="ml-2 text-xs">AI Suggested</Badge>
+                  )}
+                </label>
+                <CareerPathCombobox
+                  value={selectedCareerPath}
+                  onChange={setSelectedCareerPath}
+                  placeholder={autoSelectedCareerPath ? `Try: ${autoSelectedCareerPath.title}` : "Search career paths..."}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Location
+                  {autoSelectedLocation && !selectedLocation && (
+                    <Badge variant="outline" className="ml-2 text-xs">AI Suggested</Badge>
+                  )}
+                </label>
+                <LocationCombobox
+                  value={selectedLocation}
+                  onChange={setSelectedLocation}
+                  placeholder={autoSelectedLocation ? `Try: ${autoSelectedLocation.label}` : "Select location..."}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                {isSmartMode && !selectedCareerPath && !selectedLocation && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSmartPanel(true)}
+                    className="flex-1 border-primary/50 text-primary hover:bg-primary/5"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Smart Pick
+                  </Button>
                 )}
-              </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedCareerPath(null);
+                    setSelectedLocation(null);
+                    setAnalysis(null);
+                    setSalaryData(null);
+                    setShowSmartPanel(true);
+                  }}
+                  className={!selectedCareerPath && !selectedLocation ? "flex-1" : ""}
+                >
+                  Reset
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
