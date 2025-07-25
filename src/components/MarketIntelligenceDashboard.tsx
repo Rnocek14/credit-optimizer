@@ -12,6 +12,7 @@ import { LocationCombobox } from '@/components/ui/LocationCombobox';
 import { MarketIntelligenceExportPanel } from './MarketIntelligenceExportPanel';
 import { MarketAlertSystem } from './MarketAlertSystem';
 import { CompareMarketTrendsPanel } from './CompareMarketTrendsPanel';
+import { SuggestedMarketMovesCard } from './SuggestedMarketMovesCard';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -133,6 +134,9 @@ export const MarketIntelligenceDashboard = () => {
           Real-time market analysis and career insights powered by AI
         </p>
       </div>
+
+      {/* Personalized Recommendations Section */}
+      <SuggestedMarketMovesCard />
 
       <Tabs defaultValue="analysis" className="space-y-6">
         <TabsList className="grid w-full grid-cols-7">
