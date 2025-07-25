@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,22 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface MarketForecastPanelProps {
   careerPath?: string;
   location?: string;
+  autoData?: any;
+  autoTrigger?: boolean;
 }
 
-export function MarketForecastPanel({ careerPath, location }: MarketForecastPanelProps) {
+export function MarketForecastPanel({ careerPath, location, autoData, autoTrigger }: MarketForecastPanelProps) {
   const { generateDemandForecast, loadingForecasts, forecastError } = useEnhancedMarketIntelligence();
   const [forecast, setForecast] = useState<any>(null);
   const [timeHorizon, setTimeHorizon] = useState('6months');
+
+  // Auto-populate data when provided from comprehensive analysis
+  useEffect(() => {
+    if (autoData && autoTrigger) {
+      console.log('🔥 Auto-populating forecast data:', autoData);
+      setForecast(autoData);
+    }
+  }, [autoData, autoTrigger]);
 
   const handleGenerateForecast = async () => {
     console.log('🔮 Generate Forecast clicked:', { careerPath, location, timeHorizon });
@@ -99,7 +109,7 @@ export function MarketForecastPanel({ careerPath, location }: MarketForecastPane
             onClick={handleGenerateForecast}
             disabled={loadingForecasts || !careerPath || !location}
           >
-            {loadingForecasts ? 'Forecasting...' : 'Generate Forecast'}
+            {loadingForecasts ? 'Forecasting...' : (autoData && autoTrigger ? 'Re-generate Forecast' : 'Generate Forecast')}
           </Button>
         </div>
 

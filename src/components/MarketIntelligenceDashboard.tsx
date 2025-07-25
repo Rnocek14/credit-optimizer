@@ -87,6 +87,11 @@ export const MarketIntelligenceDashboard = () => {
   const [comprehensiveLoading, setComprehensiveLoading] = useState(false);
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [realTimeData, setRealTimeData] = useState<any[]>([]);
+  
+  // New state for comprehensive analysis results
+  const [patternRecognitionData, setPatternRecognitionData] = useState<any>(null);
+  const [demandForecastData, setDemandForecastData] = useState<any>(null);
+  const [allAnalysisComplete, setAllAnalysisComplete] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -295,6 +300,7 @@ export const MarketIntelligenceDashboard = () => {
 
       // Process pattern recognition results
       if (patternResult.status === 'fulfilled' && patternResult.value?.data?.success) {
+        setPatternRecognitionData(patternResult.value.data);
         console.log('✅ Pattern recognition analysis completed');
         toast({
           title: "Pattern Analysis Complete",
@@ -304,12 +310,16 @@ export const MarketIntelligenceDashboard = () => {
 
       // Process demand forecast results  
       if (forecastResult.status === 'fulfilled' && forecastResult.value) {
+        setDemandForecastData(forecastResult.value);
         console.log('✅ Demand forecasting completed');
         toast({
           title: "Demand Forecast Complete",
           description: "Market demand forecast has been generated successfully.",
         });
       }
+
+      // Mark all analysis as complete
+      setAllAnalysisComplete(true);
 
       console.log('✅ Comprehensive analysis completed, navigating to analysis tab');
       
@@ -1061,13 +1071,18 @@ export const MarketIntelligenceDashboard = () => {
               </Card>
 
               {/* Historical Trends */}
-              <HistoricalTrendsVisualization />
+              <HistoricalTrendsVisualization 
+                selectedCareerPaths={selectedCareerPath ? [selectedCareerPath] : []}
+                selectedLocation={selectedLocation || undefined}
+              />
 
               {/* Pattern Recognition */}
               {selectedCareerPath && selectedLocation && (
                 <PatternRecognitionPanel 
                   careerPath={selectedCareerPath.title} 
-                  location={selectedLocation.value} 
+                  location={selectedLocation.value}
+                  autoData={patternRecognitionData}
+                  autoTrigger={allAnalysisComplete}
                 />
               )}
 
@@ -1075,11 +1090,15 @@ export const MarketIntelligenceDashboard = () => {
               <div className="grid gap-6">
                 <MarketForecastPanel 
                   careerPath={selectedCareerPath?.title} 
-                  location={selectedLocation?.value} 
+                  location={selectedLocation?.value}
+                  autoData={demandForecastData}
+                  autoTrigger={allAnalysisComplete}
                 />
                 <RealTimeJobDataPanel 
                   careerPath={selectedCareerPath?.title} 
-                  location={selectedLocation?.value} 
+                  location={selectedLocation?.value}
+                  autoData={realTimeData}
+                  autoTrigger={allAnalysisComplete}
                 />
               </div>
             </div>

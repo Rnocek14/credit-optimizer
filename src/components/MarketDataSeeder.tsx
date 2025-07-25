@@ -35,7 +35,7 @@ const SAMPLE_DATA = [
   { career_path: 'DevOps Engineer', location: 'Denver', growth_rate: 21.2, demand_score: 79, average_salary: 110000, job_postings_count: 280, competition_level: 'low' },
 ];
 
-const HISTORICAL_MONTHS = ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06'];
+const HISTORICAL_MONTHS = ['2023-07', '2023-08', '2023-09', '2023-10', '2023-11', '2023-12', '2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06', '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12'];
 
 export const MarketDataSeeder: React.FC = () => {
   const { toast } = useToast();
@@ -184,11 +184,11 @@ export const MarketDataSeeder: React.FC = () => {
           </div>
           <div>
             <p className="font-medium">Historical Months</p>
-            <p className="text-muted-foreground">6 months data</p>
+            <p className="text-muted-foreground">18 months data</p>
           </div>
           <div>
             <p className="font-medium">Total Records</p>
-            <p className="text-muted-foreground">~100+ entries</p>
+            <p className="text-muted-foreground">~450+ entries</p>
           </div>
         </div>
 

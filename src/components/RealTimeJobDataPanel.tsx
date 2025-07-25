@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,22 @@ import { useEnhancedMarketIntelligence } from "@/hooks/useEnhancedMarketIntellig
 interface RealTimeJobDataPanelProps {
   careerPath?: string;
   location?: string;
+  autoData?: any;
+  autoTrigger?: boolean;
 }
 
-export function RealTimeJobDataPanel({ careerPath, location }: RealTimeJobDataPanelProps) {
+export function RealTimeJobDataPanel({ careerPath, location, autoData, autoTrigger }: RealTimeJobDataPanelProps) {
   const { fetchRealTimeJobData, loadingJobData, jobDataError } = useEnhancedMarketIntelligence();
   const [jobData, setJobData] = useState<any>(null);
   const [selectedSource, setSelectedSource] = useState<string>('all');
+
+  // Auto-populate data when provided from comprehensive analysis
+  useEffect(() => {
+    if (autoData && autoTrigger) {
+      console.log('🔥 Auto-populating real-time job data:', autoData);
+      setJobData(autoData);
+    }
+  }, [autoData, autoTrigger]);
 
   const handleFetchJobData = async () => {
     console.log('📡 Fetch Job Data clicked:', { careerPath, location });
@@ -93,7 +103,7 @@ export function RealTimeJobDataPanel({ careerPath, location }: RealTimeJobDataPa
             disabled={loadingJobData || !careerPath || !location}
             className="flex-shrink-0"
           >
-            {loadingJobData ? 'Fetching...' : 'Fetch Live Data'}
+            {loadingJobData ? 'Fetching...' : (autoData && autoTrigger ? 'Refresh Live Data' : 'Fetch Live Data')}
           </Button>
           
           {jobData && (

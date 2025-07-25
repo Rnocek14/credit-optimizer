@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 interface PatternRecognitionPanelProps {
   careerPath: string;
   location: string;
+  autoData?: any;
+  autoTrigger?: boolean;
 }
 
 interface Pattern {
@@ -40,7 +42,7 @@ interface Correlation {
   strength: string;
 }
 
-export function PatternRecognitionPanel({ careerPath, location }: PatternRecognitionPanelProps) {
+export function PatternRecognitionPanel({ careerPath, location, autoData, autoTrigger }: PatternRecognitionPanelProps) {
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [correlations, setCorrelations] = useState<Correlation[]>([]);
@@ -53,6 +55,23 @@ export function PatternRecognitionPanel({ careerPath, location }: PatternRecogni
     fetchAnomalies();
     fetchCorrelations();
   }, [careerPath, location]);
+
+  // Auto-populate data when provided from comprehensive analysis
+  useEffect(() => {
+    if (autoData && autoTrigger) {
+      console.log('🔥 Auto-populating pattern recognition data:', autoData);
+      if (autoData.patterns) {
+        setPatterns(autoData.patterns);
+      }
+      if (autoData.anomalies) {
+        setAnomalies(autoData.anomalies);
+      }
+      if (autoData.correlations) {
+        setCorrelations(autoData.correlations);
+      }
+      setLastAnalysis(new Date().toISOString());
+    }
+  }, [autoData, autoTrigger]);
 
   const fetchExistingPatterns = async () => {
     const { data, error } = await supabase
@@ -186,7 +205,7 @@ export function PatternRecognitionPanel({ careerPath, location }: PatternRecogni
           className="gap-2"
         >
           <Brain className="h-4 w-4" />
-          {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
+          {isAnalyzing ? 'Analyzing...' : (autoData && autoTrigger ? 'Re-run Analysis' : 'Run Analysis')}
         </Button>
       </div>
 
