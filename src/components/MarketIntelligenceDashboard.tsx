@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, TrendingDown, MapPin, DollarSign, Users, Zap } from 'lucide-react';
 import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useToast } from '@/hooks/use-toast';
+import { CareerPathCombobox } from '@/components/ui/CareerPathCombobox';
+import { LocationCombobox } from '@/components/ui/LocationCombobox';
 
 export const MarketIntelligenceDashboard = () => {
   const { toast } = useToast();
@@ -20,8 +22,8 @@ export const MarketIntelligenceDashboard = () => {
     getSalaryInsights
   } = useMarketIntelligence();
 
-  const [searchCareer, setSearchCareer] = useState('');
-  const [searchLocation, setSearchLocation] = useState('');
+  const [selectedCareerPath, setSelectedCareerPath] = useState<{ id: string; title: string } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ id: string; label: string; value: string; emoji: string } | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [topCareers, setTopCareers] = useState<any[]>([]);
   const [salaryData, setSalaryData] = useState<any>(null);
@@ -37,41 +39,41 @@ export const MarketIntelligenceDashboard = () => {
   };
 
   const handleMarketAnalysis = async () => {
-    if (!searchCareer || !searchLocation) {
+    if (!selectedCareerPath || !selectedLocation) {
       toast({
         title: "Missing Information",
-        description: "Please enter both career and location for analysis",
+        description: "Please select both career path and location for analysis",
         variant: "destructive"
       });
       return;
     }
 
-    const result = await analyzeMarketTrends(searchCareer, searchLocation);
+    const result = await analyzeMarketTrends(selectedCareerPath.title, selectedLocation.value);
     if (result) {
       setAnalysis(result);
       toast({
         title: "Analysis Complete",
-        description: `Market analysis for ${searchCareer} in ${searchLocation} is ready`
+        description: `Market analysis for ${selectedCareerPath.title} in ${selectedLocation.label} is ready`
       });
     }
   };
 
   const handleSalaryAnalysis = async () => {
-    if (!searchCareer) {
+    if (!selectedCareerPath) {
       toast({
         title: "Missing Information",
-        description: "Please enter a career path for salary analysis",
+        description: "Please select a career path for salary analysis",
         variant: "destructive"
       });
       return;
     }
 
-    const result = await getSalaryInsights(searchCareer);
+    const result = await getSalaryInsights(selectedCareerPath.title);
     if (result) {
       setSalaryData(result);
       toast({
         title: "Salary Analysis Complete",
-        description: `Salary insights for ${searchCareer} are ready`
+        description: `Salary insights for ${selectedCareerPath.title} are ready`
       });
     }
   };
@@ -130,15 +132,15 @@ export const MarketIntelligenceDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  placeholder="Career path (e.g., Software Developer)"
-                  value={searchCareer}
-                  onChange={(e) => setSearchCareer(e.target.value)}
+                <CareerPathCombobox
+                  value={selectedCareerPath}
+                  onChange={setSelectedCareerPath}
+                  placeholder="Select career path..."
                 />
-                <Input
-                  placeholder="Location (e.g., San Francisco)"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
+                <LocationCombobox
+                  value={selectedLocation}
+                  onChange={setSelectedLocation}
+                  placeholder="Select location..."
                 />
               </div>
               <Button 
@@ -303,12 +305,13 @@ export const MarketIntelligenceDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4">
-                <Input
-                  placeholder="Career path for salary analysis"
-                  value={searchCareer}
-                  onChange={(e) => setSearchCareer(e.target.value)}
-                  className="flex-1"
-                />
+                <div className="flex-1">
+                  <CareerPathCombobox
+                    value={selectedCareerPath}
+                    onChange={setSelectedCareerPath}
+                    placeholder="Select career path for salary analysis..."
+                  />
+                </div>
                 <Button onClick={handleSalaryAnalysis} disabled={loading}>
                   Analyze Salaries
                 </Button>
