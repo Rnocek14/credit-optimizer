@@ -164,109 +164,156 @@ export const MarketIntelligenceDashboard = () => {
   const handleInsightAction = async (action: string, careerPath?: string, location?: string) => {
     console.log('Action triggered:', { action, careerPath, location });
     
-    // Auto-select career path if provided
-    let careerPathObj = selectedCareerPath;
-    if (careerPath && !selectedCareerPath) {
-      // Fetch career path from database by title
-      const { data: careerPaths } = await supabase
-        .from('career_paths')
-        .select('id, title')
-        .ilike('title', `%${careerPath}%`)
-        .limit(1);
-      
-      if (careerPaths && careerPaths.length > 0) {
-        careerPathObj = { id: careerPaths[0].id, title: careerPaths[0].title };
-        setSelectedCareerPath(careerPathObj);
+    try {
+      // Auto-select career path if provided
+      let careerPathObj = selectedCareerPath;
+      if (careerPath && !selectedCareerPath) {
+        console.log('Looking up career path:', careerPath);
+        const { data: careerPaths, error } = await supabase
+          .from('career_paths')
+          .select('id, title')
+          .ilike('title', `%${careerPath}%`)
+          .limit(1);
+        
+        if (error) {
+          console.error('Career path lookup error:', error);
+        } else if (careerPaths && careerPaths.length > 0) {
+          careerPathObj = { id: careerPaths[0].id, title: careerPaths[0].title };
+          setSelectedCareerPath(careerPathObj);
+          console.log('Found career path:', careerPathObj);
+        } else {
+          console.log('No matching career path found for:', careerPath);
+        }
       }
-    }
 
-    // Auto-select location if provided
-    let locationObj = selectedLocation;
-    if (location && !selectedLocation) {
-      // Fetch location from database by label or value
-      const { data: locations } = await supabase
-        .from('locations')
-        .select('id, label, value, emoji')
-        .or(`label.ilike.%${location}%,value.ilike.%${location}%`)
-        .eq('active', true)
-        .limit(1);
-      
-      if (locations && locations.length > 0) {
-        locationObj = {
-          id: locations[0].id,
-          label: locations[0].label,
-          value: locations[0].value,
-          emoji: locations[0].emoji
-        };
-        setSelectedLocation(locationObj);
+      // Auto-select location if provided
+      let locationObj = selectedLocation;
+      if (location && !selectedLocation) {
+        console.log('Looking up location:', location);
+        const { data: locations, error } = await supabase
+          .from('locations')
+          .select('id, label, value, emoji')
+          .or(`label.ilike.%${location}%,value.ilike.%${location}%`)
+          .eq('active', true)
+          .limit(1);
+        
+        if (error) {
+          console.error('Location lookup error:', error);
+        } else if (locations && locations.length > 0) {
+          locationObj = {
+            id: locations[0].id,
+            label: locations[0].label,
+            value: locations[0].value,
+            emoji: locations[0].emoji
+          };
+          setSelectedLocation(locationObj);
+          console.log('Found location:', locationObj);
+        } else {
+          console.log('No matching location found for:', location);
+        }
       }
-    }
 
-    // Handle different actions with the resolved data
-    switch (action) {
-      case 'View Salary Analysis':
-        if (careerPathObj) {
-          const result = await getSalaryInsights(careerPathObj.title);
-          if (result) {
-            setSalaryData(result);
-            setActiveTab('research');
+      // Handle different actions with the resolved data
+      switch (action) {
+        case 'View Salary Analysis':
+          if (careerPathObj) {
+            console.log('Starting salary analysis for:', careerPathObj.title);
+            const result = await getSalaryInsights(careerPathObj.title);
+            console.log('Salary analysis result:', result);
+            
+            if (result) {
+              setSalaryData(result);
+              setActiveTab('research');
+              toast({
+                title: "Salary Analysis Complete",
+                description: `Salary insights for ${careerPathObj.title} are ready`
+              });
+            } else {
+              toast({
+                title: "Analysis Failed",
+                description: "Could not retrieve salary insights. Please try again.",
+                variant: "destructive"
+              });
+            }
+          } else {
             toast({
-              title: "Salary Analysis Complete",
-              description: `Salary insights for ${careerPathObj.title} are ready`
+              title: "Missing Information",
+              description: "Please select a career path for salary analysis",
+              variant: "destructive"
             });
           }
-        } else {
-          toast({
-            title: "Missing Information",
-            description: "Please select a career path for salary analysis",
-            variant: "destructive"
-          });
-        }
-        break;
-      case 'Analyze This Market':
-      case 'Analyze This Opportunity':
-        if (careerPathObj && locationObj) {
-          const result = await analyzeMarketTrends(careerPathObj.id, locationObj.id);
-          if (result) {
-            setAnalysis(result);
-            setActiveTab('analysis');
+          break;
+          
+        case 'Analyze This Market':
+        case 'Analyze This Opportunity':
+          if (careerPathObj && locationObj) {
+            console.log('Starting market analysis for:', careerPathObj.title, 'in', locationObj.label);
+            
+            // Use the string values that the API expects
+            const result = await analyzeMarketTrends(
+              careerPathObj.id, 
+              locationObj.id
+            );
+            console.log('Market analysis result:', result);
+            
+            if (result) {
+              setAnalysis(result);
+              setActiveTab('analysis');
+              toast({
+                title: "Analysis Complete",
+                description: `Market analysis for ${careerPathObj.title} in ${locationObj.label} is ready`
+              });
+            } else {
+              toast({
+                title: "Analysis Failed",
+                description: "Could not complete market analysis. Please try again.",
+                variant: "destructive"
+              });
+            }
+          } else {
             toast({
-              title: "Analysis Complete",
-              description: `Market analysis for ${careerPathObj.title} in ${locationObj.label} is ready`
+              title: "Missing Information", 
+              description: "Please select both career path and location for market analysis",
+              variant: "destructive"
             });
           }
-        } else {
+          break;
+          
+        case 'Generate Strategy':
+          // Navigate to analysis tab and show strategy recommendations
+          setActiveTab('analysis');
           toast({
-            title: "Missing Information", 
-            description: "Please select both career path and location for market analysis",
-            variant: "destructive"
+            title: "Strategy Generator",
+            description: "Generating personalized career strategy based on market insights",
           });
-        }
-        break;
-      case 'Generate Strategy':
-        // Navigate to analysis tab and show strategy recommendations
-        setActiveTab('analysis');
-        toast({
-          title: "Strategy Generator",
-          description: "Generating personalized career strategy based on market insights",
-        });
-        break;
-      case 'Explore Alternatives':
-        setActiveTab('research');
-        toast({
-          title: "Exploring Alternatives",
-          description: "Analyzing alternative career paths and market opportunities",
-        });
-        break;
-      case 'Set Alert':
-        setActiveTab('alerts');
-        toast({
-          title: "Alert Setup",
-          description: "Setting up market alerts for this opportunity",
-        });
-        break;
-      default:
-        console.log('Unknown action:', action);
+          break;
+          
+        case 'Explore Alternatives':
+          setActiveTab('research');
+          toast({
+            title: "Exploring Alternatives",
+            description: "Analyzing alternative career paths and market opportunities",
+          });
+          break;
+          
+        case 'Set Alert':
+          setActiveTab('alerts');
+          toast({
+            title: "Alert Setup",
+            description: "Setting up market alerts for this opportunity",
+          });
+          break;
+          
+        default:
+          console.log('Unknown action:', action);
+      }
+    } catch (error) {
+      console.error('Error in handleInsightAction:', error);
+      toast({
+        title: "Action Failed",
+        description: "Something went wrong while processing your request. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
