@@ -42,6 +42,7 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
     errors,
     generatePredictiveAnalysis,
     discoverMarketPatterns,
+    generatePersonalizedRecommendations,
     refreshAllInsights,
     isAnalysisReady,
     hasRecentInsights
@@ -54,11 +55,23 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
   const handleGenerateAnalysis = useCallback(async () => {
     if (!selectedCareerPath || !selectedLocation) return;
     
-    await Promise.all([
-      generatePredictiveAnalysis(selectedCareerPath, selectedLocation),
-      discoverMarketPatterns(selectedCareerPath, selectedLocation)
-    ]);
-  }, [selectedCareerPath, selectedLocation, generatePredictiveAnalysis, discoverMarketPatterns]);
+    console.log('🤖 Generating comprehensive AI analysis...');
+    
+    try {
+      await Promise.all([
+        generatePredictiveAnalysis(selectedCareerPath, selectedLocation, '12months'),
+        discoverMarketPatterns(selectedCareerPath, selectedLocation, ['demand', 'salary', 'competition']),
+        generatePersonalizedRecommendations('demo-user', {
+          careerPath: selectedCareerPath,
+          location: selectedLocation
+        })
+      ]);
+      
+      console.log('✅ AI analysis complete');
+    } catch (error) {
+      console.error('❌ Error generating analysis:', error);
+    }
+  }, [selectedCareerPath, selectedLocation, generatePredictiveAnalysis, discoverMarketPatterns, generatePersonalizedRecommendations]);
 
   // Memoized prediction insights
   const predictionInsights = useMemo(() => {
@@ -124,6 +137,18 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
       total: recommendations.length
     };
   }, [recommendations]);
+
+  // Auto-generate analysis when context changes
+  React.useEffect(() => {
+    if (selectedCareerPath && selectedLocation && autoRefresh) {
+      console.log('🤖 Auto-triggering AI analysis for:', { selectedCareerPath, selectedLocation });
+      const timeoutId = setTimeout(() => {
+        handleGenerateAnalysis();
+      }, 2000); // 2 second delay to let other data load first
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedCareerPath, selectedLocation, autoRefresh, handleGenerateAnalysis]);
 
   const isLoading = loading.predictions || loading.patterns || loading.recommendations;
 

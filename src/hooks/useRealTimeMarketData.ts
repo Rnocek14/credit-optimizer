@@ -33,7 +33,7 @@ export function useRealTimeMarketData() {
   const [realTimeUpdates, setRealTimeUpdates] = useState<RealTimeMarketUpdate[]>([]);
   const [marketSnapshots, setMarketSnapshots] = useState<MarketSnapshot[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [connectionHealth, setConnectionHealth] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
+  const [connectionHealth, setConnectionHealth] = useState<{ status: 'connected' | 'connecting' | 'disconnected', lastPing: number }>({ status: 'disconnected', lastPing: 0 });
   
   const wsRef = useRef<WebSocketConnection>({ socket: null, isConnected: false, lastHeartbeat: 0 });
   const updateQueueRef = useRef<RealTimeMarketUpdate[]>([]);
@@ -44,16 +44,16 @@ export function useRealTimeMarketData() {
     if (isStreaming) return;
     
     setIsStreaming(true);
-    setConnectionHealth('connecting');
+    setConnectionHealth({ status: 'connecting', lastPing: Date.now() });
     
     try {
       // Initialize WebSocket connection for real-time updates
-      const wsUrl = `wss://vzpissitddpunkpythsb.functions.supabase.co/functions/v1/market-stream`;
+      const wsUrl = `wss://vzpissitddpunkpythsb.functions.supabase.co/market-stream`;
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
         console.log('🌊 Real-time market stream connected');
-        setConnectionHealth('connected');
+        setConnectionHealth({ status: 'connected', lastPing: Date.now() });
         wsRef.current = { socket, isConnected: true, lastHeartbeat: Date.now() };
         
         // Send initial subscription
@@ -83,7 +83,7 @@ export function useRealTimeMarketData() {
       
       socket.onclose = () => {
         console.log('🔌 Real-time market stream disconnected');
-        setConnectionHealth('disconnected');
+        setConnectionHealth({ status: 'disconnected', lastPing: 0 });
         wsRef.current = { socket: null, isConnected: false, lastHeartbeat: 0 };
         
         // Attempt reconnection after 5 seconds
@@ -98,12 +98,12 @@ export function useRealTimeMarketData() {
       
       socket.onerror = (error) => {
         console.error('WebSocket error:', error);
-        setConnectionHealth('disconnected');
+        setConnectionHealth({ status: 'disconnected', lastPing: 0 });
       };
       
     } catch (error) {
       console.error('Failed to start real-time stream:', error);
-      setConnectionHealth('disconnected');
+      setConnectionHealth({ status: 'disconnected', lastPing: 0 });
       setIsStreaming(false);
     }
   }, [isStreaming, state.selectedCareerPath, state.selectedLocation]);
@@ -138,7 +138,7 @@ export function useRealTimeMarketData() {
   // Stop real-time streaming
   const stopRealTimeStream = useCallback(() => {
     setIsStreaming(false);
-    setConnectionHealth('disconnected');
+    setConnectionHealth({ status: 'disconnected', lastPing: 0 });
     
     if (wsRef.current.socket) {
       wsRef.current.socket.close();
@@ -253,7 +253,7 @@ export function useRealTimeMarketData() {
     fetchMarketSnapshots,
     
     // Health check
-    isConnected: connectionHealth === 'connected',
+    isConnected: connectionHealth.status === 'connected',
     lastUpdate: realTimeUpdates[0]?.timestamp || null
   };
 }

@@ -27,7 +27,7 @@ import { EnhancedMarketAlertSystem } from "@/components/EnhancedMarketAlertSyste
 import { MarketIntelligenceExportPanel } from "@/components/MarketIntelligenceExportPanel";
 import { SalaryInsightsExplorer } from "@/components/SalaryInsightsExplorer";
 import { CompareMarketTrendsPanel } from "@/components/CompareMarketTrendsPanel";
-import { RealTimeMarketPulse } from "@/components/RealTimeMarketPulse";
+import RealTimeMarketPulse from "@/components/RealTimeMarketPulse";
 import { PredictiveAnalyticsPanel } from "@/components/PredictiveAnalyticsPanel";
 import { LayoutControls } from "@/components/LayoutControls";
 import { useToast } from "@/hooks/use-toast";

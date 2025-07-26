@@ -12,7 +12,7 @@ interface RealTimeMarketPulseProps {
   compact?: boolean;
 }
 
-export const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
+const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
   className,
   compact = false
 }) => {
@@ -54,8 +54,8 @@ export const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
   const connectionStatus = useMemo(() => ({
     icon: isConnected ? Wifi : WifiOff,
     color: isConnected ? 'text-green-500' : 'text-red-500',
-    status: connectionHealth,
-    label: isConnected ? 'Connected' : connectionHealth === 'connecting' ? 'Connecting...' : 'Disconnected'
+    status: connectionHealth.status,
+    label: isConnected ? 'Connected' : connectionHealth.status === 'connecting' ? 'Connecting...' : 'Disconnected'
   }), [isConnected, connectionHealth]);
 
   // Recent updates summary
@@ -221,3 +221,5 @@ export const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
 });
 
 RealTimeMarketPulse.displayName = 'RealTimeMarketPulse';
+
+export default RealTimeMarketPulse;
