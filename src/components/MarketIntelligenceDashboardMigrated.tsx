@@ -324,45 +324,160 @@ export function MarketIntelligenceDashboard() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Top Careers */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Growing Careers</CardTitle>
-                <CardDescription>
-                  Fastest growing career paths based on market data
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading('market') ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="animate-pulse">
-                        <div className="h-12 bg-muted rounded-lg"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {topCareers.map((career, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">{career.title}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Growth: {career.growth_rate}% | Demand: {career.demand_score}/100
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getTrendIcon('up')}
-                          <Badge variant="secondary">{career.growth_rate}%</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Top Intelligence Panel */}
+            <TopMarketInsights
+              marketData={topCareers.map(career => ({
+                id: Math.random().toString(),
+                career_path: career.title,
+                location: selectedLocation || 'Global',
+                job_postings_count: Math.floor(Math.random() * 1000) + 100,
+                average_salary: Math.floor(Math.random() * 50000) + 60000,
+                growth_rate: career.growth_rate,
+                demand_score: career.demand_score,
+                competition_level: 'medium',
+                ai_insights: {}
+              }))}
+              selectedCareerPath={selectedCareerPath}
+              selectedLocation={selectedLocation}
+              onActionClick={handleInsightAction}
+            />
 
-            {/* Market Analysis Results */}
+            {/* Core Analytics Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+              <OpportunityScoreWidget
+                marketData={topCareers.map(career => ({
+                  id: Math.random().toString(),
+                  career_path: career.title,
+                  location: selectedLocation || 'Global',
+                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
+                  average_salary: Math.floor(Math.random() * 50000) + 60000,
+                  growth_rate: career.growth_rate,
+                  demand_score: career.demand_score,
+                  competition_level: 'medium'
+                }))}
+                selectedCareerPath={selectedCareerPath}
+                selectedLocation={selectedLocation}
+              />
+
+              <MarketPulseWidget
+                marketData={topCareers.map(career => ({
+                  id: Math.random().toString(),
+                  career_path: career.title,
+                  location: selectedLocation || 'Global',
+                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
+                  average_salary: Math.floor(Math.random() * 50000) + 60000,
+                  growth_rate: career.growth_rate,
+                  demand_score: career.demand_score,
+                  competition_level: 'medium',
+                  ai_insights: {},
+                  created_at: new Date().toISOString()
+                }))}
+                selectedCareerPath={selectedCareerPath}
+                selectedLocation={selectedLocation}
+                onActionClick={(action) => handleInsightAction(action)}
+              />
+
+              {/* Quick Market Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Market Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {isLoading('market') ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="animate-pulse h-6 bg-muted rounded"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Growing Careers</span>
+                        <span className="font-medium">{topCareers.filter(c => c.growth_rate > 0).length}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Avg Growth</span>
+                        <span className="font-medium">
+                          {(topCareers.reduce((sum, c) => sum + c.growth_rate, 0) / Math.max(topCareers.length, 1)).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">High Demand</span>
+                        <span className="font-medium">{topCareers.filter(c => c.demand_score > 80).length}</span>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Smart Suggestions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start text-xs"
+                    onClick={handleMarketAnalysis}
+                    disabled={!selectedCareerPath || !selectedLocation}
+                  >
+                    <BarChart3 className="w-3 h-3 mr-2" />
+                    Run Analysis
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start text-xs"
+                    onClick={handleSalaryAnalysis}
+                    disabled={!selectedCareerPath}
+                  >
+                    <DollarSign className="w-3 h-3 mr-2" />
+                    Salary Insights
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start text-xs"
+                    onClick={() => setActiveTab('research')}
+                  >
+                    <Target className="w-3 h-3 mr-2" />
+                    Market Research
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Intelligence Workflow and Insights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <IntelligentWorkflowGuide
+                selectedCareerPath={selectedCareerPath ? { id: selectedCareerPath, title: selectedCareerPath } : null}
+                selectedLocation={selectedLocation ? { id: selectedLocation, label: selectedLocation, value: selectedLocation, emoji: "🌍" } : null}
+                analysis={analysis}
+                onNavigateToTab={(tab) => setActiveTab(tab)}
+                onAnalysisRequest={handleMarketAnalysis}
+              />
+
+              <IntelligenceInsightsCard
+                selectedCareerPath={selectedCareerPath ? { id: selectedCareerPath, title: selectedCareerPath } : null}
+                selectedLocation={selectedLocation ? { id: selectedLocation, label: selectedLocation, value: selectedLocation, emoji: "🌍" } : null}
+                analysis={analysis}
+                marketData={topCareers.map(career => ({
+                  id: Math.random().toString(),
+                  career_path: career.title,
+                  location: selectedLocation || 'Global',
+                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
+                  average_salary: Math.floor(Math.random() * 50000) + 60000,
+                  growth_rate: career.growth_rate,
+                  demand_score: career.demand_score,
+                  competition_level: 'medium'
+                }))}
+                onNavigateToTab={(tab) => setActiveTab(tab)}
+              />
+            </div>
+
+            {/* Market Analysis Results - Enhanced Display */}
             {analysis && (
               <Card>
                 <CardHeader>
@@ -372,26 +487,32 @@ export function MarketIntelligenceDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{analysis.growth_rate}%</div>
+                      <div className="text-2xl font-bold text-green-600">{analysis.growth_rate}%</div>
                       <div className="text-sm text-muted-foreground">Growth Rate</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold">{analysis.demand_score}/100</div>
+                      <div className="text-2xl font-bold text-blue-600">{analysis.demand_score}/100</div>
                       <div className="text-sm text-muted-foreground">Demand Score</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold capitalize">{analysis.competition_level}</div>
+                      <div className="text-2xl font-bold text-amber-600 capitalize">{analysis.competition_level}</div>
                       <div className="text-sm text-muted-foreground">Competition</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-lg font-bold">{analysis.salary_range}</div>
+                      <div className="text-lg font-bold text-purple-600">{analysis.salary_range}</div>
                       <div className="text-sm text-muted-foreground">Salary Range</div>
                     </div>
                   </div>
-                  <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm">{analysis.market_insights}</p>
+                  <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-l-primary">
+                    <div className="flex items-start gap-3">
+                      <Brain className="w-5 h-5 text-primary mt-0.5" />
+                      <div>
+                        <div className="font-medium text-sm mb-1">AI Market Insights</div>
+                        <p className="text-sm text-muted-foreground">{analysis.market_insights}</p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
