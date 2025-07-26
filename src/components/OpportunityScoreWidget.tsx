@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Target, DollarSign, Users } from 'lucide-react';
@@ -30,12 +30,13 @@ interface OpportunityScore {
   marketSize: number;
 }
 
-export const OpportunityScoreWidget: React.FC<OpportunityScoreWidgetProps> = ({
+export const OpportunityScoreWidget: React.FC<OpportunityScoreWidgetProps> = React.memo(({
   marketData,
   selectedCareerPath,
   selectedLocation
 }) => {
-  const calculateOpportunityScore = (): OpportunityScore => {
+  // Memoized opportunity score calculation
+  const score = useMemo((): OpportunityScore => {
     if (!marketData || marketData.length === 0) {
       return {
         overall: 0,
@@ -119,9 +120,7 @@ export const OpportunityScoreWidget: React.FC<OpportunityScoreWidgetProps> = ({
       recommendation,
       marketSize: totalJobPostings
     };
-  };
-
-  const score = calculateOpportunityScore();
+  }, [marketData, selectedCareerPath, selectedLocation]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600 dark:text-green-400';
@@ -284,4 +283,4 @@ export const OpportunityScoreWidget: React.FC<OpportunityScoreWidgetProps> = ({
       </CardContent>
     </Card>
   );
-};
+});

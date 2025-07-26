@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertTriangle, Lightbulb } from 'lucide-react';
@@ -36,7 +36,7 @@ interface Insight {
   location?: string;
 }
 
-export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
+export const TopMarketInsights: React.FC<TopMarketInsightsProps> = React.memo(({
   marketData,
   selectedCareerPath,
   selectedLocation,
@@ -44,7 +44,9 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
 }) => {
   const { trackInsightInteraction } = useInsightTracking();
   const { toast } = useToast();
-  const generateInsights = (): Insight[] => {
+
+  // Memoized insights generation - only recalculates when dependencies change
+  const insights = useMemo((): Insight[] => {
     console.log('🎯 TopMarketInsights: Generating insights from market data:', marketData);
     if (!marketData || marketData.length === 0) {
       return [{
@@ -146,9 +148,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
     }
 
     return insights.slice(0, 3); // Return top 3 insights
-  };
-
-  const insights = generateInsights();
+  }, [marketData, selectedCareerPath, selectedLocation]);
 
   const getInsightIcon = (type: string) => {
     switch (type) {
@@ -221,7 +221,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
               {insight.action && (
                 <button 
                   className="text-xs text-primary hover:text-primary/80 font-medium"
-                  onClick={async () => {
+                  onClick={useCallback(async () => {
                     // Extract career path and location with better fallbacks
                     const extractedCareerPath = insight.careerPath || 
                       (insight.type === 'opportunity' && insight.description.includes('in') ? 
@@ -287,7 +287,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
                         location: extractedLocation
                       });
                     }
-                  }}
+                  }, [insight, selectedCareerPath, selectedLocation, trackInsightInteraction, toast, onActionClick])}
                 >
                   {insight.action} →
                 </button>
@@ -305,4 +305,4 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = ({
       </CardContent>
     </Card>
   );
-};
+});

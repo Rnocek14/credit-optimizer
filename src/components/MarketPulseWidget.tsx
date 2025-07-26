@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Activity, TrendingUp, TrendingDown, Zap, AlertCircle } from 'lucide-react';
@@ -33,27 +33,33 @@ interface PulsePattern {
   severity: 'low' | 'medium' | 'high';
 }
 
-export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
+export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
   marketData,
   selectedCareerPath,
   selectedLocation,
   onActionClick
 }) => {
   const [pulseAnimation, setPulseAnimation] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Stable last update time - only changes when component mounts
+  const lastUpdate = useMemo(() => new Date(), []);
 
   useEffect(() => {
-    // Simulate real-time pulse animation
-    const interval = setInterval(() => {
+    // Start pulse animation independent of data changes
+    intervalRef.current = setInterval(() => {
       setPulseAnimation(prev => !prev);
     }, 2000);
 
-    setLastUpdate(new Date());
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []); // Empty dependency array - animation runs independently
 
-    return () => clearInterval(interval);
-  }, [marketData]);
-
-  const detectPatterns = (): PulsePattern[] => {
+  // Memoized pattern detection - only recalculates when data actually changes
+  const patterns = useMemo((): PulsePattern[] => {
     if (!marketData || marketData.length === 0) {
       return [{
         id: 'no-data',
@@ -61,7 +67,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Awaiting Market Data',
         description: 'Generate market analysis to detect live patterns and trends.',
         confidence: 0,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'low'
       }];
     }
@@ -77,7 +83,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Growth Surge Detected',
         description: `${highGrowthMarkets.length} markets showing 20%+ growth rates`,
         confidence: 85,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'high'
       });
     }
@@ -91,7 +97,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Strong Market Demand',
         description: `${Math.round((highDemandMarkets.length / marketData.length) * 100)}% of markets show high demand scores`,
         confidence: 90,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'medium'
       });
     }
@@ -106,7 +112,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Salary Premium Markets',
         description: `${highSalaryMarkets.length} markets offering 20%+ above average salaries`,
         confidence: 80,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'high'
       });
     }
@@ -120,7 +126,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Low Competition Windows',
         description: `${lowCompetitionMarkets.length} markets with reduced competition levels`,
         confidence: 75,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'medium'
       });
     }
@@ -134,7 +140,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Market Cooling Detected',
         description: `${decliningMarkets.length} markets showing negative growth trends`,
         confidence: 70,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'high'
       });
     }
@@ -147,15 +153,13 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
         title: 'Market Stability',
         description: 'No significant pattern changes detected in current analysis',
         confidence: 60,
-        detected_at: new Date().toISOString(),
+        detected_at: lastUpdate.toISOString(),
         severity: 'low'
       });
     }
 
     return patterns.slice(0, 3); // Return top 3 patterns
-  };
-
-  const patterns = detectPatterns();
+  }, [marketData, lastUpdate]);
 
   const getPatternIcon = (type: string) => {
     switch (type) {
@@ -294,4 +298,4 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = ({
       </CardContent>
     </Card>
   );
-};
+});

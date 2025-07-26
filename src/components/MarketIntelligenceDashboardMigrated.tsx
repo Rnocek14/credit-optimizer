@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ import { LocationROIExplorer } from "@/components/LocationROIExplorer";
 import { CareerROIPanel } from "@/components/CareerROIPanel";
 import { SuggestedMarketMovesCard } from "@/components/SuggestedMarketMovesCard";
 import { DebugPanel } from "@/components/DebugPanel";
+import { getCachedStableMarketData } from "@/lib/stableMarketData";
 
 export function MarketIntelligenceDashboard() {
   // Use unified state management with fallback
@@ -75,11 +76,19 @@ export function MarketIntelligenceDashboard() {
     }
   }, [selectedCareerPath, selectedLocation, syncData]);
 
-  // Load top careers data
-  const loadTopCareers = async () => {
+  // Stable market data - cached and deterministic
+  const stableMarketData = useMemo(() => {
+    return getCachedStableMarketData(
+      selectedCareerPath,
+      selectedLocation
+    );
+  }, [selectedCareerPath, selectedLocation]);
+
+  // Load top careers data - memoized to prevent unnecessary calls
+  const loadTopCareers = useCallback(async () => {
     setLoading('market', true);
     try {
-      // Mock data for now
+      // Stable mock data
       const mockCareers = [
         { title: 'Data Analyst', growth_rate: 8.5, demand_score: 92 },
         { title: 'Software Engineer', growth_rate: 12.3, demand_score: 96 },
@@ -91,10 +100,10 @@ export function MarketIntelligenceDashboard() {
     } finally {
       setLoading('market', false);
     }
-  };
+  }, [setLoading, setError]);
 
-  // Handle market analysis with unified state
-  const handleMarketAnalysis = async () => {
+  // Handle market analysis with unified state - memoized
+  const handleMarketAnalysis = useCallback(async () => {
     if (!selectedCareerPath || !selectedLocation) {
       toast({
         title: "Selection Required",
@@ -125,10 +134,10 @@ export function MarketIntelligenceDashboard() {
     } finally {
       setLoading('analysis', false);
     }
-  };
+  }, [selectedCareerPath, selectedLocation, setLoading, setError, toast]);
 
-  // Handle salary analysis
-  const handleSalaryAnalysis = async () => {
+  // Handle salary analysis - memoized
+  const handleSalaryAnalysis = useCallback(async () => {
     if (!selectedCareerPath) {
       toast({
         title: "Career Path Required",
@@ -158,7 +167,7 @@ export function MarketIntelligenceDashboard() {
     } finally {
       setLoading('salary', false);
     }
-  };
+  }, [selectedCareerPath, setLoading, setError, toast]);
 
   // Handle insight actions
   const handleInsightAction = (action: string, context?: any) => {
@@ -326,17 +335,7 @@ export function MarketIntelligenceDashboard() {
           <TabsContent value="overview" className="space-y-6">
             {/* Top Intelligence Panel */}
             <TopMarketInsights
-              marketData={topCareers.map(career => ({
-                id: Math.random().toString(),
-                career_path: career.title,
-                location: selectedLocation || 'Global',
-                job_postings_count: Math.floor(Math.random() * 1000) + 100,
-                average_salary: Math.floor(Math.random() * 50000) + 60000,
-                growth_rate: career.growth_rate,
-                demand_score: career.demand_score,
-                competition_level: 'medium',
-                ai_insights: {}
-              }))}
+              marketData={stableMarketData}
               selectedCareerPath={selectedCareerPath}
               selectedLocation={selectedLocation}
               onActionClick={handleInsightAction}
@@ -345,33 +344,13 @@ export function MarketIntelligenceDashboard() {
             {/* Core Analytics Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
               <OpportunityScoreWidget
-                marketData={topCareers.map(career => ({
-                  id: Math.random().toString(),
-                  career_path: career.title,
-                  location: selectedLocation || 'Global',
-                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
-                  average_salary: Math.floor(Math.random() * 50000) + 60000,
-                  growth_rate: career.growth_rate,
-                  demand_score: career.demand_score,
-                  competition_level: 'medium'
-                }))}
+                marketData={stableMarketData}
                 selectedCareerPath={selectedCareerPath}
                 selectedLocation={selectedLocation}
               />
 
               <MarketPulseWidget
-                marketData={topCareers.map(career => ({
-                  id: Math.random().toString(),
-                  career_path: career.title,
-                  location: selectedLocation || 'Global',
-                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
-                  average_salary: Math.floor(Math.random() * 50000) + 60000,
-                  growth_rate: career.growth_rate,
-                  demand_score: career.demand_score,
-                  competition_level: 'medium',
-                  ai_insights: {},
-                  created_at: new Date().toISOString()
-                }))}
+                marketData={stableMarketData}
                 selectedCareerPath={selectedCareerPath}
                 selectedLocation={selectedLocation}
                 onActionClick={(action) => handleInsightAction(action)}
@@ -463,16 +442,7 @@ export function MarketIntelligenceDashboard() {
                 selectedCareerPath={selectedCareerPath ? { id: selectedCareerPath, title: selectedCareerPath } : null}
                 selectedLocation={selectedLocation ? { id: selectedLocation, label: selectedLocation, value: selectedLocation, emoji: "🌍" } : null}
                 analysis={analysis}
-                marketData={topCareers.map(career => ({
-                  id: Math.random().toString(),
-                  career_path: career.title,
-                  location: selectedLocation || 'Global',
-                  job_postings_count: Math.floor(Math.random() * 1000) + 100,
-                  average_salary: Math.floor(Math.random() * 50000) + 60000,
-                  growth_rate: career.growth_rate,
-                  demand_score: career.demand_score,
-                  competition_level: 'medium'
-                }))}
+                marketData={stableMarketData}
                 onNavigateToTab={(tab) => setActiveTab(tab)}
               />
             </div>
