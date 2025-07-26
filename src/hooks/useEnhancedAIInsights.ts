@@ -243,6 +243,22 @@ export function useEnhancedAIInsights() {
     }
   }, []);
 
+  // Calculate overall market health score
+  const calculateOverallMarketHealth = useCallback(() => {
+    if (!predictions) return 50; // Neutral score
+    
+    const demandHealth = predictions.predictions.demand_forecast.trend_direction === 'increasing' ? 80 : 
+                        predictions.predictions.demand_forecast.trend_direction === 'stable' ? 60 : 40;
+    
+    const salaryHealth = predictions.predictions.salary_projection.expected_change_12m > 0 ? 70 : 
+                        predictions.predictions.salary_projection.expected_change_12m === 0 ? 50 : 30;
+    
+    const riskHealth = predictions.predictions.market_dynamics.risk_factors.length < 2 ? 80 :
+                      predictions.predictions.market_dynamics.risk_factors.length < 4 ? 60 : 40;
+    
+    return Math.round((demandHealth + salaryHealth + riskHealth) / 3);
+  }, [predictions]);
+
   // Get AI-powered market insights summary
   const getInsightsSummary = useMemo(() => {
     const activePatterns = patterns.filter(p => !p.valid_until || new Date(p.valid_until) > new Date());
@@ -259,23 +275,7 @@ export function useEnhancedAIInsights() {
       lastUpdated: patterns[0]?.detected_at || predictions?.generated_at || null,
       overallHealth: calculateOverallMarketHealth()
     };
-  }, [patterns, predictions, recommendations]);
-
-  // Calculate overall market health score
-  const calculateOverallMarketHealth = useCallback(() => {
-    if (!predictions) return 50; // Neutral score
-    
-    const demandHealth = predictions.predictions.demand_forecast.trend_direction === 'increasing' ? 80 : 
-                        predictions.predictions.demand_forecast.trend_direction === 'stable' ? 60 : 40;
-    
-    const salaryHealth = predictions.predictions.salary_projection.expected_change_12m > 0 ? 70 : 
-                        predictions.predictions.salary_projection.expected_change_12m === 0 ? 50 : 30;
-    
-    const riskHealth = predictions.predictions.market_dynamics.risk_factors.length < 2 ? 80 :
-                      predictions.predictions.market_dynamics.risk_factors.length < 4 ? 60 : 40;
-    
-    return Math.round((demandHealth + salaryHealth + riskHealth) / 3);
-  }, [predictions]);
+  }, [patterns, predictions, recommendations, calculateOverallMarketHealth]);
 
   // Auto-refresh insights when context changes
   const refreshAllInsights = useCallback(async () => {
