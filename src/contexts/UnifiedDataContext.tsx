@@ -25,8 +25,8 @@ interface UnifiedDataState {
   
   // UI state
   activeTab: string;
-  isLoading: boolean;
-  errors: Record<string, string>;
+  loading: Record<string, boolean>;
+  errors: Record<string, string | null>;
   
   // Feature flags
   features: {
@@ -64,7 +64,7 @@ const initialState: UnifiedDataState = {
   readinessData: null,
   pivotData: null,
   activeTab: 'overview',
-  isLoading: false,
+  loading: {},
   errors: {},
   features: {
     marketIntelligence: true,
@@ -96,13 +96,20 @@ function unifiedDataReducer(state: UnifiedDataState, action: UnifiedDataAction):
     case 'SET_ACTIVE_TAB':
       return { ...state, activeTab: action.payload };
     case 'SET_LOADING':
-      return { ...state, isLoading: action.payload.value };
+      return { 
+        ...state, 
+        loading: { 
+          ...state.loading, 
+          [action.payload.key]: action.payload.value 
+        }
+      };
     case 'SET_ERROR':
       return { 
         ...state, 
-        errors: action.payload.error 
-          ? { ...state.errors, [action.payload.key]: action.payload.error }
-          : { ...state.errors, [action.payload.key]: undefined }
+        errors: { 
+          ...state.errors, 
+          [action.payload.key]: action.payload.error 
+        }
       };
     case 'CLEAR_ERRORS':
       return { ...state, errors: {} };
@@ -165,23 +172,55 @@ export function UnifiedDataProvider({ children }: { children: React.ReactNode })
     }, []),
     
     refreshAllData: useCallback(async () => {
-      if (!state.isAuthenticated) return;
+      console.log('Refreshing all data for:', {
+        careerPath: state.selectedCareerPath,
+        location: state.selectedLocation,
+        goal: state.currentGoal
+      });
       
-      dispatch({ type: 'SET_LOADING', payload: { key: 'global', value: true } });
+      dispatch({ type: 'SET_LOADING', payload: { key: 'refreshAll', value: true } });
       
       try {
-        // This will be implemented as we integrate each system
-        console.log('Refreshing all data for:', {
-          careerPath: state.selectedCareerPath,
-          location: state.selectedLocation,
-          goal: state.currentGoal
-        });
+        // Fetch career paths data
+        if (state.selectedCareerPath) {
+          const { data: careerData } = await supabase
+            .from('career_paths')
+            .select('*')
+            .eq('title', state.selectedCareerPath)
+            .maybeSingle();
+          
+          dispatch({ type: 'SET_CAREER_DATA', payload: careerData });
+        }
+        
+        // Fetch market trends data
+        if (state.selectedCareerPath && state.selectedLocation) {
+          const { data: marketData } = await supabase
+            .from('market_trends')
+            .select('*')
+            .eq('career_path', state.selectedCareerPath)
+            .eq('location', state.selectedLocation)
+            .order('created_at', { ascending: false })
+            .limit(10);
+          
+          dispatch({ type: 'SET_MARKET_DATA', payload: marketData });
+        }
+        
+        // Fetch readiness data (mock for now)
+        const readinessData = {
+          skillProgress: 75,
+          readinessScore: 82,
+          marketAlignment: 90,
+          overallProgress: 82
+        };
+        dispatch({ type: 'SET_READINESS_DATA', payload: readinessData });
+        
       } catch (error) {
-        dispatch({ type: 'SET_ERROR', payload: { key: 'global', error: 'Failed to refresh data' } });
+        console.error('Error refreshing data:', error);
+        dispatch({ type: 'SET_ERROR', payload: { key: 'refreshAll', error: 'Failed to refresh data' } });
       } finally {
-        dispatch({ type: 'SET_LOADING', payload: { key: 'global', value: false } });
+        dispatch({ type: 'SET_LOADING', payload: { key: 'refreshAll', value: false } });
       }
-    }, [state.isAuthenticated, state.selectedCareerPath, state.selectedLocation, state.currentGoal]),
+    }, [state.selectedCareerPath, state.selectedLocation, state.currentGoal]),
     
     getContextualRecommendations: useCallback(() => {
       // Cross-system intelligence - combine data from all sources
@@ -241,7 +280,7 @@ export function useUnifiedCareerContext() {
 
 export function useUnifiedProgress() {
   const { actions } = useUnifiedData();
-  return actions.getUnifiedProgress();
+  return { data: actions.getUnifiedProgress() };
 }
 
 export function useContextualRecommendations() {

@@ -11,10 +11,10 @@ export function useUnifiedLoading() {
   
   const isLoading = useCallback((key?: string) => {
     if (key) {
-      return state.isLoading; // For now, simplified - can be expanded per-key
+      return state.loading[key] || false;
     }
-    return state.isLoading;
-  }, [state.isLoading]);
+    return Object.values(state.loading).some(Boolean);
+  }, [state.loading]);
   
   return { setLoading, isLoading };
 }
