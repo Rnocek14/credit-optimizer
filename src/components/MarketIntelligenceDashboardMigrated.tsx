@@ -36,8 +36,16 @@ import { SuggestedMarketMovesCard } from "@/components/SuggestedMarketMovesCard"
 import { DebugPanel } from "@/components/DebugPanel";
 
 export function MarketIntelligenceDashboard() {
-  // Use unified state management
-  const { selectedCareerPath, selectedLocation, currentGoal, setSelectedCareerPath, setSelectedLocation, setCurrentGoal } = useUnifiedCareerContext();
+  // Use unified state management with fallback
+  const unifiedContext = useUnifiedCareerContext();
+  const { selectedCareerPath, selectedLocation, currentGoal, setSelectedCareerPath, setSelectedLocation, setCurrentGoal } = unifiedContext || {
+    selectedCareerPath: null,
+    selectedLocation: null, 
+    currentGoal: null,
+    setSelectedCareerPath: () => {},
+    setSelectedLocation: () => {},
+    setCurrentGoal: () => {}
+  };
   const { data: progressData } = useUnifiedProgress();
   const { recommendations } = useIntelligentRecommendations();
   const { syncData } = useSmartSync();
