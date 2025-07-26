@@ -204,7 +204,7 @@ export function useEnhancedAIInsights() {
       
       const { data, error } = await supabase.functions.invoke('personalized-market-insights', {
         body: {
-          userId,
+          user_id: userId, // Use snake_case to match edge function expectation
           careerPath: context.careerPath,
           location: context.location,
           includeRecommendations: true,
