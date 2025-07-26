@@ -39,6 +39,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
   selectedLocation,
   onActionClick
 }) => {
+  console.log('🔍 MarketPulseWidget: Component loading...');
   const [pulseAnimation, setPulseAnimation] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   

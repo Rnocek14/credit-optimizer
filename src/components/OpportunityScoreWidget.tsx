@@ -35,6 +35,7 @@ export const OpportunityScoreWidget: React.FC<OpportunityScoreWidgetProps> = Rea
   selectedCareerPath,
   selectedLocation
 }) => {
+  console.log('🔍 OpportunityScoreWidget: Component loading...');
   // Memoized opportunity score calculation
   const score = useMemo((): OpportunityScore => {
     if (!marketData || marketData.length === 0) {

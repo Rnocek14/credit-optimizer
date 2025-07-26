@@ -42,6 +42,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = React.memo(({
   selectedLocation,
   onActionClick
 }) => {
+  console.log('🔍 TopMarketInsights: Component loading...');
   const { trackInsightInteraction } = useInsightTracking();
   const { toast } = useToast();
 

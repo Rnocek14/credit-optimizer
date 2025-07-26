@@ -37,6 +37,7 @@ import { DebugPanel } from "@/components/DebugPanel";
 import { getCachedStableMarketData } from "@/lib/stableMarketData";
 
 export function MarketIntelligenceDashboard() {
+  console.log('🔍 MarketIntelligenceDashboard: Component loading...');
   // Use unified state management with fallback
   const unifiedContext = useUnifiedCareerContext();
   const { selectedCareerPath, selectedLocation, currentGoal, setSelectedCareerPath, setSelectedLocation, setCurrentGoal } = unifiedContext || {
