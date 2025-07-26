@@ -1543,6 +1543,66 @@ export type Database = {
         }
         Relationships: []
       }
+      personalized_recommendations: {
+        Row: {
+          action_items: Json | null
+          active: boolean
+          career_path: string
+          created_at: string
+          description: string | null
+          effort_required: string | null
+          id: string
+          impact_score: number | null
+          location: string
+          priority: string
+          recommendation_type: string
+          related_data: Json | null
+          success_indicators: Json | null
+          timeline: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_items?: Json | null
+          active?: boolean
+          career_path: string
+          created_at?: string
+          description?: string | null
+          effort_required?: string | null
+          id?: string
+          impact_score?: number | null
+          location: string
+          priority?: string
+          recommendation_type: string
+          related_data?: Json | null
+          success_indicators?: Json | null
+          timeline?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_items?: Json | null
+          active?: boolean
+          career_path?: string
+          created_at?: string
+          description?: string | null
+          effort_required?: string | null
+          id?: string
+          impact_score?: number | null
+          location?: string
+          priority?: string
+          recommendation_type?: string
+          related_data?: Json | null
+          success_indicators?: Json | null
+          timeline?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pivot_exploration_events: {
         Row: {
           current_career: string

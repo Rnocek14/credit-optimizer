@@ -27,6 +27,8 @@ import { EnhancedMarketAlertSystem } from "@/components/EnhancedMarketAlertSyste
 import { MarketIntelligenceExportPanel } from "@/components/MarketIntelligenceExportPanel";
 import { SalaryInsightsExplorer } from "@/components/SalaryInsightsExplorer";
 import { CompareMarketTrendsPanel } from "@/components/CompareMarketTrendsPanel";
+import { RealTimeMarketPulse } from "@/components/RealTimeMarketPulse";
+import { PredictiveAnalyticsPanel } from "@/components/PredictiveAnalyticsPanel";
 import { LayoutControls } from "@/components/LayoutControls";
 import { useToast } from "@/hooks/use-toast";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
@@ -350,12 +352,7 @@ export function MarketIntelligenceDashboard() {
                 selectedLocation={selectedLocation}
               />
 
-              <MarketPulseWidget
-                marketData={stableMarketData}
-                selectedCareerPath={selectedCareerPath}
-                selectedLocation={selectedLocation}
-                onActionClick={(action) => handleInsightAction(action)}
-              />
+              <RealTimeMarketPulse />
 
               {/* Quick Market Stats */}
               <Card>
@@ -493,52 +490,14 @@ export function MarketIntelligenceDashboard() {
           {/* Analysis Tab */}
           <TabsContent value="analysis" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Salary Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    onClick={handleSalaryAnalysis}
-                    disabled={isLoading('salary')}
-                    className="w-full mb-4"
-                  >
-                    {isLoading('salary') ? 'Analyzing...' : 'Analyze Salary Data'}
-                  </Button>
-                  
-                  {salaryInsights && (
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span>Average Salary:</span>
-                        <span className="font-bold">${salaryInsights.average_salary.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Median Salary:</span>
-                        <span className="font-bold">${salaryInsights.median_salary.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Top Location:</span>
-                        <span className="font-bold">{salaryInsights.top_location}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Growth Rate:</span>
-                        <span className="font-bold text-green-600">+{salaryInsights.salary_growth}%</span>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Salary Insights</h3>
+                <SalaryInsightsExplorer />
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Market Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground">
-                    Advanced trend analysis coming soon...
-                  </div>
-                </CardContent>
-              </Card>
+              
+              <div className="lg:col-span-1">
+                <PredictiveAnalyticsPanel />
+              </div>
             </div>
           </TabsContent>
 
