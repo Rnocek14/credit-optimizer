@@ -18,7 +18,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useEnhancedAIInsights } from '@/hooks/useEnhancedAIInsights';
-import { useUnifiedCareerContext } from '@/contexts/UnifiedDataContext';
+import { useUnifiedCareerContext, useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { cn } from '@/lib/utils';
 
 interface PredictiveAnalyticsPanelProps {
@@ -33,6 +33,7 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
   console.log('🔍 PredictiveAnalyticsPanel: Component loading...');
   
   const { selectedCareerPath, selectedLocation } = useUnifiedCareerContext();
+  const { state } = useUnifiedData();
   const {
     patterns,
     predictions,
@@ -61,7 +62,7 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
       await Promise.all([
         generatePredictiveAnalysis(selectedCareerPath, selectedLocation, '12months'),
         discoverMarketPatterns(selectedCareerPath, selectedLocation, ['demand', 'salary', 'competition']),
-        generatePersonalizedRecommendations('demo-user', {
+        generatePersonalizedRecommendations(state.user?.id || 'anonymous-user', {
           careerPath: selectedCareerPath,
           location: selectedLocation
         })

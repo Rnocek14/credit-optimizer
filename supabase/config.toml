@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.alert-engine]
 verify_jwt = false
+
+[functions.market-stream]
+verify_jwt = false
