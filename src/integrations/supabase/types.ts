@@ -1723,6 +1723,54 @@ export type Database = {
           },
         ]
       }
+      predictive_analysis_results: {
+        Row: {
+          accuracy_score: number | null
+          analysis_type: string
+          career_path: string
+          confidence_score: number
+          created_at: string
+          data_sources: Json | null
+          expires_at: string
+          id: string
+          location: string
+          prediction_data: Json
+          prediction_timeframe: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          analysis_type?: string
+          career_path: string
+          confidence_score?: number
+          created_at?: string
+          data_sources?: Json | null
+          expires_at?: string
+          id?: string
+          location: string
+          prediction_data?: Json
+          prediction_timeframe?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          analysis_type?: string
+          career_path?: string
+          confidence_score?: number
+          created_at?: string
+          data_sources?: Json | null
+          expires_at?: string
+          id?: string
+          location?: string
+          prediction_data?: Json
+          prediction_timeframe?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null

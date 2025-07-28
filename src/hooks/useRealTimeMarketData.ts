@@ -48,7 +48,7 @@ export function useRealTimeMarketData() {
     
     try {
       // Initialize WebSocket connection for real-time updates
-      const wsUrl = `wss://vzpissitddpunkpythsb.functions.supabase.co/market-stream`;
+      const wsUrl = `wss://vzpissitddpunkpythsb.functions.supabase.co/functions/v1/market-stream`;
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {

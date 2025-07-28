@@ -64,46 +64,6 @@ export function MarketIntelligenceDashboard() {
   // Legacy hooks for data fetching (to be gradually removed)
   const { toast } = useToast();
   const { trackInsightInteraction } = useInsightTracking();
-  
-  // Simplified action handler
-  const handleUnifiedAction = (actionData: any) => {
-    console.log('Unified action:', actionData);
-  };
-
-  // Initialize and sync data
-  useEffect(() => {
-    loadTopCareers();
-    // Sync data when context changes
-    if (selectedCareerPath || selectedLocation) {
-      syncData();
-    }
-  }, [selectedCareerPath, selectedLocation, syncData]);
-
-  // Stable market data - cached and deterministic
-  const stableMarketData = useMemo(() => {
-    return getCachedStableMarketData(
-      selectedCareerPath,
-      selectedLocation
-    );
-  }, [selectedCareerPath, selectedLocation]);
-
-  // Load top careers data - memoized to prevent unnecessary calls
-  const loadTopCareers = useCallback(async () => {
-    setLoading('market', true);
-    try {
-      // Stable mock data
-      const mockCareers = [
-        { title: 'Data Analyst', growth_rate: 8.5, demand_score: 92 },
-        { title: 'Software Engineer', growth_rate: 12.3, demand_score: 96 },
-        { title: 'Product Manager', growth_rate: 6.7, demand_score: 88 },
-      ];
-      setTopCareers(mockCareers);
-    } catch (error) {
-      setError('market', 'Failed to load career data');
-    } finally {
-      setLoading('market', false);
-    }
-  }, [setLoading, setError]);
 
   // Handle market analysis with unified state - memoized
   const handleMarketAnalysis = useCallback(async () => {
@@ -171,6 +131,109 @@ export function MarketIntelligenceDashboard() {
       setLoading('salary', false);
     }
   }, [selectedCareerPath, setLoading, setError, toast]);
+  
+  // Enhanced action handler that actually executes actions
+  const handleUnifiedAction = useCallback(async (actionData: any) => {
+    console.log('🎯 Unified action handler:', actionData);
+    
+    if (!actionData || !actionData.type) {
+      console.warn('Invalid action data:', actionData);
+      return;
+    }
+
+    try {
+      // Handle different action types
+      switch (actionData.type) {
+        case 'Analyze This Market':
+          toast({
+            title: "Starting market analysis...",
+            description: `Analyzing ${actionData.careerPath || selectedCareerPath} in ${actionData.location || selectedLocation}`,
+          });
+          await handleMarketAnalysis();
+          break;
+          
+        case 'View Salary Analysis':
+          toast({
+            title: "Loading salary analysis...",
+            description: `Analyzing salary trends for ${actionData.careerPath || selectedCareerPath}`,
+          });
+          await handleSalaryAnalysis();
+          break;
+          
+        case 'Generate Strategy':
+          toast({
+            title: "Generating strategy...",
+            description: "Creating personalized market strategy based on current data",
+          });
+          // Set active tab to analysis to show results
+          setActiveTab('analysis');
+          break;
+          
+        case 'Run Analysis':
+          await handleMarketAnalysis();
+          setActiveTab('analysis');
+          break;
+          
+        case 'Explore Opportunities':
+          setActiveTab('research');
+          break;
+          
+        case 'View Forecast':
+          setActiveTab('analysis');
+          break;
+          
+        default:
+          console.log('Unhandled action type:', actionData.type);
+          toast({
+            title: "Action triggered",
+            description: `Executing ${actionData.type}...`,
+          });
+      }
+    } catch (error) {
+      console.error('Error handling unified action:', error);
+      toast({
+        title: "Action failed",
+        description: "There was an error processing your request. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selectedCareerPath, selectedLocation, handleMarketAnalysis, handleSalaryAnalysis, setActiveTab, toast]);
+
+  // Initialize and sync data
+  useEffect(() => {
+    loadTopCareers();
+    // Sync data when context changes
+    if (selectedCareerPath || selectedLocation) {
+      syncData();
+    }
+  }, [selectedCareerPath, selectedLocation, syncData]);
+
+  // Stable market data - cached and deterministic
+  const stableMarketData = useMemo(() => {
+    return getCachedStableMarketData(
+      selectedCareerPath,
+      selectedLocation
+    );
+  }, [selectedCareerPath, selectedLocation]);
+
+  // Load top careers data - memoized to prevent unnecessary calls
+  const loadTopCareers = useCallback(async () => {
+    setLoading('market', true);
+    try {
+      // Stable mock data
+      const mockCareers = [
+        { title: 'Data Analyst', growth_rate: 8.5, demand_score: 92 },
+        { title: 'Software Engineer', growth_rate: 12.3, demand_score: 96 },
+        { title: 'Product Manager', growth_rate: 6.7, demand_score: 88 },
+      ];
+      setTopCareers(mockCareers);
+    } catch (error) {
+      setError('market', 'Failed to load career data');
+    } finally {
+      setLoading('market', false);
+    }
+  }, [setLoading, setError]);
+
 
   // Handle insight actions
   const handleInsightAction = (action: string, context?: any) => {

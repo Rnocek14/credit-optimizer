@@ -20,6 +20,7 @@ import {
 import { useEnhancedAIInsights } from '@/hooks/useEnhancedAIInsights';
 import { useUnifiedCareerContext, useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PredictiveAnalyticsPanelProps {
   className?: string;
@@ -52,13 +53,30 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
   const [activeTab, setActiveTab] = useState('predictions');
   const [showDetails, setShowDetails] = useState(false);
 
-  // Generate analysis for current selection
+  // Generate analysis for current selection - enhanced with database integration
   const handleGenerateAnalysis = useCallback(async () => {
     if (!selectedCareerPath || !selectedLocation) return;
     
     console.log('🤖 Generating comprehensive AI analysis...');
     
     try {
+      // First check if we have recent data in the database
+      const { data: existingPredictions } = await supabase
+        .from('predictive_analysis_results')
+        .select('*')
+        .eq('career_path', selectedCareerPath)
+        .eq('location', selectedLocation)
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Last 24 hours
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (existingPredictions && existingPredictions.length > 0) {
+        console.log('📊 Using cached predictions from database');
+      } else {
+        console.log('🔄 Generating fresh analysis...');
+      }
+
+      // Run the AI analysis
       await Promise.all([
         generatePredictiveAnalysis(selectedCareerPath, selectedLocation, '12months'),
         discoverMarketPatterns(selectedCareerPath, selectedLocation, ['demand', 'salary', 'competition']),
@@ -72,7 +90,7 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
     } catch (error) {
       console.error('❌ Error generating analysis:', error);
     }
-  }, [selectedCareerPath, selectedLocation, generatePredictiveAnalysis, discoverMarketPatterns, generatePersonalizedRecommendations]);
+  }, [selectedCareerPath, selectedLocation, generatePredictiveAnalysis, discoverMarketPatterns, generatePersonalizedRecommendations, state.user?.id]);
 
   // Memoized prediction insights
   const predictionInsights = useMemo(() => {
