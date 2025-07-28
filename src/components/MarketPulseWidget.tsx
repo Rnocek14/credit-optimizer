@@ -39,7 +39,6 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
   selectedLocation,
   onActionClick
 }) => {
-  console.log('🔍 MarketPulseWidget: Component loading...');
   const [pulseAnimation, setPulseAnimation] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -164,21 +163,21 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
 
   const getPatternIcon = (type: string) => {
     switch (type) {
-      case 'surge': return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'decline': return <TrendingDown className="h-4 w-4 text-red-600" />;
-      case 'volatility': return <Zap className="h-4 w-4 text-yellow-600" />;
-      case 'stability': return <Activity className="h-4 w-4 text-blue-600" />;
+      case 'surge': return <TrendingUp className="h-4 w-4 text-emerald-600" />;
+      case 'decline': return <TrendingDown className="h-4 w-4 text-rose-600" />;
+      case 'volatility': return <Zap className="h-4 w-4 text-amber-600" />;
+      case 'stability': return <Activity className="h-4 w-4 text-sky-600" />;
       default: return <Activity className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getPatternColor = (type: string) => {
     switch (type) {
-      case 'surge': return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950';
-      case 'decline': return 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950';
-      case 'volatility': return 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950';
-      case 'stability': return 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950';
-      default: return 'border-border bg-card';
+      case 'surge': return 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/50';
+      case 'decline': return 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/50';
+      case 'volatility': return 'border-yellow-200 bg-yellow-50/50 dark:border-yellow-800 dark:bg-yellow-950/50';
+      case 'stability': return 'border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/50';
+      default: return 'border-border bg-card/50';
     }
   };
 
@@ -208,11 +207,11 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
   );
 
   return (
-    <Card className="border-l-4 border-l-green-500">
+    <Card className="border-l-4 border-l-emerald-500 animate-fade-in">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-green-500" />
+            <Activity className="h-5 w-5 text-emerald-500" />
             Market Pulse
           </div>
           <div className="flex items-center gap-2">
@@ -234,7 +233,7 @@ export const MarketPulseWidget: React.FC<MarketPulseWidgetProps> = React.memo(({
           {patterns.map((pattern, index) => (
             <div
               key={pattern.id}
-              className={`p-3 rounded-lg border transition-all hover:shadow-sm ${getPatternColor(pattern.type)}`}
+              className={`p-3 rounded-lg border transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${getPatternColor(pattern.type)}`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">

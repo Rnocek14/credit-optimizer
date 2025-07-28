@@ -244,10 +244,10 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
   };
 
   return (
-    <Card className="border-l-4 border-l-purple-500">
+    <Card className="border-l-4 border-l-violet-500 animate-fade-in">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
+          <Sparkles className="h-5 w-5 text-violet-500" />
           Smart Suggestions
         </CardTitle>
       </CardHeader>
@@ -255,7 +255,7 @@ export const SmartSuggestionsWidget: React.FC<SmartSuggestionsWidgetProps> = ({
         {suggestions.map((suggestion, index) => (
           <div
             key={suggestion.id}
-            className={`p-4 rounded-lg border transition-all hover:shadow-md cursor-pointer bg-card hover:bg-muted/50 ${
+            className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer bg-card hover:bg-muted/50 ${
               suggestion.confidence === 0 ? 'opacity-60' : ''
             }`}
             onClick={() => handleSuggestionClick(suggestion)}

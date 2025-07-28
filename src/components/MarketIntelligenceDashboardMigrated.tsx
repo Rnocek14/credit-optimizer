@@ -42,6 +42,7 @@ import { IntelligentWorkflowGuide } from "@/components/IntelligentWorkflowGuide"
 import { SuggestedMarketMovesCard } from "@/components/SuggestedMarketMovesCard";
 import { TopMarketInsights } from "@/components/TopMarketInsights";
 import RealTimeMarketPulse from "@/components/RealTimeMarketPulse";
+import { OptimizedMarketIntelligenceScore } from "@/components/OptimizedMarketIntelligenceScore";
 
 // Import CRITICAL missing components for comprehensive functionality
 import { useUnifiedActionHandler } from "@/components/UnifiedActionHandler";
@@ -474,55 +475,25 @@ export function MarketIntelligenceDashboard() {
                 
                 {/* Market Intelligence Score Section */}
                 {!unifiedActionLoading && !loading.comprehensive && (
-                  <Card className="border-l-4 border-l-blue-500">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-blue-500" />
-                        Market Intelligence Score
-                      </CardTitle>
-                      <CardDescription>
-                        Comprehensive market opportunity assessment
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-primary">{opportunityScore}</span>
-                          <Badge variant="secondary">
-                            {opportunityScore >= 90 ? 'Excellent' : 
-                             opportunityScore >= 75 ? 'Good' : 
-                             opportunityScore >= 60 ? 'Average' : 'Limited'} Opportunity
-                          </Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-lg font-semibold">{marketPulse}</div>
-                            <div className="text-xs text-muted-foreground">Market Pulse</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-semibold">{marketData.length}</div>
-                            <div className="text-xs text-muted-foreground">Data Points</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-semibold">
-                              {selectedCareerPath && selectedLocation ? '✓' : '--'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Ready</div>
-                          </div>
-                        </div>
-                        
-                        {selectedCareerPath && selectedLocation && (
-                          <Button 
-                            onClick={runComprehensiveAnalysis}
-                            disabled={loading.comprehensive}
-                            className="w-full mt-4"
-                          >
-                            <Zap className="w-4 h-4 mr-2" />
-                            Generate Intelligence Report
-                          </Button>
-                        )}
-                      </div>
+                  <OptimizedMarketIntelligenceScore 
+                    marketData={marketData}
+                    selectedCareerPath={selectedCareerPath?.title}
+                    selectedLocation={selectedLocation?.label}
+                  />
+                )}
+                
+                {/* Analysis CTA */}
+                {selectedCareerPath && selectedLocation && !unifiedActionLoading && !loading.comprehensive && (
+                  <Card className="border-l-4 border-l-primary">
+                    <CardContent className="pt-6">
+                      <Button 
+                        onClick={runComprehensiveAnalysis}
+                        disabled={loading.comprehensive}
+                        className="w-full"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        Generate Intelligence Report
+                      </Button>
                     </CardContent>
                   </Card>
                 )}
