@@ -541,13 +541,7 @@ export function MarketIntelligenceDashboard() {
                   selectedCareerPath={selectedCareerPath?.title}
                   selectedLocation={selectedLocation?.value}
                   marketData={marketData}
-                  onActionClick={(data) => {
-                    if (data.careerPath) setSelectedCareerPath({ id: data.careerPath, title: data.careerPath });
-                    if (data.location) setSelectedLocation({ id: data.location, label: data.location, value: data.location, emoji: '🌍' });
-                    if (data.action === 'analyze') {
-                      setTimeout(() => runComprehensiveAnalysis(), 100);
-                    }
-                  }}
+                  onActionClick={handleUnifiedAction}
                 />
                 
                 <SuggestedMarketMovesCard />
