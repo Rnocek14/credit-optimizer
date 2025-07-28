@@ -37,6 +37,7 @@ import { CareerROIPanel } from "@/components/CareerROIPanel";
 import { SuggestedMarketMovesCard } from "@/components/SuggestedMarketMovesCard";
 import { DebugPanel } from "@/components/DebugPanel";
 import { getCachedStableMarketData } from "@/lib/stableMarketData";
+import { supabase } from "@/integrations/supabase/client";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
@@ -77,27 +78,73 @@ export function MarketIntelligenceDashboard() {
     }
 
     setLoading('analysis', true);
+    setActiveTab('analysis'); // Navigate to analysis tab immediately
+    
     try {
-      // Mock analysis for now
-      const mockAnalysis = {
-        growth_rate: 8.5,
-        demand_score: 92,
-        competition_level: 'medium',
-        salary_range: '$65,000 - $95,000',
-        market_insights: 'High demand in tech hubs, moderate competition'
-      };
-      setAnalysis(mockAnalysis);
+      console.log('🚀 Fetching real market analysis data for:', selectedCareerPath, 'in', selectedLocation);
+      
+      // Fetch real data from Supabase
+      const { data: marketData, error } = await supabase
+        .from('market_trends')
+        .select('*')
+        .or(`career_path.ilike.%${selectedCareerPath}%,career_path.ilike.%${selectedCareerPath.replace(/\s+/g, '%')}%`)
+        .or(`location.ilike.%${selectedLocation}%,location.ilike.%${selectedLocation.replace(/\s+/g, '%')}%`)
+        .limit(5);
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Failed to fetch market data');
+      }
+
+      console.log('📊 Market data fetched:', marketData);
+
+      let analysisResult;
+      if (marketData && marketData.length > 0) {
+        // Use real data
+        const avgGrowth = marketData.reduce((sum, item) => sum + (item.growth_rate || 0), 0) / marketData.length;
+        const avgDemand = marketData.reduce((sum, item) => sum + (item.demand_score || 0), 0) / marketData.length;
+        const avgSalary = marketData.reduce((sum, item) => sum + (item.average_salary || 0), 0) / marketData.length;
+        
+        analysisResult = {
+          growth_rate: Math.round(avgGrowth * 10) / 10,
+          demand_score: Math.round(avgDemand),
+          competition_level: avgDemand > 80 ? 'high' : avgDemand > 50 ? 'medium' : 'low',
+          salary_range: avgSalary > 0 ? `$${Math.round(avgSalary * 0.8).toLocaleString()} - $${Math.round(avgSalary * 1.2).toLocaleString()}` : '$65,000 - $95,000',
+          market_insights: `Based on ${marketData.length} data points: ${avgGrowth > 10 ? 'Strong growth momentum' : avgGrowth > 5 ? 'Steady growth pattern' : 'Stable market conditions'} with ${avgDemand > 80 ? 'high' : avgDemand > 50 ? 'moderate' : 'low'} demand levels.`,
+          dataSource: 'real',
+          dataPoints: marketData.length
+        };
+      } else {
+        // Fallback to mock data with indicator
+        analysisResult = {
+          growth_rate: 8.5,
+          demand_score: 92,
+          competition_level: 'medium',
+          salary_range: '$65,000 - $95,000',
+          market_insights: 'Mock data: High demand in tech hubs, moderate competition. (Real data not available for this combination)',
+          dataSource: 'mock',
+          dataPoints: 0
+        };
+      }
+      
+      setAnalysis(analysisResult);
       
       toast({
         title: "Analysis Complete",
-        description: `Market analysis for ${selectedCareerPath} in ${selectedLocation} is ready.`,
+        description: `Market analysis for ${selectedCareerPath} in ${selectedLocation} is ready. Found ${analysisResult.dataPoints} relevant data points.`,
       });
     } catch (error) {
+      console.error('Market analysis error:', error);
       setError('analysis', 'Failed to analyze market trends');
+      toast({
+        title: "Analysis Failed",
+        description: "There was an error analyzing market trends. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading('analysis', false);
     }
-  }, [selectedCareerPath, selectedLocation, setLoading, setError, toast]);
+  }, [selectedCareerPath, selectedLocation, setLoading, setError, setActiveTab, toast]);
 
   // Handle salary analysis - memoized
   const handleSalaryAnalysis = useCallback(async () => {
@@ -111,26 +158,77 @@ export function MarketIntelligenceDashboard() {
     }
 
     setLoading('salary', true);
+    setActiveTab('analysis'); // Navigate to analysis tab immediately
+    
     try {
-      // Mock salary data
-      const mockSalary = {
-        average_salary: 75000,
-        median_salary: 72000,
-        top_location: 'San Francisco, CA',
-        salary_growth: 5.2
-      };
-      setSalaryInsights(mockSalary);
+      console.log('💰 Fetching real salary data for:', selectedCareerPath);
+      
+      // Fetch real salary data from Supabase
+      const { data: salaryData, error } = await supabase
+        .from('market_trends')
+        .select('average_salary, location, growth_rate')
+        .or(`career_path.ilike.%${selectedCareerPath}%,career_path.ilike.%${selectedCareerPath.replace(/\s+/g, '%')}%`)
+        .not('average_salary', 'is', null)
+        .order('average_salary', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Failed to fetch salary data');
+      }
+
+      console.log('💰 Salary data fetched:', salaryData);
+
+      let salaryResult;
+      if (salaryData && salaryData.length > 0) {
+        // Calculate real salary insights
+        const salaries = salaryData.map(item => item.average_salary).filter(Boolean);
+        const locations = salaryData.map(item => item.location).filter(Boolean);
+        const growthRates = salaryData.map(item => item.growth_rate).filter(Boolean);
+        
+        const avgSalary = salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length;
+        const medianSalary = salaries.sort((a, b) => a - b)[Math.floor(salaries.length / 2)];
+        const topSalaryLocation = locations[0]; // First location (highest salary due to ordering)
+        const avgGrowth = growthRates.length > 0 ? growthRates.reduce((sum, rate) => sum + rate, 0) / growthRates.length : 5.2;
+        
+        salaryResult = {
+          average_salary: Math.round(avgSalary),
+          median_salary: Math.round(medianSalary || avgSalary * 0.95),
+          top_location: topSalaryLocation || 'San Francisco, CA',
+          salary_growth: Math.round(avgGrowth * 10) / 10,
+          dataSource: 'real',
+          dataPoints: salaryData.length
+        };
+      } else {
+        // Fallback to mock data
+        salaryResult = {
+          average_salary: 75000,
+          median_salary: 72000,
+          top_location: 'San Francisco, CA',
+          salary_growth: 5.2,
+          dataSource: 'mock',
+          dataPoints: 0
+        };
+      }
+      
+      setSalaryInsights(salaryResult);
       
       toast({
         title: "Salary Analysis Complete",
-        description: `Salary insights for ${selectedCareerPath} are ready.`,
+        description: `Salary insights for ${selectedCareerPath} are ready. Analyzed ${salaryResult.dataPoints} salary data points.`,
       });
     } catch (error) {
+      console.error('Salary analysis error:', error);
       setError('salary', 'Failed to analyze salary data');
+      toast({
+        title: "Analysis Failed",
+        description: "There was an error analyzing salary data. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading('salary', false);
     }
-  }, [selectedCareerPath, setLoading, setError, toast]);
+  }, [selectedCareerPath, setLoading, setError, setActiveTab, toast]);
   
   // Enhanced action handler that actually executes actions
   const handleUnifiedAction = useCallback(async (actionData: any) => {
@@ -145,19 +243,40 @@ export function MarketIntelligenceDashboard() {
       // Handle different action types
       switch (actionData.type) {
         case 'Analyze This Market':
+          // Auto-populate selection if provided in action data
+          if (actionData.careerPath && actionData.careerPath !== selectedCareerPath) {
+            setSelectedCareerPath(actionData.careerPath);
+          }
+          if (actionData.location && actionData.location !== selectedLocation) {
+            setSelectedLocation(actionData.location);
+          }
+          
           toast({
             title: "Starting market analysis...",
             description: `Analyzing ${actionData.careerPath || selectedCareerPath} in ${actionData.location || selectedLocation}`,
           });
-          await handleMarketAnalysis();
+          
+          // Wait for state to update, then run analysis
+          setTimeout(async () => {
+            await handleMarketAnalysis();
+          }, 200);
           break;
           
         case 'View Salary Analysis':
+          // Auto-populate career path if provided
+          if (actionData.careerPath && actionData.careerPath !== selectedCareerPath) {
+            setSelectedCareerPath(actionData.careerPath);
+          }
+          
           toast({
             title: "Loading salary analysis...",
             description: `Analyzing salary trends for ${actionData.careerPath || selectedCareerPath}`,
           });
-          await handleSalaryAnalysis();
+          
+          // Wait for state to update, then run analysis
+          setTimeout(async () => {
+            await handleSalaryAnalysis();
+          }, 200);
           break;
           
         case 'Generate Strategy':
@@ -197,7 +316,7 @@ export function MarketIntelligenceDashboard() {
         variant: "destructive",
       });
     }
-  }, [selectedCareerPath, selectedLocation, handleMarketAnalysis, handleSalaryAnalysis, setActiveTab, toast]);
+  }, [selectedCareerPath, selectedLocation, handleMarketAnalysis, handleSalaryAnalysis, setActiveTab, setSelectedCareerPath, setSelectedLocation, toast]);
 
   // Initialize and sync data
   useEffect(() => {
@@ -208,27 +327,82 @@ export function MarketIntelligenceDashboard() {
     }
   }, [selectedCareerPath, selectedLocation, syncData]);
 
-  // Stable market data - cached and deterministic
+  // Real market data from database - cached and optimized
   const stableMarketData = useMemo(() => {
+    console.log('🔄 Loading real market data for:', selectedCareerPath, selectedLocation);
     return getCachedStableMarketData(
       selectedCareerPath,
       selectedLocation
     );
   }, [selectedCareerPath, selectedLocation]);
 
-  // Load top careers data - memoized to prevent unnecessary calls
+  // Load top careers data from database - memoized to prevent unnecessary calls
   const loadTopCareers = useCallback(async () => {
     setLoading('market', true);
     try {
-      // Stable mock data
+      console.log('📈 Fetching top growing careers from database');
+      
+      // Fetch real top growing careers
+      const { data: topCareersData, error } = await supabase
+        .from('market_trends')
+        .select('career_path, growth_rate, demand_score')
+        .not('growth_rate', 'is', null)
+        .not('demand_score', 'is', null)
+        .order('growth_rate', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Database error fetching top careers:', error);
+        throw error;
+      }
+
+      console.log('📈 Top careers data fetched:', topCareersData);
+
+      if (topCareersData && topCareersData.length > 0) {
+        // Use real data and aggregate by career path
+        const careerMap = new Map();
+        topCareersData.forEach(item => {
+          const career = item.career_path;
+          if (!careerMap.has(career)) {
+            careerMap.set(career, {
+              title: career,
+              growth_rate: item.growth_rate,
+              demand_score: item.demand_score,
+              count: 1
+            });
+          } else {
+            const existing = careerMap.get(career);
+            existing.growth_rate = (existing.growth_rate + item.growth_rate) / 2;
+            existing.demand_score = (existing.demand_score + item.demand_score) / 2;
+            existing.count++;
+          }
+        });
+        
+        const realCareers = Array.from(careerMap.values())
+          .sort((a, b) => b.growth_rate - a.growth_rate)
+          .slice(0, 5);
+        
+        setTopCareers(realCareers);
+      } else {
+        // Fallback to mock data if no real data available
+        const mockCareers = [
+          { title: 'Data Analyst', growth_rate: 8.5, demand_score: 92 },
+          { title: 'Software Engineer', growth_rate: 12.3, demand_score: 96 },
+          { title: 'Product Manager', growth_rate: 6.7, demand_score: 88 },
+        ];
+        setTopCareers(mockCareers);
+      }
+    } catch (error) {
+      console.error('Error loading career data:', error);
+      setError('market', 'Failed to load career data');
+      
+      // Fallback to mock data on error
       const mockCareers = [
         { title: 'Data Analyst', growth_rate: 8.5, demand_score: 92 },
         { title: 'Software Engineer', growth_rate: 12.3, demand_score: 96 },
         { title: 'Product Manager', growth_rate: 6.7, demand_score: 88 },
       ];
       setTopCareers(mockCareers);
-    } catch (error) {
-      setError('market', 'Failed to load career data');
     } finally {
       setLoading('market', false);
     }
@@ -299,14 +473,20 @@ export function MarketIntelligenceDashboard() {
             <div className="flex-1 min-w-[200px]">
               <CareerPathCombobox
                 value={selectedCareerPath ? { id: selectedCareerPath, title: selectedCareerPath } : null}
-                onChange={(careerPath) => setSelectedCareerPath(careerPath?.title || null)}
+                onChange={(careerPath) => {
+                  console.log('🎯 Career path selected:', careerPath);
+                  setSelectedCareerPath(careerPath?.title || null);
+                }}
                 placeholder="Select career path..."
               />
             </div>
             <div className="flex-1 min-w-[200px]">
               <LocationCombobox
                 value={selectedLocation ? { id: selectedLocation, label: selectedLocation, value: selectedLocation, emoji: "🌍" } : null}
-                onChange={(location) => setSelectedLocation(location?.value || null)}
+                onChange={(location) => {
+                  console.log('🎯 Location selected:', location);
+                  setSelectedLocation(location?.label || null);
+                }}
                 placeholder="Select location..."
               />
             </div>
@@ -602,6 +782,11 @@ export function MarketIntelligenceDashboard() {
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5" />
                     Market Analysis Results
+                    {analysis.dataSource && (
+                      <Badge variant={analysis.dataSource === 'real' ? 'default' : 'secondary'} className="text-xs">
+                        {analysis.dataSource === 'real' ? `${analysis.dataPoints} data points` : 'Mock data'}
+                      </Badge>
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Analysis for {selectedCareerPath} in {selectedLocation}
@@ -646,6 +831,11 @@ export function MarketIntelligenceDashboard() {
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="w-5 h-5" />
                     Salary Analysis Results
+                    {salaryInsights.dataSource && (
+                      <Badge variant={salaryInsights.dataSource === 'real' ? 'default' : 'secondary'} className="text-xs">
+                        {salaryInsights.dataSource === 'real' ? `${salaryInsights.dataPoints} data points` : 'Mock data'}
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
