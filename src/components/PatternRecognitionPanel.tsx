@@ -87,7 +87,18 @@ export function PatternRecognitionPanel({ careerPath, location, autoData, autoTr
       return;
     }
 
-    setPatterns(data || []);
+    // Deduplicate patterns by type, keeping only the most recent of each type
+    const uniquePatterns = data ? data.reduce((acc: Pattern[], current: Pattern) => {
+      const existingIndex = acc.findIndex(p => p.pattern_type === current.pattern_type);
+      if (existingIndex === -1) {
+        acc.push(current);
+      } else if (new Date(current.detected_at) > new Date(acc[existingIndex].detected_at)) {
+        acc[existingIndex] = current;
+      }
+      return acc;
+    }, []) : [];
+
+    setPatterns(uniquePatterns);
   };
 
   const fetchAnomalies = async () => {
@@ -150,7 +161,20 @@ export function PatternRecognitionPanel({ careerPath, location, autoData, autoTr
           description: `Found ${data.patterns?.length || 0} patterns and ${data.anomalies?.length || 0} anomalies.`,
         });
       } else {
-        throw new Error(data.message || 'Analysis failed');
+        // Handle cooldown period
+        if (data.message?.includes('already run recently')) {
+          toast({
+            title: "Analysis Recently Completed",
+            description: "Pattern analysis was run within the last 24 hours. Results are still valid.",
+            variant: "default",
+          });
+          // Still fetch existing data
+          await fetchExistingPatterns();
+          await fetchAnomalies();
+          await fetchCorrelations();
+        } else {
+          throw new Error(data.message || 'Analysis failed');
+        }
       }
     } catch (error) {
       console.error('Pattern analysis error:', error);

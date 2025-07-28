@@ -63,6 +63,28 @@ Deno.serve(async (req) => {
 
     console.log(`Analyzing patterns for ${careerPath} in ${location} over ${timeframe}`);
 
+    // Check for existing recent analysis (within last 24 hours)
+    const { data: existingAnalysis } = await supabase
+      .from('pattern_recognition_results')
+      .select('detected_at')
+      .eq('career_path', careerPath)
+      .eq('location', location)
+      .gte('detected_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .limit(1);
+
+    if (existingAnalysis && existingAnalysis.length > 0) {
+      console.log('⏰ Recent analysis found, skipping to prevent duplicates');
+      return new Response(JSON.stringify({
+        success: false,
+        message: 'Pattern analysis was already run recently. Please wait 24 hours before running again.',
+        patterns: [],
+        anomalies: [],
+        lastAnalysis: existingAnalysis[0].detected_at
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Fetch historical market data with case-insensitive matching
     const { data: marketData, error: marketError } = await supabase
       .from('market_trends_history')
@@ -347,15 +369,19 @@ function calculateRSquared(values: number[], slope: number): number {
 
 async function storePatternResults(supabase: any, careerPath: string, location: string, patterns: any[]) {
   for (const pattern of patterns) {
+    // Use upsert to prevent duplicates
     await supabase
       .from('pattern_recognition_results')
-      .insert({
+      .upsert({
         career_path: careerPath,
         location,
         pattern_type: pattern.type,
         pattern_data: pattern,
         confidence_score: pattern.confidence || 0.8,
-        valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Valid for 7 days
+        valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Valid for 7 days
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'career_path,location,pattern_type'
       });
   }
 }
