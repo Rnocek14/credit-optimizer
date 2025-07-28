@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
 import { useEnhancedMarketIntelligence } from "@/hooks/useEnhancedMarketIntelligence";
 import { useSmartMarketSelection } from "@/hooks/useSmartMarketSelection";
+import { useRealTimeMarketData } from "@/hooks/useRealTimeMarketData";
 
 // Import all missing components
 import { MarketPulseWidget } from "@/components/MarketPulseWidget";
@@ -98,6 +99,14 @@ export function MarketIntelligenceDashboard() {
     isSmartMode: smartModeState,
     setIsSmartMode: setSmartModeState
   } = useSmartMarketSelection();
+
+  const {
+    realTimeUpdates,
+    marketSnapshots,
+    marketPulse,
+    startRealTimeStream,
+    stopRealTimeStream
+  } = useRealTimeMarketData();
   
   // All useState hooks called consistently
   const [activeTab, setActiveTab] = useState("overview");
@@ -117,6 +126,8 @@ export function MarketIntelligenceDashboard() {
   const [allAnalysisComplete, setAllAnalysisComplete] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStage, setAnalysisStage] = useState<'initializing' | 'analyzing' | 'processing' | 'finalizing'>('initializing');
+  const [personalizedRecommendations, setPersonalizedRecommendations] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Use unified action handler for consistent action processing
   const { handleUnifiedAction, isLoading: unifiedActionLoading } = useUnifiedActionHandler({
@@ -172,12 +183,29 @@ export function MarketIntelligenceDashboard() {
     }
   }, [activeTab, selectedCareerPath, selectedLocation, salaryInsights, patternRecognitionData]);
 
-  // Load initial data
+  // Load initial data and start real-time streaming
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         await fetchMarketTrends();
         await loadTopCareers();
+        
+        // Get current user for personalized recommendations
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+        
+        // Load personalized recommendations if user is authenticated
+        if (user) {
+          try {
+            const recommendations = await getPersonalizedRecommendations(user.id);
+            setPersonalizedRecommendations(recommendations || []);
+          } catch (error) {
+            console.warn('Could not load personalized recommendations:', error);
+          }
+        }
+        
+        // Start real-time market data streaming
+        startRealTimeStream();
       } catch (error) {
         console.error('❌ Failed to load initial market data:', error);
         toast({
@@ -189,6 +217,11 @@ export function MarketIntelligenceDashboard() {
     };
     
     loadInitialData();
+
+    // Cleanup real-time stream on unmount
+    return () => {
+      stopRealTimeStream();
+    };
   }, []);
 
   // Comprehensive analysis function
@@ -316,7 +349,7 @@ export function MarketIntelligenceDashboard() {
   };
 
   // Market pulse calculation
-  const marketPulse = marketData.length > 0 ? 
+  const localMarketPulse = marketData.length > 0 ? 
     Math.round(marketData.reduce((sum, item) => sum + (item.demand_score || 0), 0) / marketData.length) : 85;
 
   // Opportunity score calculation
@@ -917,6 +950,12 @@ export function MarketIntelligenceDashboard() {
         activeTab={activeTab}
         marketData={marketData}
         analysisData={analysis}
+        patternResults={patternRecognitionData}
+        anomalies={patternRecognitionData?.anomalies}
+        realTimeUpdates={realTimeUpdates}
+        recommendations={personalizedRecommendations}
+        historicalData={historicalData}
+        demandForecast={demandForecastData}
       />
     </div>
   );

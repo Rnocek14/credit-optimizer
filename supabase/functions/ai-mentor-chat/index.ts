@@ -515,10 +515,30 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
   try {
     console.log('Market intelligence chat context:', JSON.stringify(context, null, 2));
     
-    const { careerPath, location, activeTab, marketData, analysisData, chatHistory } = context || {};
+    const { 
+      careerPath, 
+      location, 
+      activeTab, 
+      marketData, 
+      analysisData, 
+      chatHistory,
+      patternResults,
+      anomalies,
+      realTimeUpdates,
+      recommendations,
+      historicalData,
+      demandForecast
+    } = context || {};
     
-    // Generate market-aware system prompt
-    const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData);
+    // Generate market-aware system prompt with enhanced context
+    const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, {
+      patternResults,
+      anomalies,
+      realTimeUpdates,
+      recommendations,
+      historicalData,
+      demandForecast
+    });
     console.log('Generated system prompt length:', systemPrompt.length);
     
     // Prepare conversation history
@@ -597,7 +617,21 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
   }
 }
 
-function generateMarketIntelligencePrompt(careerPath: string, location: string, activeTab: string, marketData: any, analysisData: any): string {
+function generateMarketIntelligencePrompt(
+  careerPath: string, 
+  location: string, 
+  activeTab: string, 
+  marketData: any, 
+  analysisData: any,
+  enhancedContext?: {
+    patternResults?: any;
+    anomalies?: any[];
+    realTimeUpdates?: any[];
+    recommendations?: any[];
+    historicalData?: any[];
+    demandForecast?: any;
+  }
+): string {
   const contextInfo = [];
   
   if (careerPath) contextInfo.push(`Career Path: ${careerPath}`);
@@ -626,6 +660,72 @@ ANALYSIS INSIGHTS:
 `;
   }
 
+  // Enhanced Context Processing
+  let patternContext = '';
+  if (enhancedContext?.patternResults) {
+    const patterns = enhancedContext.patternResults;
+    patternContext = `
+PATTERN RECOGNITION RESULTS:
+- Trend Pattern: ${patterns.trendPattern || 'Not detected'} (Confidence: ${patterns.confidence || 0}%)
+- Seasonal Patterns: ${patterns.seasonality?.description || 'No seasonal patterns found'}
+- Market Volatility: ${patterns.volatility || 'Unknown'} level
+- Growth Trajectory: ${patterns.trajectory || 'Stable'}
+`;
+  }
+
+  let anomaliesContext = '';
+  if (enhancedContext?.anomalies?.length) {
+    anomaliesContext = `
+MARKET ANOMALIES DETECTED:
+${enhancedContext.anomalies.slice(0, 3).map(anomaly => 
+  `- ${anomaly.type}: ${anomaly.severity} severity (${new Date(anomaly.recorded_at).toLocaleDateString()})`
+).join('\n')}
+`;
+  }
+
+  let realTimeContext = '';
+  if (enhancedContext?.realTimeUpdates?.length) {
+    realTimeContext = `
+REAL-TIME MARKET UPDATES:
+${enhancedContext.realTimeUpdates.slice(0, 3).map(update => 
+  `- ${update.type}: ${update.confidence}% confidence (${new Date(update.timestamp).toLocaleTimeString()})`
+).join('\n')}
+`;
+  }
+
+  let recommendationsContext = '';
+  if (enhancedContext?.recommendations?.length) {
+    recommendationsContext = `
+PERSONALIZED RECOMMENDATIONS:
+${enhancedContext.recommendations.slice(0, 3).map(rec => 
+  `- ${rec.title}: Score ${rec.score}/100 - ${rec.reasoning}`
+).join('\n')}
+`;
+  }
+
+  let historicalContext = '';
+  if (enhancedContext?.historicalData?.length) {
+    const recent = enhancedContext.historicalData.slice(-3);
+    historicalContext = `
+HISTORICAL TREND DATA:
+- Recent Growth Rate: ${recent.map(d => d.growth_rate).join('%, ')}%
+- Demand Score Trend: ${recent.map(d => d.demand_score).join(', ')}
+- Salary Progression: $${recent.map(d => d.average_salary).join(', $')}
+`;
+  }
+
+  let forecastContext = '';
+  if (enhancedContext?.demandForecast) {
+    const forecast = enhancedContext.demandForecast;
+    forecastContext = `
+DEMAND FORECAST:
+- Projected Growth: ${forecast.demandProjection?.growthRate}% (${forecast.demandProjection?.confidence}% confidence)
+- Salary Outlook: ${forecast.salaryProjection?.expectedChange > 0 ? '+' : ''}${forecast.salaryProjection?.expectedChange}%
+- Market Factors: ${forecast.marketFactors?.slice(0, 2).join(', ') || 'None identified'}
+- Opportunities: ${forecast.opportunities?.slice(0, 2).join(', ') || 'None identified'}
+`;
+  }
+
   return `You are Maya, an AI career intelligence assistant specializing in market analysis and career guidance. You help users understand market trends, make informed career decisions, and navigate the market intelligence dashboard.
 
 CURRENT CONTEXT:
@@ -634,6 +734,18 @@ ${contextInfo.join(' | ')}
 ${marketContext}
 
 ${analysisContext}
+
+${patternContext}
+
+${anomaliesContext}
+
+${realTimeContext}
+
+${recommendationsContext}
+
+${historicalContext}
+
+${forecastContext}
 
 MAYA'S PERSONALITY & EXPERTISE:
 - Warm, intelligent, and data-driven career advisor
@@ -658,8 +770,18 @@ GUIDANCE APPROACH:
 4. Highlight opportunities and potential risks
 5. Recommend dashboard features that would be most helpful
 6. Be proactive about identifying optimal career timing
+7. Reference pattern recognition results and anomalies when available
+8. Use real-time market updates to provide current insights
+9. Connect historical trends to forecast data for timing advice
+10. Prioritize personalized recommendations based on user context
 
-Keep responses conversational, data-informed, and focused on actionable market intelligence. Reference specific market data when available and always tie insights back to practical career decisions.`;
+IMPORTANT CONTEXT HANDLING:
+- If pattern/anomaly/real-time data is missing, gracefully indicate "No recent pattern data available"
+- When data is available, reference specific confidence levels and timestamps
+- Always connect data insights to actionable career decisions
+- Use forecasting data to suggest optimal timing for career moves
+
+Keep responses conversational, data-informed, and focused on actionable market intelligence. Reference specific market data, patterns, and forecasts when available and always tie insights back to practical career decisions.`;
 }
 
 function checkForCelebrationTriggers(userContext: any): boolean {

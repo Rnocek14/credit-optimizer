@@ -30,6 +30,12 @@ interface MayaAIAssistantProps {
   activeTab?: string;
   marketData?: any;
   analysisData?: any;
+  patternResults?: any;
+  anomalies?: any[];
+  realTimeUpdates?: any[];
+  recommendations?: any[];
+  historicalData?: any[];
+  demandForecast?: any;
 }
 
 export function MayaAIAssistant({
@@ -37,7 +43,13 @@ export function MayaAIAssistant({
   selectedLocation,
   activeTab,
   marketData,
-  analysisData
+  analysisData,
+  patternResults,
+  anomalies,
+  realTimeUpdates,
+  recommendations,
+  historicalData,
+  demandForecast
 }: MayaAIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -158,7 +170,13 @@ export function MayaAIAssistant({
             activeTab,
             marketData,
             analysisData,
-            chatHistory: messages.slice(-10)
+            chatHistory: messages.slice(-10),
+            patternResults,
+            anomalies,
+            realTimeUpdates: realTimeUpdates?.slice(-5), // Last 5 updates
+            recommendations,
+            historicalData,
+            demandForecast
           }
         }
       });
@@ -302,6 +320,12 @@ export function MayaAIAssistant({
             {!user && (
               <Badge variant="outline" className="text-xs">
                 Demo Mode
+              </Badge>
+            )}
+            {(patternResults || realTimeUpdates?.length || historicalData?.length) && (
+              <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Live Intelligence
               </Badge>
             )}
           </div>
