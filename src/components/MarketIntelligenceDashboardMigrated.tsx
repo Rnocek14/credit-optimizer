@@ -595,6 +595,36 @@ export function MarketIntelligenceDashboard() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Smart Selection Panel */}
+            {recommendations.length > 0 && (
+              <SmartSelectionPanel
+                suggestions={recommendations.map(rec => ({
+                  careerPath: { id: rec.id || 'default', title: rec.message },
+                  location: { id: 'default', label: selectedLocation || 'Global', value: selectedLocation || 'global', emoji: '🌍' },
+                  reason: rec.type,
+                  priority: 1
+                }))}
+                onSuggestionSelect={(careerPath, location) => {
+                  setSelectedCareerPath(careerPath.title);
+                  setSelectedLocation(location.label);
+                }}
+                onQuickAnalyze={(careerPath, location) => {
+                  setSelectedCareerPath(careerPath.title);
+                  setSelectedLocation(location.label);
+                  setTimeout(() => handleMarketAnalysis(), 200);
+                }}
+                isVisible={true}
+              />
+            )}
+
+            {/* Intelligence Insights Card */}
+            <IntelligenceInsightsCard
+              selectedCareerPath={selectedCareerPath ? { id: selectedCareerPath, title: selectedCareerPath } : null}
+              selectedLocation={selectedLocation ? { id: selectedLocation, label: selectedLocation, value: selectedLocation, emoji: "🌍" } : null}
+              analysis={analysis}
+              marketData={stableMarketData}
+              onNavigateToTab={setActiveTab}
+            />
             {/* Top Intelligence Panel */}
             <TopMarketInsights
               marketData={stableMarketData}
