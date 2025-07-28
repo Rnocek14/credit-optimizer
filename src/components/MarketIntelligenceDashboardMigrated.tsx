@@ -588,7 +588,9 @@ export function MarketIntelligenceDashboard() {
                               {index + 1}
                             </div>
                             <div>
-                              <div className="font-medium">{career.title}</div>
+                              <div className="font-medium text-lg">
+                                {career.career_path || career.title || 'Unknown Career'}
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 Demand Score: {career.demand_score}
                               </div>
@@ -691,6 +693,7 @@ export function MarketIntelligenceDashboard() {
                 {/* Strategy Generator Panel - NEWLY ADDED */}
                 {selectedCareerPath && selectedLocation && (
                   <StrategyGeneratorPanel
+                    data-strategy-generator
                     selectedCareerPath={selectedCareerPath}
                     selectedLocation={selectedLocation}
                     onGenerateStrategy={(strategy) => {
@@ -774,7 +777,7 @@ export function MarketIntelligenceDashboard() {
 
               {/* Salary Analysis Display */}
               {salaryInsights && (
-                <Card>
+                <Card data-salary-analysis>
                   <CardHeader>
                     <CardTitle>Salary Analysis</CardTitle>
                     <CardDescription>

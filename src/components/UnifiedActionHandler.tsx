@@ -86,6 +86,8 @@ export const useUnifiedActionHandler = ({
       console.log('🔍 Processing unified action:', { actionType, careerPath, location });
       
       // Route to appropriate handler based on action type - ENHANCED ACTION ROUTING
+      console.log('🔍 Top insight clicked:', actionType);
+      
       if (actionType === 'Analyze This Market' || actionType === 'Analyze This Opportunity' || actionType === 'Run Analysis') {
         await handleMarketAnalysis(careerPath, location);
       } else if (actionType === 'View Salary Analysis' || actionType.includes('Salary') || actionType === 'Explore Salaries') {
@@ -158,6 +160,15 @@ export const useUnifiedActionHandler = ({
         matchedLocation.id,
         matchedLocation.value
       );
+
+      // After analysis is complete, wait for tab to render then scroll to strategy generator
+      setTimeout(() => {
+        const strategySection = document.querySelector('[data-strategy-generator]');
+        if (strategySection) {
+          strategySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          console.log('📍 Scrolled to strategy generator section');
+        }
+      }, 1000);
     } else {
       const missingItems = [];
       if (!matchedCareerPath) missingItems.push(`career path "${careerPath}"`);
@@ -202,6 +213,15 @@ export const useUnifiedActionHandler = ({
             description: `Salary insights for ${targetCareerPath.title} loaded`,
             duration: 2000
           });
+
+          // After salary data loads, wait for tab to render then scroll to salary analysis
+          setTimeout(() => {
+            const salarySection = document.querySelector('[data-salary-analysis]');
+            if (salarySection) {
+              salarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              console.log('📍 Scrolled to salary analysis section');
+            }
+          }, 800);
         } else {
           toast({
             title: "No Salary Data",
@@ -244,6 +264,15 @@ export const useUnifiedActionHandler = ({
         title: "Strategy Generator",
         description: `Opening strategy generator for ${finalCareerPath.title} in ${finalLocation.label}`,
       });
+
+      // After navigating to analysis tab, wait for it to render then scroll to strategy generator
+      setTimeout(() => {
+        const strategySection = document.querySelector('[data-strategy-generator]');
+        if (strategySection) {
+          strategySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          console.log('📍 Scrolled to strategy generator section');
+        }
+      }, 800);
     } else {
       toast({
         title: "Strategy Generation",
