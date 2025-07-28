@@ -111,14 +111,7 @@ export function MayaAIAssistant({
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
-    if (!user) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to chat with Maya.',
-        variant: 'destructive'
-      });
-      return;
-    }
+    const userId = user?.id || 'demo-user';
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -142,7 +135,7 @@ export function MayaAIAssistant({
     try {
       console.log('Sending message to Maya:', {
         message: messageContent,
-        userId: user.id,
+        userId: userId,
         action: 'MARKET_INTELLIGENCE_CHAT',
         context: {
           careerPath: selectedCareerPath,
@@ -157,7 +150,7 @@ export function MayaAIAssistant({
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: {
           message: messageContent,
-          userId: user.id,
+          userId: userId,
           action: 'MARKET_INTELLIGENCE_CHAT',
           context: {
             careerPath: selectedCareerPath,
@@ -304,6 +297,11 @@ export function MayaAIAssistant({
             {activeTab && (
               <Badge variant="outline" className="text-xs capitalize">
                 {activeTab}
+              </Badge>
+            )}
+            {!user && (
+              <Badge variant="outline" className="text-xs">
+                Demo Mode
               </Badge>
             )}
           </div>

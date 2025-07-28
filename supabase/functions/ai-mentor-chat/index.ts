@@ -21,10 +21,14 @@ serve(async (req) => {
     
     const { message, userId, action, context } = requestBody;
     
-    if (!userId) {
-      console.error('User ID is missing from request');
-      throw new Error('User ID is required');
+    const finalUserId = userId || 'demo-user';
+    
+    if (!finalUserId || (finalUserId !== 'demo-user' && finalUserId.length < 10)) {
+      console.error('Invalid user ID format:', finalUserId);
+      throw new Error('Invalid user ID format');
     }
+    
+    console.log('Processing request for user:', finalUserId);
 
     // Validate OpenAI API key early
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -41,7 +45,7 @@ serve(async (req) => {
 
     // Handle different action types
     if (action === 'GET_MILESTONE_PLANS') {
-      return await getMilestonePlans(supabase, userId);
+      return await getMilestonePlans(supabase, finalUserId);
     }
     
     if (action === 'UPDATE_MILESTONE_STEP') {
@@ -50,18 +54,18 @@ serve(async (req) => {
     }
 
     if (action === 'MARKET_INTELLIGENCE_CHAT') {
-      console.log('Handling market intelligence chat for user:', userId);
-      return await handleMarketIntelligenceChat(supabase, message, context, userId);
+      console.log('Handling market intelligence chat for user:', finalUserId);
+      return await handleMarketIntelligenceChat(supabase, message, context, finalUserId);
     }
 
     // Fetch comprehensive user context
-    const userContext = await fetchUserContext(supabase, userId);
+    const userContext = await fetchUserContext(supabase, finalUserId);
     
     // Check if this should trigger a milestone plan
     const shouldCreatePlan = detectMilestoneTrigger(message, userContext);
     
     // Generate system prompt based on user data
-    const systemPrompt = await generateSystemPrompt(userContext, supabase, userId);
+    const systemPrompt = await generateSystemPrompt(userContext, supabase, finalUserId);
     
     // Call OpenAI GPT-4o (already validated above)
     console.log('Calling OpenAI with model: gpt-4o');
@@ -103,10 +107,10 @@ serve(async (req) => {
     
     const aiResponse = data.choices[0].message.content;
 
-    // Check if the response suggests creating a milestone plan
+    // Check if the response suggests creating a milestone plan (skip for demo users)
     let milestonePlan = null;
-    if (shouldCreatePlan || aiResponse.includes('milestone plan') || aiResponse.includes('3-step plan')) {
-      milestonePlan = await createMilestonePlan(supabase, userId, aiResponse, userContext);
+    if (finalUserId !== 'demo-user' && (shouldCreatePlan || aiResponse.includes('milestone plan') || aiResponse.includes('3-step plan'))) {
+      milestonePlan = await createMilestonePlan(supabase, finalUserId, aiResponse, userContext);
     }
 
     return new Response(
@@ -142,6 +146,22 @@ serve(async (req) => {
 
 async function fetchUserContext(supabase: any, userId: string) {
   try {
+    // Handle demo user with default context
+    if (userId === 'demo-user') {
+      return {
+        profile: { name: 'Demo User', role_title: 'Explorer' },
+        level: { current_level: 1, total_xp: 0, xp_for_next_level: 100 },
+        goals: [],
+        savedCount: 0,
+        hasPublishedResume: false,
+        criScore: 0,
+        readinessScore: 0,
+        recentActions: [],
+        recentBadges: [],
+        milestonePlans: []
+      };
+    }
+
     // Get user profile
     const { data: profile } = await supabase
       .from('profiles')
