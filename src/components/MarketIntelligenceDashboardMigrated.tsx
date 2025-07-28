@@ -65,6 +65,7 @@ import { MarketIntelligenceExportPanel } from "@/components/MarketIntelligenceEx
 import { CompareMarketTrendsPanel } from "@/components/CompareMarketTrendsPanel";
 import { MarketDataSeeder } from "@/components/MarketDataSeeder";
 import { StrategyGeneratorPanel } from "@/components/StrategyGeneratorPanel";
+import { MayaAIAssistant } from "@/components/MayaAIAssistant";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
@@ -908,6 +909,15 @@ export function MarketIntelligenceDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Maya AI Assistant */}
+      <MayaAIAssistant
+        selectedCareerPath={selectedCareerPath?.title}
+        selectedLocation={selectedLocation?.value}
+        activeTab={activeTab}
+        marketData={marketData}
+        analysisData={analysis}
+      />
     </div>
   );
 }

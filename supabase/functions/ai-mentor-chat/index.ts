@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userId, action } = await req.json();
+    const { message, userId, action, context } = await req.json();
     
     if (!userId) {
       throw new Error('User ID is required');
@@ -34,6 +34,10 @@ serve(async (req) => {
     if (action === 'UPDATE_MILESTONE_STEP') {
       const { planId, stepIndex, completed } = await req.json();
       return await updateMilestoneStep(supabase, planId, stepIndex, completed);
+    }
+
+    if (action === 'MARKET_INTELLIGENCE_CHAT') {
+      return await handleMarketIntelligenceChat(supabase, message, context);
     }
 
     // Fetch comprehensive user context
@@ -450,6 +454,138 @@ async function updateMilestoneStep(supabase: any, planId: string, stepIndex: num
       }
     );
   }
+}
+
+async function handleMarketIntelligenceChat(supabase: any, message: string, context: any) {
+  try {
+    const { careerPath, location, activeTab, marketData, analysisData, chatHistory } = context || {};
+    
+    // Generate market-aware system prompt
+    const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData);
+    
+    // Prepare conversation history
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...(chatHistory || []).slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      { role: 'user', content: message }
+    ];
+
+    // Call OpenAI GPT-4o
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not found');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+      }),
+    });
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+
+    return new Response(
+      JSON.stringify({ 
+        response: aiResponse,
+        context: {
+          careerPath,
+          location,
+          activeTab,
+          timestamp: new Date().toISOString()
+        }
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+
+  } catch (error) {
+    console.error('Error in market intelligence chat:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+function generateMarketIntelligencePrompt(careerPath: string, location: string, activeTab: string, marketData: any, analysisData: any): string {
+  const contextInfo = [];
+  
+  if (careerPath) contextInfo.push(`Career Path: ${careerPath}`);
+  if (location) contextInfo.push(`Location: ${location}`);
+  if (activeTab) contextInfo.push(`Current Tab: ${activeTab}`);
+  
+  let marketContext = '';
+  if (marketData) {
+    marketContext = `
+CURRENT MARKET DATA:
+- Growth Rate: ${marketData.growthRate || 'Not available'}%
+- Demand Score: ${marketData.demandScore || 'Not available'}/100
+- Salary Range: ${marketData.salaryRange || 'Not available'}
+- Job Openings: ${marketData.jobOpenings || 'Not available'}
+- Market Trend: ${marketData.trend || 'Not available'}
+`;
+  }
+
+  let analysisContext = '';
+  if (analysisData) {
+    analysisContext = `
+ANALYSIS INSIGHTS:
+- Key Findings: ${analysisData.keyFindings || 'Not available'}
+- Recommendations: ${analysisData.recommendations || 'Not available'}
+- Risk Factors: ${analysisData.riskFactors || 'Not available'}
+`;
+  }
+
+  return `You are Maya, an AI career intelligence assistant specializing in market analysis and career guidance. You help users understand market trends, make informed career decisions, and navigate the market intelligence dashboard.
+
+CURRENT CONTEXT:
+${contextInfo.join(' | ')}
+
+${marketContext}
+
+${analysisContext}
+
+MAYA'S PERSONALITY & EXPERTISE:
+- Warm, intelligent, and data-driven career advisor
+- Expert in market trends, salary analysis, and career opportunities
+- Able to translate complex market data into actionable insights
+- Proactive in suggesting optimal career moves and timing
+- Uses strategic emojis: 📈 for growth, 💰 for salary, 🎯 for opportunities, ⚠️ for risks
+
+CAPABILITIES:
+- Analyze and explain market trends and patterns
+- Provide personalized career advice based on market data
+- Suggest optimal timing for career moves
+- Explain salary trends and negotiation insights
+- Guide users through dashboard features and analyses
+- Set up intelligent market alerts and notifications
+- Compare career opportunities across locations and roles
+
+GUIDANCE APPROACH:
+1. Always reference current market context when giving advice
+2. Explain complex data in simple, actionable terms
+3. Suggest specific next steps based on market conditions
+4. Highlight opportunities and potential risks
+5. Recommend dashboard features that would be most helpful
+6. Be proactive about identifying optimal career timing
+
+Keep responses conversational, data-informed, and focused on actionable market intelligence. Reference specific market data when available and always tie insights back to practical career decisions.`;
 }
 
 function checkForCelebrationTriggers(userContext: any): boolean {
