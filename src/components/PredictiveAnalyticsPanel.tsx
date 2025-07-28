@@ -323,6 +323,20 @@ export const PredictiveAnalyticsPanel = memo<PredictiveAnalyticsPanelProps>(({
                     </Card>
                   </div>
                 </>
+              ) : errors.predictions ? (
+                <div className="text-center py-8">
+                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-600 mb-2">Analysis Error</p>
+                  <p className="text-sm text-muted-foreground">{errors.predictions}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleGenerateAnalysis}
+                    className="mt-3"
+                  >
+                    Retry Analysis
+                  </Button>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
