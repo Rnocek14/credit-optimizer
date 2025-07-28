@@ -41,28 +41,29 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
-  // Use unified state management with fallback
+  // Use unified state management - ensure all hooks are called consistently
   const unifiedContext = useUnifiedCareerContext();
-  const { selectedCareerPath, selectedLocation, currentGoal, setSelectedCareerPath, setSelectedLocation, setCurrentGoal } = unifiedContext || {
-    selectedCareerPath: null,
-    selectedLocation: null, 
-    currentGoal: null,
-    setSelectedCareerPath: () => {},
-    setSelectedLocation: () => {},
-    setCurrentGoal: () => {}
-  };
   const { data: progressData } = useUnifiedProgress();
   const { recommendations } = useIntelligentRecommendations();
   const { syncData } = useSmartSync();
   const { setLoading, isLoading, setError, getError } = useStandardizedState(['market', 'analysis', 'salary']);
   
+  // Extract values with safe defaults
+  const selectedCareerPath = unifiedContext?.selectedCareerPath || null;
+  const selectedLocation = unifiedContext?.selectedLocation || null;
+  const currentGoal = unifiedContext?.currentGoal || null;
+  const setSelectedCareerPath = unifiedContext?.setSelectedCareerPath || (() => {});
+  const setSelectedLocation = unifiedContext?.setSelectedLocation || (() => {});
+  const setCurrentGoal = unifiedContext?.setCurrentGoal || (() => {});
+
+  // Component state
   const [activeTab, setActiveTab] = useState("overview");
   const [analysis, setAnalysis] = useState<any>(null);
   const [salaryInsights, setSalaryInsights] = useState<any>(null);
   const [topCareers, setTopCareers] = useState<any[]>([]);
   const [isSmartMode, setIsSmartMode] = useState(false);
 
-  // Legacy hooks for data fetching (to be gradually removed)
+  // Utility hooks - called consistently
   const { toast } = useToast();
   const { trackInsightInteraction } = useInsightTracking();
 
