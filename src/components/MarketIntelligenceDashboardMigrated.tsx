@@ -64,6 +64,7 @@ import { EnhancedMarketAlertSystem } from "@/components/EnhancedMarketAlertSyste
 import { MarketIntelligenceExportPanel } from "@/components/MarketIntelligenceExportPanel";
 import { CompareMarketTrendsPanel } from "@/components/CompareMarketTrendsPanel";
 import { MarketDataSeeder } from "@/components/MarketDataSeeder";
+import { StrategyGeneratorPanel } from "@/components/StrategyGeneratorPanel";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
@@ -141,6 +142,34 @@ export function MarketIntelligenceDashboard() {
       setSelectedLocation(autoSelectedLocation);
     }
   }, [autoSelectedLocation, selectedLocation, smartModeState]);
+
+  // Auto-load research tab data when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'research' && selectedCareerPath && selectedLocation) {
+      console.log('📊 Auto-loading research tab data...');
+      
+      // Load salary insights if not already loaded
+      if (!salaryInsights) {
+        getSalaryInsights(selectedCareerPath.title).then(setSalaryInsights);
+      }
+      
+      // Trigger pattern recognition if no data
+      if (!patternRecognitionData) {
+        supabase.functions.invoke('pattern-recognition-engine', {
+          body: {
+            careerPath: selectedCareerPath.title,
+            location: selectedLocation.value,
+            timeframe: '90d',
+            analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+          }
+        }).then(result => {
+          if (result.data?.success) {
+            setPatternRecognitionData(result.data);
+          }
+        });
+      }
+    }
+  }, [activeTab, selectedCareerPath, selectedLocation, salaryInsights, patternRecognitionData]);
 
   // Load initial data
   useEffect(() => {

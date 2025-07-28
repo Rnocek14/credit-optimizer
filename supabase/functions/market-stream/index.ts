@@ -5,13 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface StreamSubscription {
-  career_path: string;
-  location: string;
-  features: string[];
+interface MarketStreamMessage {
+  type: 'subscribe' | 'unsubscribe' | 'ping';
+  career_path?: string;
+  location?: string;
+  features?: string[];
 }
 
-interface MarketUpdate {
+interface RealTimeMarketUpdate {
   type: 'trend_update' | 'new_posting' | 'salary_change' | 'demand_shift';
   career_path: string;
   location: string;
@@ -22,31 +23,23 @@ interface MarketUpdate {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   const { headers } = req;
   const upgradeHeader = headers.get("upgrade") || "";
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
     return new Response("Expected WebSocket connection", { 
       status: 400,
-      headers: corsHeaders
+      headers: corsHeaders 
     });
   }
 
-  console.log('🌊 New WebSocket connection request');
-
   const { socket, response } = Deno.upgradeWebSocket(req);
-  
-  let subscription: StreamSubscription | null = null;
+
+  let subscriptions: Set<string> = new Set();
   let heartbeatInterval: number | null = null;
-  let updateInterval: number | null = null;
 
   socket.onopen = () => {
-    console.log('✅ WebSocket connection established');
+    console.log('🌊 Market stream WebSocket connected');
     
     // Start heartbeat
     heartbeatInterval = setInterval(() => {
@@ -56,125 +49,195 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         }));
       }
-    }, 30000); // Every 30 seconds
+    }, 30000); // 30 second heartbeat
+
+    // Send initial connection confirmation
+    socket.send(JSON.stringify({
+      type: 'connection_established',
+      timestamp: new Date().toISOString(),
+      status: 'connected'
+    }));
   };
 
   socket.onmessage = async (event) => {
     try {
-      const message = JSON.parse(event.data);
+      const message: MarketStreamMessage = JSON.parse(event.data);
       console.log('📨 Received message:', message);
 
-      if (message.type === 'subscribe') {
-        subscription = {
-          career_path: message.career_path,
-          location: message.location,
-          features: message.features || ['trends', 'postings', 'salary', 'demand']
-        };
+      switch (message.type) {
+        case 'subscribe':
+          if (message.career_path && message.location) {
+            const subscription = `${message.career_path}:${message.location}`;
+            subscriptions.add(subscription);
+            
+            console.log(`✅ Subscribed to: ${subscription}`);
+            
+            // Send confirmation
+            socket.send(JSON.stringify({
+              type: 'subscription_confirmed',
+              career_path: message.career_path,
+              location: message.location,
+              features: message.features || [],
+              timestamp: new Date().toISOString()
+            }));
 
-        console.log('📡 Subscription established:', subscription);
+            // Start sending simulated market updates
+            startMarketUpdates(socket, message.career_path, message.location);
+          }
+          break;
 
-        // Send confirmation
-        socket.send(JSON.stringify({
-          type: 'subscription_confirmed',
-          subscription,
-          timestamp: new Date().toISOString()
-        }));
+        case 'unsubscribe':
+          if (message.career_path && message.location) {
+            const subscription = `${message.career_path}:${message.location}`;
+            subscriptions.delete(subscription);
+            console.log(`❌ Unsubscribed from: ${subscription}`);
+          }
+          break;
 
-        // Start sending mock updates
-        startMarketUpdates();
-      } else if (message.type === 'unsubscribe') {
-        subscription = null;
-        if (updateInterval) {
-          clearInterval(updateInterval);
-          updateInterval = null;
-        }
-        
-        socket.send(JSON.stringify({
-          type: 'unsubscribed',
-          timestamp: new Date().toISOString()
-        }));
+        case 'ping':
+          socket.send(JSON.stringify({
+            type: 'pong',
+            timestamp: new Date().toISOString()
+          }));
+          break;
+
+        default:
+          console.log('❓ Unknown message type:', message.type);
       }
     } catch (error) {
       console.error('❌ Error processing message:', error);
       socket.send(JSON.stringify({
         type: 'error',
-        message: 'Invalid message format',
+        message: 'Failed to process message',
         timestamp: new Date().toISOString()
       }));
     }
   };
 
   socket.onclose = () => {
-    console.log('🔌 WebSocket connection closed');
-    if (heartbeatInterval) clearInterval(heartbeatInterval);
-    if (updateInterval) clearInterval(updateInterval);
+    console.log('🔌 Market stream WebSocket disconnected');
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
   };
 
   socket.onerror = (error) => {
     console.error('❌ WebSocket error:', error);
   };
 
-  // Generate mock market updates
-  function startMarketUpdates() {
-    if (!subscription || updateInterval) return;
-
-    updateInterval = setInterval(() => {
-      if (!subscription || socket.readyState !== WebSocket.OPEN) return;
-
-      // Generate random market update
-      const updateTypes: MarketUpdate['type'][] = ['trend_update', 'new_posting', 'salary_change', 'demand_shift'];
-      const randomType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
-      
-      const update: MarketUpdate = {
-        type: randomType,
-        career_path: subscription.career_path,
-        location: subscription.location,
-        data: generateUpdateData(randomType),
-        timestamp: new Date().toISOString(),
-        confidence: 0.6 + Math.random() * 0.4, // 60-100% confidence
-        source: 'market_aggregator'
-      };
-
-      console.log('📈 Sending market update:', update.type);
-      socket.send(JSON.stringify(update));
-    }, 5000 + Math.random() * 10000); // Every 5-15 seconds
-  }
-
-  function generateUpdateData(type: MarketUpdate['type']) {
-    switch (type) {
-      case 'trend_update':
-        return {
-          direction: Math.random() > 0.5 ? 'up' : 'down',
-          magnitude: (Math.random() * 10).toFixed(1),
-          timeframe: '24h'
-        };
-      
-      case 'new_posting':
-        return {
-          count: Math.floor(Math.random() * 50) + 1,
-          companies: ['TechCorp', 'InnovateLabs', 'DataDriven Inc.'],
-          avg_salary: Math.floor(Math.random() * 50000) + 80000
-        };
-      
-      case 'salary_change':
-        return {
-          change_percent: (Math.random() * 10 - 5).toFixed(1), // -5% to +5%
-          new_average: Math.floor(Math.random() * 50000) + 80000,
-          sample_size: Math.floor(Math.random() * 100) + 50
-        };
-      
-      case 'demand_shift':
-        return {
-          old_score: (Math.random() * 10).toFixed(1),
-          new_score: (Math.random() * 10).toFixed(1),
-          drivers: ['remote work trends', 'industry growth', 'skill demand'],
-          impact: Math.random() > 0.5 ? 'positive' : 'negative'
-        };
-      
-      default:
-        return {};
-    }
-  }
-
   return response;
 });
+
+function startMarketUpdates(socket: WebSocket, careerPath: string, location: string) {
+  // Send initial market update
+  setTimeout(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      const update: RealTimeMarketUpdate = {
+        type: 'trend_update',
+        career_path: careerPath,
+        location: location,
+        data: {
+          direction: 'up',
+          change_percentage: Math.random() * 5 + 1, // 1-6% change
+          metric: 'demand_score'
+        },
+        timestamp: new Date().toISOString(),
+        confidence: 0.85 + Math.random() * 0.15, // 85-100% confidence
+        source: 'market_analyzer'
+      };
+
+      socket.send(JSON.stringify(update));
+      console.log('📈 Sent market update:', update);
+    }
+  }, 2000);
+
+  // Send periodic updates
+  const updateInterval = setInterval(() => {
+    if (socket.readyState !== WebSocket.OPEN) {
+      clearInterval(updateInterval);
+      return;
+    }
+
+    // Random update type
+    const updateTypes: RealTimeMarketUpdate['type'][] = [
+      'trend_update', 
+      'new_posting', 
+      'salary_change', 
+      'demand_shift'
+    ];
+    
+    const randomType = updateTypes[Math.floor(Math.random() * updateTypes.length)];
+    
+    const update: RealTimeMarketUpdate = {
+      type: randomType,
+      career_path: careerPath,
+      location: location,
+      data: generateUpdateData(randomType),
+      timestamp: new Date().toISOString(),
+      confidence: 0.7 + Math.random() * 0.3, // 70-100% confidence
+      source: getSourceForUpdateType(randomType)
+    };
+
+    socket.send(JSON.stringify(update));
+    console.log(`📊 Sent ${randomType} update:`, update);
+    
+  }, 15000 + Math.random() * 30000); // 15-45 seconds between updates
+
+  // Cleanup interval when socket closes
+  socket.addEventListener('close', () => {
+    clearInterval(updateInterval);
+  });
+}
+
+function generateUpdateData(updateType: RealTimeMarketUpdate['type']) {
+  switch (updateType) {
+    case 'trend_update':
+      return {
+        direction: Math.random() > 0.6 ? 'up' : 'down',
+        change_percentage: Math.random() * 8 + 1,
+        metric: ['demand_score', 'growth_rate', 'market_health'][Math.floor(Math.random() * 3)]
+      };
+    
+    case 'new_posting':
+      return {
+        count: Math.floor(Math.random() * 20) + 5,
+        companies: ['TechCorp', 'Innovation Ltd', 'StartupX', 'MegaCorp'][Math.floor(Math.random() * 4)],
+        avg_salary_range: {
+          min: 80000 + Math.random() * 40000,
+          max: 120000 + Math.random() * 80000
+        }
+      };
+    
+    case 'salary_change':
+      return {
+        direction: Math.random() > 0.3 ? 'up' : 'down',
+        change_amount: Math.floor(Math.random() * 15000) + 2000,
+        sample_size: Math.floor(Math.random() * 100) + 50
+      };
+    
+    case 'demand_shift':
+      return {
+        shift_direction: ['increasing', 'stable', 'decreasing'][Math.floor(Math.random() * 3)],
+        impact_score: Math.random() * 10,
+        contributing_factors: ['market_expansion', 'technology_adoption', 'economic_growth']
+      };
+    
+    default:
+      return {};
+  }
+}
+
+function getSourceForUpdateType(updateType: RealTimeMarketUpdate['type']): string {
+  switch (updateType) {
+    case 'trend_update':
+      return 'trend_analyzer';
+    case 'new_posting':
+      return 'job_aggregator';
+    case 'salary_change':
+      return 'salary_tracker';
+    case 'demand_shift':
+      return 'demand_forecaster';
+    default:
+      return 'market_stream';
+  }
+}

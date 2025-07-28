@@ -47,8 +47,8 @@ export function useRealTimeMarketData() {
     setConnectionHealth({ status: 'connecting', lastPing: Date.now() });
     
     try {
-      // Initialize WebSocket connection for real-time updates
-      const wsUrl = `wss://vzpissitddpunkpythsb.functions.supabase.co/functions/v1/market-stream`;
+      // Initialize WebSocket connection for real-time updates  
+      const wsUrl = `wss://vzpissitddpunkpythsb.supabase.co/functions/v1/market-stream`;
       const socket = new WebSocket(wsUrl);
       
       socket.onopen = () => {
@@ -221,6 +221,7 @@ export function useRealTimeMarketData() {
   // Auto-start streaming when career path or location changes
   useEffect(() => {
     if (state.selectedCareerPath && state.selectedLocation) {
+      console.log('🌊 Auto-starting real-time stream for:', state.selectedCareerPath, state.selectedLocation);
       startRealTimeStream();
       fetchMarketSnapshots();
     }
@@ -228,7 +229,7 @@ export function useRealTimeMarketData() {
     return () => {
       stopRealTimeStream();
     };
-  }, [state.selectedCareerPath, state.selectedLocation]);
+  }, [state.selectedCareerPath, state.selectedLocation, startRealTimeStream, stopRealTimeStream, fetchMarketSnapshots]);
 
   // Cleanup on unmount
   useEffect(() => {
