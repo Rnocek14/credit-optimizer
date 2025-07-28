@@ -31,8 +31,8 @@ const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
 
   // Memoized pulse indicators
   const pulseIndicators = useMemo(() => {
-    const momentum = marketPulse.momentum;
-    const activity = marketPulse.activity_level;
+    const momentum = marketPulse?.momentum || 'neutral';
+    const activity = marketPulse?.activity_level || 'low';
     
     return {
       momentum: {
@@ -74,33 +74,37 @@ const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
     };
   }, [realTimeUpdates, lastUpdate]);
 
-  if (compact) {
-    return (
-      <Card className={cn("w-full", className)}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <connectionStatus.icon className={cn("h-4 w-4", connectionStatus.color)} />
-              <span className="text-sm font-medium">Market Pulse</span>
-              <Badge variant="outline" className={pulseIndicators.activity.color}>
-                {pulseIndicators.activity.level}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <pulseIndicators.momentum.icon className={cn("h-4 w-4", pulseIndicators.momentum.color)} />
-              <span className="text-sm">{pulseIndicators.momentum.label}</span>
-            </div>
+  // Compact view component
+  const CompactView = () => (
+    <Card className={cn("w-full", className)}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <connectionStatus.icon className={cn("h-4 w-4", connectionStatus.color)} />
+            <span className="text-sm font-medium">Market Pulse</span>
+            <Badge variant="outline" className={pulseIndicators.activity.color}>
+              {pulseIndicators.activity.level}
+            </Badge>
           </div>
           
-          {updatesSummary.lastUpdateTime && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Last update: {updatesSummary.lastUpdateTime}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    );
+          <div className="flex items-center gap-2">
+            <pulseIndicators.momentum.icon className={cn("h-4 w-4", pulseIndicators.momentum.color)} />
+            <span className="text-sm">{pulseIndicators.momentum.label}</span>
+          </div>
+        </div>
+        
+        {updatesSummary.lastUpdateTime && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Last update: {updatesSummary.lastUpdateTime}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  // Return compact view if requested
+  if (compact) {
+    return <CompactView />;
   }
 
   return (
@@ -176,7 +180,7 @@ const RealTimeMarketPulse = memo<RealTimeMarketPulseProps>(({
                         {update.type.replace('_', ' ')}
                       </span>
                       <Badge variant="outline">
-                        {update.confidence.toFixed(1)}% confidence
+                        {(update.confidence ?? 0).toFixed(1)}% confidence
                       </Badge>
                     </div>
                     <p className="text-muted-foreground text-xs mt-1">
