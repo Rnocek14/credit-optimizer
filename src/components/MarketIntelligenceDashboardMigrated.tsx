@@ -11,7 +11,7 @@ import { useUnifiedProgress } from "@/contexts/UnifiedDataContext";
 import { useIntelligentRecommendations } from "@/hooks/useUnifiedState";
 import { useSmartSync } from "@/hooks/useUnifiedState";
 import { useStandardizedState } from "@/hooks/useStandardizedLoading";
-import { useUnifiedActionHandler } from "@/components/UnifiedActionHandler";
+
 import { TopMarketInsights } from "@/components/TopMarketInsights";
 import { SmartSelectionPanel } from "@/components/SmartSelectionPanel";
 import { IntelligenceInsightsCard } from "@/components/IntelligenceInsightsCard";
