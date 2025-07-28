@@ -44,6 +44,13 @@ import { TopMarketInsights } from "@/components/TopMarketInsights";
 import RealTimeMarketPulse from "@/components/RealTimeMarketPulse";
 import { OptimizedMarketIntelligenceScore } from "@/components/OptimizedMarketIntelligenceScore";
 
+// Import restored components
+import { TopTrendingCareers } from "@/components/TopTrendingCareers";
+import { QuickStatsGrid } from "@/components/QuickStatsGrid";
+import { PulseIndicators } from "@/components/PulseIndicators";
+import { SalaryAnalysisPanel } from "@/components/SalaryAnalysisPanel";
+import { PatternTimeline } from "@/components/PatternTimeline";
+
 // Import CRITICAL missing components for comprehensive functionality
 import { useUnifiedActionHandler } from "@/components/UnifiedActionHandler";
 import { IntelligentActionBridge } from "@/components/IntelligentActionBridge";
