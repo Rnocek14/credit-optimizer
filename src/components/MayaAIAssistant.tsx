@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { MessageCircle, X, Send, Minimize2, Maximize2, Sparkles } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -43,8 +44,24 @@ export function MayaAIAssistant({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Get current user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -94,6 +111,15 @@ export function MayaAIAssistant({
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to chat with Maya.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: input.trim(),
@@ -108,14 +134,30 @@ export function MayaAIAssistant({
       }
     };
 
+    const messageContent = input.trim();
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
+      console.log('Sending message to Maya:', {
+        message: messageContent,
+        userId: user.id,
+        action: 'MARKET_INTELLIGENCE_CHAT',
+        context: {
+          careerPath: selectedCareerPath,
+          location: selectedLocation,
+          activeTab,
+          marketData,
+          analysisData,
+          chatHistory: messages.slice(-10)
+        }
+      });
+
       const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
         body: {
-          message: input.trim(),
+          message: messageContent,
+          userId: user.id,
           action: 'MARKET_INTELLIGENCE_CHAT',
           context: {
             careerPath: selectedCareerPath,
@@ -123,12 +165,17 @@ export function MayaAIAssistant({
             activeTab,
             marketData,
             analysisData,
-            chatHistory: messages.slice(-10) // Send last 10 messages for context
+            chatHistory: messages.slice(-10)
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      console.log('Maya response received:', data);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -144,11 +191,22 @@ export function MayaAIAssistant({
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message to Maya:', error);
+      
+      let errorMessage = 'Unable to reach Maya. Please try again.';
+      
+      if (error.message?.includes('OpenAI API key')) {
+        errorMessage = 'Maya is currently unavailable due to configuration issues.';
+      } else if (error.message?.includes('User ID is required')) {
+        errorMessage = 'Authentication error. Please refresh the page and try again.';
+      } else if (error.message) {
+        errorMessage = `Maya encountered an error: ${error.message}`;
+      }
+      
       toast({
         title: 'Communication Error',
-        description: 'Unable to reach Maya. Please try again.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {

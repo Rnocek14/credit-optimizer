@@ -15,11 +15,24 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userId, action, context } = await req.json();
+    console.log('AI mentor chat function called');
+    const requestBody = await req.json();
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    
+    const { message, userId, action, context } = requestBody;
     
     if (!userId) {
+      console.error('User ID is missing from request');
       throw new Error('User ID is required');
     }
+
+    // Validate OpenAI API key early
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      console.error('OpenAI API key not found in environment');
+      throw new Error('OpenAI API key not configured');
+    }
+    console.log('OpenAI API key found:', openAIApiKey ? 'Yes' : 'No');
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -37,7 +50,8 @@ serve(async (req) => {
     }
 
     if (action === 'MARKET_INTELLIGENCE_CHAT') {
-      return await handleMarketIntelligenceChat(supabase, message, context);
+      console.log('Handling market intelligence chat for user:', userId);
+      return await handleMarketIntelligenceChat(supabase, message, context, userId);
     }
 
     // Fetch comprehensive user context
@@ -49,11 +63,20 @@ serve(async (req) => {
     // Generate system prompt based on user data
     const systemPrompt = await generateSystemPrompt(userContext, supabase, userId);
     
-    // Call OpenAI GPT-4o
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not found');
-    }
+    // Call OpenAI GPT-4o (already validated above)
+    console.log('Calling OpenAI with model: gpt-4o');
+    
+    const openAIPayload = {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+    };
+    
+    console.log('OpenAI request payload:', JSON.stringify(openAIPayload, null, 2));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -61,18 +84,23 @@ serve(async (req) => {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.7,
-        max_tokens: 800,
-      }),
+      body: JSON.stringify(openAIPayload),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('OpenAI response:', JSON.stringify(data, null, 2));
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Invalid OpenAI response structure:', data);
+      throw new Error('Invalid response from OpenAI');
+    }
+    
     const aiResponse = data.choices[0].message.content;
 
     // Check if the response suggests creating a milestone plan
@@ -93,10 +121,17 @@ serve(async (req) => {
       }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in AI mentor chat:', error);
+    const errorMessage = error.message || 'An unexpected error occurred';
+    console.error('Full error details:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        details: error.stack ? error.stack.split('\n').slice(0, 3) : undefined
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -456,28 +491,39 @@ async function updateMilestoneStep(supabase: any, planId: string, stepIndex: num
   }
 }
 
-async function handleMarketIntelligenceChat(supabase: any, message: string, context: any) {
+async function handleMarketIntelligenceChat(supabase: any, message: string, context: any, userId: string) {
   try {
+    console.log('Market intelligence chat context:', JSON.stringify(context, null, 2));
+    
     const { careerPath, location, activeTab, marketData, analysisData, chatHistory } = context || {};
     
     // Generate market-aware system prompt
     const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData);
+    console.log('Generated system prompt length:', systemPrompt.length);
     
     // Prepare conversation history
-    const messages = [
+    const conversationMessages = [
       { role: 'system', content: systemPrompt },
-      ...(chatHistory || []).slice(-10).map(msg => ({
+      ...(chatHistory || []).slice(-10).map((msg: any) => ({
         role: msg.role,
         content: msg.content
       })),
       { role: 'user', content: message }
     ];
+    
+    console.log('Conversation messages count:', conversationMessages.length);
 
-    // Call OpenAI GPT-4o
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not found');
-    }
+    // Call OpenAI GPT-4o (key already validated in main function)
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+    
+    const openAIPayload = {
+      model: 'gpt-4o',
+      messages: conversationMessages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    };
+    
+    console.log('Market intelligence OpenAI request:', JSON.stringify(openAIPayload, null, 2));
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -485,15 +531,23 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
+      body: JSON.stringify(openAIPayload),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error in market intelligence:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('Market intelligence OpenAI response:', JSON.stringify(data, null, 2));
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Invalid OpenAI response structure in market intelligence:', data);
+      throw new Error('Invalid response from OpenAI');
+    }
+    
     const aiResponse = data.choices[0].message.content;
 
     return new Response(
