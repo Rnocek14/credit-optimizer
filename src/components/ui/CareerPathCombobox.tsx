@@ -34,7 +34,7 @@ export function CareerPathCombobox({ value, onChange, placeholder = "Select care
   const [searchValue, setSearchValue] = useState('');
 
   const { data: careerPaths = [], isLoading } = useQuery({
-    queryKey: ['career-paths', searchValue],
+    queryKey: ['career-paths', searchValue.trim()],
     queryFn: async () => {
       let query = supabase
         .from('career_paths')
@@ -55,6 +55,7 @@ export function CareerPathCombobox({ value, onChange, placeholder = "Select care
       return data as CareerPath[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: true, // Always enabled to prevent constant refetching
   });
 
   // Debounce search input

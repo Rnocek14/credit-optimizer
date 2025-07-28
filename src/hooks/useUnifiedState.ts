@@ -54,7 +54,7 @@ export function useSmartSync() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [state.selectedCareerPath, state.selectedLocation, state.currentGoal, actions]);
+  }, [state.selectedCareerPath, state.selectedLocation, state.currentGoal]); // Remove actions dependency
   
   const syncData = useCallback(async (systems: string[] = []) => {
     console.log('Syncing data for systems:', systems);
