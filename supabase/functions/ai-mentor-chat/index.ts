@@ -530,6 +530,26 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
       demandForecast
     } = context || {};
     
+    // Phase 3: Autonomous workflow detection
+    const shouldExecuteWorkflow = detectAutonomousWorkflow(message, activeTab);
+    if (shouldExecuteWorkflow.execute) {
+      console.log('🤖 Executing autonomous workflow:', shouldExecuteWorkflow.workflow);
+      const workflowResult = await executeAutonomousWorkflow(
+        supabase, 
+        shouldExecuteWorkflow.workflow, 
+        careerPath, 
+        location, 
+        userId,
+        message
+      );
+      
+      if (workflowResult) {
+        console.log('✅ Autonomous workflow completed successfully');
+        // Continue with enhanced context from workflow
+        Object.assign(context, workflowResult);
+      }
+    }
+    
     // Generate market-aware system prompt with enhanced context
     const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, {
       patternResults,
@@ -597,7 +617,8 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
           careerPath,
           location,
           activeTab,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          workflowExecuted: shouldExecuteWorkflow.execute ? shouldExecuteWorkflow.workflow : null
         }
       }),
       { 
@@ -615,6 +636,192 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
       }
     );
   }
+}
+
+// Phase 3: Autonomous Workflow Functions
+function detectAutonomousWorkflow(message: string, activeTab: string): { execute: boolean; workflow: string | null } {
+  const lowerMessage = message.toLowerCase();
+  
+  // Comprehensive analysis triggers
+  if (lowerMessage.includes('full analysis') || lowerMessage.includes('complete analysis') || lowerMessage.includes('comprehensive report')) {
+    return { execute: true, workflow: 'comprehensive_analysis' };
+  }
+  
+  // Pattern recognition triggers
+  if (lowerMessage.includes('patterns') || lowerMessage.includes('trends over time') || lowerMessage.includes('seasonal')) {
+    return { execute: true, workflow: 'pattern_analysis' };
+  }
+  
+  // Predictive analysis triggers
+  if (lowerMessage.includes('forecast') || lowerMessage.includes('predict') || lowerMessage.includes('future outlook')) {
+    return { execute: true, workflow: 'predictive_analysis' };
+  }
+  
+  // Career comparison triggers
+  if (lowerMessage.includes('compare careers') || lowerMessage.includes('alternative paths') || lowerMessage.includes('pivot')) {
+    return { execute: true, workflow: 'career_comparison' };
+  }
+  
+  // Tab-specific automatic workflows
+  if (activeTab === 'analysis' && (lowerMessage.includes('what should i know') || lowerMessage.includes('insights'))) {
+    return { execute: true, workflow: 'analysis_insights' };
+  }
+  
+  return { execute: false, workflow: null };
+}
+
+async function executeAutonomousWorkflow(
+  supabase: any, 
+  workflow: string, 
+  careerPath: string, 
+  location: string, 
+  userId: string,
+  userMessage: string
+): Promise<any> {
+  try {
+    console.log(`🚀 Executing ${workflow} workflow for ${careerPath} in ${location}`);
+    
+    switch (workflow) {
+      case 'comprehensive_analysis':
+        return await executeComprehensiveAnalysis(supabase, careerPath, location);
+      
+      case 'pattern_analysis':
+        return await executePatternAnalysis(supabase, careerPath, location);
+      
+      case 'predictive_analysis':
+        return await executePredictiveAnalysis(supabase, careerPath, location);
+      
+      case 'career_comparison':
+        return await executeCareerComparison(supabase, careerPath, location, userId);
+      
+      case 'analysis_insights':
+        return await executeAnalysisInsights(supabase, careerPath, location);
+      
+      default:
+        console.log('Unknown workflow type:', workflow);
+        return null;
+    }
+  } catch (error) {
+    console.error(`Error executing ${workflow} workflow:`, error);
+    return null;
+  }
+}
+
+async function executeComprehensiveAnalysis(supabase: any, careerPath: string, location: string) {
+  console.log('📊 Running comprehensive analysis...');
+  
+  const results = await Promise.allSettled([
+    // Pattern recognition
+    supabase.functions.invoke('pattern-recognition-engine', {
+      body: { 
+        careerPath, 
+        location, 
+        timeframe: '90d',
+        analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+      }
+    }),
+    // Market trend analysis
+    supabase.functions.invoke('market-trend-analyzer', {
+      body: { careerPath, location, timeframe: '90d' }
+    }),
+    // Predictive analysis
+    supabase.functions.invoke('generate-predictive-analysis', {
+      body: { careerPath, location, timeHorizon: '6months' }
+    })
+  ]);
+  
+  const [patternResult, marketResult, predictiveResult] = results;
+  
+  return {
+    comprehensiveAnalysis: {
+      patterns: patternResult.status === 'fulfilled' ? patternResult.value.data : null,
+      marketTrends: marketResult.status === 'fulfilled' ? marketResult.value.data : null,
+      predictions: predictiveResult.status === 'fulfilled' ? predictiveResult.value.data : null,
+      generatedAt: new Date().toISOString()
+    }
+  };
+}
+
+async function executePatternAnalysis(supabase: any, careerPath: string, location: string) {
+  console.log('🔍 Running pattern analysis...');
+  
+  const { data, error } = await supabase.functions.invoke('pattern-recognition-engine', {
+    body: { 
+      careerPath, 
+      location, 
+      timeframe: '180d',
+      analysisTypes: ['seasonal', 'trend', 'volatility', 'anomaly']
+    }
+  });
+  
+  if (error) {
+    console.error('Pattern analysis error:', error);
+    return null;
+  }
+  
+  return { enhancedPatterns: data };
+}
+
+async function executePredictiveAnalysis(supabase: any, careerPath: string, location: string) {
+  console.log('🔮 Running predictive analysis...');
+  
+  const { data, error } = await supabase.functions.invoke('generate-predictive-analysis', {
+    body: { 
+      careerPath, 
+      location, 
+      timeHorizon: '12months'
+    }
+  });
+  
+  if (error) {
+    console.error('Predictive analysis error:', error);
+    return null;
+  }
+  
+  return { predictions: data };
+}
+
+async function executeCareerComparison(supabase: any, careerPath: string, location: string, userId: string) {
+  console.log('⚖️ Running career comparison analysis...');
+  
+  const { data, error } = await supabase.functions.invoke('recommend-pivot-paths', {
+    body: { 
+      currentCareerPath: careerPath,
+      location,
+      userId,
+      analysisDepth: 'comprehensive'
+    }
+  });
+  
+  if (error) {
+    console.error('Career comparison error:', error);
+    return null;
+  }
+  
+  return { careerComparison: data };
+}
+
+async function executeAnalysisInsights(supabase: any, careerPath: string, location: string) {
+  console.log('💡 Running analysis insights...');
+  
+  const results = await Promise.allSettled([
+    supabase.functions.invoke('pattern-recognition-engine', {
+      body: { careerPath, location, timeframe: '60d', analysisTypes: ['anomaly', 'volatility'] }
+    }),
+    supabase.functions.invoke('personalized-market-insights', {
+      body: { careerPath, location, insightTypes: ['risks', 'opportunities', 'timing'] }
+    })
+  ]);
+  
+  const [patternResult, insightsResult] = results;
+  
+  return {
+    analysisInsights: {
+      patterns: patternResult.status === 'fulfilled' ? patternResult.value.data : null,
+      insights: insightsResult.status === 'fulfilled' ? insightsResult.value.data : null,
+      generatedAt: new Date().toISOString()
+    }
+  };
 }
 
 function generateMarketIntelligencePrompt(
@@ -813,6 +1020,24 @@ ADVANCED FUNCTIONS:
 - Dashboard Workflows: Guide users through step-by-step market analysis processes
 - Pattern Recognition: Identify and explain seasonal trends, cycles, and anomalies
 - Strategic Planning: Create actionable career advancement roadmaps
+
+PHASE 3: AUTONOMOUS INTELLIGENCE CAPABILITIES:
+- Workflow Automation: Execute multi-step analyses automatically (pattern recognition → forecasting → recommendations)
+- Predictive Modeling: Use pattern recognition to predict market shifts and optimal career timing
+- Function Calling: Automatically invoke edge functions to gather comprehensive data when needed
+- Proactive Monitoring: Set up intelligent alerts and continuous career path monitoring
+- Data Visualization: Generate charts, graphs, and visual reports on demand
+- Cross-System Integration: Connect resume analysis, skill trees, and pivot paths for holistic insights
+- Conversation Memory: Remember user preferences and build progressive career profiles
+- Autonomous Reporting: Generate comprehensive career readiness and market analysis reports
+
+AUTONOMOUS FUNCTIONS AVAILABLE:
+- generate-predictive-analysis: For market forecasting and trend prediction
+- pattern-recognition-engine: For identifying seasonal patterns, anomalies, and market cycles
+- market-trend-analyzer: For deep market analysis and competitive intelligence
+- personalized-market-insights: For customized career recommendations
+- recommend-pivot-paths: For alternative career path analysis
+- calculate-cri-score: For career readiness assessment
 
 GUIDANCE APPROACH:
 1. Always reference current market context when giving advice
