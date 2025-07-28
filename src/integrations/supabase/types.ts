@@ -906,6 +906,77 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_messages: {
+        Row: {
+          content: string
+          context: Json | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_sessions: {
+        Row: {
+          context: Json
+          created_at: string
+          feature: string
+          id: string
+          is_active: boolean
+          last_activity_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          feature?: string
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          feature?: string
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       course_skill_map: {
         Row: {
           course_id: string
