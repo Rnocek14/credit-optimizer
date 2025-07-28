@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.market-stream]
 verify_jwt = false
+
+[functions.generate-predictive-analysis]
+verify_jwt = false
