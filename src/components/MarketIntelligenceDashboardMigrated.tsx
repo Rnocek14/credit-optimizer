@@ -68,7 +68,7 @@ export function MarketIntelligenceDashboard() {
       setSelectedCareerPath('software-engineer');
       setSelectedLocation('united-states');
     }
-  }, [unifiedContext, selectedCareerPath, selectedLocation, setSelectedCareerPath, setSelectedLocation]);
+  }, [unifiedContext, selectedCareerPath, selectedLocation]);
 
   // Component state
   const [activeTab, setActiveTab] = useState("overview");
