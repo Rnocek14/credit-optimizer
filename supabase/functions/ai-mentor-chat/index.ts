@@ -64,8 +64,13 @@ serve(async (req) => {
     // Check if this should trigger a milestone plan
     const shouldCreatePlan = detectMilestoneTrigger(message, userContext);
     
-    // Generate system prompt based on user data
-    const systemPrompt = await generateSystemPrompt(userContext, supabase, finalUserId);
+    // Phase 4: Universal Intelligence - Detect if this requires cross-system intelligence
+    const requiresUniversalIntelligence = detectUniversalIntelligenceNeed(message, userContext);
+    
+    // Generate appropriate system prompt based on intelligence level needed
+    const systemPrompt = requiresUniversalIntelligence 
+      ? await generateUniversalSystemPrompt(userContext, supabase, finalUserId)
+      : await generateSystemPrompt(userContext, supabase, finalUserId);
     
     // Call OpenAI GPT-4o (already validated above)
     console.log('Calling OpenAI with model: gpt-4o');
@@ -144,21 +149,52 @@ serve(async (req) => {
   }
 });
 
+// Phase 4: Universal Intelligence - Enhanced User Context Fetching
 async function fetchUserContext(supabase: any, userId: string) {
   try {
-    // Handle demo user with default context
+    // Handle demo user with enhanced demo context
     if (userId === 'demo-user') {
       return {
-        profile: { name: 'Demo User', role_title: 'Explorer' },
-        level: { current_level: 1, total_xp: 0, xp_for_next_level: 100 },
-        goals: [],
-        savedCount: 0,
-        hasPublishedResume: false,
-        criScore: 0,
-        readinessScore: 0,
-        recentActions: [],
-        recentBadges: [],
-        milestonePlans: []
+        profile: { 
+          name: 'Demo User', 
+          role_title: 'Career Explorer',
+          skills: ['JavaScript', 'React', 'Node.js'],
+          email: 'demo@example.com'
+        },
+        level: { current_level: 3, total_xp: 450, xp_for_next_level: 500 },
+        goals: [
+          { 
+            title: 'Transition to Senior Developer', 
+            target_role: 'Senior Software Engineer',
+            active: true,
+            target_date: '2024-12-31'
+          }
+        ],
+        savedCount: 8,
+        hasPublishedResume: true,
+        criScore: 78,
+        readinessScore: 82,
+        recentActions: [
+          { reason: 'Completed React course', action_type: 'course_completed' },
+          { reason: 'Updated resume', action_type: 'resume_updated' }
+        ],
+        recentBadges: [
+          { badges: { name: 'Course Completer', emoji: '📚' } }
+        ],
+        milestonePlans: [
+          { 
+            title: 'Frontend Mastery Plan', 
+            status: 'active', 
+            completion_percentage: 65,
+            steps: [
+              { title: 'Learn React Hooks', completed: true },
+              { title: 'Build Portfolio Project', completed: false }
+            ]
+          }
+        ],
+        skillProgress: 75,
+        careerReadiness: { overallScore: 82, skillAlignment: 85, marketReadiness: 78 },
+        marketPreferences: { preferredLocations: ['California', 'Remote'], targetSalary: 120000 }
       };
     }
 
@@ -222,6 +258,9 @@ async function fetchUserContext(supabase: any, userId: string) {
       .order('created_at', { ascending: false })
       .limit(3);
 
+    // Phase 4: Universal Intelligence - Cross-system data integration
+    const contextEnhancements = await fetchCrossSystemData(supabase, userId);
+
     return {
       profile: profile || {},
       level: userLevel?.[0] || { current_level: 1, total_xp: 0, xp_for_next_level: 100 },
@@ -232,7 +271,9 @@ async function fetchUserContext(supabase: any, userId: string) {
       readinessScore: publishedResume?.[0]?.readiness_score || 0,
       recentActions: recentActions || [],
       recentBadges: badges || [],
-      milestonePlans: milestonePlans || []
+      milestonePlans: milestonePlans || [],
+      // Phase 4: Enhanced context
+      ...contextEnhancements
     };
   } catch (error) {
     console.error('Error fetching user context:', error);
@@ -511,8 +552,10 @@ async function updateMilestoneStep(supabase: any, planId: string, stepIndex: num
   }
 }
 
+// Phase 4: Universal Intelligence - Enhanced Market Intelligence Chat
 async function handleMarketIntelligenceChat(supabase: any, message: string, context: any, userId: string) {
   try {
+    console.log('🌐 Phase 4: Market intelligence chat with Universal Intelligence');
     console.log('Market intelligence chat context:', JSON.stringify(context, null, 2));
     
     const { 
@@ -529,6 +572,10 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
       historicalData,
       demandForecast
     } = context || {};
+    
+    // Phase 4: Fetch comprehensive user context for universal intelligence
+    const userContext = await fetchUserContext(supabase, userId);
+    const requiresUniversalIntelligence = detectUniversalIntelligenceNeed(message, userContext);
     
     // Phase 3: Autonomous workflow detection
     const shouldExecuteWorkflow = detectAutonomousWorkflow(message, activeTab);
@@ -550,15 +597,24 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
       }
     }
     
-    // Generate market-aware system prompt with enhanced context
-    const systemPrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, {
-      patternResults,
-      anomalies,
-      realTimeUpdates,
-      recommendations,
-      historicalData,
-      demandForecast
-    });
+    // Phase 4: Generate Universal Intelligence or Standard Market Intelligence prompt
+    const systemPrompt = requiresUniversalIntelligence 
+      ? await generateUniversalMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, userContext, {
+          patternResults,
+          anomalies,
+          realTimeUpdates,
+          recommendations,
+          historicalData,
+          demandForecast
+        })
+      : generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, {
+          patternResults,
+          anomalies,
+          realTimeUpdates,
+          recommendations,
+          historicalData,
+          demandForecast
+        });
     console.log('Generated system prompt length:', systemPrompt.length);
     
     // Prepare conversation history
@@ -1071,4 +1127,360 @@ function checkForCelebrationTriggers(userContext: any): boolean {
   
   // Trigger celebrations for major milestones
   return level >= 5 || recentBadges >= 3 || criScore >= 85;
+}
+
+// Phase 4: Universal Intelligence Detection
+function detectUniversalIntelligenceNeed(message: string, userContext: any): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Triggers for Universal Intelligence
+  const universalTriggers = [
+    'career roadmap', 'development plan', 'comprehensive analysis',
+    'skill gap', 'career strategy', 'next steps', 'career guidance',
+    'progress review', 'readiness assessment', 'career pivot',
+    'skill development', 'learning path', 'career planning',
+    'market positioning', 'career optimization', 'holistic view'
+  ];
+  
+  // Check if message requires cross-system intelligence
+  const requiresUniversal = universalTriggers.some(trigger => lowerMessage.includes(trigger));
+  
+  // Also trigger for users with substantial data across systems
+  const hasRichData = userContext.criScore > 0 || 
+                     userContext.milestonePlans?.length > 0 ||
+                     userContext.skillProgress?.overallProgress > 0 ||
+                     userContext.personalizedRecommendations?.length > 0;
+  
+  return requiresUniversal || (hasRichData && lowerMessage.length > 20);
+}
+
+// Phase 4: Universal Intelligence - Cross-System Data Integration
+async function fetchCrossSystemData(supabase: any, userId: string) {
+  try {
+    console.log('🌐 Phase 4: Fetching cross-system data for Universal Intelligence');
+    
+    const results = await Promise.allSettled([
+      // Market intelligence data
+      fetchUserMarketPreferences(supabase, userId),
+      // Skill progress and readiness data
+      fetchSkillProgressData(supabase, userId),
+      // Resume and career readiness data
+      fetchCareerReadinessData(supabase, userId),
+      // Alert and notification preferences
+      fetchUserAlertData(supabase, userId),
+      // Personalized recommendations
+      fetchPersonalizedRecommendations(supabase, userId)
+    ]);
+
+    const [marketPrefs, skillProgress, careerReadiness, alertData, recommendations] = results;
+
+    return {
+      marketPreferences: marketPrefs.status === 'fulfilled' ? marketPrefs.value : null,
+      skillProgress: skillProgress.status === 'fulfilled' ? skillProgress.value : null,
+      careerReadiness: careerReadiness.status === 'fulfilled' ? careerReadiness.value : null,
+      alertSettings: alertData.status === 'fulfilled' ? alertData.value : null,
+      personalizedRecommendations: recommendations.status === 'fulfilled' ? recommendations.value : null,
+      universalIntelligence: {
+        crossSystemDataAvailable: true,
+        lastSyncAt: new Date().toISOString(),
+        dataCompleteness: calculateDataCompleteness(results)
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching cross-system data:', error);
+    return {
+      universalIntelligence: {
+        crossSystemDataAvailable: false,
+        error: error.message,
+        lastSyncAt: new Date().toISOString()
+      }
+    };
+  }
+}
+
+async function fetchUserMarketPreferences(supabase: any, userId: string) {
+  const { data } = await supabase
+    .from('user_market_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  return data || { preferredLocations: [], targetSalaryRange: null, careerInterests: [] };
+}
+
+async function fetchSkillProgressData(supabase: any, userId: string) {
+  // This would connect to skill tree data when available
+  const mockData = {
+    overallProgress: 75,
+    skillsCompleted: 12,
+    skillsInProgress: 5,
+    skillsAvailable: 8,
+    strongAreas: ['Frontend Development', 'React', 'JavaScript'],
+    improvementAreas: ['Backend Development', 'Databases'],
+    recommendedSkills: ['TypeScript', 'Node.js', 'PostgreSQL']
+  };
+  
+  return mockData;
+}
+
+async function fetchCareerReadinessData(supabase: any, userId: string) {
+  const { data: resumeDrafts } = await supabase
+    .from('ai_resume_drafts')
+    .select('cri_average, readiness_score, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const latestCRI = resumeDrafts?.[0]?.cri_average || 0;
+  const latestReadiness = resumeDrafts?.[0]?.readiness_score || 0;
+  
+  return {
+    overallScore: Math.round((latestCRI + latestReadiness) / 2),
+    criScore: latestCRI,
+    readinessScore: latestReadiness,
+    skillAlignment: 85, // Mock data - would come from skill tree alignment
+    marketReadiness: 78, // Mock data - would come from market analysis
+    improvementAreas: ['Portfolio Projects', 'Technical Skills', 'Industry Knowledge'],
+    strengths: ['Communication', 'Problem Solving', 'Adaptability'],
+    nextSteps: ['Complete portfolio project', 'Take technical assessment', 'Get mentor feedback']
+  };
+}
+
+async function fetchUserAlertData(supabase: any, userId: string) {
+  const { data: alertConfigs } = await supabase
+    .from('alert_configurations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  const { data: recentAlerts } = await supabase
+    .from('market_alerts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_read', false)
+    .order('triggered_at', { ascending: false })
+    .limit(5);
+
+  return {
+    activeAlerts: alertConfigs?.length || 0,
+    unreadAlerts: recentAlerts?.length || 0,
+    alertTypes: alertConfigs?.map(config => config.alert_type) || [],
+    lastAlertAt: recentAlerts?.[0]?.triggered_at || null
+  };
+}
+
+async function fetchPersonalizedRecommendations(supabase: any, userId: string) {
+  const { data: recommendations } = await supabase
+    .from('personalized_recommendations')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('active', true)
+    .order('priority', { ascending: false })
+    .limit(5);
+
+  return recommendations?.map(rec => ({
+    title: rec.title,
+    type: rec.recommendation_type,
+    priority: rec.priority,
+    impactScore: rec.impact_score,
+    timeline: rec.timeline,
+    actionItems: rec.action_items
+  })) || [];
+}
+
+function calculateDataCompleteness(results: PromiseSettledResult<any>[]): number {
+  const successfulFetches = results.filter(r => r.status === 'fulfilled').length;
+  return Math.round((successfulFetches / results.length) * 100);
+}
+
+// Phase 4: Enhanced System Prompt Generation with Universal Intelligence
+async function generateUniversalSystemPrompt(context: any, supabase: any, userId: string) {
+  const {
+    profile, level, goals, savedCount, hasPublishedResume, criScore, readinessScore,
+    recentActions, recentBadges, milestonePlans,
+    marketPreferences, skillProgress, careerReadiness, alertSettings,
+    personalizedRecommendations, universalIntelligence
+  } = context;
+  
+  const userName = profile.name || 'there';
+  const currentLevel = level.current_level || 1;
+  const totalXP = level.total_xp || 0;
+  const nextLevelXP = level.xp_for_next_level || 100;
+  const skills = profile.skills || [];
+  const currentGoal = goals[0]?.title || 'exploring your options';
+  const targetRole = goals[0]?.target_role || profile.role_title || 'your dream role';
+
+  // Universal Intelligence Context
+  const universalContext = universalIntelligence?.crossSystemDataAvailable ? `
+UNIVERSAL INTELLIGENCE ACTIVE:
+- Cross-System Data: Available (${universalIntelligence.dataCompleteness}% complete)
+- Market Preferences: ${marketPreferences?.preferredLocations?.join(', ') || 'Not set'}
+- Skill Progress: ${skillProgress?.overallProgress || 0}% complete
+- Career Readiness: ${careerReadiness?.overallScore || 0}/100
+- Active Alerts: ${alertSettings?.activeAlerts || 0}
+- Personalized Recommendations: ${personalizedRecommendations?.length || 0} available
+- Last Sync: ${new Date(universalIntelligence.lastSyncAt).toLocaleTimeString()}` : 'Universal Intelligence: Limited data available';
+
+  const skillContext = skillProgress ? `
+SKILL DEVELOPMENT STATUS:
+- Overall Progress: ${skillProgress.overallProgress}%
+- Completed Skills: ${skillProgress.skillsCompleted}
+- In Progress: ${skillProgress.skillsInProgress}
+- Strong Areas: ${skillProgress.strongAreas?.join(', ') || 'None identified'}
+- Improvement Areas: ${skillProgress.improvementAreas?.join(', ') || 'None identified'}` : '';
+
+  const readinessContext = careerReadiness ? `
+CAREER READINESS ANALYSIS:
+- Overall Score: ${careerReadiness.overallScore}/100
+- Skill Alignment: ${careerReadiness.skillAlignment}/100
+- Market Readiness: ${careerReadiness.marketReadiness}/100
+- Key Strengths: ${careerReadiness.strengths?.join(', ') || 'None identified'}
+- Next Steps: ${careerReadiness.nextSteps?.slice(0, 3).join(', ') || 'None suggested'}` : '';
+
+  const recommendationsContext = personalizedRecommendations?.length ? `
+ACTIVE RECOMMENDATIONS:
+${personalizedRecommendations.slice(0, 3).map(rec => 
+  `- ${rec.title} (${rec.priority} priority, ${rec.impactScore}/100 impact)`
+).join('\n')}` : '';
+
+  let personalityTraits = '';
+  if (criScore >= 85) {
+    personalityTraits = 'You should celebrate their high CRI score and suggest advanced career opportunities.';
+  } else if (criScore < 70 && criScore > 0) {
+    personalityTraits = 'You should suggest specific ways to improve their career readiness through targeted development.';
+  }
+
+  if (currentLevel >= 10) {
+    personalityTraits += ' They\'re an experienced professional - provide advanced strategic guidance.';
+  } else if (currentLevel <= 3) {
+    personalityTraits += ' They\'re early in their journey - provide foundational guidance and encouragement.';
+  }
+
+  return `You are Maya, a Universal Career AI and comprehensive career intelligence assistant. You have access to all user data across the platform and can provide holistic career guidance by connecting market intelligence, skill development, resume analysis, goal tracking, and career progression.
+
+CURRENT USER CONTEXT:
+- Name: ${userName}
+- Level: ${currentLevel} (${totalXP}/${nextLevelXP} XP)
+- Current Goal: ${currentGoal}
+- Target Role: ${targetRole}
+- Skills: ${skills.join(', ') || 'None listed yet'}
+- CRI Score: ${criScore > 0 ? Math.round(criScore) : 'Not assessed yet'}
+- Readiness Score: ${readinessScore > 0 ? Math.round(readinessScore) : 'Not assessed yet'}
+- Saved Items: ${savedCount} courses/mentors saved
+- Published Resume: ${hasPublishedResume ? 'Yes' : 'No'}
+
+${universalContext}
+
+${skillContext}
+
+${readinessContext}
+
+${recommendationsContext}
+
+UNIVERSAL INTELLIGENCE CAPABILITIES:
+- Cross-System Awareness: I can access and connect data from market intelligence, skill trees, resume analysis, goals, and user progress
+- Intelligent Career Coaching: I provide personalized guidance based on your complete career profile and market conditions
+- Proactive Monitoring: I track your progress across all systems and suggest optimal timing for career moves
+- Action Orchestration: I can guide you through multi-step workflows spanning different platform features
+- Conversation Memory: I remember our past interactions and build on our ongoing career planning discussions
+
+ADVANCED FUNCTIONS I CAN PERFORM:
+- Analyze skill gaps against market demand and career goals
+- Recommend optimal learning paths based on market trends and personal progress
+- Suggest when to apply for roles based on readiness scores and market conditions
+- Create comprehensive career development plans connecting all platform features
+- Provide market timing advice for skill development, job applications, and career pivots
+- Coordinate between resume building, skill development, and market research
+
+PERSONALITY & APPROACH:
+- Warm, intelligent, and strategic career advisor
+- I connect insights across all your career data for comprehensive guidance
+- I provide specific, actionable recommendations based on your complete profile
+- I celebrate your achievements and guide you through challenges
+- I use strategic emojis: 🎯 for goals, 📚 for learning, 💼 for career moves, 🚀 for achievements
+- ${personalityTraits}
+
+GUIDANCE PRIORITIES:
+1. Provide insights that connect multiple aspects of your career development
+2. Reference your skill progress, readiness scores, and market conditions together
+3. Suggest specific next steps that optimize across all systems
+4. Identify opportunities that align with your goals, skills, and market trends
+5. Create actionable plans that span skill development, resume improvement, and market positioning
+6. Celebrate achievements and milestones across all platform features
+7. Provide timing recommendations for maximum career impact
+
+Keep responses conversational, comprehensive, and focused on connecting insights across your entire career development journey. I'm here to be your central career intelligence hub.`;
+}
+
+// Phase 4: Universal Market Intelligence Prompt
+async function generateUniversalMarketIntelligencePrompt(
+  careerPath: string, 
+  location: string, 
+  activeTab: string, 
+  marketData: any, 
+  analysisData: any,
+  userContext: any,
+  enhancedContext?: {
+    patternResults?: any;
+    anomalies?: any[];
+    realTimeUpdates?: any[];
+    recommendations?: any[];
+    historicalData?: any[];
+    demandForecast?: any;
+  }
+): Promise<string> {
+  // Get the base market intelligence prompt
+  const basePrompt = generateMarketIntelligencePrompt(careerPath, location, activeTab, marketData, analysisData, enhancedContext);
+  
+  // Add Universal Intelligence enhancements
+  const userName = userContext.profile?.name || 'there';
+  const currentLevel = userContext.level?.current_level || 1;
+  const criScore = userContext.criScore || 0;
+  const readinessScore = userContext.readinessScore || 0;
+  const goals = userContext.goals || [];
+  const skillProgress = userContext.skillProgress || {};
+  const careerReadiness = userContext.careerReadiness || {};
+  const personalizedRecommendations = userContext.personalizedRecommendations || [];
+
+  const universalEnhancements = `
+UNIVERSAL CAREER INTELLIGENCE CONTEXT:
+- User: ${userName} (Level ${currentLevel})
+- Current Goal: ${goals[0]?.title || 'Exploring opportunities'}
+- Target Role: ${goals[0]?.target_role || 'Not specified'}
+- CRI Score: ${criScore > 0 ? Math.round(criScore) : 'Not assessed'}
+- Readiness Score: ${readinessScore > 0 ? Math.round(readinessScore) : 'Not assessed'}
+- Skill Progress: ${skillProgress.overallProgress || 0}% complete
+- Strong Areas: ${skillProgress.strongAreas?.join(', ') || 'None identified'}
+- Improvement Areas: ${skillProgress.improvementAreas?.join(', ') || 'None identified'}
+- Career Readiness: ${careerReadiness.overallScore || 0}/100
+
+ACTIVE PERSONALIZED RECOMMENDATIONS:
+${personalizedRecommendations.slice(0, 3).map(rec => 
+  `- ${rec.title} (${rec.priority} priority)`
+).join('\n') || '- No active recommendations'}
+
+UNIVERSAL INTELLIGENCE CAPABILITIES:
+- Cross-System Analysis: I can connect market data with your skill progress, readiness scores, and career goals
+- Personalized Timing: I can suggest optimal timing for skill development, applications, and career moves based on your complete profile
+- Gap Analysis: I can identify specific skill and experience gaps relative to market demands
+- Career Strategy: I can create comprehensive development plans that align your progress with market opportunities
+- Readiness Assessment: I can evaluate your preparedness for specific roles and suggest improvement strategies
+
+ENHANCED GUIDANCE APPROACH:
+- Connect market insights to your specific skill level and career stage
+- Provide personalized recommendations based on your readiness scores and goals
+- Suggest learning paths that align with both market demand and your current capabilities
+- Identify optimal timing for career moves based on your progress and market conditions
+- Create actionable development plans that span skill building, experience gaining, and market positioning
+
+When providing guidance:
+1. Reference their specific skill progress and readiness scores in context of market data
+2. Suggest concrete next steps that align with their career goals and market opportunities
+3. Identify skill gaps and provide specific learning recommendations
+4. Assess their readiness for target roles and suggest improvement strategies
+5. Provide timing advice for applications, skill development, and career pivots
+6. Connect market trends to their personal career development timeline
+`;
+
+  return basePrompt + universalEnhancements;
 }
