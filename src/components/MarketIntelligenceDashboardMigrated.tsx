@@ -333,6 +333,76 @@ export function MarketIntelligenceDashboard() {
     }
   };
 
+  // Data transformation functions for Maya AI Assistant
+  const transformMarketDataForMaya = (data: any[]) => {
+    return data.map(item => ({
+      ...item,
+      growthRate: item.growth_rate,
+      demandScore: item.demand_score,
+      jobPostingsCount: item.job_postings_count,
+      averageSalary: item.average_salary,
+      competitionLevel: item.competition_level,
+      aiInsights: item.ai_insights,
+      rawData: item.raw_data,
+      careerPath: item.career_path,
+      timePeriod: item.time_period,
+      dataSource: item.data_source,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
+  };
+
+  const transformPatternDataForMaya = (data: any) => {
+    if (!data) return null;
+    
+    console.log('🔍 Transforming pattern data for Maya:', data);
+    
+    return {
+      ...data,
+      patternType: data.pattern_type,
+      confidenceScore: data.confidence_score,
+      patternData: data.pattern_data,
+      anomalyScore: data.anomaly_score,
+      detectedAt: data.detected_at,
+      validUntil: data.valid_until,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      // Add formatted confidence as percentage
+      confidence: data.confidence_score ? Math.round(data.confidence_score * 100) : 0,
+      // Transform pattern_data structure if it exists
+      trendPattern: data.pattern_data?.trend || data.pattern_type,
+      seasonality: data.pattern_data?.seasonal || {},
+      volatility: data.pattern_data?.volatility || {}
+    };
+  };
+
+  const transformHistoricalDataForMaya = (data: any[]) => {
+    return data.map(item => ({
+      ...item,
+      growthRate: item.growth_rate,
+      demandScore: item.demand_score,
+      jobPostingsCount: item.job_postings_count,
+      averageSalary: item.average_salary,
+      careerPath: item.career_path,
+      recordedAt: item.recorded_at,
+      timePeriod: item.time_period,
+      dataSource: item.data_source
+    }));
+  };
+
+  const transformDemandForecastForMaya = (data: any) => {
+    if (!data) return null;
+    
+    return {
+      ...data,
+      demandProjection: data.demandProjection || data.demand_projection,
+      salaryProjection: data.salaryProjection || data.salary_projection,
+      marketFactors: data.marketFactors || data.market_factors,
+      riskFactors: data.riskFactors || data.risk_factors,
+      timelineEvents: data.timelineEvents || data.timeline_events
+    };
+  };
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'increasing':
@@ -948,14 +1018,14 @@ export function MarketIntelligenceDashboard() {
         selectedCareerPath={selectedCareerPath?.title}
         selectedLocation={selectedLocation?.value}
         activeTab={activeTab}
-        marketData={marketData}
+        marketData={transformMarketDataForMaya(marketData)}
         analysisData={analysis}
-        patternResults={patternRecognitionData}
+        patternResults={transformPatternDataForMaya(patternRecognitionData)}
         anomalies={patternRecognitionData?.anomalies}
         realTimeUpdates={realTimeUpdates}
         recommendations={personalizedRecommendations}
-        historicalData={historicalData}
-        demandForecast={demandForecastData}
+        historicalData={transformHistoricalDataForMaya(historicalData)}
+        demandForecast={transformDemandForecastForMaya(demandForecastData)}
       />
     </div>
   );
