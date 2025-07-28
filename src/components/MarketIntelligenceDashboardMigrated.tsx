@@ -235,11 +235,27 @@ export function MarketIntelligenceDashboard() {
   }, [setLoading, setError]);
 
 
-  // Handle insight actions
-  const handleInsightAction = (action: string, context?: any) => {
-    console.log('Insight action:', action, context);
-    handleUnifiedAction({ action, context });
-  };
+  // Handle insight actions - FIXED to properly route actions
+  const handleInsightAction = useCallback(async (actionData: any) => {
+    console.log('🎯 handleInsightAction received:', actionData);
+    
+    // Handle direct string actions (legacy support)
+    if (typeof actionData === 'string') {
+      const legacyAction = { type: actionData };
+      console.log('🔄 Converting string action to object:', legacyAction);
+      await handleUnifiedAction(legacyAction);
+      return;
+    }
+    
+    // Handle object actions
+    if (actionData && typeof actionData === 'object') {
+      console.log('✅ Processing object action:', actionData);
+      await handleUnifiedAction(actionData);
+      return;
+    }
+    
+    console.warn('⚠️ Unknown action format:', actionData);
+  }, [handleUnifiedAction]);
 
   // Get trend icon
   const getTrendIcon = (trend: string) => {
@@ -450,7 +466,7 @@ export function MarketIntelligenceDashboard() {
                 </CardContent>
               </Card>
 
-              {/* Smart Suggestions */}
+              {/* Quick Actions with Job Lookups */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Quick Actions</CardTitle>
@@ -460,7 +476,27 @@ export function MarketIntelligenceDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="w-full justify-start text-xs"
-                    onClick={handleMarketAnalysis}
+                    onClick={() => {
+                      console.log('🔍 Quick Job Search clicked');
+                      setActiveTab('research');
+                      toast({
+                        title: "Opening Job Search",
+                        description: "Loading job market research tools...",
+                      });
+                    }}
+                  >
+                    <Users className="w-3 h-3 mr-2" />
+                    Quick Job Lookup
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start text-xs"
+                    onClick={async () => {
+                      console.log('📊 Run Analysis clicked');
+                      await handleMarketAnalysis();
+                      setActiveTab('analysis');
+                    }}
                     disabled={!selectedCareerPath || !selectedLocation}
                   >
                     <BarChart3 className="w-3 h-3 mr-2" />
@@ -470,7 +506,11 @@ export function MarketIntelligenceDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="w-full justify-start text-xs"
-                    onClick={handleSalaryAnalysis}
+                    onClick={async () => {
+                      console.log('💰 Salary Insights clicked');
+                      await handleSalaryAnalysis();
+                      setActiveTab('analysis');
+                    }}
                     disabled={!selectedCareerPath}
                   >
                     <DollarSign className="w-3 h-3 mr-2" />
@@ -480,7 +520,10 @@ export function MarketIntelligenceDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="w-full justify-start text-xs"
-                    onClick={() => setActiveTab('research')}
+                    onClick={() => {
+                      console.log('🎯 Market Research clicked');
+                      setActiveTab('research');
+                    }}
                   >
                     <Target className="w-3 h-3 mr-2" />
                     Market Research
@@ -552,9 +595,85 @@ export function MarketIntelligenceDashboard() {
 
           {/* Analysis Tab */}
           <TabsContent value="analysis" className="space-y-6">
+            {/* Analysis Results */}
+            {analysis && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Market Analysis Results
+                  </CardTitle>
+                  <CardDescription>
+                    Analysis for {selectedCareerPath} in {selectedLocation}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-green-600">{analysis.growth_rate}%</div>
+                      <div className="text-sm text-muted-foreground">Growth Rate</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-blue-600">{analysis.demand_score}/100</div>
+                      <div className="text-sm text-muted-foreground">Demand Score</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-amber-600 capitalize">{analysis.competition_level}</div>
+                      <div className="text-sm text-muted-foreground">Competition</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xl font-bold text-purple-600">{analysis.salary_range}</div>
+                      <div className="text-sm text-muted-foreground">Salary Range</div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-l-primary">
+                    <div className="flex items-start gap-3">
+                      <Brain className="w-5 h-5 text-primary mt-0.5" />
+                      <div>
+                        <div className="font-medium text-sm mb-1">AI Market Insights</div>
+                        <p className="text-sm text-muted-foreground">{analysis.market_insights}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Salary Insights */}
+            {salaryInsights && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Salary Analysis Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">${salaryInsights.average_salary.toLocaleString()}</div>
+                      <div className="text-sm text-muted-foreground">Average Salary</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">${salaryInsights.median_salary.toLocaleString()}</div>
+                      <div className="text-sm text-muted-foreground">Median Salary</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600">{salaryInsights.top_location}</div>
+                      <div className="text-sm text-muted-foreground">Top Location</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-amber-600">+{salaryInsights.salary_growth}%</div>
+                      <div className="text-sm text-muted-foreground">Growth Rate</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Salary Insights</h3>
+                <h3 className="text-lg font-semibold mb-4">Advanced Analytics</h3>
                 <SalaryInsightsExplorer />
               </Card>
               
@@ -566,16 +685,108 @@ export function MarketIntelligenceDashboard() {
 
           {/* Research Tab */}
           <TabsContent value="research" className="space-y-6">
+            {/* Quick Job Lookup Panel */}
             <Card>
               <CardHeader>
-                <CardTitle>Research Tools</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Quick Job Lookup
+                </CardTitle>
                 <CardDescription>
-                  Advanced research and forecasting tools
+                  Find relevant job opportunities for your selected career path and location
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedCareerPath && selectedLocation ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button 
+                        className="w-full" 
+                        onClick={() => {
+                          window.open(`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(selectedCareerPath)}&location=${encodeURIComponent(selectedLocation)}`, '_blank');
+                          toast({
+                            title: "Opening LinkedIn Jobs",
+                            description: `Searching for ${selectedCareerPath} positions in ${selectedLocation}`,
+                          });
+                        }}
+                      >
+                        <Target className="w-4 h-4 mr-2" />
+                        Search LinkedIn
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => {
+                          window.open(`https://www.indeed.com/jobs?q=${encodeURIComponent(selectedCareerPath)}&l=${encodeURIComponent(selectedLocation)}`, '_blank');
+                          toast({
+                            title: "Opening Indeed",
+                            description: `Searching for ${selectedCareerPath} positions in ${selectedLocation}`,
+                          });
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        Search Indeed
+                      </Button>
+                    </div>
+                    
+                    <div className="p-4 bg-muted/30 rounded-lg border-l-4 border-l-blue-500">
+                      <div className="flex items-start gap-3">
+                        <Brain className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-sm mb-1">Smart Search Tips</div>
+                          <p className="text-sm text-muted-foreground">
+                            Based on your selection ({selectedCareerPath} in {selectedLocation}), 
+                            try searching for related keywords like "data analysis", "software development", 
+                            or "product strategy" to expand your opportunities.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground">
+                      Select a career path and location above to enable job search functionality
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Additional Research Tools */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Advanced Research Tools</CardTitle>
+                <CardDescription>
+                  Market forecasting and trend analysis tools
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center text-muted-foreground">
-                  Research tools will be available in the next update...
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-auto p-4 flex flex-col items-start text-left"
+                    onClick={() => setActiveTab('analysis')}
+                  >
+                    <BarChart3 className="w-6 h-6 mb-2 text-primary" />
+                    <div className="font-medium">Market Trends</div>
+                    <div className="text-xs text-muted-foreground">Analyze historical and predicted trends</div>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-auto p-4 flex flex-col items-start text-left"
+                    onClick={() => {
+                      toast({
+                        title: "Feature Coming Soon",
+                        description: "Salary benchmarking tools will be available in the next update",
+                      });
+                    }}
+                  >
+                    <DollarSign className="w-6 h-6 mb-2 text-green-600" />
+                    <div className="font-medium">Salary Benchmarks</div>
+                    <div className="text-xs text-muted-foreground">Compare compensation across markets</div>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
