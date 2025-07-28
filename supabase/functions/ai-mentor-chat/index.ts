@@ -640,16 +640,41 @@ function generateMarketIntelligencePrompt(
   
   let marketContext = '';
   if (marketData && Array.isArray(marketData) && marketData.length > 0) {
-    const latestData = marketData[0]; // Get the most recent market data
+    // Filter for the specific career path and location
+    const filteredData = marketData.find(item => 
+      item.careerPath === careerPath && item.location === location
+    );
+    
+    // If no exact match, try partial matches
+    const fallbackData = filteredData || 
+      marketData.find(item => item.careerPath === careerPath) ||
+      marketData.find(item => item.location === location) ||
+      marketData[0];
+    
+    console.log('🎯 Maya market data filtering:', {
+      careerPath,
+      location,
+      totalItems: marketData.length,
+      exactMatch: !!filteredData,
+      usingFallback: !filteredData,
+      selectedData: fallbackData ? {
+        careerPath: fallbackData.careerPath,
+        location: fallbackData.location,
+        growthRate: fallbackData.growthRate,
+        salary: fallbackData.averageSalary
+      } : null
+    });
+    
+    const selectedData = fallbackData;
     marketContext = `
 CURRENT MARKET DATA:
-- Growth Rate: ${latestData.growthRate || 'Not available'}%
-- Demand Score: ${latestData.demandScore || 'Not available'}/100
-- Average Salary: $${latestData.averageSalary ? latestData.averageSalary.toLocaleString() : 'Not available'}
-- Job Postings: ${latestData.jobPostingsCount || 'Not available'}
-- Competition Level: ${latestData.competitionLevel || 'Not available'}
-- Data Source: ${latestData.dataSource || 'Market analysis'}
-- Last Updated: ${latestData.updatedAt ? new Date(latestData.updatedAt).toLocaleDateString() : 'Recent'}
+- Growth Rate: ${selectedData.growthRate || 'Not available'}%
+- Demand Score: ${selectedData.demandScore || 'Not available'}/100
+- Average Salary: $${selectedData.averageSalary ? selectedData.averageSalary.toLocaleString() : 'Not available'}
+- Job Postings: ${selectedData.jobPostingsCount || 'Not available'}
+- Competition Level: ${selectedData.competitionLevel || 'Not available'}
+- Data Source: ${selectedData.dataSource || 'Market analysis'}
+- Last Updated: ${selectedData.updatedAt ? new Date(selectedData.updatedAt).toLocaleDateString() : 'Recent'}
 `;
   } else if (marketData && !Array.isArray(marketData)) {
     // Handle single object case
