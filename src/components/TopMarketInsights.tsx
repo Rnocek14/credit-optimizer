@@ -222,7 +222,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = React.memo(({
               {insight.action && (
                 <button 
                   className="text-xs text-primary hover:text-primary/80 font-medium"
-                  onClick={useCallback(async () => {
+                  onClick={async () => {
                     // Extract career path and location with better fallbacks
                     const extractedCareerPath = insight.careerPath || 
                       (insight.type === 'opportunity' && insight.description.includes('in') ? 
@@ -288,7 +288,7 @@ export const TopMarketInsights: React.FC<TopMarketInsightsProps> = React.memo(({
                         location: extractedLocation
                       });
                     }
-                  }, [insight, selectedCareerPath, selectedLocation, trackInsightInteraction, toast, onActionClick])}
+                  }}
                 >
                   {insight.action} →
                 </button>
