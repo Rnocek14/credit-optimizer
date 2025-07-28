@@ -242,7 +242,10 @@ export function PatternRecognitionPanel({ careerPath, location, autoData, autoTr
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
                       {getPatternIcon(pattern.pattern_type)}
-                      {pattern.pattern_type.charAt(0).toUpperCase() + pattern.pattern_type.slice(1)} Pattern
+                      {pattern.pattern_type ? 
+                        pattern.pattern_type.charAt(0).toUpperCase() + pattern.pattern_type.slice(1) + ' Pattern' :
+                        'Unknown Pattern'
+                      }
                     </CardTitle>
                     <Badge variant="outline">
                       {Math.round(pattern.confidence_score * 100)}% confidence
@@ -301,7 +304,10 @@ export function PatternRecognitionPanel({ careerPath, location, autoData, autoTr
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <AlertTriangle className="h-4 w-4" />
-                      {anomaly.anomaly_type.charAt(0).toUpperCase() + anomaly.anomaly_type.slice(1)} Anomaly
+                      {anomaly.anomaly_type ? 
+                        anomaly.anomaly_type.charAt(0).toUpperCase() + anomaly.anomaly_type.slice(1) + ' Anomaly' :
+                        'Unknown Anomaly'
+                      }
                     </CardTitle>
                     <Badge variant={getSeverityColor(anomaly.severity) as any}>
                       {anomaly.severity}
