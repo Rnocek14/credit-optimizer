@@ -639,14 +639,26 @@ function generateMarketIntelligencePrompt(
   if (activeTab) contextInfo.push(`Current Tab: ${activeTab}`);
   
   let marketContext = '';
-  if (marketData) {
+  if (marketData && Array.isArray(marketData) && marketData.length > 0) {
+    const latestData = marketData[0]; // Get the most recent market data
+    marketContext = `
+CURRENT MARKET DATA:
+- Growth Rate: ${latestData.growthRate || 'Not available'}%
+- Demand Score: ${latestData.demandScore || 'Not available'}/100
+- Average Salary: $${latestData.averageSalary ? latestData.averageSalary.toLocaleString() : 'Not available'}
+- Job Postings: ${latestData.jobPostingsCount || 'Not available'}
+- Competition Level: ${latestData.competitionLevel || 'Not available'}
+- Data Source: ${latestData.dataSource || 'Market analysis'}
+- Last Updated: ${latestData.updatedAt ? new Date(latestData.updatedAt).toLocaleDateString() : 'Recent'}
+`;
+  } else if (marketData && !Array.isArray(marketData)) {
+    // Handle single object case
     marketContext = `
 CURRENT MARKET DATA:
 - Growth Rate: ${marketData.growthRate || 'Not available'}%
 - Demand Score: ${marketData.demandScore || 'Not available'}/100
-- Salary Range: ${marketData.salaryRange || 'Not available'}
-- Job Openings: ${marketData.jobOpenings || 'Not available'}
-- Market Trend: ${marketData.trend || 'Not available'}
+- Average Salary: $${marketData.averageSalary ? marketData.averageSalary.toLocaleString() : 'Not available'}
+- Job Postings: ${marketData.jobPostingsCount || 'Not available'}
 `;
   }
 
@@ -664,12 +676,18 @@ ANALYSIS INSIGHTS:
   let patternContext = '';
   if (enhancedContext?.patternResults) {
     const patterns = enhancedContext.patternResults;
+    console.log('🔍 Processing pattern results for prompt:', patterns);
+    
     patternContext = `
 PATTERN RECOGNITION RESULTS:
-- Trend Pattern: ${patterns.trendPattern || 'Not detected'} (Confidence: ${patterns.confidence || 0}%)
-- Seasonal Patterns: ${patterns.seasonality?.description || 'No seasonal patterns found'}
-- Market Volatility: ${patterns.volatility || 'Unknown'} level
-- Growth Trajectory: ${patterns.trajectory || 'Stable'}
+- Pattern Type: ${patterns.patternType || patterns.pattern_type || 'Not detected'}
+- Confidence Score: ${patterns.confidence || (patterns.confidenceScore ? Math.round(patterns.confidenceScore * 100) : 0)}%
+- Trend Pattern: ${patterns.trendPattern || patterns.pattern_data?.trend || 'Not available'}
+- Seasonal Analysis: ${patterns.seasonality?.description || 'No seasonal patterns detected'}
+- Volatility Level: ${patterns.volatility?.level || patterns.pattern_data?.volatility || 'Unknown'}
+- Anomaly Score: ${patterns.anomalyScore || 'Not available'}
+- Detection Date: ${patterns.detectedAt ? new Date(patterns.detectedAt).toLocaleDateString() : 'Recent'}
+- Valid Until: ${patterns.validUntil ? new Date(patterns.validUntil).toLocaleDateString() : 'Ongoing'}
 `;
   }
 
@@ -708,9 +726,10 @@ ${enhancedContext.recommendations.slice(0, 3).map(rec =>
     const recent = enhancedContext.historicalData.slice(-3);
     historicalContext = `
 HISTORICAL TREND DATA:
-- Recent Growth Rate: ${recent.map(d => d.growth_rate).join('%, ')}%
-- Demand Score Trend: ${recent.map(d => d.demand_score).join(', ')}
-- Salary Progression: $${recent.map(d => d.average_salary).join(', $')}
+- Recent Growth Rate: ${recent.map(d => d.growthRate || d.growth_rate).join('%, ')}%
+- Demand Score Trend: ${recent.map(d => d.demandScore || d.demand_score).join(', ')}
+- Salary Progression: $${recent.map(d => (d.averageSalary || d.average_salary)?.toLocaleString()).join(', $')}
+- Time Period: ${recent.map(d => d.timePeriod || d.time_period).join(', ')}
 `;
   }
 
