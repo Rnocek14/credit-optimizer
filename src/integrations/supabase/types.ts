@@ -1561,7 +1561,7 @@ export type Database = {
           timeline: string | null
           title: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           action_items?: Json | null
@@ -1580,7 +1580,7 @@ export type Database = {
           timeline?: string | null
           title: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           action_items?: Json | null
@@ -1599,7 +1599,7 @@ export type Database = {
           timeline?: string | null
           title?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
