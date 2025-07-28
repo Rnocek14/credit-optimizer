@@ -41,12 +41,25 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
+  
+  // CRITICAL: Call ALL hooks before any conditional logic
   // Use unified state management - ensure all hooks are called consistently
   const unifiedContext = useUnifiedCareerContext();
   const { data: progressData } = useUnifiedProgress();
   const { recommendations } = useIntelligentRecommendations();
   const { syncData } = useSmartSync();
   const { setLoading, isLoading, setError, getError } = useStandardizedState(['market', 'analysis', 'salary']);
+  
+  // Component state - ALL hooks must be called before any conditional logic
+  const [activeTab, setActiveTab] = useState("overview");
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [salaryInsights, setSalaryInsights] = useState<any>(null);
+  const [topCareers, setTopCareers] = useState<any[]>([]);
+  const [isSmartMode, setIsSmartMode] = useState(false);
+
+  // Utility hooks - called consistently
+  const { toast } = useToast();
+  const { trackInsightInteraction } = useInsightTracking();
   
   // Debug logging to track context values
   console.log('🔍 MarketIntelligenceDashboard: unifiedContext:', unifiedContext);
@@ -69,17 +82,6 @@ export function MarketIntelligenceDashboard() {
       setSelectedLocation('united-states');
     }
   }, [unifiedContext, selectedCareerPath, selectedLocation]);
-
-  // Component state
-  const [activeTab, setActiveTab] = useState("overview");
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [salaryInsights, setSalaryInsights] = useState<any>(null);
-  const [topCareers, setTopCareers] = useState<any[]>([]);
-  const [isSmartMode, setIsSmartMode] = useState(false);
-
-  // Utility hooks - called consistently
-  const { toast } = useToast();
-  const { trackInsightInteraction } = useInsightTracking();
 
   // Handle market analysis with unified state - memoized
   const handleMarketAnalysis = useCallback(async () => {
