@@ -33,6 +33,16 @@ import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
 import { useEnhancedMarketIntelligence } from "@/hooks/useEnhancedMarketIntelligence";
 import { useSmartMarketSelection } from "@/hooks/useSmartMarketSelection";
 
+// Import all missing components
+import { MarketPulseWidget } from "@/components/MarketPulseWidget";
+import { OpportunityScoreWidget } from "@/components/OpportunityScoreWidget";
+import { SmartSelectionPanel } from "@/components/SmartSelectionPanel";
+import { IntelligenceInsightsCard } from "@/components/IntelligenceInsightsCard";
+import { IntelligentWorkflowGuide } from "@/components/IntelligentWorkflowGuide";
+import { SuggestedMarketMovesCard } from "@/components/SuggestedMarketMovesCard";
+import { TopMarketInsights } from "@/components/TopMarketInsights";
+import RealTimeMarketPulse from "@/components/RealTimeMarketPulse";
+
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
   
@@ -312,26 +322,19 @@ export function MarketIntelligenceDashboard() {
           </div>
 
           {/* Smart Selection Panel */}
-          {showSmartPanel && suggestions && suggestions.length > 0 && (
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-sm">Smart Suggestions</CardTitle>
-                <CardDescription>AI-recommended career and location combinations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {suggestions.slice(0, 3).map((suggestion, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
-                      <span className="text-sm">{suggestion.reason}</span>
-                      <Button size="sm" variant="outline" onClick={() => setShowSmartPanel(false)}>
-                        Apply
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <SmartSelectionPanel
+            suggestions={suggestions || []}
+            onSuggestionSelect={(careerPath, location) => {
+              setSelectedCareerPath(careerPath);
+              setSelectedLocation(location);
+            }}
+            onQuickAnalyze={(careerPath, location) => {
+              setSelectedCareerPath(careerPath);
+              setSelectedLocation(location);
+              setTimeout(() => runComprehensiveAnalysis(), 100);
+            }}
+            isVisible={showSmartPanel && suggestions && suggestions.length > 0}
+          />
 
           {/* Context Selection */}
           <div className="flex flex-wrap gap-4 items-center">
@@ -387,77 +390,68 @@ export function MarketIntelligenceDashboard() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-6">
-              {/* Market Pulse */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="w-5 h-5" />
-                    Market Pulse
-                    <Badge variant="outline" className="ml-auto">Live</Badge>
-                  </CardTitle>
-                  <CardDescription>Real-time market health and activity indicators</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{marketPulse}%</div>
-                      <p className="text-sm text-muted-foreground">Market Health</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-emerald-600">+12.3%</div>
-                      <p className="text-sm text-muted-foreground">Growth Rate</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-amber-600">{marketData.length}</div>
-                      <p className="text-sm text-muted-foreground">Active Markets</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Stats */}
-              <div className="grid gap-6 md:grid-cols-3">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Opportunity Score</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{opportunityScore}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {opportunityScore > 85 ? 'Excellent' : opportunityScore > 70 ? 'Good' : 'Fair'} market conditions
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Market Insights</CardTitle>
-                    <Brain className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{analysis ? 'Ready' : 'Pending'}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {analysis ? 'Analysis complete' : 'Select path & location'}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">3</div>
-                    <p className="text-xs text-muted-foreground">
-                      2 high priority
-                    </p>
-                  </CardContent>
-                </Card>
+              {/* Row 1: Market Pulse & Opportunity Score */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <MarketPulseWidget 
+                  marketData={marketData} 
+                  selectedCareerPath={selectedCareerPath?.title}
+                  selectedLocation={selectedLocation?.value}
+                  onActionClick={() => setActiveTab('research')}
+                />
+                
+                <OpportunityScoreWidget 
+                  marketData={marketData}
+                  selectedCareerPath={selectedCareerPath?.title}
+                  selectedLocation={selectedLocation?.value}
+                />
               </div>
 
-              {/* Top Growing Careers */}
+              {/* Row 2: Intelligence Insights & Real-time Pulse */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <IntelligenceInsightsCard
+                  selectedCareerPath={selectedCareerPath}
+                  selectedLocation={selectedLocation}
+                  analysis={analysis}
+                  marketData={marketData}
+                  onNavigateToTab={(tab) => setActiveTab(tab)}
+                />
+                
+                <RealTimeMarketPulse compact={false} />
+              </div>
+
+              {/* Row 3: Top Market Insights & Suggested Moves */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <TopMarketInsights
+                  selectedCareerPath={selectedCareerPath?.title}
+                  selectedLocation={selectedLocation?.value}
+                  marketData={marketData}
+                  onActionClick={(data) => {
+                    if (data.careerPath) setSelectedCareerPath({ id: data.careerPath, title: data.careerPath });
+                    if (data.location) setSelectedLocation({ id: data.location, label: data.location, value: data.location, emoji: '🌍' });
+                    if (data.action === 'analyze') {
+                      setTimeout(() => runComprehensiveAnalysis(), 100);
+                    }
+                  }}
+                />
+                
+                <SuggestedMarketMovesCard />
+              </div>
+
+              {/* Row 4: Workflow Guide */}
+              {selectedCareerPath && selectedLocation && (
+                <IntelligentWorkflowGuide
+                  selectedCareerPath={selectedCareerPath}
+                  selectedLocation={selectedLocation}
+                  analysis={analysis}
+                  onNavigateToTab={(tab) => {
+                    if (tab === 'analysis') setActiveTab('analysis');
+                    if (tab === 'research') setActiveTab('research');
+                  }}
+                  onAnalysisRequest={runComprehensiveAnalysis}
+                />
+              )}
+
+              {/* Top Growing Careers (Legacy) */}
               <Card>
                 <CardHeader>
                   <CardTitle>Top Growing Careers</CardTitle>
