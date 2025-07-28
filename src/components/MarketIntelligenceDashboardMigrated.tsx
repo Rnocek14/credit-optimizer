@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -48,13 +48,27 @@ export function MarketIntelligenceDashboard() {
   const { syncData } = useSmartSync();
   const { setLoading, isLoading, setError, getError } = useStandardizedState(['market', 'analysis', 'salary']);
   
-  // Extract values with safe defaults
-  const selectedCareerPath = unifiedContext?.selectedCareerPath || null;
-  const selectedLocation = unifiedContext?.selectedLocation || null;
-  const currentGoal = unifiedContext?.currentGoal || null;
+  // Debug logging to track context values
+  console.log('🔍 MarketIntelligenceDashboard: unifiedContext:', unifiedContext);
+  console.log('🔍 MarketIntelligenceDashboard: selectedCareerPath:', unifiedContext?.selectedCareerPath);
+  console.log('🔍 MarketIntelligenceDashboard: selectedLocation:', unifiedContext?.selectedLocation);
+  
+  // Extract values with safe defaults and auto-initialization
+  const selectedCareerPath = unifiedContext?.selectedCareerPath || '';
+  const selectedLocation = unifiedContext?.selectedLocation || '';
+  const currentGoal = unifiedContext?.currentGoal || '';
   const setSelectedCareerPath = unifiedContext?.setSelectedCareerPath || (() => {});
   const setSelectedLocation = unifiedContext?.setSelectedLocation || (() => {});
   const setCurrentGoal = unifiedContext?.setCurrentGoal || (() => {});
+  
+  // Auto-initialize with default values if context is empty
+  React.useEffect(() => {
+    if (unifiedContext && !selectedCareerPath && !selectedLocation) {
+      console.log('🔍 Auto-initializing default selections...');
+      setSelectedCareerPath('software-engineer');
+      setSelectedLocation('united-states');
+    }
+  }, [unifiedContext, selectedCareerPath, selectedLocation, setSelectedCareerPath, setSelectedLocation]);
 
   // Component state
   const [activeTab, setActiveTab] = useState("overview");
