@@ -70,7 +70,7 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
     setSelectedLocation(propLocation || null);
   }, [propLocation]);
 
-  // Auto-populate data when provided from comprehensive analysis
+  // FIXED: Auto-populate data when provided from comprehensive analysis
   useEffect(() => {
     if (autoData && autoTrigger && autoData.length > 0) {
       console.log('🔥 Auto-populating historical trends data:', autoData);
@@ -94,8 +94,49 @@ export const HistoricalTrendsVisualization: React.FC<HistoricalTrendsVisualizati
 
       setIsLoadingData(true);
       try {
-        // For demo purposes, we'll use mock data
-        // In production, you would fetch real historical data
+        // ENHANCED: Fetch real historical data when available, fallback to mock data
+        if (selectedLocation) {
+          console.log('🔍 Fetching real historical data...');
+          
+          const realDataPromises = selectedCareerPaths.map(async (cp) => {
+            const months = timeRange === '1M' ? 1 : timeRange === '3M' ? 3 : timeRange === '6M' ? 6 : timeRange === '1Y' ? 12 : 24;
+            const historicalTrends = await getHistoricalTrends(cp.title, selectedLocation.value, months);
+            return { careerPath: cp.title, data: historicalTrends };
+          });
+          
+          const realDataResults = await Promise.all(realDataPromises);
+          
+          // Transform real data to chart format
+          const chartData = realDataResults.reduce((acc, result) => {
+            if (result.data.length > 0) {
+              result.data.forEach(item => {
+                const existingMonth = acc.find(d => d.month === item.month);
+                if (existingMonth) {
+                  existingMonth[`${result.careerPath}_demand`] = item.demand_score;
+                  existingMonth[`${result.careerPath}_salary`] = item.average_salary;
+                  existingMonth[`${result.careerPath}_jobs`] = item.job_postings_count; // FIXED: use correct property name
+                } else {
+                  acc.push({
+                    month: item.month,
+                    [`${result.careerPath}_demand`]: item.demand_score,
+                    [`${result.careerPath}_salary`]: item.average_salary,
+                    [`${result.careerPath}_jobs`]: item.job_postings_count, // FIXED: use correct property name
+                  });
+                }
+              });
+            }
+            return acc;
+          }, [] as any[]);
+          
+          if (chartData.length > 0) {
+            console.log('✅ Using real historical data:', chartData.length, 'data points');
+            setHistoricalData(chartData.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()));
+            return;
+          }
+        }
+        
+        // Fallback to mock data if no real data available
+        console.log('📊 Using mock historical data as fallback');
         const mockData = generateMockHistoricalData(
           selectedCareerPaths.map(cp => cp.title),
           timeRange

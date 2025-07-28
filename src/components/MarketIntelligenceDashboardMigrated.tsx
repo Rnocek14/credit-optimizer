@@ -687,6 +687,22 @@ export function MarketIntelligenceDashboard() {
                     autoTrigger={allAnalysisComplete}
                   />
                 )}
+
+                {/* Strategy Generator Panel - NEWLY ADDED */}
+                {selectedCareerPath && selectedLocation && (
+                  <StrategyGeneratorPanel
+                    selectedCareerPath={selectedCareerPath}
+                    selectedLocation={selectedLocation}
+                    onGenerateStrategy={(strategy) => {
+                      console.log('🎯 Strategy generated:', strategy);
+                      toast({
+                        title: "Strategy Generated",
+                        description: `Your ${strategy.timeToCompletion} career strategy is ready!`,
+                        duration: 3000
+                      });
+                    }}
+                  />
+                )}
               </div>
             ) : (
               <Card>
@@ -719,8 +735,27 @@ export function MarketIntelligenceDashboard() {
             )}
           </TabsContent>
 
-          {/* Research Tab */}
+          {/* Research Tab - ENHANCED AUTO-LOADING */}
           <TabsContent value="research" className="space-y-6">
+            {/* Auto-load research data when tab becomes active */}
+            {activeTab === 'research' && selectedCareerPath && selectedLocation && !allAnalysisComplete && !loading.analysis && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center">
+                    <Activity className="w-8 h-8 mx-auto text-primary mb-4 animate-spin" />
+                    <p className="text-muted-foreground mb-4">Auto-loading research data...</p>
+                    <Button 
+                      onClick={runComprehensiveAnalysis} 
+                      disabled={loading.analysis}
+                      variant="outline"
+                    >
+                      Load Research Data
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <div className="grid gap-6">
               {/* Pattern Recognition Panel */}
               {selectedCareerPath && selectedLocation && (

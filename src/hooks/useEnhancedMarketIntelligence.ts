@@ -3,15 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMarketIntelligence } from "./useMarketIntelligence";
 
 interface HistoricalTrend {
-  id: string;
-  career_path: string;
-  location: string;
-  recorded_at: string;
+  id?: string;
+  career_path?: string;
+  location?: string;
+  recorded_at?: string;
+  date: string;
+  month: string; // FIXED: Add month property for chart display
   growth_rate: number;
   demand_score: number;
   average_salary: number;
-  job_postings_count: number;
-  ai_insights: any;
+  job_postings_count: number; // FIXED: Correct property name for chart compatibility
+  competition_level?: string;
+  trend_direction?: string;
+  market_sentiment?: string;
+  ai_insights?: any;
 }
 
 interface ForecastData {
@@ -61,16 +66,43 @@ export function useEnhancedMarketIntelligence() {
     months: number = 12
   ): Promise<HistoricalTrend[]> => {
     try {
+      console.log('📈 Fetching historical trends for:', { careerPath, location, months });
+      
+      // Calculate date range
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - months);
+
+      // Fetch real historical data from market_trends_history
       const { data, error } = await supabase
         .from('market_trends_history')
         .select('*')
         .eq('career_path', careerPath)
         .eq('location', location)
-        .order('recorded_at', { ascending: false })
-        .limit(months);
+        .gte('recorded_at', startDate.toISOString())
+        .lte('recorded_at', endDate.toISOString())
+        .order('recorded_at', { ascending: true });
 
-      if (error) throw error;
-      return data || [];
+      if (error) {
+        throw new Error(`Failed to fetch historical trends: ${error.message}`);
+      }
+
+      console.log('✅ Historical trends fetched:', data?.length || 0, 'data points');
+
+      // Transform to HistoricalTrend format - FIXED DATA STRUCTURE
+      const historicalTrends: HistoricalTrend[] = (data || []).map(item => ({
+        date: item.recorded_at,
+        month: new Date(item.recorded_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' }),
+        demand_score: item.demand_score || 0,
+        job_postings_count: item.job_postings_count || 0, // FIXED: use correct property name
+        average_salary: item.average_salary || 0,
+        growth_rate: item.growth_rate || 0,
+        competition_level: item.competition_level || 'medium',
+        trend_direction: (item.ai_insights as any)?.trend_direction || 'stable',
+        market_sentiment: (item.ai_insights as any)?.market_sentiment || 'neutral'
+      }));
+
+      return historicalTrends;
     } catch (error) {
       console.error('Error fetching historical trends:', error);
       return [];

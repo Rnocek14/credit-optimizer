@@ -63,8 +63,13 @@ export const IntelligenceInsightsCard: React.FC<IntelligenceInsightsCardProps> =
           confidence: 85,
           actionable: true,
           action: {
-            label: 'View Opportunities',
-            onClick: () => onNavigateToTab('overview')
+            label: 'View Opportunities', 
+            onClick: () => {
+              console.log('📍 View Opportunities clicked');
+              // For now, navigate to overview and show market activity
+              onNavigateToTab('overview');
+              // TODO: Future enhancement - navigate to dedicated jobs/opportunities page
+            }
           },
           timeframe: 'Next 6 months'
         });
@@ -99,7 +104,10 @@ export const IntelligenceInsightsCard: React.FC<IntelligenceInsightsCardProps> =
         actionable: true,
         action: {
           label: 'Run Analysis',
-          onClick: () => onNavigateToTab('analysis')
+          onClick: () => {
+            console.log('🔍 Run Analysis clicked - navigating to analysis tab');
+            onNavigateToTab('analysis');
+          }
         }
       });
     }

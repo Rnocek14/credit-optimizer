@@ -85,13 +85,17 @@ export const useUnifiedActionHandler = ({
       
       console.log('🔍 Processing unified action:', { actionType, careerPath, location });
       
-      // Route to appropriate handler based on action type
-      if (actionType === 'Analyze This Market' || actionType === 'Analyze This Opportunity') {
+      // Route to appropriate handler based on action type - ENHANCED ACTION ROUTING
+      if (actionType === 'Analyze This Market' || actionType === 'Analyze This Opportunity' || actionType === 'Run Analysis') {
         await handleMarketAnalysis(careerPath, location);
-      } else if (actionType === 'View Salary Analysis' || actionType.includes('Salary')) {
+      } else if (actionType === 'View Salary Analysis' || actionType.includes('Salary') || actionType === 'Explore Salaries') {
         await handleSalaryAnalysis(careerPath, location);
-      } else if (actionType === 'Generate Strategy') {
+      } else if (actionType === 'Generate Strategy' || actionType === 'Strategy Generation') {
         await handleStrategyGeneration(careerPath, location);
+      } else if (actionType === 'View Opportunities') {
+        await handleViewOpportunities(careerPath, location);
+      } else if (actionType === 'Pattern Details') {
+        await handlePatternDetails(careerPath, location);
       } else {
         console.log('🔄 Handling unknown action:', actionType);
         await handleGenericAction(actionType, careerPath, location);
@@ -225,24 +229,77 @@ export const useUnifiedActionHandler = ({
     }
   };
 
-  const handleStrategyGeneration = async (careerPath?: string, location?: string) => {
-    setActiveTab('analysis');
-    toast({
-      title: "Strategy Generator",
-      description: "Generating personalized market strategy...",
-      duration: 2000
-    });
-  };
+  const handleStrategyGeneration = useCallback(async (careerPath?: string, location?: string) => {
+    console.log('🎯 Handling strategy generation:', { careerPath, location });
+    
+    const finalCareerPath = careerPath ? await findCareerPath(careerPath) : selectedCareerPath;
+    const finalLocation = location ? await findLocation(location) : selectedLocation;
+    
+    if (finalCareerPath && finalLocation) {
+      setSelectedCareerPath(finalCareerPath);
+      setSelectedLocation(finalLocation);
+      setActiveTab('analysis'); // Navigate to analysis tab where strategy generator is located
+      
+      toast({
+        title: "Strategy Generator",
+        description: `Opening strategy generator for ${finalCareerPath.title} in ${finalLocation.label}`,
+      });
+    } else {
+      toast({
+        title: "Strategy Generation",
+        description: "Please select a career path and location first",
+        variant: "destructive"
+      });
+    }
+  }, [toast, findCareerPath, findLocation, selectedCareerPath, selectedLocation, setSelectedCareerPath, setSelectedLocation, setActiveTab]);
 
-  const handleGenericAction = async (actionType: string, careerPath?: string, location?: string) => {
-    console.log('🔄 Handling generic action:', actionType);
-    setActiveTab('analysis');
+  // NEW ACTION HANDLERS
+  const handleViewOpportunities = useCallback(async (careerPath?: string, location?: string) => {
+    console.log('📍 Handling view opportunities:', { careerPath, location });
+    
+    // Navigate to overview tab and scroll to market activity section
+    setActiveTab('overview');
+    
     toast({
-      title: "Processing Action",
-      description: `Processing ${actionType}...`,
-      duration: 2000
+      title: "Market Opportunities",
+      description: "Viewing available opportunities in the market overview",
     });
-  };
+    
+    // Future enhancement: navigate to dedicated opportunities page
+  }, [setActiveTab, toast]);
+
+  const handlePatternDetails = useCallback(async (careerPath?: string, location?: string) => {
+    console.log('📊 Handling pattern details:', { careerPath, location });
+    
+    const finalCareerPath = careerPath ? await findCareerPath(careerPath) : selectedCareerPath;
+    const finalLocation = location ? await findLocation(location) : selectedLocation;
+    
+    if (finalCareerPath && finalLocation) {
+      setSelectedCareerPath(finalCareerPath);
+      setSelectedLocation(finalLocation);
+      setActiveTab('research'); // Navigate to research tab for pattern analysis
+      
+      toast({
+        title: "Pattern Analysis",
+        description: `Loading pattern details for ${finalCareerPath.title} in ${finalLocation.label}`,
+      });
+    } else {
+      toast({
+        title: "Pattern Details",
+        description: "Please select a career path and location first",
+        variant: "destructive"
+      });
+    }
+  }, [toast, findCareerPath, findLocation, selectedCareerPath, selectedLocation, setSelectedCareerPath, setSelectedLocation, setActiveTab]);
+
+  const handleGenericAction = useCallback(async (actionType: string, careerPath?: string, location?: string) => {
+    console.log('🔄 Handling generic action:', { actionType, careerPath, location });
+    
+    toast({
+      title: "Action Received",
+      description: `Processing action: ${actionType}`,
+    });
+  }, [toast]);
 
   return {
     handleUnifiedAction,

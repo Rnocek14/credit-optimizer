@@ -39,10 +39,11 @@ export function useRealTimeMarketData() {
   const updateQueueRef = useRef<RealTimeMarketUpdate[]>([]);
   const processingRef = useRef(false);
 
-  // Initialize real-time market data streaming
+  // Initialize real-time market data streaming - FIXED AUTO-CONNECTION
   const startRealTimeStream = useCallback(async () => {
     if (isStreaming) return;
     
+    console.log('🌊 Starting real-time market stream...');
     setIsStreaming(true);
     setConnectionHealth({ status: 'connecting', lastPing: Date.now() });
     
