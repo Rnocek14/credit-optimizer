@@ -11,10 +11,10 @@ export const MayaRoadmapGenerator = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Maya Lin profile data
+  // Maya Lin profile data - using proper UUID format
   const mayaProfile = {
-    id: "maya-lin-test-id-2025",
-    user_id: "maya-lin-auth-id-2025", 
+    id: "550e8400-e29b-41d4-a716-446655440001",
+    user_id: "550e8400-e29b-41d4-a716-446655440001",
     name: "Maya Lin",
     experience_level: "Entry Level",
     role_title: "High School Graduate",
