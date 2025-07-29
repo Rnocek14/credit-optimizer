@@ -303,6 +303,69 @@ export type Database = {
         }
         Relationships: []
       }
+      autonomous_workflows: {
+        Row: {
+          completed_at: string | null
+          config: Json
+          context_data: Json
+          created_at: string
+          description: string | null
+          estimated_duration_days: number | null
+          id: string
+          last_action_at: string | null
+          priority: string
+          progress_percentage: number | null
+          started_at: string | null
+          status: string
+          target_completion_date: string | null
+          target_outcome: string
+          title: string
+          updated_at: string
+          user_id: string
+          workflow_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          config?: Json
+          context_data?: Json
+          created_at?: string
+          description?: string | null
+          estimated_duration_days?: number | null
+          id?: string
+          last_action_at?: string | null
+          priority?: string
+          progress_percentage?: number | null
+          started_at?: string | null
+          status?: string
+          target_completion_date?: string | null
+          target_outcome: string
+          title: string
+          updated_at?: string
+          user_id: string
+          workflow_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          config?: Json
+          context_data?: Json
+          created_at?: string
+          description?: string | null
+          estimated_duration_days?: number | null
+          id?: string
+          last_action_at?: string | null
+          priority?: string
+          progress_percentage?: number | null
+          started_at?: string | null
+          status?: string
+          target_completion_date?: string | null
+          target_outcome?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workflow_type?: string
+        }
+        Relationships: []
+      }
       badge_types: {
         Row: {
           active: boolean
@@ -580,6 +643,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      career_monitoring_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          actioned_at: string | null
+          alert_type: string
+          auto_create_workflow: boolean | null
+          category: string
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          recommended_actions: Json
+          severity: string
+          status: string
+          title: string
+          trigger_data: Json
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          actioned_at?: string | null
+          alert_type: string
+          auto_create_workflow?: boolean | null
+          category: string
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          recommended_actions?: Json
+          severity?: string
+          status?: string
+          title: string
+          trigger_data?: Json
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          actioned_at?: string | null
+          alert_type?: string
+          auto_create_workflow?: boolean | null
+          category?: string
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          recommended_actions?: Json
+          severity?: string
+          status?: string
+          title?: string
+          trigger_data?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       career_paths: {
         Row: {
@@ -903,6 +1020,42 @@ export type Database = {
           continent?: string
           created_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      conversation_context: {
+        Row: {
+          context_key: string
+          context_type: string
+          context_value: Json
+          created_at: string
+          expires_at: string | null
+          id: string
+          importance_score: number | null
+          last_referenced_at: string | null
+          user_id: string
+        }
+        Insert: {
+          context_key: string
+          context_type: string
+          context_value: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance_score?: number | null
+          last_referenced_at?: string | null
+          user_id: string
+        }
+        Update: {
+          context_key?: string
+          context_type?: string
+          context_value?: Json
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          importance_score?: number | null
+          last_referenced_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -1437,6 +1590,66 @@ export type Database = {
           time_period?: string | null
         }
         Relationships: []
+      }
+      maya_decisions: {
+        Row: {
+          confidence_score: number
+          created_at: string
+          decision_context: Json
+          decision_rationale: string
+          decision_type: string
+          execution_result: Json | null
+          id: string
+          step_id: string | null
+          user_feedback: string | null
+          user_feedback_rating: number | null
+          user_id: string
+          workflow_id: string | null
+        }
+        Insert: {
+          confidence_score: number
+          created_at?: string
+          decision_context: Json
+          decision_rationale: string
+          decision_type: string
+          execution_result?: Json | null
+          id?: string
+          step_id?: string | null
+          user_feedback?: string | null
+          user_feedback_rating?: number | null
+          user_id: string
+          workflow_id?: string | null
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string
+          decision_context?: Json
+          decision_rationale?: string
+          decision_type?: string
+          execution_result?: Json | null
+          id?: string
+          step_id?: string | null
+          user_feedback?: string | null
+          user_feedback_rating?: number | null
+          user_id?: string
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maya_decisions_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maya_decisions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "autonomous_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mentor_feedback: {
         Row: {
@@ -2975,6 +3188,134 @@ export type Database = {
           last_updated?: string
           total_xp?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      workflow_steps: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          dependencies: string[] | null
+          description: string | null
+          error_message: string | null
+          estimated_duration_hours: number | null
+          executed_at: string | null
+          execution_result: Json | null
+          id: string
+          is_autonomous: boolean
+          max_retries: number | null
+          requires_user_input: boolean
+          retry_count: number | null
+          status: string
+          step_order: number
+          step_type: string
+          title: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          error_message?: string | null
+          estimated_duration_hours?: number | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          is_autonomous?: boolean
+          max_retries?: number | null
+          requires_user_input?: boolean
+          retry_count?: number | null
+          status?: string
+          step_order: number
+          step_type: string
+          title: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string | null
+          error_message?: string | null
+          estimated_duration_hours?: number | null
+          executed_at?: string | null
+          execution_result?: Json | null
+          id?: string
+          is_autonomous?: boolean
+          max_retries?: number | null
+          requires_user_input?: boolean
+          retry_count?: number | null
+          status?: string
+          step_order?: number
+          step_type?: string
+          title?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "autonomous_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          estimated_duration_days: number | null
+          id: string
+          is_active: boolean | null
+          required_context: Json
+          success_rate: number | null
+          target_personas: Json
+          template_name: string
+          template_steps: Json
+          title: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          estimated_duration_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          required_context?: Json
+          success_rate?: number | null
+          target_personas?: Json
+          template_name: string
+          template_steps: Json
+          title: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          estimated_duration_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          required_context?: Json
+          success_rate?: number | null
+          target_personas?: Json
+          template_name?: string
+          template_steps?: Json
+          title?: string
+          updated_at?: string
+          usage_count?: number | null
         }
         Relationships: []
       }
