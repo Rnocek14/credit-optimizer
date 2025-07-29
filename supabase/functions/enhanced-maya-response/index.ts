@@ -22,13 +22,16 @@ serve(async (req) => {
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Validate and normalize user ID
+    const validUserId = validateUserId(userId);
     console.log('🤖 Enhanced Maya processing request:', request);
+    console.log('👤 Using user ID:', validUserId);
 
     // Phase 1: Analyze request complexity and type
     const requestAnalysis = await analyzeRequestComplexity(request, context);
     
     // Phase 2: Gather comprehensive real-time data
-    const realTimeData = await gatherRealTimeIntelligence(supabase, userId, context, requestAnalysis);
+    const realTimeData = await gatherRealTimeIntelligence(supabase, validUserId, context, requestAnalysis);
     
     // Phase 3: Generate enhanced prompt with all data
     const enhancedPrompt = generateDataDrivenPrompt(request, context, realTimeData, requestAnalysis);
@@ -67,7 +70,7 @@ serve(async (req) => {
     // Phase 5: Execute autonomous actions if needed
     const autonomousActions = await executeAutonomousActions(
       supabase, 
-      userId, 
+      validUserId, 
       requestAnalysis, 
       realTimeData,
       aiResponse
@@ -92,6 +95,21 @@ serve(async (req) => {
     );
   }
 });
+
+function validateUserId(userId: string): string {
+  // If it's already a valid UUID, return it
+  if (userId && userId.length === 36 && userId.includes('-')) {
+    return userId;
+  }
+  
+  // Handle demo user cases
+  if (!userId || userId === 'demo-user' || userId.includes('demo')) {
+    return '2b458624-d498-4cca-a63d-9341cc20e363'; // Aisha Khan demo user
+  }
+  
+  // Fallback to demo user
+  return '2b458624-d498-4cca-a63d-9341cc20e363';
+}
 
 async function analyzeRequestComplexity(request: string, context: any) {
   const complexity = {

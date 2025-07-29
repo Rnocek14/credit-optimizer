@@ -49,10 +49,13 @@ export function useEnhancedMaya() {
       };
 
       // Call the enhanced Maya response function
+      // Use proper demo user UUID if no authenticated user
+      const actualUserId = state.user?.id || '2b458624-d498-4cca-a63d-9341cc20e363'; // Aisha Khan demo user
+      
       const { data, error: functionError } = await supabase.functions.invoke('enhanced-maya-response', {
         body: {
           request,
-          userId: state.user?.id || 'demo-user',
+          userId: actualUserId,
           context: enhancedContext
         }
       });

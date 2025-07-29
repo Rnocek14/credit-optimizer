@@ -242,28 +242,32 @@ Ensure recommendations are:
 
     let recommendations;
     try {
-      const parsedResponse = JSON.parse(aiContent);
+      // Clean the AI response to remove markdown formatting
+      const cleanedContent = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsedResponse = JSON.parse(cleanedContent);
       recommendations = parsedResponse.recommendations;
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
+      console.error('Raw content:', aiContent);
       throw new Error('Invalid AI response format');
     }
 
-    // Store recommendations in database
+    // Store recommendations in database - map to correct table structure
     const recommendationsToInsert = recommendations.map((rec: any) => ({
       user_id,
+      career_path: rec.data?.target_role || 'General',
+      location: rec.data?.target_location || 'Global',
       recommendation_type: rec.type,
-      priority_score: rec.priority_score,
-      confidence_score: rec.confidence_score,
-      recommendation_data: {
-        title: rec.title,
-        description: rec.description,
-        ...rec.data
-      },
-      reasoning: rec.reasoning,
-      action_required: rec.action_required,
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-      status: 'active'
+      title: rec.title,
+      description: rec.description,
+      priority: rec.priority_score > 80 ? 'high' : rec.priority_score > 50 ? 'medium' : 'low',
+      impact_score: rec.priority_score,
+      effort_required: rec.data?.estimated_timeline || 'Medium',
+      timeline: rec.data?.estimated_timeline || '3-6 months',
+      action_items: { actions: [rec.action_required], reasoning: rec.reasoning },
+      success_indicators: { metrics: rec.data ? Object.keys(rec.data) : [] },
+      related_data: rec.data || {},
+      active: true
     }));
 
     // Clear old recommendations and insert new ones
@@ -271,7 +275,7 @@ Ensure recommendations are:
       .from('personalized_recommendations')
       .delete()
       .eq('user_id', user_id)
-      .eq('status', 'active');
+      .eq('active', true);
 
     const { data: insertedRecommendations, error: insertError } = await supabase
       .from('personalized_recommendations')
