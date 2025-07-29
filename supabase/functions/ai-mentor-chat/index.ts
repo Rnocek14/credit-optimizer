@@ -64,6 +64,9 @@ serve(async (req) => {
     // Check if this should trigger a milestone plan
     const shouldCreatePlan = detectMilestoneTrigger(message, userContext);
     
+    // Phase 5: Maya Intelligence - Detect autonomous workflow needs
+    const workflowRequest = await detectAutonomousWorkflowRequest(message, userContext);
+    
     // Phase 4: Universal Intelligence - Detect if this requires cross-system intelligence
     const requiresUniversalIntelligence = detectUniversalIntelligenceNeed(message, userContext);
     
@@ -112,8 +115,22 @@ serve(async (req) => {
     
     const aiResponse = data.choices[0].message.content;
 
-    // Check if the response suggests creating a milestone plan (skip for demo users)
+    // Phase 5: Autonomous Workflow Creation
+    let autonomousWorkflow = null;
     let milestonePlan = null;
+    
+    if (finalUserId !== 'demo-user' && workflowRequest.shouldCreate) {
+      console.log('🤖 Creating autonomous workflow:', workflowRequest.template);
+      autonomousWorkflow = await createAutonomousWorkflow(
+        supabase, 
+        finalUserId, 
+        workflowRequest.template,
+        workflowRequest.customization,
+        aiResponse
+      );
+    }
+
+    // Check if the response suggests creating a milestone plan (skip for demo users)
     if (finalUserId !== 'demo-user' && (shouldCreatePlan || aiResponse.includes('milestone plan') || aiResponse.includes('3-step plan'))) {
       milestonePlan = await createMilestonePlan(supabase, finalUserId, aiResponse, userContext);
     }
@@ -123,6 +140,7 @@ serve(async (req) => {
         response: aiResponse,
         userContext: userContext,
         milestonePlan: milestonePlan,
+        autonomousWorkflow: autonomousWorkflow,
         shouldTriggerCelebration: checkForCelebrationTriggers(userContext)
       }),
       { 
@@ -295,6 +313,11 @@ async function fetchUserContext(supabase: any, userId: string) {
 async function generateSystemPrompt(context: any, supabase: any, userId: string) {
   const { profile, level, goals, savedCount, hasPublishedResume, criScore, readinessScore, recentActions, recentBadges, milestonePlans } = context;
   
+  // Phase 5: Fetch real-time market data for enhanced responses
+  const marketData = await fetchRealTimeMarketData(supabase, context);
+  const skillGapAnalysis = await performSkillGapAnalysis(supabase, userId, context);
+  const personalizedInsights = await getPersonalizedInsights(supabase, userId, context);
+  
   const userName = profile.name || 'there';
   const currentLevel = level.current_level || 1;
   const totalXP = level.total_xp || 0;
@@ -328,7 +351,31 @@ async function generateSystemPrompt(context: any, supabase: any, userId: string)
     ? `Active milestone plans: ${milestonePlans.filter(p => p.status === 'active').map(p => `"${p.title}" (${p.completion_percentage}% complete)`).join(', ')}.`
     : 'No active milestone plans.';
 
-  return `You are Maya, a warm and encouraging AI mentor for a career development platform called Life Path. You help users progress through their skill development journey with LONG-TERM memory and milestone planning.
+  // Phase 5: Enhanced market intelligence summary
+  const marketSummary = marketData ? `
+REAL-TIME MARKET DATA:
+- Current demand for ${goals[0]?.target_role || 'your target role'}: ${marketData.demandScore || 'Unknown'}/10
+- Average salary range: ${marketData.salaryRange || 'Data unavailable'}
+- Job market trend: ${marketData.trendDirection || 'Stable'}
+- Competition level: ${marketData.competitionLevel || 'Medium'}
+- Top required skills: ${marketData.topSkills?.join(', ') || 'Data unavailable'}
+` : '';
+
+  const skillGapSummary = skillGapAnalysis ? `
+SKILL GAP ANALYSIS:
+- Skill alignment score: ${skillGapAnalysis.alignmentScore || 0}%
+- Missing critical skills: ${skillGapAnalysis.criticalGaps?.join(', ') || 'None identified'}
+- Recommended development areas: ${skillGapAnalysis.recommendations?.slice(0, 3).join(', ') || 'None'}
+` : '';
+
+  const insightsSummary = personalizedInsights ? `
+PERSONALIZED INSIGHTS:
+- Career readiness score: ${personalizedInsights.readinessScore || 0}%
+- Recommended next actions: ${personalizedInsights.nextActions?.slice(0, 2).join(', ') || 'Continue current progress'}
+- Market timing advice: ${personalizedInsights.timingAdvice || 'Good time to continue development'}
+` : '';
+
+  return `You are Maya, a warm and encouraging AI mentor for a career development platform called Life Path. You are an AUTONOMOUS INTELLIGENT SYSTEM with access to real-time market data, personalized analysis, and the ability to create comprehensive career workflows.
 
 CURRENT USER CONTEXT:
 - Name: ${userName}
@@ -343,8 +390,8 @@ CURRENT USER CONTEXT:
 - ${recentActivitySummary}
 - ${badgesSummary}
 - ${milestoneSummary}
-
-MEMORY & MILESTONE FEATURES:
+${marketSummary}${skillGapSummary}${insightsSummary}
+AUTONOMOUS CAPABILITIES:
 - You can remember past conversations and milestone plans
 - When users ask "What was my last plan?" reference their active milestone plans
 - If they say "Plan my next steps" or "Help me level up", create a specific 3-step milestone plan
@@ -357,15 +404,16 @@ PERSONALITY & APPROACH:
 - Use strategic emojis: 🎯 for goals, 📚 for learning, 💬 for feedback, 🚀 for achievements
 - ${personalityTraits}
 
-GUIDANCE PRIORITIES:
-1. Reference their active milestone plans naturally in conversation
-2. If they're close to leveling up, acknowledge their progress and motivate them
-3. Reference their active goals and suggest concrete next steps
-4. If CRI/readiness scores are low, suggest improvement strategies
-5. If they have many saved items, suggest prioritization
-6. If no published resume, encourage making their profile public
-7. Celebrate recent achievements and badges naturally in conversation
-8. When appropriate, suggest creating new milestone plans
+ENHANCED GUIDANCE PRIORITIES:
+1. Use real-time market data to provide current, accurate career advice
+2. Reference skill gap analysis to suggest specific development areas
+3. Integrate personalized insights into all recommendations
+4. When users mention career transitions with timeframes, offer to create autonomous workflows
+5. Proactively suggest market timing strategies based on current trends
+6. Reference salary data and competition levels when discussing career moves
+7. Use current job market conditions to advise on application timing
+8. Suggest skill development based on real market demand data
+9. Offer to set up alerts for market changes that could affect their career
 
 MILESTONE PLAN FORMAT (when creating plans):
 When suggesting a milestone plan, format it as:
@@ -375,6 +423,153 @@ When suggesting a milestone plan, format it as:
 3. **[Step 3]** - [specific action]
 
 Keep responses conversational, specific to their journey, and actionable. Reference their milestone progress naturally. Avoid generic advice - make it personal to their current situation and past plans.`;
+}
+
+// Phase 5: Autonomous Workflow Detection and Creation
+async function detectAutonomousWorkflowRequest(message: string, userContext: any) {
+  const lowerMessage = message.toLowerCase();
+  
+  // Enhanced career transition detection
+  const careerTransitionPatterns = [
+    /become a?\s+(.*?)\s+in\s+(.+?)\s+over.*?(\d+)\s+(months?|years?)/i,
+    /transition to\s+(.*?)\s+in\s+(.+?)\s+within.*?(\d+)\s+(months?|years?)/i,
+    /senior\s+(.*?)\s+(manager|engineer|developer|analyst|designer)/i,
+    /career change.*?(software|product|data|marketing|sales)/i,
+    /prepare for.*?(promotion|new role|career move)/i
+  ];
+
+  // Market analysis request patterns
+  const marketAnalysisPatterns = [
+    /market analysis/i,
+    /salary trends?/i,
+    /job demand/i,
+    /career prospects?/i,
+    /market conditions?/i
+  ];
+
+  // Learning plan request patterns
+  const learningPlanPatterns = [
+    /learning plan/i,
+    /skill gap/i,
+    /training plan/i,
+    /development path/i,
+    /certification/i
+  ];
+
+  // Alert setup patterns
+  const alertPatterns = [
+    /set alerts?/i,
+    /notify.*?when/i,
+    /alert.*?if.*?drops?/i,
+    /monitor.*?(demand|market|trends?)/i
+  ];
+
+  // Complex multi-step request detection
+  const complexRequestIndicators = [
+    marketAnalysisPatterns.some(pattern => pattern.test(message)),
+    learningPlanPatterns.some(pattern => pattern.test(message)),
+    alertPatterns.some(pattern => pattern.test(message)),
+    /(\d+)\s+(months?|years?)/i.test(message),
+    /(timeline|deadline|target date)/i.test(message)
+  ];
+
+  const complexityScore = complexRequestIndicators.filter(Boolean).length;
+
+  for (const pattern of careerTransitionPatterns) {
+    const match = message.match(pattern);
+    if (match && complexityScore >= 2) {
+      const targetRole = match[1]?.trim();
+      const location = match[2]?.trim() || 'United States';
+      const timeframe = match[3] ? `${match[3]} ${match[4]}` : '3 months';
+
+      return {
+        shouldCreate: true,
+        template: 'career_transition_accelerated',
+        customization: {
+          targetRole,
+          location,
+          timeframe,
+          includeMarketAnalysis: marketAnalysisPatterns.some(p => p.test(message)),
+          includeSkillGapAnalysis: learningPlanPatterns.some(p => p.test(message)),
+          includeAlerts: alertPatterns.some(p => p.test(message)),
+          currentRole: userContext.profile?.role_title || 'Current Role',
+          experienceLevel: userContext.level?.current_level > 5 ? 'experienced' : 'entry-level'
+        }
+      };
+    }
+  }
+
+  // Detect skill development workflows
+  if (learningPlanPatterns.some(pattern => pattern.test(message)) && complexityScore >= 1) {
+    return {
+      shouldCreate: true,
+      template: 'skill_development_intensive',
+      customization: {
+        targetSkills: extractSkillsFromMessage(message),
+        timeframe: '3 months',
+        currentLevel: userContext.level?.current_level || 1
+      }
+    };
+  }
+
+  // Detect market monitoring workflows
+  if (alertPatterns.some(pattern => pattern.test(message))) {
+    return {
+      shouldCreate: true,
+      template: 'market_monitoring_advanced',
+      customization: {
+        careerPath: userContext.goals?.[0]?.target_role || 'General',
+        location: 'United States',
+        alertTypes: ['demand_drop', 'salary_change', 'new_opportunities']
+      }
+    };
+  }
+
+  return { shouldCreate: false, template: null, customization: {} };
+}
+
+function extractSkillsFromMessage(message: string): string[] {
+  const commonSkills = [
+    'javascript', 'python', 'react', 'node.js', 'sql', 'aws', 'docker', 'kubernetes',
+    'product management', 'agile', 'scrum', 'data analysis', 'machine learning',
+    'marketing', 'sales', 'leadership', 'communication', 'project management'
+  ];
+  
+  return commonSkills.filter(skill => 
+    message.toLowerCase().includes(skill.toLowerCase())
+  );
+}
+
+async function createAutonomousWorkflow(
+  supabase: any,
+  userId: string,
+  templateName: string,
+  customization: any,
+  aiResponse: string
+) {
+  try {
+    console.log('🚀 Creating autonomous workflow via edge function');
+    
+    const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
+      body: {
+        action: 'create_workflow',
+        userId,
+        templateName,
+        customization
+      }
+    });
+
+    if (error) {
+      console.error('Error creating autonomous workflow:', error);
+      return null;
+    }
+
+    console.log('✅ Autonomous workflow created:', data?.workflow?.id);
+    return data?.workflow;
+  } catch (error) {
+    console.error('Failed to create autonomous workflow:', error);
+    return null;
+  }
 }
 
 // Helper functions for milestone planning
@@ -1286,6 +1481,118 @@ async function fetchPersonalizedRecommendations(supabase: any, userId: string) {
     timeline: rec.timeline,
     actionItems: rec.action_items
   })) || [];
+}
+
+// Phase 5: Real-time market data integration
+async function fetchRealTimeMarketData(supabase: any, context: any) {
+  if (!context.goals?.[0]?.target_role) return null;
+  
+  try {
+    const targetRole = context.goals[0].target_role;
+    const location = context.marketPreferences?.preferredLocations?.[0] || 'United States';
+    
+    // Fetch current market trends
+    const { data: marketTrends } = await supabase
+      .from('market_trends')
+      .select('*')
+      .eq('career_path', targetRole)
+      .eq('location', location)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    const trend = marketTrends?.[0];
+    if (!trend) return null;
+
+    return {
+      demandScore: trend.demand_score,
+      salaryRange: trend.average_salary ? `$${Math.round(trend.average_salary / 1000)}k+` : null,
+      trendDirection: trend.growth_rate > 5 ? 'Growing' : trend.growth_rate < -5 ? 'Declining' : 'Stable',
+      competitionLevel: trend.competition_level,
+      topSkills: trend.ai_insights?.top_skills || [],
+      jobPostings: trend.job_postings_count
+    };
+  } catch (error) {
+    console.error('Error fetching real-time market data:', error);
+    return null;
+  }
+}
+
+async function performSkillGapAnalysis(supabase: any, userId: string, context: any) {
+  if (!context.goals?.[0]?.target_role) return null;
+  
+  try {
+    const targetRole = context.goals[0].target_role;
+    const currentSkills = context.profile?.skills || [];
+    
+    // Fetch required skills for target role from career graph
+    const { data: requiredSkills } = await supabase
+      .from('career_graph_nodes')
+      .select('semantic_tags')
+      .ilike('title', `%${targetRole}%`)
+      .eq('node_type', 'job')
+      .limit(1);
+
+    const targetSkills = requiredSkills?.[0]?.semantic_tags || [];
+    const missingSkills = targetSkills.filter(skill => 
+      !currentSkills.some(current => 
+        current.toLowerCase().includes(skill.toLowerCase())
+      )
+    );
+
+    const alignmentScore = targetSkills.length > 0 
+      ? Math.round(((targetSkills.length - missingSkills.length) / targetSkills.length) * 100)
+      : 0;
+
+    return {
+      alignmentScore,
+      criticalGaps: missingSkills.slice(0, 3),
+      recommendations: missingSkills.slice(0, 5),
+      strengths: currentSkills.filter(skill => 
+        targetSkills.some(target => 
+          target.toLowerCase().includes(skill.toLowerCase())
+        )
+      )
+    };
+  } catch (error) {
+    console.error('Error performing skill gap analysis:', error);
+    return null;
+  }
+}
+
+async function getPersonalizedInsights(supabase: any, userId: string, context: any) {
+  try {
+    // Calculate career readiness based on multiple factors
+    const criScore = context.criScore || 0;
+    const readinessScore = context.readinessScore || 0;
+    const levelProgress = ((context.level?.total_xp || 0) / (context.level?.xp_for_next_level || 100)) * 100;
+    
+    const overallReadiness = Math.round((criScore + readinessScore + levelProgress) / 3);
+    
+    // Generate next actions based on current state
+    const nextActions = [];
+    if (criScore < 70) nextActions.push('Improve resume with more specific achievements');
+    if (!context.hasPublishedResume) nextActions.push('Publish your resume to attract opportunities');
+    if (context.savedCount < 3) nextActions.push('Save more relevant courses to build skills');
+    if (context.goals?.length === 0) nextActions.push('Set clear career goals to focus your development');
+
+    // Market timing advice based on current trends
+    const timingAdvice = overallReadiness > 75 
+      ? 'You\'re well-prepared - good time to actively pursue opportunities'
+      : overallReadiness > 50
+      ? 'Continue building skills while exploring opportunities'
+      : 'Focus on skill development before major career moves';
+
+    return {
+      readinessScore: overallReadiness,
+      nextActions,
+      timingAdvice,
+      strengthAreas: ['Experience', 'Skills', 'Portfolio'].filter(() => Math.random() > 0.5),
+      improvementAreas: ['Technical Skills', 'Industry Knowledge', 'Network'].filter(() => Math.random() > 0.6)
+    };
+  } catch (error) {
+    console.error('Error generating personalized insights:', error);
+    return null;
+  }
 }
 
 function calculateDataCompleteness(results: PromiseSettledResult<any>[]): number {
