@@ -674,50 +674,50 @@ async function executeAutonomousActions(
       const skillGaps = realTimeData.skillGaps?.criticalGaps || [];
       const currentReadiness = realTimeData.personalized?.readinessScore || 0;
       
-      // Create workflow with detailed context
-      const workflowResult = await supabase
-        .from('autonomous_workflows')
-        .insert({
-          user_id: userId,
-          workflow_type: 'career_transition',
-          title: `Transition to ${targetRole}`,
-          description: `Accelerated 3-month career transition plan with skill development and market monitoring`,
-          target_outcome: `Successfully transition to ${targetRole} role`,
-          priority: analysis.priority,
-          estimated_duration_days: 90,
-          context_data: {
-            targetRole,
-            currentSkillAlignment: realTimeData.skillGaps?.skillAlignment || 0,
-            criticalSkillGaps: skillGaps,
-            marketDemand: realTimeData.marketData?.currentDemand || 0,
-            averageSalary: realTimeData.marketData?.averageSalary || 0,
-            readinessScore: currentReadiness,
-            workflowFeatures: [
+      // Create workflow using template system with executable steps
+      try {
+        const { data: workflowResult, error: workflowError } = await supabase.functions.invoke('autonomous-workflow-engine', {
+          body: {
+            action: {
+              type: 'create_workflow',
+              templateName: 'senior_product_manager_transition',
+              customization: {
+                target_role: targetRole,
+                location: realTimeData.marketData?.location || 'United States',
+                timeline: '3 months',
+                current_skill_alignment: realTimeData.skillGaps?.skillAlignment || 0,
+                critical_skill_gaps: skillGaps,
+                market_demand: realTimeData.marketData?.currentDemand || 0,
+                average_salary: realTimeData.marketData?.averageSalary || 0,
+                readiness_score: currentReadiness,
+                target_outcome: `Successfully transition to ${targetRole} role within 3 months`,
+                priority: analysis.priority
+              },
+              userId: userId
+            }
+          }
+        });
+
+        if (workflowResult?.success && !workflowError) {
+          actions.push({
+            type: 'workflow_created',
+            id: workflowResult.workflow.id,
+            title: workflowResult.workflow.title,
+            estimatedDays: workflowResult.workflow.estimated_duration_days,
+            steps_count: workflowResult.workflow.steps?.length || 0,
+            features: [
               'Real-time market monitoring',
-              'Automated skill gap analysis',
-              'Personalized learning recommendations',
+              'Automated skill gap analysis', 
+              'Executable workflow steps',
               'Progress tracking with milestones',
               'Market alert integration'
             ]
-          },
-          config: {
-            auto_create_alerts: true,
-            skill_tracking: true,
-            market_monitoring: true,
-            progress_notifications: true
-          }
-        })
-        .select()
-        .single();
-
-      if (!workflowResult.error && workflowResult.data) {
-        actions.push({
-          type: 'workflow_created',
-          id: workflowResult.data.id,
-          title: workflowResult.data.title,
-          estimatedDays: workflowResult.data.estimated_duration_days,
-          features: workflowResult.data.context_data.workflowFeatures
-        });
+          });
+        } else {
+          console.error('Failed to create workflow:', workflowError);
+        }
+      } catch (workflowError) {
+        console.error('Error creating workflow with template system:', workflowError);
       }
     }
 

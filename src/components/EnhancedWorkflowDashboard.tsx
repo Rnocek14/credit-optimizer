@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +16,14 @@ export function EnhancedWorkflowDashboard() {
     resumeWorkflow,
     getActiveWorkflows,
     getCompletedWorkflows,
-    getNextStepsForUser 
+    getNextStepsForUser,
+    fetchUserWorkflows
   } = useAutonomousWorkflows();
+
+  // Auto-fetch on mount
+  useEffect(() => {
+    fetchUserWorkflows();
+  }, [fetchUserWorkflows]);
 
   const [executingStep, setExecutingStep] = useState<string | null>(null);
 
@@ -144,6 +150,39 @@ export function EnhancedWorkflowDashboard() {
                       <span className="font-medium">Duration:</span> {workflow.estimated_duration_days} days
                     </div>
                   </div>
+
+                  {/* Workflow Steps Section */}
+                  {workflow.workflow_steps && workflow.workflow_steps.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="font-medium text-sm">Workflow Steps ({workflow.workflow_steps.length})</h4>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {workflow.workflow_steps
+                          .sort((a, b) => a.step_order - b.step_order)
+                          .slice(0, 5)
+                          .map((step) => (
+                            <div key={step.id} className="flex items-center justify-between text-xs p-2 rounded bg-gray-50">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  step.status === 'completed' ? 'bg-green-500' :
+                                  step.status === 'in_progress' ? 'bg-blue-500' :
+                                  step.status === 'failed' ? 'bg-red-500' :
+                                  'bg-gray-300'
+                                }`}></div>
+                                <span className="font-medium">{step.title}</span>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {step.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        {workflow.workflow_steps.length > 5 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{workflow.workflow_steps.length - 5} more steps
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     {workflow.status === 'active' ? (
