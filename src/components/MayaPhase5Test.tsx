@@ -12,12 +12,14 @@ export function MayaPhase5Test() {
   const { sendEnhancedRequest, loading, lastResponse } = useEnhancedMaya();
   const { toast } = useToast();
 
-  const runPhase5Test = async () => {
+  const runPhase5Test = async (forceWorkflow = false) => {
     try {
       setTestStage('Phase 1: Triggering Enhanced Maya Request');
       
       // Test request for Aisha Khan's career transition
-      const testRequest = "Help me plan a 3-month transition to a Senior Product Manager role. What are my biggest gaps and what steps should I take next?";
+      const testRequest = forceWorkflow 
+        ? "Create an autonomous workflow to transition me to a Senior Product Manager role within 3 months with skill development tracking, market monitoring, and automated alerts."
+        : "Help me plan a 3-month transition to a Senior Product Manager role. What are my biggest gaps and what steps should I take next?";
       
       const response = await sendEnhancedRequest(testRequest, {
         careerPath: 'Senior Product Manager',
@@ -125,11 +127,19 @@ export function MayaPhase5Test() {
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <Button 
-            onClick={runPhase5Test} 
+            onClick={() => runPhase5Test(false)} 
             disabled={loading}
-            className="w-full"
+            className="flex-1"
           >
             {loading ? 'Running Test...' : 'Run Phase 5 Test'}
+          </Button>
+          <Button 
+            onClick={() => runPhase5Test(true)} 
+            disabled={loading}
+            variant="outline"
+            className="flex-1"
+          >
+            Force Workflow Test
           </Button>
         </div>
 
