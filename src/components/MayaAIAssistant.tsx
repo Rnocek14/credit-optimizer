@@ -159,24 +159,23 @@ export function MayaAIAssistant({
         }
       });
 
-      const { data, error } = await supabase.functions.invoke('ai-mentor-chat', {
+      const { data, error } = await supabase.functions.invoke('enhanced-maya-response', {
         body: {
-          message: messageContent,
-          userId: userId,
-          action: 'MARKET_INTELLIGENCE_CHAT',
+          request: messageContent,
           context: {
             careerPath: selectedCareerPath,
             location: selectedLocation,
-            activeTab,
-            marketData,
-            analysisData,
-            chatHistory: messages.slice(-10),
-            patternResults,
-            anomalies,
-            realTimeUpdates: realTimeUpdates?.slice(-5), // Last 5 updates
-            recommendations,
-            historicalData,
-            demandForecast
+            goals: [],
+            skillLevel: 'intermediate',
+            marketPreferences: {
+              activeTab,
+              patternResults,
+              anomalies,
+              realTimeUpdates: realTimeUpdates?.slice(-5),
+              recommendations,
+              historicalData,
+              demandForecast
+            }
           }
         }
       });
@@ -385,6 +384,14 @@ export function MayaAIAssistant({
                     {action}
                   </Button>
                 ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start text-xs h-8 bg-gradient-to-r from-primary/10 to-primary/5"
+                  onClick={() => setInput('Create an autonomous workflow for my career transition')}
+                >
+                  🤖 Create Autonomous Workflow
+                </Button>
               </div>
               <Separator className="my-3" />
             </div>

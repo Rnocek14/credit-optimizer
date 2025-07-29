@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
 import { RoadmapTester } from '@/components/RoadmapTester';
+import { EnhancedMayaDemo } from '@/components/EnhancedMayaDemo';
 import Navigation from "@/components/Navigation";
 
 const Index = () => {
@@ -80,6 +81,22 @@ const Index = () => {
           </div>
         </div>
         
+        {/* Maya Intelligence Demo Section */}
+        <div className="py-12 md:py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">Experience Maya's Universal Intelligence</h2>
+                <p className="text-muted-foreground">
+                  Try our AI-powered career intelligence system that provides real-time market insights, 
+                  autonomous workflow creation, and personalized career guidance.
+                </p>
+              </div>
+              <EnhancedMayaDemo />
+            </div>
+          </div>
+        </div>
+
         {/* Developer Testing Section */}
         <div className="py-12 md:py-16">
           <div className="container mx-auto px-4">
