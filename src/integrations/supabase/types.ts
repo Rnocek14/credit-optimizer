@@ -364,7 +364,15 @@ export type Database = {
           user_id?: string
           workflow_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "autonomous_workflows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       badge_types: {
         Row: {
@@ -1128,7 +1136,15 @@ export type Database = {
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversation_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       course_skill_map: {
         Row: {
@@ -1424,7 +1440,15 @@ export type Database = {
           triggered_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "market_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       market_correlations: {
         Row: {
