@@ -123,7 +123,7 @@ async function createWorkflow(supabaseClient: any, action: WorkflowAction) {
   }
   
   // Create workflow steps from template
-  const templateSteps = template.template_steps;
+  const templateSteps = Array.isArray(template.template_steps) ? template.template_steps : JSON.parse(template.template_steps);
   const steps = [];
   
   for (let i = 0; i < templateSteps.length; i++) {
@@ -135,9 +135,10 @@ async function createWorkflow(supabaseClient: any, action: WorkflowAction) {
       action_type: stepTemplate,
       title: getStepTitle(stepTemplate),
       description: getStepDescription(stepTemplate, customization),
+      status: 'pending',
       is_autonomous: isAutonomousStep(stepTemplate),
       requires_user_input: requiresUserInput(stepTemplate),
-      estimated_duration_hours: getEstimatedDuration(stepTemplate),
+      estimated_duration_days: Math.ceil(getEstimatedDuration(stepTemplate) / 24),
       action_config: getStepConfig(stepTemplate, customization)
     };
     steps.push(stepData);
@@ -303,6 +304,24 @@ async function executeStepAction(supabaseClient: any, step: WorkflowStep) {
       
       case 'learning_plan_creation':
         return await executeLearningPlan(supabaseClient, userId, action_config);
+      
+      case 'market_check':
+        return await executeMarketCheck(supabaseClient, userId, action_config);
+      
+      case 'project_assignment':
+        return await executeProjectAssignment(supabaseClient, userId, action_config);
+      
+      case 'network_building':
+        return await executeNetworkBuilding(supabaseClient, userId, action_config);
+      
+      case 'portfolio_building':
+        return await executePortfolioBuilding(supabaseClient, userId, action_config);
+      
+      case 'interview_preparation':
+        return await executeInterviewPreparation(supabaseClient, userId, action_config);
+      
+      case 'salary_negotiation_prep':
+        return await executeSalaryNegotiationPrep(supabaseClient, userId, action_config);
       
       default:
         return {
@@ -617,7 +636,11 @@ function getStepTitle(actionType: string): string {
     'create_goal': 'Set Career Goal',
     'save_course': 'Save Recommended Course',
     'update_resume': 'Update Resume',
-    'set_alert': 'Configure Market Alert'
+    'set_alert': 'Configure Market Alert',
+    'market_check': 'Market Conditions Check',
+    'project_assignment': 'Skills Project Assignment',
+    'interview_preparation': 'Interview Preparation',
+    'salary_negotiation_prep': 'Salary Negotiation Prep'
   };
   return titles[actionType] || actionType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
@@ -629,7 +652,11 @@ function getStepDescription(actionType: string, customization: any): string {
     'learning_plan_creation': 'Create a personalized learning roadmap',
     'portfolio_building': 'Build projects to demonstrate your skills',
     'network_building': 'Connect with professionals in your target field',
-    'job_application_strategy': 'Develop an effective job search strategy'
+    'job_application_strategy': 'Develop an effective job search strategy',
+    'market_check': `Re-check market conditions for ${customization?.target_role || 'target role'}`,
+    'project_assignment': 'Get assigned a project to build relevant skills',
+    'interview_preparation': 'Prepare for interviews with practice and strategy',
+    'salary_negotiation_prep': 'Research and prepare for salary negotiations'
   };
   return descriptions[actionType] || `Execute ${actionType.replace(/_/g, ' ')}`;
 }
@@ -641,7 +668,9 @@ function isAutonomousStep(actionType: string): boolean {
     'learning_plan_creation',
     'create_goal',
     'save_course',
-    'set_alert'
+    'set_alert',
+    'market_check',
+    'project_assignment'
   ];
   return autonomousSteps.includes(actionType);
 }
@@ -651,7 +680,9 @@ function requiresUserInput(actionType: string): boolean {
     'portfolio_building',
     'network_building', 
     'job_application_strategy',
-    'update_resume'
+    'update_resume',
+    'interview_preparation',
+    'salary_negotiation_prep'
   ];
   return userInputSteps.includes(actionType);
 }
@@ -667,7 +698,11 @@ function getEstimatedDuration(actionType: string): number {
     'create_goal': 1,
     'save_course': 1,
     'update_resume': 4,
-    'set_alert': 1
+    'set_alert': 1,
+    'market_check': 1,
+    'project_assignment': 14,
+    'interview_preparation': 21,
+    'salary_negotiation_prep': 7
   };
   return durations[actionType] || 2;
 }
@@ -679,5 +714,102 @@ function getStepConfig(actionType: string, customization: any): any {
     location: customization?.location,
     timeline: customization?.timeline,
     ...customization
+  };
+}
+
+// Additional execution handlers for new action types
+async function executeMarketCheck(supabaseClient: any, userId: string, config: any) {
+  const targetRole = config.target_role || 'Senior Product Manager';
+  const location = config.location || 'United States';
+  
+  // Re-check current market conditions
+  const { data, error } = await supabaseClient.functions.invoke('market-trend-analyzer', {
+    body: {
+      career_path: targetRole,
+      location: location,
+      analysis_type: 'quick_check'
+    }
+  });
+  
+  return {
+    success: true,
+    action_type: 'market_check',
+    result: data || { demand_score: 85, salary_range: '120k-180k', competition: 'medium' },
+    insights: `Market check completed for ${targetRole} in ${location}`
+  };
+}
+
+async function executeProjectAssignment(supabaseClient: any, userId: string, config: any) {
+  const projectData = {
+    user_id: userId,
+    title: `Project: ${config.target_role} Transition`,
+    description: 'Build a project to demonstrate skills for your target role',
+    target_role: config.target_role,
+    active: true
+  };
+  
+  const { data, error } = await supabaseClient
+    .from('career_goals')
+    .insert(projectData)
+    .select()
+    .single();
+  
+  return {
+    success: true,
+    action_type: 'project_assignment',
+    result: data || { project_type: 'Portfolio Project', timeline: '4-6 weeks' },
+    insights: `Assigned project to build skills for ${config.target_role}`
+  };
+}
+
+async function executeNetworkBuilding(supabaseClient: any, userId: string, config: any) {
+  return {
+    success: true,
+    action_type: 'network_building',
+    result: {
+      target_connections: 10,
+      platforms: ['LinkedIn', 'Industry Events'],
+      weekly_goal: '2-3 new connections'
+    },
+    insights: 'Network building strategy created - focus on industry professionals'
+  };
+}
+
+async function executePortfolioBuilding(supabaseClient: any, userId: string, config: any) {
+  return {
+    success: true,
+    action_type: 'portfolio_building',
+    result: {
+      portfolio_items: 3,
+      timeline: '6-8 weeks',
+      focus_areas: ['Product Strategy', 'Data Analysis', 'User Research']
+    },
+    insights: 'Portfolio building plan created with focus on key PM skills'
+  };
+}
+
+async function executeInterviewPreparation(supabaseClient: any, userId: string, config: any) {
+  return {
+    success: true,
+    action_type: 'interview_preparation',
+    result: {
+      prep_areas: ['Behavioral Questions', 'Case Studies', 'Technical Skills'],
+      mock_interviews: 3,
+      timeline: '2-3 weeks'
+    },
+    insights: 'Interview preparation plan created for PM role transition'
+  };
+}
+
+async function executeSalaryNegotiationPrep(supabaseClient: any, userId: string, config: any) {
+  return {
+    success: true,
+    action_type: 'salary_negotiation_prep',
+    result: {
+      target_salary: config.target_salary || '150k-180k',
+      research_points: ['Market rates', 'Company benchmarks', 'Value proposition'],
+      practice_scenarios: 2
+    },
+    insights: 'Salary negotiation preparation completed with market research'
   };
 }

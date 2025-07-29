@@ -1,11 +1,11 @@
 import Navigation from "@/components/Navigation";
-import { AutonomousWorkflowDashboard } from "@/components/AutonomousWorkflowDashboard";
+import { EnhancedWorkflowDashboard } from "@/components/EnhancedWorkflowDashboard";
 
 export default function Workflows() {
   return (
     <>
       <Navigation />
-      <AutonomousWorkflowDashboard />
+      <EnhancedWorkflowDashboard />
     </>
   );
 }

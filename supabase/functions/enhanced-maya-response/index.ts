@@ -676,11 +676,19 @@ async function executeAutonomousActions(
       
       // Create workflow using template system with executable steps
       try {
+        // Determine the best template based on target role
+        let templateName = 'generic_role_transition'; // fallback
+        if (targetRole.toLowerCase().includes('product manager')) {
+          templateName = 'senior_product_manager_transition';
+        } else if (targetRole.toLowerCase().includes('tech') || targetRole.toLowerCase().includes('engineer')) {
+          templateName = 'career_transition_tech';
+        }
+
         const { data: workflowResult, error: workflowError } = await supabase.functions.invoke('autonomous-workflow-engine', {
           body: {
             action: {
               type: 'create_workflow',
-              templateName: 'senior_product_manager_transition',
+              templateName: templateName,
               customization: {
                 target_role: targetRole,
                 location: realTimeData.marketData?.location || 'United States',
