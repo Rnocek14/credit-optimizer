@@ -123,26 +123,36 @@ async function createWorkflow(supabaseClient: any, action: WorkflowAction) {
   }
   
   // Create workflow steps from template
-  const templateSteps = Array.isArray(template.template_steps) ? template.template_steps : JSON.parse(template.template_steps);
+  console.log('Template steps data:', template.template_steps);
+  const templateSteps = Array.isArray(template.template_steps) ? template.template_steps : [];
+  
+  if (templateSteps.length === 0) {
+    console.error('No template steps found for template:', templateName);
+    throw new Error(`No steps found in template: ${templateName}`);
+  }
+  
   const steps = [];
   
   for (let i = 0; i < templateSteps.length; i++) {
-    const stepTemplate = templateSteps[i];
+    const actionType = templateSteps[i];
+    console.log(`Creating step ${i + 1}: ${actionType}`);
+    
     const stepData = {
       workflow_id: workflow.id,
       step_order: i + 1,
       step_type: 'action',
-      action_type: stepTemplate,
-      title: getStepTitle(stepTemplate),
-      description: getStepDescription(stepTemplate, customization),
+      action_type: actionType,
+      title: getStepTitle(actionType),
+      description: getStepDescription(actionType, customization),
       status: 'pending',
-      is_autonomous: isAutonomousStep(stepTemplate),
-      requires_user_input: requiresUserInput(stepTemplate),
-      estimated_duration_days: Math.ceil(getEstimatedDuration(stepTemplate) / 24),
-      action_config: getStepConfig(stepTemplate, customization)
+      is_autonomous: isAutonomousStep(actionType),
+      requires_user_input: requiresUserInput(actionType),
+      action_config: getStepConfig(actionType, customization)
     };
     steps.push(stepData);
   }
+  
+  console.log(`Inserting ${steps.length} workflow steps:`, steps.map(s => ({ title: s.title, action_type: s.action_type })));
   
   const { data: createdSteps, error: stepsError } = await supabaseClient
     .from('workflow_steps')
@@ -150,8 +160,11 @@ async function createWorkflow(supabaseClient: any, action: WorkflowAction) {
     .select();
   
   if (stepsError) {
+    console.error('Step creation error:', stepsError);
     throw new Error(`Failed to create workflow steps: ${stepsError.message}`);
   }
+  
+  console.log(`Successfully created ${createdSteps?.length} workflow steps`);
   
   // Log Maya's decision
   await logMayaDecision(supabaseClient, {

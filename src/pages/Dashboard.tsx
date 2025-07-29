@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
+import { WorkflowTestPanel } from "@/components/WorkflowTestPanel";
 import { ResumePreview } from "@/components/ResumePreview";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 import { CareerGraphTest } from "@/components/CareerGraphTest";
@@ -172,6 +173,11 @@ export default function Dashboard() {
             <p className="text-muted-foreground text-sm md:text-base">
               Track your progress and follow your personalized roadmap
             </p>
+          </div>
+
+          {/* Workflow Test Panel */}
+          <div className="mb-6 md:mb-8">
+            <WorkflowTestPanel />
           </div>
 
           {/* Progress Overview */}
