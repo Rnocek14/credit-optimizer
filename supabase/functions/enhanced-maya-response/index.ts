@@ -126,63 +126,121 @@ async function gatherRealTimeIntelligence(supabase: any, userId: string, context
     opportunities: null,
     alerts: null,
     predictions: null,
-    personalized: null
+    personalized: null,
+    userProfile: null,
+    workflowStatus: null
   };
 
   try {
-    // Parallel data gathering for efficiency
+    // Phase 1: Always fetch user profile and level data
+    const profilePromises = [
+      fetchUserProfileData(supabase, userId).then(data => intelligence.userProfile = data),
+      fetchExistingWorkflowStatus(supabase, userId).then(data => intelligence.workflowStatus = data)
+    ];
+
+    // Phase 2: Market and career data gathering
     const dataPromises = [];
 
-    if (analysis.requiresMarketData && context.goals?.[0]?.target_role) {
-      dataPromises.push(
-        fetchCurrentMarketIntelligence(supabase, context.goals[0].target_role)
-          .then(data => intelligence.marketData = data)
-      );
-    }
+    // Always fetch market data for Product Manager if not specified
+    const targetRole = context.goals?.[0]?.target_role || 'Senior Product Manager';
+    dataPromises.push(
+      fetchCurrentMarketIntelligence(supabase, targetRole)
+        .then(data => intelligence.marketData = data)
+    );
 
-    if (analysis.requiresSkillAnalysis) {
-      dataPromises.push(
-        performRealTimeSkillAnalysis(supabase, userId, context)
-          .then(data => intelligence.skillGaps = data)
-      );
-    }
+    // Always perform skill analysis for better personalization
+    dataPromises.push(
+      performRealTimeSkillAnalysis(supabase, userId, context, targetRole)
+        .then(data => intelligence.skillGaps = data)
+    );
 
     if (analysis.isCareerTransition) {
       dataPromises.push(
-        identifyCareerOpportunities(supabase, context)
+        identifyCareerOpportunities(supabase, context, targetRole)
           .then(data => intelligence.opportunities = data)
       );
     }
 
-    if (analysis.requiresAlerts) {
-      dataPromises.push(
-        fetchUserAlertStatus(supabase, userId)
-          .then(data => intelligence.alerts = data)
-      );
-    }
+    // Always check alert status
+    dataPromises.push(
+      fetchUserAlertStatus(supabase, userId)
+        .then(data => intelligence.alerts = data)
+    );
 
     // Generate predictions for complex requests
     if (analysis.complexityScore >= 3) {
       dataPromises.push(
-        generateCareerPredictions(supabase, context)
+        generateCareerPredictions(supabase, context, targetRole)
           .then(data => intelligence.predictions = data)
       );
     }
 
-    // Always fetch personalized insights
+    // Always fetch personalized insights with real user data
     dataPromises.push(
-      getPersonalizedCareerInsights(supabase, userId, context)
+      getPersonalizedCareerInsights(supabase, userId, context, targetRole)
         .then(data => intelligence.personalized = data)
     );
 
-    await Promise.all(dataPromises);
+    // Wait for all data
+    await Promise.all([...profilePromises, ...dataPromises]);
     
-    console.log('📊 Real-time intelligence gathered:', Object.keys(intelligence).filter(k => intelligence[k]));
+    console.log('📊 Enhanced intelligence gathered:', Object.keys(intelligence).filter(k => intelligence[k]));
     
     return intelligence;
   } catch (error) {
     console.error('Error gathering real-time intelligence:', error);
     return intelligence;
+  }
+}
+
+async function fetchUserProfileData(supabase: any, userId: string) {
+  try {
+    // Fetch user profile, CRI scores, and XP level
+    const [profileResult, resumeResult, levelResult] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('ai_resume_drafts').select('cri_average, readiness_score, content').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.rpc('get_user_level', { user_id_param: userId })
+    ]);
+
+    const profile = profileResult.data;
+    const resume = resumeResult.data;
+    const level = levelResult.data?.[0];
+
+    return {
+      name: profile?.name || 'User',
+      email: profile?.email || '',
+      role: profile?.role || 'Professional',
+      skills: resume?.content?.skills || [],
+      criScore: resume?.cri_average || 0,
+      readinessScore: resume?.readiness_score || 0,
+      currentLevel: level?.current_level || 1,
+      totalXp: level?.total_xp || 0,
+      hasProfile: !!profile
+    };
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+}
+
+async function fetchExistingWorkflowStatus(supabase: any, userId: string) {
+  try {
+    const { data: workflows } = await supabase
+      .from('autonomous_workflows')
+      .select('*')
+      .eq('user_id', userId)
+      .in('status', ['active', 'planning', 'paused'])
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    return {
+      activeWorkflows: workflows?.length || 0,
+      currentWorkflows: workflows || [],
+      hasActiveTransition: workflows?.some(w => w.workflow_type === 'career_transition') || false
+    };
+  } catch (error) {
+    console.error('Error fetching workflow status:', error);
+    return null;
   }
 }
 
@@ -221,32 +279,35 @@ async function fetchCurrentMarketIntelligence(supabase: any, targetRole: string)
   }
 }
 
-async function performRealTimeSkillAnalysis(supabase: any, userId: string, context: any) {
+async function performRealTimeSkillAnalysis(supabase: any, userId: string, context: any, targetRole: string) {
   try {
-    const targetRole = context.goals?.[0]?.target_role;
-    if (!targetRole) return null;
+    // Use provided targetRole or fallback
+    const roleToAnalyze = targetRole || context.goals?.[0]?.target_role || 'Senior Product Manager';
 
     // Fetch required skills from career graph
     const { data: roleSkills } = await supabase
       .from('career_graph_nodes')
       .select('semantic_tags, description')
-      .ilike('title', `%${targetRole}%`)
+      .ilike('title', `%${roleToAnalyze}%`)
       .eq('node_type', 'job')
       .limit(1);
 
-    const requiredSkills = roleSkills?.[0]?.semantic_tags || [];
-    const currentSkills = context.profile?.skills || [];
+    // Use actual user skills from profile data
+    const requiredSkills = roleSkills?.[0]?.semantic_tags || ['Strategic Planning', 'Product Roadmap', 'Stakeholder Management', 'Data Analysis', 'User Research'];
+    const currentSkills = context.userProfile?.skills || context.profile?.skills || [];
 
-    // Calculate skill gaps
+    // Calculate skill gaps with better matching
     const missingSkills = requiredSkills.filter(skill => 
       !currentSkills.some(current => 
-        current.toLowerCase().includes(skill.toLowerCase())
+        current.toLowerCase().includes(skill.toLowerCase()) || 
+        skill.toLowerCase().includes(current.toLowerCase())
       )
     );
 
     const matchingSkills = requiredSkills.filter(skill => 
       currentSkills.some(current => 
-        current.toLowerCase().includes(skill.toLowerCase())
+        current.toLowerCase().includes(skill.toLowerCase()) || 
+        skill.toLowerCase().includes(current.toLowerCase())
       )
     );
 
@@ -260,8 +321,9 @@ async function performRealTimeSkillAnalysis(supabase: any, userId: string, conte
       matchingSkills,
       criticalGaps: missingSkills.slice(0, 3),
       recommendedActions: missingSkills.slice(0, 3).map(skill => 
-        `Learn ${skill} through practical projects`
-      )
+        `Develop ${skill} through targeted learning and practice`
+      ),
+      targetRole: roleToAnalyze
     };
   } catch (error) {
     console.error('Error performing skill analysis:', error);
@@ -269,12 +331,10 @@ async function performRealTimeSkillAnalysis(supabase: any, userId: string, conte
   }
 }
 
-async function identifyCareerOpportunities(supabase: any, context: any) {
+async function identifyCareerOpportunities(supabase: any, context: any, targetRole: string) {
   try {
     const currentRole = context.profile?.role_title || 'Current Role';
-    const targetRole = context.goals?.[0]?.target_role;
-    
-    if (!targetRole) return null;
+    const roleToAnalyze = targetRole || context.goals?.[0]?.target_role || 'Senior Product Manager';
 
     // Find career paths and opportunities
     const { data: careerPaths } = await supabase
@@ -284,7 +344,7 @@ async function identifyCareerOpportunities(supabase: any, context: any) {
         from_node:career_graph_nodes!career_graph_edges_from_id_fkey(title, node_type),
         to_node:career_graph_nodes!career_graph_edges_to_id_fkey(title, node_type)
       `)
-      .eq('to_node.title', targetRole)
+      .ilike('to_node.title', `%${roleToAnalyze}%`)
       .order('success_rate', { ascending: false })
       .limit(5);
 
@@ -292,15 +352,17 @@ async function identifyCareerOpportunities(supabase: any, context: any) {
       pathways: careerPaths?.map(path => ({
         from: path.from_node?.title,
         to: path.to_node?.title,
-        successRate: path.success_rate,
-        timeEstimate: path.time_cost_hours ? `${Math.round(path.time_cost_hours / 40)} weeks` : 'Unknown',
-        difficulty: path.difficulty_multiplier
+        successRate: path.success_rate || 0.8,
+        timeEstimate: path.time_cost_hours ? `${Math.round(path.time_cost_hours / 40)} weeks` : '12-16 weeks',
+        difficulty: path.difficulty_multiplier || 1.2
       })) || [],
       recommendations: [
-        'Focus on high-impact skills',
-        'Build portfolio projects',
-        'Network in target industry'
-      ]
+        'Focus on high-impact skills like strategic planning and data analysis',
+        'Build portfolio projects demonstrating product management abilities',
+        'Network in target industry and attend product management events',
+        'Pursue relevant certifications like CSPO or Product Management'
+      ],
+      targetRole: roleToAnalyze
     };
   } catch (error) {
     console.error('Error identifying opportunities:', error);
@@ -340,12 +402,12 @@ async function fetchUserAlertStatus(supabase: any, userId: string) {
   }
 }
 
-async function generateCareerPredictions(supabase: any, context: any) {
+async function generateCareerPredictions(supabase: any, context: any, targetRole: string) {
   try {
     // Call predictive analysis edge function
     const { data, error } = await supabase.functions.invoke('generate-predictive-analysis', {
       body: {
-        careerPath: context.goals?.[0]?.target_role || 'Software Engineer',
+        careerPath: targetRole || context.goals?.[0]?.target_role || 'Senior Product Manager',
         location: context.marketPreferences?.preferredLocations?.[0] || 'United States',
         timeHorizon: '6months'
       }
@@ -365,7 +427,7 @@ async function generateCareerPredictions(supabase: any, context: any) {
   }
 }
 
-async function getPersonalizedCareerInsights(supabase: any, userId: string, context: any) {
+async function getPersonalizedCareerInsights(supabase: any, userId: string, context: any, targetRole: string) {
   try {
     const { data, error } = await supabase.functions.invoke('personalized-market-insights', {
       body: { user_id: userId }
@@ -373,11 +435,16 @@ async function getPersonalizedCareerInsights(supabase: any, userId: string, cont
 
     if (error) throw error;
 
+    const userProfile = context.userProfile;
+    const calculatedReadiness = userProfile ? 
+      Math.round((userProfile.criScore + userProfile.readinessScore) / 2) : 
+      Math.round((context.criScore + context.readinessScore) / 2) || 0;
+
     return {
       recommendations: data?.recommendations?.slice(0, 3) || [],
       nextSteps: data?.next_steps || [],
       timingAdvice: data?.timing_advice || 'Continue current development',
-      readinessScore: Math.round((context.criScore + context.readinessScore) / 2) || 0
+      readinessScore: calculatedReadiness
     };
   } catch (error) {
     console.error('Error getting personalized insights:', error);
@@ -416,14 +483,27 @@ PERSONALIZED RECOMMENDATIONS:
 - Top Recommendations: ${realTimeData.personalized.recommendations?.slice(0, 2).map(r => r.title).join(', ') || 'Continue progress'}
 ` : '';
 
+  const userProfileData = realTimeData.userProfile ? `
+USER PROFILE DATA:
+- Name: ${realTimeData.userProfile.name}
+- Current Level: ${realTimeData.userProfile.currentLevel} (${realTimeData.userProfile.totalXp} XP)
+- CRI Score: ${realTimeData.userProfile.criScore}/100
+- Readiness Score: ${realTimeData.userProfile.readinessScore}/100
+- Has Complete Profile: ${realTimeData.userProfile.hasProfile ? 'Yes' : 'No'}
+` : '';
+
+  const workflowStatusData = realTimeData.workflowStatus ? `
+ACTIVE WORKFLOWS:
+- Current Workflows: ${realTimeData.workflowStatus.activeWorkflows}
+- Has Active Career Transition: ${realTimeData.workflowStatus.hasActiveTransition ? 'Yes' : 'No'}
+- Recent Workflows: ${realTimeData.workflowStatus.currentWorkflows?.map(w => w.title).join(', ') || 'None'}
+` : '';
+
   const systemPrompt = `You are Maya, an advanced AI career mentor with REAL-TIME market intelligence and autonomous workflow capabilities.
 
-USER CONTEXT:
-- Name: ${context.profile?.name || 'User'}
-- Current Level: ${context.level?.current_level || 1}
-- Target Role: ${context.goals?.[0]?.target_role || 'Not specified'}
-- Current Skills: ${context.profile?.skills?.join(', ') || 'None listed'}
-${marketInsights}${skillInsights}${predictionInsights}${personalizedInsights}
+${userProfileData}
+TARGET ROLE: ${realTimeData.skillGaps?.targetRole || context.goals?.[0]?.target_role || 'Senior Product Manager'}
+${marketInsights}${skillInsights}${predictionInsights}${personalizedInsights}${workflowStatusData}
 
 REQUEST ANALYSIS:
 - Type: ${analysis.requestType}
@@ -472,68 +552,194 @@ async function executeAutonomousActions(
   const actions = [];
 
   try {
-    // Create autonomous workflow for complex requests
+    // Phase 1: Store conversation context for continuity
+    await storeConversationContext(supabase, userId, analysis, realTimeData, aiResponse);
+
+    // Phase 2: Create autonomous workflow for complex requests
     if (analysis.shouldCreateWorkflow && analysis.isCareerTransition) {
-      console.log('🚀 Creating autonomous career transition workflow');
+      console.log('🚀 Creating enhanced autonomous career transition workflow');
       
-      const { data: workflow, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
-        body: {
-          action: 'create_workflow',
-          userId,
-          templateName: 'career_transition_accelerated',
-          customization: {
-            targetRole: realTimeData.opportunities?.pathways?.[0]?.to || 'Target Role',
-            currentMarketData: realTimeData.marketData,
-            skillGaps: realTimeData.skillGaps?.criticalGaps || [],
-            timeframe: '3 months'
-          }
-        }
-      });
-
-      if (!error && workflow) {
-        actions.push({
-          type: 'workflow_created',
-          id: workflow.workflow?.id,
-          title: workflow.workflow?.title,
-          steps: workflow.workflow?.estimated_duration_days
-        });
-      }
-    }
-
-    // Set up market alerts if requested
-    if (analysis.requiresAlerts && realTimeData.marketData) {
-      console.log('⚠️ Setting up market alerts');
+      const targetRole = realTimeData.skillGaps?.targetRole || realTimeData.opportunities?.targetRole || 'Senior Product Manager';
+      const skillGaps = realTimeData.skillGaps?.criticalGaps || [];
+      const currentReadiness = realTimeData.personalized?.readinessScore || 0;
       
-      const { data: alert, error } = await supabase
-        .from('alert_configurations')
+      // Create workflow with detailed context
+      const workflowResult = await supabase
+        .from('autonomous_workflows')
         .insert({
           user_id: userId,
-          name: 'Career Demand Alert',
-          alert_type: 'demand_change',
-          career_path: realTimeData.marketData.currentRole || 'General',
-          location: 'United States',
-          metric_type: 'demand_score',
-          threshold_value: Math.max(realTimeData.marketData.currentDemand - 2, 1),
-          comparison_operator: '<',
-          time_window: '7d'
+          workflow_type: 'career_transition',
+          title: `Transition to ${targetRole}`,
+          description: `Accelerated 3-month career transition plan with skill development and market monitoring`,
+          target_outcome: `Successfully transition to ${targetRole} role`,
+          priority: analysis.priority,
+          estimated_duration_days: 90,
+          context_data: {
+            targetRole,
+            currentSkillAlignment: realTimeData.skillGaps?.skillAlignment || 0,
+            criticalSkillGaps: skillGaps,
+            marketDemand: realTimeData.marketData?.currentDemand || 0,
+            averageSalary: realTimeData.marketData?.averageSalary || 0,
+            readinessScore: currentReadiness,
+            workflowFeatures: [
+              'Real-time market monitoring',
+              'Automated skill gap analysis',
+              'Personalized learning recommendations',
+              'Progress tracking with milestones',
+              'Market alert integration'
+            ]
+          },
+          config: {
+            auto_create_alerts: true,
+            skill_tracking: true,
+            market_monitoring: true,
+            progress_notifications: true
+          }
         })
         .select()
         .single();
 
-      if (!error && alert) {
+      if (!workflowResult.error && workflowResult.data) {
         actions.push({
-          type: 'alert_created',
-          id: alert.id,
-          name: alert.name,
-          threshold: alert.threshold_value
+          type: 'workflow_created',
+          id: workflowResult.data.id,
+          title: workflowResult.data.title,
+          estimatedDays: workflowResult.data.estimated_duration_days,
+          features: workflowResult.data.context_data.workflowFeatures
         });
       }
     }
 
-    console.log('✅ Autonomous actions executed:', actions.length);
+    // Phase 3: Set up comprehensive market alerts
+    if (analysis.requiresAlerts || analysis.isCareerTransition) {
+      console.log('⚠️ Setting up enhanced market alert system');
+      
+      const targetRole = realTimeData.skillGaps?.targetRole || 'Senior Product Manager';
+      const currentDemand = realTimeData.marketData?.currentDemand || 85;
+      const currentSalary = realTimeData.marketData?.averageSalary || 150000;
+      
+      // Create demand monitoring alert
+      const demandAlertResult = await supabase
+        .from('alert_configurations')
+        .insert({
+          user_id: userId,
+          name: `${targetRole} Demand Monitor`,
+          alert_type: 'demand_change',
+          career_path: targetRole,
+          location: 'United States',
+          metric_type: 'demand_score',
+          threshold_value: Math.max(currentDemand - 5, 70),
+          comparison_operator: '<',
+          time_window: '7d',
+          pattern_config: {
+            monitor_growth_rate: true,
+            track_job_postings: true,
+            salary_change_threshold: 0.1
+          }
+        })
+        .select()
+        .maybeSingle();
+
+      // Create salary alert
+      const salaryAlertResult = await supabase
+        .from('alert_configurations')
+        .insert({
+          user_id: userId,
+          name: `${targetRole} Salary Alert`,
+          alert_type: 'salary_change',
+          career_path: targetRole,
+          location: 'United States',
+          metric_type: 'average_salary',
+          threshold_value: currentSalary * 1.1,
+          comparison_operator: '>',
+          time_window: '30d'
+        })
+        .select()
+        .maybeSingle();
+
+      if (demandAlertResult.data) {
+        actions.push({
+          type: 'alert_created',
+          category: 'demand_monitoring',
+          id: demandAlertResult.data.id,
+          name: demandAlertResult.data.name,
+          threshold: demandAlertResult.data.threshold_value
+        });
+      }
+
+      if (salaryAlertResult.data) {
+        actions.push({
+          type: 'alert_created',
+          category: 'salary_monitoring',
+          id: salaryAlertResult.data.id,
+          name: salaryAlertResult.data.name,
+          threshold: salaryAlertResult.data.threshold_value
+        });
+      }
+    }
+
+    // Phase 4: Create conversation session for continuity
+    if (analysis.complexityScore >= 2) {
+      await createConversationSession(supabase, userId, analysis, realTimeData);
+    }
+
+    console.log('✅ Enhanced autonomous actions executed:', actions.length);
     return actions;
   } catch (error) {
     console.error('Error executing autonomous actions:', error);
     return actions;
+  }
+}
+
+async function storeConversationContext(supabase: any, userId: string, analysis: any, realTimeData: any, aiResponse: string) {
+  try {
+    const contextData = {
+      requestType: analysis.requestType,
+      complexityScore: analysis.complexityScore,
+      marketData: realTimeData.marketData,
+      skillGaps: realTimeData.skillGaps,
+      workflowStatus: realTimeData.workflowStatus,
+      personalized: realTimeData.personalized,
+      timestamp: new Date().toISOString()
+    };
+
+    await supabase
+      .from('conversation_context')
+      .insert({
+        user_id: userId,
+        context_type: 'enhanced_maya_response',
+        context_key: `maya_${analysis.requestType}_${Date.now()}`,
+        context_value: contextData,
+        importance_score: analysis.complexityScore / 7,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+      });
+
+  } catch (error) {
+    console.error('Error storing conversation context:', error);
+  }
+}
+
+async function createConversationSession(supabase: any, userId: string, analysis: any, realTimeData: any) {
+  try {
+    const targetRole = realTimeData.skillGaps?.targetRole || 'Senior Product Manager';
+    
+    await supabase
+      .from('conversation_sessions')
+      .insert({
+        user_id: userId,
+        feature: 'enhanced_maya',
+        title: `Career Planning: ${targetRole}`,
+        context: {
+          targetRole,
+          requestType: analysis.requestType,
+          skillAlignment: realTimeData.skillGaps?.skillAlignment || 0,
+          marketDemand: realTimeData.marketData?.currentDemand || 0,
+          readinessScore: realTimeData.personalized?.readinessScore || 0,
+          hasActiveWorkflow: realTimeData.workflowStatus?.hasActiveTransition || false
+        }
+      });
+
+  } catch (error) {
+    console.error('Error creating conversation session:', error);
   }
 }
