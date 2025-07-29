@@ -44,6 +44,7 @@ import SalaryInsights from "./pages/SalaryInsights";
 import ResumeAnalytics from "./pages/ResumeAnalytics";
 import MarketIntelligence from "./pages/MarketIntelligence";
 import Workflows from "./pages/Workflows";
+import MayaRoadmap from "./pages/MayaRoadmap";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -104,6 +105,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Workflows />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/maya-roadmap" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <MayaRoadmap />
               </ProtectedRoute>
             } 
           />
