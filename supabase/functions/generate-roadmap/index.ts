@@ -19,9 +19,32 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { goal, user_skills = [], max_time, max_budget, preferred_locations = [] } = await req.json();
+    const { user_id } = await req.json();
 
-    console.log('Generating roadmap for:', { goal, user_skills, max_time, max_budget, preferred_locations });
+    console.log('Generating roadmap for user_id:', user_id);
+
+    // Fetch user profile data from the database
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Error fetching user profile:', profileError);
+      throw new Error('User profile not found');
+    }
+
+    console.log('Found profile:', profile);
+
+    // Extract goal and skills from Maya's profile
+    const goal = profile.career_goals || "Data Analyst";
+    const user_skills = profile.skills || [];
+    const max_time = profile.time_constraints || "12 months";
+    const max_budget = profile.budget_constraints || "budget-conscious";
+    const preferred_locations = profile.preferred_locations || [];
+
+    console.log('Extracted data:', { goal, user_skills, max_time, max_budget, preferred_locations });
 
     // 1. Find matching career steps for the goal
     const { data: careerSteps, error: stepsError } = await supabaseClient
