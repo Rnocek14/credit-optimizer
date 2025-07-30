@@ -44,7 +44,7 @@ export const useCareerReadiness = ({
     mutationFn: async (params: {
       itemId: string;
       itemType: 'skill' | 'step';
-      status: 'locked' | 'available' | 'in_progress' | 'completed';
+      status: 'locked' | 'available' | 'in_progress' | 'completed' | 'verified';
       criScore?: number;
     }) => {
       if (!userId) throw new Error('User ID is required');
@@ -57,7 +57,7 @@ export const useCareerReadiness = ({
         queryClient.invalidateQueries({ queryKey: ['cri-score', userId] });
         
         toast.success(
-          variables.status === 'completed' 
+          (variables.status === 'completed' || variables.status === 'verified')
             ? `Marked ${variables.itemType} as completed!` 
             : `Updated ${variables.itemType} progress`
         );
@@ -94,7 +94,7 @@ export const useCareerReadiness = ({
     
     return userProgress.some(p => 
       (itemType === 'skill' ? p.skillId === itemId : p.stepId === itemId) &&
-      p.status === 'completed'
+      (p.status === 'completed' || p.status === 'verified')
     );
   }, [userProgress]);
 
@@ -107,7 +107,7 @@ export const useCareerReadiness = ({
     );
   }, [userProgress]);
 
-  const getProgressStatus = useCallback((itemId: string, itemType: 'skill' | 'step'): 'locked' | 'available' | 'in_progress' | 'completed' => {
+  const getProgressStatus = useCallback((itemId: string, itemType: 'skill' | 'step'): 'locked' | 'available' | 'in_progress' | 'completed' | 'verified' => {
     if (!userProgress) return 'locked';
     
     const progress = userProgress.find(p => 

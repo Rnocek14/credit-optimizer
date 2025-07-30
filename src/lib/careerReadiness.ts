@@ -22,7 +22,7 @@ export interface CRIScore {
 export interface UserProgress {
   skillId: string;
   stepId?: string;
-  status: 'locked' | 'available' | 'in_progress' | 'completed';
+  status: 'locked' | 'available' | 'in_progress' | 'completed' | 'verified';
   completedAt?: Date;
   criScore?: number;
 }
@@ -90,15 +90,15 @@ export const calculateCRI = async (
       requiredSkills = stepSkills?.map(s => s.skill_id) || [];
     }
 
-    // Calculate scores
-    const completedSkills = userSkills?.filter(s => s.status === 'completed').length || 0;
+    // Calculate scores - include both 'completed' and 'verified' statuses
+    const completedSkills = userSkills?.filter(s => s.status === 'completed' || s.status === 'verified').length || 0;
     const relevantCompletedSkills = userSkills?.filter(s => 
-      s.status === 'completed' && requiredSkills.includes(s.skill_id)
+      (s.status === 'completed' || s.status === 'verified') && requiredSkills.includes(s.skill_id)
     ).length || 0;
 
-    const completedSteps = userSteps?.filter(s => s.status === 'completed').length || 0;
+    const completedSteps = userSteps?.filter(s => s.status === 'completed' || s.status === 'verified').length || 0;
     const relevantCompletedSteps = userSteps?.filter(s => 
-      s.status === 'completed' && requiredSteps.some(rs => rs.id === s.step_id)
+      (s.status === 'completed' || s.status === 'verified') && requiredSteps.some(rs => rs.id === s.step_id)
     ).length || 0;
 
     const yearsExperience = profile?.years_experience || 0;
@@ -204,7 +204,7 @@ export const updateUserProgress = async (
   userId: string,
   itemId: string,
   itemType: 'skill' | 'step',
-  status: 'locked' | 'available' | 'in_progress' | 'completed',
+  status: 'locked' | 'available' | 'in_progress' | 'completed' | 'verified',
   criScore?: number
 ): Promise<boolean> => {
   try {
@@ -253,11 +253,11 @@ export const isNodeUnlocked = (
     return true; // No prerequisites means it's unlocked
   }
 
-  // Check if all prerequisites are completed
+  // Check if all prerequisites are completed or verified
   return prerequisites.every(prereqId => {
     return userProgress.some(p => 
       (p.skillId === prereqId || p.stepId === prereqId) && 
-      p.status === 'completed'
+      (p.status === 'completed' || p.status === 'verified')
     );
   });
 };
