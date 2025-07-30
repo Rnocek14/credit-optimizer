@@ -41,6 +41,11 @@ const Index = () => {
                 View Demo Accounts
               </Link>
             </Button>
+            <Button variant="secondary" size="lg" asChild className="w-full sm:w-auto">
+              <Link to="/workflows">
+                🔬 Test Maya Workflows
+              </Link>
+            </Button>
             </div>
           </div>
         </div>
