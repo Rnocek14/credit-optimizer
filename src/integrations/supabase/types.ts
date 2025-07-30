@@ -3223,6 +3223,81 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_certificates: {
+        Row: {
+          autonomous_steps: number
+          certificate_data: Json
+          certificate_number: string
+          certificate_type: string
+          completion_date: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_revoked: boolean
+          issued_at: string
+          manual_steps: number
+          maya_confidence_score: number
+          revocation_reason: string | null
+          revoked_at: string | null
+          total_decisions: number
+          updated_at: string
+          user_feedback_score: number | null
+          user_id: string
+          verification_code: string
+          workflow_description: string | null
+          workflow_id: string
+          workflow_title: string
+        }
+        Insert: {
+          autonomous_steps?: number
+          certificate_data?: Json
+          certificate_number: string
+          certificate_type?: string
+          completion_date: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_revoked?: boolean
+          issued_at?: string
+          manual_steps?: number
+          maya_confidence_score?: number
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          total_decisions?: number
+          updated_at?: string
+          user_feedback_score?: number | null
+          user_id: string
+          verification_code: string
+          workflow_description?: string | null
+          workflow_id: string
+          workflow_title: string
+        }
+        Update: {
+          autonomous_steps?: number
+          certificate_data?: Json
+          certificate_number?: string
+          certificate_type?: string
+          completion_date?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_revoked?: boolean
+          issued_at?: string
+          manual_steps?: number
+          maya_confidence_score?: number
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          total_decisions?: number
+          updated_at?: string
+          user_feedback_score?: number | null
+          user_id?: string
+          verification_code?: string
+          workflow_description?: string | null
+          workflow_id?: string
+          workflow_title?: string
+        }
+        Relationships: []
+      }
       workflow_steps: {
         Row: {
           action_config: Json
@@ -3417,9 +3492,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      generate_certificate_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_user_roadmap: {
         Args: { user_id_param: string }
         Returns: Json
+      }
+      generate_verification_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       get_badge_for_user: {
         Args: { badge_slug: string; user_uuid?: string }
