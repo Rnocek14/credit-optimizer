@@ -35,13 +35,7 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Redirect to normal auth in production
-  useEffect(() => {
-    if (!import.meta.env.DEV) {
-      navigate("/auth");
-      return;
-    }
-  }, [navigate]);
+  // Demo login temporarily enabled for CRI testing
 
   const form = useForm<DevLoginData>({
     resolver: zodResolver(devLoginSchema),
@@ -63,16 +57,7 @@ export default function DevLogin() {
   }, [navigate, toast]);
 
   const handleDevLogin = async (data: DevLoginData) => {
-    // Block dev login in production
-    if (!import.meta.env.DEV) {
-      toast({
-        title: "Dev mode disabled",
-        description: "Development login is only available in development environment",
-        variant: "destructive",
-      });
-      navigate("/auth");
-      return;
-    }
+    // Demo login temporarily enabled for CRI testing
 
     setIsLoading(true);
     try {

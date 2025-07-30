@@ -31,8 +31,8 @@ export interface AuthProfile {
 }
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  // Only allow dev mode in development environment
-  if (import.meta.env.DEV) {
+  // Temporarily allow dev mode for CRI testing
+  {
     // Check for dev user first
     const storedDevUser = localStorage.getItem("devUser");
     if (storedDevUser) {
