@@ -268,10 +268,11 @@ async function executeWorkflowStep(supabaseClient: any, action: WorkflowAction) 
     decision_context: {
       step_type: step.action_type,
       step_config: step.action_config,
-      execution_result: executionResult
+      workflow_title: step.autonomous_workflows.title
     },
     decision_rationale: `Executed ${step.action_type} step as part of ${step.autonomous_workflows.title} workflow`,
     confidence_score: executionResult.success ? 0.9 : 0.3,
+    execution_result: executionResult,
     workflow_id: step.workflow_id,
     step_id: stepId
   });

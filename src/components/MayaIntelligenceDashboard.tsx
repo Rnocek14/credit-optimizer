@@ -59,6 +59,25 @@ export function MayaIntelligenceDashboard() {
   useEffect(() => {
     fetchUserWorkflows();
     fetchMayaDecisions();
+    
+    // Set up real-time subscription for Maya decisions
+    const channel = supabase
+      .channel('maya-decisions-feed')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'maya_decisions' 
+      }, (payload) => {
+        console.log('New Maya decision received:', payload.new);
+        setMayaDecisions(prev => [payload.new as MayaDecision, ...prev.slice(0, 49)]);
+        // Recalculate analytics with updated data
+        fetchMayaDecisions();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchUserWorkflows]);
 
   const fetchMayaDecisions = async () => {
