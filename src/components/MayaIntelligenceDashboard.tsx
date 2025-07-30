@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MayaDecisionFeedback } from './MayaDecisionFeedback';
 import MayaDecisionExplainer from './MayaDecisionExplainer';
 import { WorkflowCertificateManager } from './WorkflowCertificateManager';
+import { useWorkflowCertificates } from '@/hooks/useWorkflowCertificates';
 import { 
   Brain, 
   TrendingUp, 
@@ -21,7 +22,9 @@ import {
   Zap,
   Activity,
   ThumbsUp,
-  Users
+  Users,
+  Award,
+  Bell
 } from 'lucide-react';
 
 interface MayaDecision {
@@ -63,6 +66,7 @@ export function MayaIntelligenceDashboard() {
   const [mayaDecisions, setMayaDecisions] = useState<MayaDecision[]>([]);
   const [analytics, setAnalytics] = useState<MayaAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
+  const { generateCertificate } = useWorkflowCertificates();
 
   useEffect(() => {
     fetchUserWorkflows();
@@ -328,28 +332,41 @@ export function MayaIntelligenceDashboard() {
                   <p className="text-gray-500">No workflows found</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {workflows.map((workflow) => {
-                    const workflowDecisions = mayaDecisions.filter(d => d.workflow_id === workflow.id);
-                    const avgConfidence = workflowDecisions.length > 0
-                      ? workflowDecisions.reduce((sum, d) => sum + d.confidence_score, 0) / workflowDecisions.length
-                      : 0;
-                    
-                    return (
-                      <Card key={workflow.id} className="border-l-4 border-l-purple-500">
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">{workflow.title}</CardTitle>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">
-                                Maya: {(avgConfidence * 100).toFixed(1)}%
-                              </Badge>
-                              <Badge variant={workflow.status === 'completed' ? 'default' : 'secondary'}>
-                                {workflow.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
+                 <div className="space-y-4">
+                   {workflows.map((workflow) => {
+                     const workflowDecisions = mayaDecisions.filter(d => d.workflow_id === workflow.id);
+                     const avgConfidence = workflowDecisions.length > 0
+                       ? workflowDecisions.reduce((sum, d) => sum + d.confidence_score, 0) / workflowDecisions.length
+                       : 0;
+                     
+                     // Check certificate eligibility
+                     const isEligibleForCertificate = workflow.status === 'completed' && 
+                       workflowDecisions.length >= 5 && 
+                       avgConfidence >= 0.7;
+                     
+                     return (
+                       <Card key={workflow.id} className={`border-l-4 ${isEligibleForCertificate ? 'border-l-yellow-500 bg-gradient-to-r from-yellow-50 to-amber-50' : 'border-l-purple-500'}`}>
+                         <CardHeader>
+                           <div className="flex items-center justify-between">
+                             <CardTitle className="text-lg flex items-center gap-2">
+                               {workflow.title}
+                               {isEligibleForCertificate && (
+                                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+                                   <Award className="w-3 h-3" />
+                                   Certificate Ready
+                                 </Badge>
+                               )}
+                             </CardTitle>
+                             <div className="flex items-center gap-2">
+                               <Badge variant="outline">
+                                 Maya: {(avgConfidence * 100).toFixed(1)}%
+                               </Badge>
+                               <Badge variant={workflow.status === 'completed' ? 'default' : 'secondary'}>
+                                 {workflow.status}
+                               </Badge>
+                             </div>
+                           </div>
+                         </CardHeader>
                         <CardContent>
                           <div className="space-y-3">
                             <div className="flex justify-between text-sm">
@@ -375,10 +392,31 @@ export function MayaIntelligenceDashboard() {
                                 </div>
                                 <div className="text-gray-500">Completed</div>
                               </div>
-                             </div>
-                           </div>
-                           
-                           <WorkflowCertificateManager
+                              </div>
+                            </div>
+                            
+                            {isEligibleForCertificate && (
+                              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Bell className="w-4 h-4 text-yellow-600" />
+                                    <span className="text-sm font-medium text-yellow-800">
+                                      🎉 This workflow qualifies for a Maya Certificate!
+                                    </span>
+                                  </div>
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-yellow-600 hover:bg-yellow-700"
+                                    onClick={() => generateCertificate(workflow.id)}
+                                  >
+                                    <Award className="w-4 h-4 mr-2" />
+                                    Generate Certificate
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <WorkflowCertificateManager
                              workflowId={workflow.id}
                              workflowTitle={workflow.title}
                              workflowStatus={workflow.status}

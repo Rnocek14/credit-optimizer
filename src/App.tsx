@@ -47,6 +47,7 @@ import Workflows from "./pages/Workflows";
 import MayaRoadmap from "./pages/MayaRoadmap";
 import Certificates from "./pages/Certificates";
 import VerifySignature from "./pages/VerifySignature";
+import CertificateGallery from "./pages/CertificateGallery";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -125,8 +126,9 @@ const App = () => (
                 <Certificates />
               </ProtectedRoute>
             } 
-          />
-          <Route path="/verify/:code?" element={<VerifySignature />} />
+           />
+           <Route path="/certificate-gallery" element={<CertificateGallery />} />
+           <Route path="/verify/:code?" element={<VerifySignature />} />
           <Route path="/teach" element={<Teach />} />
           <Route 
             path="/saved" 

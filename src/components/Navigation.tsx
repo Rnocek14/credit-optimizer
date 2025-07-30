@@ -1,15 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine, DollarSign, BarChart, TrendingUp, Workflow, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useToast } from "@/hooks/use-toast";
+import { useWorkflowCertificates } from "@/hooks/useWorkflowCertificates";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
+  const { getTotalCertificates, fetchUserCertificates } = useWorkflowCertificates();
+  const [certificateCount, setCertificateCount] = useState(0);
+
+  useEffect(() => {
+    const loadCertificateCount = async () => {
+      await fetchUserCertificates();
+      setCertificateCount(getTotalCertificates());
+    };
+    loadCertificateCount();
+  }, [fetchUserCertificates, getTotalCertificates]);
 
   const handleLogout = async () => {
     try {
@@ -37,6 +49,7 @@ export default function Navigation() {
     { href: "/workflows", label: "Workflows", icon: Workflow },
     { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain },
     { href: "/certificates", label: "Certificates", icon: Award },
+    { href: "/certificate-gallery", label: "Gallery", icon: Award },
     { href: "/resume-analytics", label: "Resume Analytics", icon: BarChart },
     { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/badges", label: "Badges", icon: Award },
@@ -77,6 +90,11 @@ export default function Navigation() {
                 <Link to={item.href} className="flex items-center space-x-2">
                   <item.icon className="h-4 w-4" />
                   <span>{item.label}</span>
+                  {item.href === "/certificates" && certificateCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800">
+                      {certificateCount}
+                    </Badge>
+                  )}
                 </Link>
               </Button>
             ))}
@@ -124,6 +142,11 @@ export default function Navigation() {
                   <Link to={item.href} className="flex items-center space-x-2">
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
+                    {item.href === "/certificates" && certificateCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800">
+                        {certificateCount}
+                      </Badge>
+                    )}
                   </Link>
                 </Button>
               ))}
