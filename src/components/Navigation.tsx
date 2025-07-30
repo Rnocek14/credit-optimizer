@@ -36,6 +36,7 @@ export default function Navigation() {
     { href: "/market-intelligence", label: "Market Intelligence", icon: TrendingUp },
     { href: "/workflows", label: "Workflows", icon: Workflow },
     { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain },
+    { href: "/certificates", label: "Certificates", icon: Award },
     { href: "/resume-analytics", label: "Resume Analytics", icon: BarChart },
     { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/badges", label: "Badges", icon: Award },

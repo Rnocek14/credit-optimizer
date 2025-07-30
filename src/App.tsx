@@ -45,6 +45,8 @@ import ResumeAnalytics from "./pages/ResumeAnalytics";
 import MarketIntelligence from "./pages/MarketIntelligence";
 import Workflows from "./pages/Workflows";
 import MayaRoadmap from "./pages/MayaRoadmap";
+import Certificates from "./pages/Certificates";
+import VerifySignature from "./pages/VerifySignature";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -116,6 +118,15 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/certificates" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Certificates />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/verify/:code?" element={<VerifySignature />} />
           <Route path="/teach" element={<Teach />} />
           <Route 
             path="/saved" 

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { pdf } from '@react-pdf/renderer';
+import { CertificatePDF } from './CertificatePDFTemplate';
 import { 
   Award, 
   Download, 
@@ -14,7 +16,8 @@ import {
   Clock,
   Star,
   Brain,
-  Users
+  Users,
+  Share2
 } from 'lucide-react';
 
 interface WorkflowCertificate {
@@ -157,28 +160,60 @@ export function WorkflowCertificateManager({
     }
   };
 
-  const downloadCertificatePDF = () => {
-    // This would generate and download a PDF certificate
-    // For now, we'll create a simple data export
-    const certificateInfo = {
-      certificateNumber: certificate?.certificate_number,
-      verificationCode: certificate?.verification_code,
-      workflowTitle: certificate?.workflow_title,
-      issuedAt: certificate?.issued_at,
-      completionDate: certificate?.completion_date,
-      mayaConfidenceScore: certificate?.maya_confidence_score,
-      autonomousSteps: certificate?.autonomous_steps
-    };
+  const downloadCertificatePDF = async () => {
+    if (!certificate) return;
+    
+    try {
+      // Generate PDF using @react-pdf/renderer
+      const pdfDoc = <CertificatePDF 
+        certificate={certificate} 
+        userName="Certificate Holder" // You can get actual user name from context/props
+      />;
+      const blob = await pdf(pdfDoc).toBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `maya-certificate-${certificate.certificate_number}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // Fallback to JSON download
+      const certificateInfo = {
+        certificateNumber: certificate?.certificate_number,
+        verificationCode: certificate?.verification_code,
+        workflowTitle: certificate?.workflow_title,
+        issuedAt: certificate?.issued_at,
+        completionDate: certificate?.completion_date,
+        mayaConfidenceScore: certificate?.maya_confidence_score,
+        autonomousSteps: certificate?.autonomous_steps
+      };
 
-    const blob = new Blob([JSON.stringify(certificateInfo, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `maya-certificate-${certificate?.certificate_number}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(certificateInfo, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `maya-certificate-${certificate?.certificate_number}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const shareToLinkedIn = () => {
+    if (!certificate) return;
+    
+    const text = encodeURIComponent(
+      `🏆 Just earned my Maya Certified credential for completing "${certificate.workflow_title}"! ` +
+      `Achieved ${Math.round(certificate.maya_confidence_score * 100)}% Maya confidence score through ` +
+      `${certificate.total_decisions} AI-guided decisions. Verify at: ${window.location.origin}/verify/${certificate.verification_code}`
+    );
+    
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&text=${text}`, '_blank');
   };
 
   const getEligibilityColor = (requirement: boolean) => {
@@ -249,11 +284,23 @@ export function WorkflowCertificateManager({
             <div className="flex gap-2">
               <Button onClick={downloadCertificatePDF} variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
-                Download Certificate
+                Download PDF
               </Button>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={shareToLinkedIn}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Share on LinkedIn
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.open(`/verify/${certificate.verification_code}`, '_blank')}
+              >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Verify Certificate
+                Public Verification
               </Button>
             </div>
 
