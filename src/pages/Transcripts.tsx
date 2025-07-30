@@ -10,7 +10,8 @@ import {
   Star,
   CheckCircle,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  TrendingUp
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -165,26 +166,46 @@ const Transcripts = () => {
 
                   <Separator />
 
-                  {/* Metadata Row */}
-                  <div className="flex flex-wrap items-center gap-3 text-sm">
-                    {/* CRI Score */}
-                    <div className={`px-3 py-1 rounded-full border font-medium ${getCRIScoreColor(transcript.cri_score)}`}>
-                      <Star className="h-3 w-3 inline mr-1" />
-                      CRI: {transcript.cri_score.toFixed(1)}
+                  {/* Enhanced CRI & Metadata Row */}
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      {/* Enhanced CRI Score */}
+                      <div className={`px-3 py-1 rounded-full border font-medium ${getCRIScoreColor(transcript.cri_score)}`}>
+                        <Star className="h-3 w-3 inline mr-1" />
+                        CRI: {transcript.cri_score.toFixed(1)}
+                        <span className="ml-1 text-xs opacity-75">
+                          ({transcript.cri_score >= 8.5 ? 'Excellent' : 
+                            transcript.cri_score >= 7.5 ? 'High' : 
+                            transcript.cri_score >= 6.5 ? 'Good' : 'Fair'})
+                        </span>
+                      </div>
+
+                      {/* Difficulty */}
+                      {transcript.difficulty && (
+                        <Badge variant="outline" className={getDifficultyColor(transcript.difficulty)}>
+                          {transcript.difficulty}
+                        </Badge>
+                      )}
+
+                      {/* Grade */}
+                      {transcript.grade && (
+                        <Badge variant="outline" className="font-medium">
+                          Grade: {transcript.grade}
+                        </Badge>
+                      )}
                     </div>
 
-                    {/* Difficulty */}
-                    {transcript.difficulty && (
-                      <Badge variant="outline" className={getDifficultyColor(transcript.difficulty)}>
-                        {transcript.difficulty}
-                      </Badge>
-                    )}
-
-                    {/* Grade */}
-                    {transcript.grade && (
-                      <Badge variant="outline" className="font-medium">
-                        Grade: {transcript.grade}
-                      </Badge>
+                    {/* CRI Contribution Indicator */}
+                    {transcript.cri_score >= 7.5 && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <Badge variant="default" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                          <TrendingUp className="h-3 w-3 mr-1" />
+                          High CRI Impact
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          This course significantly boosted your career readiness
+                        </span>
+                      </div>
                     )}
                   </div>
 

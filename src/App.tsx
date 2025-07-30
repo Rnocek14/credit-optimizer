@@ -48,6 +48,7 @@ import MayaRoadmap from "./pages/MayaRoadmap";
 import Certificates from "./pages/Certificates";
 import VerifySignature from "./pages/VerifySignature";
 import CertificateGallery from "./pages/CertificateGallery";
+import CRIDashboardPage from "./pages/CRIDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
