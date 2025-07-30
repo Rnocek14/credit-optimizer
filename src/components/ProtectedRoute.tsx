@@ -35,10 +35,16 @@ export default function ProtectedRoute({
         if (!mounted) return;
         
         if (currentUser) {
+          console.log("ProtectedRoute: User found", { 
+            id: currentUser.id, 
+            email: currentUser.email, 
+            isDevUser: currentUser.isDevUser 
+          });
           setUser(currentUser);
           
           // Check if user has completed onboarding and get role
           const profile = await getUserProfile(currentUser.id, currentUser.isDevUser);
+          console.log("ProtectedRoute: Profile result", profile);
           
           setHasProfile(!!profile);
           setUserRole(profile?.role || currentUser.role || null);

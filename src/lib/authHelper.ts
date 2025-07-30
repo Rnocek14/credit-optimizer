@@ -76,42 +76,32 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 };
 
 export const getUserProfile = async (userId: string, isDevUser: boolean = false): Promise<AuthProfile | null> => {
+  console.log("getUserProfile called with:", { userId, isDevUser });
+  
   if (isDevUser) {
-    // For dev users, try to get profile or create a mock one
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (profile) {
-        return profile;
-      }
-
-      // Create a mock profile for dev users if none exists
-      const devUser = window.__devUser__;
-      if (devUser) {
-        return {
-          id: userId,
-          user_id: userId,
-          name: devUser.name || "Dev User",
-          role: devUser.role || "user",
-        };
-      }
-    } catch (error) {
-      console.warn("Could not fetch dev user profile:", error);
-      // Return a mock profile for dev users
-      const devUser = window.__devUser__;
-      if (devUser) {
-        return {
-          id: userId,
-          user_id: userId,
-          name: devUser.name || "Dev User",
-          role: devUser.role || "user",
-        };
-      }
+    // For dev users, always return a mock profile immediately
+    const devUser = window.__devUser__ || JSON.parse(localStorage.getItem("devUser") || "{}");
+    console.log("Dev user data:", devUser);
+    
+    if (devUser && devUser.id) {
+      const mockProfile = {
+        id: userId,
+        user_id: userId,
+        name: devUser.name || "Dev User",
+        role: devUser.role || "user",
+      };
+      console.log("Returning mock profile:", mockProfile);
+      return mockProfile;
     }
+    
+    // Fallback if no dev user data
+    console.log("No dev user data found, returning fallback mock profile");
+    return {
+      id: userId,
+      user_id: userId,
+      name: "Demo User",
+      role: "user",
+    };
   } else {
     // For real users, get profile from database
     try {

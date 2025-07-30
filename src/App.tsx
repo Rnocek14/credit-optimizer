@@ -247,7 +247,7 @@ const App = () => (
           <Route 
             path="/cri-dashboard" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+              <ProtectedRoute requireAuth={true}>
                 <CRIDashboardPage />
               </ProtectedRoute>
             } 
