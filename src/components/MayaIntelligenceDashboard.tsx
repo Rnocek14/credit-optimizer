@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
+import { MayaDecisionFeedback } from '@/components/MayaDecisionFeedback';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Brain, 
@@ -16,7 +17,9 @@ import {
   Sparkles,
   Target,
   Zap,
-  Activity
+  Activity,
+  ThumbsUp,
+  Users
 } from 'lucide-react';
 
 interface MayaDecision {
@@ -41,6 +44,9 @@ interface MayaAnalytics {
   autonomousSteps: number;
   completedWorkflows: number;
   decisionsByType: Record<string, number>;
+  avgUserRating: number;
+  feedbackCount: number;
+  satisfactionRate: number;
 }
 
 export function MayaIntelligenceDashboard() {
@@ -102,6 +108,7 @@ export function MayaIntelligenceDashboard() {
   };
 
   const calculateAnalytics = (decisions: MayaDecision[]) => {
+    const decisionsWithRating = decisions.filter(d => d.user_feedback_rating);
     const analytics: MayaAnalytics = {
       totalDecisions: decisions.length,
       avgConfidenceScore: decisions.length > 0 
@@ -115,7 +122,14 @@ export function MayaIntelligenceDashboard() {
       decisionsByType: decisions.reduce((acc, d) => {
         acc[d.decision_type] = (acc[d.decision_type] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>)
+      }, {} as Record<string, number>),
+      avgUserRating: decisionsWithRating.length > 0
+        ? decisionsWithRating.reduce((sum, d) => sum + (d.user_feedback_rating || 0), 0) / decisionsWithRating.length
+        : 0,
+      feedbackCount: decisionsWithRating.length,
+      satisfactionRate: decisionsWithRating.length > 0
+        ? (decisionsWithRating.filter(d => (d.user_feedback_rating || 0) >= 4).length / decisionsWithRating.length) * 100
+        : 0
     };
 
     setAnalytics(analytics);
@@ -181,7 +195,7 @@ export function MayaIntelligenceDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="text-center p-4 bg-white rounded-lg shadow-sm">
               <div className="text-2xl font-bold text-purple-600">{analytics?.totalDecisions || 0}</div>
               <div className="text-sm text-purple-600">Total Decisions</div>
@@ -201,6 +215,15 @@ export function MayaIntelligenceDashboard() {
             <div className="text-center p-4 bg-white rounded-lg shadow-sm">
               <div className="text-2xl font-bold text-orange-600">{analytics?.autonomousSteps || 0}</div>
               <div className="text-sm text-orange-600">Autonomous Steps</div>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg shadow-sm">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <ThumbsUp className="w-4 h-4 text-yellow-600" />
+                <div className="text-2xl font-bold text-yellow-600">
+                  {analytics?.avgUserRating ? analytics.avgUserRating.toFixed(1) : '0.0'}
+                </div>
+              </div>
+              <div className="text-sm text-yellow-600">User Rating</div>
             </div>
           </div>
           <div className="mt-4 flex justify-end">
@@ -261,18 +284,12 @@ export function MayaIntelligenceDashboard() {
                         </div>
                       )}
                       
-                      {decision.user_feedback_rating && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-xs text-gray-500">User Rating:</span>
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <span key={i} className={i < decision.user_feedback_rating! ? 'text-yellow-400' : 'text-gray-300'}>
-                                ★
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <MayaDecisionFeedback
+                        decisionId={decision.id}
+                        currentRating={decision.user_feedback_rating || 0}
+                        currentFeedback={decision.user_feedback || ''}
+                        onFeedbackUpdate={fetchMayaDecisions}
+                      />
                     </div>
                   ))}
                 </div>
@@ -420,8 +437,18 @@ export function MayaIntelligenceDashboard() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Automation Rate</span>
+                   <div className="flex items-center justify-between">
+                     <span className="text-sm">User Satisfaction</span>
+                     <div className="flex items-center gap-2">
+                       <Progress value={analytics?.satisfactionRate || 0} className="w-20 h-2" />
+                       <span className="text-sm font-medium">
+                         {analytics?.satisfactionRate ? analytics.satisfactionRate.toFixed(1) : 0}%
+                       </span>
+                     </div>
+                   </div>
+                   
+                   <div className="flex items-center justify-between">
+                     <span className="text-sm">Automation Rate</span>
                     <div className="flex items-center gap-2">
                       <Progress 
                         value={analytics?.totalDecisions ? (analytics.autonomousSteps / analytics.totalDecisions) * 100 : 0} 
