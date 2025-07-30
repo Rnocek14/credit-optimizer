@@ -9,6 +9,7 @@ import { CRIGoalSetting } from '@/components/CRIGoalSetting';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
 import { useCRIGoals } from '@/hooks/useCRIGoals';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/authHelper';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,12 +26,11 @@ import {
 } from 'lucide-react';
 
 export default function CRIDashboardPage() {
-  // Get current user
+  // Get current user (supports both real and demo users)
   const { data: user } = useQuery({
     queryKey: ['current-user'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
+      return await getCurrentUser();
     }
   });
 
