@@ -125,12 +125,10 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'create_workflow',
-            templateName,
-            customization,
-            userId: user.user.id
-          }
+          type: 'create_workflow',
+          templateName,
+          customization,
+          userId: user.user.id
         }
       });
 
@@ -168,10 +166,8 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'execute_step',
-            stepId
-          }
+          type: 'execute_step',
+          stepId
         }
       });
 
@@ -209,10 +205,8 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'pause_workflow',
-            workflowId
-          }
+          type: 'pause_workflow',
+          workflowId
         }
       });
 
@@ -250,10 +244,8 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'resume_workflow',
-            workflowId
-          }
+          type: 'resume_workflow',
+          workflowId
         }
       });
 
@@ -291,10 +283,8 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'cancel_workflow',
-            workflowId
-          }
+          type: 'cancel_workflow',
+          workflowId
         }
       });
 
@@ -332,10 +322,8 @@ export function useAutonomousWorkflows() {
 
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
-          action: {
-            type: 'get_workflow',
-            workflowId
-          }
+          type: 'get_workflow',
+          workflowId
         }
       });
 
