@@ -42,7 +42,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action }: { action: WorkflowAction } = await req.json();
+    const action: WorkflowAction = await req.json();
     console.log('Workflow Engine Action:', action);
 
     switch (action.type) {
