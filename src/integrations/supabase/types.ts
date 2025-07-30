@@ -2947,6 +2947,30 @@ export type Database = {
           },
         ]
       }
+      user_cri_goals: {
+        Row: {
+          created_at: string
+          id: string
+          target_cri: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          target_cri?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          target_cri?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_cri_scores: {
         Row: {
           blocking_factors: string[] | null

@@ -5,7 +5,9 @@
 import React from 'react';
 import { CRIDashboard as CRIDashboardComponent } from '@/components/CRIDashboard';
 import { CRIRecommendationEngine } from '@/components/CRIRecommendationEngine';
+import { CRIGoalSetting } from '@/components/CRIGoalSetting';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
+import { useCRIGoals } from '@/hooks/useCRIGoals';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,13 +54,14 @@ export default function CRIDashboardPage() {
     enabled: !!user?.id 
   });
 
+  const { targetCRI } = useCRIGoals(user?.id);
+
   // Extract skill gaps from career goals
   const skillGaps = careerGoals?.flatMap(goal => 
     goal.target_role?.split(',').map((skill: string) => skill.trim()) || []
   ) || [];
 
   const currentCRI = criScore?.overall || 0;
-  const targetCRI = 80; // Default target
 
   if (!user) {
     return (
@@ -126,7 +129,14 @@ export default function CRIDashboardPage() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <CRIDashboardComponent userId={user.id} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <CRIDashboardComponent userId={user.id} />
+              </div>
+              <div>
+                <CRIGoalSetting userId={user.id} currentCRI={currentCRI} />
+              </div>
+            </div>
           </TabsContent>
 
           {/* Recommendations Tab */}
@@ -140,22 +150,30 @@ export default function CRIDashboardPage() {
 
           {/* Learning Path Tab */}
           <TabsContent value="learning" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5" />
-                  Personalized Learning Path
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
-                  <p className="mb-4">AI-generated learning paths based on your CRI analysis</p>
-                  <Button variant="outline">Get Notified</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5" />
+                      Learning History & CRI Impact
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>View your transcripts to see CRI impact per course</p>
+                      <Button variant="outline" asChild className="mt-3">
+                        <a href="/transcripts">View Transcripts</a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <CRIGoalSetting userId={user.id} currentCRI={currentCRI} />
+              </div>
+            </div>
           </TabsContent>
 
           {/* Social CRI Tab */}

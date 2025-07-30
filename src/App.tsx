@@ -236,14 +236,22 @@ const App = () => (
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
-        <Route 
-          path="/resume-analytics" 
-          element={
-            <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-              <ResumeAnalytics />
-            </ProtectedRoute>
-          } 
-        />
+          <Route 
+            path="/resume-analytics" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ResumeAnalytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/cri-dashboard" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <CRIDashboardPage />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
