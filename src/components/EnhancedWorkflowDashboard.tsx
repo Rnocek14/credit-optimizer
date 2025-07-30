@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
+import { WorkflowStepExecutor } from './WorkflowStepExecutor';
+import { WorkflowProgressTracker } from './WorkflowProgressTracker';
 import { PlayCircle, PauseCircle, CheckCircle, AlertCircle, Clock, TrendingUp } from 'lucide-react';
 
 export function EnhancedWorkflowDashboard() {
@@ -121,91 +123,18 @@ export function EnhancedWorkflowDashboard() {
             </Card>
           ) : (
             activeWorkflows.map((workflow) => (
-              <Card key={workflow.id} className="w-full">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(workflow.status)}
-                      <CardTitle className="text-lg">{workflow.title}</CardTitle>
-                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(workflow.priority)}`}></div>
-                    </div>
-                    <Badge variant={workflow.status === 'active' ? 'default' : 'secondary'}>
-                      {workflow.status}
-                    </Badge>
-                  </div>
-                  <CardDescription>{workflow.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Progress</span>
-                    <span>{workflow.progress_percentage}%</span>
-                  </div>
-                  <Progress value={workflow.progress_percentage} className="w-full" />
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Target:</span> {workflow.target_outcome}
-                    </div>
-                    <div>
-                      <span className="font-medium">Duration:</span> {workflow.estimated_duration_days} days
-                    </div>
-                  </div>
-
-                  {/* Workflow Steps Section */}
-                  {workflow.workflow_steps && workflow.workflow_steps.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <h4 className="font-medium text-sm">Workflow Steps ({workflow.workflow_steps.length})</h4>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {workflow.workflow_steps
-                          .sort((a, b) => a.step_order - b.step_order)
-                          .slice(0, 5)
-                          .map((step) => (
-                            <div key={step.id} className="flex items-center justify-between text-xs p-2 rounded bg-gray-50">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  step.status === 'completed' ? 'bg-green-500' :
-                                  step.status === 'in_progress' ? 'bg-blue-500' :
-                                  step.status === 'failed' ? 'bg-red-500' :
-                                  'bg-gray-300'
-                                }`}></div>
-                                <span className="font-medium">{step.title}</span>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {step.status}
-                              </Badge>
-                            </div>
-                          ))}
-                        {workflow.workflow_steps.length > 5 && (
-                          <div className="text-xs text-gray-500 text-center">
-                            +{workflow.workflow_steps.length - 5} more steps
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    {workflow.status === 'active' ? (
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => pauseWorkflow(workflow.id)}
-                      >
-                        <PauseCircle className="w-4 h-4 mr-1" />
-                        Pause
-                      </Button>
-                    ) : (
-                      <Button 
-                        size="sm"
-                        onClick={() => resumeWorkflow(workflow.id)}
-                      >
-                        <PlayCircle className="w-4 h-4 mr-1" />
-                        Resume
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={workflow.id} className="space-y-4">
+                <WorkflowProgressTracker workflow={workflow} />
+                <div className="space-y-3">
+                  {workflow.workflow_steps?.map((step) => (
+                    <WorkflowStepExecutor 
+                      key={step.id} 
+                      step={step} 
+                      onStepUpdated={fetchUserWorkflows}
+                    />
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </TabsContent>
