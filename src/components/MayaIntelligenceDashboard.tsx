@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
-import { MayaDecisionFeedback } from '@/components/MayaDecisionFeedback';
 import { supabase } from '@/integrations/supabase/client';
+import { MayaDecisionFeedback } from './MayaDecisionFeedback';
+import MayaDecisionExplainer from './MayaDecisionExplainer';
 import { 
   Brain, 
   TrendingUp, 
@@ -289,6 +290,16 @@ export function MayaIntelligenceDashboard() {
                         currentRating={decision.user_feedback_rating || 0}
                         currentFeedback={decision.user_feedback || ''}
                         onFeedbackUpdate={fetchMayaDecisions}
+                      />
+                      
+                      <MayaDecisionExplainer
+                        decisionId={decision.id}
+                        decisionType={decision.decision_type}
+                        rationale={decision.decision_rationale}
+                        context={decision.decision_context}
+                        executionResult={decision.execution_result}
+                        confidence={decision.confidence_score}
+                        existingExplanation={decision.decision_context?.explanation}
                       />
                     </div>
                   ))}
