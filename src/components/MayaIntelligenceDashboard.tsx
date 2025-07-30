@@ -8,6 +8,7 @@ import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
 import { supabase } from '@/integrations/supabase/client';
 import { MayaDecisionFeedback } from './MayaDecisionFeedback';
 import MayaDecisionExplainer from './MayaDecisionExplainer';
+import { WorkflowCertificateManager } from './WorkflowCertificateManager';
 import { 
   Brain, 
   TrendingUp, 
@@ -374,12 +375,21 @@ export function MayaIntelligenceDashboard() {
                                 </div>
                                 <div className="text-gray-500">Completed</div>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                             </div>
+                           </div>
+                           
+                           <WorkflowCertificateManager
+                             workflowId={workflow.id}
+                             workflowTitle={workflow.title}
+                             workflowStatus={workflow.status}
+                             completedAt={workflow.completed_at}
+                             mayaDecisions={workflowDecisions}
+                             workflowSteps={workflow.workflow_steps || []}
+                           />
+                         </CardContent>
+                       </Card>
+                     );
+                   })}
                 </div>
               )}
             </CardContent>
