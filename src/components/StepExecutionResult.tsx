@@ -67,40 +67,114 @@ export function StepExecutionResult({ result, actionType }: StepExecutionResultP
     </div>
   );
 
-  const renderMarketCheck = (data: any) => (
-    <div className="space-y-4">
-      {data.market_analysis && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-3 bg-green-50 border border-green-200 rounded">
-            <div className="text-lg font-semibold text-green-800">
-              {data.market_analysis.demand_score}/10
-            </div>
-            <div className="text-xs text-green-600">Market Demand</div>
+  const renderMarketCheck = (data: any) => {
+    // Handle the case where data might be an array of source results from job market aggregator
+    const marketData = Array.isArray(data) ? data : [data];
+    
+    return (
+      <div className="space-y-4">
+        {marketData.map((sourceData: any, sourceIndex: number) => (
+          <div key={sourceIndex} className="space-y-3">
+            {sourceData.source && (
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline" className="text-xs">
+                  {sourceData.source}
+                </Badge>
+                {sourceData.success === false && (
+                  <Badge variant="destructive" className="text-xs">
+                    Failed
+                  </Badge>
+                )}
+              </div>
+            )}
+            
+            {sourceData.success === false ? (
+              <div className="p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-sm text-red-800">{sourceData.error}</p>
+              </div>
+            ) : (
+              <>
+                {sourceData.data?.jobCount && sourceData.data?.averageSalary && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-green-50 border border-green-200 rounded">
+                      <div className="text-lg font-semibold text-green-800">
+                        {sourceData.data.jobCount.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-green-600">Job Openings</div>
+                    </div>
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="text-lg font-semibold text-blue-800">
+                        ${sourceData.data.averageSalary?.toLocaleString() || 'N/A'}
+                      </div>
+                      <div className="text-xs text-blue-600">Average Salary</div>
+                    </div>
+                  </div>
+                )}
+
+                {sourceData.data?.companies && sourceData.data.companies.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Top Companies Hiring</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {sourceData.data.companies.slice(0, 5).map((company: string, index: number) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {company}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {sourceData.data?.skills && sourceData.data.skills.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">In-Demand Skills</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {sourceData.data.skills.slice(0, 6).map((skill: string, index: number) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {sourceData.data?.insights && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-2">Market Insights</h4>
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <p className="text-sm text-blue-800">
+                        {typeof sourceData.data.insights === 'string' 
+                          ? sourceData.data.insights 
+                          : JSON.stringify(sourceData.data.insights, null, 2)
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-            <div className="text-lg font-semibold text-blue-800">
-              ${data.market_analysis.avg_salary?.toLocaleString() || 'N/A'}
+        ))}
+
+        {/* Legacy format support */}
+        {data.market_analysis && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-green-50 border border-green-200 rounded">
+              <div className="text-lg font-semibold text-green-800">
+                {data.market_analysis.demand_score}/10
+              </div>
+              <div className="text-xs text-green-600">Market Demand</div>
             </div>
-            <div className="text-xs text-blue-600">Average Salary</div>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+              <div className="text-lg font-semibold text-blue-800">
+                ${data.market_analysis.avg_salary?.toLocaleString() || 'N/A'}
+              </div>
+              <div className="text-xs text-blue-600">Average Salary</div>
+            </div>
           </div>
-        </div>
-      )}
-      
-      {data.insights && (
-        <div>
-          <h4 className="font-medium text-sm mb-2">Market Insights</h4>
-          <ul className="text-sm space-y-1">
-            {data.insights.map((insight: string, index: number) => (
-              <li key={index} className="flex items-start space-x-2">
-                <CheckCircle className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
-                <span>{insight}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   const renderLearningPlan = (data: any) => (
     <div className="space-y-4">
