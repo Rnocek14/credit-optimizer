@@ -22,6 +22,7 @@ interface UserStats {
   published_resume_count: number;
   max_cri_score: number;
   max_readiness_score: number;
+  workflow_certificate_count: number;
 }
 
 Deno.serve(async (req) => {
@@ -120,6 +121,9 @@ Deno.serve(async (req) => {
         case 'readiness_score':
           shouldAward = userStats.max_readiness_score >= badge.threshold;
           break;
+        case 'workflow_certificate_count':
+          shouldAward = userStats.workflow_certificate_count >= badge.threshold;
+          break;
         default:
           console.log(`Unknown trigger_type: ${badge.trigger_type}`);
       }
@@ -217,12 +221,20 @@ async function calculateUserStats(supabase: any, userId: string): Promise<UserSt
     .order('readiness_score', { ascending: false })
     .limit(1);
 
+  // Get workflow certificate count
+  const { count: certificateCount } = await supabase
+    .from('workflow_certificates')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_revoked', false);
+
   return {
     transcript_count: transcriptCount || 0,
     saved_courses_count: savedCoursesCount || 0,
     goal_count: goalCount || 0,
     published_resume_count: publishedResumeCount || 0,
     max_cri_score: maxCriData?.[0]?.cri_score || 0,
-    max_readiness_score: maxReadinessData?.[0]?.readiness_score || 0
+    max_readiness_score: maxReadinessData?.[0]?.readiness_score || 0,
+    workflow_certificate_count: certificateCount || 0
   };
 }
