@@ -49,6 +49,7 @@ import Certificates from "./pages/Certificates";
 import VerifySignature from "./pages/VerifySignature";
 import CertificateGallery from "./pages/CertificateGallery";
 import CRIDashboardPage from "./pages/CRIDashboard";
+import UploadCourse from "./pages/UploadCourse";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -131,6 +132,14 @@ const App = () => (
            <Route path="/certificate-gallery" element={<CertificateGallery />} />
            <Route path="/verify/:code?" element={<VerifySignature />} />
           <Route path="/teach" element={<Teach />} />
+          <Route 
+            path="/upload-course" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <UploadCourse />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/saved" 
             element={
