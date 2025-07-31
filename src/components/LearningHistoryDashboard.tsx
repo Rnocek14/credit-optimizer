@@ -136,7 +136,9 @@ export function LearningHistoryDashboard() {
                     <div key={progress.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium">Course ID: {progress.course_id}</h4>
+                           <h4 className="font-medium">
+                             {progress.title ? `${progress.title}${progress.platform ? ` (${progress.platform})` : ''}` : `Course ID: ${progress.course_id}`}
+                           </h4>
                           <p className="text-sm text-muted-foreground">
                             Started {format(new Date(progress.started_at!), 'MMM d, yyyy')}
                           </p>
@@ -177,7 +179,9 @@ export function LearningHistoryDashboard() {
                     <div key={progress.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium">Course ID: {progress.course_id}</h4>
+                           <h4 className="font-medium">
+                             {progress.title ? `${progress.title}${progress.platform ? ` (${progress.platform})` : ''}` : `Course ID: ${progress.course_id}`}
+                           </h4>
                           <p className="text-sm text-muted-foreground">
                             Completed {format(new Date(progress.completed_at!), 'MMM d, yyyy')}
                           </p>

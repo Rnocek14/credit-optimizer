@@ -17,6 +17,8 @@ export interface CourseProgress {
   completion_notes?: string;
   created_at: string;
   updated_at: string;
+  title?: string;
+  platform?: string;
 }
 
 export interface LearningMilestone {
@@ -50,14 +52,33 @@ export function useCourseProgress() {
         userId = user.id;
       }
 
-      const { data, error } = await supabase
+      const { data: progressData, error } = await supabase
         .from('course_progress')
         .select('*')
         .eq('user_id', userId)
         .order('last_accessed_at', { ascending: false });
 
       if (error) throw error;
-      return data as CourseProgress[];
+
+      // Fetch course information for each course_id
+      const courseIds = progressData?.map(p => p.course_id) || [];
+      
+      const { data: coursesData } = await supabase
+        .from('recommended_courses')
+        .select('id, title, platform')
+        .in('id', courseIds);
+
+      // Create a map for quick course lookup
+      const coursesMap = new Map(coursesData?.map(course => [course.id, course]) || []);
+
+      // Transform the data to include course information
+      const transformedData = progressData?.map(progress => ({
+        ...progress,
+        title: coursesMap.get(progress.course_id)?.title,
+        platform: coursesMap.get(progress.course_id)?.platform
+      })) || [];
+      
+      return transformedData as CourseProgress[];
     },
     enabled: true
   });
