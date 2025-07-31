@@ -14,7 +14,7 @@ const SkillTreeBuilder = () => {
   const [selectedCareerPath, setSelectedCareerPath] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'hierarchy' | 'force' | 'hybrid'>('force');
+  const [layoutMode, setLayoutMode] = useState<'hierarchy' | 'force' | 'circular' | 'tree' | 'focus'>('hierarchy');
   const [forceStrength, setForceStrength] = useState(0.5);
   const [animationSpeed, setAnimationSpeed] = useState(1);
   const [showControls, setShowControls] = useState(false);
@@ -177,6 +177,15 @@ const SkillTreeBuilder = () => {
               edges={edges}
               selectedCareerPath={selectedCareerPath}
               onNodeClick={handleNodeClick}
+              layoutAlgorithm={layoutMode === 'hierarchy' ? 'hierarchical' : layoutMode === 'force' ? 'force' : 'hierarchical'}
+              layoutConfig={{
+                spacing: {
+                  nodeWidth: 250,
+                  nodeHeight: 120,
+                  levelGap: 200,
+                  nodeGap: 50
+                }
+              }}
             />
             
             {showControls && (
@@ -190,8 +199,12 @@ const SkillTreeBuilder = () => {
                   onAnimationSpeedChange={setAnimationSpeed}
                   isCalculating={isCalculating}
                   onRecalculateLayout={() => {
-                    // Force recalculation by changing a key prop
-                    setSelectedCareerPath(prev => prev);
+                    setIsCalculating(true);
+                    // Force recalculation by toggling layout mode
+                    setTimeout(() => {
+                      setLayoutMode(prev => prev);
+                      setIsCalculating(false);
+                    }, 100);
                   }}
                   onResetView={() => {
                     // Reset view will be handled by React Flow

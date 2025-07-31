@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RotateCcw, Zap, Settings } from 'lucide-react';
 
-export type LayoutMode = 'hierarchy' | 'force' | 'hybrid';
+export type LayoutMode = 'hierarchy' | 'force' | 'circular' | 'tree' | 'focus';
 
 export interface LayoutControlsProps {
   layoutMode: LayoutMode;
@@ -39,13 +39,17 @@ export const LayoutControls: React.FC<LayoutControlsProps> = ({
   const layoutModeLabels = {
     hierarchy: 'Hierarchical',
     force: 'Force-Directed',
-    hybrid: 'Hybrid',
+    circular: 'Circular',
+    tree: 'Tree',
+    focus: 'Focus'
   };
 
   const layoutModeDescriptions = {
     hierarchy: 'Structured layer-based layout',
     force: 'Physics-based relationship layout',
-    hybrid: 'Combined hierarchical and force layout',
+    circular: 'Concentric circles by type',
+    tree: 'Tree structure from root nodes',
+    focus: 'Center on specific node'
   };
 
   return (
@@ -80,7 +84,7 @@ export const LayoutControls: React.FC<LayoutControlsProps> = ({
       </div>
 
       {/* Force Settings (only for force-directed modes) */}
-      {(layoutMode === 'force' || layoutMode === 'hybrid') && onForceStrengthChange && (
+      {layoutMode === 'force' && onForceStrengthChange && (
         <div className="space-y-2">
           <label className="text-sm font-medium">
             Force Strength: {forceStrength.toFixed(2)}

@@ -14,6 +14,7 @@ import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from '@/components/nodes/UnifiedNodeTypes';
 import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
+import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
 
 interface UnifiedCareerCanvasProps {
   nodes: GraphNode[];
@@ -23,32 +24,56 @@ interface UnifiedCareerCanvasProps {
   focusMode?: boolean;
   searchTerm?: string;
   selectedCareerPath?: string | null;
+  layoutAlgorithm?: 'hierarchical' | 'force' | 'circular' | 'tree' | 'focus';
+  layoutConfig?: Partial<LayoutConfig>;
 }
 
-// Convert GraphNode to React Flow Node
-const convertToFlowNode = (graphNode: GraphNode): Node => {
-  return {
-    id: graphNode.id,
-    type: graphNode.type,
-    position: { x: Math.random() * 800, y: Math.random() * 600 }, // TODO: Use proper layout algorithm
+// Calculate layout using GraphLayoutEngine
+const calculateLayout = (
+  graphNodes: GraphNode[], 
+  graphEdges: GraphEdge[], 
+  algorithm: 'hierarchical' | 'force' | 'circular' | 'tree' | 'focus' = 'hierarchical',
+  config?: Partial<LayoutConfig>
+): Node[] => {
+  if (graphNodes.length === 0) return [];
+
+  const layoutEngine = new GraphLayoutEngine(graphNodes, graphEdges, {
+    algorithm,
+    ...config
+  });
+
+  const layoutResult = layoutEngine.calculateLayout();
+  
+  console.log('🎯 Layout calculation complete:', {
+    algorithm,
+    nodeCount: layoutResult.nodes.length,
+    bounds: layoutResult.bounds
+  });
+
+  return layoutResult.nodes.map(node => ({
+    ...node,
     data: {
-      ...graphNode,
+      ...node.data,
       style: {
-        borderColor: getNodeBorderColor(graphNode.type),
-        backgroundColor: getNodeBackgroundColor(graphNode.type)
+        borderColor: getNodeBorderColor(node.type || 'default'),
+        backgroundColor: getNodeBackgroundColor(node.type || 'default')
       }
     }
-  };
+  }));
 };
 
 // Convert GraphEdge to React Flow Edge
 const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
+  // Use composite node IDs to match the layout engine format
+  const sourceId = `${graphEdge.from_type}:${graphEdge.from_id}`;
+  const targetId = `${graphEdge.to_type}:${graphEdge.to_id}`;
+  
   return {
-    id: `${graphEdge.from_id}-${graphEdge.to_id}`,
-    source: graphEdge.from_id,
-    target: graphEdge.to_id,
+    id: `${sourceId}-${targetId}`,
+    source: sourceId,
+    target: targetId,
     type: 'default',
-    animated: false, // Simplified - no complex edge type checking for now
+    animated: graphEdge.edge_type === 'unlocks' || graphEdge.edge_type === 'leads_to',
     style: {
       stroke: getEdgeColor(graphEdge.edge_type),
       strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1)
@@ -89,9 +114,15 @@ const getEdgeColor = (edgeType: string): string => {
   const colors = {
     requires: 'hsl(var(--muted-foreground))',
     unlocks: 'hsl(var(--primary))',
-    recommends: 'hsl(var(--accent))',
+    teaches: 'hsl(var(--accent))',
+    demonstrates: 'hsl(var(--info))',
+    validates: 'hsl(var(--success))',
+    next_role: 'hsl(var(--primary))',
     pivot: 'hsl(var(--warning))',
-    optimal_path: 'hsl(var(--success))'
+    prerequisite: 'hsl(var(--destructive))',
+    substitution: 'hsl(var(--secondary))',
+    leads_to: 'hsl(var(--primary))',
+    strengthens: 'hsl(var(--accent))'
   };
   return colors[edgeType as keyof typeof colors] || 'hsl(var(--border))';
 };
@@ -107,12 +138,14 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   showPivotPaths = false,
   focusMode = false,
   searchTerm = '',
-  selectedCareerPath
+  selectedCareerPath,
+  layoutAlgorithm = 'hierarchical',
+  layoutConfig
 }) => {
-  // Convert graph data to React Flow format
+  // Calculate layout using GraphLayoutEngine
   const flowNodes = useMemo(() => {
-    return graphNodes.map(convertToFlowNode);
-  }, [graphNodes]);
+    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig);
+  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig]);
 
   const flowEdges = useMemo(() => {
     let edges = graphEdges.map(convertToFlowEdge);
@@ -135,7 +168,9 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   }, [flowEdges, setEdges]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    const graphNode = graphNodes.find(gn => gn.id === node.id);
+    // Extract node ID from the composite ID format "type:id"
+    const [nodeType, nodeId] = node.id.split(':');
+    const graphNode = graphNodes.find(gn => gn.id === nodeId && gn.type === nodeType);
     if (graphNode && onNodeClick) {
       onNodeClick(graphNode);
     }
@@ -166,6 +201,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     graphNodesCount: graphNodes.length,
     flowNodesCount: nodes.length,
     edgesCount: edges.length,
+    layoutAlgorithm,
     showPivotPaths,
     focusMode,
     searchTerm
