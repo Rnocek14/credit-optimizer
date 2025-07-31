@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/lib/authHelper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export default function Saved() {
   const fetchSavedCourses = async () => {
     try {
       console.log('🔍 Fetching saved courses...');
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       console.log('👤 User:', user?.id);
       
       if (!user) {
@@ -148,7 +149,7 @@ export default function Saved() {
 
   const handleUnsave = async (courseId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return;
 
       const { error } = await supabase
