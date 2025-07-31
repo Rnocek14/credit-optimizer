@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { AlertCircle, BookOpen, TrendingUp, Award, Clock, Users } from 'lucide-react';
 import { calculateCourseCRI, type CourseCRIBreakdown } from '@/lib/criCourseIntegration';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CourseFormData {
   title: string;
@@ -91,11 +92,42 @@ const UploadCourse = () => {
     }
 
     try {
-      // Here you would submit to your course submissions table
-      toast.success('Course submitted for review!');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to submit a course");
+        return;
+      }
+
+      // Submit course to database
+      const { error } = await supabase
+        .from('course_submissions')
+        .insert([{
+          user_id: user.id,
+          title: formData.title,
+          description: formData.description,
+          platform: formData.platform,
+          duration_hours: formData.duration_hours,
+          difficulty: formData.difficulty,
+          cost: parseFloat(formData.cost) || 0,
+          skill_tags: formData.skill_tags,
+          instructor_name: formData.instructor_name,
+          instructor_rating: formData.instructor_rating,
+          has_projects: formData.has_projects,
+          cri_score: criBreakdown?.overall || 0,
+          cri_breakdown: criBreakdown || {}
+        }]);
+
+      if (error) {
+        console.error('Error submitting course:', error);
+        toast.error("Failed to submit course. Please try again.");
+        return;
+      }
+
+      toast.success("Course submitted successfully! We'll review it and get back to you.");
       navigate('/teach');
     } catch (error) {
-      toast.error('Failed to submit course');
+      console.error('Error submitting course:', error);
+      toast.error("Failed to submit course. Please try again.");
     }
   };
 

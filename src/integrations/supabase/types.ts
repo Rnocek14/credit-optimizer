@@ -1182,6 +1182,78 @@ export type Database = {
           },
         ]
       }
+      course_submissions: {
+        Row: {
+          cost: number | null
+          created_at: string
+          cri_breakdown: Json | null
+          cri_score: number | null
+          description: string | null
+          difficulty: string | null
+          duration_hours: number | null
+          has_projects: boolean | null
+          id: string
+          instructor_name: string | null
+          instructor_rating: number | null
+          platform: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          skill_tags: string[] | null
+          status: string
+          submitted_at: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          cri_breakdown?: Json | null
+          cri_score?: number | null
+          description?: string | null
+          difficulty?: string | null
+          duration_hours?: number | null
+          has_projects?: boolean | null
+          id?: string
+          instructor_name?: string | null
+          instructor_rating?: number | null
+          platform: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          skill_tags?: string[] | null
+          status?: string
+          submitted_at?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          cri_breakdown?: Json | null
+          cri_score?: number | null
+          description?: string | null
+          difficulty?: string | null
+          duration_hours?: number | null
+          has_projects?: boolean | null
+          id?: string
+          instructor_name?: string | null
+          instructor_rating?: number | null
+          platform?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          skill_tags?: string[] | null
+          status?: string
+          submitted_at?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       economic_indicators: {
         Row: {
           created_at: string
@@ -1212,6 +1284,45 @@ export type Database = {
           location?: string
           recorded_at?: string
           time_period?: string
+        }
+        Relationships: []
+      }
+      educator_profiles: {
+        Row: {
+          average_cri_score: number | null
+          bio: string | null
+          created_at: string
+          display_name: string
+          expertise_areas: string[] | null
+          id: string
+          total_courses: number | null
+          updated_at: string
+          user_id: string
+          verified_educator: boolean | null
+        }
+        Insert: {
+          average_cri_score?: number | null
+          bio?: string | null
+          created_at?: string
+          display_name: string
+          expertise_areas?: string[] | null
+          id?: string
+          total_courses?: number | null
+          updated_at?: string
+          user_id: string
+          verified_educator?: boolean | null
+        }
+        Update: {
+          average_cri_score?: number | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          expertise_areas?: string[] | null
+          id?: string
+          total_courses?: number | null
+          updated_at?: string
+          user_id?: string
+          verified_educator?: boolean | null
         }
         Relationships: []
       }

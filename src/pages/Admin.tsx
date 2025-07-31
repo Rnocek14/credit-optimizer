@@ -22,6 +22,7 @@ import {
   Calendar
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { AdminCourseReview } from "@/components/AdminCourseReview";
 
 interface GalleryProfile {
   id: string;
@@ -283,9 +284,10 @@ export default function Admin() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="gallery">Gallery Queue ({galleryProfiles.length})</TabsTrigger>
           <TabsTrigger value="mentor">Mentor Submissions ({mentorSubmissions.length})</TabsTrigger>
+          <TabsTrigger value="courses">Course Review</TabsTrigger>
         </TabsList>
 
         <TabsContent value="gallery" className="space-y-6">
@@ -561,6 +563,10 @@ export default function Admin() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="courses" className="space-y-6">
+          <AdminCourseReview />
         </TabsContent>
       </Tabs>
     </div>
