@@ -20,6 +20,11 @@ export interface LearningPath {
   path_type: 'fastest' | 'cheapest' | 'highest_roi';
 }
 
+export interface PlanningError {
+  error: string;
+  suggestions?: string[];
+}
+
 export interface UnlockAnalysis {
   unlockedJobs: Array<{
     job: any;
@@ -43,6 +48,7 @@ export interface UnlockAnalysis {
 export function useAIPlanningEngine() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const generateBackwardPlan = useCallback(async (
     targetJob: string,
@@ -67,10 +73,15 @@ export function useAIPlanningEngine() {
       }
 
       if (!data.success) {
+        // Handle suggestions from error response
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+        }
         throw new Error(data.error || 'Planning engine returned an error');
       }
 
       console.log(`Generated ${data.paths.length} learning paths`);
+      setSuggestions([]); // Clear suggestions on success
       return data.paths;
       
     } catch (err) {
@@ -124,11 +135,13 @@ export function useAIPlanningEngine() {
 
   const clearError = useCallback(() => {
     setError(null);
+    setSuggestions([]);
   }, []);
 
   return {
     loading,
     error,
+    suggestions,
     generateBackwardPlan,
     analyzeUnlocks,
     clearError

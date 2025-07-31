@@ -47,10 +47,30 @@ serve(async (req) => {
     const { operation, target_job, completed_skills = [], completed_courses = [], user_context = {} } = await req.json() as PlanningRequest;
 
     if (operation === 'backward_planning') {
-      const paths = await generateBackwardPlan(supabase, target_job!, user_context);
-      return new Response(JSON.stringify({ success: true, paths }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      try {
+        const paths = await generateBackwardPlan(supabase, target_job!, user_context);
+        return new Response(JSON.stringify({ success: true, paths }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        // Check if error contains suggestions
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.suggestions) {
+            return new Response(JSON.stringify({ 
+              success: false, 
+              error: errorData.error,
+              suggestions: errorData.suggestions 
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200
+            });
+          }
+        } catch (parseError) {
+          // Not a JSON error, continue with regular error handling
+        }
+        throw error; // Re-throw if not a suggestions error
+      }
     }
 
     if (operation === 'unlock_analysis') {
@@ -113,15 +133,20 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
 
       if (allJobs && allJobs.length > 0) {
         const suggestions = findSimilarJobs(targetJob, allJobs);
-        console.log(`No exact match found for: ${targetJob}. Similar jobs:`, suggestions.map(j => j.title));
+        console.log(`No exact match found for: ${targetJob}. Similar jobs:`, suggestions.slice(0, 5).map(j => `"${j.title}"`));
         
         if (suggestions.length > 0) {
-          throw new Error(`Job "${targetJob}" not found. Did you mean: ${suggestions.slice(0, 3).map(j => j.title).join(', ')}?`);
+          throw new Error(JSON.stringify({
+            error: `Job "${targetJob}" not found. Did you mean one of these?`,
+            suggestions: suggestions.slice(0, 5).map(j => j.title)
+          }));
         }
       }
       
-      console.log(`No job nodes found for: ${targetJob}`);
-      throw new Error(`Job "${targetJob}" not found in career graph`);
+      throw new Error(JSON.stringify({
+        error: `Job "${targetJob}" not found in our database.`,
+        suggestions: []
+      }));
     }
   }
 

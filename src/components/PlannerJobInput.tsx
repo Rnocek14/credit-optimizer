@@ -10,6 +10,7 @@ interface PlannerJobInputProps {
   onGeneratePlan: (targetJob: string) => Promise<void>;
   loading: boolean;
   error: string | null;
+  suggestions?: string[];
 }
 
 const popularJobs = [
@@ -30,7 +31,7 @@ const popularJobs = [
   "Mobile Developer"
 ];
 
-export function PlannerJobInput({ onGeneratePlan, loading, error }: PlannerJobInputProps) {
+export function PlannerJobInput({ onGeneratePlan, loading, error, suggestions = [] }: PlannerJobInputProps) {
   const [targetJob, setTargetJob] = useState("");
   const { trackPlannerGeneratePlan } = useAnalytics();
 
@@ -79,19 +80,22 @@ export function PlannerJobInput({ onGeneratePlan, loading, error }: PlannerJobIn
         {error && (
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
             <p className="text-sm text-destructive font-medium">
-              {error.includes('Did you mean') ? '🔍 ' : '⚠️ '}
+              {suggestions.length > 0 ? '🔍 ' : '⚠️ '}
               {error}
             </p>
-            {error.includes('Did you mean') && (
-              <div className="mt-2">
-                <p className="text-xs text-muted-foreground mb-2">Try one of these popular jobs instead:</p>
+            {suggestions.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-2">Did you mean one of these?</p>
                 <div className="flex flex-wrap gap-1">
-                  {popularJobs.slice(0, 6).map((job) => (
+                  {suggestions.map((job) => (
                     <Badge
                       key={job}
                       variant="outline"
-                      className="cursor-pointer hover:bg-primary/10 text-xs"
-                      onClick={() => handleSuggestionClick(job)}
+                      className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 text-xs transition-colors"
+                      onClick={() => {
+                        handleSuggestionClick(job);
+                        onGeneratePlan(job);
+                      }}
                     >
                       {job}
                     </Badge>
