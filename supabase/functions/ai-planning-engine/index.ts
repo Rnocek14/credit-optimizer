@@ -226,7 +226,10 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
 }
 
 async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], completedCourses: string[] = []): Promise<any> {
+  console.log('=== UNLOCK ANALYSIS START ===');
   console.log('Analyzing unlocks for', completedSkills.length, 'skills and', completedCourses.length, 'courses');
+  console.log('Input skills:', JSON.stringify(completedSkills));
+  console.log('Input courses:', JSON.stringify(completedCourses));
   
   try {
     // 1. Get all skill nodes to map titles to IDs
@@ -338,7 +341,9 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
       
       const completedRequiredSkills = requiredSkillIds.filter(skillId => {
         const isCompleted = completedSkillIds.includes(skillId);
-        console.log(`Skill ${skillId}: ${isCompleted ? 'COMPLETED' : 'not completed'}`);
+        if (jobCount <= 10) { // Only log first 10 jobs for readability
+          console.log(`  Skill ${skillId}: ${isCompleted ? 'COMPLETED' : 'not completed'}`);
+        }
         return isCompleted;
       });
 
