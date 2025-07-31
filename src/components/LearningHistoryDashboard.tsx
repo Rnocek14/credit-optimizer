@@ -16,6 +16,7 @@ import {
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { CourseProgressBadge } from './CourseProgressBadge';
 import { format } from 'date-fns';
+import { XP_REWARDS } from '@/lib/xpUtils';
 
 export function LearningHistoryDashboard() {
   const {
@@ -189,7 +190,7 @@ export function LearningHistoryDashboard() {
                         <div className="flex flex-col items-end gap-2">
                           <Badge variant="default" className="gap-1">
                             <Trophy className="h-3 w-3" />
-                            +{progress.xp_awarded} XP
+                            +{XP_REWARDS.COURSE_COMPLETED} XP
                           </Badge>
                           <CourseProgressBadge progress={progress} showProgress={false} />
                         </div>

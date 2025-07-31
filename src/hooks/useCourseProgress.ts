@@ -244,7 +244,12 @@ export function useCourseProgress() {
   };
 
   const getTotalXPFromCourses = (): number => {
-    return courseProgress?.reduce((total, p) => total + p.xp_awarded, 0) || 0;
+    return courseProgress?.reduce((total, p) => {
+      if (p.status === 'completed') {
+        return total + 50; // XP_REWARDS.COURSE_COMPLETED
+      }
+      return total + p.xp_awarded;
+    }, 0) || 0;
   };
 
   const getInProgressCourses = (): CourseProgress[] => {
