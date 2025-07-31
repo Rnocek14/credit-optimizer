@@ -8,13 +8,15 @@ import {
   useEdgesState,
   Node,
   Edge,
-  ConnectionMode
+  ConnectionMode,
+  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from '@/components/nodes/UnifiedNodeTypes';
 import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
 import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
+import { calculateEnhancedSkillTreeLayout, type LayoutNode, type LayoutEdge } from '@/lib/enhancedSkillTreeLayout';
 
 interface UnifiedCareerCanvasProps {
   nodes: GraphNode[];
@@ -28,59 +30,217 @@ interface UnifiedCareerCanvasProps {
   layoutConfig?: Partial<LayoutConfig>;
 }
 
-// Calculate layout using GraphLayoutEngine
+// Enhanced layout calculation using the new enhanced layout system
 const calculateLayout = (
   graphNodes: GraphNode[], 
   graphEdges: GraphEdge[], 
   algorithm: 'hierarchical' | 'force' | 'circular' | 'tree' | 'focus' = 'hierarchical',
-  config?: Partial<LayoutConfig>
+  config?: Partial<LayoutConfig>,
+  searchTerm?: string,
+  selectedCareerPath?: string | null
 ): Node[] => {
   if (graphNodes.length === 0) return [];
 
-  const layoutEngine = new GraphLayoutEngine(graphNodes, graphEdges, {
-    algorithm,
-    ...config
-  });
+  console.log('🎨 Starting enhanced layout calculation for', graphNodes.length, 'nodes');
 
-  const layoutResult = layoutEngine.calculateLayout();
-  
-  console.log('🎯 Layout calculation complete:', {
-    algorithm,
-    nodeCount: layoutResult.nodes.length,
-    bounds: layoutResult.bounds
-  });
+  try {
+    // Convert GraphNodes to LayoutNodes
+    const layoutNodes: LayoutNode[] = graphNodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      title: node.title,
+      category: extractCategoryFromNode(node) || 'Uncategorized',
+      level: extractLevelFromNode(node),
+      data: node.data
+    }));
 
-  return layoutResult.nodes.map(node => ({
-    ...node,
-    data: {
-      ...node.data,
-      style: {
-        borderColor: getNodeBorderColor(node.type || 'default'),
-        backgroundColor: getNodeBackgroundColor(node.type || 'default')
+    // Convert GraphEdges to LayoutEdges
+    const layoutEdges: LayoutEdge[] = graphEdges.map(edge => ({
+      source: edge.from_id,
+      target: edge.to_id,
+      type: mapEdgeType(edge.edge_type)
+    }));
+
+    // Use enhanced layout algorithm
+    const positionedNodes = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
+      algorithm: 'semantic-hierarchy',
+      containerWidth: 1600,
+      containerHeight: 1200,
+      nodeSpacing: {
+        horizontal: 200,
+        vertical: 150,
+        category: 80
+      },
+      layerHeight: 220,
+      focusNodeId: searchTerm ? layoutNodes.find(n => 
+        n.title.toLowerCase().includes(searchTerm.toLowerCase())
+      )?.id : undefined,
+      showOnlyGoalPath: !!selectedCareerPath,
+      goalPath: selectedCareerPath ? layoutNodes
+        .filter(n => n.type === 'job' || n.type === 'step')
+        .map(n => n.id) : undefined
+    });
+
+    console.log('✅ Enhanced layout completed for', positionedNodes.length, 'positioned nodes');
+
+    // Convert to React Flow Node format
+    return positionedNodes.map(posNode => {
+      const originalNode = graphNodes.find(n => n.id === posNode.id);
+      if (!originalNode) {
+        console.warn(`Original node not found for ${posNode.id}`);
+        return {
+          id: `${posNode.type}:${posNode.id}`,
+          position: { x: posNode.x, y: posNode.y },
+          data: { 
+            title: posNode.title,
+            type: posNode.type,
+            category: posNode.clusterGroup
+          },
+          type: 'default'
+        };
       }
-    }
-  }));
+
+      return {
+        id: `${originalNode.type}:${originalNode.id}`,
+        position: { x: posNode.x, y: posNode.y },
+        data: {
+          title: originalNode.title,
+          description: originalNode.description,
+          type: originalNode.type,
+          category: posNode.clusterGroup,
+          node: originalNode,
+          style: {
+            borderColor: getNodeBorderColor(originalNode.type),
+            backgroundColor: getNodeBackgroundColor(originalNode.type)
+          }
+        },
+        type: 'default',
+        style: {
+          background: getNodeBackgroundColor(originalNode.type),
+          border: `2px solid ${getNodeBorderColor(originalNode.type)}`,
+          borderRadius: '12px',
+          padding: '12px',
+          fontSize: '11px',
+          width: 170,
+          height: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.2s ease-in-out'
+        }
+      };
+    });
+
+  } catch (error) {
+    console.error('❌ Error in enhanced layout calculation:', error);
+    // Fallback to basic positioning
+    return graphNodes.map((node, index) => ({
+      id: `${node.type}:${node.id}`,
+      position: { x: (index % 5) * 200 + 50, y: Math.floor(index / 5) * 150 + 50 },
+      data: {
+        title: node.title,
+        type: node.type,
+        node: node
+      },
+      type: 'default'
+    }));
+  }
 };
 
-// Convert GraphEdge to React Flow Edge
+// Helper function to extract category from node data
+const extractCategoryFromNode = (node: GraphNode): string | undefined => {
+  // Safely check for category in different node types
+  if (node.data && 'category' in node.data) {
+    return (node.data as any).category;
+  }
+  
+  // Try to extract from title or description
+  const text = (node.title + ' ' + (node.description || '')).toLowerCase();
+  
+  if (text.includes('javascript') || text.includes('react') || text.includes('programming')) {
+    return 'Programming';
+  } else if (text.includes('design') || text.includes('ui') || text.includes('ux')) {
+    return 'Design';
+  } else if (text.includes('backend') || text.includes('api') || text.includes('database')) {
+    return 'Backend';
+  } else if (text.includes('cloud') || text.includes('aws') || text.includes('devops')) {
+    return 'Cloud';
+  }
+  
+  return undefined;
+};
+
+// Helper function to extract level from node data
+const extractLevelFromNode = (node: GraphNode): number | undefined => {
+  // Safely check for level in different node types
+  if (node.data && 'level' in node.data) {
+    return (node.data as any).level;
+  }
+  
+  if (node.data && 'difficulty_level' in node.data) {
+    return (node.data as any).difficulty_level;
+  }
+  
+  return undefined;
+};
+
+// Helper function to map edge types
+const mapEdgeType = (edgeType: string): 'teaches' | 'requires' | 'qualifies_for' | 'supports' | 'prerequisite' => {
+  const mapping: Record<string, any> = {
+    'teaches': 'teaches',
+    'requires': 'requires', 
+    'qualifies_for': 'qualifies_for',
+    'supports': 'supports',
+    'prerequisite': 'prerequisite',
+    'unlocks': 'teaches',
+    'leads_to': 'supports',
+    'demonstrates': 'supports',
+    'validates': 'qualifies_for'
+  };
+  
+  return mapping[edgeType] || 'supports';
+};
+
+// Convert GraphEdge to React Flow Edge with enhanced styling
 const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
   // Use composite node IDs to match the layout engine format
   const sourceId = `${graphEdge.from_type}:${graphEdge.from_id}`;
   const targetId = `${graphEdge.to_type}:${graphEdge.to_id}`;
   
+  const isTeachingEdge = graphEdge.edge_type === 'teaches' || graphEdge.edge_type === 'unlocks';
+  const isRequirementEdge = graphEdge.edge_type === 'requires' || graphEdge.edge_type === 'prerequisite';
+  
   return {
     id: `${sourceId}-${targetId}`,
     source: sourceId,
     target: targetId,
-    type: 'default',
-    animated: graphEdge.edge_type === 'unlocks' || graphEdge.edge_type === 'leads_to',
+    type: isTeachingEdge ? 'smoothstep' : 'default',
+    animated: graphEdge.edge_type === 'unlocks' || graphEdge.edge_type === 'leads_to' || graphEdge.edge_type === 'teaches',
     style: {
       stroke: getEdgeColor(graphEdge.edge_type),
-      strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1)
+      strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1),
+      opacity: 0.8
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: getEdgeColor(graphEdge.edge_type),
+      width: 20,
+      height: 20
+    },
+    label: graphEdge.edge_type.replace('_', ' '),
+    labelStyle: {
+      fontSize: '9px',
+      fontWeight: '500',
+      background: 'rgba(255, 255, 255, 0.9)',
+      padding: '2px 6px',
+      borderRadius: '4px'
     },
     data: {
-      label: graphEdge.edge_type,
-      reasoning: graphEdge.reasoning
+      edgeType: graphEdge.edge_type,
+      reasoning: graphEdge.reasoning,
+      importance: graphEdge.importance_weight
     }
   };
 };
@@ -142,10 +302,10 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   layoutAlgorithm = 'hierarchical',
   layoutConfig
 }) => {
-  // Calculate layout using GraphLayoutEngine
+  // Calculate layout using enhanced layout system
   const flowNodes = useMemo(() => {
-    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig);
-  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig]);
+    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath);
+  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath]);
 
   const flowEdges = useMemo(() => {
     let edges = graphEdges.map(convertToFlowEdge);
@@ -234,18 +394,53 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         />
       </ReactFlow>
       
-      {/* Overlay with graph stats */}
-      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm border rounded-lg p-3 text-sm">
-        <div className="font-medium mb-2">Career Graph Overview</div>
-        <div className="space-y-1 text-xs">
-          <div>Total Nodes: {graphNodes.length}</div>
-          <div>Skills: {graphNodes.filter(n => n.type === 'skill').length}</div>
-          <div>Jobs: {graphNodes.filter(n => n.type === 'job').length}</div>
-          <div>Connections: {graphEdges.length}</div>
-          {showPivotPaths && (
-            <div className="text-warning">Pivot Paths: Enabled</div>
-          )}
+      {/* Enhanced overlay with detailed graph stats */}
+      <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm border rounded-lg p-4 text-sm shadow-lg">
+        <div className="font-semibold mb-3 text-primary">Enhanced Career Graph</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            Skills: <span className="font-medium">{graphNodes.filter(n => n.type === 'skill').length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            Jobs: <span className="font-medium">{graphNodes.filter(n => n.type === 'job').length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+            Courses: <span className="font-medium">{graphNodes.filter(n => n.type === 'course').length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+            Projects: <span className="font-medium">{graphNodes.filter(n => n.type === 'project').length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            Certs: <span className="font-medium">{graphNodes.filter(n => n.type === 'certification').length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+            Steps: <span className="font-medium">{graphNodes.filter(n => n.type === 'step').length}</span>
+          </div>
         </div>
+        <div className="mt-3 pt-2 border-t text-xs text-muted-foreground">
+          <div>Total: <span className="font-medium">{graphNodes.length} nodes</span></div>
+          <div>Connections: <span className="font-medium">{graphEdges.length}</span></div>
+          <div>Layout: <span className="font-medium">{layoutAlgorithm}</span></div>
+        </div>
+        {searchTerm && (
+          <div className="mt-2 pt-2 border-t text-xs">
+            <div className="flex items-center gap-2 text-blue-600">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              Search: "{searchTerm}"
+            </div>
+          </div>
+        )}
+        {showPivotPaths && (
+          <div className="mt-1 text-xs text-orange-600 font-medium">
+            🔄 Pivot Analysis Active
+          </div>
+        )}
       </div>
     </div>
   );
