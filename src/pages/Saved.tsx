@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import SaveButton from "@/components/SaveButton";
+import { StartLearningButton } from "@/components/StartLearningButton";
 import { 
   BookOpen, 
   ExternalLink,
@@ -274,12 +275,12 @@ export default function Saved() {
                     </div>
 
                     <div className="flex gap-2">
-                      <Button asChild className="flex-1">
-                        <a href={saved.course.url} target="_blank" rel="noopener noreferrer">
-                          View Course
-                          <ExternalLink className="h-4 w-4 ml-2" />
-                        </a>
-                      </Button>
+                      <StartLearningButton
+                        courseId={saved.course.id}
+                        courseUrl={saved.course.url}
+                        size="sm"
+                        className="flex-1"
+                      />
                       <Button
                         variant="outline"
                         size="sm"
