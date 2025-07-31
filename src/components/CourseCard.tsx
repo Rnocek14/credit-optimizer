@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, BookOpen, Star, Clock, DollarSign } from 'lucide-react';
 import SaveButton from '@/components/SaveButton';
+import { StartLearningButton } from '@/components/StartLearningButton';
+import { CourseProgressBadge } from '@/components/CourseProgressBadge';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
 
 interface CourseCardProps {
   course: {
@@ -35,6 +38,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   compact = false,
   showSaveButton = true
 }) => {
+  const { getProgressForCourse } = useCourseProgress();
+  const progress = getProgressForCourse(course.id);
+
   const handleStartCourse = () => {
     if (course.url) {
       window.open(course.url, '_blank');
@@ -136,22 +142,26 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
         )}
 
-        <div className="flex gap-2">
-          <Button 
-            onClick={handleStartCourse}
-            className="flex-1"
-            disabled={!course.url}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Start Course
-          </Button>
-          {showSaveButton && (
-            <SaveButton 
-              courseId={course.id} 
-              variant="outline" 
-              size="default"
-            />
+        <div className="space-y-2">
+          {progress && (
+            <CourseProgressBadge progress={progress} />
           )}
+          <div className="flex gap-2">
+            <StartLearningButton
+              courseId={course.id}
+              courseUrl={course.url}
+              variant="default"
+              size="default"
+              className="flex-1"
+            />
+            {showSaveButton && (
+              <SaveButton 
+                courseId={course.id} 
+                variant="outline" 
+                size="default"
+              />
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

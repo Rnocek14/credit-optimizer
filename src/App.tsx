@@ -51,6 +51,7 @@ import CertificateGallery from "./pages/CertificateGallery";
 import CRIDashboardPage from "./pages/CRIDashboard";
 import UploadCourse from "./pages/UploadCourse";
 import ExploreCourses from "./pages/ExploreCourses";
+import LearningHistory from "./pages/LearningHistory";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -120,6 +121,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <MayaRoadmap />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/learning-history" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <LearningHistory />
               </ProtectedRoute>
             } 
           />

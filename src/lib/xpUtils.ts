@@ -59,6 +59,8 @@ export const XP_REWARDS = {
   CRI_SCORE_70_PLUS: 30,
   PROFILE_COMPLETED: 25,
   FIRST_LOGIN: 25,
+  COURSE_STARTED: 5,
+  COURSE_COMPLETED: 50,
 } as const;
 
 export type XPActionType = keyof typeof XP_REWARDS;

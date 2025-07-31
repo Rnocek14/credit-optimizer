@@ -1146,6 +1146,54 @@ export type Database = {
           },
         ]
       }
+      course_progress: {
+        Row: {
+          completed_at: string | null
+          completion_notes: string | null
+          course_id: string
+          created_at: string
+          id: string
+          last_accessed_at: string | null
+          progress_percentage: number
+          started_at: string | null
+          status: string
+          time_spent_hours: number | null
+          updated_at: string
+          user_id: string
+          xp_awarded: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_notes?: string | null
+          course_id: string
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          progress_percentage?: number
+          started_at?: string | null
+          status?: string
+          time_spent_hours?: number | null
+          updated_at?: string
+          user_id: string
+          xp_awarded?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          completion_notes?: string | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          progress_percentage?: number
+          started_at?: string | null
+          status?: string
+          time_spent_hours?: number | null
+          updated_at?: string
+          user_id?: string
+          xp_awarded?: number | null
+        }
+        Relationships: []
+      }
       course_skill_map: {
         Row: {
           course_id: string
@@ -1451,6 +1499,36 @@ export type Database = {
           required_skills?: string[] | null
           salary_range?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      learning_milestones: {
+        Row: {
+          achieved_at: string
+          created_at: string
+          id: string
+          milestone_data: Json
+          milestone_type: string
+          user_id: string
+          xp_awarded: number | null
+        }
+        Insert: {
+          achieved_at?: string
+          created_at?: string
+          id?: string
+          milestone_data?: Json
+          milestone_type: string
+          user_id: string
+          xp_awarded?: number | null
+        }
+        Update: {
+          achieved_at?: string
+          created_at?: string
+          id?: string
+          milestone_data?: Json
+          milestone_type?: string
+          user_id?: string
+          xp_awarded?: number | null
         }
         Relationships: []
       }
@@ -3627,6 +3705,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      complete_course_progress: {
+        Args: {
+          user_id_param: string
+          course_id_param: string
+          completion_notes_param?: string
+        }
+        Returns: string
+      }
       generate_certificate_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3685,6 +3771,10 @@ export type Database = {
       refresh_career_steps_with_levels: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      start_course_progress: {
+        Args: { user_id_param: string; course_id_param: string }
+        Returns: string
       }
       suggest_badges_for_user: {
         Args: { user_uuid: string }
