@@ -52,6 +52,7 @@ import CRIDashboardPage from "./pages/CRIDashboard";
 import UploadCourse from "./pages/UploadCourse";
 import ExploreCourses from "./pages/ExploreCourses";
 import LearningHistory from "./pages/LearningHistory";
+import Planner from "./pages/Planner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -131,15 +132,23 @@ const App = () => (
                 <LearningHistory />
               </ProtectedRoute>
             } 
-          />
-          <Route 
-            path="/certificates" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Certificates />
-              </ProtectedRoute>
-            } 
            />
+           <Route 
+             path="/planner" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <Planner />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/certificates" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <Certificates />
+               </ProtectedRoute>
+             } 
+            />
            <Route path="/certificate-gallery" element={<CertificateGallery />} />
            <Route path="/verify/:code?" element={<VerifySignature />} />
           <Route path="/teach" element={<Teach />} />
