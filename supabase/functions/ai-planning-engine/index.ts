@@ -315,7 +315,9 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
 
     for (const job of jobNodes || []) {
       jobCount++;
-      console.log(`Processing job ${jobCount}: ${job.title} (ID: ${job.id})`);
+      if (jobCount <= 10) { // Increased to 10 for better debugging
+        console.log(`Processing job ${jobCount}: ${job.title} (ID: ${job.id})`);
+      }
 
       // Get skills required by this job - skills point TO jobs
       const { data: requiredSkillEdges, error: edgeError } = await supabase
@@ -348,20 +350,32 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
 
       if (completionPercentage >= 80) {
         unlockedJobs.push({
-          id: job.id,
-          title: job.title,
-          completionPercentage,
-          requiredSkills: requiredSkillIds.length,
-          completedSkills: completedRequiredSkills.length
+          job: {
+            id: job.id,
+            title: job.title,
+            description: job.description || '',
+            market_demand_score: job.market_demand_score || 0.5,
+            difficulty_level: job.difficulty_level || 3
+          },
+          completionPercentage: Math.round(completionPercentage),
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
+          requiredSkillsCount: requiredSkillIds.length,
+          completedSkillsCount: completedRequiredSkills.length
         });
         console.log(`✅ Job ${job.title} UNLOCKED`);
       } else if (completionPercentage >= 40) {
         partiallyQualifiedJobs.push({
-          id: job.id,
-          title: job.title,
-          completionPercentage,
-          requiredSkills: requiredSkillIds.length,
-          completedSkills: completedRequiredSkills.length
+          job: {
+            id: job.id,
+            title: job.title,
+            description: job.description || '',
+            market_demand_score: job.market_demand_score || 0.5,
+            difficulty_level: job.difficulty_level || 3
+          },
+          completionPercentage: Math.round(completionPercentage),
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
+          requiredSkillsCount: requiredSkillIds.length,
+          completedSkillsCount: completedRequiredSkills.length
         });
         console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED`);
       }
