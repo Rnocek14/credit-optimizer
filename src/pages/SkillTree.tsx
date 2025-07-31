@@ -16,8 +16,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import type { GraphNode } from '@/lib/careerGraph';
 
-// Interfaces are now handled by the unified career graph system
-
 const SkillTree = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -69,11 +67,8 @@ const SkillTree = () => {
   const certifications = getNodesByType('certification');
   const steps = getNodesByType('step');
 
-  // Get categories from all nodes (skills have categories in their original data)
-  const categories = [...new Set(nodes
-    .filter(node => node.type === 'skill' && node.original_table === 'skills')
-    .map(node => node.category)
-    .filter(Boolean))];
+  // Get categories from skills - simplified approach
+  const categories = ['Programming', 'Framework', 'Backend', 'Design', 'API', 'Cloud', 'DevOps'];
 
   // Initialize activeCategories with all categories once they're loaded
   useEffect(() => {
@@ -86,9 +81,8 @@ const SkillTree = () => {
   const filteredNodes = nodes.filter(node => {
     const matchesSearch = node.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          node.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !node.category || activeCategories.includes(node.category);
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   // Filter skills specifically 
@@ -217,6 +211,7 @@ const SkillTree = () => {
               <TestTube className="h-4 w-4 mr-2" />
               {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
             </Button>
+          </div>
         </div>
       </div>
 
@@ -310,15 +305,16 @@ const SkillTree = () => {
         availableCategories={categories}
         onCategoryToggle={handleCategoryToggle}
         showOnlyRecommended={showOnlyRecommended}
-        onToggleRecommended={setShowOnlyRecommended}
+        onRecommendedToggle={setShowOnlyRecommended}
         showUnlockedOnly={showUnlockedOnly}
-        onToggleUnlocked={setShowUnlockedOnly}
+        onUnlockedOnlyToggle={setShowUnlockedOnly}
         showRecommendedNext={showRecommendedNext}
-        onToggleRecommendedNext={setShowRecommendedNext}
+        onRecommendedNextToggle={setShowRecommendedNext}
         showGoalPathOnly={showGoalPathOnly}
-        onToggleGoalPath={setShowGoalPathOnly}
+        onGoalPathOnlyToggle={setShowGoalPathOnly}
         focusMode={focusMode}
-        onToggleFocusMode={setFocusMode}
+        onFocusModeToggle={setFocusMode}
+        skillCounts={skillCounts}
       />
 
       {/* Performance Test (optional) */}
@@ -361,15 +357,16 @@ const SkillTree = () => {
           
           {showRelocationExplorer ? (
             <LocationROIExplorer
+              selectedCareerPathId={selectedCareerPath}
+              goalSkillIds={[]}
               selectedLocation={selectedLocation}
-              onLocationChange={setSelectedLocation}
-              onClose={() => setShowRelocationExplorer(false)}
+              onLocationSelect={setSelectedLocation}
             />
           ) : (
             <CareerROIPanel 
               selectedCareerPath={selectedCareerPath}
               selectedLocation={selectedLocation}
-              onExploreRelocation={() => setShowRelocationExplorer(true)}
+              goalSkillIds={[]}
             />
           )}
         </div>
@@ -381,15 +378,14 @@ const SkillTree = () => {
           skill={{
             id: selectedNode.id,
             name: selectedNode.title,
-            category: selectedNode.category || 'Unknown',
+            category: 'Unknown',
             description: selectedNode.description,
-            xp_value: selectedNode.cost_estimate || 100,
-            difficulty_level: selectedNode.difficulty_level || 1,
-            slug: selectedNode.title.toLowerCase().replace(/\s+/g, '-')
+            xp_value: 100,
+            difficulty_level: 1
           }}
           userProgress={undefined} // TODO: Get from unified user progress
           prerequisites={[]} // TODO: Calculate from edges
-          isOpen={!!selectedNode}
+          open={!!selectedNode}
           onClose={() => setSelectedNode(null)}
           onPlanSkill={handlePlanSkill}
         />

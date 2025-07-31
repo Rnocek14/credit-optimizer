@@ -1,419 +1,216 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   ReactFlow,
+  MiniMap,
+  Controls,
+  Background,
   useNodesState,
   useEdgesState,
-  addEdge,
-  Background,
-  Controls,
-  MiniMap,
-  Connection,
-  Edge,
   Node,
-  MarkerType,
-  ConnectionMode,
-  useReactFlow,
+  Edge,
+  ConnectionMode
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-// Import stable layout functionality and types
-import { calculateHierarchicalLayout } from '@/lib/smartLayout';
-import { UnifiedCareerData, CareerRelationship } from '@/lib/unifiedCareerData';
-import { FocusMode } from '@/components/FocusMode';
-
-// Import all node types
-import { JobNode } from './SkillTree/JobNode';
-import { CourseNode } from './SkillTree/CourseNode';
-import { ProjectNode } from './SkillTree/ProjectNode';
-import { CertificationNode } from './SkillTree/CertificationNode';
-import { SkillTreeSkillNode } from './SkillTreeSkillNode';
-import { SkillTreeStepNode } from './SkillTreeStepNode';
-
-// Define unified node types
-const nodeTypes = {
-  skill: SkillTreeSkillNode,
-  job: JobNode,
-  course: CourseNode,
-  project: ProjectNode,
-  certification: CertificationNode,
-  careerStep: SkillTreeStepNode,
-};
+import { nodeTypes } from '@/components/nodes/UnifiedNodeTypes';
+import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
 
 interface UnifiedCareerCanvasProps {
-  data: UnifiedCareerData;
-  relationships: CareerRelationship[];
-  selectedCareerPath?: string;
-  onNodeClick?: (nodeId: string, nodeType: string) => void;
-  showMinimap?: boolean;
-  layoutMode?: 'hierarchy' | 'force' | 'hybrid';
-  forceOptions?: any; // Keep for compatibility, but not used in stable layout
-  onLayoutCalculating?: (isCalculating: boolean) => void;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  onNodeClick?: (node: GraphNode) => void;
+  showPivotPaths?: boolean;
+  focusMode?: boolean;
+  searchTerm?: string;
+  selectedCareerPath?: string | null;
 }
 
-const generateVisibleEdges = (
-  relationships: CareerRelationship[],
-  focusedNodeId: string | null
-): Edge[] => {
-  // If focused, show connections to focused node
-  if (focusedNodeId) {
-    const focusedRelationships = relationships
-      .filter(rel => rel.from === focusedNodeId || rel.to === focusedNodeId)
-      .slice(0, 15); // Limit to prevent overwhelming display
+// Convert GraphNode to React Flow Node
+const convertToFlowNode = (graphNode: GraphNode): Node => {
+  return {
+    id: graphNode.id,
+    type: graphNode.type,
+    position: { x: Math.random() * 800, y: Math.random() * 600 }, // TODO: Use proper layout algorithm
+    data: {
+      ...graphNode,
+      style: {
+        borderColor: getNodeBorderColor(graphNode.type),
+        backgroundColor: getNodeBackgroundColor(graphNode.type)
+      }
+    }
+  };
+};
 
-    return focusedRelationships.map((rel, index) => ({
-      id: `edge-${focusedNodeId}-${index}`,
-      source: rel.from,
-      target: rel.to,
-      type: getEdgeTypeForRelationship(rel.type),
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-      },
-      style: getEdgeStyleForRelationship(rel.type, rel.weight),
-      label: rel.weight >= 4 ? getEdgeLabelForRelationship(rel.type) : '',
-      animated: rel.weight >= 5,
-    }));
-  }
-
-  // If no focus, show a subset of important relationships to provide structure
-  const importantRelationships = relationships
-    .filter(rel => (rel.weight || 1) >= 4) // Only show high-weight relationships
-    .sort((a, b) => (b.weight || 1) - (a.weight || 1)) // Sort by weight descending
-    .slice(0, 25); // Limit to 25 most important connections
-
-  console.log('📊 Showing default edges:', {
-    totalRelationships: relationships.length,
-    filteredCount: importantRelationships.length,
-    byType: importantRelationships.reduce((acc, rel) => {
-      acc[rel.type] = (acc[rel.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>)
-  });
-
-  return importantRelationships.map((rel, index) => ({
-    id: `edge-default-${index}`,
-    source: rel.from,
-    target: rel.to,
-    type: getEdgeTypeForRelationship(rel.type),
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-    },
+// Convert GraphEdge to React Flow Edge
+const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
+  return {
+    id: `${graphEdge.from_id}-${graphEdge.to_id}`,
+    source: graphEdge.from_id,
+    target: graphEdge.to_id,
+    type: 'default',
+    animated: false, // Simplified - no complex edge type checking for now
     style: {
-      ...getEdgeStyleForRelationship(rel.type, rel.weight),
-      opacity: 0.4, // Make default edges more subtle
+      stroke: getEdgeColor(graphEdge.edge_type),
+      strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1)
     },
-    label: rel.weight >= 5 ? getEdgeLabelForRelationship(rel.type) : '',
-    animated: false, // No animation for default edges
-  }));
+    data: {
+      label: graphEdge.edge_type,
+      reasoning: graphEdge.reasoning
+    }
+  };
 };
 
-const getEdgeTypeForRelationship = (type: string) => {
-  switch (type) {
-    case 'prerequisite': return 'default';
-    case 'learningPath': return 'smoothstep';
-    case 'careerPath': return 'step';
-    case 'validation': return 'straight';
-    default: return 'default';
-  }
+// Helper functions for styling
+const getNodeBorderColor = (nodeType: string): string => {
+  const colors = {
+    skill: 'hsl(var(--primary))',
+    job: 'hsl(var(--secondary))',
+    course: 'hsl(var(--accent))',
+    project: 'hsl(var(--muted))',
+    certification: 'hsl(var(--warning))',
+    step: 'hsl(var(--info))'
+  };
+  return colors[nodeType as keyof typeof colors] || 'hsl(var(--border))';
 };
 
-const getEdgeStyleForRelationship = (type: string, weight: number = 1) => {
-  const opacity = Math.max(0.4, Math.min(1, weight / 5));
-  const strokeWidth = Math.max(2, Math.min(5, weight));
-  
-  switch (type) {
-    case 'prerequisite': return { 
-      stroke: 'hsl(var(--muted-foreground))', 
-      strokeWidth, 
-      opacity: opacity * 0.8
-    };
-    case 'learningPath': return { 
-      stroke: 'hsl(var(--primary))', 
-      strokeWidth, 
-      opacity 
-    };
-    case 'careerPath': return { 
-      stroke: 'hsl(var(--success))', 
-      strokeWidth: strokeWidth + 1,
-      opacity 
-    };
-    case 'validation': return { 
-      stroke: 'hsl(var(--warning))', 
-      strokeWidth, 
-      opacity 
-    };
-    default: return { 
-      stroke: 'hsl(var(--border))', 
-      strokeWidth: 1, 
-      opacity: 0.3 
-    };
-  }
+const getNodeBackgroundColor = (nodeType: string): string => {
+  const colors = {
+    skill: 'hsl(var(--primary-foreground))',
+    job: 'hsl(var(--secondary-foreground))',
+    course: 'hsl(var(--accent-foreground))',
+    project: 'hsl(var(--muted-foreground))',
+    certification: 'hsl(var(--warning-foreground))',
+    step: 'hsl(var(--info-foreground))'
+  };
+  return colors[nodeType as keyof typeof colors] || 'hsl(var(--background))';
 };
 
-const getEdgeLabelForRelationship = (type: string) => {
-  switch (type) {
-    case 'prerequisite': return 'requires';
-    case 'learningPath': return 'learn';
-    case 'careerPath': return 'leads to';
-    case 'validation': return 'validates';
-    default: return '';
-  }
+const getEdgeColor = (edgeType: string): string => {
+  const colors = {
+    requires: 'hsl(var(--muted-foreground))',
+    unlocks: 'hsl(var(--primary))',
+    recommends: 'hsl(var(--accent))',
+    pivot: 'hsl(var(--warning))',
+    optimal_path: 'hsl(var(--success))'
+  };
+  return colors[edgeType as keyof typeof colors] || 'hsl(var(--border))';
+};
+
+const getEdgeWidth = (importance: number): number => {
+  return Math.max(1, Math.min(4, importance * 2));
 };
 
 export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
-  data,
-  relationships,
-  selectedCareerPath,
+  nodes: graphNodes,
+  edges: graphEdges,
   onNodeClick,
-  showMinimap = true,
-  layoutMode = 'hierarchy',
-  onLayoutCalculating,
+  showPivotPaths = false,
+  focusMode = false,
+  searchTerm = '',
+  selectedCareerPath
 }) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
-  const [showFocusMode, setShowFocusMode] = useState(false);
-  const { fitView } = useReactFlow();
+  // Convert graph data to React Flow format
+  const flowNodes = useMemo(() => {
+    return graphNodes.map(convertToFlowNode);
+  }, [graphNodes]);
 
-  // PHASE 2: Use real data with simplified layout  
-  const calculatedNodes = useMemo(() => {
-    console.log('🎯 CANVAS: Starting node calculation...');
-    console.log('🔍 CANVAS: Input data check:', {
-      hasData: !!data,
-      dataKeys: data ? Object.keys(data) : [],
-      skillsCount: data?.skills?.length || 0,
-      jobsCount: data?.jobs?.length || 0,
-      coursesCount: data?.courses?.length || 0,
-      relationshipsCount: relationships?.length || 0
-    });
+  const flowEdges = useMemo(() => {
+    let edges = graphEdges.map(convertToFlowEdge);
     
-    if (!data) {
-      console.warn('⚠️ CANVAS: No data provided to node calculation');
-      return [];
+    // Filter edges based on showPivotPaths - simplified
+    return edges;
+  }, [graphEdges, showPivotPaths]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+
+  // Update nodes when graphNodes change
+  React.useEffect(() => {
+    setNodes(flowNodes);
+  }, [flowNodes, setNodes]);
+
+  // Update edges when graphEdges change
+  React.useEffect(() => {
+    setEdges(flowEdges);
+  }, [flowEdges, setEdges]);
+
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    const graphNode = graphNodes.find(gn => gn.id === node.id);
+    if (graphNode && onNodeClick) {
+      onNodeClick(graphNode);
     }
-    
-    if (onLayoutCalculating) {
-      onLayoutCalculating(true);
-    }
+  }, [graphNodes, onNodeClick]);
 
-    try {
-      console.log('🔧 CANVAS: Calling calculateHierarchicalLayout...');
-      // Use the simplified hierarchical layout with real data
-      const nodes = calculateHierarchicalLayout(data, relationships);
-      
-      console.log('✅ CANVAS: Layout calculation complete:', {
-        nodesGenerated: nodes.length,
-        nodesByType: nodes.reduce((acc, node) => {
-          acc[node.type] = (acc[node.type] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>),
-        sampleNodeIds: nodes.slice(0, 5).map(n => n.id),
-        samplePositions: nodes.slice(0, 3).map(n => ({ id: n.id, position: n.position }))
-      });
-
-      return nodes;
-    } catch (error) {
-      console.error('❌ CANVAS: Layout calculation error:', error);
-      return [];
-    } finally {
-      if (onLayoutCalculating) {
-        onLayoutCalculating(false);
-      }
-    }
-  }, [data, relationships, onLayoutCalculating]);
-
-  // Generate edges based on relationships and focus
-  const calculatedEdges = useMemo(() => {
-    console.log('🔗 Generating edges from relationships');
-    return generateVisibleEdges(relationships, focusedNodeId);
-  }, [relationships, focusedNodeId]);
-
-  // Update nodes when data changes
-  useEffect(() => {
-    console.log('🔄 Setting nodes in React Flow:', {
-      calculatedNodesCount: calculatedNodes.length,
-      firstNode: calculatedNodes[0],
-      allNodeTypes: calculatedNodes.map(n => n.type)
-    });
-    
-    setNodes(calculatedNodes);
-    
-    // Auto-fit view after layout
-    setTimeout(() => fitView({ duration: 600, padding: 0.2 }), 100);
-  }, [calculatedNodes, setNodes, fitView]);
-
-  // Update edges when focus changes
-  useEffect(() => {
-    console.log('🔗 Setting edges in React Flow:', {
-      calculatedEdgesCount: calculatedEdges.length,
-      sampleEdges: calculatedEdges.slice(0, 3)
-    });
-    
-    setEdges(calculatedEdges);
-  }, [calculatedEdges, setEdges]);
-
-  // Debug React Flow state and rendering issues
-  useEffect(() => {
-    console.log('📊 Current React Flow state:', {
-      nodesInState: nodes.length,
-      edgesInState: edges.length,
-      nodeTypes: nodes.map(n => n.type),
-      nodeIds: nodes.map(n => n.id).slice(0, 10),
-      focusedNodeId
-    });
-
-    // PHASE 1 DEBUGGING: Check if nodes have proper structure
-    nodes.forEach((node, index) => {
-      console.log(`🔍 Node ${index}:`, {
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        hasData: !!node.data,
-        dataKeys: node.data ? Object.keys(node.data) : []
-      });
-    });
-
-    // Check if nodeTypes are properly registered
-    console.log('🔧 Registered nodeTypes:', Object.keys(nodeTypes));
-    
-    // Check if there are any React Flow errors
-    const reactFlowContainer = document.querySelector('.react-flow');
-    if (reactFlowContainer) {
-      console.log('✅ React Flow container found');
-      const nodeElements = reactFlowContainer.querySelectorAll('.react-flow__node');
-      console.log(`📊 Rendered nodes in DOM: ${nodeElements.length}`);
-    } else {
-      console.log('❌ React Flow container not found');
-    }
-  }, [nodes, edges, focusedNodeId]);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
-
-  const handleNodeClick = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      // Toggle focus mode
-      if (focusedNodeId === node.id) {
-        setFocusedNodeId(null);
-        setShowFocusMode(false);
-      } else {
-        setFocusedNodeId(node.id);
-        setShowFocusMode(true);
-      }
-
-      // Call original click handler
-      if (onNodeClick) {
-        onNodeClick(node.id, node.type || 'unknown');
-      }
-    },
-    [focusedNodeId, onNodeClick]
-  );
-
-  const handleFocusNode = useCallback((nodeId: string | null) => {
-    setFocusedNodeId(nodeId);
-    if (nodeId) {
-      setShowFocusMode(true);
-    }
-  }, []);
-
-  const handleCloseFocusMode = useCallback(() => {
-    setFocusedNodeId(null);
-    setShowFocusMode(false);
-  }, []);
-
-  // Enhanced nodes with focus highlighting and error handling
-  const enhancedNodes = useMemo(() => {
+  // Filter and highlight based on search
+  const processedNodes = useMemo(() => {
     return nodes.map(node => {
-      // Add error handling for missing data
-      if (!node.data) {
-        console.warn(`⚠️ Node ${node.id} missing data, providing fallback`);
-        node.data = {
-          title: 'Missing Data',
-          name: 'Missing Data',
-          description: 'This node has missing or invalid data'
-        };
-      }
-
+      const nodeTitle = typeof node.data?.title === 'string' ? node.data.title : '';
+      const nodeDescription = typeof node.data?.description === 'string' ? node.data.description : '';
+      
+      const isHighlighted = searchTerm && 
+        (nodeTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         nodeDescription.toLowerCase().includes(searchTerm.toLowerCase()));
+      
       return {
         ...node,
         style: {
           ...node.style,
-          opacity: focusedNodeId 
-            ? (node.id === focusedNodeId || 
-               relationships.some(rel => 
-                 (rel.from === focusedNodeId && rel.to === node.id) ||
-                 (rel.to === focusedNodeId && rel.from === node.id)
-               )) ? 1 : 0.3
-            : 1,
-          transform: node.id === focusedNodeId ? 'scale(1.05)' : 'scale(1)',
-          transition: 'all 0.2s ease-in-out',
-          zIndex: node.id === focusedNodeId ? 1000 : 1,
-          border: node.id === focusedNodeId ? '2px solid hsl(var(--primary))' : undefined,
+          opacity: searchTerm && !isHighlighted ? 0.3 : 1,
+          transform: isHighlighted ? 'scale(1.05)' : 'scale(1)'
         }
       };
     });
-  }, [nodes, focusedNodeId, relationships]);
+  }, [nodes, searchTerm]);
+
+  console.log('🎨 UnifiedCareerCanvas render:', {
+    graphNodesCount: graphNodes.length,
+    flowNodesCount: nodes.length,
+    edgesCount: edges.length,
+    showPivotPaths,
+    focusMode,
+    searchTerm
+  });
 
   return (
-    <div className="w-full h-full relative">
+    <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
-        nodes={enhancedNodes}
+        nodes={processedNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView
-        fitViewOptions={{
-          padding: 0.2,
-          minZoom: 0.1,
-          maxZoom: 2,
-        }}
-        className="bg-background"
+        attributionPosition="bottom-left"
+        className="unified-career-canvas"
       >
         <Background />
         <Controls />
-        {showMinimap && (
-          <MiniMap 
-            nodeStrokeColor={(n) => {
-              if (n.id === focusedNodeId) return 'hsl(var(--primary))';
-              switch (n.type) {
-                case 'skill': return 'hsl(var(--primary))';
-                case 'course': return 'hsl(var(--success))';
-                case 'project': return 'hsl(var(--warning))';
-                case 'certification': return 'hsl(var(--secondary))';
-                case 'job': return 'hsl(var(--destructive))';
-                default: return 'hsl(var(--muted-foreground))';
-              }
-            }}
-            nodeColor={(n) => {
-              const opacity = focusedNodeId && n.id !== focusedNodeId ? 0.3 : 1;
-              switch (n.type) {
-                case 'skill': return `hsla(var(--primary), ${opacity})`;
-                case 'course': return `hsla(var(--success), ${opacity})`;
-                case 'project': return `hsla(var(--warning), ${opacity})`;
-                case 'certification': return `hsla(var(--secondary), ${opacity})`;
-                case 'job': return `hsla(var(--destructive), ${opacity})`;
-                default: return `hsla(var(--muted), ${opacity})`;
-              }
-            }}
-            maskColor="rgba(0, 0, 0, 0.05)"
-          />
-        )}
-      </ReactFlow>
-
-      {/* Focus Mode Panel */}
-      {showFocusMode && focusedNodeId && (
-        <FocusMode
-          focusedNodeId={focusedNodeId}
-          allRelationships={relationships}
-          onFocusNode={handleFocusNode}
-          onClose={handleCloseFocusMode}
+        <MiniMap 
+          zoomable 
+          pannable 
+          nodeStrokeWidth={3}
+          nodeColor={(node) => {
+            const nodeType = node.type || 'default';
+            return getNodeBorderColor(nodeType);
+          }}
         />
-      )}
+      </ReactFlow>
+      
+      {/* Overlay with graph stats */}
+      <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm border rounded-lg p-3 text-sm">
+        <div className="font-medium mb-2">Career Graph Overview</div>
+        <div className="space-y-1 text-xs">
+          <div>Total Nodes: {graphNodes.length}</div>
+          <div>Skills: {graphNodes.filter(n => n.type === 'skill').length}</div>
+          <div>Jobs: {graphNodes.filter(n => n.type === 'job').length}</div>
+          <div>Connections: {graphEdges.length}</div>
+          {showPivotPaths && (
+            <div className="text-warning">Pivot Paths: Enabled</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
