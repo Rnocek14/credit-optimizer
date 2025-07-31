@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import SaveButton from "@/components/SaveButton";
 import { StartLearningButton } from "@/components/StartLearningButton";
+import { CourseCompletionModal } from "@/components/CourseCompletionModal";
+import { useCourseProgress } from "@/hooks/useCourseProgress";
 import { 
   BookOpen, 
   ExternalLink,
   Sparkles,
   Award,
-  Trash2
+  Trash2,
+  Trophy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,7 +41,10 @@ interface SavedCourse {
 export default function Saved() {
   const [savedCourses, setSavedCourses] = useState<SavedCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [selectedCourseForCompletion, setSelectedCourseForCompletion] = useState<{id: string, title: string} | null>(null);
   const { toast } = useToast();
+  const { getProgressStatus } = useCourseProgress();
 
   useEffect(() => {
     fetchSavedCourses();
@@ -178,6 +184,16 @@ export default function Saved() {
     }
   };
 
+  const handleCompleteClick = (courseId: string, courseTitle: string) => {
+    setSelectedCourseForCompletion({ id: courseId, title: courseTitle });
+    setCompletionModalOpen(true);
+  };
+
+  const handleCompletionClose = () => {
+    setCompletionModalOpen(false);
+    setSelectedCourseForCompletion(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -281,6 +297,16 @@ export default function Saved() {
                         size="sm"
                         className="flex-1"
                       />
+                      {getProgressStatus(saved.course.id) === 'in_progress' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleCompleteClick(saved.course.id, saved.course.title)}
+                          className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600"
+                        >
+                          <Trophy className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -300,6 +326,16 @@ export default function Saved() {
           </>
         )}
       </div>
+
+      {/* Course Completion Modal */}
+      {selectedCourseForCompletion && (
+        <CourseCompletionModal
+          isOpen={completionModalOpen}
+          onClose={handleCompletionClose}
+          courseId={selectedCourseForCompletion.id}
+          courseTitle={selectedCourseForCompletion.title}
+        />
+      )}
     </div>
   );
 }
