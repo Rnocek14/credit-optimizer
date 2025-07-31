@@ -26,7 +26,7 @@ interface UnifiedCareerCanvasProps {
   focusMode?: boolean;
   searchTerm?: string;
   selectedCareerPath?: string | null;
-  layoutAlgorithm?: 'hierarchical' | 'force' | 'circular' | 'tree' | 'focus';
+  layoutAlgorithm?: 'semantic-hierarchy' | 'category-cluster' | 'goal-focused' | 'progressive-disclosure';
   layoutConfig?: Partial<LayoutConfig>;
 }
 
@@ -34,10 +34,11 @@ interface UnifiedCareerCanvasProps {
 const calculateLayout = (
   graphNodes: GraphNode[], 
   graphEdges: GraphEdge[], 
-  algorithm: 'hierarchical' | 'force' | 'circular' | 'tree' | 'focus' = 'hierarchical',
+  algorithm: 'semantic-hierarchy' | 'category-cluster' | 'goal-focused' | 'progressive-disclosure' = 'semantic-hierarchy',
   config?: Partial<LayoutConfig>,
   searchTerm?: string,
-  selectedCareerPath?: string | null
+  selectedCareerPath?: string | null,
+  showGoalPathOnly: boolean = false
 ): Node[] => {
   if (graphNodes.length === 0) return [];
 
@@ -61,21 +62,29 @@ const calculateLayout = (
       type: mapEdgeType(edge.edge_type)
     }));
 
-    // Use enhanced layout algorithm
+    // Calculate dynamic container size based on node count
+    const nodeCount = layoutNodes.length;
+    const estimatedWidth = Math.max(1600, Math.ceil(Math.sqrt(nodeCount)) * 250);
+    const estimatedHeight = Math.max(1200, Math.ceil(nodeCount / Math.ceil(Math.sqrt(nodeCount))) * 200);
+
+    // Use the algorithm directly since it's already mapped correctly
+    const enhancedAlgorithm = algorithm;
+
+    // Use enhanced layout algorithm with collision detection
     const positionedNodes = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
-      algorithm: 'semantic-hierarchy',
-      containerWidth: 1600,
-      containerHeight: 1200,
+      algorithm: enhancedAlgorithm,
+      containerWidth: estimatedWidth,
+      containerHeight: estimatedHeight,
       nodeSpacing: {
-        horizontal: 200,
-        vertical: 150,
-        category: 80
+        horizontal: 220, // Increased spacing to prevent overlaps
+        vertical: 160,   // Increased vertical spacing
+        category: 100    // Increased category spacing
       },
-      layerHeight: 220,
+      layerHeight: 250, // Increased layer height
       focusNodeId: searchTerm ? layoutNodes.find(n => 
         n.title.toLowerCase().includes(searchTerm.toLowerCase())
       )?.id : undefined,
-      showOnlyGoalPath: !!selectedCareerPath,
+      showOnlyGoalPath: showGoalPathOnly || !!selectedCareerPath,
       goalPath: selectedCareerPath ? layoutNodes
         .filter(n => n.type === 'job' || n.type === 'step')
         .map(n => n.id) : undefined
@@ -299,13 +308,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   focusMode = false,
   searchTerm = '',
   selectedCareerPath,
-  layoutAlgorithm = 'hierarchical',
+  layoutAlgorithm = 'semantic-hierarchy',
   layoutConfig
 }) => {
   // Calculate layout using enhanced layout system
   const flowNodes = useMemo(() => {
-    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath);
-  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath]);
+    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
+  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode]);
 
   const flowEdges = useMemo(() => {
     let edges = graphEdges.map(convertToFlowEdge);

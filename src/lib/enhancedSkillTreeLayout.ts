@@ -209,6 +209,11 @@ export class EnhancedSkillTreeLayout {
     const typeOrder = ['skill', 'course', 'project', 'certification', 'step', 'job'];
     const layerHeight = this.config.layerHeight;
     
+    // Node dimensions for collision detection
+    const nodeWidth = 170;
+    const nodeHeight = 100;
+    const minSpacing = 50; // Minimum space between nodes
+    
     // Sort layers by depth
     const sortedDepths = Array.from(layers.keys()).sort((a, b) => a - b);
     
@@ -225,32 +230,111 @@ export class EnhancedSkillTreeLayout {
         // Group by category within type
         const categoryGroups = this.groupNodesByCategory(nodesOfType);
         
-        let typeY = layerY + typeIndex * 80;
+        let typeY = layerY + typeIndex * (nodeHeight + 40); // Ensure vertical spacing
         let currentX = 100;
         
         categoryGroups.forEach((categoryNodes, category) => {
-          // Sort nodes within category
-          const sortedNodes = categoryNodes.sort((a, b) => a.title.localeCompare(b.title));
+          // Sort nodes within category by edge relationships and title
+          const sortedNodes = this.sortNodesByRelationships(categoryNodes);
           
-          sortedNodes.forEach((node, nodeIndex) => {
+          // Create category cluster with proper spacing
+          const clusterNodes = this.createCategoryCluster(sortedNodes, currentX, typeY, nodeWidth, nodeHeight, minSpacing);
+          
+          clusterNodes.forEach(positionedNode => {
+            // Check for collisions with existing nodes
+            const finalPosition = this.resolveCollisions(positionedNode, positioned, nodeWidth, nodeHeight, minSpacing);
             positioned.push({
-              ...node,
-              x: currentX,
-              y: typeY,
+              ...positionedNode,
+              x: finalPosition.x,
+              y: finalPosition.y,
               depth,
               clusterGroup: `${type}-${category}`
             });
-            
-            currentX += this.config.nodeSpacing.horizontal;
           });
           
-          // Add category spacing
-          currentX += this.config.nodeSpacing.category;
+          // Update currentX for next category
+          const maxX = Math.max(...clusterNodes.map(n => n.x));
+          currentX = maxX + nodeWidth + this.config.nodeSpacing.category;
         });
       });
     });
 
     return positioned;
+  }
+
+  private sortNodesByRelationships(nodes: LayoutNode[]): LayoutNode[] {
+    // Sort by incoming edge count (more dependencies = higher in layer)
+    return nodes.sort((a, b) => {
+      const aIncoming = this.edges.filter(e => e.target === a.id).length;
+      const bIncoming = this.edges.filter(e => e.target === b.id).length;
+      
+      if (aIncoming !== bIncoming) {
+        return bIncoming - aIncoming; // More dependencies first
+      }
+      
+      return a.title.localeCompare(b.title);
+    });
+  }
+
+  private createCategoryCluster(nodes: LayoutNode[], startX: number, startY: number, nodeWidth: number, nodeHeight: number, minSpacing: number): PositionedNode[] {
+    const positioned: PositionedNode[] = [];
+    const nodesPerRow = Math.min(4, Math.ceil(Math.sqrt(nodes.length))); // Max 4 nodes per row
+    
+    nodes.forEach((node, index) => {
+      const row = Math.floor(index / nodesPerRow);
+      const col = index % nodesPerRow;
+      
+      const x = startX + col * (nodeWidth + minSpacing);
+      const y = startY + row * (nodeHeight + minSpacing);
+      
+      positioned.push({
+        ...node,
+        x,
+        y
+      });
+    });
+    
+    return positioned;
+  }
+
+  private resolveCollisions(newNode: PositionedNode, existingNodes: PositionedNode[], nodeWidth: number, nodeHeight: number, minSpacing: number): { x: number, y: number } {
+    let { x, y } = newNode;
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    while (attempts < maxAttempts) {
+      let hasCollision = false;
+      
+      for (const existing of existingNodes) {
+        if (this.nodesOverlap(x, y, existing.x, existing.y, nodeWidth, nodeHeight, minSpacing)) {
+          hasCollision = true;
+          // Move right first, then down if needed
+          x = existing.x + nodeWidth + minSpacing;
+          
+          // If we've moved too far right, move to next row
+          if (x > this.config.containerWidth - nodeWidth) {
+            x = 100; // Reset to left margin
+            y += nodeHeight + minSpacing;
+          }
+          break;
+        }
+      }
+      
+      if (!hasCollision) break;
+      attempts++;
+    }
+    
+    return { x, y };
+  }
+
+  private nodesOverlap(x1: number, y1: number, x2: number, y2: number, nodeWidth: number, nodeHeight: number, minSpacing: number): boolean {
+    const buffer = minSpacing / 2;
+    return !(
+      x1 + nodeWidth + buffer < x2 ||
+      x2 + nodeWidth + buffer < x1 ||
+      y1 + nodeHeight + buffer < y2 ||
+      y2 + nodeHeight + buffer < y1
+    );
   }
 
   private groupNodesByCategory(nodes: LayoutNode[] = this.nodes): Map<string, LayoutNode[]> {

@@ -10,6 +10,7 @@ import { CareerROIPanel } from '@/components/CareerROIPanel';
 import { LocationDropdown } from '@/components/LocationDropdown';
 import { LocationROIExplorer } from '@/components/LocationROIExplorer';
 import { CareerPathfindingPanel } from '@/components/CareerPathfindingPanel';
+import { EnhancedLayoutControls } from '@/components/EnhancedLayoutControls';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ const SkillTree = () => {
   const [showRelocationExplorer, setShowRelocationExplorer] = useState(false);
   const [showPivotPaths, setShowPivotPaths] = useState(false);
   const [showPathfinding, setShowPathfinding] = useState(false);
+  const [layoutAlgorithm, setLayoutAlgorithm] = useState<'semantic-hierarchy' | 'category-cluster' | 'goal-focused' | 'progressive-disclosure'>('semantic-hierarchy');
+  const [showLayoutControls, setShowLayoutControls] = useState(false);
 
   // Use the unified career graph system
   const {
@@ -203,6 +206,14 @@ const SkillTree = () => {
               {showPathfinding ? 'Hide' : 'Show'} Pathfinding
             </Button>
             <Button 
+              variant={showLayoutControls ? "default" : "outline"}
+              size="sm" 
+              onClick={() => setShowLayoutControls(!showLayoutControls)}
+            >
+              <Focus className="h-4 w-4 mr-2" />
+              {showLayoutControls ? 'Hide' : 'Show'} Layout Controls
+            </Button>
+            <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setShowPerformanceTest(!showPerformanceTest)}
@@ -327,18 +338,51 @@ const SkillTree = () => {
         <div className="lg:col-span-3">
           <div 
             ref={skillTreeRef}
-            className="bg-card text-card-foreground border rounded-lg overflow-hidden"
+            className="bg-card text-card-foreground border rounded-lg overflow-hidden relative"
             style={{ height: '800px' }}
           >
             <UnifiedCareerCanvas
               nodes={filteredNodes}
               edges={edges}
               onNodeClick={handleNodeClick}
-              showPivotPaths={showPivotPaths}
-              focusMode={focusMode}
               searchTerm={searchTerm}
               selectedCareerPath={selectedCareerPath}
+              layoutAlgorithm={layoutAlgorithm}
+              focusMode={focusMode}
             />
+            
+            {/* Enhanced Layout Controls Overlay */}
+            {showLayoutControls && (
+              <div className="absolute top-4 right-4 z-10">
+                <EnhancedLayoutControls
+                  layoutAlgorithm={layoutAlgorithm}
+                  onLayoutAlgorithmChange={setLayoutAlgorithm}
+                  focusMode={focusMode}
+                  onFocusModeChange={setFocusMode}
+                  goalPathVisible={showGoalPathOnly}
+                  onGoalPathVisibleChange={setShowGoalPathOnly}
+                  selectedCareerPath={selectedCareerPath}
+                  onRecalculateLayout={() => {
+                    // Force re-render by updating algorithm state
+                    setLayoutAlgorithm(curr => curr);
+                  }}
+                  onResetView={() => {
+                    setLayoutAlgorithm('semantic-hierarchy');
+                    setFocusMode(false);
+                    setShowGoalPathOnly(false);
+                  }}
+                  statistics={{
+                    nodeCount: filteredNodes.length,
+                    edgeCount: edges.length
+                  }}
+                  activeFilters={[
+                    ...(searchTerm ? [`Search: ${searchTerm}`] : []),
+                    ...(selectedCareerPath ? [`Career: ${selectedCareerPath}`] : []),
+                    ...(activeCategories.length < categories.length ? activeCategories.map(cat => `Category: ${cat}`) : [])
+                  ]}
+                />
+              </div>
+            )}
           </div>
         </div>
 

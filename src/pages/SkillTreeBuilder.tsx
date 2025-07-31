@@ -177,7 +177,7 @@ const SkillTreeBuilder = () => {
               edges={edges}
               selectedCareerPath={selectedCareerPath}
               onNodeClick={handleNodeClick}
-              layoutAlgorithm={layoutMode === 'hierarchy' ? 'hierarchical' : layoutMode === 'force' ? 'force' : 'hierarchical'}
+              layoutAlgorithm='semantic-hierarchy'
               layoutConfig={{
                 spacing: {
                   nodeWidth: 250,

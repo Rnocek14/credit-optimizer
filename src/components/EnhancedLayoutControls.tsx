@@ -17,16 +17,17 @@ export interface EnhancedLayoutControlsProps {
   focusMode: boolean;
   onFocusModeChange: (enabled: boolean) => void;
   
-  showOnlyGoalPath: boolean;
-  onShowOnlyGoalPathChange: (enabled: boolean) => void;
+  goalPathVisible: boolean;
+  onGoalPathVisibleChange: (enabled: boolean) => void;
   
   // Statistics
-  nodeCount: number;
-  edgeCount: number;
-  isCalculating?: boolean;
+  statistics: {
+    nodeCount: number;
+    edgeCount: number;
+  };
+  activeFilters: string[];
   
   // Search and filtering
-  searchTerm?: string;
   selectedCareerPath?: string | null;
 }
 
@@ -37,12 +38,10 @@ export const EnhancedLayoutControls: React.FC<EnhancedLayoutControlsProps> = ({
   onResetView,
   focusMode,
   onFocusModeChange,
-  showOnlyGoalPath,
-  onShowOnlyGoalPathChange,
-  nodeCount,
-  edgeCount,
-  isCalculating = false,
-  searchTerm,
+  goalPathVisible,
+  onGoalPathVisibleChange,
+  statistics,
+  activeFilters,
   selectedCareerPath
 }) => {
   
@@ -136,8 +135,8 @@ export const EnhancedLayoutControls: React.FC<EnhancedLayoutControlsProps> = ({
               </div>
               <Switch
                 id="goal-path-only"
-                checked={showOnlyGoalPath}
-                onCheckedChange={onShowOnlyGoalPathChange}
+            checked={goalPathVisible}
+            onCheckedChange={onGoalPathVisibleChange}
               />
             </div>
           )}
@@ -149,10 +148,10 @@ export const EnhancedLayoutControls: React.FC<EnhancedLayoutControlsProps> = ({
             onClick={onRecalculateLayout}
             variant="default"
             size="sm"
-            disabled={isCalculating}
+            disabled={false}
             className="flex-1"
           >
-            {isCalculating ? (
+            {false ? (
               <>
                 <Zap className="h-4 w-4 mr-2 animate-spin" />
                 Calculating...
@@ -180,24 +179,24 @@ export const EnhancedLayoutControls: React.FC<EnhancedLayoutControlsProps> = ({
           <h4 className="text-sm font-medium">Graph Statistics</h4>
           <div className="grid grid-cols-2 gap-2">
             <Badge variant="secondary" className="justify-center">
-              Nodes: {nodeCount}
+              Nodes: {statistics.nodeCount}
             </Badge>
             <Badge variant="secondary" className="justify-center">
-              Edges: {edgeCount}
+              Edges: {statistics.edgeCount}
             </Badge>
           </div>
           
           {/* Current Filters */}
-          {(searchTerm || selectedCareerPath) && (
+          {(activeFilters.length > 0 || selectedCareerPath) && (
             <div className="space-y-2">
               <h5 className="text-xs font-medium text-muted-foreground">Active Filters</h5>
               <div className="flex flex-wrap gap-1">
-                {searchTerm && (
-                  <Badge variant="outline" className="text-xs">
+                {activeFilters.map((filter, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
                     <Eye className="h-3 w-3 mr-1" />
-                    Search: {searchTerm}
+                    {filter}
                   </Badge>
-                )}
+                ))}
                 {selectedCareerPath && (
                   <Badge variant="outline" className="text-xs">
                     🎯 Career Path
@@ -211,7 +210,7 @@ export const EnhancedLayoutControls: React.FC<EnhancedLayoutControlsProps> = ({
         {/* Layout Status */}
         <div className="text-xs text-muted-foreground text-center">
           Layout: <span className="font-medium">{algorithmLabels[layoutAlgorithm]}</span>
-          {isCalculating && <span className="ml-2 animate-pulse">⚡ Processing...</span>}
+          
         </div>
       </CardContent>
     </Card>
