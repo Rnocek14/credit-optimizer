@@ -5,9 +5,9 @@ export interface PathNode {
   id: string;
   title: string;
   type: string;
-  time_cost_hours: number;
-  monetary_cost: number;
-  roi_score: number;
+  estimated_time_hours: number;
+  cost_estimate: number;
+  market_demand_score: number;
   difficulty_level: number;
 }
 

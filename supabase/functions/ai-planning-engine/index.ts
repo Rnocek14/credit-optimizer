@@ -19,9 +19,9 @@ interface PathNode {
   id: string;
   title: string;
   type: string;
-  time_cost_hours: number;
-  monetary_cost: number;
-  roi_score: number;
+  estimated_time_hours: number;
+  cost_estimate: number;
+  market_demand_score: number;
   difficulty_level: number;
 }
 
@@ -130,33 +130,33 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
             id: course.id,
             title: course.title,
             type: 'course',
-            time_cost_hours: course.time_cost_hours || 40,
-            monetary_cost: course.monetary_cost || 0,
-            roi_score: course.roi_score || 0.7,
+            estimated_time_hours: course.estimated_time_hours || 20,
+            cost_estimate: course.cost_estimate || 0,
+            market_demand_score: course.market_demand_score || 0.5,
             difficulty_level: course.difficulty_level || 3
           },
           {
             id: skill.id,
             title: skill.title,
             type: 'skill',
-            time_cost_hours: 0,
-            monetary_cost: 0,
-            roi_score: skill.roi_score || 0.8,
+            estimated_time_hours: 0,
+            cost_estimate: 0,
+            market_demand_score: skill.market_demand_score || 0.5,
             difficulty_level: skill.difficulty_level || 3
           },
           {
             id: targetJobNode.id,
             title: targetJobNode.title,
             type: 'job',
-            time_cost_hours: 0,
-            monetary_cost: 0,
-            roi_score: targetJobNode.roi_score || 0.9,
+            estimated_time_hours: 0,
+            cost_estimate: 0,
+            market_demand_score: targetJobNode.market_demand_score || 0.5,
             difficulty_level: targetJobNode.difficulty_level || 4
           }
         ],
-        total_time: course.time_cost_hours || 40,
-        total_cost: course.monetary_cost || 0,
-        average_roi: ((course.roi_score || 0.7) + (skill.roi_score || 0.8) + (targetJobNode.roi_score || 0.9)) / 3,
+        total_time: course.estimated_time_hours || 20,
+        total_cost: course.cost_estimate || 0,
+        average_roi: ((course.market_demand_score || 0.5) + (skill.market_demand_score || 0.5) + (targetJobNode.market_demand_score || 0.5)) / 3,
         path_type: 'highest_roi'
       };
 
@@ -238,7 +238,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[], complete
     .not('id', 'in', `(${completedCourses.join(',') || 'null'})`);
 
   const recommendedCourses = (availableCourses || [])
-    .sort((a: any, b: any) => (b.roi_score || 0) - (a.roi_score || 0))
+    .sort((a: any, b: any) => (b.market_demand_score || 0.5) - (a.market_demand_score || 0.5))
     .slice(0, 5);
 
   return {
