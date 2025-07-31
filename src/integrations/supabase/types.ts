@@ -493,67 +493,94 @@ export type Database = {
       }
       career_graph_edges: {
         Row: {
+          alternative_paths: string[] | null
+          confidence_score: number | null
           created_at: string | null
           data_source: string | null
           difficulty_multiplier: number | null
           edge_type: string
+          experience_level: string | null
           from_id: string
           from_type: string
           id: string
           importance_weight: number | null
+          industry_specific: boolean | null
+          is_validated: boolean | null
           last_validated: string | null
+          location_specific: boolean | null
           monetary_cost: number | null
           pivot_via: string | null
           reasoning: string | null
           roi_score: number | null
+          semantic_strength: number | null
+          skill_transfer_rate: number | null
           substitution_group_id: string | null
           success_rate: number | null
           time_cost_hours: number | null
           to_id: string
           to_type: string
           updated_at: string | null
+          validation_source: string | null
         }
         Insert: {
+          alternative_paths?: string[] | null
+          confidence_score?: number | null
           created_at?: string | null
           data_source?: string | null
           difficulty_multiplier?: number | null
           edge_type: string
+          experience_level?: string | null
           from_id: string
           from_type: string
           id?: string
           importance_weight?: number | null
+          industry_specific?: boolean | null
+          is_validated?: boolean | null
           last_validated?: string | null
+          location_specific?: boolean | null
           monetary_cost?: number | null
           pivot_via?: string | null
           reasoning?: string | null
           roi_score?: number | null
+          semantic_strength?: number | null
+          skill_transfer_rate?: number | null
           substitution_group_id?: string | null
           success_rate?: number | null
           time_cost_hours?: number | null
           to_id: string
           to_type: string
           updated_at?: string | null
+          validation_source?: string | null
         }
         Update: {
+          alternative_paths?: string[] | null
+          confidence_score?: number | null
           created_at?: string | null
           data_source?: string | null
           difficulty_multiplier?: number | null
           edge_type?: string
+          experience_level?: string | null
           from_id?: string
           from_type?: string
           id?: string
           importance_weight?: number | null
+          industry_specific?: boolean | null
+          is_validated?: boolean | null
           last_validated?: string | null
+          location_specific?: boolean | null
           monetary_cost?: number | null
           pivot_via?: string | null
           reasoning?: string | null
           roi_score?: number | null
+          semantic_strength?: number | null
+          skill_transfer_rate?: number | null
           substitution_group_id?: string | null
           success_rate?: number | null
           time_cost_hours?: number | null
           to_id?: string
           to_type?: string
           updated_at?: string | null
+          validation_source?: string | null
         }
         Relationships: []
       }
@@ -563,57 +590,105 @@ export type Database = {
           ai_confidence_score: number | null
           ai_generated_description: string | null
           category: string | null
+          certification_body: string | null
+          completion_rate: number | null
           cost_estimate: number | null
           created_at: string
           description: string | null
           difficulty_level: number | null
           estimated_time_hours: number | null
+          expiry_period_months: number | null
+          has_hands_on_projects: boolean | null
           id: string
+          industry_alignment: Json | null
+          instructor_rating: number | null
           last_analyzed: string | null
+          location_multipliers: Json | null
+          market_demand_score: number | null
           node_type: string
           original_id: string | null
           original_table: string | null
+          platform_url: string | null
+          prerequisite_ids: string[] | null
+          salary_data: Json | null
           semantic_tags: string[] | null
+          skill_validation_type: string | null
+          substitution_group_id: string | null
+          success_rate: number | null
           title: string
+          trending_score: number | null
           updated_at: string
+          visa_requirements: Json | null
         }
         Insert: {
           active?: boolean | null
           ai_confidence_score?: number | null
           ai_generated_description?: string | null
           category?: string | null
+          certification_body?: string | null
+          completion_rate?: number | null
           cost_estimate?: number | null
           created_at?: string
           description?: string | null
           difficulty_level?: number | null
           estimated_time_hours?: number | null
+          expiry_period_months?: number | null
+          has_hands_on_projects?: boolean | null
           id?: string
+          industry_alignment?: Json | null
+          instructor_rating?: number | null
           last_analyzed?: string | null
+          location_multipliers?: Json | null
+          market_demand_score?: number | null
           node_type: string
           original_id?: string | null
           original_table?: string | null
+          platform_url?: string | null
+          prerequisite_ids?: string[] | null
+          salary_data?: Json | null
           semantic_tags?: string[] | null
+          skill_validation_type?: string | null
+          substitution_group_id?: string | null
+          success_rate?: number | null
           title: string
+          trending_score?: number | null
           updated_at?: string
+          visa_requirements?: Json | null
         }
         Update: {
           active?: boolean | null
           ai_confidence_score?: number | null
           ai_generated_description?: string | null
           category?: string | null
+          certification_body?: string | null
+          completion_rate?: number | null
           cost_estimate?: number | null
           created_at?: string
           description?: string | null
           difficulty_level?: number | null
           estimated_time_hours?: number | null
+          expiry_period_months?: number | null
+          has_hands_on_projects?: boolean | null
           id?: string
+          industry_alignment?: Json | null
+          instructor_rating?: number | null
           last_analyzed?: string | null
+          location_multipliers?: Json | null
+          market_demand_score?: number | null
           node_type?: string
           original_id?: string | null
           original_table?: string | null
+          platform_url?: string | null
+          prerequisite_ids?: string[] | null
+          salary_data?: Json | null
           semantic_tags?: string[] | null
+          skill_validation_type?: string | null
+          substitution_group_id?: string | null
+          success_rate?: number | null
           title?: string
+          trending_score?: number | null
           updated_at?: string
+          visa_requirements?: Json | null
         }
         Relationships: []
       }
@@ -771,6 +846,75 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      career_progression_paths: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          difficulty_progression: string[] | null
+          experience_level: string | null
+          id: string
+          industry_focus: string | null
+          location_optimized: string[] | null
+          path_nodes: Json
+          start_node_id: string | null
+          success_metrics: Json | null
+          target_node_id: string | null
+          title: string
+          total_estimated_cost: number | null
+          total_estimated_hours: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          difficulty_progression?: string[] | null
+          experience_level?: string | null
+          id?: string
+          industry_focus?: string | null
+          location_optimized?: string[] | null
+          path_nodes?: Json
+          start_node_id?: string | null
+          success_metrics?: Json | null
+          target_node_id?: string | null
+          title: string
+          total_estimated_cost?: number | null
+          total_estimated_hours?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          difficulty_progression?: string[] | null
+          experience_level?: string | null
+          id?: string
+          industry_focus?: string | null
+          location_optimized?: string[] | null
+          path_nodes?: Json
+          start_node_id?: string | null
+          success_metrics?: Json | null
+          target_node_id?: string | null
+          title?: string
+          total_estimated_cost?: number | null
+          total_estimated_hours?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_progression_paths_start_node_id_fkey"
+            columns: ["start_node_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_progression_paths_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       career_step_skills: {
         Row: {
@@ -1531,6 +1675,63 @@ export type Database = {
           xp_awarded?: number | null
         }
         Relationships: []
+      }
+      location_career_metrics: {
+        Row: {
+          career_node_id: string | null
+          confidence_level: number | null
+          created_at: string | null
+          data_source: string | null
+          id: string
+          last_updated: string | null
+          location_id: string | null
+          metric_type: string
+          metric_value: number
+          seasonal_adjustment: number | null
+          trend_direction: string | null
+        }
+        Insert: {
+          career_node_id?: string | null
+          confidence_level?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          last_updated?: string | null
+          location_id?: string | null
+          metric_type: string
+          metric_value: number
+          seasonal_adjustment?: number | null
+          trend_direction?: string | null
+        }
+        Update: {
+          career_node_id?: string | null
+          confidence_level?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string
+          last_updated?: string | null
+          location_id?: string | null
+          metric_type?: string
+          metric_value?: number
+          seasonal_adjustment?: number | null
+          trend_direction?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_career_metrics_career_node_id_fkey"
+            columns: ["career_node_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_career_metrics_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       locations: {
         Row: {
@@ -2752,6 +2953,63 @@ export type Database = {
           },
         ]
       }
+      semantic_validations: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          edge_id: string | null
+          expires_at: string | null
+          id: string
+          node_id: string | null
+          validated_at: string | null
+          validated_by: string | null
+          validation_notes: string | null
+          validation_status: string
+          validation_type: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          edge_id?: string | null
+          expires_at?: string | null
+          id?: string
+          node_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_notes?: string | null
+          validation_status: string
+          validation_type: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          edge_id?: string | null
+          expires_at?: string | null
+          id?: string
+          node_id?: string | null
+          validated_at?: string | null
+          validated_by?: string | null
+          validation_notes?: string | null
+          validation_status?: string
+          validation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_validations_edge_id_fkey"
+            columns: ["edge_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_edges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semantic_validations_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_branches: {
         Row: {
           created_at: string
@@ -2910,6 +3168,56 @@ export type Database = {
             columns: ["step_id"]
             isOneToOne: false
             referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      substitution_groups: {
+        Row: {
+          alternative_nodes: string[]
+          created_at: string | null
+          description: string | null
+          difficulty_level: string | null
+          group_type: string
+          id: string
+          minimum_alternatives: number | null
+          recommended_combination: string | null
+          skill_target_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          alternative_nodes?: string[]
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          group_type: string
+          id?: string
+          minimum_alternatives?: number | null
+          recommended_combination?: string | null
+          skill_target_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          alternative_nodes?: string[]
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          group_type?: string
+          id?: string
+          minimum_alternatives?: number | null
+          recommended_combination?: string | null
+          skill_target_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "substitution_groups_skill_target_id_fkey"
+            columns: ["skill_target_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
             referencedColumns: ["id"]
           },
         ]
