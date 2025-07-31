@@ -1,0 +1,378 @@
+-- Phase 1.9: Final Critical Completions
+-- Complete job connectivity, expand pivot network, course substitution groups, and career progression paths
+
+-- First, let's add missing key job roles
+INSERT INTO career_graph_nodes (node_type, title, description, category, salary_data, difficulty_level, estimated_time_hours) VALUES
+('job', 'Frontend Engineer', 'Develops user-facing web applications using modern frameworks and technologies', 'Engineering', '{"min_salary": 75000, "max_salary": 140000, "currency": "USD"}', 3, 2080),
+('job', 'Backend Engineer', 'Builds server-side applications, APIs, and database systems', 'Engineering', '{"min_salary": 80000, "max_salary": 150000, "currency": "USD"}', 4, 2080),
+('job', 'Full Stack Engineer', 'Works on both frontend and backend development across the entire web stack', 'Engineering', '{"min_salary": 85000, "max_salary": 160000, "currency": "USD"}', 4, 2080),
+('job', 'DevOps Engineer', 'Manages deployment pipelines, infrastructure, and system reliability', 'Engineering', '{"min_salary": 90000, "max_salary": 170000, "currency": "USD"}', 4, 2080),
+('job', 'Graphic Designer', 'Creates visual content for digital and print media, branding, and marketing', 'Design', '{"min_salary": 45000, "max_salary": 85000, "currency": "USD"}', 2, 2080),
+('job', 'UI Designer', 'Designs user interfaces for web and mobile applications', 'Design', '{"min_salary": 55000, "max_salary": 95000, "currency": "USD"}', 3, 2080),
+('job', 'Product Designer', 'Designs end-to-end product experiences combining UX and UI skills', 'Design', '{"min_salary": 70000, "max_salary": 130000, "currency": "USD"}', 4, 2080),
+('job', 'Business Analyst', 'Analyzes business processes and requirements to improve efficiency', 'Analysis', '{"min_salary": 60000, "max_salary": 110000, "currency": "USD"}', 3, 2080),
+('job', 'Marketing Manager', 'Develops and executes marketing strategies and campaigns', 'Marketing', '{"min_salary": 65000, "max_salary": 120000, "currency": "USD"}', 3, 2080),
+('job', 'Content Manager', 'Creates and manages content strategy across digital platforms', 'Content', '{"min_salary": 50000, "max_salary": 90000, "currency": "USD"}', 2, 2080);
+
+-- Connect orphaned jobs to relevant skills with REQUIRES_SKILL edges
+WITH job_skill_mappings AS (
+  SELECT 
+    j.id as job_id,
+    j.title as job_title,
+    s.id as skill_id,
+    s.title as skill_title
+  FROM career_graph_nodes j
+  CROSS JOIN career_graph_nodes s
+  WHERE j.node_type = 'job' AND s.node_type = 'skill'
+  AND (
+    -- UX/UI Design skills
+    (j.title ILIKE '%UX%' OR j.title ILIKE '%UI%' OR j.title ILIKE '%Design%') 
+    AND (s.title ILIKE '%UX%' OR s.title ILIKE '%UI%' OR s.title ILIKE '%Design%' OR s.title ILIKE '%Wireframe%' OR s.title ILIKE '%Prototyp%')
+    OR
+    -- Frontend skills
+    (j.title ILIKE '%Frontend%' OR j.title ILIKE '%Front End%')
+    AND (s.title ILIKE '%JavaScript%' OR s.title ILIKE '%React%' OR s.title ILIKE '%CSS%' OR s.title ILIKE '%HTML%' OR s.title ILIKE '%TypeScript%')
+    OR
+    -- Backend skills
+    (j.title ILIKE '%Backend%' OR j.title ILIKE '%Back End%')
+    AND (s.title ILIKE '%Node%' OR s.title ILIKE '%Python%' OR s.title ILIKE '%Database%' OR s.title ILIKE '%API%' OR s.title ILIKE '%Server%')
+    OR
+    -- Full Stack skills
+    (j.title ILIKE '%Full Stack%')
+    AND (s.title ILIKE '%JavaScript%' OR s.title ILIKE '%React%' OR s.title ILIKE '%Node%' OR s.title ILIKE '%Database%' OR s.title ILIKE '%API%')
+    OR
+    -- DevOps skills
+    (j.title ILIKE '%DevOps%' OR j.title ILIKE '%Infrastructure%')
+    AND (s.title ILIKE '%Docker%' OR s.title ILIKE '%AWS%' OR s.title ILIKE '%Cloud%' OR s.title ILIKE '%CI/CD%' OR s.title ILIKE '%Deploy%')
+    OR
+    -- Data skills
+    (j.title ILIKE '%Data%' OR j.title ILIKE '%Analyst%')
+    AND (s.title ILIKE '%SQL%' OR s.title ILIKE '%Python%' OR s.title ILIKE '%Excel%' OR s.title ILIKE '%Analytics%' OR s.title ILIKE '%Statistics%')
+    OR
+    -- Marketing skills
+    (j.title ILIKE '%Marketing%')
+    AND (s.title ILIKE '%Marketing%' OR s.title ILIKE '%SEO%' OR s.title ILIKE '%Social Media%' OR s.title ILIKE '%Analytics%' OR s.title ILIKE '%Content%')
+    OR
+    -- Management skills
+    (j.title ILIKE '%Manager%' OR j.title ILIKE '%Lead%')
+    AND (s.title ILIKE '%Leadership%' OR s.title ILIKE '%Management%' OR s.title ILIKE '%Strategy%' OR s.title ILIKE '%Planning%')
+  )
+)
+INSERT INTO career_graph_edges (
+  from_id, to_id, from_type, to_type, edge_type,
+  importance_weight, confidence_score, time_cost_hours,
+  reasoning
+)
+SELECT DISTINCT
+  jsm.skill_id,
+  jsm.job_id,
+  'skill',
+  'job',
+  'REQUIRES_SKILL',
+  0.8,
+  0.85,
+  40,
+  'Essential skill requirement for ' || jsm.job_title
+FROM job_skill_mappings jsm
+WHERE NOT EXISTS (
+  SELECT 1 FROM career_graph_edges 
+  WHERE from_id = jsm.skill_id AND to_id = jsm.job_id AND edge_type = 'REQUIRES_SKILL'
+);
+
+-- Create PIVOT_TO edges between related jobs
+WITH job_pivot_mappings AS (
+  SELECT 
+    j1.id as from_job_id,
+    j1.title as from_job_title,
+    j2.id as to_job_id,
+    j2.title as to_job_title,
+    CASE 
+      WHEN (j1.title ILIKE '%Graphic%' AND j2.title ILIKE '%UX%') THEN 0.85
+      WHEN (j1.title ILIKE '%Graphic%' AND j2.title ILIKE '%UI%') THEN 0.80
+      WHEN (j1.title ILIKE '%UX%' AND j2.title ILIKE '%Product%') THEN 0.90
+      WHEN (j1.title ILIKE '%UI%' AND j2.title ILIKE '%Frontend%') THEN 0.75
+      WHEN (j1.title ILIKE '%Frontend%' AND j2.title ILIKE '%Full Stack%') THEN 0.80
+      WHEN (j1.title ILIKE '%Backend%' AND j2.title ILIKE '%Full Stack%') THEN 0.85
+      WHEN (j1.title ILIKE '%Backend%' AND j2.title ILIKE '%DevOps%') THEN 0.70
+      WHEN (j1.title ILIKE '%Analyst%' AND j2.title ILIKE '%Data%') THEN 0.85
+      WHEN (j1.title ILIKE '%Marketing%' AND j2.title ILIKE '%Product%') THEN 0.65
+      WHEN (j1.title ILIKE '%Content%' AND j2.title ILIKE '%Marketing%') THEN 0.75
+      ELSE 0.60
+    END as roi_score,
+    CASE 
+      WHEN (j1.title ILIKE '%Graphic%' AND j2.title ILIKE '%UX%') THEN 'Strong design foundation transfers well to UX with additional user research skills'
+      WHEN (j1.title ILIKE '%UX%' AND j2.title ILIKE '%Product%') THEN 'UX skills are core to product design with added business strategy knowledge'
+      WHEN (j1.title ILIKE '%Frontend%' AND j2.title ILIKE '%Full Stack%') THEN 'Frontend skills provide foundation, add backend development capabilities'
+      WHEN (j1.title ILIKE '%Backend%' AND j2.title ILIKE '%DevOps%') THEN 'Server knowledge transfers to infrastructure with additional ops skills'
+      ELSE 'Related skills and domain knowledge facilitate career transition'
+    END as reasoning
+  FROM career_graph_nodes j1
+  CROSS JOIN career_graph_nodes j2
+  WHERE j1.node_type = 'job' AND j2.node_type = 'job' AND j1.id != j2.id
+  AND (
+    -- Design to UX/UI transitions
+    (j1.title ILIKE '%Graphic%' AND (j2.title ILIKE '%UX%' OR j2.title ILIKE '%UI%'))
+    OR
+    -- UX to Product Design
+    (j1.title ILIKE '%UX%' AND j2.title ILIKE '%Product%')
+    OR
+    -- UI to Frontend
+    (j1.title ILIKE '%UI%' AND j2.title ILIKE '%Frontend%')
+    OR
+    -- Frontend to Full Stack
+    (j1.title ILIKE '%Frontend%' AND j2.title ILIKE '%Full Stack%')
+    OR
+    -- Backend to Full Stack
+    (j1.title ILIKE '%Backend%' AND j2.title ILIKE '%Full Stack%')
+    OR
+    -- Backend to DevOps
+    (j1.title ILIKE '%Backend%' AND j2.title ILIKE '%DevOps%')
+    OR
+    -- Analyst to Data roles
+    (j1.title ILIKE '%Analyst%' AND j2.title ILIKE '%Data%')
+    OR
+    -- Marketing transitions
+    (j1.title ILIKE '%Marketing%' AND j2.title ILIKE '%Product%')
+    OR
+    (j1.title ILIKE '%Content%' AND j2.title ILIKE '%Marketing%')
+    OR
+    -- Reverse transitions
+    (j2.title ILIKE '%Graphic%' AND (j1.title ILIKE '%UX%' OR j1.title ILIKE '%UI%'))
+  )
+)
+INSERT INTO career_graph_edges (
+  from_id, to_id, from_type, to_type, edge_type,
+  importance_weight, confidence_score, roi_score, reasoning,
+  time_cost_hours, skill_transfer_rate
+)
+SELECT 
+  jpm.from_job_id,
+  jpm.to_job_id,
+  'job',
+  'job',
+  'PIVOT_TO',
+  0.7,
+  0.80,
+  jpm.roi_score,
+  jpm.reasoning,
+  520, -- ~3 months of learning
+  0.75
+FROM job_pivot_mappings jpm
+WHERE NOT EXISTS (
+  SELECT 1 FROM career_graph_edges 
+  WHERE from_id = jpm.from_job_id AND to_id = jpm.to_job_id AND edge_type = 'PIVOT_TO'
+);
+
+-- Create substitution groups for courses
+WITH course_substitution_groups AS (
+  SELECT 
+    id,
+    title,
+    CASE 
+      WHEN title ILIKE '%React%' OR title ILIKE '%Frontend%' OR title ILIKE '%JavaScript%' THEN gen_random_uuid()
+      WHEN title ILIKE '%UX%' OR title ILIKE '%User Experience%' THEN gen_random_uuid()
+      WHEN title ILIKE '%UI%' OR title ILIKE '%User Interface%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Design%' AND title NOT ILIKE '%UX%' AND title NOT ILIKE '%UI%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Python%' OR title ILIKE '%Data%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Node%' OR title ILIKE '%Backend%' OR title ILIKE '%Server%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Database%' OR title ILIKE '%SQL%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Cloud%' OR title ILIKE '%AWS%' OR title ILIKE '%DevOps%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Mobile%' OR title ILIKE '%iOS%' OR title ILIKE '%Android%' THEN gen_random_uuid()
+      WHEN title ILIKE '%Marketing%' OR title ILIKE '%SEO%' THEN gen_random_uuid()
+      ELSE gen_random_uuid()
+    END as substitution_group_id
+  FROM career_graph_nodes 
+  WHERE node_type = 'course'
+),
+grouped_courses AS (
+  SELECT 
+    substitution_group_id,
+    array_agg(id) as course_ids
+  FROM course_substitution_groups
+  GROUP BY substitution_group_id
+  HAVING count(*) >= 2
+)
+UPDATE career_graph_nodes 
+SET substitution_group_id = csg.substitution_group_id
+FROM course_substitution_groups csg
+WHERE career_graph_nodes.id = csg.id
+AND career_graph_nodes.node_type = 'course'
+AND csg.substitution_group_id IN (SELECT substitution_group_id FROM grouped_courses);
+
+-- For courses without natural groups, assign individual substitution groups
+UPDATE career_graph_nodes 
+SET substitution_group_id = gen_random_uuid()
+WHERE node_type = 'course' 
+AND substitution_group_id IS NULL;
+
+-- Create NEXT_ROLE edges for career progression paths
+WITH career_progression_mappings AS (
+  SELECT 
+    j1.id as junior_job_id,
+    j1.title as junior_title,
+    j2.id as senior_job_id,
+    j2.title as senior_title,
+    CASE 
+      WHEN (j1.title ILIKE '%Junior%' AND j2.title ILIKE '%Senior%' AND 
+            REPLACE(REPLACE(j1.title, 'Junior ', ''), 'Jr. ', '') = REPLACE(REPLACE(j2.title, 'Senior ', ''), 'Sr. ', '')) THEN 0.95
+      WHEN (j1.title NOT ILIKE '%Junior%' AND j1.title NOT ILIKE '%Senior%' AND j1.title NOT ILIKE '%Lead%' AND
+            j2.title ILIKE '%Senior%' AND j2.title ILIKE '%' || j1.title || '%') THEN 0.90
+      WHEN (j1.title ILIKE '%Engineer%' AND j2.title ILIKE '%Lead%' AND j2.title ILIKE '%Engineer%') THEN 0.85
+      WHEN (j1.title ILIKE '%Designer%' AND j2.title ILIKE '%Lead%' AND j2.title ILIKE '%Design%') THEN 0.85
+      WHEN (j1.title ILIKE '%Analyst%' AND j2.title ILIKE '%Manager%') THEN 0.80
+      WHEN (j1.title ILIKE '%Developer%' AND j2.title ILIKE '%Architect%') THEN 0.85
+      ELSE 0.70
+    END as confidence_score
+  FROM career_graph_nodes j1
+  CROSS JOIN career_graph_nodes j2
+  WHERE j1.node_type = 'job' AND j2.node_type = 'job' AND j1.id != j2.id
+  AND (
+    -- Junior to Senior progressions
+    (j1.title ILIKE '%Junior%' AND j2.title ILIKE '%Senior%')
+    OR
+    -- Mid-level to Senior progressions
+    (j1.title NOT ILIKE '%Junior%' AND j1.title NOT ILIKE '%Senior%' AND j1.title NOT ILIKE '%Lead%' 
+     AND j2.title ILIKE '%Senior%' AND j2.title ILIKE '%' || SPLIT_PART(j1.title, ' ', -1) || '%')
+    OR
+    -- Engineer to Lead Engineer
+    (j1.title ILIKE '%Engineer%' AND j1.title NOT ILIKE '%Lead%' AND j2.title ILIKE '%Lead%Engineer%')
+    OR
+    -- Designer to Lead Designer
+    (j1.title ILIKE '%Designer%' AND j1.title NOT ILIKE '%Lead%' AND j2.title ILIKE '%Lead%Design%')
+    OR
+    -- Analyst to Manager
+    (j1.title ILIKE '%Analyst%' AND j2.title ILIKE '%Manager%')
+    OR
+    -- Developer to Architect
+    (j1.title ILIKE '%Developer%' AND j2.title ILIKE '%Architect%')
+  )
+)
+INSERT INTO career_graph_edges (
+  from_id, to_id, from_type, to_type, edge_type,
+  importance_weight, confidence_score, time_cost_hours,
+  reasoning, difficulty_multiplier
+)
+SELECT 
+  cpm.junior_job_id,
+  cpm.senior_job_id,
+  'job',
+  'job',
+  'NEXT_ROLE',
+  0.9,
+  cpm.confidence_score,
+  2080, -- 1 year typical promotion timeline
+  'Natural career progression from ' || cpm.junior_title || ' to ' || cpm.senior_title,
+  1.2
+FROM career_progression_mappings cpm
+WHERE cpm.confidence_score >= 0.80
+AND NOT EXISTS (
+  SELECT 1 FROM career_graph_edges 
+  WHERE from_id = cpm.junior_job_id AND to_id = cpm.senior_job_id AND edge_type = 'NEXT_ROLE'
+);
+
+-- Connect courses to skills with TEACHES edges for better learning paths
+WITH course_skill_mappings AS (
+  SELECT 
+    c.id as course_id,
+    c.title as course_title,
+    s.id as skill_id,
+    s.title as skill_title
+  FROM career_graph_nodes c
+  CROSS JOIN career_graph_nodes s
+  WHERE c.node_type = 'course' AND s.node_type = 'skill'
+  AND (
+    -- React/Frontend courses
+    (c.title ILIKE '%React%' AND s.title ILIKE '%React%')
+    OR (c.title ILIKE '%JavaScript%' AND s.title ILIKE '%JavaScript%')
+    OR (c.title ILIKE '%Frontend%' AND (s.title ILIKE '%HTML%' OR s.title ILIKE '%CSS%' OR s.title ILIKE '%JavaScript%'))
+    OR
+    -- UX/UI courses
+    (c.title ILIKE '%UX%' AND s.title ILIKE '%UX%')
+    OR (c.title ILIKE '%UI%' AND s.title ILIKE '%UI%')
+    OR (c.title ILIKE '%Design%' AND (s.title ILIKE '%Design%' OR s.title ILIKE '%Wireframe%' OR s.title ILIKE '%Prototyp%'))
+    OR
+    -- Backend courses
+    (c.title ILIKE '%Node%' AND s.title ILIKE '%Node%')
+    OR (c.title ILIKE '%Python%' AND s.title ILIKE '%Python%')
+    OR (c.title ILIKE '%Backend%' AND (s.title ILIKE '%API%' OR s.title ILIKE '%Database%' OR s.title ILIKE '%Server%'))
+    OR
+    -- Data courses
+    (c.title ILIKE '%Data%' AND (s.title ILIKE '%SQL%' OR s.title ILIKE '%Analytics%' OR s.title ILIKE '%Statistics%'))
+    OR
+    -- Cloud/DevOps courses
+    (c.title ILIKE '%AWS%' AND s.title ILIKE '%AWS%')
+    OR (c.title ILIKE '%Cloud%' AND s.title ILIKE '%Cloud%')
+    OR (c.title ILIKE '%DevOps%' AND (s.title ILIKE '%Docker%' OR s.title ILIKE '%CI/CD%' OR s.title ILIKE '%Deploy%'))
+  )
+)
+INSERT INTO career_graph_edges (
+  from_id, to_id, from_type, to_type, edge_type,
+  importance_weight, confidence_score, time_cost_hours,
+  reasoning
+)
+SELECT DISTINCT
+  csm.course_id,
+  csm.skill_id,
+  'course',
+  'skill',
+  'TEACHES',
+  0.85,
+  0.90,
+  20,
+  'Course teaches essential ' || csm.skill_title || ' skills'
+FROM course_skill_mappings csm
+WHERE NOT EXISTS (
+  SELECT 1 FROM career_graph_edges 
+  WHERE from_id = csm.course_id AND to_id = csm.skill_id AND edge_type = 'TEACHES'
+);
+
+-- Add some project nodes to bridge courses and skills
+INSERT INTO career_graph_nodes (node_type, title, description, category, difficulty_level, estimated_time_hours, has_hands_on_projects) VALUES
+('project', 'Portfolio Website', 'Build a responsive personal portfolio using HTML, CSS, and JavaScript', 'Web Development', 2, 40, true),
+('project', 'React Todo App', 'Create a full-featured todo application using React and local storage', 'Frontend Development', 3, 60, true),
+('project', 'UX Case Study', 'Complete end-to-end UX research and design for a mobile app', 'UX Design', 3, 80, true),
+('project', 'API Design Project', 'Design and implement a RESTful API with authentication and database integration', 'Backend Development', 4, 100, true),
+('project', 'Data Analysis Dashboard', 'Build an interactive dashboard using Python and data visualization libraries', 'Data Science', 4, 120, true);
+
+-- Connect projects to relevant skills and jobs
+WITH project_mappings AS (
+  SELECT 
+    p.id as project_id,
+    p.title as project_title,
+    COALESCE(s.id, j.id) as target_id,
+    CASE WHEN s.id IS NOT NULL THEN 'skill' ELSE 'job' END as target_type,
+    CASE WHEN s.id IS NOT NULL THEN 'DEMONSTRATES' ELSE 'LEADS_TO' END as edge_type
+  FROM career_graph_nodes p
+  LEFT JOIN career_graph_nodes s ON s.node_type = 'skill' AND (
+    (p.title ILIKE '%Portfolio%' AND (s.title ILIKE '%HTML%' OR s.title ILIKE '%CSS%' OR s.title ILIKE '%JavaScript%'))
+    OR (p.title ILIKE '%React%' AND s.title ILIKE '%React%')
+    OR (p.title ILIKE '%UX%' AND s.title ILIKE '%UX%')
+    OR (p.title ILIKE '%API%' AND (s.title ILIKE '%API%' OR s.title ILIKE '%Node%'))
+    OR (p.title ILIKE '%Data%' AND (s.title ILIKE '%Python%' OR s.title ILIKE '%Analytics%'))
+  )
+  LEFT JOIN career_graph_nodes j ON j.node_type = 'job' AND (
+    (p.title ILIKE '%Portfolio%' AND j.title ILIKE '%Frontend%')
+    OR (p.title ILIKE '%React%' AND j.title ILIKE '%Frontend%')
+    OR (p.title ILIKE '%UX%' AND j.title ILIKE '%UX%')
+    OR (p.title ILIKE '%API%' AND j.title ILIKE '%Backend%')
+    OR (p.title ILIKE '%Data%' AND j.title ILIKE '%Data%')
+  )
+  WHERE p.node_type = 'project'
+  AND (s.id IS NOT NULL OR j.id IS NOT NULL)
+)
+INSERT INTO career_graph_edges (
+  from_id, to_id, from_type, to_type, edge_type,
+  importance_weight, confidence_score, time_cost_hours,
+  reasoning
+)
+SELECT 
+  pm.project_id,
+  pm.target_id,
+  'project',
+  pm.target_type,
+  pm.edge_type,
+  0.80,
+  0.85,
+  CASE WHEN pm.edge_type = 'DEMONSTRATES' THEN 0 ELSE 200 END,
+  'Project ' || pm.edge_type || ' relevant skills and experience'
+FROM project_mappings pm;
