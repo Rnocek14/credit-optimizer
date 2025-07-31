@@ -97,9 +97,9 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
     .from('career_graph_edges')
     .select(`
       *,
-      skill:to_id(*)
+      skill:from_id(*)
     `)
-    .eq('from_id', targetJobNode.id)
+    .eq('to_id', targetJobNode.id)
     .eq('edge_type', 'REQUIRES_SKILL');
 
   const requiredSkills = skillEdges?.map((edge: any) => edge.skill) || [];
@@ -187,6 +187,24 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
 async function analyzeUnlocks(supabase: any, completedSkills: string[], completedCourses: string[]): Promise<any> {
   console.log(`Analyzing unlocks for ${completedSkills.length} skills and ${completedCourses.length} courses`);
 
+  // Convert skill titles to IDs if needed
+  const { data: skillNodes } = await supabase
+    .from('career_graph_nodes')
+    .select('id, title')
+    .eq('node_type', 'skill')
+    .eq('active', true);
+
+  const skillTitleToId = new Map();
+  skillNodes?.forEach((skill: any) => {
+    skillTitleToId.set(skill.title, skill.id);
+  });
+
+  const completedSkillIds = completedSkills.map(skill => 
+    skillTitleToId.get(skill) || skill
+  ).filter(Boolean);
+
+  console.log(`Converted ${completedSkills.length} skill titles to ${completedSkillIds.length} skill IDs`);
+
   // 1. Find all jobs and their skill requirements
   const { data: jobNodes } = await supabase
     .from('career_graph_nodes')
@@ -198,16 +216,16 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[], complete
   const partiallyQualifiedJobs = [];
 
   for (const job of jobNodes || []) {
-    // Get required skills for this job
+    // Get required skills for this job (fixed direction: skill -> job)
     const { data: skillEdges } = await supabase
       .from('career_graph_edges')
-      .select('to_id')
-      .eq('from_id', job.id)
+      .select('from_id')
+      .eq('to_id', job.id)
       .eq('edge_type', 'REQUIRES_SKILL');
 
-    const requiredSkillIds = skillEdges?.map((edge: any) => edge.to_id) || [];
+    const requiredSkillIds = skillEdges?.map((edge: any) => edge.from_id) || [];
     const completedRequiredSkills = requiredSkillIds.filter((skillId: string) => 
-      completedSkills.includes(skillId)
+      completedSkillIds.includes(skillId)
     );
 
     const completionPercentage = requiredSkillIds.length > 0 
