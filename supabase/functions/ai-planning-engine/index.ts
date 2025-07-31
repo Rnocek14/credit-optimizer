@@ -367,7 +367,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         };
         unlockedJobs.push(jobItem);
         console.log(`✅ Job ${job.title} UNLOCKED - Added to unlockedJobs:`, JSON.stringify(jobItem, null, 2));
-      } else if (completionPercentage >= 40) {
+      } else if (completionPercentage >= 35) {
         const jobItem = {
           job: {
             id: job.id,
@@ -382,7 +382,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         partiallyQualifiedJobs.push(jobItem);
         console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED - Added to partiallyQualifiedJobs:`, JSON.stringify(jobItem, null, 2));
       } else {
-        console.log(`❌ Job ${job.title} not qualified (${completionPercentage.toFixed(1)}% < 40%)`);
+        console.log(`❌ Job ${job.title} not qualified (${completionPercentage.toFixed(1)}% < 35%)`);	
       }
     }
 
