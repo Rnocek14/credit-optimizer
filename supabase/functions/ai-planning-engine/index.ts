@@ -248,13 +248,41 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
 
     // Convert skill titles to IDs
     const completedSkillIds: string[] = [];
+    console.log('🔍 Available skill titles (first 20):', skillNodes?.slice(0, 20).map(s => s.title));
+    
     for (const skillTitle of completedSkills) {
+      // Try exact match first
       const skill = skillNodes?.find(s => s.title === skillTitle);
       if (skill) {
         completedSkillIds.push(skill.id);
-        console.log(`Converting skill "${skillTitle}" to ID: ${skill.id}`);
+        console.log(`✅ Converting skill "${skillTitle}" to ID: ${skill.id}`);
       } else {
-        console.log(`Skill "${skillTitle}" not found in database`);
+        // Try case-insensitive match
+        const skillCaseInsensitive = skillNodes?.find(s => 
+          s.title.toLowerCase() === skillTitle.toLowerCase()
+        );
+        if (skillCaseInsensitive) {
+          completedSkillIds.push(skillCaseInsensitive.id);
+          console.log(`✅ Converting skill "${skillTitle}" to ID (case-insensitive): ${skillCaseInsensitive.id}`);
+        } else {
+          // Try partial match
+          const skillPartial = skillNodes?.find(s => 
+            s.title.toLowerCase().includes(skillTitle.toLowerCase()) ||
+            skillTitle.toLowerCase().includes(s.title.toLowerCase())
+          );
+          if (skillPartial) {
+            completedSkillIds.push(skillPartial.id);
+            console.log(`✅ Converting skill "${skillTitle}" to ID (partial match): "${skillPartial.title}" -> ${skillPartial.id}`);
+          } else {
+            console.log(`❌ Skill "${skillTitle}" not found in database`);
+            console.log('🔍 Similar skills:', skillNodes?.filter(s => 
+              s.title.toLowerCase().includes('ux') || 
+              s.title.toLowerCase().includes('design') ||
+              s.title.toLowerCase().includes('figma') ||
+              s.title.toLowerCase().includes('ui')
+            ).slice(0, 10).map(s => s.title));
+          }
+        }
       }
     }
 
@@ -322,27 +350,44 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         console.log(`Processing job ${jobCount}: ${job.title} (ID: ${job.id})`);
       }
 
-      // Get skills required by this job - skills point TO jobs
-      const { data: requiredSkillEdges, error: edgeError } = await supabase
+      // Get skills required by this job - try multiple edge types
+      let requiredSkillEdges = [];
+      
+      // Try REQUIRES_SKILL first
+      const { data: skillReqEdges, error: edgeError1 } = await supabase
         .from('career_graph_edges')
-        .select('from_id, to_id, from_type, to_type')
+        .select('from_id, to_id, edge_type')
         .eq('edge_type', 'REQUIRES_SKILL')
         .eq('to_id', job.id);
-
-      if (edgeError) {
-        console.error(`Error fetching required skills for job ${job.title}:`, edgeError);
-        continue;
+        
+      if (skillReqEdges && skillReqEdges.length > 0) {
+        requiredSkillEdges = skillReqEdges;
+        if (jobCount <= 5) console.log(`✅ Found ${skillReqEdges.length} REQUIRES_SKILL edges for ${job.title}`);
+      } else {
+        // Try skill_requirement
+        const { data: skillReqEdges2, error: edgeError2 } = await supabase
+          .from('career_graph_edges')
+          .select('from_id, to_id, edge_type')
+          .eq('edge_type', 'skill_requirement')
+          .eq('to_id', job.id);
+          
+        if (skillReqEdges2 && skillReqEdges2.length > 0) {
+          requiredSkillEdges = skillReqEdges2;
+          if (jobCount <= 5) console.log(`✅ Found ${skillReqEdges2.length} skill_requirement edges for ${job.title}`);
+        } else {
+          if (jobCount <= 5) console.log(`❌ No skill edges found for ${job.title} with either edge type`);
+        }
       }
 
-      console.log(`Found ${requiredSkillEdges?.length || 0} skill requirement edges for ${job.title}`);
-      
       const requiredSkillIds = requiredSkillEdges?.map(edge => edge.from_id) || [];
-      console.log(`Required skill IDs for ${job.title}:`, requiredSkillIds);
+      if (jobCount <= 5) {
+        console.log(`🎯 Required skill IDs for ${job.title}:`, JSON.stringify(requiredSkillIds, null, 2));
+      }
       
       const completedRequiredSkills = requiredSkillIds.filter(skillId => {
         const isCompleted = completedSkillIds.includes(skillId);
-        if (jobCount <= 10) { // Only log first 10 jobs for readability
-          console.log(`  Skill ${skillId}: ${isCompleted ? 'COMPLETED' : 'not completed'}`);
+        if (jobCount <= 5) { // Only log first 5 jobs for readability
+          console.log(`  ${isCompleted ? '✅' : '❌'} Skill ${skillId}: ${isCompleted ? 'COMPLETED' : 'not completed'}`);
         }
         return isCompleted;
       });
@@ -351,7 +396,9 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         ? (completedRequiredSkills.length / requiredSkillIds.length) * 100 
         : 0;
 
-      console.log(`Job ${job.title}: ${completedRequiredSkills.length}/${requiredSkillIds.length} skills (${completionPercentage.toFixed(1)}%)`);
+      if (jobCount <= 5) {
+        console.log(`📊 Job ${job.title}: ${completedRequiredSkills.length}/${requiredSkillIds.length} skills (${completionPercentage.toFixed(1)}%)`);
+      }
 
       if (completionPercentage >= 80) {
         const jobItem = {
@@ -366,7 +413,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
           missingSkills: requiredSkillIds.length - completedRequiredSkills.length
         };
         unlockedJobs.push(jobItem);
-        console.log(`✅ Job ${job.title} UNLOCKED - Added to unlockedJobs:`, JSON.stringify(jobItem, null, 2));
+        if (jobCount <= 5) console.log(`✅ Job ${job.title} UNLOCKED (${completionPercentage.toFixed(1)}% >= 80%)`);
       } else if (completionPercentage >= 35) {
         const jobItem = {
           job: {
@@ -380,9 +427,9 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
           missingSkills: requiredSkillIds.length - completedRequiredSkills.length
         };
         partiallyQualifiedJobs.push(jobItem);
-        console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED - Added to partiallyQualifiedJobs:`, JSON.stringify(jobItem, null, 2));
+        if (jobCount <= 5) console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED (${completionPercentage.toFixed(1)}% >= 35%)`);
       } else {
-        console.log(`❌ Job ${job.title} not qualified (${completionPercentage.toFixed(1)}% < 35%)`);	
+        if (jobCount <= 5) console.log(`❌ Job ${job.title} not qualified (${completionPercentage.toFixed(1)}% < 35%)`);	
       }
     }
 

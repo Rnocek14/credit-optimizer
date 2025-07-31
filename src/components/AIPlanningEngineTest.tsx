@@ -130,12 +130,22 @@ export function AIPlanningEngineTest() {
       
       const analysis = await analyzeUnlocks(skills, courses);
       
+      console.log('🔍 DEBUG: Full analysis response:', JSON.stringify(analysis, null, 2));
+      
       if (!analysis) {
         result.errors.push('No analysis returned');
+        console.error('❌ Analysis is null/undefined');
         return result;
       }
 
       console.log('✅ Analysis completed');
+      console.log('📊 Analysis Summary:', {
+        unlockedJobs: analysis.unlockedJobs?.length || 0,
+        partiallyQualifiedJobs: analysis.partiallyQualifiedJobs?.length || 0,
+        recommendedCourses: analysis.recommendedCourses?.length || 0,
+        summary: analysis.summary
+      });
+      
       result.analysis = analysis;
 
       // Validate analysis structure
