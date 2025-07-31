@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, BookOpen, Star, Clock, DollarSign } from 'lucide-react';
+import SaveButton from '@/components/SaveButton';
 
 interface CourseCardProps {
   course: {
@@ -18,6 +19,7 @@ interface CourseCardProps {
   };
   onStartCourse?: (courseId: string) => void;
   compact?: boolean;
+  showSaveButton?: boolean;
 }
 
 const difficultyColors = {
@@ -30,7 +32,8 @@ const difficultyColors = {
 export const CourseCard: React.FC<CourseCardProps> = ({ 
   course, 
   onStartCourse, 
-  compact = false 
+  compact = false,
+  showSaveButton = true
 }) => {
   const handleStartCourse = () => {
     if (course.url) {
@@ -133,14 +136,23 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
         )}
 
-        <Button 
-          onClick={handleStartCourse}
-          className="w-full"
-          disabled={!course.url}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Start Course
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleStartCourse}
+            className="flex-1"
+            disabled={!course.url}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Start Course
+          </Button>
+          {showSaveButton && (
+            <SaveButton 
+              courseId={course.id} 
+              variant="outline" 
+              size="default"
+            />
+          )}
+        </div>
       </CardContent>
     </Card>
   );

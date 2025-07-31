@@ -18,11 +18,10 @@ import {
   GraduationCap, 
   TrendingUp,
   ExternalLink,
-  Heart,
-  Download,
   BarChart3
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import SaveButton from '@/components/SaveButton';
 
 interface Course {
   id: string;
@@ -55,18 +54,9 @@ interface CourseDetailModalProps {
 }
 
 export function CourseDetailModal({ course, isOpen, onClose }: CourseDetailModalProps) {
-  const [isSaved, setIsSaved] = useState(false);
   const { toast } = useToast();
 
   if (!course) return null;
-
-  const handleSaveCourse = () => {
-    setIsSaved(!isSaved);
-    toast({
-      title: isSaved ? 'Course removed from saved' : 'Course saved',
-      description: isSaved ? 'Removed from your saved courses' : 'Added to your saved courses'
-    });
-  };
 
   const handleStartCourse = () => {
     if (course.url) {
@@ -249,15 +239,12 @@ export function CourseDetailModal({ course, isOpen, onClose }: CourseDetailModal
                   Start Course
                 </Button>
                 
-                <Button 
-                  onClick={handleSaveCourse}
-                  variant={isSaved ? "default" : "outline"}
-                  className="w-full"
+                <SaveButton 
+                  courseId={course.id}
+                  variant="outline"
                   size="lg"
-                >
-                  <Heart className={`h-4 w-4 mr-2 ${isSaved ? 'fill-current' : ''}`} />
-                  {isSaved ? 'Saved' : 'Save Course'}
-                </Button>
+                  className="w-full"
+                />
               </CardContent>
             </Card>
 

@@ -143,7 +143,7 @@ const App = () => (
             } 
           />
           <Route 
-            path="/saved" 
+            path="/saved-courses" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Saved />
