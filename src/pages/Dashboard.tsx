@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Target, BookOpen, Clock, TrendingUp, CheckCircle } from "lucide-react";
+import { Loader2, Target, BookOpen, Clock, TrendingUp, CheckCircle, Brain, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import ProgressBar from "@/components/ProgressBar";
@@ -17,6 +17,8 @@ import { CareerGraphTest } from "@/components/CareerGraphTest";
 import { OrphanedNodeReconnector } from "@/components/OrphanedNodeReconnector";
 import { AICareerGraphManager } from "@/components/AICareerGraphManager";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
+import { useAnalytics } from "@/lib/analytics";
+import { useNavigate } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -26,7 +28,10 @@ export default function Dashboard() {
   const [careerTracks, setCareerTracks] = useState<CareerTrack[]>([]);
   const [roadmapSteps, setRoadmapSteps] = useState<RoadmapStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const { toast } = useToast();
+  const { trackPlannerAccessed } = useAnalytics();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
@@ -35,8 +40,8 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       // Use the new auth helper to get current user
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
+      const user = await getCurrentUser();
+      if (!user) {
         toast({
           title: "Authentication Error",
           description: "Please log in to view your dashboard",
@@ -44,9 +49,11 @@ export default function Dashboard() {
         });
         return;
       }
+      
+      setCurrentUser(user);
 
       // Get user's profile using the auth helper
-      const profile = await getUserProfile(currentUser.id, currentUser.isDevUser);
+      const profile = await getUserProfile(user.id, user.isDevUser);
       if (!profile) {
         toast({
           title: "Profile Not Found",
@@ -140,6 +147,13 @@ export default function Dashboard() {
 
   const completedSteps = roadmapSteps.filter(step => step.completed).length;
 
+  const handlePlannerAccess = () => {
+    if (currentUser) {
+      trackPlannerAccessed(currentUser.id, 'dashboard_cta');
+    }
+    navigate('/planner');
+  };
+
   if (isLoading) {
     return (
       <>
@@ -173,6 +187,31 @@ export default function Dashboard() {
             <p className="text-muted-foreground text-sm md:text-base">
               Track your progress and follow your personalized roadmap
             </p>
+          </div>
+
+          {/* AI Career Planner CTA */}
+          <div className="mb-6 md:mb-8">
+            <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary/20 rounded-lg">
+                      <Brain className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-1">AI Career Planner</h3>
+                      <p className="text-muted-foreground">
+                        Generate personalized learning paths with ROI optimization and smart goal setting
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={handlePlannerAccess} className="flex items-center gap-2">
+                    Launch Planner
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Workflow Test Panel */}

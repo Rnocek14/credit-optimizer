@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Target, Loader2, Sparkles } from "lucide-react";
+import { useAnalytics } from "@/lib/analytics";
 
 interface PlannerJobInputProps {
   onGeneratePlan: (targetJob: string) => Promise<void>;
@@ -24,6 +25,7 @@ const popularJobs = [
 
 export function PlannerJobInput({ onGeneratePlan, loading, error }: PlannerJobInputProps) {
   const [targetJob, setTargetJob] = useState("");
+  const { trackPlannerGeneratePlan } = useAnalytics();
 
   const handleGeneratePlan = async () => {
     if (!targetJob.trim()) return;

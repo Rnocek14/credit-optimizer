@@ -6,11 +6,13 @@ import { PlannerJobInput } from "@/components/PlannerJobInput";
 import { PlannerPathDisplay } from "@/components/PlannerPathDisplay";
 import { PlannerUnlockPreview } from "@/components/PlannerUnlockPreview";
 import { useAIPlanningEngine, type LearningPath } from "@/hooks/useAIPlanningEngine";
+import { useAnalytics } from "@/lib/analytics";
 
 const Planner = () => {
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [user, setUser] = useState<any>(null);
   const { loading, error, generateBackwardPlan } = useAIPlanningEngine();
+  const { trackPlannerGeneratePlan } = useAnalytics();
 
   useEffect(() => {
     checkUser();
@@ -24,6 +26,14 @@ const Planner = () => {
   const handleGeneratePlan = async (targetJob: string) => {
     const paths = await generateBackwardPlan(targetJob);
     setLearningPaths(paths);
+
+    // Track analytics
+    if (user) {
+      trackPlannerGeneratePlan(user.id, {
+        target_job: targetJob,
+        paths_generated: paths.length
+      });
+    }
   };
 
   return (

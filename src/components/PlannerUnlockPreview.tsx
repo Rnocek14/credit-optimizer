@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Unlock, GraduationCap, Target, TrendingUp } from "lucide-react";
 import { useAIPlanningEngine, type UnlockAnalysis } from "@/hooks/useAIPlanningEngine";
+import { useAnalytics } from "@/lib/analytics";
 
 interface PlannerUnlockPreviewProps {
   userId?: string;
@@ -12,6 +13,7 @@ interface PlannerUnlockPreviewProps {
 export function PlannerUnlockPreview({ userId }: PlannerUnlockPreviewProps) {
   const [unlockData, setUnlockData] = useState<UnlockAnalysis | null>(null);
   const { loading, analyzeUnlocks } = useAIPlanningEngine();
+  const { trackPlannerViewedUnlockAnalysis } = useAnalytics();
 
   useEffect(() => {
     if (userId) {
@@ -30,6 +32,15 @@ export function PlannerUnlockPreview({ userId }: PlannerUnlockPreviewProps) {
       ["Introduction to UX Design"]
     );
     setUnlockData(analysis);
+
+    // Track analytics for authenticated users
+    if (userId && analysis) {
+      trackPlannerViewedUnlockAnalysis(userId, {
+        unlocked_jobs: analysis.unlockedJobs?.length || 0,
+        partially_qualified_jobs: analysis.partiallyQualifiedJobs?.length || 0,
+        recommended_courses: analysis.recommendedCourses?.length || 0
+      });
+    }
   };
 
   const loadDemoUnlockAnalysis = async () => {

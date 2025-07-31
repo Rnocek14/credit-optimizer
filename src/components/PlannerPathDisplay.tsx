@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAnalytics } from "@/lib/analytics";
 import type { LearningPath } from "@/hooks/useAIPlanningEngine";
 
 interface PlannerPathDisplayProps {
@@ -24,6 +25,7 @@ interface PlannerPathDisplayProps {
 
 export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPathDisplayProps) {
   const [savingPaths, setSavingPaths] = useState<Set<string>>(new Set());
+  const { trackPlannerSetGoal } = useAnalytics();
 
   const getPathTypeColor = (type: string) => {
     switch (type) {
@@ -77,6 +79,15 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
         });
 
       if (error) throw error;
+
+      // Track analytics
+      trackPlannerSetGoal(userId, {
+        target_job: path.nodes.find(n => n.type === 'job')?.title,
+        path_type: path.path_type,
+        total_time: path.total_time,
+        total_cost: path.total_cost,
+        average_roi: path.average_roi
+      });
 
       toast.success("Goal saved successfully!", {
         description: "Added to your career goals"
