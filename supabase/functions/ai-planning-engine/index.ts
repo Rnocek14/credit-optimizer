@@ -354,7 +354,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
       console.log(`Job ${job.title}: ${completedRequiredSkills.length}/${requiredSkillIds.length} skills (${completionPercentage.toFixed(1)}%)`);
 
       if (completionPercentage >= 80) {
-        unlockedJobs.push({
+        const jobItem = {
           job: {
             id: job.id,
             title: job.title,
@@ -363,13 +363,12 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
             difficulty_level: job.difficulty_level || 3
           },
           completionPercentage: Math.round(completionPercentage),
-          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
-          requiredSkillsCount: requiredSkillIds.length,
-          completedSkillsCount: completedRequiredSkills.length
-        });
-        console.log(`✅ Job ${job.title} UNLOCKED`);
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length
+        };
+        unlockedJobs.push(jobItem);
+        console.log(`✅ Job ${job.title} UNLOCKED - Added to unlockedJobs:`, JSON.stringify(jobItem, null, 2));
       } else if (completionPercentage >= 40) {
-        partiallyQualifiedJobs.push({
+        const jobItem = {
           job: {
             id: job.id,
             title: job.title,
@@ -378,11 +377,12 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
             difficulty_level: job.difficulty_level || 3
           },
           completionPercentage: Math.round(completionPercentage),
-          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
-          requiredSkillsCount: requiredSkillIds.length,
-          completedSkillsCount: completedRequiredSkills.length
-        });
-        console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED`);
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length
+        };
+        partiallyQualifiedJobs.push(jobItem);
+        console.log(`🔶 Job ${job.title} PARTIALLY QUALIFIED - Added to partiallyQualifiedJobs:`, JSON.stringify(jobItem, null, 2));
+      } else {
+        console.log(`❌ Job ${job.title} not qualified (${completionPercentage.toFixed(1)}% < 40%)`);
       }
     }
 
@@ -431,7 +431,24 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
       }
     };
 
-    console.log('Unlock analysis result:', result.summary);
+    console.log('=== FINAL UNLOCK ANALYSIS RESULT ===');
+    console.log('Summary:', JSON.stringify(result.summary, null, 2));
+    console.log('Unlocked Jobs Count:', result.unlockedJobs.length);
+    console.log('Partially Qualified Jobs Count:', result.partiallyQualifiedJobs.length);
+    console.log('Recommended Courses Count:', result.recommendedCourses.length);
+    
+    // Log first few items to validate structure
+    if (result.unlockedJobs.length > 0) {
+      console.log('Sample Unlocked Job:', JSON.stringify(result.unlockedJobs[0], null, 2));
+    }
+    if (result.partiallyQualifiedJobs.length > 0) {
+      console.log('Sample Partially Qualified Job:', JSON.stringify(result.partiallyQualifiedJobs[0], null, 2));
+    }
+    if (result.recommendedCourses.length > 0) {
+      console.log('Sample Recommended Course:', JSON.stringify(result.recommendedCourses[0], null, 2));
+    }
+    
+    console.log('=== END UNLOCK ANALYSIS ===');
     return result;
 
   } catch (error) {
