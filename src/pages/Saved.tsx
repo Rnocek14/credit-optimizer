@@ -44,58 +44,98 @@ export default function Saved() {
 
   const fetchSavedCourses = async () => {
     try {
+      console.log('🔍 Fetching saved courses...');
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 User:', user?.id);
+      
       if (!user) {
+        console.log('❌ No user found');
         setLoading(false);
         return;
       }
 
-      const { data: savedData, error } = await supabase
+      // First get saved courses with course IDs
+      const { data: savedData, error: savedError } = await supabase
         .from('saved_courses')
-        .select(`
-          id,
-          created_at,
-          course:recommended_courses (
-            id,
-            title,
-            platform,
-            difficulty,
-            cost,
-            skill_tags,
-            url,
-            is_ai_recommended,
-            mentor_id
-          )
-        `)
+        .select('id, created_at, course_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      console.log('💾 Saved courses data:', savedData);
+      if (savedError) {
+        console.error('❌ Saved courses error:', savedError);
+        throw savedError;
+      }
+
+      if (!savedData || savedData.length === 0) {
+        console.log('📭 No saved courses found');
+        setSavedCourses([]);
+        return;
+      }
+
+      // Get course details for each saved course
+      const courseIds = savedData.map(saved => saved.course_id);
+      console.log('🔍 Course IDs to fetch:', courseIds);
+
+      const { data: coursesData, error: coursesError } = await supabase
+        .from('recommended_courses')
+        .select('id, title, platform, difficulty, cost, skill_tags, url, is_ai_recommended, mentor_id')
+        .in('id', courseIds);
+
+      console.log('📚 Courses data:', coursesData);
+      if (coursesError) {
+        console.error('❌ Courses error:', coursesError);
+        throw coursesError;
+      }
+
+      // Combine saved data with course data
+      const combinedData = savedData.map(saved => {
+        const course = coursesData?.find(c => c.id === saved.course_id);
+        return {
+          id: saved.id,
+          created_at: saved.created_at,
+          course: course || null
+        };
+      }).filter(item => item.course) as Array<{
+        id: string;
+        created_at: string;
+        course: any;
+      }>;
+
+      console.log('🔄 Combined data:', combinedData);
 
       // Get mentor info for each course
       const coursesWithMentors = await Promise.all(
-        (savedData || []).map(async (saved) => {
-          if (!saved.course) return saved;
-
-          const { data: mentorData } = await supabase
-            .from('profiles')
-            .select('name, role_title')
-            .eq('user_id', saved.course.mentor_id)
-            .single();
+        combinedData.map(async (saved) => {
+          let mentorData = null;
+          
+          if (saved.course.mentor_id) {
+            try {
+              const { data } = await supabase
+                .from('profiles')
+                .select('name, role_title')
+                .eq('user_id', saved.course.mentor_id)
+                .maybeSingle();
+              mentorData = data;
+            } catch (mentorError) {
+              console.warn('⚠️ Mentor fetch error:', mentorError);
+            }
+          }
 
           return {
             ...saved,
             course: {
               ...saved.course,
-              mentor: mentorData || { name: 'Unknown', role_title: 'Mentor' }
+              mentor: mentorData || { name: 'Anonymous Mentor', role_title: 'Educator' }
             }
           };
         })
       );
 
-      setSavedCourses(coursesWithMentors.filter(course => course.course) as SavedCourse[]);
+      console.log('✅ Final courses with mentors:', coursesWithMentors);
+      setSavedCourses(coursesWithMentors as SavedCourse[]);
     } catch (error) {
-      console.error('Error fetching saved courses:', error);
+      console.error('💥 Error fetching saved courses:', error);
       toast({
         title: "Error",
         description: "Failed to load saved courses.",
