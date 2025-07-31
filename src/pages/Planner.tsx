@@ -11,7 +11,7 @@ import { useAnalytics } from "@/lib/analytics";
 const Planner = () => {
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [user, setUser] = useState<any>(null);
-  const { loading, error, suggestions, generateBackwardPlan } = useAIPlanningEngine();
+  const { loading, error, suggestions = [], generateBackwardPlan } = useAIPlanningEngine();
   const { trackPlannerGeneratePlan } = useAnalytics();
 
   useEffect(() => {
