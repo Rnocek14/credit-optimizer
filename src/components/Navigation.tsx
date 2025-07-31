@@ -44,6 +44,7 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "Home", icon: Home },
     { href: "/explore", label: "Explore", icon: Compass },
+    { href: "/explore-courses", label: "Courses", icon: BookOpen },
     { href: "/cri-dashboard", label: "Career Readiness", icon: BarChart3 },
     { href: "/salary-insights", label: "Salary Insights", icon: DollarSign },
     { href: "/market-intelligence", label: "Market Intelligence", icon: TrendingUp },

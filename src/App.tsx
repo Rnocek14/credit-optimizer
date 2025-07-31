@@ -50,6 +50,7 @@ import VerifySignature from "./pages/VerifySignature";
 import CertificateGallery from "./pages/CertificateGallery";
 import CRIDashboardPage from "./pages/CRIDashboard";
 import UploadCourse from "./pages/UploadCourse";
+import ExploreCourses from "./pages/ExploreCourses";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
 
@@ -96,6 +97,7 @@ const App = () => (
           <Route path="/badges/:slug" element={<BadgeDetail />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/explore-courses" element={<ExploreCourses />} />
           <Route path="/salary-insights" element={<SalaryInsights />} />
           <Route 
             path="/market-intelligence" 

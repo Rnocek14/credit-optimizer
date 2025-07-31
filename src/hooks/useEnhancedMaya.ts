@@ -137,6 +137,17 @@ export function useEnhancedMaya() {
     return await sendEnhancedRequest(request);
   }, [sendEnhancedRequest]);
 
+  const recommendCourses = useCallback(async (
+    skillGaps: string[],
+    careerGoals?: string[]
+  ) => {
+    const request = `Based on my skill gaps in ${skillGaps.join(', ')} and my career goals, recommend the most effective courses with high CRI scores. Focus on practical, project-based learning that will maximize career impact.`;
+    
+    return await sendEnhancedRequest(request, {
+      goals: careerGoals?.map(goal => ({ target_role: goal }))
+    });
+  }, [sendEnhancedRequest]);
+
   // Enhanced response analysis
   const getResponseInsights = useCallback(() => {
     if (!lastResponse) return null;
@@ -171,6 +182,7 @@ export function useEnhancedMaya() {
     analyzeSkillGaps,
     requestCareerGuidance,
     createLearningPlan,
+    recommendCourses,
     getPersonalizedRecommendations,
     
     // State
