@@ -86,43 +86,76 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
     .eq('active', true);
 
   if (!jobNodes || jobNodes.length === 0) {
+    console.log(`No job nodes found for: ${targetJob}`);
     throw new Error(`Job "${targetJob}" not found in career graph`);
   }
 
   const targetJobNode = jobNodes[0];
-  console.log(`Found target job: ${targetJobNode.title}`);
+  console.log(`Found target job: ${targetJobNode.title} (ID: ${targetJobNode.id})`);
 
-  // 2. Find required skills for this job
+  // 2. Find required skills for this job using separate queries
   const { data: skillEdges } = await supabase
     .from('career_graph_edges')
-    .select(`
-      *,
-      skill:from_id(*)
-    `)
+    .select('from_id')
     .eq('to_id', targetJobNode.id)
     .eq('edge_type', 'REQUIRES_SKILL');
 
-  const requiredSkills = skillEdges?.map((edge: any) => edge.skill) || [];
-  console.log(`Found ${requiredSkills.length} required skills`);
+  console.log(`Found ${skillEdges?.length || 0} skill requirement edges`);
+  
+  if (!skillEdges || skillEdges.length === 0) {
+    console.log(`No required skills found for job: ${targetJobNode.title}`);
+    return [];
+  }
+
+  // Get the actual skill nodes
+  const skillIds = skillEdges.map(edge => edge.from_id);
+  const { data: requiredSkills } = await supabase
+    .from('career_graph_nodes')
+    .select('*')
+    .in('id', skillIds)
+    .eq('active', true);
+
+  console.log(`Found ${requiredSkills?.length || 0} required skills`);
+
+  if (!requiredSkills || requiredSkills.length === 0) {
+    console.log(`No active required skills found`);
+    return [];
+  }
 
   // 3. For each skill, find courses that teach it
   const paths: LearningPath[] = [];
   
   for (const skill of requiredSkills.slice(0, 5)) { // Limit to 5 skills for performance
+    console.log(`Processing skill: ${skill.title} (ID: ${skill.id})`);
+    
+    // Find courses that teach this skill
     const { data: courseEdges } = await supabase
       .from('career_graph_edges')
-      .select(`
-        *,
-        course:from_id(*)
-      `)
+      .select('from_id')
       .eq('to_id', skill.id)
-      .eq('edge_type', 'TEACHES')
-      .eq('course.active', true);
+      .eq('edge_type', 'TEACHES');
 
-    const coursesForSkill = courseEdges?.map((edge: any) => edge.course) || [];
+    console.log(`Found ${courseEdges?.length || 0} course edges for skill: ${skill.title}`);
+
+    if (!courseEdges || courseEdges.length === 0) {
+      console.log(`No courses found for skill: ${skill.title}`);
+      continue;
+    }
+
+    // Get the actual course nodes
+    const courseIds = courseEdges.map(edge => edge.from_id);
+    const { data: coursesForSkill } = await supabase
+      .from('career_graph_nodes')
+      .select('*')
+      .in('id', courseIds)
+      .eq('active', true);
+
+    console.log(`Found ${coursesForSkill?.length || 0} active courses for skill: ${skill.title}`);
     
     // Create paths for each course
-    for (const course of coursesForSkill.slice(0, 3)) { // Limit to 3 courses per skill
+    for (const course of (coursesForSkill || []).slice(0, 3)) { // Limit to 3 courses per skill
+      console.log(`Creating path for course: ${course.title}`);
+      
       const path: LearningPath = {
         id: `${course.id}-${skill.id}-${targetJobNode.id}`,
         nodes: [
@@ -161,7 +194,15 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
       };
 
       paths.push(path);
+      console.log(`Added path: ${course.title} → ${skill.title} → ${targetJobNode.title}`);
     }
+  }
+
+  console.log(`Generated ${paths.length} total learning paths before sorting`);
+
+  if (paths.length === 0) {
+    console.log(`No learning paths generated - no courses found for required skills`);
+    return [];
   }
 
   // 4. Sort and categorize paths
@@ -187,87 +228,178 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
 async function analyzeUnlocks(supabase: any, completedSkills: string[], completedCourses: string[]): Promise<any> {
   console.log(`Analyzing unlocks for ${completedSkills.length} skills and ${completedCourses.length} courses`);
 
-  // Convert skill titles to IDs if needed
-  const { data: skillNodes } = await supabase
-    .from('career_graph_nodes')
-    .select('id, title')
-    .eq('node_type', 'skill')
-    .eq('active', true);
+  try {
+    // Convert skill titles to IDs if needed
+    const { data: skillNodes, error: skillError } = await supabase
+      .from('career_graph_nodes')
+      .select('id, title')
+      .eq('node_type', 'skill')
+      .eq('active', true);
 
-  const skillTitleToId = new Map();
-  skillNodes?.forEach((skill: any) => {
-    skillTitleToId.set(skill.title, skill.id);
-  });
-
-  const completedSkillIds = completedSkills.map(skill => 
-    skillTitleToId.get(skill) || skill
-  ).filter(Boolean);
-
-  console.log(`Converted ${completedSkills.length} skill titles to ${completedSkillIds.length} skill IDs`);
-
-  // 1. Find all jobs and their skill requirements
-  const { data: jobNodes } = await supabase
-    .from('career_graph_nodes')
-    .select('*')
-    .eq('node_type', 'job')
-    .eq('active', true);
-
-  const unlockedJobs = [];
-  const partiallyQualifiedJobs = [];
-
-  for (const job of jobNodes || []) {
-    // Get required skills for this job (fixed direction: skill -> job)
-    const { data: skillEdges } = await supabase
-      .from('career_graph_edges')
-      .select('from_id')
-      .eq('to_id', job.id)
-      .eq('edge_type', 'REQUIRES_SKILL');
-
-    const requiredSkillIds = skillEdges?.map((edge: any) => edge.from_id) || [];
-    const completedRequiredSkills = requiredSkillIds.filter((skillId: string) => 
-      completedSkillIds.includes(skillId)
-    );
-
-    const completionPercentage = requiredSkillIds.length > 0 
-      ? (completedRequiredSkills.length / requiredSkillIds.length) * 100 
-      : 0;
-
-    if (completionPercentage >= 80) {
-      unlockedJobs.push({
-        job,
-        completionPercentage,
-        missingSkills: requiredSkillIds.length - completedRequiredSkills.length
-      });
-    } else if (completionPercentage >= 40) {
-      partiallyQualifiedJobs.push({
-        job,
-        completionPercentage,
-        missingSkills: requiredSkillIds.length - completedRequiredSkills.length
-      });
+    if (skillError) {
+      console.error('Error fetching skill nodes:', skillError);
+      throw new Error('Failed to fetch skill nodes');
     }
+
+    console.log(`Found ${skillNodes?.length || 0} total skill nodes`);
+
+    const skillTitleToId = new Map();
+    skillNodes?.forEach((skill: any) => {
+      skillTitleToId.set(skill.title, skill.id);
+    });
+
+    const completedSkillIds = completedSkills.map(skill => {
+      const skillId = skillTitleToId.get(skill) || skill;
+      console.log(`Converting skill "${skill}" to ID: ${skillId}`);
+      return skillId;
+    }).filter(Boolean);
+
+    console.log(`Converted ${completedSkills.length} skill titles to ${completedSkillIds.length} skill IDs`);
+
+    // 1. Find all jobs and their skill requirements
+    const { data: jobNodes, error: jobError } = await supabase
+      .from('career_graph_nodes')
+      .select('*')
+      .eq('node_type', 'job')
+      .eq('active', true);
+
+    if (jobError) {
+      console.error('Error fetching job nodes:', jobError);
+      throw new Error('Failed to fetch job nodes');
+    }
+
+    console.log(`Found ${jobNodes?.length || 0} job nodes`);
+
+    const unlockedJobs = [];
+    const partiallyQualifiedJobs = [];
+    let jobsProcessed = 0;
+
+    for (const job of jobNodes || []) {
+      jobsProcessed++;
+      if (jobsProcessed <= 5) { // Log first 5 jobs for debugging
+        console.log(`Processing job ${jobsProcessed}: ${job.title} (ID: ${job.id})`);
+      }
+
+      // Get required skills for this job
+      const { data: skillEdges, error: edgeError } = await supabase
+        .from('career_graph_edges')
+        .select('from_id')
+        .eq('to_id', job.id)
+        .eq('edge_type', 'REQUIRES_SKILL');
+
+      if (edgeError) {
+        console.error(`Error fetching skill edges for job ${job.title}:`, edgeError);
+        continue;
+      }
+
+      const requiredSkillIds = skillEdges?.map((edge: any) => edge.from_id) || [];
+      const completedRequiredSkills = requiredSkillIds.filter((skillId: string) => 
+        completedSkillIds.includes(skillId)
+      );
+
+      const completionPercentage = requiredSkillIds.length > 0 
+        ? (completedRequiredSkills.length / requiredSkillIds.length) * 100 
+        : 0;
+
+      if (jobsProcessed <= 5) { // Log first 5 jobs for debugging
+        console.log(`Job ${job.title}: ${completedRequiredSkills.length}/${requiredSkillIds.length} skills (${completionPercentage.toFixed(1)}%)`);
+      }
+
+      // Ensure job has valid structure for response
+      const jobData = {
+        id: job.id,
+        title: job.title,
+        description: job.description || '',
+        market_demand_score: job.market_demand_score || 0.5,
+        difficulty_level: job.difficulty_level || 3
+      };
+
+      if (completionPercentage >= 80) {
+        unlockedJobs.push({
+          job: jobData,
+          completionPercentage: Math.round(completionPercentage),
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
+          requiredSkillsCount: requiredSkillIds.length,
+          completedSkillsCount: completedRequiredSkills.length
+        });
+      } else if (completionPercentage >= 40) {
+        partiallyQualifiedJobs.push({
+          job: jobData,
+          completionPercentage: Math.round(completionPercentage),
+          missingSkills: requiredSkillIds.length - completedRequiredSkills.length,
+          requiredSkillsCount: requiredSkillIds.length,
+          completedSkillsCount: completedRequiredSkills.length
+        });
+      }
+    }
+
+    console.log(`Job analysis complete: ${unlockedJobs.length} unlocked, ${partiallyQualifiedJobs.length} partially qualified`);
+
+    // 2. Find recommended next courses (avoiding SQL injection)
+    let availableCourses = [];
+    if (completedCourses.length > 0) {
+      const { data: courses, error: courseError } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('node_type', 'course')
+        .eq('active', true)
+        .not('id', 'in', `(${completedCourses.map(id => `'${id}'`).join(',')})`);
+
+      if (courseError) {
+        console.error('Error fetching available courses:', courseError);
+        // Continue without recommended courses
+      } else {
+        availableCourses = courses || [];
+      }
+    } else {
+      // No completed courses, get all courses
+      const { data: courses, error: courseError } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('node_type', 'course')
+        .eq('active', true);
+
+      if (courseError) {
+        console.error('Error fetching all courses:', courseError);
+      } else {
+        availableCourses = courses || [];
+      }
+    }
+
+    const recommendedCourses = availableCourses
+      .sort((a: any, b: any) => (b.market_demand_score || 0.5) - (a.market_demand_score || 0.5))
+      .slice(0, 5)
+      .map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description || '',
+        market_demand_score: course.market_demand_score || 0.5,
+        estimated_time_hours: course.estimated_time_hours || 20,
+        cost_estimate: course.cost_estimate || 0,
+        difficulty_level: course.difficulty_level || 3
+      }));
+
+    console.log(`Found ${recommendedCourses.length} recommended courses`);
+
+    const result = {
+      unlockedJobs: unlockedJobs.sort((a, b) => b.completionPercentage - a.completionPercentage),
+      partiallyQualifiedJobs: partiallyQualifiedJobs.sort((a, b) => b.completionPercentage - a.completionPercentage),
+      recommendedCourses,
+      summary: {
+        totalUnlocked: unlockedJobs.length,
+        totalPartial: partiallyQualifiedJobs.length,
+        totalValidJobs: jobNodes?.length || 0,
+        completedSkillsCount: completedSkills.length,
+        completedCoursesCount: completedCourses.length,
+        skillConversionSuccess: completedSkillIds.length
+      }
+    };
+
+    console.log('Unlock analysis result:', JSON.stringify(result.summary, null, 2));
+    return result;
+
+  } catch (error) {
+    console.error('Error in analyzeUnlocks:', error);
+    throw error;
   }
-
-  // 2. Find recommended next courses
-  const { data: availableCourses } = await supabase
-    .from('career_graph_nodes')
-    .select('*')
-    .eq('node_type', 'course')
-    .eq('active', true)
-    .not('id', 'in', `(${completedCourses.join(',') || 'null'})`);
-
-  const recommendedCourses = (availableCourses || [])
-    .sort((a: any, b: any) => (b.market_demand_score || 0.5) - (a.market_demand_score || 0.5))
-    .slice(0, 5);
-
-  return {
-    unlockedJobs: unlockedJobs.sort((a, b) => b.completionPercentage - a.completionPercentage),
-    partiallyQualifiedJobs: partiallyQualifiedJobs.sort((a, b) => b.completionPercentage - a.completionPercentage),
-    recommendedCourses,
-    summary: {
-      totalUnlocked: unlockedJobs.length,
-      totalPartial: partiallyQualifiedJobs.length,
-      completedSkillsCount: completedSkills.length,
-      completedCoursesCount: completedCourses.length
-    }
-  };
 }
