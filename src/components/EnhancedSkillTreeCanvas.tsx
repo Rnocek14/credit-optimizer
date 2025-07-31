@@ -161,6 +161,23 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
     setIsAnimating(true);
   }, []);
 
+  // Category color mapping
+  const getCategoryColor = useCallback((category: string) => {
+    const colors: Record<string, string> = {
+      Programming: '#3b82f6',
+      Framework: '#f59e0b', 
+      Backend: '#10b981',
+      Design: '#ec4899',
+      API: '#6366f1',
+      Cloud: '#06b6d4',
+      DevOps: '#f97316',
+      Quality: '#84cc16',
+      Styling: '#ef4444',
+      Markup: '#eab308'
+    };
+    return colors[category] || '#9ca3af';
+  }, []);
+
   const focusOnSkill = useCallback((skillId: string) => {
     const skillPosition = skillPositions.get(skillId);
     if (skillPosition) {
@@ -546,12 +563,13 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
                 <OptimizedSkillTreeNode
                   skill={skill}
                   userProgress={progress}
+                  position={position}
+                  categoryColor={getCategoryColor(skill.category)}
                   isRecommended={isRecommended}
                   isCheckpoint={isCheckpoint}
                   isCapstone={isCapstone}
                   onClick={() => handleSkillClick(skill)}
                   onHover={(isHovering: boolean) => handleSkillHover(skill.id, isHovering)}
-                  zoomLevel={cameraState.zoomLevel}
                 />
               </div>
             );
