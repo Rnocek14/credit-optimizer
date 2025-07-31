@@ -77,17 +77,52 @@ serve(async (req) => {
 async function generateBackwardPlan(supabase: any, targetJob: string, userContext: any): Promise<LearningPath[]> {
   console.log(`Generating backward plan for: ${targetJob}`);
 
-  // 1. Find target job node
-  const { data: jobNodes } = await supabase
+  // 1. Find target job node with enhanced fuzzy matching
+  let jobNodes = null;
+  
+  // Try exact match first
+  const { data: exactMatches } = await supabase
     .from('career_graph_nodes')
     .select('*')
     .eq('node_type', 'job')
-    .ilike('title', `%${targetJob}%`)
+    .ilike('title', targetJob)
     .eq('active', true);
 
-  if (!jobNodes || jobNodes.length === 0) {
-    console.log(`No job nodes found for: ${targetJob}`);
-    throw new Error(`Job "${targetJob}" not found in career graph`);
+  if (exactMatches && exactMatches.length > 0) {
+    jobNodes = exactMatches;
+    console.log(`Found exact match for: ${targetJob}`);
+  } else {
+    // Try partial match
+    const { data: partialMatches } = await supabase
+      .from('career_graph_nodes')
+      .select('*')
+      .eq('node_type', 'job')
+      .ilike('title', `%${targetJob}%`)
+      .eq('active', true);
+
+    if (partialMatches && partialMatches.length > 0) {
+      jobNodes = partialMatches;
+      console.log(`Found partial match for: ${targetJob}`);
+    } else {
+      // Get all job titles for fuzzy matching
+      const { data: allJobs } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('node_type', 'job')
+        .eq('active', true);
+
+      if (allJobs && allJobs.length > 0) {
+        const suggestions = findSimilarJobs(targetJob, allJobs);
+        console.log(`No exact match found for: ${targetJob}. Similar jobs:`, suggestions.map(j => j.title));
+        
+        if (suggestions.length > 0) {
+          throw new Error(`Job "${targetJob}" not found. Did you mean: ${suggestions.slice(0, 3).map(j => j.title).join(', ')}?`);
+        }
+      }
+      
+      console.log(`No job nodes found for: ${targetJob}`);
+      throw new Error(`Job "${targetJob}" not found in career graph`);
+    }
   }
 
   const targetJobNode = jobNodes[0];
@@ -223,6 +258,55 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
 
   console.log(`Generated ${sortedPaths.length} learning paths`);
   return sortedPaths.slice(0, 10); // Return top 10 paths
+}
+
+// Fuzzy job matching function
+function findSimilarJobs(searchTerm: string, allJobs: any[]): any[] {
+  const searchLower = searchTerm.toLowerCase();
+  const keywords = searchLower.split(' ').filter(word => word.length > 2);
+  
+  const scored = allJobs.map(job => {
+    const titleLower = job.title.toLowerCase();
+    let score = 0;
+    
+    // Exact match bonus
+    if (titleLower === searchLower) score += 100;
+    
+    // Partial match bonus
+    if (titleLower.includes(searchLower)) score += 50;
+    
+    // Keyword matching
+    keywords.forEach(keyword => {
+      if (titleLower.includes(keyword)) score += 10;
+    });
+    
+    // Levenshtein-inspired simple scoring
+    const commonChars = countCommonChars(searchLower, titleLower);
+    score += commonChars * 2;
+    
+    return { ...job, score };
+  });
+  
+  return scored
+    .filter(job => job.score > 5) // Minimum threshold
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
+
+function countCommonChars(str1: string, str2: string): number {
+  const chars1 = str1.split('');
+  const chars2 = str2.split('');
+  let common = 0;
+  
+  chars1.forEach(char => {
+    const index = chars2.indexOf(char);
+    if (index !== -1) {
+      common++;
+      chars2.splice(index, 1); // Remove to avoid double counting
+    }
+  });
+  
+  return common;
 }
 
 async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], completedCourses: string[] = []): Promise<any> {

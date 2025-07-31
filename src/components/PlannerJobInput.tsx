@@ -13,14 +13,21 @@ interface PlannerJobInputProps {
 }
 
 const popularJobs = [
+  "Digital Marketing Manager",
   "UX Designer",
   "Frontend Engineer", 
   "Data Scientist",
   "Product Manager",
   "DevOps Engineer",
   "Full Stack Developer",
-  "Digital Marketing Manager",
-  "AI Engineer"
+  "AI Engineer",
+  "Marketing Manager",
+  "Software Engineer",
+  "Business Analyst",
+  "Growth Marketing Manager",
+  "Content Marketing Manager",
+  "Backend Developer",
+  "Mobile Developer"
 ];
 
 export function PlannerJobInput({ onGeneratePlan, loading, error }: PlannerJobInputProps) {
@@ -68,10 +75,30 @@ export function PlannerJobInput({ onGeneratePlan, loading, error }: PlannerJobIn
           </Button>
         </div>
 
-        {/* Error Display */}
+        {/* Error Display with Suggestions */}
         {error && (
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-destructive font-medium">
+              {error.includes('Did you mean') ? '🔍 ' : '⚠️ '}
+              {error}
+            </p>
+            {error.includes('Did you mean') && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground mb-2">Try one of these popular jobs instead:</p>
+                <div className="flex flex-wrap gap-1">
+                  {popularJobs.slice(0, 6).map((job) => (
+                    <Badge
+                      key={job}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary/10 text-xs"
+                      onClick={() => handleSuggestionClick(job)}
+                    >
+                      {job}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
