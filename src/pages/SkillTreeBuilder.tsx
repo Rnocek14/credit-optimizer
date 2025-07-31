@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { useUnifiedCareerData } from '@/hooks/useUnifiedCareerData';
+import { useCareerGraph } from '@/hooks/useCareerGraph';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { LayoutControls } from '@/components/LayoutControls';
 import { LayoutDebugPanel, LayoutDebugData } from '@/components/LayoutDebugPanel';
@@ -33,12 +33,12 @@ const SkillTreeBuilder = () => {
     layoutMode: 'hierarchy'
   });
 
-  const { data, relationships, loading, error } = useUnifiedCareerData(selectedCareerPath);
+  const { nodes, edges, loading, error, getNodesByType, isEmpty } = useCareerGraph({ careerPathId: selectedCareerPath });
 
-  const handleNodeClick = useCallback((nodeId: string, nodeType: string) => {
-    setSelectedNodeId(nodeId);
-    setSelectedNodeType(nodeType);
-    console.log('🎯 Node clicked:', { nodeId, nodeType });
+  const handleNodeClick = useCallback((node: any) => {
+    setSelectedNodeId(node.id);
+    setSelectedNodeType(node.type);
+    console.log('🎯 Node clicked:', { nodeId: node.id, nodeType: node.type });
   }, []);
 
   const handleCareerPathChange = useCallback((pathId: string) => {
@@ -79,7 +79,7 @@ const SkillTreeBuilder = () => {
     );
   }
 
-  if (!data) {
+  if (isEmpty) {
     return (
       <div className="flex items-center justify-center h-96">
         <Card className="p-6">
@@ -110,7 +110,7 @@ const SkillTreeBuilder = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Career Paths</SelectItem>
-                {data.jobs.map(job => (
+                {getNodesByType('job').map(job => (
                   <SelectItem key={job.id} value={job.id}>
                     {job.title}
                   </SelectItem>
@@ -137,28 +137,25 @@ const SkillTreeBuilder = () => {
         {/* Stats */}
         <div className="flex gap-4">
           <Badge variant="outline" className="px-3 py-1">
-            {data.skills.length} Skills
+            {getNodesByType('skill').length} Skills
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {data.courses.length} Courses
+            {getNodesByType('course').length} Courses
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {data.projects.length} Projects
+            {getNodesByType('project').length} Projects
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {data.certifications.length} Certifications
+            {getNodesByType('certification').length} Certifications
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {data.jobs.length} Career Paths
+            {getNodesByType('job').length} Career Paths
           </Badge>
           <Badge variant="outline" className="px-3 py-1">
-            {relationships.length} Connections
+            {edges.length} Connections
           </Badge>
           <Badge variant="secondary" className="px-3 py-1">
             Layout: {layoutMode}
-          </Badge>
-          <Badge variant="secondary" className="px-3 py-1">
-            Real DB Relationships: {relationships.filter(r => r.weight && r.weight > 1).length}
           </Badge>
         </div>
 
@@ -176,44 +173,10 @@ const SkillTreeBuilder = () => {
         <div className="flex-1">
           <ReactFlowProvider>
             <UnifiedCareerCanvas
-              data={data}
-              relationships={relationships}
+              nodes={nodes}
+              edges={edges}
               selectedCareerPath={selectedCareerPath}
               onNodeClick={handleNodeClick}
-              showMinimap={true}
-              layoutMode={layoutMode}
-              forceOptions={{
-                strength: {
-                  charge: -300,
-                  link: forceStrength,
-                  collision: 1,
-                  positioning: 0.8,
-                  clustering: 0.3,
-                },
-                distance: {
-                  link: 150,
-                  collision: 80,
-                },
-                iterations: Math.round(300 * animationSpeed),
-                alpha: 0.3,
-              }}
-              onLayoutCalculating={(calculating) => {
-                setIsCalculating(calculating);
-                setDebugData(prev => ({
-                  ...prev,
-                  status: calculating ? 'calculating' : 'idle',
-                  nodeCount: Object.values(data).flat().length,
-                  edgeCount: relationships.length,
-                  layoutMode: layoutMode,
-                  forces: {
-                    charge: -300,
-                    link: forceStrength,
-                    collision: 1,
-                    positioning: 0.8,
-                    clustering: 0.3,
-                  }
-                }));
-              }}
             />
             
             {showControls && (
@@ -233,8 +196,8 @@ const SkillTreeBuilder = () => {
                   onResetView={() => {
                     // Reset view will be handled by React Flow
                   }}
-                  nodeCount={Object.values(data).flat().length}
-                  edgeCount={relationships.length}
+                  nodeCount={nodes.length}
+                  edgeCount={edges.length}
                 />
               </div>
             )}
