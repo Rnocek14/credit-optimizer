@@ -98,8 +98,7 @@ const SkillTree = () => {
     total: skills.length,
     completed: 0, // TODO: Get from user progress
     inProgress: 0, // TODO: Get from user progress
-    recommended: 0, // TODO: Calculate recommendations
-    withCourses: courses.length
+    recommended: 0 // TODO: Calculate recommendations
   };
 
   const handleCategoryToggle = (category: string) => {
