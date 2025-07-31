@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ExternalLink, LogIn, Trophy, User } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ExternalLink, LogIn, Trophy, User, TestTube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AIPlanningEngineTest } from "@/components/AIPlanningEngineTest";
 
 interface DemoProfile {
   user_id: string;
@@ -124,7 +126,21 @@ export default function Demos() {
     <TooltipProvider>
       <div className="container mx-auto py-8">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Demo User Profiles</h1>
+          <h1 className="text-3xl font-bold mb-2">Demo User Profiles & Test Suite</h1>
+          <p className="text-muted-foreground">
+            Explore our demo accounts and run validation tests
+          </p>
+        </div>
+
+        {/* AI Planning Engine Test Section */}
+        <div className="mb-8">
+          <AIPlanningEngineTest />
+        </div>
+
+        <Separator className="my-8" />
+
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-bold mb-2">Demo User Profiles</h2>
           <p className="text-muted-foreground">
             Explore our demo accounts to see how the platform works
           </p>
