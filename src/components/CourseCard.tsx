@@ -8,6 +8,8 @@ import SaveButton from '@/components/SaveButton';
 import { StartLearningButton } from '@/components/StartLearningButton';
 import { CourseProgressBadge } from '@/components/CourseProgressBadge';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
+import { CourseCompletionModal } from '@/components/CourseCompletionModal';
+import { Trophy } from 'lucide-react';
 
 interface CourseCardProps {
   course: {
@@ -38,8 +40,9 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   compact = false,
   showSaveButton = true
 }) => {
-  const { getProgressForCourse } = useCourseProgress();
+  const { getProgressForCourse, getProgressStatus } = useCourseProgress();
   const progress = getProgressForCourse(course.id);
+  const [showCompletionModal, setShowCompletionModal] = React.useState(false);
 
   const handleStartCourse = () => {
     if (course.url) {
@@ -154,6 +157,19 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               size="default"
               className="flex-1"
             />
+            
+            {getProgressStatus(course.id) === 'in_progress' && (
+              <Button
+                variant="secondary"
+                size="default"
+                onClick={() => setShowCompletionModal(true)}
+                className="gap-2"
+              >
+                <Trophy className="h-4 w-4" />
+                Complete
+              </Button>
+            )}
+            
             {showSaveButton && (
               <SaveButton 
                 courseId={course.id} 
@@ -164,6 +180,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           </div>
         </div>
       </CardContent>
+      
+      <CourseCompletionModal
+        isOpen={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        courseId={course.id}
+        courseTitle={course.title}
+      />
     </Card>
   );
 };

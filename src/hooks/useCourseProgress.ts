@@ -37,13 +37,23 @@ export function useCourseProgress() {
   const { data: courseProgress, isLoading } = useQuery({
     queryKey: ['course-progress'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Support both dev login and real auth
+      const devUser = localStorage.getItem("devUser");
+      let userId: string;
+      
+      if (devUser) {
+        const parsedDevUser = JSON.parse(devUser);
+        userId = parsedDevUser.id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        userId = user.id;
+      }
 
       const { data, error } = await supabase
         .from('course_progress')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('last_accessed_at', { ascending: false });
 
       if (error) throw error;
@@ -56,13 +66,23 @@ export function useCourseProgress() {
   const { data: milestones } = useQuery({
     queryKey: ['learning-milestones'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Support both dev login and real auth
+      const devUser = localStorage.getItem("devUser");
+      let userId: string;
+      
+      if (devUser) {
+        const parsedDevUser = JSON.parse(devUser);
+        userId = parsedDevUser.id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        userId = user.id;
+      }
 
       const { data, error } = await supabase
         .from('learning_milestones')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('achieved_at', { ascending: false });
 
       if (error) throw error;
@@ -74,11 +94,21 @@ export function useCourseProgress() {
   // Start course progress
   const startCourse = useMutation({
     mutationFn: async (courseId: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Support both dev login and real auth
+      const devUser = localStorage.getItem("devUser");
+      let userId: string;
+      
+      if (devUser) {
+        const parsedDevUser = JSON.parse(devUser);
+        userId = parsedDevUser.id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        userId = user.id;
+      }
 
       const { data, error } = await supabase.rpc('start_course_progress', {
-        user_id_param: user.id,
+        user_id_param: userId,
         course_id_param: courseId
       });
 
@@ -106,11 +136,21 @@ export function useCourseProgress() {
   // Complete course progress
   const completeCourse = useMutation({
     mutationFn: async ({ courseId, notes }: { courseId: string; notes?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Support both dev login and real auth
+      const devUser = localStorage.getItem("devUser");
+      let userId: string;
+      
+      if (devUser) {
+        const parsedDevUser = JSON.parse(devUser);
+        userId = parsedDevUser.id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        userId = user.id;
+      }
 
       const { data, error } = await supabase.rpc('complete_course_progress', {
-        user_id_param: user.id,
+        user_id_param: userId,
         course_id_param: courseId,
         completion_notes_param: notes || null
       });
@@ -144,8 +184,18 @@ export function useCourseProgress() {
       progressPercentage?: number; 
       timeSpent?: number;
     }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Support both dev login and real auth
+      const devUser = localStorage.getItem("devUser");
+      let userId: string;
+      
+      if (devUser) {
+        const parsedDevUser = JSON.parse(devUser);
+        userId = parsedDevUser.id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        userId = user.id;
+      }
 
       const updateData: any = {
         last_accessed_at: new Date().toISOString(),
@@ -163,7 +213,7 @@ export function useCourseProgress() {
       const { data, error } = await supabase
         .from('course_progress')
         .update(updateData)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('course_id', courseId)
         .select()
         .single();

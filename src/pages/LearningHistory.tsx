@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LearningHistoryDashboard } from '@/components/LearningHistoryDashboard';
 
 export default function LearningHistory() {
   return (
@@ -11,14 +11,7 @@ export default function LearningHistory() {
         </p>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Learning Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Learning history dashboard is loading...</p>
-        </CardContent>
-      </Card>
+      <LearningHistoryDashboard />
     </div>
   );
 }
