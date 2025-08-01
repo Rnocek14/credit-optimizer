@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Clock, 
   DollarSign, 
@@ -10,8 +11,11 @@ import {
   Brain, 
   Target,
   Plus,
-  CheckCircle
+  CheckCircle,
+  List,
+  Network
 } from "lucide-react";
+import { LearningPathVisualizer } from "@/components/LearningPathVisualizer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAnalytics } from "@/lib/analytics";
@@ -154,86 +158,112 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
         </Badge>
       </div>
 
-      {/* Learning Paths */}
-      <div className="space-y-4">
-        {learningPaths.map((path) => (
-          <Card key={path.id} className="border border-border/40 hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              {/* Path Header */}
-              <div className="flex items-center justify-between mb-4">
-                <Badge className={`${getPathTypeColor(path.path_type)} text-sm font-medium`}>
-                  {getPathTypeIcon(path.path_type)}
-                  <span className="ml-1">{getPathTypeLabel(path.path_type)}</span>
-                </Badge>
-                
-                <div className="flex gap-4 text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    <span className="font-medium">{path.total_time}h</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <DollarSign className="w-4 h-4" />
-                    <span className="font-medium">${path.total_cost}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="font-medium">{(path.average_roi * 100).toFixed(0)}%</span>
-                  </div>
-                </div>
-              </div>
+      {/* View Toggle */}
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="list" className="flex items-center gap-2">
+            <List className="w-4 h-4" />
+            List View
+          </TabsTrigger>
+          <TabsTrigger value="visual" className="flex items-center gap-2">
+            <Network className="w-4 h-4" />
+            Visual View
+          </TabsTrigger>
+        </TabsList>
 
-              {/* Path Flow */}
-              <div className="mb-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  {path.nodes.map((node, index) => (
-                    <React.Fragment key={node.id}>
-                      <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-muted/40 border">
-                        <div className="text-sm">
-                          <div className="font-medium text-foreground">{node.title}</div>
-                          <div className="text-xs text-muted-foreground capitalize flex items-center gap-1">
-                            <span>{node.type}</span>
-                            {node.estimated_time_hours > 0 && (
-                              <span>• {node.estimated_time_hours}h</span>
-                            )}
-                            {node.cost_estimate > 0 && (
-                              <span>• ${node.cost_estimate}</span>
-                            )}
-                          </div>
-                        </div>
+        <TabsContent value="list" className="mt-6">
+          {/* Learning Paths List */}
+          <div className="space-y-4">
+            {learningPaths.map((path) => (
+              <Card key={path.id} className="border border-border/40 hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  {/* Path Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <Badge className={`${getPathTypeColor(path.path_type)} text-sm font-medium`}>
+                      {getPathTypeIcon(path.path_type)}
+                      <span className="ml-1">{getPathTypeLabel(path.path_type)}</span>
+                    </Badge>
+                    
+                    <div className="flex gap-4 text-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium">{path.total_time}h</span>
                       </div>
-                      {index < path.nodes.length - 1 && (
-                        <ArrowRight className="w-5 h-5 text-primary flex-shrink-0" />
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              </div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <DollarSign className="w-4 h-4" />
+                        <span className="font-medium">${path.total_cost}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <TrendingUp className="w-4 h-4" />
+                        <span className="font-medium">{(path.average_roi * 100).toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Action Button */}
-              <div className="flex justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleSetAsGoal(path)}
-                  disabled={savingPaths.has(path.id)}
-                  className="hover:bg-primary/10 hover:border-primary/30"
-                >
-                  {savingPaths.has(path.id) ? (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2 animate-pulse" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Target className="w-4 h-4 mr-2" />
-                      Set as Goal
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {/* Path Flow */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {path.nodes.map((node, index) => (
+                        <React.Fragment key={node.id}>
+                          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-muted/40 border">
+                            <div className="text-sm">
+                              <div className="font-medium text-foreground">{node.title}</div>
+                              <div className="text-xs text-muted-foreground capitalize flex items-center gap-1">
+                                <span>{node.type}</span>
+                                {node.estimated_time_hours > 0 && (
+                                  <span>• {node.estimated_time_hours}h</span>
+                                )}
+                                {node.cost_estimate > 0 && (
+                                  <span>• ${node.cost_estimate}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {index < path.nodes.length - 1 && (
+                            <ArrowRight className="w-5 h-5 text-primary flex-shrink-0" />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="flex justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleSetAsGoal(path)}
+                      disabled={savingPaths.has(path.id)}
+                      className="hover:bg-primary/10 hover:border-primary/30"
+                    >
+                      {savingPaths.has(path.id) ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2 animate-pulse" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Target className="w-4 h-4 mr-2" />
+                          Set as Goal
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="visual" className="mt-6">
+          <LearningPathVisualizer 
+            learningPaths={learningPaths}
+            onNodeClick={(node) => {
+              console.log('Node clicked in visual view:', node);
+              // Future: Could integrate with goal setting or node details
+            }}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
