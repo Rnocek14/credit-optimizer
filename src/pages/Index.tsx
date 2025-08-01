@@ -4,10 +4,53 @@ import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
 import { RoadmapTester } from '@/components/RoadmapTester';
 import { EnhancedMayaDemo } from '@/components/EnhancedMayaDemo';
 import Navigation from "@/components/Navigation";
+import SecureLandingPage from "@/components/SecureLandingPage";
+import { useSecureAuth } from "@/hooks/useSecureAuth";
+import SecurityMonitor from "@/components/SecurityMonitor";
+import { useEffect } from "react";
+import { checkRateLimit, generateRateLimitKey } from "@/lib/security";
 
 const Index = () => {
+  const { user, isLoading, hasPermission } = useSecureAuth();
+
+  useEffect(() => {
+    // Rate limiting for home page access
+    const rateLimitKey = generateRateLimitKey(user?.id || 'anonymous', 'home_page_access');
+    if (!checkRateLimit(rateLimitKey, 10, 60000)) {
+      console.warn('[Security] Rate limit exceeded for home page access');
+    }
+    
+    // Log page access
+    console.log('[Security] Home page access', {
+      timestamp: new Date().toISOString(),
+      authenticated: !!user,
+      userId: user?.id || 'anonymous'
+    });
+  }, [user]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show secure landing page for unauthenticated users
+  if (!user) {
+    return (
+      <>
+        <SecurityMonitor />
+        <SecureLandingPage />
+      </>
+    );
+  }
+
+  // Show full content for authenticated users
   return (
     <>
+      <SecurityMonitor />
       <Navigation />
       <div className="min-h-screen bg-background">
         {/* Hero Section */}
@@ -41,11 +84,13 @@ const Index = () => {
                 View Demo Accounts
               </Link>
             </Button>
-            <Button variant="secondary" size="lg" asChild className="w-full sm:w-auto">
-              <Link to="/workflows">
-                🔬 Test Maya Workflows
-              </Link>
-            </Button>
+            {hasPermission('admin') && (
+              <Button variant="secondary" size="lg" asChild className="w-full sm:w-auto">
+                <Link to="/workflows">
+                  🔬 Test Maya Workflows
+                </Link>
+              </Button>
+            )}
             </div>
           </div>
         </div>
@@ -102,15 +147,17 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Developer Testing Section */}
-        <div className="py-12 md:py-16">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto">
-              <h2 className="text-xl md:text-2xl font-bold text-center mb-6 md:mb-8">Developer Testing</h2>
-              <RoadmapTester />
+        {/* Developer Testing Section - Admin Only */}
+        {hasPermission('admin') && (
+          <div className="py-12 md:py-16">
+            <div className="container mx-auto px-4">
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-xl md:text-2xl font-bold text-center mb-6 md:mb-8">Developer Testing</h2>
+                <RoadmapTester />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );
