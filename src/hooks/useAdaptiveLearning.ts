@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 import { useCourseProgress } from './useCourseProgress';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
@@ -49,27 +50,81 @@ export function useAdaptiveLearning() {
   const [interventions, setInterventions] = useState<SmartIntervention[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoOptimizationEnabled, setAutoOptimizationEnabled] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const { sendEnhancedRequest } = useEnhancedMaya();
   const { courseProgress } = useCourseProgress();
   const { state } = useUnifiedData();
 
-  // Analyze current learning patterns and performance
+  // Analyze current learning patterns and performance from real data
   const analyzeLearningMetrics = useCallback(async (): Promise<LearningMetrics> => {
-    // In a real implementation, this would analyze actual user data
-    const metrics: LearningMetrics = {
-      avgCompletionRate: 0.73,
-      avgRetentionRate: 0.68,
-      learningVelocity: 0.82,
-      engagementPattern: ['high_morning', 'moderate_afternoon', 'low_evening'],
-      strugglingAreas: ['advanced_algorithms', 'system_design', 'database_optimization'],
-      strongAreas: ['frontend_development', 'ui_design', 'project_management'],
-      optimalLearningTimes: ['9:00-11:00', '14:00-16:00'],
-      preferredLearningMethods: ['hands_on_projects', 'visual_explanations', 'peer_collaboration']
-    };
+    try {
+      setError(null);
+      
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
 
-    setMetrics(metrics);
-    return metrics;
+      // Get real course progress data
+      const { data: courseData } = await supabase
+        .from('course_progress')
+        .select('*')
+        .eq('user_id', user.user.id);
+
+      // Get learning milestones for engagement analysis
+      const { data: milestonesData } = await supabase
+        .from('learning_milestones')
+        .select('*')
+        .eq('user_id', user.user.id);
+
+      if (courseData && courseData.length > 0) {
+        const completedCourses = courseData.filter(c => c.status === 'completed');
+        const avgCompletionRate = completedCourses.length / courseData.length;
+        
+        // Calculate average time spent and retention indicators
+        const avgTimeSpent = courseData.reduce((sum, c) => sum + (c.time_spent_hours || 0), 0) / courseData.length;
+        const learningVelocity = avgTimeSpent > 0 ? Math.min(1, avgTimeSpent / 20) : 0.5;
+        
+        const metrics: LearningMetrics = {
+          avgCompletionRate,
+          avgRetentionRate: avgCompletionRate * 0.85, // Estimated retention
+          learningVelocity,
+          engagementPattern: milestonesData && milestonesData.length > 5 ? ['high_engagement'] : ['moderate_engagement'],
+          strugglingAreas: courseData.filter(c => c.progress_percentage < 50).map(c => 'struggling_area'),
+          strongAreas: completedCourses.map(c => 'completed_area'),
+          optimalLearningTimes: ['9:00-11:00', '14:00-16:00'],
+          preferredLearningMethods: ['hands_on_projects', 'visual_explanations']
+        };
+
+        setMetrics(metrics);
+        setIsUsingMockData(false);
+        setLastRefreshed(new Date());
+        return metrics;
+      } else {
+        throw new Error('No course data available');
+      }
+    } catch (error) {
+      console.error('Error analyzing learning metrics:', error);
+      setError(error instanceof Error ? error.message : 'Failed to analyze metrics');
+      
+      // Fallback to mock data
+      const mockMetrics: LearningMetrics = {
+        avgCompletionRate: 0.73,
+        avgRetentionRate: 0.68,
+        learningVelocity: 0.82,
+        engagementPattern: ['moderate_engagement'],
+        strugglingAreas: ['data_analysis'],
+        strongAreas: ['frontend_development'],
+        optimalLearningTimes: ['9:00-11:00'],
+        preferredLearningMethods: ['hands_on_projects']
+      };
+
+      setMetrics(mockMetrics);
+      setIsUsingMockData(true);
+      setLastRefreshed(new Date());
+      return mockMetrics;
+    }
   }, []);
 
   // Generate learning path optimizations
@@ -352,6 +407,9 @@ export function useAdaptiveLearning() {
     
     // State
     loading,
-    isReady: !loading && optimizations.length > 0
+    error,
+    isReady: !loading && optimizations.length > 0,
+    isUsingMockData,
+    lastRefreshed
   };
 }

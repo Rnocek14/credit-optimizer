@@ -23,13 +23,16 @@ import {
   Users,
   BookOpen,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { usePredictiveCareerInsights } from '@/hooks/usePredictiveCareerInsights';
 import { useAdaptiveLearning } from '@/hooks/useAdaptiveLearning';
 import { useProactiveDecisions } from '@/hooks/useProactiveDecisions';
 import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
+import { useRealtimeMayaData } from '@/hooks/useRealtimeMayaData';
 import { LoadingState } from './LoadingState';
+import { MayaDataQualityIndicator } from './MayaDataQualityIndicator';
 
 interface AutomationMetrics {
   totalAutonomousActions: number;
@@ -60,7 +63,10 @@ export function MayaAutonomousIntelligence() {
     insights, 
     patterns, 
     loading: insightsLoading,
-    runPredictiveAnalysis 
+    runPredictiveAnalysis,
+    isUsingMockData: insightsMockData,
+    lastAnalysis: insightsLastRefresh,
+    error: insightsError
   } = usePredictiveCareerInsights();
   
   const { 
@@ -68,16 +74,23 @@ export function MayaAutonomousIntelligence() {
     metrics, 
     interventions,
     loading: learningLoading,
-    runAdaptiveAnalysis 
+    runAdaptiveAnalysis,
+    isUsingMockData: optimizationsMockData,
+    lastRefreshed: optimizationsLastRefresh,
+    error: optimizationsError
   } = useAdaptiveLearning();
   
   const { 
     decisions, 
     loading: decisionsLoading,
-    generateProactiveDecisions 
+    generateProactiveDecisions,
+    isUsingMockData: decisionsMockData,
+    lastRefreshed: decisionsLastRefresh,
+    error: decisionsError
   } = useProactiveDecisions();
   
   const { loading: mayaLoading } = useEnhancedMaya();
+  const mayaData = useRealtimeMayaData();
 
   // Mock automation metrics - in real implementation, these would come from analytics
   const automationMetrics: AutomationMetrics = {
@@ -128,7 +141,8 @@ export function MayaAutonomousIntelligence() {
       await Promise.all([
         runPredictiveAnalysis(),
         runAdaptiveAnalysis(),
-        generateProactiveDecisions()
+        generateProactiveDecisions(),
+        mayaData.fetchInitialData()
       ]);
       console.log('✅ All systems refreshed successfully');
     } catch (error) {
@@ -156,22 +170,26 @@ export function MayaAutonomousIntelligence() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            Maya Autonomous Intelligence
-          </h2>
-          <p className="text-muted-foreground mt-1">
-            Advanced AI automation dashboard - transparent, controllable, and trackable
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Maya Autonomous Intelligence</h1>
+          <p className="text-muted-foreground mt-1">Advanced AI-driven automation with transparent, controllable, and trackable intelligence</p>
+          <div className="mt-2">
+            <MayaDataQualityIndicator 
+              isConnected={mayaData.isConnected}
+              lastRefreshed={mayaData.lastUpdate}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={refreshAllSystems}>
-            <Activity className="h-4 w-4 mr-2" />
-            Refresh All Systems
-          </Button>
-        </div>
+        
+        <Button 
+          onClick={refreshAllSystems} 
+          variant="outline"
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh All Systems
+        </Button>
       </div>
 
       {/* Quick Metrics */}
@@ -204,10 +222,10 @@ export function MayaAutonomousIntelligence() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Learning Optimizations</p>
-                <p className="text-2xl font-bold">{automationMetrics.learningOptimizations}</p>
+                <p className="text-sm text-muted-foreground">Learning Velocity</p>
+                <p className="text-2xl font-bold">+{automationMetrics.careerProgressAcceleration}%</p>
               </div>
-              <BookOpen className="h-8 w-8 text-primary/60" />
+              <TrendingUp className="h-8 w-8 text-primary/60" />
             </div>
           </CardContent>
         </Card>
@@ -216,17 +234,17 @@ export function MayaAutonomousIntelligence() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Progress Acceleration</p>
-                <p className="text-2xl font-bold">+{automationMetrics.careerProgressAcceleration}%</p>
+                <p className="text-sm text-muted-foreground">Autonomy Level</p>
+                <p className="text-2xl font-bold">{autonomyLevel}%</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-primary/60" />
+              <Brain className="h-8 w-8 text-primary/60" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Dashboard */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="predictive">Predictive Intelligence</TabsTrigger>
@@ -234,10 +252,10 @@ export function MayaAutonomousIntelligence() {
           <TabsTrigger value="decisions">Decision Intelligence</TabsTrigger>
         </TabsList>
 
-        {/* Automation Overview */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Automation Controls */}
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          {/* Automation Controls */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -247,29 +265,26 @@ export function MayaAutonomousIntelligence() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Autonomy Level</label>
-                    <span className="text-sm text-muted-foreground">{autonomyLevel}%</span>
-                  </div>
-                  <Progress value={autonomyLevel} />
+                  <label className="text-sm font-medium">Autonomy Level: {autonomyLevel}%</label>
+                  <Progress value={autonomyLevel} className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    Higher levels allow Maya to make more decisions automatically
+                  </p>
                 </div>
                 
-                <Separator />
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Auto-optimization</label>
-                    <Switch checked={autoOptimization} onCheckedChange={setAutoOptimization} />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Auto-Optimization</p>
+                    <p className="text-xs text-muted-foreground">Let Maya optimize your learning path automatically</p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Thought Process Visibility</label>
-                    <Switch checked={thoughtProcessVisible} onCheckedChange={setThoughtProcessVisible} />
-                  </div>
+                  <Switch 
+                    checked={autoOptimization} 
+                    onCheckedChange={setAutoOptimization}
+                  />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Performance Metrics */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -277,20 +292,18 @@ export function MayaAutonomousIntelligence() {
                   Performance Impact
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Time to Goal Reduction</span>
-                    <Badge variant="outline">{automationMetrics.timeToGoalReduction}%</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">User Satisfaction</span>
-                    <Badge variant="outline">{automationMetrics.userSatisfactionScore}/5.0</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">System Reliability</span>
-                    <Badge variant="outline">99.7%</Badge>
-                  </div>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Time to Goal Reduction</span>
+                  <Badge variant="default">{automationMetrics.timeToGoalReduction}% faster</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Learning Optimizations</span>
+                  <Badge variant="secondary">{automationMetrics.learningOptimizations} applied</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">User Satisfaction</span>
+                  <Badge variant="outline">{automationMetrics.userSatisfactionScore}/5.0</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -300,139 +313,222 @@ export function MayaAutonomousIntelligence() {
           {thoughtProcessVisible && (
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Eye className="h-5 w-5" />
-                  Maya's Thought Process
-                  <Badge variant="outline" className="ml-2">Live</Badge>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5" />
+                    Maya's Thought Process
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setThoughtProcessVisible(false)}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Hide
+                  </Button>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {thoughtProcess.map((thought) => (
-                    <div key={thought.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getCategoryIcon(thought.category)}
-                          <span className="font-medium text-sm">{thought.action}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {Math.round(thought.confidence * 100)}% confident
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {thought.timestamp.toLocaleTimeString()}
-                          </span>
-                        </div>
+              <CardContent className="space-y-3">
+                {thoughtProcess.map((thought) => (
+                  <div key={thought.id} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getCategoryIcon(thought.category)}
+                        <span className="font-medium text-sm">{thought.action}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {(thought.confidence * 100).toFixed(0)}% confidence
+                        </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{thought.reasoning}</p>
-                      {thought.outcome && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <ArrowRight className="h-3 w-3" />
-                          <span className="text-green-600">{thought.outcome}</span>
-                        </div>
-                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {thought.timestamp.toLocaleTimeString()}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm text-muted-foreground">{thought.reasoning}</p>
+                    {thought.outcome && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span className="text-green-700">{thought.outcome}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
-        {/* Predictive Intelligence */}
-        <TabsContent value="predictive" className="space-y-6">
+        {/* Predictive Intelligence Tab */}
+        <TabsContent value="predictive" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Active Predictions
+                <TrendingUp className="h-5 w-5" />
+                Predictive Intelligence Overview
+                <MayaDataQualityIndicator 
+                  variant="compact"
+                  isUsingMockData={insightsMockData}
+                  lastRefreshed={insightsLastRefresh}
+                />
               </CardTitle>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  AI-powered analysis of your career trajectory and future opportunities
+                </p>
+                {insightsError && (
+                  <div className="text-destructive text-sm mb-4">Error: {insightsError}</div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {insights.map((insight) => (
+                    <Card key={insight.id} className="relative">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <Badge variant={insight.urgency === 'high' ? 'destructive' : insight.urgency === 'medium' ? 'default' : 'secondary'}>
+                            {insight.type}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{(insight.confidence * 100).toFixed(0)}%</span>
+                        </div>
+                        <h4 className="font-semibold text-sm mb-2">{insight.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-3">{insight.description}</p>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span>Impact:</span>
+                            <Progress value={insight.potentialImpact.careerGrowth * 100} className="w-16 h-2" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {insights.slice(0, 4).map((insight) => (
-                  <div key={insight.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">{insight.title}</h4>
-                      <Badge variant={insight.urgency === 'high' ? 'destructive' : 'outline'}>
-                        {Math.round(insight.confidence * 100)}%
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{insight.description}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Learning Optimization */}
-        <TabsContent value="learning" className="space-y-6">
+        {/* Learning Optimization Tab */}
+        <TabsContent value="learning" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Cog className="h-5 w-5" />
-                Active Optimizations
+                <Zap className="h-5 w-5" />
+                Learning Optimization Engine
+                <MayaDataQualityIndicator 
+                  variant="compact"
+                  isUsingMockData={optimizationsMockData}
+                  lastRefreshed={optimizationsLastRefresh}
+                />
               </CardTitle>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Adaptive learning path optimization based on your performance patterns
+                </p>
+                {optimizationsError && (
+                  <div className="text-destructive text-sm mb-4">Error: {optimizationsError}</div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {optimizations.map((optimization) => (
+                    <Card key={optimization.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <Badge variant="outline">{optimization.type.replace('_', ' ')}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {(optimization.confidence * 100).toFixed(0)}% confidence
+                          </span>
+                        </div>
+                        <h4 className="font-semibold text-sm mb-2">{optimization.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-3">{optimization.description}</p>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Completion Rate:</span>
+                              <span className="ml-1 text-green-600">
+                                +{(optimization.expectedImprovement.completionRate * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Retention:</span>
+                              <span className="ml-1 text-blue-600">
+                                +{(optimization.expectedImprovement.retentionRate * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {optimizations.slice(0, 3).map((optimization) => (
-                  <div key={optimization.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{optimization.title}</h4>
-                      <Badge variant="outline">
-                        {Math.round(optimization.confidence * 100)}% impact
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{optimization.description}</p>
-                    <div className="text-sm space-y-1">
-                      <div className="text-blue-600">Expected improvements:</div>
-                      <div className="text-xs text-muted-foreground">
-                        Completion: +{optimization.expectedImprovement.completionRate}%, 
-                        Retention: +{optimization.expectedImprovement.retentionRate}%
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Decision Intelligence */}
-        <TabsContent value="decisions" className="space-y-6">
+        {/* Decision Intelligence Tab */}
+        <TabsContent value="decisions" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Proactive Decisions
+                <Brain className="h-5 w-5" />
+                Proactive Decision Intelligence
+                <MayaDataQualityIndicator 
+                  variant="compact"
+                  isUsingMockData={decisionsMockData}
+                  lastRefreshed={decisionsLastRefresh}
+                />
               </CardTitle>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  AI-generated decision support for strategic career moves
+                </p>
+                {decisionsError && (
+                  <div className="text-destructive text-sm mb-4">Error: {decisionsError}</div>
+                )}
+                <div className="space-y-4">
+                  {decisions.map((decision) => (
+                    <Card key={decision.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold">{decision.title}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">{decision.description}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={decision.urgency === 'high' ? 'destructive' : 'default'}>
+                              {decision.urgency}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {(decision.confidence * 100).toFixed(0)}% confidence
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-sm font-medium mb-2">Options:</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {decision.options.map((option) => (
+                                <div key={option.id} className="border rounded p-3 space-y-2">
+                                  <h5 className="font-medium text-sm">{option.title}</h5>
+                                  <p className="text-xs text-muted-foreground">{option.description}</p>
+                                  <div className="flex justify-between text-xs">
+                                    <span>Success Rate:</span>
+                                    <span className="text-green-600">
+                                      {(option.expectedOutcome.successProbability * 100).toFixed(0)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div className="text-xs text-muted-foreground">
+                            <strong>Time Window:</strong> {decision.timeWindow}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {decisions.map((decision) => (
-                  <div key={decision.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{decision.title}</h4>
-                      <div className="flex gap-2">
-                        <Badge variant={decision.urgency === 'high' ? 'destructive' : 'outline'}>
-                          {decision.urgency}
-                        </Badge>
-                        <Badge variant="outline">
-                          {Math.round(decision.confidence * 100)}%
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{decision.description}</p>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {decision.timeWindow}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

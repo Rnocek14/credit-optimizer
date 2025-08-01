@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,14 +31,21 @@ export function useWorkflowCertificates() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchUserCertificates = useCallback(async () => {
+  const fetchUserCertificates = useCallback(async (force = false) => {
+    // Prevent excessive calls - only fetch if forced or empty
+    if (!force && certificates.length > 0 && !loading) return;
+    
     try {
       setLoading(true);
       setError(null);
 
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return; // Don't throw error if not authenticated
+
       const { data, error } = await supabase
         .from('workflow_certificates')
         .select('*')
+        .eq('user_id', user.user.id)
         .eq('is_revoked', false)
         .order('issued_at', { ascending: false });
 
@@ -51,7 +58,7 @@ export function useWorkflowCertificates() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [certificates.length, loading]);
 
   const generateCertificate = useCallback(async (workflowId: string) => {
     try {

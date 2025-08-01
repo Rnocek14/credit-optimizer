@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 
 interface ProactiveDecision {
@@ -31,11 +32,66 @@ interface DecisionOption {
 export function useProactiveDecisions() {
   const [decisions, setDecisions] = useState<ProactiveDecision[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const { sendEnhancedRequest } = useEnhancedMaya();
 
   const generateProactiveDecisions = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    
     try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      // Try to get real AI-generated decisions from maya_decisions table
+      const { data: existingDecisions, error: dbError } = await supabase
+        .from('career_monitoring_alerts')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (!dbError && existingDecisions && existingDecisions.length > 0) {
+        // Transform alerts into proactive decisions
+        const realDecisions: ProactiveDecision[] = existingDecisions.map(alert => ({
+          id: alert.id,
+          type: 'market_timing' as const,
+          title: alert.title,
+          description: alert.description,
+          urgency: alert.severity as 'low' | 'medium' | 'high',
+          confidence: 0.85,
+          timeWindow: '1-2 weeks',
+          options: (alert.recommended_actions as any[])?.map((action, idx) => ({
+            id: `opt-${idx}`,
+            title: action.title || 'Take Action',
+            description: action.description || '',
+            pros: ['Addresses the alert'],
+            cons: ['Requires time investment'],
+            riskLevel: 'medium' as const,
+            expectedOutcome: {
+              careerImpact: 0.6,
+              timeInvestment: '2-3 weeks',
+              successProbability: 0.75
+            }
+          })) || [],
+          contextFactors: ['real_market_data', 'user_profile_analysis'],
+          consequences: {
+            immediate: 'Action required',
+            '1month': 'Improved positioning',
+            '3months': 'Better opportunities'
+          }
+        }));
+
+        setDecisions(realDecisions);
+        setIsUsingMockData(false);
+        setLastRefreshed(new Date());
+        return;
+      }
+
+      // Fallback to mock decisions if no real data
       const mockDecisions: ProactiveDecision[] = [
         {
           id: 'dec-001',
@@ -81,17 +137,25 @@ export function useProactiveDecisions() {
           }
         }
       ];
+      
       setDecisions(mockDecisions);
+      setIsUsingMockData(true);
+      setLastRefreshed(new Date());
     } catch (error) {
       console.error('Error generating proactive decisions:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate decisions');
+      setIsUsingMockData(true);
     } finally {
       setLoading(false);
     }
-  }, [sendEnhancedRequest]);
+  }, []);
 
   return {
     decisions,
     loading,
-    generateProactiveDecisions
+    error,
+    generateProactiveDecisions,
+    isUsingMockData,
+    lastRefreshed
   };
 }

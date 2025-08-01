@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 import { useMayaCRIIntegration } from './useMayaCRIIntegration';
 import { useMarketIntelligence } from './useMarketIntelligence';
@@ -35,6 +36,8 @@ export function usePredictiveCareerInsights() {
   const [patterns, setPatterns] = useState<PatternAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastAnalysis, setLastAnalysis] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   const { sendEnhancedRequest } = useEnhancedMaya();
   const { insights: criInsights, trajectory } = useMayaCRIIntegration();
@@ -42,23 +45,65 @@ export function usePredictiveCareerInsights() {
   const { state } = useUnifiedData();
 
   const analyzeUserPatterns = useCallback(async () => {
-    setLoading(true);
-    
     try {
-      // Analyze learning patterns, engagement, and progress
+      setError(null);
+      
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('User not authenticated');
+
+      // Get real course progress data
+      const { data: courseProgress } = await supabase
+        .from('course_progress')
+        .select('*')
+        .eq('user_id', user.user.id);
+
+      // Get learning milestones
+      const { data: milestones } = await supabase
+        .from('learning_milestones')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('achieved_at', { ascending: false })
+        .limit(20);
+
+      // Calculate real learning velocity from actual data
+      const completedCourses = courseProgress?.filter(p => p.status === 'completed') || [];
+      const avgCompletionTime = completedCourses.length > 0 
+        ? completedCourses.reduce((sum, course) => {
+            const started = new Date(course.started_at);
+            const completed = new Date(course.completed_at);
+            return sum + (completed.getTime() - started.getTime());
+          }, 0) / completedCourses.length / (1000 * 60 * 60 * 24) // days
+        : 30; // default
+
+      const learningVelocity = Math.min(1, Math.max(0, 1 - (avgCompletionTime / 30)));
+      
       const patternData: PatternAnalysis = {
-        learningVelocity: 0.75, // Would come from actual user data
-        engagementTrends: ['increasing_weekend_activity', 'consistent_daily_learning', 'project_completion_acceleration'],
-        skillGapEvolution: ['javascript_proficiency_improving', 'ux_skills_stable', 'leadership_skills_emerging'],
-        careerProgressionRate: 0.82,
-        marketAlignmentScore: 0.78
+        learningVelocity,
+        engagementTrends: milestones?.length > 10 ? ['high_engagement'] : ['moderate_engagement'],
+        skillGapEvolution: completedCourses.length > 5 ? ['improving'] : ['developing'],
+        careerProgressionRate: completedCourses.length / 10, // Normalize by expected courses
+        marketAlignmentScore: 0.78 // Would come from market analysis
       };
       
       setPatterns(patternData);
+      setIsUsingMockData(false);
       return patternData;
     } catch (error) {
       console.error('Error analyzing user patterns:', error);
-      return null;
+      setError(error instanceof Error ? error.message : 'Failed to analyze patterns');
+      
+      // Fallback to mock data
+      const mockPatterns: PatternAnalysis = {
+        learningVelocity: 0.75,
+        engagementTrends: ['moderate_engagement'],
+        skillGapEvolution: ['developing'],
+        careerProgressionRate: 0.5,
+        marketAlignmentScore: 0.78
+      };
+      
+      setPatterns(mockPatterns);
+      setIsUsingMockData(true);
+      return mockPatterns;
     }
   }, []);
 
@@ -66,13 +111,32 @@ export function usePredictiveCareerInsights() {
     if (!patterns) return [];
 
     try {
-      const request = `Based on my learning patterns, CRI trajectory, and current market conditions, generate 5 predictive career insights that anticipate future opportunities, risks, and optimization strategies. Consider my learning velocity of ${patterns.learningVelocity}, engagement trends, and career progression rate of ${patterns.careerProgressionRate}.`;
-
-      const response = await sendEnhancedRequest(request);
+      setError(null);
       
-      if (response?.response) {
-        // Mock predictive insights for now - would come from Maya's analysis
-        const generatedInsights: PredictiveInsight[] = [
+      // Call enhanced-maya-response function for real AI analysis
+      const { data: aiResponse, error: aiError } = await supabase.functions.invoke('enhanced-maya-response', {
+        body: {
+          request: `Based on learning patterns - velocity: ${patterns.learningVelocity}, progression rate: ${patterns.careerProgressionRate}, engagement: ${patterns.engagementTrends.join(', ')} - generate 4 predictive career insights focusing on opportunities, risks, optimizations, and milestones.`,
+          context: {
+            type: 'predictive_insights',
+            patterns,
+            marketData: state.marketData
+          }
+        }
+      });
+
+      if (aiError) {
+        console.warn('AI function error, using fallback insights:', aiError);
+        setIsUsingMockData(true);
+      } else if (aiResponse?.insights) {
+        setInsights(aiResponse.insights);
+        setLastAnalysis(new Date());
+        setIsUsingMockData(false);
+        return aiResponse.insights;
+      }
+
+      // Fallback to structured mock insights
+      const generatedInsights: PredictiveInsight[] = [
           {
             id: 'pred-001',
             type: 'opportunity',
@@ -159,17 +223,17 @@ export function usePredictiveCareerInsights() {
           }
         ];
 
-        setInsights(generatedInsights);
-        setLastAnalysis(new Date());
-        return generatedInsights;
-      }
+      setInsights(generatedInsights);
+      setLastAnalysis(new Date());
+      setIsUsingMockData(true);
+      return generatedInsights;
     } catch (error) {
       console.error('Error generating predictive insights:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate insights');
+      setIsUsingMockData(true);
+      return [];
     }
-    
-    setLoading(false);
-    return [];
-  }, [patterns, sendEnhancedRequest]);
+  }, [patterns, state.marketData]);
 
   const runPredictiveAnalysis = useCallback(async () => {
     setLoading(true);
@@ -232,7 +296,9 @@ export function usePredictiveCareerInsights() {
     
     // State
     loading,
+    error,
     isReady: !loading && insights.length > 0,
-    lastAnalysis
+    lastAnalysis,
+    isUsingMockData
   };
 }

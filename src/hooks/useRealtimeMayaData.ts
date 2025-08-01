@@ -27,10 +27,33 @@ export function useRealtimeMayaData() {
   const connectToRealtimeData = useCallback(() => {
     console.log('🔌 Connecting to Maya real-time data...');
     
-    // In production, this would connect to real-time feeds
-    // For now, simulate with periodic updates
+    // Setup real-time subscriptions to Maya-related tables
     const channel = supabase
       .channel('maya-automation')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'career_monitoring_alerts'
+      }, (payload) => {
+        console.log('🚨 New Maya alert:', payload);
+        setData(prev => ({
+          ...prev,
+          decisions: [payload.new, ...prev.decisions.slice(0, 4)],
+          lastUpdate: new Date()
+        }));
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'autonomous_workflows'
+      }, (payload) => {
+        console.log('🔄 New workflow:', payload);
+        setData(prev => ({
+          ...prev,
+          insights: [payload.new, ...prev.insights.slice(0, 4)],
+          lastUpdate: new Date()
+        }));
+      })
       .on('broadcast', { event: 'decision' }, (payload) => {
         console.log('🧠 New Maya decision:', payload);
         setData(prev => ({
@@ -58,15 +81,68 @@ export function useRealtimeMayaData() {
     };
   }, []);
 
-  // Fetch initial data from Supabase functions
+  // Fetch initial data from real Supabase tables
   const fetchInitialData = useCallback(async () => {
     try {
       console.log('📊 Fetching initial Maya data...');
+      setError(null);
       
-      // In production, these would call actual Supabase functions
-      const userId = state.user?.id || '2b458624-d498-4cca-a63d-9341cc20e363';
+      const { data: user } = await supabase.auth.getUser();
+      const userId = user?.user?.id || state.user?.id;
       
-      // Simulate API calls for now - in production these would be real
+      if (!userId) {
+        console.warn('No user ID available, using mock data');
+        throw new Error('No user authenticated');
+      }
+
+      // Get real insights from autonomous workflows
+      const { data: workflows } = await supabase
+        .from('autonomous_workflows')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('last_action_at', { ascending: false })
+        .limit(5);
+
+      // Get real alerts/decisions
+      const { data: alerts } = await supabase
+        .from('career_monitoring_alerts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      // Transform real data
+      const realData = {
+        insights: workflows?.map(w => ({
+          id: w.id,
+          type: 'workflow_insight',
+          title: `${w.title} Progress`,
+          confidence: w.progress_percentage / 100,
+          timestamp: new Date(w.last_action_at)
+        })) || [],
+        decisions: alerts?.map(a => ({
+          id: a.id,
+          title: a.title,
+          urgency: a.severity,
+          confidence: 0.85,
+          timestamp: new Date(a.created_at)
+        })) || [],
+        optimizations: []
+      };
+
+      if (workflows?.length || alerts?.length) {
+        setData(prev => ({
+          ...prev,
+          ...realData,
+          lastUpdate: new Date()
+        }));
+        console.log('✅ Real Maya data loaded');
+        return;
+      }
+
+      // Fallback to mock data if no real data
       const mockData = {
         insights: [
           {
@@ -103,7 +179,7 @@ export function useRealtimeMayaData() {
         lastUpdate: new Date()
       }));
       
-      console.log('✅ Initial Maya data loaded');
+      console.log('✅ Mock Maya data loaded as fallback');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load Maya data';
       console.error('❌ Maya data error:', err);
