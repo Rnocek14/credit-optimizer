@@ -1,9 +1,10 @@
 /**
  * CRI-based Course Recommendation Engine
  * Analyzes skill gaps and recommends courses to improve CRI score
+ * Now using real course data from external APIs
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,11 +20,9 @@ import {
   Award,
   ChevronRight
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getCRIBasedRecommendations, calculateCourseCRI } from '@/lib/criCourseIntegration';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
+import { useRealCourseRecommendations } from '@/hooks/useRealCourseRecommendations';
 import { CourseCard } from '@/components/CourseCard';
-import { supabase } from '@/integrations/supabase/client';
 
 interface CRIRecommendationEngineProps {
   userId?: string;
@@ -40,35 +39,13 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
   
   const { criScore } = useCareerReadiness({ userId, enabled: !!userId });
 
-  // Get CRI-based course recommendations
-  const { data: criRecommendations, isLoading } = useQuery({
-    queryKey: ['cri-recommendations', userId, targetCRI, skillGaps],
-    queryFn: () => getCRIBasedRecommendations(userId!, targetCRI, skillGaps),
-    enabled: !!userId
-  });
-
-  // Get trending high-CRI courses
-  const { data: trendingCourses } = useQuery({
-    queryKey: ['trending-cri-courses'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('recommended_courses')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(6);
-      
-      // Calculate CRI for each course
-      const coursesWithCRI = await Promise.all(
-        (data || []).map(async course => {
-          const criBreakdown = await calculateCourseCRI(course);
-          return { ...course, criBreakdown };
-        })
-      );
-      
-      // Sort by CRI score
-      return coursesWithCRI.sort((a, b) => b.criBreakdown.overall - a.criBreakdown.overall);
-    }
-  });
+  // Use real course recommendations
+  const {
+    recommendations: criRecommendations,
+    trendingCourses,
+    isLoadingRecommendations,
+    isLoadingTrending
+  } = useRealCourseRecommendations(skillGaps, targetCRI);
 
   const currentCRI = criScore?.overall || 0;
   const criGap = targetCRI - currentCRI;
@@ -85,21 +62,23 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
       title: 'Skill Development Path',
       description: 'Focus on mastering key technical skills',
       icon: <Target className="h-5 w-5" />,
-      courses: criRecommendations?.filter(c => c.criBreakdown.skillCoverage >= 70) || []
+      courses: criRecommendations?.filter(c => c.criBreakdown?.skillCoverage >= 70) || []
     },
     experience: {
       title: 'Experience Building Path',
       description: 'Gain practical experience through projects',
       icon: <Award className="h-5 w-5" />,
-      courses: criRecommendations?.filter(c => c.criBreakdown.projectRigor >= 70) || []
+      courses: criRecommendations?.filter(c => c.criBreakdown?.projectRigor >= 70) || []
     },
     projects: {
       title: 'Project-Based Path',
       description: 'Build portfolio through hands-on projects',
       icon: <BookOpen className="h-5 w-5" />,
-      courses: criRecommendations?.filter(c => c.criBreakdown.projectRigor >= 80) || []
+      courses: criRecommendations?.filter(c => c.criBreakdown?.projectRigor >= 80) || []
     }
   };
+
+  const isLoading = isLoadingRecommendations || isLoadingTrending;
 
   if (isLoading) {
     return (
@@ -185,10 +164,19 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
                       const impact = getImpactLevel(course.criContribution || 0);
                       return (
                         <div key={course.id} className="relative">
-                        <CourseCard 
-                          course={course} 
-                          compact
-                        />
+                          <CourseCard 
+                            course={{
+                              id: course.id,
+                              title: course.title,
+                              platform: course.platform,
+                              url: course.url,
+                              difficulty: course.difficulty,
+                              cost: course.cost?.toString() || 'Free',
+                              description: course.description,
+                              skill_tags: course.skill_tags
+                            }} 
+                            compact
+                          />
                           {course.criContribution && course.criContribution > 5 && (
                             <Badge 
                               className={`absolute -top-2 -right-2 ${impact.color} text-white text-xs`}
@@ -205,7 +193,7 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
                   <div className="text-center py-8 text-muted-foreground">
                     <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No specific recommendations for this path yet</p>
-                    <p className="text-sm">Check back as we analyze more courses</p>
+                    <p className="text-sm">Searching real course data for matches...</p>
                   </div>
                 )}
               </TabsContent>
@@ -228,7 +216,16 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
               {trendingCourses.slice(0, 6).map((course) => (
                 <CourseCard 
                   key={course.id}
-                  course={course} 
+                  course={{
+                    id: course.id,
+                    title: course.title,
+                    platform: course.platform,
+                    url: course.url,
+                    difficulty: course.difficulty,
+                    cost: course.cost?.toString() || 'Free',
+                    description: course.description,
+                    skill_tags: course.skill_tags
+                  }} 
                   compact
                 />
               ))}
@@ -236,7 +233,7 @@ export const CRIRecommendationEngine: React.FC<CRIRecommendationEngineProps> = (
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Star className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Loading trending courses...</p>
+              <p>Loading real trending courses from Coursera & edX...</p>
             </div>
           )}
         </CardContent>

@@ -459,8 +459,13 @@ export type Database = {
         Row: {
           active: boolean | null
           created_at: string
+          current_progress: number | null
           description: string | null
+          estimated_timeline_weeks: number | null
           id: string
+          market_demand_score: number | null
+          priority_score: number | null
+          skill_gaps: string[] | null
           target_date: string | null
           target_role: string | null
           title: string
@@ -470,8 +475,13 @@ export type Database = {
         Insert: {
           active?: boolean | null
           created_at?: string
+          current_progress?: number | null
           description?: string | null
+          estimated_timeline_weeks?: number | null
           id?: string
+          market_demand_score?: number | null
+          priority_score?: number | null
+          skill_gaps?: string[] | null
           target_date?: string | null
           target_role?: string | null
           title: string
@@ -481,8 +491,13 @@ export type Database = {
         Update: {
           active?: boolean | null
           created_at?: string
+          current_progress?: number | null
           description?: string | null
+          estimated_timeline_weeks?: number | null
           id?: string
+          market_demand_score?: number | null
+          priority_score?: number | null
+          skill_gaps?: string[] | null
           target_date?: string | null
           target_role?: string | null
           title?: string
