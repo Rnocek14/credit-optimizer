@@ -42,22 +42,30 @@ export function NextSmartStep({ userId }: NextSmartStepProps) {
       setLoading(true);
       
       // First try to get existing ranked goals
-      const { data: rankedGoals, error: goalsError } = await supabase
-        .from('user_goals')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('active', true)
-        .order('priority_score', { ascending: false })
-        .limit(1) as any;
+      try {
+        const response = await (supabase as any)
+          .from('user_goals')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('active', true)
+          .order('priority_score', { ascending: false })
+          .limit(1);
+        
+        const rankedGoals = response.data;
+        const goalsError = response.error;
 
-      if (goalsError) {
-        console.error('Error fetching goals:', goalsError);
-      }
+        if (goalsError) {
+          console.error('Error fetching goals:', goalsError);
+        }
 
-      if (rankedGoals && rankedGoals.length > 0) {
-        setNextStep(rankedGoals[0]);
-      } else {
-        // Generate new smart goals if none exist
+        if (rankedGoals && rankedGoals.length > 0) {
+          setNextStep(rankedGoals[0]);
+        } else {
+          // Generate new smart goals if none exist
+          await generateSmartStep();
+        }
+      } catch (queryError) {
+        console.error('Query error:', queryError);
         await generateSmartStep();
       }
     } catch (error) {
