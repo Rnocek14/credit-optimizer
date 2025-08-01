@@ -1,7 +1,5 @@
 
-import { MayaRoadmapGenerator } from '@/components/MayaRoadmapGenerator';
-import { MayaPhase5Test } from '@/components/MayaPhase5Test';
-import { EnhancedWorkflowDashboard } from '@/components/EnhancedWorkflowDashboard';
+import { MayaEnhancedDashboard } from '@/components/MayaEnhancedDashboard';
 import Navigation from '@/components/Navigation';
 
 const MayaRoadmap = () => {
@@ -9,10 +7,8 @@ const MayaRoadmap = () => {
     <>
       <Navigation />
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8 space-y-8">
-          <MayaPhase5Test />
-          <EnhancedWorkflowDashboard />
-          <MayaRoadmapGenerator />
+        <div className="container mx-auto px-4 py-8">
+          <MayaEnhancedDashboard />
         </div>
       </div>
     </>
