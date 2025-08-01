@@ -123,11 +123,17 @@ export function MayaAutonomousIntelligence() {
   const isLoading = insightsLoading || learningLoading || decisionsLoading || mayaLoading;
 
   const refreshAllSystems = async () => {
-    await Promise.all([
-      runPredictiveAnalysis(),
-      runAdaptiveAnalysis(),
-      generateProactiveDecisions()
-    ]);
+    console.log('🔄 Refreshing all Maya automation systems...');
+    try {
+      await Promise.all([
+        runPredictiveAnalysis(),
+        runAdaptiveAnalysis(),
+        generateProactiveDecisions()
+      ]);
+      console.log('✅ All systems refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing systems:', error);
+    }
   };
 
   const getCategoryIcon = (category: MayaThoughtProcess['category']) => {
@@ -140,7 +146,11 @@ export function MayaAutonomousIntelligence() {
   };
 
   if (isLoading) {
-    return <LoadingState type="intelligence" message="Initializing Maya's autonomous intelligence systems..." />;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingState message="Initializing Maya's autonomous intelligence systems..." />
+      </div>
+    );
   }
 
   return (

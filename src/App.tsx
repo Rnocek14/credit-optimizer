@@ -46,6 +46,7 @@ import MarketIntelligence from "./pages/MarketIntelligence";
 import Workflows from "./pages/Workflows";
 import MayaRoadmap from "./pages/MayaRoadmap";
 import MayaCRIIntegration from "./pages/MayaCRIIntegration";
+import MayaAutomation from "./pages/MayaAutomation";
 import Certificates from "./pages/Certificates";
 import VerifySignature from "./pages/VerifySignature";
 import CertificateGallery from "./pages/CertificateGallery";
@@ -131,6 +132,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <MayaCRIIntegration />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/maya-automation" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <MayaAutomation />
               </ProtectedRoute>
             } 
           />

@@ -53,6 +53,7 @@ export default function Navigation() {
     { href: "/workflows", label: "Workflows", icon: Workflow },
     { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain },
     { href: "/maya-cri-integration", label: "Maya × CRI", icon: Brain },
+    { href: "/maya-automation", label: "Maya Automation", icon: Brain },
     { href: "/planner", label: "Planner", icon: Target },
     { href: "/certificates", label: "Certificates", icon: Award },
     { href: "/certificate-gallery", label: "Gallery", icon: Award },
