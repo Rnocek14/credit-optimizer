@@ -2324,6 +2324,27 @@ export type Database = {
           },
         ]
       }
+      phase1_test_results: {
+        Row: {
+          created_at: string | null
+          id: string
+          test_name: string
+          test_result: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          test_name: string
+          test_result?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          test_name?: string
+          test_result?: Json | null
+        }
+        Relationships: []
+      }
       pivot_exploration_events: {
         Row: {
           current_career: string
