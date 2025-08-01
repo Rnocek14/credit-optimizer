@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ExternalLink, LogIn, Trophy, User, TestTube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AIPlanningEngineTest } from "@/components/AIPlanningEngineTest";
+import { SemanticVisualQATest } from "@/components/SemanticVisualQATest";
 
 interface DemoProfile {
   user_id: string;
@@ -135,6 +136,13 @@ export default function Demos() {
         {/* AI Planning Engine Test Section */}
         <div className="mb-8">
           <AIPlanningEngineTest />
+        </div>
+
+        <Separator className="my-8" />
+
+        {/* Semantic Visual QA Test Section */}
+        <div className="mb-8">
+          <SemanticVisualQATest />
         </div>
 
         <Separator className="my-8" />

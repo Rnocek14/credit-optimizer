@@ -16,11 +16,14 @@ import {
   Network,
   Heart
 } from "lucide-react";
-import { LearningPathVisualizer } from "@/components/LearningPathVisualizer";
+import { SemanticCareerCanvas } from "@/components/SemanticCareerCanvas";
+import { useSemanticPlanning } from "@/hooks/useSemanticPlanning";
+import { useSemanticVisualization } from "@/hooks/useSemanticVisualization";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAnalytics } from "@/lib/analytics";
 import type { LearningPath } from "@/hooks/useAIPlanningEngine";
+import type { SemanticNode, SubstitutionOption, PivotOpportunity } from "@/types/semantic";
 
 interface PlannerPathDisplayProps {
   learningPaths: LearningPath[];
@@ -30,7 +33,42 @@ interface PlannerPathDisplayProps {
 
 export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPathDisplayProps) {
   const [savingPaths, setSavingPaths] = useState<Set<string>>(new Set());
+  const [selectedPathId, setSelectedPathId] = useState<string>('');
   const { trackPlannerSetGoal } = useAnalytics();
+  
+  // Convert regular learning paths to enhanced format for semantic system
+  const enhancedPaths = learningPaths.map(path => ({
+    ...path,
+    personalization_score: path.confidence_score || 0.75,
+    time_feasibility: path.total_time < 100 ? 0.8 : path.total_time < 200 ? 0.6 : 0.4,
+    budget_feasibility: path.total_cost < 500 ? 0.9 : path.total_cost < 1000 ? 0.7 : 0.5,
+    location_relevance: 0.8, // Default - could be enhanced with location data
+    semantic_substitutions: [],
+    adapted_nodes: []
+  }));
+  
+  const { semanticPaths } = useSemanticVisualization(enhancedPaths);
+  
+  const handleNodeClick = (node: SemanticNode) => {
+    console.log('Semantic node clicked:', node);
+    if (node.type === 'job') {
+      toast.success(`Selected target: ${node.title}`, {
+        description: "Set as goal to start this career path"
+      });
+    }
+  };
+  
+  const handleSubstitutionSelect = (substitution: SubstitutionOption) => {
+    toast.success(`Alternative selected: ${substitution.title}`, {
+      description: `${Math.round(substitution.substitution_score * 100)}% match confidence`
+    });
+  };
+  
+  const handlePivotSelect = (pivot: PivotOpportunity) => {
+    toast.success(`Career pivot opportunity found!`, {
+      description: `${Math.round(pivot.skill_overlap_percentage)}% skill overlap - ${pivot.estimated_timeline}`
+    });
+  };
 
   const getPathTypeColor = (type: string) => {
     switch (type) {
@@ -270,13 +308,38 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
         </TabsContent>
 
         <TabsContent value="visual" className="mt-6">
-          <LearningPathVisualizer 
-            learningPaths={learningPaths}
-            onNodeClick={(node) => {
-              console.log('Node clicked in visual view:', node);
-              // Future: Could integrate with goal setting or node details
-            }}
-          />
+          <div className="space-y-4">
+            {semanticPaths.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                <Badge variant="outline" className="text-sm">
+                  Select path to explore interactive features
+                </Badge>
+                {semanticPaths.map((path, index) => (
+                  <Button
+                    key={path.id}
+                    variant={selectedPathId === path.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedPathId(path.id)}
+                    className="text-xs"
+                  >
+                    Path {index + 1}: {getPathTypeLabel(learningPaths[index]?.path_type || 'standard')}
+                  </Button>
+                ))}
+              </div>
+            )}
+            
+            <Card className="h-[600px] overflow-hidden border border-border/40">
+              <SemanticCareerCanvas
+                paths={semanticPaths}
+                selectedPathId={selectedPathId || semanticPaths[0]?.id}
+                onNodeClick={handleNodeClick}
+                onSubstitutionSelect={handleSubstitutionSelect}
+                onPivotSelect={handlePivotSelect}
+                showPersonalization={true}
+                className="w-full h-full"
+              />
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
