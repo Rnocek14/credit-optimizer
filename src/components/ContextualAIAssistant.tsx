@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ExpandableText, ExpandableList } from '@/components/ui/ExpandableText';
 import { useAINarrativeEngine } from '@/hooks/useAINarrativeEngine';
 import type { SemanticPath, SemanticNode } from '@/types/semantic';
 import { 
@@ -126,14 +127,18 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
               ) : (
                 <div className="space-y-3">
                   {/* Primary explanation */}
-                  <div className="text-xs text-muted-foreground leading-relaxed">
+                  <div className="text-xs leading-relaxed">
                     {selectedNode ? (
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <Lightbulb className="w-3 h-3 text-primary" />
                           <span className="font-medium">About {selectedNode.title}</span>
                         </div>
-                        {lastResponse?.explanation || 'Analyzing this learning step...'}
+                        <ExpandableText 
+                          text={lastResponse?.explanation || 'Analyzing this learning step...'}
+                          maxLength={200}
+                          className="text-xs"
+                        />
                       </>
                     ) : currentPath ? (
                       <>
@@ -141,12 +146,16 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
                           <TrendingUp className="w-3 h-3 text-primary" />
                           <span className="font-medium">Path Insights</span>
                         </div>
-                        {lastResponse?.explanation || 'Analyzing your learning path...'}
+                        <ExpandableText 
+                          text={lastResponse?.explanation || 'Analyzing your learning path...'}
+                          maxLength={200}
+                          className="text-xs"
+                        />
                       </>
                     ) : (
                       <div className="text-center py-4">
                         <MessageCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                        <p>Select a path or node to get AI insights</p>
+                        <p className="text-muted-foreground">Select a path or node to get AI insights</p>
                       </div>
                     )}
                   </div>
@@ -155,13 +164,16 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
                   {lastResponse?.insights && lastResponse.insights.length > 0 && (
                     <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
                       <div className="flex items-start gap-2">
-                        <TrendingUp className="w-3 h-3 text-primary mt-0.5" />
-                        <div className="space-y-1 flex-1">
+                        <TrendingUp className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
+                        <div className="space-y-1 flex-1 min-w-0">
                           <div className="text-xs font-medium text-primary">
                             Key Insight {currentInsight + 1}/{lastResponse.insights.length}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {lastResponse.insights[currentInsight]}
+                          <div className="text-xs text-muted-foreground break-words">
+                            {lastResponse.insights[currentInsight].length > 150 
+                              ? lastResponse.insights[currentInsight].substring(0, 150) + '...'
+                              : lastResponse.insights[currentInsight]
+                            }
                           </div>
                         </div>
                       </div>
@@ -193,14 +205,16 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
                             key={index}
                             variant="outline"
                             size="sm"
-                            className="h-6 text-xs justify-start w-full"
+                            className="h-6 text-xs justify-start w-full text-left break-words"
                             onClick={() => {
                               if (selectedNode) {
                                 onNodeAction?.(selectedNode.id, rec);
                               }
                             }}
                           >
-                            {rec}
+                            <span className="truncate">
+                              {rec.length > 40 ? rec.substring(0, 40) + '...' : rec}
+                            </span>
                           </Button>
                         ))}
                       </div>

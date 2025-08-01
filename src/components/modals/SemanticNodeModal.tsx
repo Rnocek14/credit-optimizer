@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ExpandableText, ExpandableList } from '@/components/ui/ExpandableText';
 import { useAINarrativeEngine } from '@/hooks/useAINarrativeEngine';
 import type { SemanticNode, SemanticPath } from '@/types/semantic';
 import { 
@@ -228,35 +229,40 @@ export const SemanticNodeModal: React.FC<SemanticNodeModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {lastResponse?.explanation || 'Generating AI insights...'}
-                    </p>
+                    <ExpandableText 
+                      text={lastResponse?.explanation || 'Generating AI insights...'}
+                      maxLength={300}
+                    />
                     
                     {lastResponse?.insights && lastResponse.insights.length > 0 && (
                       <div>
                         <h4 className="text-sm font-medium mb-2">Key Insights</h4>
-                        <ul className="space-y-1">
-                          {lastResponse.insights.map((insight, index) => (
-                            <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <TrendingUp className="w-3 h-3 mt-0.5 text-primary" />
-                              {insight}
-                            </li>
-                          ))}
-                        </ul>
+                        <ExpandableList
+                          items={lastResponse.insights}
+                          maxItems={2}
+                          renderItem={(insight, index) => (
+                            <div className="text-sm text-muted-foreground flex items-start gap-2">
+                              <TrendingUp className="w-3 h-3 mt-0.5 text-primary flex-shrink-0" />
+                              <span className="break-words">{insight}</span>
+                            </div>
+                          )}
+                        />
                       </div>
                     )}
 
                     {lastResponse?.recommendations && lastResponse.recommendations.length > 0 && (
                       <div>
                         <h4 className="text-sm font-medium mb-2">Recommendations</h4>
-                        <ul className="space-y-1">
-                          {lastResponse.recommendations.map((rec, index) => (
-                            <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                              <Star className="w-3 h-3 mt-0.5 text-primary" />
-                              {rec}
-                            </li>
-                          ))}
-                        </ul>
+                        <ExpandableList
+                          items={lastResponse.recommendations}
+                          maxItems={2}
+                          renderItem={(rec, index) => (
+                            <div className="text-sm text-muted-foreground flex items-start gap-2">
+                              <Star className="w-3 h-3 mt-0.5 text-primary flex-shrink-0" />
+                              <span className="break-words">{rec}</span>
+                            </div>
+                          )}
+                        />
                       </div>
                     )}
                   </div>
