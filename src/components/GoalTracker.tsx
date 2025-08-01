@@ -4,16 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Target, Brain, BookOpen, Award, Clock, TrendingUp, Plus, ArrowRight } from 'lucide-react';
+import { Target, Brain, BookOpen, Award, Clock, TrendingUp, Plus, ArrowRight, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { NextSmartStep } from './NextSmartStep';
 
 interface GoalTrackerProps {
   userId: string;
+  onGoalSelect?: (goal: any, targetTab?: string) => void;
+  selectedGoal?: any;
 }
 
-export function GoalTracker({ userId }: GoalTrackerProps) {
+export function GoalTracker({ userId, onGoalSelect, selectedGoal }: GoalTrackerProps) {
   const [goals, setGoals] = useState<any[]>([]);
   const [learningPlans, setLearningPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,14 +298,30 @@ export function GoalTracker({ userId }: GoalTrackerProps) {
                       <div className="flex gap-2 pt-2">
                         <Button 
                           size="sm" 
-                          onClick={() => generateLearningPlan(goal.id)}
+                          onClick={() => onGoalSelect?.(goal, 'optimizer')}
                           className="flex items-center gap-2"
+                          variant={selectedGoal?.id === goal.id ? "default" : "outline"}
+                        >
+                          <Brain className="h-4 w-4" />
+                          AI Optimize
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => onGoalSelect?.(goal, 'paths')}
+                          className="flex items-center gap-2"
+                          variant="outline"
                         >
                           <BookOpen className="h-4 w-4" />
-                          Create Learning Plan
+                          Learning Paths
                         </Button>
-                        <Button size="sm" variant="outline">
-                          View Details
+                        <Button 
+                          size="sm" 
+                          onClick={() => onGoalSelect?.(goal, 'assistant')}
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Ask Maya
                         </Button>
                       </div>
                     </CardContent>

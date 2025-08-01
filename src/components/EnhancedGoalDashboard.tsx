@@ -15,6 +15,13 @@ export function EnhancedGoalDashboard({ userId }: EnhancedGoalDashboardProps) {
   const [selectedGoal, setSelectedGoal] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('tracker');
 
+  const handleGoalSelection = (goal: any, targetTab?: string) => {
+    setSelectedGoal(goal);
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <Card>
@@ -50,7 +57,11 @@ export function EnhancedGoalDashboard({ userId }: EnhancedGoalDashboardProps) {
         </TabsList>
 
         <TabsContent value="tracker">
-          <GoalTracker userId={userId} />
+          <GoalTracker 
+            userId={userId} 
+            onGoalSelect={handleGoalSelection}
+            selectedGoal={selectedGoal}
+          />
         </TabsContent>
 
         <TabsContent value="optimizer">
