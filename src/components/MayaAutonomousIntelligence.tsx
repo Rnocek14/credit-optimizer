@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +33,9 @@ import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
 import { useRealtimeMayaData } from '@/hooks/useRealtimeMayaData';
 import { LoadingState } from './LoadingState';
 import { MayaDataQualityIndicator } from './MayaDataQualityIndicator';
+import { StableLoadingState, StableMetricCard } from './StableLoadingState';
+import { useRequestQueue } from '@/hooks/useRequestQueue';
+import { useCircuitBreaker } from '@/hooks/useCircuitBreaker';
 
 interface AutomationMetrics {
   totalAutonomousActions: number;
@@ -58,6 +61,11 @@ export function MayaAutonomousIntelligence() {
   const [autonomyLevel, setAutonomyLevel] = useState(85);
   const [autoOptimization, setAutoOptimization] = useState(true);
   const [thoughtProcessVisible, setThoughtProcessVisible] = useState(true);
+  
+  // Request management and stability
+  const { enqueueRequest, getQueueStatus } = useRequestQueue(2, 2000); // Max 2 concurrent, 2s delay
+  const circuitBreaker = useCircuitBreaker();
+  const refreshInProgress = useRef(false);
   
   const { 
     insights, 
@@ -135,20 +143,46 @@ export function MayaAutonomousIntelligence() {
 
   const isLoading = insightsLoading || learningLoading || decisionsLoading || mayaLoading;
 
-  const refreshAllSystems = async () => {
+  const refreshAllSystems = useCallback(async () => {
+    // Prevent concurrent refresh operations
+    if (refreshInProgress.current) {
+      console.log('⏳ Refresh already in progress, skipping...');
+      return;
+    }
+
+    refreshInProgress.current = true;
     console.log('🔄 Refreshing all Maya automation systems...');
+    
     try {
-      await Promise.all([
-        runPredictiveAnalysis(),
-        runAdaptiveAnalysis(),
-        generateProactiveDecisions(),
-        mayaData.fetchInitialData()
-      ]);
+      // Use circuit breaker to prevent cascading failures
+      await circuitBreaker.executeWithCircuitBreaker(async () => {
+        // Queue requests to prevent overwhelming the API
+        const refreshTasks = [
+          enqueueRequest(() => runPredictiveAnalysis(), 'refresh-insights'),
+          enqueueRequest(() => runAdaptiveAnalysis(), 'refresh-optimization'),
+          enqueueRequest(() => generateProactiveDecisions(), 'refresh-decisions'),
+          enqueueRequest(() => mayaData.fetchInitialData(), 'refresh-realtime')
+        ];
+
+        // Wait for all with timeout
+        await Promise.race([
+          Promise.allSettled(refreshTasks),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Refresh timeout')), 30000)
+          )
+        ]);
+      }, () => {
+        console.warn('⚠️ Using cached data due to circuit breaker');
+        return Promise.resolve();
+      });
+
       console.log('✅ All systems refreshed successfully');
     } catch (error) {
       console.error('❌ Error refreshing systems:', error);
+    } finally {
+      refreshInProgress.current = false;
     }
-  };
+  }, [runPredictiveAnalysis, runAdaptiveAnalysis, generateProactiveDecisions, mayaData, enqueueRequest, circuitBreaker]);
 
   const getCategoryIcon = (category: MayaThoughtProcess['category']) => {
     switch (category) {
@@ -185,62 +219,39 @@ export function MayaAutonomousIntelligence() {
         <Button 
           onClick={refreshAllSystems} 
           variant="outline"
-          disabled={isLoading}
+          disabled={isLoading || refreshInProgress.current}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || refreshInProgress.current ? 'animate-spin' : ''}`} />
           Refresh All Systems
         </Button>
       </div>
 
-      {/* Quick Metrics */}
+      {/* Quick Metrics with Stable Loading */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Autonomous Actions</p>
-                <p className="text-2xl font-bold">{automationMetrics.totalAutonomousActions}</p>
-              </div>
-              <Zap className="h-8 w-8 text-primary/60" />
-            </div>
-          </CardContent>
-        </Card>
+        <StableMetricCard
+          title="Autonomous Actions"
+          value={automationMetrics.totalAutonomousActions}
+          isLoading={isLoading}
+          className="relative"
+        />
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Prediction Accuracy</p>
-                <p className="text-2xl font-bold">{automationMetrics.predictionAccuracy}%</p>
-              </div>
-              <Target className="h-8 w-8 text-primary/60" />
-            </div>
-          </CardContent>
-        </Card>
+        <StableMetricCard
+          title="Prediction Accuracy"
+          value={`${automationMetrics.predictionAccuracy}%`}
+          isLoading={isLoading}
+        />
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Learning Velocity</p>
-                <p className="text-2xl font-bold">+{automationMetrics.careerProgressAcceleration}%</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-primary/60" />
-            </div>
-          </CardContent>
-        </Card>
+        <StableMetricCard
+          title="Learning Velocity"
+          value={`+${automationMetrics.careerProgressAcceleration}%`}
+          isLoading={isLoading}
+        />
         
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Autonomy Level</p>
-                <p className="text-2xl font-bold">{autonomyLevel}%</p>
-              </div>
-              <Brain className="h-8 w-8 text-primary/60" />
-            </div>
-          </CardContent>
-        </Card>
+        <StableMetricCard
+          title="Autonomy Level"
+          value={`${autonomyLevel}%`}
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Main Tabs */}

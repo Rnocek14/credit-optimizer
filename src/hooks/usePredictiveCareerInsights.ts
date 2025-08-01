@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 import { useMayaCRIIntegration } from './useMayaCRIIntegration';
@@ -38,6 +38,10 @@ export function usePredictiveCareerInsights() {
   const [lastAnalysis, setLastAnalysis] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+
+  // Request management
+  const isRequestInProgress = useRef(false);
+  const analysisTimer = useRef<NodeJS.Timeout | null>(null);
 
   const { sendEnhancedRequest } = useEnhancedMaya();
   const { insights: criInsights, trajectory } = useMayaCRIIntegration();
@@ -236,18 +240,45 @@ export function usePredictiveCareerInsights() {
   }, [patterns, state.marketData]);
 
   const runPredictiveAnalysis = useCallback(async () => {
+    // Prevent concurrent requests
+    if (isRequestInProgress.current) {
+      console.log('⏳ Predictive analysis already in progress, skipping...');
+      return;
+    }
+
+    isRequestInProgress.current = true;
     setLoading(true);
-    await analyzeUserPatterns();
-    await generatePredictiveInsights();
-    setLoading(false);
+    
+    try {
+      await analyzeUserPatterns();
+      await generatePredictiveInsights();
+    } catch (error) {
+      console.error('Error in predictive analysis:', error);
+      setError(error instanceof Error ? error.message : 'Analysis failed');
+    } finally {
+      setLoading(false);
+      isRequestInProgress.current = false;
+    }
   }, [analyzeUserPatterns, generatePredictiveInsights]);
 
-  // Auto-run analysis when dependencies change
+  // Debounced auto-run analysis when dependencies change
   useEffect(() => {
     if (criInsights.length > 0 || trajectory) {
-      runPredictiveAnalysis();
+      if (analysisTimer.current) {
+        clearTimeout(analysisTimer.current);
+      }
+      
+      analysisTimer.current = setTimeout(() => {
+        runPredictiveAnalysis();
+      }, 3000); // 3 second debounce
     }
-  }, [criInsights, trajectory, runPredictiveAnalysis]);
+    
+    return () => {
+      if (analysisTimer.current) {
+        clearTimeout(analysisTimer.current);
+      }
+    };
+  }, [criInsights, trajectory]); // Remove runPredictiveAnalysis to prevent loops
 
   const getInsightsByType = useCallback((type: PredictiveInsight['type']) => {
     return insights.filter(insight => insight.type === type);

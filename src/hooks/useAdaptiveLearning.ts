@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 import { useCourseProgress } from './useCourseProgress';
@@ -53,6 +53,12 @@ export function useAdaptiveLearning() {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  // Request management
+  const isRequestInProgress = useRef(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const requestCount = useRef(0);
+  const lastRequestTime = useRef(0);
 
   const { sendEnhancedRequest } = useEnhancedMaya();
   const { courseProgress } = useCourseProgress();
@@ -313,9 +319,42 @@ export function useAdaptiveLearning() {
     return intervention;
   }, [interventions, sendEnhancedRequest]);
 
-  // Run comprehensive adaptive learning analysis
+  // Circuit breaker: prevent excessive requests
+  const canMakeRequest = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime.current;
+    
+    // Reset counter if enough time has passed
+    if (timeSinceLastRequest > 60000) { // 1 minute
+      requestCount.current = 0;
+    }
+    
+    // Maximum 3 requests per minute
+    if (requestCount.current >= 3) {
+      console.warn('🚫 Request rate limit reached, using cached data');
+      return false;
+    }
+    
+    return true;
+  }, []);
+
+  // Run comprehensive adaptive learning analysis with debouncing
   const runAdaptiveAnalysis = useCallback(async () => {
+    // Prevent concurrent requests
+    if (isRequestInProgress.current) {
+      console.log('⏳ Request already in progress, skipping...');
+      return;
+    }
+
+    // Check rate limiting
+    if (!canMakeRequest()) {
+      return;
+    }
+
+    isRequestInProgress.current = true;
     setLoading(true);
+    requestCount.current++;
+    lastRequestTime.current = Date.now();
     
     try {
       await analyzeLearningMetrics();
@@ -323,17 +362,36 @@ export function useAdaptiveLearning() {
       await generateInterventions();
     } catch (error) {
       console.error('Error running adaptive analysis:', error);
+      setError(error instanceof Error ? error.message : 'Analysis failed');
     } finally {
       setLoading(false);
+      isRequestInProgress.current = false;
     }
-  }, [analyzeLearningMetrics, generateOptimizations, generateInterventions]);
+  }, [analyzeLearningMetrics, generateOptimizations, generateInterventions, canMakeRequest]);
 
-  // Auto-run analysis when course progress changes
+  // Debounced version of runAdaptiveAnalysis
+  const debouncedRunAnalysis = useCallback(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(() => {
+      runAdaptiveAnalysis();
+    }, 2000); // 2 second debounce
+  }, [runAdaptiveAnalysis]);
+
+  // Auto-run analysis when course progress changes (debounced)
   useEffect(() => {
     if (courseProgress && courseProgress.length > 0) {
-      runAdaptiveAnalysis();
+      debouncedRunAnalysis();
     }
-  }, [courseProgress, runAdaptiveAnalysis]);
+    
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [courseProgress, debouncedRunAnalysis]);
 
   // Monitor for intervention triggers
   useEffect(() => {

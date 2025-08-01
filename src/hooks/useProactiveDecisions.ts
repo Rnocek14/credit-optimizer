@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEnhancedMaya } from './useEnhancedMaya';
 
@@ -35,11 +35,33 @@ export function useProactiveDecisions() {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  
+  // Request management
+  const isGenerating = useRef(false);
+  const requestCount = useRef(0);
+  const lastRequestTime = useRef(0);
+  
   const { sendEnhancedRequest } = useEnhancedMaya();
 
   const generateProactiveDecisions = useCallback(async () => {
+    // Prevent concurrent requests
+    if (isGenerating.current) {
+      console.log('⏳ Decision generation already in progress, skipping...');
+      return;
+    }
+
+    // Rate limiting: max 2 requests per minute
+    const now = Date.now();
+    if (now - lastRequestTime.current < 30000 && requestCount.current >= 2) {
+      console.warn('🚫 Rate limit reached for decision generation');
+      return;
+    }
+
+    isGenerating.current = true;
     setLoading(true);
     setError(null);
+    requestCount.current++;
+    lastRequestTime.current = now;
     
     try {
       const { data: user } = await supabase.auth.getUser();
@@ -147,6 +169,7 @@ export function useProactiveDecisions() {
       setIsUsingMockData(true);
     } finally {
       setLoading(false);
+      isGenerating.current = false;
     }
   }, []);
 

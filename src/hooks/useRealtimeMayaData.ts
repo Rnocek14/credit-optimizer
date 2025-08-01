@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 
@@ -22,14 +22,25 @@ export function useRealtimeMayaData() {
     lastUpdate: null
   });
   const [error, setError] = useState<string | null>(null);
+  
+  // Connection management
+  const channelRef = useRef<any>(null);
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 3;
 
-  // Real-time subscription to Maya decision logs
+  // Real-time subscription to Maya decision logs with stability improvements
   const connectToRealtimeData = useCallback(() => {
+    // Prevent multiple connections
+    if (channelRef.current) {
+      console.log('🔌 Already connected to real-time data');
+      return () => {};
+    }
+
     console.log('🔌 Connecting to Maya real-time data...');
     
     // Setup real-time subscriptions to Maya-related tables
     const channel = supabase
-      .channel('maya-automation')
+      .channel(`maya-automation-${Date.now()}`) // Unique channel name
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -72,12 +83,29 @@ export function useRealtimeMayaData() {
       })
       .subscribe((status) => {
         console.log('📡 Maya realtime status:', status);
-        setData(prev => ({ ...prev, isConnected: status === 'SUBSCRIBED' }));
+        
+        if (status === 'SUBSCRIBED') {
+          setData(prev => ({ ...prev, isConnected: true }));
+          reconnectAttempts.current = 0;
+        } else if (status === 'CLOSED' && reconnectAttempts.current < maxReconnectAttempts) {
+          // Auto-reconnect with exponential backoff
+          setTimeout(() => {
+            reconnectAttempts.current++;
+            connectToRealtimeData();
+          }, Math.pow(2, reconnectAttempts.current) * 1000);
+        } else {
+          setData(prev => ({ ...prev, isConnected: false }));
+        }
       });
+
+    channelRef.current = channel;
 
     return () => {
       console.log('🔌 Disconnecting from Maya real-time data');
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, []);
 
@@ -187,12 +215,18 @@ export function useRealtimeMayaData() {
     }
   }, [state.user]);
 
-  // Initialize and cleanup
+  // Initialize and cleanup with stability
   useEffect(() => {
     fetchInitialData();
     const cleanup = connectToRealtimeData();
-    return cleanup;
-  }, [fetchInitialData, connectToRealtimeData]);
+    
+    return () => {
+      cleanup();
+      // Reset connection state on unmount
+      channelRef.current = null;
+      reconnectAttempts.current = 0;
+    };
+  }, []); // Remove dependencies to prevent reconnection loops
 
   // Broadcast test decision (for demonstration)
   const broadcastTestDecision = useCallback(async () => {
