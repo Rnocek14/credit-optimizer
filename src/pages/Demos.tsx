@@ -11,6 +11,7 @@ import { ExternalLink, LogIn, Trophy, User, TestTube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AIPlanningEngineTest } from "@/components/AIPlanningEngineTest";
 import { SemanticVisualQATest } from "@/components/SemanticVisualQATest";
+import { Phase1TestPanel } from "@/components/Phase1TestPanel";
 
 interface DemoProfile {
   user_id: string;
@@ -132,6 +133,13 @@ export default function Demos() {
             Explore our demo accounts and run validation tests
           </p>
         </div>
+
+        {/* Phase 1 + Smart Goals Test Section */}
+        <div className="mb-8">
+          <Phase1TestPanel />
+        </div>
+
+        <Separator className="my-8" />
 
         {/* AI Planning Engine Test Section */}
         <div className="mb-8">
