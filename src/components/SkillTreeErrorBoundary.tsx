@@ -33,16 +33,16 @@ export class SkillTreeErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex items-center justify-center h-96 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-center justify-center h-96 bg-destructive/10 border border-destructive/20 rounded-lg">
           <div className="text-center p-6">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-red-900 mb-2">Skill Tree Error</h3>
-            <p className="text-red-700 mb-4">
-              There was an error rendering the skill tree. Please try refreshing the page.
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">Visualization Error</h3>
+            <p className="text-muted-foreground mb-4">
+              There was an error rendering the visual graph. Please try refreshing or check the console for details.
             </p>
             <button
               onClick={() => this.setState({ hasError: false })}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
             >
               Try Again
             </button>

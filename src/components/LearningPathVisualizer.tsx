@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Brain, TrendingUp } from 'lucide-react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
+import { SkillTreeErrorBoundary } from '@/components/SkillTreeErrorBoundary';
 import { AIPlannerDataBridge, type GraphNode as BridgeGraphNode } from '@/lib/aiPlannerDataBridge';
 import type { LearningPath } from '@/hooks/useAIPlanningEngine';
 import type { GraphNode } from '@/lib/careerGraph';
@@ -41,9 +42,16 @@ export function LearningPathVisualizer({
 
   // Convert bridge format to unified format for canvas
   const canvasNodes: GraphNode[] = useMemo(() => {
-    if (!graphData) return [];
+    if (!graphData) {
+      console.log('🚫 No graph data available for canvas conversion');
+      return [];
+    }
     
-    return graphData.nodes.map(bridgeNode => {
+    console.log('🔄 Converting bridge nodes to canvas format:', graphData.nodes.length, 'nodes');
+    
+    const convertedNodes = graphData.nodes.map((bridgeNode, index) => {
+      console.log(`📦 Converting node ${index + 1}:`, bridgeNode);
+      
       // Map bridge node type to valid NodeType
       const nodeType = (['job', 'skill', 'step', 'course', 'project', 'certification'].includes(bridgeNode.type)) 
         ? bridgeNode.type as import('@/lib/careerGraph').NodeType
@@ -56,7 +64,7 @@ export function LearningPathVisualizer({
           data = {
             required_skills: [],
             preferred_skills: [],
-            average_salary: bridgeNode.cost_estimate,
+            average_salary: bridgeNode.cost_estimate || 0,
             industry: bridgeNode.category || 'Technology'
           } as import('@/lib/careerGraph').JobData;
           break;
@@ -71,7 +79,7 @@ export function LearningPathVisualizer({
         case 'course':
           data = {
             platform: 'AI Planner',
-            cost: bridgeNode.cost_estimate,
+            cost: bridgeNode.cost_estimate || 0,
             duration: `${bridgeNode.estimated_time_hours || 0}h`,
             skill_tags: []
           } as import('@/lib/careerGraph').CourseData;
@@ -93,44 +101,77 @@ export function LearningPathVisualizer({
         case 'certification':
           data = {
             issuer: 'AI Planner',
-            cost: bridgeNode.cost_estimate,
-            prep_time_hours: bridgeNode.estimated_time_hours,
+            cost: bridgeNode.cost_estimate || 0,
+            prep_time_hours: bridgeNode.estimated_time_hours || 0,
             skills_validated: []
           } as import('@/lib/careerGraph').CertificationData;
           break;
         default:
+          console.warn(`🔶 Unknown node type: ${bridgeNode.type}, defaulting to skill`);
           data = {
             category: 'General',
-            xp_value: 100
+            xp_value: 100,
+            difficulty_level: 1,
+            market_demand: 1
           } as import('@/lib/careerGraph').SkillData;
       }
         
-      return {
+      const convertedNode = {
         id: bridgeNode.id,
         type: nodeType,
-        title: bridgeNode.title,
-        description: bridgeNode.description,
-        estimated_time_hours: bridgeNode.estimated_time_hours,
+        title: bridgeNode.title || 'Untitled',
+        description: bridgeNode.description || '',
+        estimated_time_hours: bridgeNode.estimated_time_hours || 0,
         data
       };
+      
+      console.log(`✅ Converted node:`, convertedNode);
+      return convertedNode;
     });
+    
+    console.log('✅ Canvas nodes conversion complete:', convertedNodes.length, 'nodes');
+    return convertedNodes;
   }, [graphData]);
 
   const canvasEdges = useMemo(() => {
-    if (!graphData) return [];
+    if (!graphData) {
+      console.log('🚫 No graph data available for edge conversion');
+      return [];
+    }
     
-    return graphData.edges.map(bridgeEdge => {
-      // Map bridge edge type to valid EdgeType
-      const edgeType = (['requires', 'unlocks', 'teaches', 'demonstrates', 'validates', 
-                        'next_role', 'pivot', 'prerequisite', 'substitution', 'leads_to', 'strengthens'].includes(bridgeEdge.type)) 
-        ? bridgeEdge.type as import('@/lib/careerGraph').EdgeType
-        : 'requires' as const;
-        
-      return {
+    console.log('🔄 Converting bridge edges to canvas format:', graphData.edges.length, 'edges');
+    
+    const convertedEdges = graphData.edges.map((bridgeEdge, index) => {
+      console.log(`🔗 Converting edge ${index + 1}:`, bridgeEdge);
+      
+      // Map bridge edge type to valid EdgeType - expanded mapping
+      const edgeTypeMapping: Record<string, import('@/lib/careerGraph').EdgeType> = {
+        'learning_progression': 'teaches',
+        'branch_option': 'unlocks',
+        'requires': 'requires',
+        'unlocks': 'unlocks', 
+        'teaches': 'teaches',
+        'demonstrates': 'demonstrates',
+        'validates': 'validates',
+        'next_role': 'leads_to',
+        'pivot': 'pivot',
+        'prerequisite': 'prerequisite',
+        'substitution': 'substitution',
+        'leads_to': 'leads_to',
+        'strengthens': 'strengthens'
+      };
+      
+      const edgeType = edgeTypeMapping[bridgeEdge.type] || 'teaches';
+      
+      // Get node types for proper edge typing
+      const sourceNode = canvasNodes.find(n => n.id === bridgeEdge.source);
+      const targetNode = canvasNodes.find(n => n.id === bridgeEdge.target);
+      
+      const convertedEdge = {
         id: bridgeEdge.id,
-        from_type: 'skill' as const, // Default to skill
+        from_type: (sourceNode?.type as import('@/lib/careerGraph').NodeType) || 'skill',
         from_id: bridgeEdge.source,
-        to_type: 'skill' as const,   // Default to skill  
+        to_type: (targetNode?.type as import('@/lib/careerGraph').NodeType) || 'skill',
         to_id: bridgeEdge.target,
         edge_type: edgeType,
         importance_weight: bridgeEdge.weight || 1,
@@ -138,8 +179,14 @@ export function LearningPathVisualizer({
         monetary_cost: 0,
         difficulty_multiplier: 1,
       };
+      
+      console.log(`✅ Converted edge:`, convertedEdge);
+      return convertedEdge;
     });
-  }, [graphData]);
+    
+    console.log('✅ Canvas edges conversion complete:', convertedEdges.length, 'edges');
+    return convertedEdges;
+  }, [graphData, canvasNodes]);
 
   // Handle node clicks
   const handleNodeClick = (node: GraphNode) => {
@@ -253,26 +300,28 @@ export function LearningPathVisualizer({
       <Card className="border border-border/40">
         <CardContent className="p-0">
           <div className="h-96 md:h-[500px] lg:h-[600px] relative">
-            <UnifiedCareerCanvas
-              nodes={canvasNodes}
-              edges={canvasEdges}
-              onNodeClick={handleNodeClick}
-              layoutAlgorithm="semantic-hierarchy"
-              selectedCareerPath={selectedPath}
-              focusMode={false}
-              showPivotPaths={true}
-              layoutConfig={{
-                algorithm: 'hierarchical',
-                spacing: {
-                  nodeWidth: 200,
-                  nodeHeight: 80,
-                  levelGap: 150,
-                  nodeGap: 120
-                },
-                direction: 'horizontal',
-                groupByType: true
-              }}
-            />
+            <SkillTreeErrorBoundary>
+              <UnifiedCareerCanvas
+                nodes={canvasNodes}
+                edges={canvasEdges}
+                onNodeClick={handleNodeClick}
+                layoutAlgorithm="semantic-hierarchy"
+                selectedCareerPath={selectedPath}
+                focusMode={false}
+                showPivotPaths={true}
+                layoutConfig={{
+                  algorithm: 'hierarchical',
+                  spacing: {
+                    nodeWidth: 200,
+                    nodeHeight: 80,
+                    levelGap: 150,
+                    nodeGap: 120
+                  },
+                  direction: 'horizontal',
+                  groupByType: true
+                }}
+              />
+            </SkillTreeErrorBoundary>
           </div>
         </CardContent>
       </Card>
