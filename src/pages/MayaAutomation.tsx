@@ -1,3 +1,4 @@
+import React from "react";
 import { Helmet } from "react-helmet-async";
 import { MayaAutonomousIntelligence } from "@/components/MayaAutonomousIntelligence";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
@@ -28,27 +29,51 @@ export default function MayaAutomation() {
 }
 
 // Error boundary component for production resilience
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  try {
-    return <>{children}</>;
-  } catch (error) {
-    return (
-      <Card className="max-w-md mx-auto mt-16">
-        <CardContent className="pt-6">
-          <div className="flex flex-col items-center space-y-4 text-center">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
-            <div>
-              <h3 className="font-semibold text-lg">Dashboard Error</h3>
-              <p className="text-muted-foreground">
-                There was an issue loading the automation dashboard. Please try refreshing the page.
-              </p>
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Maya Automation Dashboard Error:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="max-w-md mx-auto mt-16">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <AlertTriangle className="h-12 w-12 text-destructive" />
+              <div>
+                <h3 className="font-semibold text-lg">Dashboard Error</h3>
+                <p className="text-muted-foreground">
+                  There was an issue loading the automation dashboard. Please try refreshing the page.
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  this.setState({ hasError: false });
+                  window.location.reload();
+                }}
+              >
+                Refresh Page
+              </Button>
             </div>
-            <Button onClick={() => window.location.reload()}>
-              Refresh Page
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return this.props.children;
   }
 }
