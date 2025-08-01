@@ -222,7 +222,7 @@ export function useMayaCRIIntegration(userId?: string) {
     }
   });
 
-  // Real-time CRI monitoring
+  // Real-time CRI monitoring with caching optimization
   const { data: criTrends } = useQuery({
     queryKey: ['cri-trends', userId],
     queryFn: async () => {
@@ -238,7 +238,8 @@ export function useMayaCRIIntegration(userId?: string) {
       return data || [];
     },
     enabled: !!userId,
-    refetchInterval: 30000 // Check every 30 seconds
+    refetchInterval: 30000, // Check every 30 seconds
+    staleTime: 15000 // Cache for 15 seconds for better performance
   });
 
   // Monitor for CRI milestones
