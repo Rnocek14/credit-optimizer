@@ -10,7 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Target, ArrowLeft, Settings, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { isProduction, sanitizeString, sanitizeHtml } from "@/lib/security";
+import { 
+  isProduction, 
+  sanitizeString, 
+  sanitizeHtml, 
+  checkRateLimit, 
+  generateRateLimitKey, 
+  clearDevMode,
+  secureStorage,
+  DEV_SESSION_TIMEOUT
+} from "@/lib/security";
 
 const devLoginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -102,23 +111,35 @@ export default function DevLogin() {
   }, [navigate, toast]);
 
   const handleDevLogin = async (data: DevLoginData) => {
-    // Demo login temporarily enabled for CRI testing
-
     setIsLoading(true);
+    
     try {
-      // SECURITY: Remove hardcoded admin logic
+      // Rate limiting for dev login attempts
+      const rateLimitKey = generateRateLimitKey(data.email, "dev_login");
+      if (!checkRateLimit(rateLimitKey, 5, 15 * 60 * 1000)) {
+        toast({
+          title: "Too many attempts",
+          description: "Please wait before trying again",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // SECURITY: Enhanced dev user creation with session tracking
       const devUser = {
         id: `dev-${Date.now()}`,
         email: sanitizeString(data.email),
         role: "user", // Always start as user - admin roles must be assigned via database
         name: sanitizeString(data.name),
+        sessionStart: Date.now(),
+        sessionTimeout: DEV_SESSION_TIMEOUT
       };
 
       // Set global dev user
       window.__devUser__ = devUser;
 
-      // Store in localStorage for persistence
-      localStorage.setItem("devUser", JSON.stringify(devUser));
+      // Store in secure localStorage with integrity checking
+      secureStorage.setItem("devUser", devUser);
 
       // Try to create/update profile in database
       try {
@@ -186,7 +207,7 @@ export default function DevLogin() {
     };
     
     window.__devUser__ = devUser;
-    localStorage.setItem("devUser", JSON.stringify(devUser));
+    secureStorage.setItem("devUser", devUser);
     
     // Check actual role from database
     try {
@@ -219,11 +240,11 @@ export default function DevLogin() {
   };
 
   const handleClearDevMode = () => {
-    delete window.__devUser__;
-    localStorage.removeItem("devUser");
+    clearDevMode();
+    
     toast({
       title: "Dev mode cleared",
-      description: "Returned to normal auth flow",
+      description: "Development authentication has been cleared securely",
     });
   };
 
@@ -331,7 +352,7 @@ export default function DevLogin() {
                     name: 'Aisha Khan'
                   };
                   window.__devUser__ = demoUser;
-                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  secureStorage.setItem("devUser", demoUser);
                   toast({ title: "Demo Login", description: "Logged in as Aisha Khan (Frontend Developer)" });
                   navigate("/dashboard");
                 }}
@@ -351,7 +372,7 @@ export default function DevLogin() {
                     name: 'Mateo Silva'
                   };
                   window.__devUser__ = demoUser;
-                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  secureStorage.setItem("devUser", demoUser);
                   toast({ title: "Demo Login", description: "Logged in as Mateo Silva (DevOps Engineer)" });
                   navigate("/dashboard");
                 }}
@@ -371,7 +392,7 @@ export default function DevLogin() {
                     name: 'Jade Chen'
                   };
                   window.__devUser__ = demoUser;
-                  localStorage.setItem("devUser", JSON.stringify(demoUser));
+                  secureStorage.setItem("devUser", demoUser);
                   toast({ title: "Demo Login", description: "Logged in as Jade Chen (ML Research Scientist)" });
                   navigate("/dashboard");
                 }}

@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { isProduction } from "./security";
+import { isProduction, secureStorage, isDevSessionExpired, clearDevMode } from "./security";
 import type { User } from "@supabase/supabase-js";
 
 // App role type to match database enum
@@ -71,20 +71,25 @@ export const hasRole = async (userId: string, role: AppRole): Promise<boolean> =
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
   // SECURITY: Only allow dev mode in development environment
   if (!isProduction()) {
-    // Check for dev user first
-    const storedDevUser = localStorage.getItem("devUser");
+    // Check for dev session expiry
+    if (isDevSessionExpired()) {
+      clearDevMode();
+      return null;
+    }
+    
+    // Check for dev user first using secure storage
+    const storedDevUser = secureStorage.getItem("devUser");
     if (storedDevUser) {
-      const parsedDevUser = JSON.parse(storedDevUser);
-      window.__devUser__ = parsedDevUser;
+      window.__devUser__ = storedDevUser;
       
       // Get secure role from database even for dev users
-      const secureRole = await getSecureUserRole(parsedDevUser.id);
+      const secureRole = await getSecureUserRole(storedDevUser.id);
       
       return {
-        id: parsedDevUser.id,
-        email: parsedDevUser.email,
-        role: secureRole || toAppRole(parsedDevUser.role) || 'user',
-        name: parsedDevUser.name,
+        id: storedDevUser.id,
+        email: storedDevUser.email,
+        role: secureRole || toAppRole(storedDevUser.role) || 'user',
+        name: storedDevUser.name,
         isDevUser: true,
       };
     }
@@ -130,7 +135,7 @@ export const getUserProfile = async (userId: string, isDevUser: boolean = false)
   
   if (isDevUser) {
     // For dev users, always return a mock profile immediately
-    const devUser = window.__devUser__ || JSON.parse(localStorage.getItem("devUser") || "{}");
+    const devUser = window.__devUser__ || secureStorage.getItem("devUser") || {};
     console.log("Dev user data:", devUser);
     
     if (devUser && devUser.id) {
