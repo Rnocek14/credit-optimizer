@@ -78,7 +78,7 @@ export default function Goals() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <GoalTracker userId={currentUser.id} />
+          <EnhancedGoalDashboard userId={currentUser.id} />
         </div>
       </div>
     </>
