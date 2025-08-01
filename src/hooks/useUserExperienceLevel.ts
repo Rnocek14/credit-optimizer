@@ -38,8 +38,9 @@ export function useUserExperienceLevel() {
         }
 
         if (data) {
+          const experienceLevel = data.experience_level as ExperienceLevel;
           const userPrefs: UserPreferences = {
-            experienceLevel: (data.experience_level as ExperienceLevel) || 'beginner',
+            experienceLevel: experienceLevel || 'beginner',
             hasCompletedOnboarding: data.has_completed_onboarding || false,
             preferredFeatures: data.preferred_features || [],
             lastActiveDate: data.last_active_date || new Date().toISOString()
