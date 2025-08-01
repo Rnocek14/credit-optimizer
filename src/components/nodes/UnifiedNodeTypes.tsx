@@ -31,8 +31,8 @@ interface BaseNodeProps {
 
 // Job Node Component 💼
 const JobNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const jobData = data.data as JobData;
-  const style = data.style;
+  const jobData = (data.data || {}) as JobData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const formatSalary = (salary?: number) => {
@@ -59,17 +59,17 @@ const JobNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 280,
-          minHeight: style?.height || 140
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 280,
+          minHeight: (style as any)?.height || 140
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{style?.icon || '💼'}</span>
+            <span className="text-2xl">{(style as any)?.icon || '💼'}</span>
             <div>
               <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
               {jobData.level && (
@@ -96,7 +96,7 @@ const JobNode = memo<BaseNodeProps>(({ data, selected }) => {
         </div>
 
         {/* Skills Preview */}
-        {jobData.required_skills.length > 0 && (
+        {jobData.required_skills && jobData.required_skills.length > 0 && (
           <div className="mb-3">
             <div className="text-xs text-muted-foreground mb-1">Key Skills:</div>
             <div className="flex flex-wrap gap-1">
@@ -135,8 +135,8 @@ const JobNode = memo<BaseNodeProps>(({ data, selected }) => {
 
 // Skill Node Component 🎯
 const SkillNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const skillData = data.data as SkillData;
-  const style = data.style;
+  const skillData = (data.data || {}) as SkillData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const getDifficultyColor = (level?: number) => {
@@ -156,16 +156,16 @@ const SkillNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 200,
-          minHeight: style?.height || 100
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 200,
+          minHeight: (style as any)?.height || 100
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">{style?.icon || '🎯'}</span>
+          <span className="text-xl">{(style as any)?.icon || '🎯'}</span>
           <div>
             <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
             {skillData.category && (
@@ -209,8 +209,8 @@ const SkillNode = memo<BaseNodeProps>(({ data, selected }) => {
 
 // Course Node Component 📚
 const CourseNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const courseData = data.data as CourseData;
-  const style = data.style;
+  const courseData = (data.data || {}) as CourseData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const formatCost = (cost?: number) => {
@@ -227,17 +227,17 @@ const CourseNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 240,
-          minHeight: style?.height || 110
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 240,
+          minHeight: (style as any)?.height || 110
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-xl">{style?.icon || '📚'}</span>
+            <span className="text-xl">{(style as any)?.icon || '📚'}</span>
             <div>
               <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
               <div className="text-xs text-muted-foreground">{courseData.platform}</div>
@@ -252,7 +252,7 @@ const CourseNode = memo<BaseNodeProps>(({ data, selected }) => {
         </div>
 
         {/* Skills Taught */}
-        {courseData.skill_tags.length > 0 && (
+        {courseData.skill_tags && courseData.skill_tags.length > 0 && (
           <div className="mb-2">
             <div className="text-xs text-muted-foreground mb-1">Skills:</div>
             <div className="flex flex-wrap gap-1">
@@ -291,8 +291,8 @@ const CourseNode = memo<BaseNodeProps>(({ data, selected }) => {
 
 // Project Node Component 🛠️
 const ProjectNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const projectData = data.data as ProjectData;
-  const style = data.style;
+  const projectData = (data.data || {}) as ProjectData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const getProjectTypeColor = (type: string) => {
@@ -312,17 +312,17 @@ const ProjectNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 260,
-          minHeight: style?.height || 120
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 260,
+          minHeight: (style as any)?.height || 120
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-xl">{style?.icon || '🛠️'}</span>
+            <span className="text-xl">{(style as any)?.icon || '🛠️'}</span>
             <div>
               <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
               <Badge 
@@ -344,7 +344,7 @@ const ProjectNode = memo<BaseNodeProps>(({ data, selected }) => {
         )}
 
         {/* Technologies */}
-        {projectData.technologies.length > 0 && (
+        {projectData.technologies && projectData.technologies.length > 0 && (
           <div className="mb-2">
             <div className="text-xs text-muted-foreground mb-1">Tech:</div>
             <div className="flex flex-wrap gap-1">
@@ -390,8 +390,8 @@ const ProjectNode = memo<BaseNodeProps>(({ data, selected }) => {
 
 // Certification Node Component 🏆
 const CertificationNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const certData = data.data as CertificationData;
-  const style = data.style;
+  const certData = (data.data || {}) as CertificationData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const getRecognitionColor = (level?: string) => {
@@ -411,16 +411,16 @@ const CertificationNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 220,
-          minHeight: style?.height || 100
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 220,
+          minHeight: (style as any)?.height || 100
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">{style?.icon || '🏆'}</span>
+          <span className="text-xl">{(style as any)?.icon || '🏆'}</span>
           <div>
             <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
             <div className="text-xs text-muted-foreground">{certData.issuer}</div>
@@ -478,8 +478,8 @@ const CertificationNode = memo<BaseNodeProps>(({ data, selected }) => {
 
 // Step Node Component 📋
 const StepNode = memo<BaseNodeProps>(({ data, selected }) => {
-  const stepData = data.data as StepData;
-  const style = data.style;
+  const stepData = (data.data || {}) as StepData;
+  const style = data.style || {};
   const progress = data.userProgress;
 
   const getStepTypeColor = (type: string) => {
@@ -500,16 +500,16 @@ const StepNode = memo<BaseNodeProps>(({ data, selected }) => {
           selected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
         }`}
         style={{ 
-          backgroundColor: style?.bgColor || 'white',
-          borderColor: style?.color || '#ccc',
-          minWidth: style?.width || 200,
-          minHeight: style?.height || 90
+          backgroundColor: (style as any)?.bgColor || 'white',
+          borderColor: (style as any)?.color || '#ccc',
+          minWidth: (style as any)?.width || 200,
+          minHeight: (style as any)?.height || 90
         }}
         onClick={data.onClick}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">{style?.icon || '📋'}</span>
+          <span className="text-lg">{(style as any)?.icon || '📋'}</span>
           <div>
             <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
             <Badge 

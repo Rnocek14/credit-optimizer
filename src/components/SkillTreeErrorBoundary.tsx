@@ -24,6 +24,8 @@ export class SkillTreeErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('SkillTree Error:', error, errorInfo);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
   }
 
   render() {
@@ -40,6 +42,15 @@ export class SkillTreeErrorBoundary extends Component<Props, State> {
             <p className="text-muted-foreground mb-4">
               There was an error rendering the visual graph. Please try refreshing or check the console for details.
             </p>
+            {this.state.error && (
+              <details className="text-xs text-left">
+                <summary className="cursor-pointer mb-2">Error Details</summary>
+                <pre className="bg-muted p-2 rounded overflow-auto max-h-32">
+                  {this.state.error.message}
+                  {this.state.error.stack && '\n\nStack:\n' + this.state.error.stack}
+                </pre>
+              </details>
+            )}
             <button
               onClick={() => this.setState({ hasError: false })}
               className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
