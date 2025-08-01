@@ -54,17 +54,23 @@ export default function Auth() {
 
         // Create profile if it doesn't exist
         if (!profile) {
-          const isAdmin = user.email === "founder@lifepath.dev";
           const { data: newProfile } = await supabase
             .from("profiles")
             .insert({
               user_id: user.id,
-              name: user.email?.split("@")[0] || "User",
-              role: isAdmin ? "admin" : "user"
+              name: user.email?.split("@")[0] || "User"
             })
             .select()
             .single();
           profile = newProfile;
+          
+          // Create default user role entry
+          await supabase
+            .from("user_roles")
+            .insert({
+              user_id: user.id,
+              role: "user"
+            });
         }
 
         toast({
@@ -106,13 +112,19 @@ export default function Auth() {
 
       // Auto-create profile for new users
       if (authData.user) {
-        const isAdmin = data.email === "founder@lifepath.dev";
         await supabase
           .from("profiles")
           .insert({
             user_id: authData.user.id,
-            name: data.email.split("@")[0] || "User",
-            role: isAdmin ? "admin" : "user"
+            name: data.email.split("@")[0] || "User"
+          });
+          
+        // Create default user role entry
+        await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "user"
           });
       }
 

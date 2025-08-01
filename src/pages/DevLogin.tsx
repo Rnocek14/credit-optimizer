@@ -73,13 +73,32 @@ export default function DevLogin() {
 
   // Check for existing dev user on mount
   useEffect(() => {
-    if (window.__devUser__) {
-      toast({
-        title: "Dev mode active",
-        description: `Logged in as ${sanitizeHtml(window.__devUser__.email)}`,
-      });
-      navigate("/admin/moderation");
-    }
+    const checkExistingDevUser = async () => {
+      if (window.__devUser__) {
+        toast({
+          title: "Dev mode active",
+          description: `Logged in as ${sanitizeHtml(window.__devUser__.email)}`,
+        });
+        
+        // Get secure role from database for navigation
+        try {
+          const { data: secureRole } = await supabase.rpc('get_user_role', { 
+            user_uuid: window.__devUser__.id 
+          });
+          
+          if (secureRole === "admin") {
+            navigate("/admin/moderation");
+          } else {
+            navigate("/dashboard");
+          }
+        } catch (error) {
+          console.warn("Could not validate dev user role:", error);
+          navigate("/dashboard");
+        }
+      }
+    };
+    
+    checkExistingDevUser();
   }, [navigate, toast]);
 
   const handleDevLogin = async (data: DevLoginData) => {
@@ -87,12 +106,12 @@ export default function DevLogin() {
 
     setIsLoading(true);
     try {
-      const isAdmin = data.email === "founder@lifepath.dev" || data.email.includes("admin");
+      // SECURITY: Remove hardcoded admin logic
       const devUser = {
         id: `dev-${Date.now()}`,
-        email: data.email,
-        role: isAdmin ? "admin" : "user",
-        name: data.name,
+        email: sanitizeString(data.email),
+        role: "user", // Always start as user - admin roles must be assigned via database
+        name: sanitizeString(data.name),
       };
 
       // Set global dev user
@@ -128,8 +147,19 @@ export default function DevLogin() {
         description: `Logged in as ${devUser.email} (${devUser.role})`,
       });
 
-      // Redirect based on role
-      if (devUser.role === "admin") {
+      // Get secure role from database for navigation
+      let secureRole = "user";
+      try {
+        const { data: roleData } = await supabase.rpc('get_user_role', { 
+          user_uuid: devUser.id 
+        });
+        secureRole = roleData || "user";
+      } catch (roleError) {
+        console.warn("Could not fetch secure role:", roleError);
+      }
+      
+      // Redirect based on secure role
+      if (secureRole === "admin") {
         navigate("/admin/moderation");
       } else {
         navigate("/dashboard");
@@ -146,19 +176,46 @@ export default function DevLogin() {
     }
   };
 
-  const handleQuickAdmin = () => {
-    window.__devUser__ = {
+  const handleQuickAdmin = async () => {
+    // SECURITY: Remove direct admin assignment - check database role
+    const devUser = {
       id: "dev-admin-quick",
       email: "founder@lifepath.dev",
-      role: "admin",
+      role: "user", // Start as user, will be validated against database
       name: "Quick Admin",
     };
-    localStorage.setItem("devUser", JSON.stringify(window.__devUser__));
-    toast({
-      title: "Quick admin activated!",
-      description: "Logged in as founder@lifepath.dev",
-    });
-    navigate("/admin/moderation");
+    
+    window.__devUser__ = devUser;
+    localStorage.setItem("devUser", JSON.stringify(devUser));
+    
+    // Check actual role from database
+    try {
+      const { data: secureRole } = await supabase.rpc('get_user_role', { 
+        user_uuid: devUser.id 
+      });
+      
+      if (secureRole === "admin") {
+        toast({
+          title: "Quick admin activated!",
+          description: "Logged in with admin privileges",
+        });
+        navigate("/admin/moderation");
+      } else {
+        toast({
+          title: "Quick login activated!",
+          description: "No admin privileges found in database",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      toast({
+        title: "Role validation failed",
+        description: "Could not verify admin status",
+        variant: "destructive",
+      });
+      navigate("/dashboard");
+    }
   };
 
   const handleClearDevMode = () => {

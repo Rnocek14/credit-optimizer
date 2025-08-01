@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentUser, getUserProfile, type AuthUser } from "@/lib/authHelper";
+import { useSecureAuth } from "@/hooks/useSecureAuth";
+import SecurityMonitor from "@/components/SecurityMonitor";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,61 +20,41 @@ export default function ProtectedRoute({
   requireOnboarding = false,
   redirectIfComplete = false 
 }: ProtectedRouteProps) {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [hasProfile, setHasProfile] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const location = useLocation();
   const { toast } = useToast();
+  const { user, role: userRole, isLoading, hasPermission } = useSecureAuth();
 
   useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        
-        if (!mounted) return;
-        
-        if (currentUser) {
-          console.log("ProtectedRoute: User found", { 
-            id: currentUser.id, 
-            email: currentUser.email, 
-            isDevUser: currentUser.isDevUser 
-          });
-          setUser(currentUser);
-          
-          // Check if user has completed onboarding and get role
-          const profile = await getUserProfile(currentUser.id, currentUser.isDevUser);
-          console.log("ProtectedRoute: Profile result", profile);
+    // Check onboarding status when user changes
+    const checkOnboarding = async () => {
+      if (user && !user.isDevUser) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
           
           setHasProfile(!!profile);
-          setUserRole(profile?.role || currentUser.role || null);
-        } else {
-          setUser(null);
+        } catch (error) {
+          console.error("Profile check error:", error);
           setHasProfile(false);
-          setUserRole(null);
         }
-      } catch (error) {
-        console.error("Auth check error:", error);
-        if (mounted) {
-          setUser(null);
-          setHasProfile(false);
-          setUserRole(null);
-        }
-      } finally {
-        if (mounted) setLoading(false);
+      } else if (user?.isDevUser) {
+        // Dev users always considered to have profile
+        setHasProfile(true);
       }
     };
 
-    checkAuth();
+    if (user) {
+      checkOnboarding();
+    } else {
+      setHasProfile(false);
+    }
+  }, [user]);
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -107,8 +89,15 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Admin role check for admin routes
-  if (location.pathname.startsWith("/admin") && userRole !== "admin") {
+  // Secure admin role check for admin routes
+  if (location.pathname.startsWith("/admin") && !hasPermission("admin")) {
+    console.warn("SECURITY: Unauthorized admin access attempt", {
+      userId: user?.id,
+      userRole,
+      path: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+    
     toast({
       title: "Access denied",
       description: "You need admin privileges to access this page.",
@@ -117,8 +106,15 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Mentor role check for teach route
-  if (location.pathname === "/teach" && userRole !== "mentor" && userRole !== "admin") {
+  // Secure mentor role check for teach route
+  if (location.pathname === "/teach" && !hasPermission("mentor") && !hasPermission("admin")) {
+    console.warn("SECURITY: Unauthorized mentor access attempt", {
+      userId: user?.id,
+      userRole,
+      path: location.pathname,
+      timestamp: new Date().toISOString()
+    });
+    
     toast({
       title: "Access denied", 
       description: "You need mentor privileges to access this page.",
@@ -127,5 +123,10 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <SecurityMonitor />
+      {children}
+    </>
+  );
 }
