@@ -55,6 +55,7 @@ export default function Navigation() {
     { href: "/maya-cri-integration", label: "Maya × CRI", icon: Brain },
     { href: "/maya-automation", label: "Maya Automation", icon: Brain },
     { href: "/planner", label: "Planner", icon: Target },
+    { href: "/goals", label: "Goals", icon: Target },
     { href: "/certificates", label: "Certificates", icon: Award },
     { href: "/certificate-gallery", label: "Gallery", icon: Award },
     { href: "/resume-analytics", label: "Resume Analytics", icon: BarChart },

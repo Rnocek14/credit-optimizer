@@ -19,6 +19,7 @@ import { AICareerGraphManager } from "@/components/AICareerGraphManager";
 import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import { useAnalytics } from "@/lib/analytics";
 import { useNavigate } from "react-router-dom";
+import { NextSmartStep } from "@/components/NextSmartStep";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -189,29 +190,33 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* AI Career Planner CTA */}
+          {/* Next Smart Step Widget */}
           <div className="mb-6 md:mb-8">
-            <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/20 rounded-lg">
-                      <Brain className="h-6 w-6 text-primary" />
+            <div className="grid gap-6 md:grid-cols-2">
+              <NextSmartStep userId={currentUser?.id} />
+              
+              <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-primary/20 rounded-lg">
+                        <Brain className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold mb-1">AI Career Planner</h3>
+                        <p className="text-muted-foreground">
+                          Generate personalized learning paths with ROI optimization
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold mb-1">AI Career Planner</h3>
-                      <p className="text-muted-foreground">
-                        Generate personalized learning paths with ROI optimization and smart goal setting
-                      </p>
-                    </div>
+                    <Button onClick={handlePlannerAccess} className="flex items-center gap-2">
+                      Launch Planner
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button onClick={handlePlannerAccess} className="flex items-center gap-2">
-                    Launch Planner
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Workflow Test Panel */}
