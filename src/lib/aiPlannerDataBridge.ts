@@ -16,7 +16,7 @@ export interface GraphNode {
     isBranchPoint?: boolean;
     isTerminal?: boolean;
     progressPercentage?: number;
-    pathType?: 'fastest' | 'cheapest' | 'highest_roi';
+    pathType?: 'fastest' | 'cheapest' | 'highest_roi' | 'easiest';
     branchOptions?: string[];
     roiScore?: number;
     timeToComplete?: number;
@@ -36,7 +36,7 @@ export interface GraphEdge {
   type: string;
   weight?: number;
   metadata?: {
-    pathType?: 'fastest' | 'cheapest' | 'highest_roi';
+    pathType?: 'fastest' | 'cheapest' | 'highest_roi' | 'easiest';
     isBranch?: boolean;
     isCheckpointConnection?: boolean;
     confidence?: number;
@@ -48,7 +48,7 @@ export interface ConvertedGraphData {
   edges: GraphEdge[];
   pathMetadata: {
     totalPaths: number;
-    pathTypes: Array<'fastest' | 'cheapest' | 'highest_roi'>;
+    pathTypes: Array<'fastest' | 'cheapest' | 'highest_roi' | 'easiest'>;
     checkpointCount: number;
     branchPointCount: number;
   };
@@ -152,7 +152,7 @@ export class AIPlannerDataBridge {
   private static convertPathNodeToGraphNode(
     pathNode: PathNode, 
     nodeId: string, 
-    pathType: 'fastest' | 'cheapest' | 'highest_roi',
+    pathType: 'fastest' | 'cheapest' | 'highest_roi' | 'easiest',
     nodeIndex: number,
     totalNodes: number
   ): GraphNode {

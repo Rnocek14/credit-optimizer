@@ -31,7 +31,10 @@ interface LearningPath {
   total_time: number;
   total_cost: number;
   average_roi: number;
-  path_type: 'fastest' | 'cheapest' | 'highest_roi';
+  path_type: 'fastest' | 'cheapest' | 'highest_roi' | 'easiest';
+  confidence_score: number;
+  pivot_score?: number;
+  substitution_options?: PathNode[][];
 }
 
 serve(async (req) => {
@@ -95,11 +98,30 @@ serve(async (req) => {
 });
 
 async function generateBackwardPlan(supabase: any, targetJob: string, userContext: any): Promise<LearningPath[]> {
-  console.log(`Generating backward plan for: ${targetJob}`);
+  console.log(`🚀 Enhanced Backward Planning for: ${targetJob}`);
+  console.log('User context:', userContext);
 
   // 1. Find target job node with enhanced fuzzy matching
-  let jobNodes = null;
+  const targetJobNode = await findTargetJob(supabase, targetJob);
+  console.log(`✅ Target job: ${targetJobNode.title} (ID: ${targetJobNode.id})`);
+
+  // 2. Enhanced backward traversal with multi-step discovery
+  const allPaths = await performEnhancedBackwardTraversal(supabase, targetJobNode, userContext);
   
+  // 3. Apply multi-criteria optimization
+  const optimizedPaths = await optimizePathsMultiCriteria(allPaths);
+  
+  // 4. Add pivot intelligence
+  const pathsWithPivots = await enhancePivotIntelligence(supabase, optimizedPaths, userContext);
+  
+  // 5. Add substitution options
+  const finalPaths = await addSubstitutionOptions(supabase, pathsWithPivots);
+
+  console.log(`🎯 Generated ${finalPaths.length} enhanced learning paths`);
+  return finalPaths.slice(0, 10);
+}
+
+async function findTargetJob(supabase: any, targetJob: string): Promise<any> {
   // Try exact match first
   const { data: exactMatches } = await supabase
     .from('career_graph_nodes')
@@ -109,180 +131,332 @@ async function generateBackwardPlan(supabase: any, targetJob: string, userContex
     .eq('active', true);
 
   if (exactMatches && exactMatches.length > 0) {
-    jobNodes = exactMatches;
-    console.log(`Found exact match for: ${targetJob}`);
-  } else {
-    // Try partial match
-    const { data: partialMatches } = await supabase
-      .from('career_graph_nodes')
-      .select('*')
-      .eq('node_type', 'job')
-      .ilike('title', `%${targetJob}%`)
-      .eq('active', true);
+    return exactMatches[0];
+  }
 
-    if (partialMatches && partialMatches.length > 0) {
-      jobNodes = partialMatches;
-      console.log(`Found partial match for: ${targetJob}`);
-    } else {
-      // Get all job titles for fuzzy matching
-      const { data: allJobs } = await supabase
-        .from('career_graph_nodes')
-        .select('*')
-        .eq('node_type', 'job')
-        .eq('active', true);
+  // Try partial match
+  const { data: partialMatches } = await supabase
+    .from('career_graph_nodes')
+    .select('*')
+    .eq('node_type', 'job')
+    .ilike('title', `%${targetJob}%`)
+    .eq('active', true);
 
-      if (allJobs && allJobs.length > 0) {
-        const suggestions = findSimilarJobs(targetJob, allJobs);
-        console.log(`No exact match found for: ${targetJob}. Similar jobs:`, suggestions.slice(0, 5).map(j => `"${j.title}"`));
-        
-        if (suggestions.length > 0) {
-          throw new Error(JSON.stringify({
-            error: `Job "${targetJob}" not found. Did you mean one of these?`,
-            suggestions: suggestions.slice(0, 5).map(j => j.title)
-          }));
-        }
-      }
-      
+  if (partialMatches && partialMatches.length > 0) {
+    return partialMatches[0];
+  }
+
+  // Fuzzy matching with suggestions
+  const { data: allJobs } = await supabase
+    .from('career_graph_nodes')
+    .select('*')
+    .eq('node_type', 'job')
+    .eq('active', true);
+
+  if (allJobs && allJobs.length > 0) {
+    const suggestions = findSimilarJobs(targetJob, allJobs);
+    if (suggestions.length > 0) {
       throw new Error(JSON.stringify({
-        error: `Job "${targetJob}" not found in our database.`,
-        suggestions: []
+        error: `Job "${targetJob}" not found. Did you mean one of these?`,
+        suggestions: suggestions.slice(0, 5).map(j => j.title)
       }));
     }
   }
+  
+  throw new Error(JSON.stringify({
+    error: `Job "${targetJob}" not found in our database.`,
+    suggestions: []
+  }));
+}
 
-  const targetJobNode = jobNodes[0];
-  console.log(`Found target job: ${targetJobNode.title} (ID: ${targetJobNode.id})`);
+async function performEnhancedBackwardTraversal(supabase: any, targetJobNode: any, userContext: any): Promise<LearningPath[]> {
+  console.log(`🔍 Enhanced backward traversal from: ${targetJobNode.title}`);
+  
+  const allPaths: LearningPath[] = [];
+  const visited = new Set<string>();
+  
+  // Recursive function to explore backward paths
+  async function exploreBackward(currentNode: any, currentPath: PathNode[], totalTime: number, totalCost: number, depth: number): Promise<void> {
+    const nodeKey = `${currentNode.id}-${depth}`;
+    if (visited.has(nodeKey) || depth > 6) return; // Prevent cycles and limit depth
+    visited.add(nodeKey);
+    
+    // Add current node to path
+    const pathNode: PathNode = {
+      id: currentNode.id,
+      title: currentNode.title,
+      type: currentNode.node_type,
+      estimated_time_hours: currentNode.estimated_time_hours || 0,
+      cost_estimate: currentNode.cost_estimate || 0,
+      market_demand_score: currentNode.market_demand_score || 0.5,
+      difficulty_level: currentNode.difficulty_level || 3
+    };
+    
+    const newPath = [pathNode, ...currentPath];
+    const newTotalTime = totalTime + (currentNode.estimated_time_hours || 0);
+    const newTotalCost = totalCost + (currentNode.cost_estimate || 0);
+    
+    // If this is a learning resource (course/project), we have a complete path
+    if (currentNode.node_type === 'course' || currentNode.node_type === 'project') {
+      const learningPath: LearningPath = {
+        id: `path-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        nodes: newPath,
+        total_time: newTotalTime,
+        total_cost: newTotalCost,
+        average_roi: calculateROI(newPath),
+        path_type: 'highest_roi',
+        confidence_score: calculateConfidence(newPath, depth)
+      };
+      
+      allPaths.push(learningPath);
+      console.log(`📚 Found learning path: ${newPath.map(n => n.title).join(' → ')}`);
+      return;
+    }
+    
+    // Continue backward traversal
+    const incomingEdges = await findIncomingEdges(supabase, currentNode.id);
+    
+    for (const edge of incomingEdges) {
+      const { data: fromNodes } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('id', edge.from_id)
+        .eq('active', true);
+        
+      if (fromNodes && fromNodes.length > 0) {
+        await exploreBackward(fromNodes[0], newPath, newTotalTime, newTotalCost, depth + 1);
+      }
+    }
+    
+    // Also check for intermediate steps and pivot opportunities
+    if (currentNode.node_type === 'job') {
+      await exploreJobSteps(supabase, currentNode, newPath, newTotalTime, newTotalCost, depth);
+      await explorePivotPaths(supabase, currentNode, newPath, newTotalTime, newTotalCost, depth);
+    }
+  }
+  
+  // Start the backward traversal
+  await exploreBackward(targetJobNode, [], 0, 0, 0);
+  
+  return allPaths;
+}
 
-  // 2. Find required skills for this job using separate queries
-  const { data: skillEdges } = await supabase
+async function findIncomingEdges(supabase: any, nodeId: string): Promise<any[]> {
+  const { data: edges } = await supabase
+    .from('career_graph_edges')
+    .select('*')
+    .eq('to_id', nodeId)
+    .in('edge_type', ['REQUIRES_SKILL', 'TEACHES', 'DEMONSTRATES', 'UNLOCKS', 'LEADS_TO']);
+    
+  return edges || [];
+}
+
+async function exploreJobSteps(supabase: any, jobNode: any, currentPath: PathNode[], totalTime: number, totalCost: number, depth: number): Promise<void> {
+  // Look for career steps that lead to this job
+  const { data: stepEdges } = await supabase
     .from('career_graph_edges')
     .select('from_id')
-    .eq('to_id', targetJobNode.id)
-    .eq('edge_type', 'REQUIRES_SKILL');
-
-  console.log(`Found ${skillEdges?.length || 0} skill requirement edges`);
-  
-  if (!skillEdges || skillEdges.length === 0) {
-    console.log(`No required skills found for job: ${targetJobNode.title}`);
-    return [];
-  }
-
-  // Get the actual skill nodes
-  const skillIds = skillEdges.map(edge => edge.from_id);
-  const { data: requiredSkills } = await supabase
-    .from('career_graph_nodes')
-    .select('*')
-    .in('id', skillIds)
-    .eq('active', true);
-
-  console.log(`Found ${requiredSkills?.length || 0} required skills`);
-
-  if (!requiredSkills || requiredSkills.length === 0) {
-    console.log(`No active required skills found`);
-    return [];
-  }
-
-  // 3. For each skill, find courses that teach it
-  const paths: LearningPath[] = [];
-  
-  for (const skill of requiredSkills.slice(0, 5)) { // Limit to 5 skills for performance
-    console.log(`Processing skill: ${skill.title} (ID: ${skill.id})`);
+    .eq('to_id', jobNode.id)
+    .eq('edge_type', 'LEADS_TO');
     
-    // Find courses that teach this skill
-    const { data: courseEdges } = await supabase
-      .from('career_graph_edges')
-      .select('from_id')
-      .eq('to_id', skill.id)
-      .eq('edge_type', 'TEACHES');
-
-    console.log(`Found ${courseEdges?.length || 0} course edges for skill: ${skill.title}`);
-
-    if (!courseEdges || courseEdges.length === 0) {
-      console.log(`No courses found for skill: ${skill.title}`);
-      continue;
-    }
-
-    // Get the actual course nodes
-    const courseIds = courseEdges.map(edge => edge.from_id);
-    const { data: coursesForSkill } = await supabase
+  if (!stepEdges || stepEdges.length === 0) return;
+  
+  for (const edge of stepEdges.slice(0, 3)) { // Limit for performance
+    const { data: stepNodes } = await supabase
       .from('career_graph_nodes')
       .select('*')
-      .in('id', courseIds)
+      .eq('id', edge.from_id)
+      .eq('node_type', 'step')
       .eq('active', true);
-
-    console.log(`Found ${coursesForSkill?.length || 0} active courses for skill: ${skill.title}`);
-    
-    // Create paths for each course
-    for (const course of (coursesForSkill || []).slice(0, 3)) { // Limit to 3 courses per skill
-      console.log(`Creating path for course: ${course.title}`);
       
-      const path: LearningPath = {
-        id: `${course.id}-${skill.id}-${targetJobNode.id}`,
-        nodes: [
-          {
-            id: course.id,
-            title: course.title,
-            type: 'course',
-            estimated_time_hours: course.estimated_time_hours || 20,
-            cost_estimate: course.cost_estimate || 0,
-            market_demand_score: course.market_demand_score || 0.5,
-            difficulty_level: course.difficulty_level || 3
-          },
-          {
-            id: skill.id,
-            title: skill.title,
-            type: 'skill',
-            estimated_time_hours: 0,
-            cost_estimate: 0,
-            market_demand_score: skill.market_demand_score || 0.5,
-            difficulty_level: skill.difficulty_level || 3
-          },
-          {
-            id: targetJobNode.id,
-            title: targetJobNode.title,
-            type: 'job',
-            estimated_time_hours: 0,
-            cost_estimate: 0,
-            market_demand_score: targetJobNode.market_demand_score || 0.5,
-            difficulty_level: targetJobNode.difficulty_level || 4
-          }
-        ],
-        total_time: course.estimated_time_hours || 20,
-        total_cost: course.cost_estimate || 0,
-        average_roi: ((course.market_demand_score || 0.5) + (skill.market_demand_score || 0.5) + (targetJobNode.market_demand_score || 0.5)) / 3,
-        path_type: 'highest_roi'
-      };
-
-      paths.push(path);
-      console.log(`Added path: ${course.title} → ${skill.title} → ${targetJobNode.title}`);
+    if (stepNodes && stepNodes.length > 0) {
+      // Recursively explore from the step
+      // This would continue the traversal...
     }
   }
+}
 
-  console.log(`Generated ${paths.length} total learning paths before sorting`);
+async function explorePivotPaths(supabase: any, jobNode: any, currentPath: PathNode[], totalTime: number, totalCost: number, depth: number): Promise<void> {
+  // Look for pivot opportunities using PIVOT_TO edges
+  const { data: pivotEdges } = await supabase
+    .from('career_graph_edges')
+    .select('*')
+    .eq('to_id', jobNode.id)
+    .eq('edge_type', 'PIVOT_TO');
+    
+  // Add pivot intelligence logic here
+  // This would explore alternative career paths through pivots
+}
 
-  if (paths.length === 0) {
-    console.log(`No learning paths generated - no courses found for required skills`);
-    return [];
-  }
-
-  // 4. Sort and categorize paths
-  const sortedPaths = paths.sort((a, b) => b.average_roi - a.average_roi);
+function calculateROI(path: PathNode[]): number {
+  const totalDemand = path.reduce((sum, node) => sum + node.market_demand_score, 0);
+  const totalCost = Math.max(path.reduce((sum, node) => sum + node.cost_estimate, 0), 1);
+  const totalTime = Math.max(path.reduce((sum, node) => sum + node.estimated_time_hours, 0), 1);
   
-  // Mark path types
-  if (sortedPaths.length > 0) {
-    sortedPaths[0].path_type = 'highest_roi';
-  }
-  if (sortedPaths.length > 1) {
-    const fastestPath = [...sortedPaths].sort((a, b) => a.total_time - b.total_time)[0];
-    fastestPath.path_type = 'fastest';
-  }
-  if (sortedPaths.length > 2) {
-    const cheapestPath = [...sortedPaths].sort((a, b) => a.total_cost - b.total_cost)[0];
-    cheapestPath.path_type = 'cheapest';
-  }
+  return (totalDemand / path.length) * (1000 / totalCost) * (100 / totalTime);
+}
 
-  console.log(`Generated ${sortedPaths.length} learning paths`);
-  return sortedPaths.slice(0, 10); // Return top 10 paths
+function calculateConfidence(path: PathNode[], depth: number): number {
+  const baseConfidence = 0.9;
+  const depthPenalty = depth * 0.05;
+  const completenessBonus = path.length > 3 ? 0.1 : 0;
+  
+  return Math.max(0.1, Math.min(1.0, baseConfidence - depthPenalty + completenessBonus));
+}
+
+async function optimizePathsMultiCriteria(paths: LearningPath[]): Promise<LearningPath[]> {
+  console.log(`🎯 Optimizing ${paths.length} paths with multi-criteria`);
+  
+  if (paths.length === 0) return paths;
+  
+  // Create different optimized versions
+  const fastestPaths = [...paths].sort((a, b) => a.total_time - b.total_time);
+  const cheapestPaths = [...paths].sort((a, b) => a.total_cost - b.total_cost);
+  const highestROIPaths = [...paths].sort((a, b) => b.average_roi - a.average_roi);
+  const easiestPaths = [...paths].sort((a, b) => {
+    const avgDifficultyA = a.nodes.reduce((sum, n) => sum + n.difficulty_level, 0) / a.nodes.length;
+    const avgDifficultyB = b.nodes.reduce((sum, n) => sum + n.difficulty_level, 0) / b.nodes.length;
+    return avgDifficultyA - avgDifficultyB;
+  });
+  
+  // Mark path types and combine unique paths
+  const optimizedPaths = new Map<string, LearningPath>();
+  
+  if (fastestPaths.length > 0) {
+    fastestPaths[0].path_type = 'fastest';
+    optimizedPaths.set(fastestPaths[0].id, fastestPaths[0]);
+  }
+  
+  if (cheapestPaths.length > 0) {
+    cheapestPaths[0].path_type = 'cheapest';
+    optimizedPaths.set(cheapestPaths[0].id, cheapestPaths[0]);
+  }
+  
+  if (highestROIPaths.length > 0) {
+    highestROIPaths[0].path_type = 'highest_roi';
+    optimizedPaths.set(highestROIPaths[0].id, highestROIPaths[0]);
+  }
+  
+  if (easiestPaths.length > 0) {
+    easiestPaths[0].path_type = 'easiest';
+    optimizedPaths.set(easiestPaths[0].id, easiestPaths[0]);
+  }
+  
+  // Add other high-quality paths
+  const remainingPaths = paths
+    .filter(p => !optimizedPaths.has(p.id))
+    .sort((a, b) => (b.average_roi * b.confidence_score) - (a.average_roi * a.confidence_score))
+    .slice(0, 6);
+    
+  remainingPaths.forEach(path => optimizedPaths.set(path.id, path));
+  
+  return Array.from(optimizedPaths.values());
+}
+
+async function enhancePivotIntelligence(supabase: any, paths: LearningPath[], userContext: any): Promise<LearningPath[]> {
+  console.log(`🔄 Enhancing pivot intelligence for ${paths.length} paths`);
+  
+  // Add pivot scoring to existing paths
+  for (const path of paths) {
+    path.pivot_score = await calculatePivotScore(supabase, path, userContext);
+  }
+  
+  // Generate additional pivot-based paths if user has current job context
+  if (userContext.currentJob) {
+    const pivotPaths = await generatePivotPaths(supabase, userContext.currentJob, paths[0]?.nodes[paths[0].nodes.length - 1]);
+    paths.push(...pivotPaths);
+  }
+  
+  return paths;
+}
+
+async function calculatePivotScore(supabase: any, path: LearningPath, userContext: any): Promise<number> {
+  // Calculate how "pivot-friendly" this path is
+  // Based on skill transferability, market demand, etc.
+  let score = 0.5;
+  
+  // Check if target job has pivot edges
+  const targetJob = path.nodes[path.nodes.length - 1];
+  const { data: pivotEdges } = await supabase
+    .from('career_graph_edges')
+    .select('*')
+    .eq('from_id', targetJob.id)
+    .eq('edge_type', 'PIVOT_TO');
+    
+  if (pivotEdges && pivotEdges.length > 0) {
+    score += 0.3; // Bonus for having explicit pivot options
+  }
+  
+  return Math.min(1.0, score);
+}
+
+async function generatePivotPaths(supabase: any, currentJob: string, targetJob: any): Promise<LearningPath[]> {
+  // Generate paths that use intermediate jobs as pivots
+  const pivotPaths: LearningPath[] = [];
+  
+  // Find jobs that connect current and target via skills
+  const { data: potentialPivots } = await supabase
+    .from('career_graph_nodes')
+    .select('*')
+    .eq('node_type', 'job')
+    .eq('active', true);
+    
+  // Implementation for pivot path generation would go here
+  
+  return pivotPaths;
+}
+
+async function addSubstitutionOptions(supabase: any, paths: LearningPath[]): Promise<LearningPath[]> {
+  console.log(`🔀 Adding substitution options for ${paths.length} paths`);
+  
+  for (const path of paths) {
+    const substitutions: PathNode[][] = [];
+    
+    // For each learning node (course/project), find alternatives
+    for (let i = 0; i < path.nodes.length; i++) {
+      const node = path.nodes[i];
+      if (node.type === 'course' || node.type === 'project') {
+        const alternatives = await findAlternativeLearningMethods(supabase, node, path.nodes[i + 1]);
+        if (alternatives.length > 0) {
+          substitutions[i] = alternatives;
+        }
+      }
+    }
+    
+    path.substitution_options = substitutions;
+  }
+  
+  return paths;
+}
+
+async function findAlternativeLearningMethods(supabase: any, currentNode: PathNode, nextNode?: PathNode): Promise<PathNode[]> {
+  if (!nextNode || nextNode.type !== 'skill') return [];
+  
+  // Find other courses/projects that teach the same skill
+  const { data: alternativeEdges } = await supabase
+    .from('career_graph_edges')
+    .select('from_id')
+    .eq('to_id', nextNode.id)
+    .in('edge_type', ['TEACHES', 'DEMONSTRATES'])
+    .neq('from_id', currentNode.id);
+    
+  if (!alternativeEdges || alternativeEdges.length === 0) return [];
+  
+  const { data: alternatives } = await supabase
+    .from('career_graph_nodes')
+    .select('*')
+    .in('id', alternativeEdges.map(e => e.from_id))
+    .eq('active', true);
+    
+  return (alternatives || []).map(alt => ({
+    id: alt.id,
+    title: alt.title,
+    type: alt.node_type,
+    estimated_time_hours: alt.estimated_time_hours || 0,
+    cost_estimate: alt.cost_estimate || 0,
+    market_demand_score: alt.market_demand_score || 0.5,
+    difficulty_level: alt.difficulty_level || 3
+  })).slice(0, 3); // Limit alternatives
 }
 
 // Fuzzy job matching function

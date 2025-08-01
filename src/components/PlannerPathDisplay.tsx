@@ -13,7 +13,8 @@ import {
   Plus,
   CheckCircle,
   List,
-  Network
+  Network,
+  Heart
 } from "lucide-react";
 import { LearningPathVisualizer } from "@/components/LearningPathVisualizer";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
       case 'fastest': return 'bg-primary/10 text-primary border-primary/20';
       case 'cheapest': return 'bg-green-500/10 text-green-700 border-green-500/20';
       case 'highest_roi': return 'bg-purple-500/10 text-purple-700 border-purple-500/20';
+      case 'easiest': return 'bg-blue-500/10 text-blue-700 border-blue-500/20';
       default: return 'bg-secondary/10 text-secondary-foreground border-secondary/20';
     }
   };
@@ -45,6 +47,7 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
       case 'fastest': return <Clock className="w-3 h-3" />;
       case 'cheapest': return <DollarSign className="w-3 h-3" />;
       case 'highest_roi': return <TrendingUp className="w-3 h-3" />;
+      case 'easiest': return <Heart className="w-3 h-3" />;
       default: return null;
     }
   };
@@ -54,6 +57,7 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
       case 'fastest': return '⚡ Fastest';
       case 'cheapest': return '💰 Cheapest';
       case 'highest_roi': return '🎯 Highest ROI';
+      case 'easiest': return '💙 Easiest';
       default: return type.replace('_', ' ');
     }
   };
@@ -184,20 +188,31 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
                       <span className="ml-1">{getPathTypeLabel(path.path_type)}</span>
                     </Badge>
                     
-                    <div className="flex gap-4 text-sm">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium">{path.total_time}h</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <DollarSign className="w-4 h-4" />
-                        <span className="font-medium">${path.total_cost}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="font-medium">{(path.average_roi * 100).toFixed(0)}%</span>
-                      </div>
-                    </div>
+                     <div className="flex gap-4 text-sm">
+                       <div className="flex items-center gap-1 text-muted-foreground">
+                         <Clock className="w-4 h-4" />
+                         <span className="font-medium">{path.total_time}h</span>
+                       </div>
+                       <div className="flex items-center gap-1 text-muted-foreground">
+                         <DollarSign className="w-4 h-4" />
+                         <span className="font-medium">${path.total_cost}</span>
+                       </div>
+                       <div className="flex items-center gap-1 text-muted-foreground">
+                         <TrendingUp className="w-4 h-4" />
+                         <span className="font-medium">{(path.average_roi * 100).toFixed(0)}%</span>
+                       </div>
+                       {path.confidence_score && (
+                         <div className="flex items-center gap-1 text-green-600">
+                           <CheckCircle className="w-4 h-4" />
+                           <span className="font-medium">{(path.confidence_score * 100).toFixed(0)}%</span>
+                         </div>
+                       )}
+                       {path.pivot_score && path.pivot_score > 0.6 && (
+                         <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                           🔄 Pivot-Friendly
+                         </Badge>
+                       )}
+                     </div>
                   </div>
 
                   {/* Path Flow */}

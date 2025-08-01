@@ -17,7 +17,10 @@ export interface LearningPath {
   total_time: number;
   total_cost: number;
   average_roi: number;
-  path_type: 'fastest' | 'cheapest' | 'highest_roi';
+  path_type: 'fastest' | 'cheapest' | 'highest_roi' | 'easiest';
+  confidence_score: number;
+  pivot_score?: number;
+  substitution_options?: PathNode[][];
 }
 
 export interface PlanningError {
