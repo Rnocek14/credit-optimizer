@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import Navigation from '@/components/Navigation';
-import { GoalTracker } from '@/components/GoalTracker';
+import { EnhancedGoalDashboard } from '@/components/EnhancedGoalDashboard';
 import { getCurrentUser } from '@/lib/authHelper';
 
 export default function Goals() {

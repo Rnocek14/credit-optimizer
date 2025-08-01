@@ -1571,6 +1571,274 @@ export type Database = {
           },
         ]
       }
+      goal_autonomous_actions: {
+        Row: {
+          action_description: string
+          action_type: string
+          applied_at: string | null
+          confidence_score: number | null
+          created_at: string | null
+          goal_id: string
+          id: string
+          new_state: Json | null
+          previous_state: Json | null
+          user_approved: boolean | null
+          user_id: string
+        }
+        Insert: {
+          action_description: string
+          action_type: string
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          goal_id: string
+          id?: string
+          new_state?: Json | null
+          previous_state?: Json | null
+          user_approved?: boolean | null
+          user_id: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          applied_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          goal_id?: string
+          id?: string
+          new_state?: Json | null
+          previous_state?: Json | null
+          user_approved?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_autonomous_actions_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_collaborations: {
+        Row: {
+          collaboration_type: string
+          collaborator_user_id: string
+          created_at: string | null
+          goal_id: string
+          id: string
+          owner_user_id: string
+          permissions: Json | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          collaboration_type?: string
+          collaborator_user_id: string
+          created_at?: string | null
+          goal_id: string
+          id?: string
+          owner_user_id: string
+          permissions?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          collaboration_type?: string
+          collaborator_user_id?: string
+          created_at?: string | null
+          goal_id?: string
+          id?: string
+          owner_user_id?: string
+          permissions?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_collaborations_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_intelligence_cache: {
+        Row: {
+          ai_insights: Json | null
+          created_at: string | null
+          difficulty_score: number | null
+          goal_id: string
+          id: string
+          last_analyzed_at: string | null
+          market_score: number | null
+          market_trends: Json | null
+          recommended_timeline_weeks: number | null
+          skill_gap_analysis: Json | null
+          success_probability: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_insights?: Json | null
+          created_at?: string | null
+          difficulty_score?: number | null
+          goal_id: string
+          id?: string
+          last_analyzed_at?: string | null
+          market_score?: number | null
+          market_trends?: Json | null
+          recommended_timeline_weeks?: number | null
+          skill_gap_analysis?: Json | null
+          success_probability?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_insights?: Json | null
+          created_at?: string | null
+          difficulty_score?: number | null
+          goal_id?: string
+          id?: string
+          last_analyzed_at?: string | null
+          market_score?: number | null
+          market_trends?: Json | null
+          recommended_timeline_weeks?: number | null
+          skill_gap_analysis?: Json | null
+          success_probability?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_intelligence_cache_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_learning_paths: {
+        Row: {
+          cost_estimate: number | null
+          created_at: string | null
+          difficulty_level: number | null
+          estimated_completion_weeks: number | null
+          generated_by: string | null
+          goal_id: string
+          id: string
+          is_active: boolean | null
+          market_alignment_score: number | null
+          path_nodes: Json
+          path_type: string
+          personalization_score: number | null
+          success_rate: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cost_estimate?: number | null
+          created_at?: string | null
+          difficulty_level?: number | null
+          estimated_completion_weeks?: number | null
+          generated_by?: string | null
+          goal_id: string
+          id?: string
+          is_active?: boolean | null
+          market_alignment_score?: number | null
+          path_nodes?: Json
+          path_type?: string
+          personalization_score?: number | null
+          success_rate?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cost_estimate?: number | null
+          created_at?: string | null
+          difficulty_level?: number | null
+          estimated_completion_weeks?: number | null
+          generated_by?: string | null
+          goal_id?: string
+          id?: string
+          is_active?: boolean | null
+          market_alignment_score?: number | null
+          path_nodes?: Json
+          path_type?: string
+          personalization_score?: number | null
+          success_rate?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_learning_paths_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goal_market_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          alert_type: string
+          auto_workflow_created: boolean | null
+          created_at: string | null
+          description: string
+          goal_id: string
+          id: string
+          market_data: Json | null
+          recommended_actions: Json | null
+          resolved_at: string | null
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          alert_type: string
+          auto_workflow_created?: boolean | null
+          created_at?: string | null
+          description: string
+          goal_id: string
+          id?: string
+          market_data?: Json | null
+          recommended_actions?: Json | null
+          resolved_at?: string | null
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          alert_type?: string
+          auto_workflow_created?: boolean | null
+          created_at?: string | null
+          description?: string
+          goal_id?: string
+          id?: string
+          market_data?: Json | null
+          recommended_actions?: Json | null
+          resolved_at?: string | null
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_market_alerts_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goal_progress: {
         Row: {
           completed: boolean | null
