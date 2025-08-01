@@ -30,13 +30,15 @@ export function GoalTracker({ userId }: GoalTrackerProps) {
     try {
       setLoading(true);
       
-      // Fetch user goals
       const { data: goalsData, error: goalsError } = await supabase
-        .from('user_goals')
-        .select('*')
+        .from('career_goals')
+        .select(`
+          *,
+          goal_progress(*)
+        `)
         .eq('user_id', userId)
         .eq('active', true)
-        .order('priority_score', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (goalsError) throw goalsError;
 
