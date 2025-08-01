@@ -1,5 +1,8 @@
 project_id = "vzpissitddpunkpythsb"
 
+[functions.coursera-api]
+verify_jwt = false
+
 [functions.generate-roadmap]
 verify_jwt = false
 

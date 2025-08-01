@@ -43,14 +43,30 @@ class CourseraAPI {
   
   async searchCourses(filters: CourseSearchFilters): Promise<RealCourse[]> {
     try {
-      // In a real implementation, this would make actual API calls
-      // For now, return enhanced mock data based on real Coursera courses
-      const courseraData = this.getMockCourseraData(filters);
-      return courseraData.map(this.transformCourseraData);
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data, error } = await supabase.functions.invoke('coursera-api', {
+        body: {
+          action: 'search',
+          ...filters
+        }
+      });
+
+      if (error) {
+        console.error('Coursera API error:', error);
+        return this.getFallbackCourses(filters);
+      }
+
+      return data?.data || [];
     } catch (error) {
-      console.error('Coursera API error:', error);
-      return [];
+      console.error('Failed to fetch Coursera courses:', error);
+      return this.getFallbackCourses(filters);
     }
+  }
+
+  private getFallbackCourses(filters: CourseSearchFilters): RealCourse[] {
+    const courseraData = this.getMockCourseraData(filters);
+    return courseraData.map(this.transformCourseraData);
   }
 
   private getMockCourseraData(filters: CourseSearchFilters) {
