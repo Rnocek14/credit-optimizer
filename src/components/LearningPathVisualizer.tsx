@@ -64,8 +64,10 @@ export function LearningPathVisualizer({
           data = {
             required_skills: [],
             preferred_skills: [],
-            average_salary: bridgeNode.cost_estimate || 0,
+            average_salary: bridgeNode.cost_estimate || 85000,
             industry: bridgeNode.category || 'Technology',
+            level: 'mid-level',
+            growth_outlook: 'strong',
             isCheckpoint: bridgeNode.metadata?.isCheckpoint,
             isBranchPoint: bridgeNode.metadata?.isBranchPoint,
             pathType: bridgeNode.metadata?.pathType

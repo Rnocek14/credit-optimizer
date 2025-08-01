@@ -158,13 +158,14 @@ export class AIPlannerDataBridge {
   ): GraphNode {
     return {
       id: nodeId,
-      title: pathNode.title,
-      type: pathNode.type,
-      category: this.inferCategory(pathNode.type),
-      estimated_time_hours: pathNode.estimated_time_hours,
-      cost_estimate: pathNode.cost_estimate,
-      market_demand_score: pathNode.market_demand_score,
-      difficulty_level: pathNode.difficulty_level,
+      title: pathNode.title || 'Untitled Node',
+      type: pathNode.type || 'skill',
+      category: this.inferCategory(pathNode.type || 'skill'),
+      description: `${pathNode.type || 'Learning'} component in your path`,
+      estimated_time_hours: pathNode.estimated_time_hours || 0,
+      cost_estimate: pathNode.cost_estimate || 0,
+      market_demand_score: pathNode.market_demand_score || 0.5,
+      difficulty_level: pathNode.difficulty_level || 1,
       metadata: {
         isCheckpoint: this.isCheckpoint(pathNode, nodeIndex, totalNodes),
         isBranchPoint: false, // Will be set in enhancement phase
@@ -172,8 +173,13 @@ export class AIPlannerDataBridge {
         progressPercentage: 0,
         pathType,
         roiScore: this.calculateROIScore(pathNode),
-        timeToComplete: pathNode.estimated_time_hours,
-        prerequisites: []
+        timeToComplete: pathNode.estimated_time_hours || 0,
+        prerequisites: [],
+        position: {
+          x: nodeIndex * 150,
+          y: 0,
+          z: 0
+        }
       }
     };
   }
