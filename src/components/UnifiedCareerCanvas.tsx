@@ -147,16 +147,16 @@ const calculateLayout = (
           justifyContent: 'center',
           textAlign: 'center',
           boxShadow: isCheckpoint 
-            ? '0 4px 20px rgba(var(--primary), 0.3)' 
+            ? '0 4px 20px rgba(37, 99, 235, 0.3)' 
             : isBranchPoint 
-            ? '0 3px 15px rgba(var(--accent), 0.25)'
+            ? '0 3px 15px rgba(124, 58, 237, 0.25)'
             : '0 2px 8px rgba(0, 0, 0, 0.1)',
           transition: 'all 0.2s ease-in-out',
           ...(isCheckpoint && {
-            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, hsl(var(--primary-foreground)))`,
+            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, #f8fafc)`,
           }),
           ...(isBranchPoint && {
-            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, hsl(var(--accent-foreground)))`,
+            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, #faf5ff)`,
           })
         }
       };
@@ -276,61 +276,61 @@ const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
 
 // Enhanced helper functions for styling with checkpoint and branch support
 const getNodeBorderColor = (nodeType: string, isCheckpoint?: boolean, isBranchPoint?: boolean): string => {
-  if (isCheckpoint) return 'hsl(var(--primary))';
-  if (isBranchPoint) return 'hsl(var(--accent))';
+  if (isCheckpoint) return '#2563eb'; // Primary blue
+  if (isBranchPoint) return '#7c3aed'; // Purple accent
   
   const colors = {
-    skill: 'hsl(var(--primary))',
-    job: 'hsl(var(--secondary))',
-    course: 'hsl(var(--accent))',
-    project: 'hsl(var(--muted))',
-    certification: 'hsl(var(--warning))',
-    step: 'hsl(var(--info))'
+    skill: '#2563eb',     // Blue
+    job: '#059669',       // Green
+    course: '#7c3aed',    // Purple
+    project: '#ea580c',   // Orange
+    certification: '#dc2626', // Red
+    step: '#0891b2'       // Cyan
   };
-  return colors[nodeType as keyof typeof colors] || 'hsl(var(--border))';
+  return colors[nodeType as keyof typeof colors] || '#6b7280';
 };
 
 const getNodeBackgroundColor = (nodeType: string, pathType?: string): string => {
   // Path type colors for differentiation
   if (pathType) {
     const pathColors = {
-      fastest: 'hsl(var(--warning) / 0.1)',
-      cheapest: 'hsl(var(--success) / 0.1)',
-      highest_roi: 'hsl(var(--primary) / 0.1)',
-      balanced: 'hsl(var(--secondary) / 0.1)'
+      fastest: '#fef3c7',      // Light yellow
+      cheapest: '#d1fae5',     // Light green
+      highest_roi: '#dbeafe',  // Light blue
+      balanced: '#e5e7eb'      // Light gray
     };
     const pathColor = pathColors[pathType as keyof typeof pathColors];
     if (pathColor) return pathColor;
   }
   
   const colors = {
-    skill: 'hsl(var(--primary) / 0.05)',
-    job: 'hsl(var(--secondary) / 0.05)',
-    course: 'hsl(var(--accent) / 0.05)',
-    project: 'hsl(var(--muted) / 0.05)',
-    certification: 'hsl(var(--warning) / 0.05)',
-    step: 'hsl(var(--info) / 0.05)'
+    skill: '#eff6ff',       // Very light blue
+    job: '#ecfdf5',         // Very light green
+    course: '#f3e8ff',      // Very light purple
+    project: '#fff7ed',     // Very light orange
+    certification: '#fef2f2', // Very light red
+    step: '#ecfeff'         // Very light cyan
   };
-  return colors[nodeType as keyof typeof colors] || 'hsl(var(--background))';
+  return colors[nodeType as keyof typeof colors] || '#ffffff';
 };
 
 const getEdgeColor = (edgeType: string): string => {
   const colors = {
-    requires: 'hsl(var(--muted-foreground))',
-    unlocks: 'hsl(var(--primary))',
-    teaches: 'hsl(var(--accent))',
-    demonstrates: 'hsl(var(--info))',
-    validates: 'hsl(var(--success))',
-    next_role: 'hsl(var(--primary))',
-    pivot: 'hsl(var(--warning))',
-    prerequisite: 'hsl(var(--destructive))',
-    substitution: 'hsl(var(--secondary))',
-    leads_to: 'hsl(var(--primary))',
-    strengthens: 'hsl(var(--accent))',
-    learning_progression: 'hsl(var(--primary))',
-    branch_option: 'hsl(var(--accent))'
+    requires: '#6b7280',        // Gray
+    unlocks: '#2563eb',         // Blue
+    teaches: '#7c3aed',         // Purple
+    demonstrates: '#0891b2',    // Cyan
+    validates: '#059669',       // Green
+    next_role: '#2563eb',       // Blue
+    pivot: '#ea580c',           // Orange
+    prerequisite: '#dc2626',    // Red
+    substitution: '#4b5563',    // Dark gray
+    leads_to: '#2563eb',        // Blue
+    strengthens: '#7c3aed',     // Purple
+    learning_progression: '#2563eb', // Blue
+    branch_option: '#7c3aed'    // Purple
   };
-  return colors[edgeType as keyof typeof colors] || 'hsl(var(--border))';
+  return colors[edgeType as keyof typeof colors] || '#6b7280';
 };
 
 const getEdgeWidth = (importance: number): number => {

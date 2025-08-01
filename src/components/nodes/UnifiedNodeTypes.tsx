@@ -555,6 +555,8 @@ export const nodeTypes = {
   project: ProjectNode,
   certification: CertificationNode,
   step: StepNode,
+  // Add fallback for unknown types
+  default: SkillNode
 };
 
 // Export individual components

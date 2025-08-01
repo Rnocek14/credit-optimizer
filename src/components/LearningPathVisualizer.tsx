@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, Brain, TrendingUp } from 'lucide-react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { SkillTreeErrorBoundary } from '@/components/SkillTreeErrorBoundary';
+import { LearningPathErrorBoundary } from '@/components/LearningPathErrorBoundary';
 import { AIPlannerDataBridge, type GraphNode as BridgeGraphNode } from '@/lib/aiPlannerDataBridge';
 import type { LearningPath } from '@/hooks/useAIPlanningEngine';
 import type { GraphNode } from '@/lib/careerGraph';
@@ -68,6 +68,8 @@ export function LearningPathVisualizer({
             industry: bridgeNode.category || 'Technology',
             level: 'mid-level',
             growth_outlook: 'strong',
+            job_family: 'Software Development',
+            job_function: 'Engineering',
             isCheckpoint: bridgeNode.metadata?.isCheckpoint,
             isBranchPoint: bridgeNode.metadata?.isBranchPoint,
             pathType: bridgeNode.metadata?.pathType
@@ -323,7 +325,7 @@ export function LearningPathVisualizer({
       <Card className="border border-border/40">
         <CardContent className="p-0">
           <div className="h-[400px] md:h-[500px] lg:h-[600px] relative">
-            <SkillTreeErrorBoundary>
+            <LearningPathErrorBoundary>
               <UnifiedCareerCanvas
                 nodes={canvasNodes}
                 edges={canvasEdges}
@@ -344,7 +346,7 @@ export function LearningPathVisualizer({
                   groupByType: true
                 }}
               />
-            </SkillTreeErrorBoundary>
+            </LearningPathErrorBoundary>
           </div>
         </CardContent>
       </Card>
