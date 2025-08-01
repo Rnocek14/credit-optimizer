@@ -115,9 +115,11 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
         </CardHeader>
 
         {isExpanded && (
-          <CardContent className="space-y-4">
-            {/* Main Insight Section */}
-            <div className="space-y-2">
+          <CardContent className="flex flex-col max-h-[60vh] overflow-hidden p-4">
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2">
+              {/* Main Insight Section */}
+              <div className="space-y-2">
               {loading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-3 w-full" />
@@ -222,10 +224,11 @@ export const ContextualAIAssistant: React.FC<ContextualAIAssistantProps> = ({
                   )}
                 </div>
               )}
+              </div>
             </div>
 
-            {/* Context indicators */}
-            <div className="flex items-center justify-between pt-2 border-t">
+            {/* Context indicators - Fixed footer */}
+            <div className="flex items-center justify-between pt-2 border-t flex-shrink-0">
               <div className="flex items-center gap-2">
                 {lastResponse?.confidence_score && (
                   <div className="flex items-center gap-1">
