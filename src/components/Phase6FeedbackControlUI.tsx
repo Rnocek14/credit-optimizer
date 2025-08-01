@@ -17,6 +17,7 @@ import { MayaFeedbackSystem } from './MayaFeedbackSystem';
 import { MayaControlCenter } from './MayaControlCenter';
 import { WorkflowManagementInterface } from './WorkflowManagementInterface';
 import { MayaControlDashboard } from './MayaControlDashboard';
+import { ProductionReadinessTest } from './ProductionReadinessTest';
 
 interface FeatureStatus {
   name: string;
@@ -107,7 +108,7 @@ export function Phase6FeedbackControlUI() {
 
       {/* Main Feature Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="feedback" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Feedback System
@@ -123,6 +124,10 @@ export function Phase6FeedbackControlUI() {
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Control Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="testing" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Production Test
           </TabsTrigger>
         </TabsList>
 
@@ -196,6 +201,10 @@ export function Phase6FeedbackControlUI() {
               <MayaControlDashboard />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="testing" className="space-y-4">
+          <ProductionReadinessTest />
         </TabsContent>
       </Tabs>
 

@@ -19,26 +19,12 @@ import {
   Play
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { VoiceCommandInterface } from './VoiceCommandInterface';
 
 export function MayaControlCenter() {
   const { toast } = useToast();
-  
-  // Maya Settings State
-  const [settings, setSettings] = useState({
-    communicationStyle: 'professional',
-    responseFrequency: 'balanced',
-    autonomousActions: true,
-    autoWorkflowCreation: true,
-    marketAlerts: true,
-    skillGapAnalysis: true,
-    careerRecommendations: true,
-    dataCollection: true,
-    personalizedLearning: true,
-    alertThreshold: [75],
-    workflowApproval: 'auto',
-    notificationChannels: ['in_app', 'email'],
-    privacyLevel: 'standard'
-  });
+  const { preferences, updatePreference, loading } = useUserPreferences();
 
   const [activeWorkflows, setActiveWorkflows] = useState([
     {
@@ -68,11 +54,7 @@ export function MayaControlCenter() {
   ]);
 
   const updateSetting = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    toast({
-      title: "Settings Updated",
-      description: "Maya's behavior has been adjusted to your preferences.",
-    });
+    updatePreference(key as any, value);
   };
 
   const toggleWorkflow = (workflowId: string) => {
@@ -121,7 +103,7 @@ export function MayaControlCenter() {
               <div>
                 <label className="text-sm font-medium mb-2 block">Communication Style</label>
                 <Select 
-                  value={settings.communicationStyle} 
+                  value={preferences.communicationStyle} 
                   onValueChange={(value) => updateSetting('communicationStyle', value)}
                 >
                   <SelectTrigger>
@@ -139,7 +121,7 @@ export function MayaControlCenter() {
               <div>
                 <label className="text-sm font-medium mb-2 block">Response Frequency</label>
                 <Select 
-                  value={settings.responseFrequency} 
+                  value={preferences.responseFrequency} 
                   onValueChange={(value) => updateSetting('responseFrequency', value)}
                 >
                   <SelectTrigger>
@@ -155,11 +137,11 @@ export function MayaControlCenter() {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Alert Threshold: {settings.alertThreshold[0]}%
+                  Alert Threshold: {preferences.alertThreshold}%
                 </label>
                 <Slider
-                  value={settings.alertThreshold}
-                  onValueChange={(value) => updateSetting('alertThreshold', value)}
+                  value={[preferences.alertThreshold]}
+                  onValueChange={(value) => updateSetting('alertThreshold', value[0])}
                   max={100}
                   min={0}
                   step={5}
@@ -175,7 +157,7 @@ export function MayaControlCenter() {
               <div>
                 <label className="text-sm font-medium mb-2 block">Workflow Approval</label>
                 <Select 
-                  value={settings.workflowApproval} 
+                  value={preferences.workflowApproval} 
                   onValueChange={(value) => updateSetting('workflowApproval', value)}
                 >
                   <SelectTrigger>
@@ -192,7 +174,7 @@ export function MayaControlCenter() {
               <div>
                 <label className="text-sm font-medium mb-2 block">Privacy Level</label>
                 <Select 
-                  value={settings.privacyLevel} 
+                  value={preferences.privacyLevel} 
                   onValueChange={(value) => updateSetting('privacyLevel', value)}
                 >
                   <SelectTrigger>
@@ -230,7 +212,7 @@ export function MayaControlCenter() {
               </p>
             </div>
             <Switch
-              checked={settings.autonomousActions}
+              checked={preferences.autonomousActions}
               onCheckedChange={(checked) => updateSetting('autonomousActions', checked)}
             />
           </div>
@@ -244,9 +226,9 @@ export function MayaControlCenter() {
                 <p className="text-sm text-muted-foreground">Create learning paths automatically</p>
               </div>
               <Switch
-                checked={settings.autoWorkflowCreation}
+                checked={preferences.autoWorkflowCreation}
                 onCheckedChange={(checked) => updateSetting('autoWorkflowCreation', checked)}
-                disabled={!settings.autonomousActions}
+                disabled={!preferences.autonomousActions}
               />
             </div>
 
@@ -256,9 +238,9 @@ export function MayaControlCenter() {
                 <p className="text-sm text-muted-foreground">Monitor market trends and opportunities</p>
               </div>
               <Switch
-                checked={settings.marketAlerts}
+                checked={preferences.marketAlerts}
                 onCheckedChange={(checked) => updateSetting('marketAlerts', checked)}
-                disabled={!settings.autonomousActions}
+                disabled={!preferences.autonomousActions}
               />
             </div>
 
@@ -268,9 +250,9 @@ export function MayaControlCenter() {
                 <p className="text-sm text-muted-foreground">Automatically analyze skill development needs</p>
               </div>
               <Switch
-                checked={settings.skillGapAnalysis}
+                checked={preferences.skillGapAnalysis}
                 onCheckedChange={(checked) => updateSetting('skillGapAnalysis', checked)}
-                disabled={!settings.autonomousActions}
+                disabled={!preferences.autonomousActions}
               />
             </div>
 
@@ -280,9 +262,9 @@ export function MayaControlCenter() {
                 <p className="text-sm text-muted-foreground">Generate personalized career suggestions</p>
               </div>
               <Switch
-                checked={settings.careerRecommendations}
+                checked={preferences.careerRecommendations}
                 onCheckedChange={(checked) => updateSetting('careerRecommendations', checked)}
-                disabled={!settings.autonomousActions}
+                disabled={!preferences.autonomousActions}
               />
             </div>
           </div>
@@ -369,7 +351,7 @@ export function MayaControlCenter() {
               </p>
             </div>
             <Switch
-              checked={settings.personalizedLearning}
+              checked={preferences.personalizedLearning}
               onCheckedChange={(checked) => updateSetting('personalizedLearning', checked)}
             />
           </div>
@@ -382,7 +364,7 @@ export function MayaControlCenter() {
               </p>
             </div>
             <Switch
-              checked={settings.dataCollection}
+              checked={preferences.dataCollection}
               onCheckedChange={(checked) => updateSetting('dataCollection', checked)}
             />
           </div>
@@ -405,6 +387,9 @@ export function MayaControlCenter() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Voice Command Interface */}
+      <VoiceCommandInterface />
     </div>
   );
 }
