@@ -37,7 +37,7 @@ serve(async (req) => {
     let userGoals = goals;
     if (!userGoals) {
       const { data: goalsData, error: goalsError } = await supabaseClient
-        .from('user_goals')
+        .from('career_goals')
         .select('*')
         .eq('user_id', user_id)
         .eq('active', true)

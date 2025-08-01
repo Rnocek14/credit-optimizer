@@ -44,7 +44,7 @@ export function NextSmartStep({ userId }: NextSmartStepProps) {
       // First try to get existing ranked goals
       try {
         const response = await (supabase as any)
-          .from('user_goals')
+          .from('career_goals')
           .select('*')
           .eq('user_id', userId)
           .eq('active', true)
