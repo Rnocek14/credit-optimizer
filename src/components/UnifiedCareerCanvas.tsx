@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -14,6 +14,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from '@/components/nodes/UnifiedNodeTypes';
+import { EnhancedNodeTooltip } from '@/components/EnhancedNodeTooltip';
 import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
 import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
 import { calculateEnhancedSkillTreeLayout, type LayoutNode, type LayoutEdge } from '@/lib/enhancedSkillTreeLayout';
@@ -109,6 +110,11 @@ const calculateLayout = (
         };
       }
 
+      // Check for special node types for enhanced styling
+      const isCheckpoint = originalNode.data && (originalNode.data as any).isCheckpoint;
+      const isBranchPoint = originalNode.data && (originalNode.data as any).isBranchPoint;
+      const pathType = originalNode.data && (originalNode.data as any).pathType;
+      
       return {
         id: `${originalNode.type}:${originalNode.id}`,
         position: { x: posNode.x, y: posNode.y },
@@ -118,26 +124,40 @@ const calculateLayout = (
           type: originalNode.type,
           category: posNode.clusterGroup,
           node: originalNode,
+          isCheckpoint,
+          isBranchPoint,
+          pathType,
+          estimatedTime: originalNode.estimated_time_hours,
           style: {
-            borderColor: getNodeBorderColor(originalNode.type),
-            backgroundColor: getNodeBackgroundColor(originalNode.type)
+            borderColor: getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint),
+            backgroundColor: getNodeBackgroundColor(originalNode.type, pathType)
           }
         },
-        type: 'default',
+        type: originalNode.type, // Use actual node type for proper rendering
         style: {
-          background: getNodeBackgroundColor(originalNode.type),
-          border: `2px solid ${getNodeBorderColor(originalNode.type)}`,
-          borderRadius: '12px',
+          background: getNodeBackgroundColor(originalNode.type, pathType),
+          border: `${isCheckpoint ? '4px' : isBranchPoint ? '3px' : '2px'} solid ${getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint)}`,
+          borderRadius: isCheckpoint ? '16px' : isBranchPoint ? '20px' : '12px',
           padding: '12px',
           fontSize: '11px',
-          width: 170,
-          height: 100,
+          width: 180,
+          height: 110,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           textAlign: 'center',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-          transition: 'all 0.2s ease-in-out'
+          boxShadow: isCheckpoint 
+            ? '0 4px 20px rgba(var(--primary), 0.3)' 
+            : isBranchPoint 
+            ? '0 3px 15px rgba(var(--accent), 0.25)'
+            : '0 2px 8px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.2s ease-in-out',
+          ...(isCheckpoint && {
+            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, hsl(var(--primary-foreground)))`,
+          }),
+          ...(isBranchPoint && {
+            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, hsl(var(--accent-foreground)))`,
+          })
         }
       };
     });
@@ -254,8 +274,11 @@ const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
   };
 };
 
-// Helper functions for styling
-const getNodeBorderColor = (nodeType: string): string => {
+// Enhanced helper functions for styling with checkpoint and branch support
+const getNodeBorderColor = (nodeType: string, isCheckpoint?: boolean, isBranchPoint?: boolean): string => {
+  if (isCheckpoint) return 'hsl(var(--primary))';
+  if (isBranchPoint) return 'hsl(var(--accent))';
+  
   const colors = {
     skill: 'hsl(var(--primary))',
     job: 'hsl(var(--secondary))',
@@ -267,14 +290,26 @@ const getNodeBorderColor = (nodeType: string): string => {
   return colors[nodeType as keyof typeof colors] || 'hsl(var(--border))';
 };
 
-const getNodeBackgroundColor = (nodeType: string): string => {
+const getNodeBackgroundColor = (nodeType: string, pathType?: string): string => {
+  // Path type colors for differentiation
+  if (pathType) {
+    const pathColors = {
+      fastest: 'hsl(var(--warning) / 0.1)',
+      cheapest: 'hsl(var(--success) / 0.1)',
+      highest_roi: 'hsl(var(--primary) / 0.1)',
+      balanced: 'hsl(var(--secondary) / 0.1)'
+    };
+    const pathColor = pathColors[pathType as keyof typeof pathColors];
+    if (pathColor) return pathColor;
+  }
+  
   const colors = {
-    skill: 'hsl(var(--primary-foreground))',
-    job: 'hsl(var(--secondary-foreground))',
-    course: 'hsl(var(--accent-foreground))',
-    project: 'hsl(var(--muted-foreground))',
-    certification: 'hsl(var(--warning-foreground))',
-    step: 'hsl(var(--info-foreground))'
+    skill: 'hsl(var(--primary) / 0.05)',
+    job: 'hsl(var(--secondary) / 0.05)',
+    course: 'hsl(var(--accent) / 0.05)',
+    project: 'hsl(var(--muted) / 0.05)',
+    certification: 'hsl(var(--warning) / 0.05)',
+    step: 'hsl(var(--info) / 0.05)'
   };
   return colors[nodeType as keyof typeof colors] || 'hsl(var(--background))';
 };
@@ -291,7 +326,9 @@ const getEdgeColor = (edgeType: string): string => {
     prerequisite: 'hsl(var(--destructive))',
     substitution: 'hsl(var(--secondary))',
     leads_to: 'hsl(var(--primary))',
-    strengthens: 'hsl(var(--accent))'
+    strengthens: 'hsl(var(--accent))',
+    learning_progression: 'hsl(var(--primary))',
+    branch_option: 'hsl(var(--accent))'
   };
   return colors[edgeType as keyof typeof colors] || 'hsl(var(--border))';
 };
@@ -311,6 +348,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   layoutAlgorithm = 'semantic-hierarchy',
   layoutConfig
 }) => {
+  const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
   // Calculate layout using enhanced layout system
   const flowNodes = useMemo(() => {
     return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
@@ -345,6 +383,22 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     }
   }, [graphNodes, onNodeClick]);
 
+  const handleNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
+    const [nodeType, nodeId] = node.id.split(':');
+    const graphNode = graphNodes.find(gn => gn.id === nodeId && gn.type === nodeType);
+    if (graphNode) {
+      setTooltipNode({
+        node: graphNode,
+        x: event.clientX,
+        y: event.clientY
+      });
+    }
+  }, [graphNodes]);
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setTooltipNode(null);
+  }, []);
+
   // Filter and highlight based on search
   const processedNodes = useMemo(() => {
     return nodes.map(node => {
@@ -377,13 +431,15 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   });
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: '400px' }}>
       <ReactFlow
         nodes={processedNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView
@@ -402,6 +458,16 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
           }}
         />
       </ReactFlow>
+      
+      {/* Enhanced tooltip */}
+      {tooltipNode && (
+        <EnhancedNodeTooltip
+          node={tooltipNode.node}
+          x={tooltipNode.x}
+          y={tooltipNode.y}
+          visible={!!tooltipNode}
+        />
+      )}
       
       {/* Enhanced overlay with detailed graph stats */}
       <div className="absolute top-4 left-4 bg-background/95 backdrop-blur-sm border rounded-lg p-4 text-sm shadow-lg">

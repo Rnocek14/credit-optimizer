@@ -65,7 +65,10 @@ export function LearningPathVisualizer({
             required_skills: [],
             preferred_skills: [],
             average_salary: bridgeNode.cost_estimate || 0,
-            industry: bridgeNode.category || 'Technology'
+            industry: bridgeNode.category || 'Technology',
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').JobData;
           break;
         case 'skill':
@@ -73,7 +76,10 @@ export function LearningPathVisualizer({
             category: bridgeNode.category || 'Technical',
             xp_value: 100,
             difficulty_level: bridgeNode.difficulty_level || 1,
-            market_demand: bridgeNode.market_demand_score || 1
+            market_demand: bridgeNode.market_demand_score || 1,
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').SkillData;
           break;
         case 'course':
@@ -81,21 +87,30 @@ export function LearningPathVisualizer({
             platform: 'AI Planner',
             cost: bridgeNode.cost_estimate || 0,
             duration: `${bridgeNode.estimated_time_hours || 0}h`,
-            skill_tags: []
+            skill_tags: [],
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').CourseData;
           break;
         case 'step':
           data = {
             step_type: 'learning',
             step_order: 1,
-            prerequisites: []
+            prerequisites: [],
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').StepData;
           break;
         case 'project':
           data = {
             project_type: 'practice' as const,
             skills_demonstrated: [],
-            technologies: []
+            technologies: [],
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').ProjectData;
           break;
         case 'certification':
@@ -103,7 +118,10 @@ export function LearningPathVisualizer({
             issuer: 'AI Planner',
             cost: bridgeNode.cost_estimate || 0,
             prep_time_hours: bridgeNode.estimated_time_hours || 0,
-            skills_validated: []
+            skills_validated: [],
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').CertificationData;
           break;
         default:
@@ -112,7 +130,10 @@ export function LearningPathVisualizer({
             category: 'General',
             xp_value: 100,
             difficulty_level: 1,
-            market_demand: 1
+            market_demand: 1,
+            isCheckpoint: bridgeNode.metadata?.isCheckpoint,
+            isBranchPoint: bridgeNode.metadata?.isBranchPoint,
+            pathType: bridgeNode.metadata?.pathType
           } as import('@/lib/careerGraph').SkillData;
       }
         
@@ -299,7 +320,7 @@ export function LearningPathVisualizer({
       {/* Interactive Graph Canvas */}
       <Card className="border border-border/40">
         <CardContent className="p-0">
-          <div className="h-96 md:h-[500px] lg:h-[600px] relative">
+          <div className="h-[400px] md:h-[500px] lg:h-[600px] relative">
             <SkillTreeErrorBoundary>
               <UnifiedCareerCanvas
                 nodes={canvasNodes}
@@ -343,8 +364,16 @@ export function LearningPathVisualizer({
               <span>Target Jobs</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full border-2 border-primary bg-background"></div>
+              <div className="w-4 h-4 rounded-lg border-2 border-primary bg-primary/20 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+              </div>
               <span>Checkpoints</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-accent bg-accent/20 flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>
+              </div>
+              <span>Branch Points</span>
             </div>
           </div>
           
