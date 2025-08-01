@@ -28,13 +28,18 @@ interface UnifiedDataState {
   loading: Record<string, boolean>;
   errors: Record<string, string | null>;
   
-  // Feature flags
+  // Feature flags & UI preferences
   features: {
     marketIntelligence: boolean;
     skillTree: boolean;
     pivotRecommendations: boolean;
     gamification: boolean;
+    simplifiedUI: boolean;
+    progressiveDisclosure: boolean;
   };
+  
+  // User experience level
+  experienceLevel: 'beginner' | 'intermediate' | 'advanced';
 }
 
 // Action types
@@ -71,7 +76,10 @@ const initialState: UnifiedDataState = {
     skillTree: true,
     pivotRecommendations: true,
     gamification: true,
-  }
+    simplifiedUI: true,
+    progressiveDisclosure: true,
+  },
+  experienceLevel: 'beginner'
 };
 
 // Reducer

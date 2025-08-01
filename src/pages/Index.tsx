@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
 import { RoadmapTester } from '@/components/RoadmapTester';
 import { EnhancedMayaDemo } from '@/components/EnhancedMayaDemo';
-import Navigation from "@/components/Navigation";
+import RoleBasedNavigation from "@/components/RoleBasedNavigation";
+import OnboardingWelcome from "@/components/OnboardingWelcome";
+import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
 import SecureLandingPage from "@/components/SecureLandingPage";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import SecurityMonitor from "@/components/SecurityMonitor";
@@ -12,6 +14,7 @@ import { checkRateLimit, generateRateLimitKey } from "@/lib/security";
 
 const Index = () => {
   const { user, isLoading, hasPermission } = useSecureAuth();
+  const { isNewUser, completeOnboarding, updateExperienceLevel } = useUserExperienceLevel();
 
   useEffect(() => {
     // Rate limiting for home page access
@@ -47,11 +50,24 @@ const Index = () => {
     );
   }
 
+  // Show onboarding for new users
+  if (user && isNewUser) {
+    return (
+      <>
+        <SecurityMonitor />
+        <OnboardingWelcome 
+          onExperienceLevelSelect={updateExperienceLevel}
+          onComplete={completeOnboarding}
+        />
+      </>
+    );
+  }
+
   // Show full content for authenticated users
   return (
     <>
       <SecurityMonitor />
-      <Navigation />
+      <RoleBasedNavigation />
       <div className="min-h-screen bg-background">
         {/* Hero Section */}
         <div className="flex flex-col items-center justify-center p-4 md:p-8 min-h-[60vh]">
