@@ -3584,6 +3584,33 @@ export type Database = {
           },
         ]
       }
+      user_goals: {
+        Row: {
+          created_at: string | null
+          goal_title: string | null
+          goal_type: string | null
+          id: string
+          is_active: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          goal_title?: string | null
+          goal_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          goal_title?: string | null
+          goal_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_insight_interactions: {
         Row: {
           action_taken: string | null
@@ -3667,6 +3694,33 @@ export type Database = {
           salary_range_max?: number | null
           salary_range_min?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          experience_level: string | null
+          has_completed_onboarding: boolean | null
+          last_active_date: string | null
+          preferred_features: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          experience_level?: string | null
+          has_completed_onboarding?: boolean | null
+          last_active_date?: string | null
+          preferred_features?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          experience_level?: string | null
+          has_completed_onboarding?: boolean | null
+          last_active_date?: string | null
+          preferred_features?: string[] | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
