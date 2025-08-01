@@ -6,17 +6,18 @@ import type { User } from "@supabase/supabase-js";
 // App role type to match database enum
 export type AppRole = 'user' | 'admin' | 'mentor';
 
-// Global dev user interface
-declare global {
-  interface Window {
-    __devUser__?: {
-      id: string;
-      email: string;
-      role: AppRole;
-      name?: string;
-    };
+// Type guard to validate AppRole
+export const isValidAppRole = (role: string): role is AppRole => {
+  return ['user', 'admin', 'mentor'].includes(role);
+};
+
+// Convert string role to AppRole with fallback
+export const toAppRole = (role: string | null | undefined): AppRole => {
+  if (role && isValidAppRole(role)) {
+    return role;
   }
-}
+  return 'user'; // Default fallback
+};
 
 export interface AuthUser {
   id: string;
@@ -82,7 +83,7 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
       return {
         id: parsedDevUser.id,
         email: parsedDevUser.email,
-        role: secureRole || parsedDevUser.role || 'user',
+        role: secureRole || toAppRole(parsedDevUser.role) || 'user',
         name: parsedDevUser.name,
         isDevUser: true,
       };
@@ -94,7 +95,7 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
       return {
         id: window.__devUser__.id,
         email: window.__devUser__.email,
-        role: secureRole || window.__devUser__.role || 'user',
+        role: secureRole || toAppRole(window.__devUser__.role) || 'user',
         name: window.__devUser__.name,
         isDevUser: true,
       };
@@ -133,11 +134,11 @@ export const getUserProfile = async (userId: string, isDevUser: boolean = false)
     console.log("Dev user data:", devUser);
     
     if (devUser && devUser.id) {
-      const mockProfile = {
+      const mockProfile: AuthProfile = {
         id: userId,
         user_id: userId,
         name: devUser.name || "Dev User",
-        role: devUser.role || "user",
+        role: toAppRole(devUser.role),
       };
       console.log("Returning mock profile:", mockProfile);
       return mockProfile;
@@ -149,7 +150,7 @@ export const getUserProfile = async (userId: string, isDevUser: boolean = false)
       id: userId,
       user_id: userId,
       name: "Demo User",
-      role: "user",
+      role: "user" as AppRole,
     };
   } else {
     // For real users, get profile from database
@@ -160,7 +161,14 @@ export const getUserProfile = async (userId: string, isDevUser: boolean = false)
         .eq("user_id", userId)
         .maybeSingle();
 
-      return profile;
+      if (profile) {
+        // Convert the database profile to AuthProfile with proper role typing
+        return {
+          ...profile,
+          role: toAppRole(profile.role)
+        } as AuthProfile;
+      }
+      return null;
     } catch (error) {
       console.error("Error fetching user profile:", error);
     }
