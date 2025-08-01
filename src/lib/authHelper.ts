@@ -1,6 +1,10 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { isProduction } from "./security";
 import type { User } from "@supabase/supabase-js";
+
+// App role type to match database enum
+export type AppRole = 'user' | 'admin' | 'mentor';
 
 // Global dev user interface
 declare global {
@@ -8,7 +12,7 @@ declare global {
     __devUser__?: {
       id: string;
       email: string;
-      role: string;
+      role: AppRole;
       name?: string;
     };
   }
@@ -17,7 +21,7 @@ declare global {
 export interface AuthUser {
   id: string;
   email: string;
-  role?: string;
+  role?: AppRole;
   name?: string;
   isDevUser: boolean;
 }
@@ -26,32 +30,71 @@ export interface AuthProfile {
   id: string;
   user_id: string;
   name: string;
-  role: string;
+  role: AppRole;
   [key: string]: any;
 }
 
+// Get user role securely from database
+export const getSecureUserRole = async (userId: string): Promise<AppRole | null> => {
+  try {
+    const { data, error } = await supabase.rpc('get_user_role', { user_uuid: userId });
+    if (error) {
+      console.error('Error getting user role:', error);
+      return null;
+    }
+    return data as AppRole;
+  } catch (error) {
+    console.error('Error in getSecureUserRole:', error);
+    return null;
+  }
+};
+
+// Check if user has specific role
+export const hasRole = async (userId: string, role: AppRole): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('has_role', { 
+      user_uuid: userId, 
+      check_role: role 
+    });
+    if (error) {
+      console.error('Error checking user role:', error);
+      return false;
+    }
+    return data || false;
+  } catch (error) {
+    console.error('Error in hasRole:', error);
+    return false;
+  }
+};
+
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  // Temporarily allow dev mode for CRI testing
-  {
+  // SECURITY: Only allow dev mode in development environment
+  if (!isProduction()) {
     // Check for dev user first
     const storedDevUser = localStorage.getItem("devUser");
     if (storedDevUser) {
       const parsedDevUser = JSON.parse(storedDevUser);
       window.__devUser__ = parsedDevUser;
+      
+      // Get secure role from database even for dev users
+      const secureRole = await getSecureUserRole(parsedDevUser.id);
+      
       return {
         id: parsedDevUser.id,
         email: parsedDevUser.email,
-        role: parsedDevUser.role,
+        role: secureRole || parsedDevUser.role || 'user',
         name: parsedDevUser.name,
         isDevUser: true,
       };
     }
 
     if (window.__devUser__) {
+      const secureRole = await getSecureUserRole(window.__devUser__.id);
+      
       return {
         id: window.__devUser__.id,
         email: window.__devUser__.email,
-        role: window.__devUser__.role,
+        role: secureRole || window.__devUser__.role || 'user',
         name: window.__devUser__.name,
         isDevUser: true,
       };
@@ -62,9 +105,15 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Get secure role from database
+      const role = await getSecureUserRole(user.id);
+      const profile = await getUserProfile(user.id);
+      
       return {
         id: user.id,
         email: user.email || "",
+        role: role || 'user',
+        name: profile?.name || user.user_metadata?.name || '',
         isDevUser: false,
       };
     }

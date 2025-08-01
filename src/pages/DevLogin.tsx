@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Target, ArrowLeft, Settings } from "lucide-react";
+import { Target, ArrowLeft, Settings, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { isProduction, sanitizeString, sanitizeHtml } from "@/lib/security";
 
 const devLoginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -35,7 +36,32 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Demo login temporarily enabled for CRI testing
+  // SECURITY: Block dev login in production
+  if (isProduction()) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <AlertTriangle className="h-8 w-8 text-destructive" />
+            </div>
+            <CardTitle className="text-destructive">Development Login Disabled</CardTitle>
+            <CardDescription>
+              Dev login is disabled in production for security reasons.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please use the standard authentication flow.
+            </p>
+            <Button asChild className="w-full">
+              <Link to="/auth">Go to Login</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const form = useForm<DevLoginData>({
     resolver: zodResolver(devLoginSchema),
@@ -50,7 +76,7 @@ export default function DevLogin() {
     if (window.__devUser__) {
       toast({
         title: "Dev mode active",
-        description: `Logged in as ${window.__devUser__.email}`,
+        description: `Logged in as ${sanitizeHtml(window.__devUser__.email)}`,
       });
       navigate("/admin/moderation");
     }
