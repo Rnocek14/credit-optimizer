@@ -19,11 +19,14 @@ import {
 import { SemanticCareerCanvas } from "@/components/SemanticCareerCanvas";
 import { useSemanticPlanning } from "@/hooks/useSemanticPlanning";
 import { useSemanticVisualization } from "@/hooks/useSemanticVisualization";
+import { SemanticNodeModal } from "@/components/modals/SemanticNodeModal";
+import { PathComparisonModal } from "@/components/modals/PathComparisonModal";
+import { ContextualAIAssistant } from "@/components/ContextualAIAssistant";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAnalytics } from "@/lib/analytics";
 import type { LearningPath } from "@/hooks/useAIPlanningEngine";
-import type { SemanticNode, SubstitutionOption, PivotOpportunity } from "@/types/semantic";
+import type { SemanticNode, SemanticPath, SubstitutionOption, PivotOpportunity } from "@/types/semantic";
 
 interface PlannerPathDisplayProps {
   learningPaths: LearningPath[];
@@ -34,6 +37,10 @@ interface PlannerPathDisplayProps {
 export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPathDisplayProps) {
   const [savingPaths, setSavingPaths] = useState<Set<string>>(new Set());
   const [selectedPathId, setSelectedPathId] = useState<string>('');
+  const [selectedNode, setSelectedNode] = useState<SemanticNode | null>(null);
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [currentPath, setCurrentPath] = useState<SemanticPath | null>(null);
   const { trackPlannerSetGoal } = useAnalytics();
   
   // Convert regular learning paths to enhanced format for semantic system
@@ -49,12 +56,23 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
   
   const { semanticPaths } = useSemanticVisualization(enhancedPaths);
   
-  const handleNodeClick = (node: SemanticNode) => {
-    console.log('Semantic node clicked:', node);
-    if (node.type === 'job') {
-      toast.success(`Selected target: ${node.title}`, {
-        description: "Set as goal to start this career path"
-      });
+  const handleNodeClick = (nodeId: string) => {
+    const path = semanticPaths.find(p => p.nodes.some(n => n.id === nodeId));
+    const node = path?.nodes.find(n => n.id === nodeId);
+    
+    if (node && path) {
+      setSelectedNode(node);
+      setCurrentPath(path);
+      setShowNodeModal(true);
+    }
+  };
+
+  const handleSemanticNodeClick = (node: SemanticNode) => {
+    const path = semanticPaths.find(p => p.nodes.some(n => n.id === node.id));
+    if (path) {
+      setSelectedNode(node);
+      setCurrentPath(path);
+      setShowNodeModal(true);
     }
   };
   
@@ -68,6 +86,24 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
     toast.success(`Career pivot opportunity found!`, {
       description: `${Math.round(pivot.skill_overlap_percentage)}% skill overlap - ${pivot.estimated_timeline}`
     });
+  };
+
+  const handleComparePathsClick = () => {
+    if (semanticPaths.length > 1) {
+      setCurrentPath(semanticPaths[0]);
+      setShowComparisonModal(true);
+    }
+  };
+
+  const handleSelectPath = (path: SemanticPath) => {
+    setSelectedPathId(path.id);
+    setCurrentPath(path);
+    setShowComparisonModal(false);
+    toast.success(`Selected: ${path.title}`);
+  };
+
+  const handleNodeAction = (nodeId: string, action: string) => {
+    toast.success(`${action} for node`);
   };
 
   const getPathTypeColor = (type: string) => {
@@ -194,6 +230,16 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
           <p className="text-muted-foreground">
             AI-generated roadmaps optimized for your success
           </p>
+          {semanticPaths.length > 1 && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="mt-2"
+              onClick={handleComparePathsClick}
+            >
+              Compare All Paths
+            </Button>
+          )}
         </div>
         <Badge variant="outline" className="text-sm">
           {learningPaths.length} paths found
@@ -332,7 +378,7 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
               <SemanticCareerCanvas
                 paths={semanticPaths}
                 selectedPathId={selectedPathId || semanticPaths[0]?.id}
-                onNodeClick={handleNodeClick}
+                onNodeClick={handleSemanticNodeClick}
                 onSubstitutionSelect={handleSubstitutionSelect}
                 onPivotSelect={handlePivotSelect}
                 showPersonalization={true}
@@ -342,6 +388,29 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Enhanced Modals */}
+      <SemanticNodeModal
+        isOpen={showNodeModal}
+        onClose={() => setShowNodeModal(false)}
+        node={selectedNode}
+        pathContext={currentPath || undefined}
+      />
+
+      <PathComparisonModal
+        isOpen={showComparisonModal}
+        onClose={() => setShowComparisonModal(false)}
+        primaryPath={currentPath}
+        alternatives={semanticPaths.filter(p => p.id !== currentPath?.id).slice(0, 2)}
+        onSelectPath={handleSelectPath}
+      />
+
+      {/* Contextual AI Assistant */}
+      <ContextualAIAssistant
+        currentPath={currentPath}
+        selectedNode={selectedNode}
+        onNodeAction={handleNodeAction}
+      />
     </div>
   );
 }

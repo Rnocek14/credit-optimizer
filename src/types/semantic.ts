@@ -22,6 +22,7 @@ export interface SubstitutionOption {
   title: string;
   type: string;
   substitution_score: number;
+  confidence_score?: number;
   cost_benefit_ratio: number;
   skill_equivalence: number;
   reasoning: string;
