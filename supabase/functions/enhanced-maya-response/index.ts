@@ -87,7 +87,6 @@ serve(async (req) => {
       };
     }
 
-    const data = await response.json();
     const aiResponse = data.choices[0].message.content;
 
     // Phase 5: Execute autonomous actions if needed

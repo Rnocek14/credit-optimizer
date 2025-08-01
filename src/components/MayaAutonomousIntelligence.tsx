@@ -34,6 +34,7 @@ import { useRealtimeMayaData } from '@/hooks/useRealtimeMayaData';
 import { LoadingState } from './LoadingState';
 import { MayaDataQualityIndicator } from './MayaDataQualityIndicator';
 import { StableLoadingState, StableMetricCard } from './StableLoadingState';
+import { MayaRealtimeTestPanel } from './MayaRealtimeTestPanel';
 import { useRequestQueue } from '@/hooks/useRequestQueue';
 import { useCircuitBreaker } from '@/hooks/useCircuitBreaker';
 
@@ -256,11 +257,12 @@ export function MayaAutonomousIntelligence() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="predictive">Predictive Intelligence</TabsTrigger>
           <TabsTrigger value="learning">Learning Optimization</TabsTrigger>
           <TabsTrigger value="decisions">Decision Intelligence</TabsTrigger>
+          <TabsTrigger value="development">Development</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -541,6 +543,11 @@ export function MayaAutonomousIntelligence() {
               </CardContent>
             </CardHeader>
           </Card>
+        </TabsContent>
+        
+        {/* Development Tab for Testing */}
+        <TabsContent value="development" className="space-y-6">
+          <MayaRealtimeTestPanel />
         </TabsContent>
       </Tabs>
     </div>
