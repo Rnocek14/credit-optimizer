@@ -330,7 +330,7 @@ export function useAdaptiveLearning() {
 
   // Auto-run analysis when course progress changes
   useEffect(() => {
-    if (courseProgress.length > 0) {
+    if (courseProgress && courseProgress.length > 0) {
       runAdaptiveAnalysis();
     }
   }, [courseProgress, runAdaptiveAnalysis]);
