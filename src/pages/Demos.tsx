@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { AIPlanningEngineTest } from "@/components/AIPlanningEngineTest";
 import { SemanticVisualQATest } from "@/components/SemanticVisualQATest";
 import { Phase1TestPanel } from "@/components/Phase1TestPanel";
+import { Phase6Dashboard } from "@/components/Phase6Dashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DemoProfile {
   user_id: string;
@@ -128,39 +130,41 @@ export default function Demos() {
     <TooltipProvider>
       <div className="container mx-auto py-8">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Demo User Profiles & Test Suite</h1>
+          <h1 className="text-3xl font-bold mb-2">Phase 6: Next-Generation Intelligence</h1>
           <p className="text-muted-foreground">
-            Explore our demo accounts and run validation tests
+            Advanced AI systems, enterprise features, and test suites
           </p>
         </div>
 
-        {/* Phase 1 + Smart Goals Test Section */}
-        <div className="mb-8">
-          <Phase1TestPanel />
-        </div>
+        {/* Phase 6 Dashboard */}
+        <Tabs defaultValue="phase6" className="w-full mb-8">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="phase6">Phase 6 Dashboard</TabsTrigger>
+            <TabsTrigger value="planning">AI Planning</TabsTrigger>
+            <TabsTrigger value="semantic">Semantic QA</TabsTrigger>
+            <TabsTrigger value="demos">Demo Profiles</TabsTrigger>
+          </TabsList>
 
-        <Separator className="my-8" />
+          <TabsContent value="phase6" className="space-y-6">
+            <Phase6Dashboard userId="2b458624-d498-4cca-a63d-9341cc20e363" />
+          </TabsContent>
 
-        {/* AI Planning Engine Test Section */}
-        <div className="mb-8">
-          <AIPlanningEngineTest />
-        </div>
+          <TabsContent value="planning" className="space-y-6">
+            <AIPlanningEngineTest />
+          </TabsContent>
 
-        <Separator className="my-8" />
+          <TabsContent value="semantic" className="space-y-6">
+            <SemanticVisualQATest />
+          </TabsContent>
 
-        {/* Semantic Visual QA Test Section */}
-        <div className="mb-8">
-          <SemanticVisualQATest />
-        </div>
+          <TabsContent value="demos" className="space-y-6">
 
-        <Separator className="my-8" />
-
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold mb-2">Demo User Profiles</h2>
-          <p className="text-muted-foreground">
-            Explore our demo accounts to see how the platform works
-          </p>
-        </div>
+            <div className="mb-8 text-center">
+              <h2 className="text-2xl font-bold mb-2">Demo User Profiles</h2>
+              <p className="text-muted-foreground">
+                Explore our demo accounts to see how the platform works
+              </p>
+            </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {profiles.map((profile) => (
@@ -249,8 +253,10 @@ export default function Demos() {
                 </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </TooltipProvider>
   );
