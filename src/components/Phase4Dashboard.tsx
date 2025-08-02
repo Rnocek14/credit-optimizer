@@ -9,6 +9,8 @@ import RealTimeMarketPulse from './RealTimeMarketPulse';
 import { EnterpriseCollaborationHub } from './EnterpriseCollaborationHub';
 import { MayaAutonomousIntelligence } from './MayaAutonomousIntelligence';
 import { CareerReadinessMonitor } from './CareerReadinessMonitor';
+import { EnhancedWorkflowEngine } from './EnhancedWorkflowEngine';
+import { RealTimeMarketIntelligence } from './RealTimeMarketIntelligence';
 
 interface Phase4DashboardProps {
   userId: string;
@@ -27,11 +29,11 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               <Bot className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Phase 4: Autonomous Intelligence</h1>
-              <p className="text-muted-foreground">Predictive Analytics & Enterprise Collaboration</p>
+              <h1 className="text-2xl font-bold">Phase 5: Enhanced AI Systems</h1>
+              <p className="text-muted-foreground">Real-Time Intelligence & Autonomous Workflows</p>
             </div>
-            <Badge variant="outline" className="ml-auto bg-blue-50 text-blue-700 border-blue-200">
-              Phase 4 Active
+            <Badge variant="outline" className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+              Phase 5 Active
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -39,10 +41,14 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
 
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="autonomous" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
-            Autonomous
+            Workflows
+          </TabsTrigger>
+          <TabsTrigger value="enhanced" className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Enhanced Engine
           </TabsTrigger>
           <TabsTrigger value="predictive" className="flex items-center gap-2">
             <Brain className="w-4 h-4" />
@@ -52,8 +58,12 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
             <TrendingUp className="w-4 h-4" />
             Market Pulse
           </TabsTrigger>
+          <TabsTrigger value="market-intel" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Market Intel
+          </TabsTrigger>
           <TabsTrigger value="intelligence" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
+            <Brain className="w-4 h-4" />
             Maya AI
           </TabsTrigger>
           <TabsTrigger value="collaboration" className="flex items-center gap-2">
@@ -70,12 +80,20 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
           <AutonomousWorkflowDashboard />
         </TabsContent>
 
+        <TabsContent value="enhanced" className="space-y-6">
+          <EnhancedWorkflowEngine />
+        </TabsContent>
+
         <TabsContent value="predictive" className="space-y-6">
           <PredictiveAnalyticsEngine />
         </TabsContent>
 
         <TabsContent value="market" className="space-y-6">
           <RealTimeMarketPulse />
+        </TabsContent>
+
+        <TabsContent value="market-intel" className="space-y-6">
+          <RealTimeMarketIntelligence />
         </TabsContent>
 
         <TabsContent value="intelligence" className="space-y-6">
