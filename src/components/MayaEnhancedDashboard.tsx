@@ -6,6 +6,7 @@ import { Brain, Zap, TrendingUp, Settings } from 'lucide-react';
 import { MayaIntelligenceCore } from './MayaIntelligenceCore';
 import { MayaAutonomousActions } from './MayaAutonomousActions';
 import { MayaRealTimeInsights } from './MayaRealTimeInsights';
+import { SystemPerformanceMonitor } from './SystemPerformanceMonitor';
 import { EnhancedMayaDemo } from './EnhancedMayaDemo';
 import { MayaPhase5Test } from './MayaPhase5Test';
 
@@ -34,7 +35,7 @@ export function MayaEnhancedDashboard() {
 
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="intelligence" className="flex items-center gap-2">
             <Brain className="w-4 h-4" />
             Intelligence Core
@@ -46,6 +47,10 @@ export function MayaEnhancedDashboard() {
           <TabsTrigger value="insights" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             Real-Time Insights
+          </TabsTrigger>
+          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Performance Monitor
           </TabsTrigger>
           <TabsTrigger value="interface" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -67,6 +72,10 @@ export function MayaEnhancedDashboard() {
 
         <TabsContent value="insights" className="space-y-6">
           <MayaRealTimeInsights />
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-6">
+          <SystemPerformanceMonitor />
         </TabsContent>
 
         <TabsContent value="interface" className="space-y-6">
