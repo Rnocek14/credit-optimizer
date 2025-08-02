@@ -3556,6 +3556,42 @@ export type Database = {
           },
         ]
       }
+      system_performance_metrics: {
+        Row: {
+          created_at: string
+          id: string
+          measurement_unit: string | null
+          metadata: Json | null
+          metric_name: string
+          metric_type: string
+          metric_value: number
+          recorded_at: string
+          target_value: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          measurement_unit?: string | null
+          metadata?: Json | null
+          metric_name: string
+          metric_type: string
+          metric_value: number
+          recorded_at?: string
+          target_value?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          measurement_unit?: string | null
+          metadata?: Json | null
+          metric_name?: string
+          metric_type?: string
+          metric_value?: number
+          recorded_at?: string
+          target_value?: number | null
+        }
+        Relationships: []
+      }
       transcripts: {
         Row: {
           created_at: string
@@ -4424,6 +4460,10 @@ export type Database = {
           created_at: string
           updated_at: string
         }[]
+      }
+      calculate_system_health_score: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       complete_course_progress: {
         Args: {
