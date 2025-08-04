@@ -1461,6 +1461,51 @@ export type Database = {
         }
         Relationships: []
       }
+      data_imports: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          import_source: string
+          import_status: string
+          import_type: string
+          metadata: Json | null
+          processed_at: string | null
+          processed_data: Json
+          raw_data: Json
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          import_source: string
+          import_status?: string
+          import_type: string
+          metadata?: Json | null
+          processed_at?: string | null
+          processed_data?: Json
+          raw_data?: Json
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          import_source?: string
+          import_status?: string
+          import_type?: string
+          metadata?: Json | null
+          processed_at?: string | null
+          processed_data?: Json
+          raw_data?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       economic_indicators: {
         Row: {
           created_at: string
@@ -2898,14 +2943,20 @@ export type Database = {
           availability: string | null
           career_goals: string | null
           created_at: string
+          data_completeness_score: number | null
           education: string | null
           experience_level: string | null
           gallery_enabled: boolean | null
           gallery_featured: boolean | null
+          headline: string | null
           id: string
+          import_source: string | null
           industry: string | null
           interests: string[] | null
+          last_import_at: string | null
           learning_style: string | null
+          linkedin_id: string | null
+          linkedin_url: string | null
           location: string | null
           name: string | null
           resume_review_summary: string | null
@@ -2913,6 +2964,7 @@ export type Database = {
           role_title: string | null
           salary_expectations: number | null
           skills: string[] | null
+          summary: string | null
           updated_at: string
           user_id: string | null
           willing_to_relocate: boolean | null
@@ -2924,14 +2976,20 @@ export type Database = {
           availability?: string | null
           career_goals?: string | null
           created_at?: string
+          data_completeness_score?: number | null
           education?: string | null
           experience_level?: string | null
           gallery_enabled?: boolean | null
           gallery_featured?: boolean | null
+          headline?: string | null
           id?: string
+          import_source?: string | null
           industry?: string | null
           interests?: string[] | null
+          last_import_at?: string | null
           learning_style?: string | null
+          linkedin_id?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           resume_review_summary?: string | null
@@ -2939,6 +2997,7 @@ export type Database = {
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
+          summary?: string | null
           updated_at?: string
           user_id?: string | null
           willing_to_relocate?: boolean | null
@@ -2950,14 +3009,20 @@ export type Database = {
           availability?: string | null
           career_goals?: string | null
           created_at?: string
+          data_completeness_score?: number | null
           education?: string | null
           experience_level?: string | null
           gallery_enabled?: boolean | null
           gallery_featured?: boolean | null
+          headline?: string | null
           id?: string
+          import_source?: string | null
           industry?: string | null
           interests?: string[] | null
+          last_import_at?: string | null
           learning_style?: string | null
+          linkedin_id?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           resume_review_summary?: string | null
@@ -2965,6 +3030,7 @@ export type Database = {
           role_title?: string | null
           salary_expectations?: number | null
           skills?: string[] | null
+          summary?: string | null
           updated_at?: string
           user_id?: string | null
           willing_to_relocate?: boolean | null
@@ -3496,6 +3562,56 @@ export type Database = {
             columns: ["to_skill_id"]
             isOneToOne: false
             referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_extractions: {
+        Row: {
+          confidence_score: number
+          context_snippet: string | null
+          created_at: string | null
+          extraction_source: string
+          id: string
+          import_id: string | null
+          metadata: Json | null
+          skill_category: string | null
+          skill_name: string
+          user_id: string
+          validated: boolean | null
+        }
+        Insert: {
+          confidence_score?: number
+          context_snippet?: string | null
+          created_at?: string | null
+          extraction_source: string
+          id?: string
+          import_id?: string | null
+          metadata?: Json | null
+          skill_category?: string | null
+          skill_name: string
+          user_id: string
+          validated?: boolean | null
+        }
+        Update: {
+          confidence_score?: number
+          context_snippet?: string | null
+          created_at?: string | null
+          extraction_source?: string
+          id?: string
+          import_id?: string | null
+          metadata?: Json | null
+          skill_category?: string | null
+          skill_name?: string
+          user_id?: string
+          validated?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_extractions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "data_imports"
             referencedColumns: ["id"]
           },
         ]
@@ -4571,6 +4687,10 @@ export type Database = {
           created_at: string
           updated_at: string
         }[]
+      }
+      calculate_profile_completeness: {
+        Args: { profile_row: Database["public"]["Tables"]["profiles"]["Row"] }
+        Returns: number
       }
       calculate_system_health_score: {
         Args: Record<PropertyKey, never>
