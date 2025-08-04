@@ -45,7 +45,7 @@ export const generateRateLimitKey = (userId: string, action: string): string => 
   return `rate_limit:${action}:${userId}`;
 };
 
-// Rate limiting check
+// Enhanced rate limiting with progressive delays
 export const checkRateLimit = (key: string, maxAttempts: number = 5, windowMs: number = 15 * 60 * 1000): boolean => {
   const now = Date.now();
   const attempts = JSON.parse(localStorage.getItem(key) || '[]');
@@ -60,6 +60,44 @@ export const checkRateLimit = (key: string, maxAttempts: number = 5, windowMs: n
   recentAttempts.push(now);
   localStorage.setItem(key, JSON.stringify(recentAttempts));
   return true;
+};
+
+// Progressive delay for repeated failed attempts
+export const getProgressiveDelay = (attemptCount: number): number => {
+  const baseDelay = 1000; // 1 second
+  const maxDelay = 30000; // 30 seconds
+  const delay = Math.min(baseDelay * Math.pow(2, attemptCount - 1), maxDelay);
+  return delay;
+};
+
+// Enhanced rate limiting for critical operations
+export const checkCriticalRateLimit = (
+  key: string, 
+  maxAttempts: number = 3, 
+  windowMs: number = 5 * 60 * 1000,
+  enableProgressive: boolean = true
+): { allowed: boolean; delay: number; attemptsRemaining: number } => {
+  const now = Date.now();
+  const attempts = JSON.parse(localStorage.getItem(key) || '[]');
+  
+  // Remove old attempts outside the window
+  const recentAttempts = attempts.filter((timestamp: number) => now - timestamp < windowMs);
+  
+  const attemptsRemaining = Math.max(0, maxAttempts - recentAttempts.length);
+  const allowed = recentAttempts.length < maxAttempts;
+  
+  if (allowed) {
+    recentAttempts.push(now);
+    localStorage.setItem(key, JSON.stringify(recentAttempts));
+  }
+  
+  const delay = enableProgressive && !allowed ? getProgressiveDelay(recentAttempts.length) : 0;
+  
+  return {
+    allowed,
+    delay,
+    attemptsRemaining
+  };
 };
 
 // Clear dev mode data securely

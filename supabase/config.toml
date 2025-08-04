@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.generate-predictive-analysis]
 verify_jwt = false
+
+[functions.phase6-baseline-lock]
+verify_jwt = true
