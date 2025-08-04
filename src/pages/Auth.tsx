@@ -109,12 +109,8 @@ export default function Auth() {
           description: "You've been signed in successfully.",
         });
 
-        // Redirect to admin moderation if admin, otherwise dashboard
-        if (profile?.role === "admin") {
-          navigate("/admin/moderation");
-        } else {
-          navigate(profile ? "/dashboard" : "/onboarding");
-        }
+        // Redirect to explore-hub for all users
+        navigate("/explore-hub");
       }
     } catch (error: any) {
       console.error("Sign in error:", error);
