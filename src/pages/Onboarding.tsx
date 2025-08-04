@@ -15,6 +15,7 @@ import { Loader2, User, Target, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
 import OnboardingConfirmation from "@/components/OnboardingConfirmation";
+import { LinkedInImport } from "@/components/LinkedInImport";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -168,6 +169,11 @@ export default function Onboarding() {
             <p className="text-muted-foreground text-sm md:text-base">
             Tell us about yourself to generate your personalized career roadmap
           </p>
+          </div>
+
+          {/* LinkedIn Import Option */}
+          <div className="mb-6">
+            <LinkedInImport />
           </div>
 
           <Form {...form}>
