@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDataImport } from "@/hooks/useDataImport";
 import { Linkedin, User, Briefcase, GraduationCap, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 
 interface LinkedInImportProps {
@@ -19,34 +20,32 @@ interface ImportStatus {
 }
 
 export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
-  const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [importResult, setImportResult] = useState<any>(null);
+  const [linkedInUrl, setLinkedInUrl] = useState("");
   const { toast } = useToast();
+  const { importFromLinkedIn, isImporting } = useDataImport();
 
   const handleLinkedInImport = async () => {
-    setIsImporting(true);
     setImportResult(null);
     
     try {
       setImportStatus({
         step: "auth",
         progress: 10,
-        message: "Connecting to LinkedIn..."
+        message: "Initiating LinkedIn OAuth..."
       });
 
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error("Please sign in to import from LinkedIn");
-      }
-
-      // Initiate LinkedIn OAuth
+      // Initiate LinkedIn OAuth flow in a popup
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'linkedin_oidc',
         options: {
-          scopes: 'r_liteprofile r_emailaddress w_member_social',
-          redirectTo: `${window.location.origin}/auth/callback?import=linkedin`
+          scopes: 'r_liteprofile r_emailaddress',
+          redirectTo: `${window.location.origin}/auth/callback?import=linkedin`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
 
@@ -54,63 +53,9 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
         throw new Error(`LinkedIn OAuth failed: ${error.message}`);
       }
 
-      // Note: In a real implementation, the OAuth flow would complete
-      // and we'd get the access token from the callback
-      // For now, we'll simulate the import process
-      
-      setImportStatus({
-        step: "fetching",
-        progress: 30,
-        message: "Fetching LinkedIn profile data..."
-      });
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      setImportStatus({
-        step: "processing",
-        progress: 60,
-        message: "Processing profile information..."
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      setImportStatus({
-        step: "skills",
-        progress: 80,
-        message: "Extracting skills with AI..."
-      });
-
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      setImportStatus({
-        step: "complete",
-        progress: 100,
-        message: "Import completed successfully!"
-      });
-
-      // Simulate successful import result
-      const mockResult = {
-        success: true,
-        profile: {
-          firstName: "John",
-          lastName: "Doe",
-          headline: "Senior Software Engineer at Tech Corp",
-          location: "San Francisco, CA",
-          industry: "Technology"
-        },
-        skillsExtracted: 12,
-        message: "LinkedIn profile imported successfully"
-      };
-
-      setImportResult(mockResult);
-
-      toast({
-        title: "LinkedIn Import Successful",
-        description: `Imported profile data and extracted ${mockResult.skillsExtracted} skills`,
-      });
-
-      onImportComplete?.();
+      // The OAuth will redirect and we'll handle the access token in the callback
+      // For now, simulate the process since OAuth requires actual LinkedIn app setup
+      await simulateLinkedInImport();
 
     } catch (error: any) {
       console.error("LinkedIn import error:", error);
@@ -119,9 +64,63 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setIsImporting(false);
+      setImportStatus(null);
     }
+  };
+
+  const simulateLinkedInImport = async () => {
+    setImportStatus({
+      step: "fetching",
+      progress: 30,
+      message: "Fetching LinkedIn profile data..."
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    setImportStatus({
+      step: "processing",
+      progress: 60,
+      message: "Processing profile information..."
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    setImportStatus({
+      step: "skills",
+      progress: 80,
+      message: "Extracting skills with AI..."
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    setImportStatus({
+      step: "complete",
+      progress: 100,
+      message: "Import completed successfully!"
+    });
+
+    // Simulate successful import result
+    const mockResult = {
+      success: true,
+      profile: {
+        firstName: "John",
+        lastName: "Doe",
+        headline: "Senior Software Engineer at Tech Corp",
+        location: "San Francisco, CA",
+        industry: "Technology"
+      },
+      skillsExtracted: 12,
+      message: "LinkedIn profile imported successfully"
+    };
+
+    setImportResult(mockResult);
+
+    toast({
+      title: "LinkedIn Import Successful",
+      description: `Imported profile data and extracted ${mockResult.skillsExtracted} skills`,
+    });
+
+    onImportComplete?.();
   };
 
   return (
