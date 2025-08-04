@@ -303,6 +303,53 @@ export type Database = {
         }
         Relationships: []
       }
+      assignment_submissions: {
+        Row: {
+          assignment_id: string
+          feedback: string | null
+          grade: number | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          student_id: string
+          submission_files: Json | null
+          submission_text: string | null
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          feedback?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          student_id: string
+          submission_files?: Json | null
+          submission_text?: string | null
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          feedback?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          student_id?: string
+          submission_files?: Json | null
+          submission_text?: string | null
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "course_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       autonomous_workflows: {
         Row: {
           completed_at: string | null
@@ -1302,6 +1349,88 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      course_assignments: {
+        Row: {
+          assignment_type: string | null
+          course_id: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          max_points: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_type?: string | null
+          course_id: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          max_points?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_type?: string | null
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          max_points?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_enrollments: {
+        Row: {
+          course_id: string
+          enrolled_at: string
+          final_grade: number | null
+          id: string
+          progress_percentage: number | null
+          status: string
+          student_id: string
+        }
+        Insert: {
+          course_id: string
+          enrolled_at?: string
+          final_grade?: number | null
+          id?: string
+          progress_percentage?: number | null
+          status?: string
+          student_id: string
+        }
+        Update: {
+          course_id?: string
+          enrolled_at?: string
+          final_grade?: number | null
+          id?: string
+          progress_percentage?: number | null
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_courses"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3816,6 +3945,57 @@ export type Database = {
           metric_value?: number
           recorded_at?: string
           target_value?: number | null
+        }
+        Relationships: []
+      }
+      teaching_courses: {
+        Row: {
+          course_code: string | null
+          created_at: string
+          description: string | null
+          difficulty_level: string | null
+          educator_id: string
+          end_date: string | null
+          enrollment_capacity: number | null
+          enrollment_count: number | null
+          id: string
+          skill_tags: string[] | null
+          start_date: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_code?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: string | null
+          educator_id: string
+          end_date?: string | null
+          enrollment_capacity?: number | null
+          enrollment_count?: number | null
+          id?: string
+          skill_tags?: string[] | null
+          start_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_code?: string | null
+          created_at?: string
+          description?: string | null
+          difficulty_level?: string | null
+          educator_id?: string
+          end_date?: string | null
+          enrollment_capacity?: number | null
+          enrollment_count?: number | null
+          id?: string
+          skill_tags?: string[] | null
+          start_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
