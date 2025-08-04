@@ -60,6 +60,10 @@ import LocationManagerPanel from "./components/LocationManagerPanel";
 import ExploreHub from "./pages/ExploreHub";
 import PlanHub from "./pages/PlanHub";
 import HistoryHub from "./pages/HistoryHub";
+import TeachHub from "./pages/TeachHub";
+import InstitutionHub from "./pages/InstitutionHub";
+import EmployerHub from "./pages/EmployerHub";
+import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -305,6 +309,30 @@ const App = () => (
               <ProtectedRoute requireAuth={true}>
                 <CRIDashboardPage />
               </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach-hub" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <TeachHub />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution-hub" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="institution">
+                <InstitutionHub />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer-hub" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="employer">
+                <EmployerHub />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route path="/500" element={<InternalError />} />

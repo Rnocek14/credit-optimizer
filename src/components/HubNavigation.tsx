@@ -11,9 +11,9 @@ const primaryHubs = [
 ];
 
 const stakeholderHubs = [
-  { id: "teach", label: "TEACH", icon: User, href: "/teach", role: "teacher" },
-  { id: "institution", label: "INSTITUTION", icon: Building, href: "/institution-hub", role: "institution" },
-  { id: "employer", label: "EMPLOYER", icon: Briefcase, href: "/employer-hub", role: "employer" },
+  { id: "teach", label: "TEACH", icon: User, href: "/teach-hub", role: "mentor" },
+  { id: "institution", label: "INSTITUTION", icon: Building, href: "/institution-hub", role: "user" },
+  { id: "employer", label: "EMPLOYER", icon: Briefcase, href: "/employer-hub", role: "user" },
   { id: "admin", label: "ADMIN", icon: Settings, href: "/admin", role: "admin" },
 ];
 
@@ -35,9 +35,10 @@ export function HubNavigation() {
   };
 
   const visibleStakeholderHubs = stakeholderHubs.filter(hub => {
-    if (hub.role === "teacher") return true; // Anyone can become a teacher
+    if (hub.id === "teach") return true; // Anyone can become a teacher
+    if (hub.id === "institution") return hasPermission("user"); // Placeholder - will be expanded in Stage 2
+    if (hub.id === "employer") return hasPermission("user"); // Placeholder - will be expanded in Stage 2
     if (hub.role === "admin") return hasPermission("admin");
-    // Add more role checks as needed
     return false;
   });
 
