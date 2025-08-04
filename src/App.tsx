@@ -63,6 +63,8 @@ import HistoryHub from "./pages/HistoryHub";
 import TeachHub from "./pages/TeachHub";
 import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
+import TeachAnalytics from "./pages/TeachAnalytics";
+import TeachCourses from "./pages/TeachCourses";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -316,6 +318,22 @@ const App = () => (
             element={
               <StakeholderProtectedRoute stakeholderType="teach">
                 <TeachHub />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/analytics" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <TeachAnalytics />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/courses" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <TeachCourses />
               </StakeholderProtectedRoute>
             } 
           />
