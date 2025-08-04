@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
 import { CheckCircle, AlertCircle, Clock, Zap, Brain, Network } from 'lucide-react';
 import { useEnhancedPhase5 } from '@/hooks/useEnhancedPhase5';
+import { Phase6BaselineLockPanel } from './Phase6BaselineLockPanel';
 
 interface Phase6ValidationDashboardProps {
   userId: string;
@@ -207,6 +208,11 @@ export function Phase6ValidationDashboard({ userId }: Phase6ValidationDashboardP
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Baseline Lock Panel - Only show when validation is complete */}
+      {overallProgress === 100 && (
+        <Phase6BaselineLockPanel userId={userId} />
       )}
     </div>
   );

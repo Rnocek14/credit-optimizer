@@ -2613,6 +2613,117 @@ export type Database = {
         }
         Relationships: []
       }
+      phase6_baseline_snapshots: {
+        Row: {
+          baseline_data: Json
+          captured_at: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          snapshot_type: string
+          system_health_score: number
+          user_id: string
+        }
+        Insert: {
+          baseline_data?: Json
+          captured_at?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          snapshot_type?: string
+          system_health_score?: number
+          user_id: string
+        }
+        Update: {
+          baseline_data?: Json
+          captured_at?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          snapshot_type?: string
+          system_health_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      phase6_enterprise_certifications: {
+        Row: {
+          audit_trail: Json | null
+          certification_data: Json
+          certification_type: string
+          certified_at: string
+          component_scores: Json
+          created_at: string
+          id: string
+          overall_score: number
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          audit_trail?: Json | null
+          certification_data?: Json
+          certification_type?: string
+          certified_at?: string
+          component_scores?: Json
+          created_at?: string
+          id?: string
+          overall_score: number
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          audit_trail?: Json | null
+          certification_data?: Json
+          certification_type?: string
+          certified_at?: string
+          component_scores?: Json
+          created_at?: string
+          id?: string
+          overall_score?: number
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
+      phase6_validation_locks: {
+        Row: {
+          component_name: string
+          component_state: Json
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          lock_reason: string | null
+          locked_at: string
+          metadata: Json | null
+          user_id: string
+          validation_score: number
+        }
+        Insert: {
+          component_name: string
+          component_state?: Json
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          lock_reason?: string | null
+          locked_at?: string
+          metadata?: Json | null
+          user_id: string
+          validation_score: number
+        }
+        Update: {
+          component_name?: string
+          component_state?: Json
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          lock_reason?: string | null
+          locked_at?: string
+          metadata?: Json | null
+          user_id?: string
+          validation_score?: number
+        }
+        Relationships: []
+      }
       pivot_exploration_events: {
         Row: {
           current_career: string
@@ -4465,6 +4576,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      capture_phase6_baseline: {
+        Args: { target_user_id: string }
+        Returns: string
+      }
       complete_course_progress: {
         Args: {
           user_id_param: string
@@ -4475,6 +4590,14 @@ export type Database = {
       }
       generate_certificate_number: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_phase6_enterprise_certification: {
+        Args: {
+          target_user_id: string
+          baseline_snapshot_id: string
+          component_lock_ids: string[]
+        }
         Returns: string
       }
       generate_user_roadmap: {
@@ -4534,6 +4657,10 @@ export type Database = {
           check_role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      lock_phase6_components: {
+        Args: { target_user_id: string; baseline_snapshot_id: string }
+        Returns: string[]
       }
       refresh_career_steps_with_levels: {
         Args: Record<PropertyKey, never>
