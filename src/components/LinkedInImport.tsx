@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +22,23 @@ interface ImportStatus {
 export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [importResult, setImportResult] = useState<any>(null);
-  const [linkedInUrl, setLinkedInUrl] = useState("");
   const { toast } = useToast();
   const { importFromLinkedIn, isImporting } = useDataImport();
+
+  // Check for LinkedIn OAuth callback on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const storedState = localStorage.getItem('linkedin_import_state');
+    
+    if (code && state && storedState === state) {
+      handleLinkedInCallback(code);
+      // Clean up URL and localStorage
+      window.history.replaceState({}, document.title, window.location.pathname);
+      localStorage.removeItem('linkedin_import_state');
+    }
+  }, []);
 
   const handleLinkedInImport = async () => {
     setImportResult(null);
@@ -33,30 +47,23 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
       setImportStatus({
         step: "auth",
         progress: 10,
-        message: "Initiating LinkedIn OAuth..."
+        message: "Redirecting to LinkedIn..."
       });
 
-      // Initiate LinkedIn OAuth flow in a popup
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'linkedin_oidc',
-        options: {
-          scopes: 'r_liteprofile r_emailaddress',
-          redirectTo: `${window.location.origin}/auth/callback?import=linkedin`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      });
-
-      if (error) {
-        throw new Error(`LinkedIn OAuth failed: ${error.message}`);
-      }
-
-      // The OAuth will redirect and we'll handle the access token in the callback
-      // For now, simulate the process since OAuth requires actual LinkedIn app setup
-      await simulateLinkedInImport();
-
+      // Create LinkedIn OAuth URL for data access
+      const clientId = "YOUR_LINKEDIN_CLIENT_ID"; // This needs to be configured in Supabase secrets
+      const redirectUri = encodeURIComponent(`${window.location.origin}/onboarding`);
+      const scope = encodeURIComponent("r_liteprofile r_emailaddress");
+      const state = Math.random().toString(36).substring(7);
+      
+      // Store state for security
+      localStorage.setItem('linkedin_import_state', state);
+      
+      const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      
+      // Redirect to LinkedIn OAuth
+      window.location.href = linkedInAuthUrl;
+      
     } catch (error: any) {
       console.error("LinkedIn import error:", error);
       toast({
@@ -68,60 +75,43 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
     }
   };
 
-  const simulateLinkedInImport = async () => {
-    setImportStatus({
-      step: "fetching",
-      progress: 30,
-      message: "Fetching LinkedIn profile data..."
-    });
+  const handleLinkedInCallback = async (authCode: string) => {
+    try {
+      setImportStatus({
+        step: "processing",
+        progress: 30,
+        message: "Processing LinkedIn data..."
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call the import function with the authorization code
+      await importFromLinkedIn(authCode);
+      
+      setImportStatus({
+        step: "complete",
+        progress: 100,
+        message: "Import completed successfully!"
+      });
 
-    setImportStatus({
-      step: "processing",
-      progress: 60,
-      message: "Processing profile information..."
-    });
+      // Set a basic result for UI display
+      setImportResult({
+        success: true,
+        skillsExtracted: 0,
+        message: "LinkedIn import completed"
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    setImportStatus({
-      step: "skills",
-      progress: 80,
-      message: "Extracting skills with AI..."
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    setImportStatus({
-      step: "complete",
-      progress: 100,
-      message: "Import completed successfully!"
-    });
-
-    // Simulate successful import result
-    const mockResult = {
-      success: true,
-      profile: {
-        firstName: "John",
-        lastName: "Doe",
-        headline: "Senior Software Engineer at Tech Corp",
-        location: "San Francisco, CA",
-        industry: "Technology"
-      },
-      skillsExtracted: 12,
-      message: "LinkedIn profile imported successfully"
-    };
-
-    setImportResult(mockResult);
-
-    toast({
-      title: "LinkedIn Import Successful",
-      description: `Imported profile data and extracted ${mockResult.skillsExtracted} skills`,
-    });
-
-    onImportComplete?.();
+      onImportComplete?.();
+      
+    } catch (error: any) {
+      console.error("LinkedIn callback error:", error);
+      toast({
+        title: "LinkedIn Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setImportStatus(null);
+    }
   };
+
 
   return (
     <Card>
@@ -202,17 +192,14 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
               <div className="p-3 bg-muted rounded-lg space-y-2">
                 <h4 className="font-medium">Profile Data Imported</h4>
                 <p className="text-sm text-muted-foreground">
-                  {importResult.profile.firstName} {importResult.profile.lastName}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {importResult.profile.headline}
+                  {importResult.message}
                 </p>
                 <div className="flex items-center space-x-2">
                   <Badge variant="secondary">
-                    {importResult.skillsExtracted} skills extracted
+                    {importResult.skillsExtracted || 0} skills extracted
                   </Badge>
                   <Badge variant="outline">
-                    {importResult.profile.location}
+                    LinkedIn Data
                   </Badge>
                 </div>
               </div>
