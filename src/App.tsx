@@ -57,6 +57,9 @@ import LearningHistory from "./pages/LearningHistory";
 import Planner from "./pages/Planner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LocationManagerPanel from "./components/LocationManagerPanel";
+import ExploreHub from "./pages/ExploreHub";
+import PlanHub from "./pages/PlanHub";
+import HistoryHub from "./pages/HistoryHub";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +97,11 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          {/* Hub Routes */}
+          <Route path="/explore-hub" element={<ExploreHub />} />
+          <Route path="/plan-hub" element={<PlanHub />} />
+          <Route path="/history-hub" element={<HistoryHub />} />
+          
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
           <Route path="/demos" element={<Demos />} />

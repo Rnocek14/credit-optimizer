@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
 import { RoadmapTester } from '@/components/RoadmapTester';
 import { EnhancedMayaDemo } from '@/components/EnhancedMayaDemo';
-import RoleBasedNavigation from "@/components/RoleBasedNavigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
 import SecureLandingPage from "@/components/SecureLandingPage";
@@ -67,7 +67,7 @@ const Index = () => {
   return (
     <>
       <SecurityMonitor />
-      <RoleBasedNavigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background">
         {/* Hero Section */}
         <div className="flex flex-col items-center justify-center p-4 md:p-8 min-h-[60vh]">
@@ -80,24 +80,19 @@ const Index = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
               <Button asChild size="lg" variant="gradient" className="w-full sm:w-auto">
-                <Link to="/auth">
-                Get Started
+                <Link to="/plan-hub">
+                Start Planning
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-              <Link to="/resume-gallery">
-                Browse Resume Gallery
+              <Link to="/explore-hub">
+                Explore Careers
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-              <Link to="/discover">
-                Discover Featured Talent
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-              <Link to="/demos">
-                View Demo Accounts
+              <Link to="/history-hub">
+                View Progress
               </Link>
             </Button>
             {hasPermission('admin') && (
