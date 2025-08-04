@@ -47,19 +47,33 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
       setImportStatus({
         step: "auth",
         progress: 10,
+        message: "Preparing LinkedIn authentication..."
+      });
+
+      // Get LinkedIn Client ID from edge function (which has access to secrets)
+      const { data: configData, error: configError } = await supabase.functions.invoke('linkedin-import', {
+        body: { action: 'get_config' }
+      });
+      
+      if (configError || !configData?.clientId) {
+        throw new Error('LinkedIn configuration not found. Please contact support.');
+      }
+
+      setImportStatus({
+        step: "auth",
+        progress: 20,
         message: "Redirecting to LinkedIn..."
       });
 
       // Create LinkedIn OAuth URL for data access
-      const clientId = "YOUR_LINKEDIN_CLIENT_ID"; // This needs to be configured in Supabase secrets
       const redirectUri = encodeURIComponent(`${window.location.origin}/onboarding`);
-      const scope = encodeURIComponent("r_liteprofile r_emailaddress");
+      const scope = encodeURIComponent("profile openid email");
       const state = Math.random().toString(36).substring(7);
       
       // Store state for security
       localStorage.setItem('linkedin_import_state', state);
       
-      const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
+      const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${configData.clientId}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}`;
       
       // Redirect to LinkedIn OAuth
       window.location.href = linkedInAuthUrl;
@@ -80,23 +94,32 @@ export function LinkedInImport({ onImportComplete }: LinkedInImportProps) {
       setImportStatus({
         step: "processing",
         progress: 30,
-        message: "Processing LinkedIn data..."
+        message: "Exchanging authorization code..."
       });
 
       // Call the import function with the authorization code
-      await importFromLinkedIn(authCode);
+      const result = await importFromLinkedIn(authCode);
       
+      setImportStatus({
+        step: "processing",
+        progress: 80,
+        message: "Processing LinkedIn data..."
+      });
+
       setImportStatus({
         step: "complete",
         progress: 100,
         message: "Import completed successfully!"
       });
 
-      // Set a basic result for UI display
+      // Set result with actual data from import
       setImportResult({
         success: true,
-        skillsExtracted: 0,
-        message: "LinkedIn import completed"
+        skillsExtracted: result?.skillsExtracted || 0,
+        message: result?.message || "LinkedIn import completed",
+        profileImported: true,
+        experienceCount: result?.experience_count || 0,
+        educationCount: result?.education_count || 0
       });
 
       onImportComplete?.();

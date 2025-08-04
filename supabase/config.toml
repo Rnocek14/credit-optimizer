@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.phase6-baseline-lock]
 verify_jwt = true
+
+[functions.linkedin-import]
+verify_jwt = false

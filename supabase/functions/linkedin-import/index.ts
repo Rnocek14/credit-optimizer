@@ -46,7 +46,71 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { accessToken, userId } = await req.json()
+    const { action, authorizationCode, userId, redirectUri } = await req.json()
+
+    // Handle configuration request
+    if (action === 'get_config') {
+      const clientId = Deno.env.get('LINKEDIN_CLIENT_ID')
+      if (!clientId) {
+        return new Response(
+          JSON.stringify({ error: 'LinkedIn Client ID not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      return new Response(
+        JSON.stringify({ clientId }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Handle import request
+    if (action !== 'import') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid action' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Exchange authorization code for access token
+    const clientId = Deno.env.get('LINKEDIN_CLIENT_ID')
+    const clientSecret = Deno.env.get('LINKEDIN_CLIENT_SECRET')
+    
+    if (!clientId || !clientSecret) {
+      return new Response(
+        JSON.stringify({ error: 'LinkedIn credentials not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Exchanging authorization code for access token...')
+    
+    const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: authorizationCode,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+      }),
+    })
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error('Token exchange failed:', errorText)
+      return new Response(
+        JSON.stringify({ error: 'Failed to exchange authorization code' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const tokenData = await tokenResponse.json()
+    const accessToken = tokenData.access_token
+
+    console.log('Successfully obtained access token, fetching LinkedIn data...')
 
     if (!accessToken || !userId) {
       throw new Error('Access token and user ID are required')
@@ -245,6 +309,8 @@ serve(async (req) => {
         importId: importRecord.id,
         profile: processedProfile,
         skillsExtracted: extractedSkills.length,
+        experience_count: experienceData.elements?.length || 0,
+        education_count: educationData.elements?.length || 0,
         message: 'LinkedIn profile imported successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -83,14 +83,16 @@ export function useDataImport() {
 
   // LinkedIn import mutation
   const linkedInImportMutation = useMutation({
-    mutationFn: async (accessToken: string) => {
+    mutationFn: async (authorizationCode: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase.functions.invoke('linkedin-import', {
         body: {
-          accessToken,
-          userId: user.id
+          action: 'import',
+          authorizationCode,
+          userId: user.id,
+          redirectUri: `${window.location.origin}/onboarding`
         }
       });
 
@@ -177,7 +179,7 @@ export function useDataImport() {
     skillsError,
     
     // Actions
-    importFromLinkedIn: linkedInImportMutation.mutate,
+    importFromLinkedIn: (authorizationCode: string) => linkedInImportMutation.mutateAsync(authorizationCode),
     validateSkill: validateSkillMutation.mutate,
     getDataCompleteness,
     
