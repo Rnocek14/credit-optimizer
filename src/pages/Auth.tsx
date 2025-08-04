@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Target, ArrowLeft } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Target, ArrowLeft, Linkedin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const authSchema = z.object({
@@ -21,8 +22,38 @@ type AuthData = z.infer<typeof authSchema>;
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('OAuth error:', error);
+        toast({
+          title: "Authentication failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.session) {
+        const importType = searchParams.get('import');
+        if (importType === 'linkedin') {
+          // Handle LinkedIn import after OAuth
+          navigate('/onboarding?step=import&source=linkedin');
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    };
+
+    handleOAuthCallback();
+  }, [searchParams, navigate, toast]);
 
   const form = useForm<AuthData>({
     resolver: zodResolver(authSchema),
@@ -144,6 +175,29 @@ export default function Auth() {
     }
   };
 
+  const handleLinkedInSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'linkedin_oidc',
+        options: {
+          scopes: 'r_liteprofile r_emailaddress',
+          redirectTo: `${window.location.origin}/auth/callback?import=linkedin`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("LinkedIn OAuth error:", error);
+      toast({
+        title: "LinkedIn sign in failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -217,18 +271,40 @@ export default function Auth() {
                       )}
                     />
                     
-                    <Button type="submit" className="w-full" disabled={isLoading} variant="gradient">
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Signing in...
-                        </>
-                      ) : (
-                        "Sign In"
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+                     <Button type="submit" className="w-full" disabled={isLoading} variant="gradient">
+                       {isLoading ? (
+                         <>
+                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                           Signing in...
+                         </>
+                       ) : (
+                         "Sign In"
+                       )}
+                     </Button>
+                     
+                     <div className="relative">
+                       <div className="absolute inset-0 flex items-center">
+                         <Separator className="w-full" />
+                       </div>
+                       <div className="relative flex justify-center text-xs uppercase">
+                         <span className="bg-background px-2 text-muted-foreground">
+                           Or continue with
+                         </span>
+                       </div>
+                     </div>
+                     
+                     <Button 
+                       type="button" 
+                       variant="outline" 
+                       className="w-full" 
+                       disabled={isLoading}
+                       onClick={handleLinkedInSignIn}
+                     >
+                       <Linkedin className="mr-2 h-4 w-4" />
+                       Sign in with LinkedIn
+                     </Button>
+                   </form>
+                 </Form>
               </TabsContent>
               
               <TabsContent value="signup">
