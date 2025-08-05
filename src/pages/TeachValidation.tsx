@@ -280,9 +280,15 @@ export default function TeachValidation() {
                           <CardHeader className="pb-2">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <CardTitle className="text-base">{item.course_discovery_queue.discovery_data?.title || 'Course Title'}</CardTitle>
+                                <CardTitle className="text-base">
+                                  {item.course_discovery_queue?.discovery_data?.title || 
+                                   item.course_discovery_queue?.discovery_data?.name || 
+                                   `Course from ${item.course_discovery_queue?.source_platform || 'Platform'}`}
+                                </CardTitle>
                                 <CardDescription className="text-sm">
-                                  Platform: {item.course_discovery_queue.source_platform}
+                                  Platform: {item.course_discovery_queue?.source_platform || 'Unknown Platform'}
+                                  {item.course_discovery_queue?.discovery_data?.instructor && 
+                                    ` • by ${item.course_discovery_queue.discovery_data.instructor}`}
                                 </CardDescription>
                               </div>
                               <div className="flex items-center gap-2">
@@ -331,9 +337,15 @@ export default function TeachValidation() {
                 {selectedCourse ? (
                   <Card>
                     <CardHeader>
-                      <CardTitle>{selectedCourse.course_discovery_queue.discovery_data?.title || 'Course Title'}</CardTitle>
+                      <CardTitle>
+                        {selectedCourse.course_discovery_queue?.discovery_data?.title || 
+                         selectedCourse.course_discovery_queue?.discovery_data?.name || 
+                         `Course from ${selectedCourse.course_discovery_queue?.source_platform || 'Platform'}`}
+                      </CardTitle>
                       <CardDescription>
-                        {selectedCourse.course_discovery_queue.discovery_data?.description || 'No description available'}
+                        {selectedCourse.course_discovery_queue?.discovery_data?.description || 
+                         selectedCourse.course_discovery_queue?.discovery_data?.summary ||
+                         'No description available'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

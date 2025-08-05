@@ -508,11 +508,14 @@ async function insertCourseIntoSequence(currentSequence: any, courseData: any, p
   
   const courseEntry = {
     course_id: courseData.id,
-    title: courseData.discovery_data.title,
-    platform: courseData.source_platform,
+    title: courseData.discovery_data?.title || courseData.discovery_data?.name || `Course from ${courseData.source_platform}`,
+    platform: courseData.source_platform || 'Unknown Platform',
     url: courseData.course_url,
-    difficulty: courseData.discovery_data.difficulty,
-    duration_hours: courseData.discovery_data.duration_hours,
+    difficulty: courseData.discovery_data?.difficulty || 'intermediate',
+    duration_hours: courseData.discovery_data?.duration_hours || courseData.discovery_data?.estimatedDuration || 10,
+    description: courseData.discovery_data?.description || courseData.discovery_data?.summary || '',
+    instructor: courseData.discovery_data?.instructor || '',
+    skill_tags: courseData.discovery_data?.skill_tags || courseData.discovery_data?.skillTags || [],
     added_by_mentor: true,
     added_at: new Date().toISOString()
   };
