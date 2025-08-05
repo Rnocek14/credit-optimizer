@@ -67,6 +67,8 @@ import TeachAnalytics from "./pages/TeachAnalytics";
 import TeachCourses from "./pages/TeachCourses";
 import CourseDiscovery from "./pages/CourseDiscovery";
 import CourseCuration from "./pages/CourseCuration";
+import LearningPaths from "./pages/LearningPaths";
+import CourseMarketplace from "./pages/CourseMarketplace";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -340,7 +342,39 @@ const App = () => (
             } 
           />
           <Route 
-            path="/institution-hub" 
+            path="/teach/discovery" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <CourseDiscovery />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/curation" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <CourseCuration />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/paths" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <LearningPaths />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/marketplace" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach">
+                <CourseMarketplace />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution-hub"
             element={
               <StakeholderProtectedRoute stakeholderType="institution">
                 <InstitutionHub />
