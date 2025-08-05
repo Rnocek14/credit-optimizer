@@ -17,16 +17,26 @@ export function StakeholderProtectedRoute({
   const { hasPermission, isLoading } = useSecureAuth();
   const location = useLocation();
 
+  // Determine the actual required role based on stakeholder type
+  let actualRequiredRole = requiredRole;
+  
+  if (stakeholderType === "teach") {
+    actualRequiredRole = "mentor";
+  } else if (stakeholderType === "institution" || stakeholderType === "employer") {
+    actualRequiredRole = "user"; // Will be refined in Stage 2
+  }
+
   useEffect(() => {
-    if (!isLoading && !hasPermission(requiredRole)) {
+    if (!isLoading && !hasPermission(actualRequiredRole)) {
       console.log('DEBUG: Access denied to route:', {
         requiredRole,
+        actualRequiredRole,
         stakeholderType,
         location: location.pathname
       });
       toast.error("This dashboard is restricted to approved roles.");
     }
-  }, [isLoading, hasPermission, requiredRole]);
+  }, [isLoading, hasPermission, actualRequiredRole]);
 
   if (isLoading) {
     return (
@@ -36,24 +46,16 @@ export function StakeholderProtectedRoute({
     );
   }
 
-  // For admin routes, require admin permission
-  if (requiredRole === "admin" && !hasPermission("admin")) {
-    return <Navigate to="/explore-hub" replace />;
-  }
+  console.log('DEBUG: Route protection check:', {
+    stakeholderType,
+    requiredRole,
+    actualRequiredRole,
+    userRole: hasPermission("user") ? "user" : hasPermission("mentor") ? "mentor" : hasPermission("admin") ? "admin" : "none"
+  });
 
-  // For mentor/teach routes, require mentor permission
-  if (stakeholderType === "teach" && !hasPermission("mentor")) {
-    console.log('DEBUG: Teach route access denied. User role:', hasPermission("mentor") ? 'has mentor' : 'no mentor');
-    console.log('DEBUG: Available permissions check:', {
-      admin: hasPermission("admin"),
-      mentor: hasPermission("mentor"), 
-      user: hasPermission("user")
-    });
-    return <Navigate to="/explore-hub" replace />;
-  }
-
-  // For institution/employer, allow all authenticated users (will be refined in Stage 2)
-  if ((stakeholderType === "institution" || stakeholderType === "employer") && !hasPermission("user")) {
+  // Single permission check based on actual required role
+  if (!hasPermission(actualRequiredRole)) {
+    console.log('DEBUG: Access denied - insufficient permissions');
     return <Navigate to="/explore-hub" replace />;
   }
 
