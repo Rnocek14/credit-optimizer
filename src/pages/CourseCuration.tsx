@@ -21,6 +21,7 @@ import {
 import { useCourseIntelligence, type CurationQueueItem } from '@/hooks/useCourseIntelligence';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { HubNavigation } from '@/components/HubNavigation';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CourseCuration() {
   const [curationQueue, setCurationQueue] = useState<CurationQueueItem[]>([]);
@@ -57,6 +58,41 @@ export default function CourseCuration() {
     setCurationQueue(queue);
   };
 
+  const triggerPathIntegration = async (courseId: string) => {
+    try {
+      console.log('🔗 Triggering path integration for approved course:', courseId);
+      
+      const { data, error } = await supabase.functions.invoke('course-path-integrator', {
+        body: {
+          action: 'integrate_approved_course',
+          data: {
+            courseId,
+            mentorId: state.user?.id,
+            curationData: {
+              endorsementLevel,
+              expertiseScore: expertiseScore[0],
+              mentorNotes,
+              roiAssessment: roiAssessment[0]
+            }
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Path integration completed:', data);
+      
+      // Show integration results to user
+      if (data.integratedPaths > 0) {
+        console.log(`🎯 Course integrated into ${data.integratedPaths} learning paths`);
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Path integration failed:', error);
+      // Don't block the curation workflow if integration fails
+    }
+  };
+
   const handleCuration = async () => {
     if (!selectedCourse || !state.user?.id) return;
 
@@ -72,6 +108,11 @@ export default function CourseCuration() {
     );
 
     if (curation) {
+      // If course was approved, trigger path integration
+      if (endorsementLevel === 'strong' || endorsementLevel === 'moderate') {
+        await triggerPathIntegration(selectedCourse.course_id);
+      }
+      
       // Remove from queue and reset form
       setCurationQueue(prev => prev.filter(item => item.id !== selectedCourse.id));
       setSelectedCourse(null);

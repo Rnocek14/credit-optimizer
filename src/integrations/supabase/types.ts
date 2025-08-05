@@ -2624,6 +2624,7 @@ export type Database = {
           market_demand_score: number | null
           maya_reasoning: string | null
           mentor_endorsements: string[] | null
+          mentor_validation_status: string | null
           path_description: string | null
           path_name: string
           skill_level: string
@@ -2642,6 +2643,7 @@ export type Database = {
           market_demand_score?: number | null
           maya_reasoning?: string | null
           mentor_endorsements?: string[] | null
+          mentor_validation_status?: string | null
           path_description?: string | null
           path_name: string
           skill_level?: string
@@ -2660,6 +2662,7 @@ export type Database = {
           market_demand_score?: number | null
           maya_reasoning?: string | null
           mentor_endorsements?: string[] | null
+          mentor_validation_status?: string | null
           path_description?: string | null
           path_name?: string
           skill_level?: string
@@ -2767,6 +2770,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mentor_path_curations: {
+        Row: {
+          changes_made: Json
+          created_at: string
+          curation_type: string
+          id: string
+          mentor_id: string
+          path_id: string
+        }
+        Insert: {
+          changes_made?: Json
+          created_at?: string
+          curation_type: string
+          id?: string
+          mentor_id: string
+          path_id: string
+        }
+        Update: {
+          changes_made?: Json
+          created_at?: string
+          curation_type?: string
+          id?: string
+          mentor_id?: string
+          path_id?: string
+        }
+        Relationships: []
+      }
+      mentor_path_integrations: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          integration_data: Json
+          mentor_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          integration_data?: Json
+          mentor_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          integration_data?: Json
+          mentor_id?: string
+        }
+        Relationships: []
       }
       milestone_plans: {
         Row: {

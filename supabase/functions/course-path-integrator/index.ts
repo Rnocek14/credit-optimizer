@@ -343,7 +343,7 @@ async function getMentorPathDashboard(supabase: any, data: any) {
     .order('created_at', { ascending: false });
 
   const stats = {
-    totalCoursesC蒸蒸蒸蒸蒸蒸蒸蒸: curatedCourses?.length || 0,
+    totalCoursesCurated: curatedCourses?.length || 0,
     approvedCourses: curatedCourses?.filter(c => c.endorsement_level === 'strong' || c.endorsement_level === 'moderate').length || 0,
     pathIntegrations: pathIntegrations?.length || 0,
     recentActivity: [

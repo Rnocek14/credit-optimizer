@@ -25,7 +25,7 @@ import { HubNavigation } from '@/components/HubNavigation';
 import { useToast } from '@/hooks/use-toast';
 
 interface PathDashboardStats {
-  totalCoursesC蒸: number;
+  totalCoursesCurated: number;
   approvedCourses: number;
   pathIntegrations: number;
   recentActivity: Array<{
@@ -206,7 +206,7 @@ export default function TeachPaths() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Courses Curated</p>
-                    <p className="text-2xl font-bold">{stats.totalCoursesC蒸}</p>
+                    <p className="text-2xl font-bold">{stats.totalCoursesCurated}</p>
                   </div>
                   <BookOpen className="h-8 w-8 text-blue-600" />
                 </div>
