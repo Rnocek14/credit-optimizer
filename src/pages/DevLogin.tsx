@@ -348,7 +348,7 @@ export default function DevLogin() {
                   const demoUser = {
                     id: '2b458624-d498-4cca-a63d-9341cc20e363',
                     email: 'aisha@demo.com',
-                    role: 'user',
+                    role: 'mentor',
                     name: 'Aisha Khan'
                   };
                   window.__devUser__ = demoUser;
@@ -368,7 +368,7 @@ export default function DevLogin() {
                   const demoUser = {
                     id: '3c459625-e499-5ddb-b64d-a442dd21f474',
                     email: 'mateo@demo.com',
-                    role: 'user',
+                    role: 'mentor',
                     name: 'Mateo Silva'
                   };
                   window.__devUser__ = demoUser;
@@ -388,7 +388,7 @@ export default function DevLogin() {
                   const demoUser = {
                     id: '4d56a736-f5aa-6eec-c75e-b553ee32e585',
                     email: 'jade@demo.com',
-                    role: 'user',
+                    role: 'admin',
                     name: 'Jade Chen'
                   };
                   window.__devUser__ = demoUser;
