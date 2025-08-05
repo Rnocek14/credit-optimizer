@@ -240,45 +240,83 @@ async function getMentorCurationQueue(supabase: any, data: any) {
   
   console.log('📋 Getting mentor curation queue for:', mentorId);
 
-  // Get courses pending validation that match mentor's expertise
-  // Using INNER JOIN to exclude any orphaned records
-  const { data: pipeline, error: pipelineError } = await supabase
-    .from('course_intelligence_pipeline')
-    .select(`
-      id,
-      course_id,
-      pipeline_stage,
-      ai_analysis,
-      confidence_score,
-      mentor_validation_status,
-      course_discovery_queue!inner (
+  try {
+    // Get courses pending validation with enhanced metadata
+    const { data: queueData, error: queueError } = await supabase
+      .from('course_intelligence_pipeline')
+      .select(`
         id,
-        source_platform,
-        course_url,
-        discovery_data
-      )
-    `)
-    .eq('mentor_validation_status', 'pending')
-    .gte('confidence_score', 0.7) // Only high-confidence courses
-    .not('course_discovery_queue', 'is', null) // Ensure course data exists
-    .order('confidence_score', { ascending: false })
-    .limit(limit);
+        course_id,
+        pipeline_stage,
+        ai_analysis,
+        confidence_score,
+        mentor_validation_status,
+        course_discovery_queue!inner (
+          id,
+          source_platform,
+          course_url,
+          discovery_data
+        )
+      `)
+      .eq('mentor_validation_status', 'pending')
+      .eq('pipeline_stage', 'mentor_review')
+      .order('confidence_score', { ascending: false })
+      .limit(limit);
 
-  if (pipelineError) {
-    console.error('❌ Pipeline query error:', pipelineError);
-    throw new Error(`Failed to get curation queue: ${pipelineError.message}`);
+    if (queueError) {
+      console.error('🚨 Queue query error:', queueError);
+      throw queueError;
+    }
+
+    console.log('✅ Raw queue data:', queueData?.length, 'items');
+
+    // Transform and enrich the data for UI display
+    const enrichedCourses = (queueData || []).map(item => ({
+      id: item.id,
+      course_id: item.course_id,
+      pipeline_stage: item.pipeline_stage,
+      ai_analysis: item.ai_analysis || {},
+      confidence_score: item.confidence_score || 0,
+      mentor_validation_status: item.mentor_validation_status,
+      course_discovery_queue: {
+        id: item.course_discovery_queue.id,
+        source_platform: item.course_discovery_queue.source_platform,
+        course_url: item.course_discovery_queue.course_url,
+        discovery_data: {
+          title: item.course_discovery_queue.discovery_data?.title || 
+                 item.course_discovery_queue.discovery_data?.name || 
+                 `Course from ${item.course_discovery_queue.source_platform}`,
+          description: item.course_discovery_queue.discovery_data?.description || 
+                      item.course_discovery_queue.discovery_data?.summary || 
+                      'No description available',
+          instructor: item.course_discovery_queue.discovery_data?.instructor || '',
+          difficulty: item.course_discovery_queue.discovery_data?.difficulty || 'intermediate',
+          duration_hours: item.course_discovery_queue.discovery_data?.duration_hours || 
+                         item.course_discovery_queue.discovery_data?.estimatedDuration || 10,
+          skill_tags: item.course_discovery_queue.discovery_data?.skill_tags || 
+                     item.course_discovery_queue.discovery_data?.skillTags || [],
+          category: item.course_discovery_queue.discovery_data?.category || 'General',
+          rating: item.course_discovery_queue.discovery_data?.rating || 0,
+          enrollments: item.course_discovery_queue.discovery_data?.enrollments || 0,
+          ...item.course_discovery_queue.discovery_data
+        }
+      }
+    }));
+
+    return new Response(
+      JSON.stringify({
+        courses: enrichedCourses,
+        total: enrichedCourses.length,
+        mentorId,
+        limit
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('🚨 Failed to get mentor curation queue:', error);
+    throw error;
   }
-
-  console.log('✅ Found', pipeline?.length || 0, 'courses in curation queue');
-  console.log('Sample course data:', pipeline?.[0]);
-
-  return new Response(
-    JSON.stringify({ 
-      courses: pipeline || [],
-      total: pipeline?.length || 0 
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
 }
 
 async function submitMentorCuration(supabase: any, data: any) {
