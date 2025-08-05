@@ -39,13 +39,21 @@ export default function CourseCuration() {
   const { state } = useUnifiedData();
 
   useEffect(() => {
+    console.log('🔍 CourseCuration: Component mounted, user state:', state.user);
     loadCurationQueue();
-  }, []);
+  }, [state.user?.id]);
 
   const loadCurationQueue = async () => {
-    if (!state.user?.id) return;
+    console.log('📋 CourseCuration: Loading curation queue, user:', state.user);
     
+    if (!state.user?.id) {
+      console.warn('⚠️ CourseCuration: No user ID available, skipping queue load');
+      return;
+    }
+    
+    console.log('🚀 CourseCuration: Calling getMentorCurationQueue with userId:', state.user.id);
     const queue = await getMentorCurationQueue(state.user.id, 20);
+    console.log('✅ CourseCuration: Received queue:', queue);
     setCurationQueue(queue);
   };
 

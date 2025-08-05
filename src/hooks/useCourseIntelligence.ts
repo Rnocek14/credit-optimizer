@@ -235,7 +235,7 @@ export function useCourseIntelligence() {
     setError(null);
 
     try {
-      console.log('📋 Getting mentor curation queue');
+      console.log('📋 Getting mentor curation queue for mentorId:', mentorId, 'limit:', limit);
 
       const { data, error: functionError } = await supabase.functions.invoke('course-intelligence-pipeline', {
         body: {
@@ -247,14 +247,18 @@ export function useCourseIntelligence() {
         }
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        console.error('🚨 Edge function error:', functionError);
+        throw functionError;
+      }
 
-      console.log('✅ Curation queue loaded:', data.total, 'items');
-      return data.courses || [];
+      console.log('✅ Curation queue response:', data);
+      console.log('✅ Curation queue loaded:', data?.total || 0, 'items');
+      return data?.courses || [];
 
     } catch (err: any) {
       const errorMsg = err.message || 'Failed to load curation queue';
-      console.error('Curation queue error:', err);
+      console.error('🚨 Curation queue error:', err);
       setError(errorMsg);
       return [];
     } finally {
