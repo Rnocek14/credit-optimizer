@@ -5,6 +5,7 @@ import { useMarketIntelligence } from '@/hooks/useMarketIntelligence';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
 import { usePivotRecommendations } from '@/hooks/usePivotRecommendations';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/authHelper';
 
 // Core state interface
 interface UnifiedDataState {
@@ -147,15 +148,29 @@ export function UnifiedDataProvider({ children }: { children: React.ReactNode })
   
   // Initialize user auth state
   useEffect(() => {
+    console.log('🔄 UnifiedDataContext: Initializing user auth state');
+    
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 UnifiedDataContext: Getting current user (including dev users)');
+      const user = await getCurrentUser();
+      console.log('✅ UnifiedDataContext: User loaded:', user);
       dispatch({ type: 'SET_USER', payload: user });
     };
     
     getUser();
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      dispatch({ type: 'SET_USER', payload: session?.user || null });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('🔄 UnifiedDataContext: Auth state changed, event:', _event);
+      
+      // For auth state changes, we still need to check dev users
+      if (!session?.user) {
+        const devUser = await getCurrentUser();
+        console.log('👤 UnifiedDataContext: No session user, checking dev user:', devUser);
+        dispatch({ type: 'SET_USER', payload: devUser });
+      } else {
+        console.log('👤 UnifiedDataContext: Session user found:', session.user);
+        dispatch({ type: 'SET_USER', payload: session.user });
+      }
     });
     
     return () => subscription.unsubscribe();
