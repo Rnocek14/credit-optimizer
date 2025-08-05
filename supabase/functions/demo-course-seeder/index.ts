@@ -222,7 +222,20 @@ async function createSampleMentorCurations(supabase: any) {
 
   if (!courses || courses.length === 0) return;
 
-  const mentorId = '2b458624-d498-4cca-a63d-9341cc20e363'; // Aisha Khan
+  // Verify mentor exists in profiles table
+  const { data: mentor } = await supabase
+    .from('profiles')
+    .select('user_id')
+    .eq('user_id', '2b458624-d498-4cca-a63d-9341cc20e363')
+    .eq('role', 'mentor')
+    .single();
+
+  if (!mentor) {
+    console.log('Mentor not found in profiles, skipping mentor curations');
+    return;
+  }
+
+  const mentorId = mentor.user_id;
 
   for (const course of courses.slice(0, 3)) {
     try {
@@ -238,6 +251,7 @@ async function createSampleMentorCurations(supabase: any) {
           roi_assessment: Math.random() * 20 + 80,
           outcome_prediction: 'High probability of career advancement and skill acquisition.'
         });
+      console.log(`Created mentor curation for course: ${course.course_id}`);
     } catch (error) {
       console.error('Error creating mentor curation:', error);
     }

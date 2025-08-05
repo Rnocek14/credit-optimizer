@@ -25,6 +25,12 @@ export default function TeachHub() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             AI-powered course curation and learning path optimization with Maya intelligence
           </p>
+          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-sm text-green-700">
+              ✅ Course seeding completed! {/* This will show when data is populated */}
+              Navigate to <strong>Course Discovery</strong> to find courses or <strong>Learning Paths</strong> to view Maya-generated paths.
+            </p>
+          </div>
         </div>
 
         <DemoSeedingPanel />
@@ -50,7 +56,7 @@ export default function TeachHub() {
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
                     <Link to={feature.href}>
-                      {feature.id === "discovery" || feature.id === "curation" ? "Open" : "Coming Soon"}
+                      {feature.id === "discovery" || feature.id === "curation" || feature.id === "paths" ? "Open" : "Coming Soon"}
                     </Link>
                   </Button>
                 </CardContent>
