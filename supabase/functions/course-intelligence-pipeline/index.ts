@@ -244,8 +244,18 @@ async function getMentorCurationQueue(supabase: any, data: any) {
   const { data: pipeline, error: pipelineError } = await supabase
     .from('course_intelligence_pipeline')
     .select(`
-      *,
-      course_discovery_queue:course_id (*)
+      id,
+      course_id,
+      pipeline_stage,
+      ai_analysis,
+      confidence_score,
+      mentor_validation_status,
+      course_discovery_queue:course_id (
+        id,
+        source_platform,
+        course_url,
+        discovery_data
+      )
     `)
     .eq('mentor_validation_status', 'pending')
     .gte('confidence_score', 0.7) // Only high-confidence courses
@@ -253,8 +263,12 @@ async function getMentorCurationQueue(supabase: any, data: any) {
     .limit(limit);
 
   if (pipelineError) {
+    console.error('❌ Pipeline query error:', pipelineError);
     throw new Error(`Failed to get curation queue: ${pipelineError.message}`);
   }
+
+  console.log('✅ Found', pipeline?.length || 0, 'courses in curation queue');
+  console.log('Sample course data:', pipeline?.[0]);
 
   return new Response(
     JSON.stringify({ 
