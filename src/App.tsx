@@ -69,6 +69,7 @@ import TeachCourses from "./pages/TeachCourses";
 import CourseDiscovery from "./pages/CourseDiscovery";
 import CourseCuration from "./pages/CourseCuration";
 import LearningPaths from "./pages/LearningPaths";
+import TeachPaths from "./pages/TeachPaths";
 import CourseMarketplace from "./pages/CourseMarketplace";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
@@ -362,7 +363,7 @@ const App = () => (
             path="/teach/paths" 
             element={
               <StakeholderProtectedRoute stakeholderType="teach">
-                <LearningPaths />
+                <TeachPaths />
               </StakeholderProtectedRoute>
             } 
           />
