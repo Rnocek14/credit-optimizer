@@ -39,6 +39,11 @@ export function StakeholderProtectedRoute({
   // For mentor/teach routes, require mentor permission
   if (stakeholderType === "teach" && !hasPermission("mentor")) {
     console.log('DEBUG: Teach route access denied. User role:', hasPermission("mentor") ? 'has mentor' : 'no mentor');
+    console.log('DEBUG: Available permissions check:', {
+      admin: hasPermission("admin"),
+      mentor: hasPermission("mentor"), 
+      user: hasPermission("user")
+    });
     return <Navigate to="/explore-hub" replace />;
   }
 

@@ -5195,6 +5195,10 @@ export type Database = {
           earned_badges: Json
         }[]
       }
+      get_mentor_by_user_id: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
       get_user_level: {
         Args: { user_id_param: string }
         Returns: {
@@ -5242,6 +5246,10 @@ export type Database = {
           emoji: string
           reason: string
         }[]
+      }
+      validate_mentor_operation: {
+        Args: { user_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {

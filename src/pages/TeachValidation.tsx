@@ -44,6 +44,15 @@ export default function TeachValidation() {
       const queue = await getMentorCurationQueue(user.id, 20);
       setValidationQueue(queue);
       
+      // First validate mentor permissions before loading data
+      const { data: mentorValidation, error: validationError } = await supabase
+        .rpc('validate_mentor_operation', { user_uuid: user.id });
+      
+      if (validationError || !mentorValidation) {
+        console.error('Mentor validation failed:', validationError);
+        throw new Error('Insufficient mentor permissions');
+      }
+
       // Calculate today's validation stats using validated_at column
       const { data: todayValidations } = await supabase
         .from('mentor_course_curations')
@@ -77,6 +86,19 @@ export default function TeachValidation() {
     setValidatingCourse(courseId);
     
     try {
+      // First validate mentor permissions
+      const { data: mentorValidation, error: validationError } = await supabase
+        .rpc('validate_mentor_operation', { user_uuid: user.id });
+      
+      if (validationError) {
+        console.error('Mentor validation error:', validationError);
+        throw new Error('Unable to validate mentor permissions');
+      }
+      
+      if (!mentorValidation) {
+        throw new Error('Insufficient mentor permissions for this operation');
+      }
+
       // Insert validation record
       const { error: insertError } = await supabase
         .from('mentor_course_curations')
@@ -90,7 +112,10 @@ export default function TeachValidation() {
           roi_assessment: action === 'approve' ? 3 : 1
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
 
       // Update course intelligence pipeline status
       const { error: updateError } = await supabase
