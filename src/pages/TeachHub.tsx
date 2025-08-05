@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { HubNavigation } from "@/components/HubNavigation";
 import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
 import { DemoCourseSeedTrigger } from "@/components/DemoCourseSeedTrigger";
+import { CourseIntelligenceSystemValidator } from "@/components/CourseIntelligenceSystemValidator";
 
 const curationFeatures = [
   { id: "discovery", title: "Course Discovery", description: "AI-powered course discovery and analysis", icon: Search, href: "/teach/discovery", color: "text-blue-600" },
@@ -37,6 +38,10 @@ export default function TeachHub() {
         
         <div className="mb-8">
           <DemoCourseSeedTrigger />
+        </div>
+
+        <div className="mb-8">
+          <CourseIntelligenceSystemValidator />
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

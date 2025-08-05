@@ -223,23 +223,24 @@ async function createSampleMentorCurations(supabase: any) {
   if (!courses || courses.length === 0) return;
 
   // Verify mentor exists in profiles table
-  const { data: mentor } = await supabase
+  const { data: mentor, error: mentorError } = await supabase
     .from('profiles')
     .select('user_id')
     .eq('user_id', '2b458624-d498-4cca-a63d-9341cc20e363')
-    .eq('role', 'mentor')
     .single();
 
-  if (!mentor) {
-    console.log('Mentor not found in profiles, skipping mentor curations');
+  if (mentorError || !mentor) {
+    console.log('Mentor not found in profiles, skipping mentor curations:', mentorError);
     return;
   }
 
   const mentorId = mentor.user_id;
+  console.log('Found mentor profile:', mentorId);
 
   for (const course of courses.slice(0, 3)) {
     try {
-      await supabase
+      console.log(`Attempting to create mentor curation for course: ${course.course_id}`);
+      const { data: curation, error: curationError } = await supabase
         .from('mentor_course_curations')
         .insert({
           mentor_id: mentorId,
@@ -250,10 +251,17 @@ async function createSampleMentorCurations(supabase: any) {
           skill_tags_added: ['practical', 'industry_standard'],
           roi_assessment: Math.random() * 20 + 80,
           outcome_prediction: 'High probability of career advancement and skill acquisition.'
-        });
-      console.log(`Created mentor curation for course: ${course.course_id}`);
+        })
+        .select()
+        .single();
+      
+      if (curationError) {
+        console.error('Error creating mentor curation:', curationError);
+      } else {
+        console.log(`Successfully created mentor curation for course: ${course.course_id}`);
+      }
     } catch (error) {
-      console.error('Error creating mentor curation:', error);
+      console.error('Unexpected error creating mentor curation:', error);
     }
   }
 }
