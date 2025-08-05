@@ -250,7 +250,7 @@ async function getMentorCurationQueue(supabase: any, data: any) {
       ai_analysis,
       confidence_score,
       mentor_validation_status,
-      course_discovery_queue:course_id (
+      course_discovery_queue!course_id (
         id,
         source_platform,
         course_url,
