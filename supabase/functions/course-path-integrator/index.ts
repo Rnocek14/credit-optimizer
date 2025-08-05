@@ -60,7 +60,7 @@ async function integrateApprovedCourse(supabase: any, data: any) {
   
   console.log('🎯 Integrating approved course into learning paths:', courseId);
 
-  // Get the approved course details
+  // Get the approved course details with enhanced data fetching
   const { data: courseData, error: courseError } = await supabase
     .from('course_discovery_queue')
     .select(`
@@ -77,95 +77,169 @@ async function integrateApprovedCourse(supabase: any, data: any) {
     .single();
 
   if (courseError || !courseData) {
+    console.error('❌ Course fetch error:', courseError);
     throw new Error(`Course not found or not validated: ${courseError?.message}`);
   }
 
-  // Find relevant learning paths based on skills and career alignment
-  const courseSkills = courseData.discovery_data.skill_tags || [];
-  const aiAnalysis = courseData.course_intelligence_pipeline[0].ai_analysis;
+  console.log('✅ Course data retrieved:', {
+    title: courseData.discovery_data?.title,
+    platform: courseData.source_platform,
+    skillTags: courseData.discovery_data?.skill_tags
+  });
+
+  // Enhanced course skill extraction
+  const courseSkills = courseData.discovery_data?.skill_tags || 
+                      courseData.discovery_data?.skillTags || 
+                      courseData.discovery_data?.tags || [];
+  const aiAnalysis = courseData.course_intelligence_pipeline[0]?.ai_analysis || {};
+  const courseTitle = courseData.discovery_data?.title || courseData.discovery_data?.name || '';
   
-  // Get learning paths that could benefit from this course
-  const { data: candidatePaths, error: pathsError } = await supabase
+  console.log('📊 Course analysis data:', { courseSkills, aiAnalysis, courseTitle });
+  
+  // Enhanced learning path candidate selection with broader criteria
+  const { data: allPaths, error: pathsError } = await supabase
     .from('maya_learning_paths')
     .select('*')
-    .or(`target_career.ilike.%${aiAnalysis.targetCareer || ''}%`)
-    .gte('ai_confidence', 60)
+    .gte('ai_confidence', 40)  // Lowered threshold
     .order('ai_confidence', { ascending: false })
-    .limit(10);
+    .limit(25);  // Increased limit
 
   if (pathsError) {
+    console.error('❌ Paths fetch error:', pathsError);
     throw new Error(`Failed to find candidate paths: ${pathsError.message}`);
   }
+
+  console.log(`📋 Found ${allPaths?.length || 0} total learning paths for analysis`);
+
+  // Enhanced filtering with multiple criteria
+  const candidatePaths = (allPaths || []).filter(path => {
+    const pathCareer = (path.target_career || '').toLowerCase();
+    const pathSkills = path.skill_focus?.toLowerCase() || '';
+    const courseTitleLower = courseTitle.toLowerCase();
+    
+    // Multiple matching criteria (OR logic for broader inclusion)
+    const careerMatch = aiAnalysis.targetCareer && 
+      pathCareer.includes(aiAnalysis.targetCareer.toLowerCase());
+    
+    const skillMatch = courseSkills.some(skill => 
+      pathCareer.includes(skill.toLowerCase()) || 
+      pathSkills.includes(skill.toLowerCase())
+    );
+    
+    const titleMatch = getCareerKeywords(pathCareer).some(keyword =>
+      courseTitleLower.includes(keyword.toLowerCase())
+    );
+    
+    const platformMatch = courseData.source_platform && 
+      (pathCareer.includes('tech') || pathCareer.includes('software') || 
+       pathCareer.includes('data') || pathCareer.includes('development'));
+    
+    return careerMatch || skillMatch || titleMatch || platformMatch;
+  });
+
+  console.log(`🎯 Filtered to ${candidatePaths.length} candidate paths for integration`);
 
   const integratedPaths = [];
   const pathPreview = [];
 
   // Analyze and integrate course into suitable paths
-  for (const path of candidatePaths || []) {
+  for (const path of candidatePaths) {
+    console.log(`🔍 Analyzing path: ${path.path_name} (${path.target_career})`);
+    
     const integrationAnalysis = analyzePathIntegration(courseData, path, aiAnalysis);
     
+    console.log(`📈 Integration analysis for ${path.path_name}:`, {
+      shouldIntegrate: integrationAnalysis.shouldIntegrate,
+      score: integrationAnalysis.integrationScore,
+      skillAlignment: integrationAnalysis.skillAlignment,
+      careerRelevance: integrationAnalysis.careerRelevance
+    });
+    
     if (integrationAnalysis.shouldIntegrate) {
-      // Update the course sequence
-      const updatedSequence = await insertCourseIntoSequence(
-        path.course_sequence, 
-        courseData, 
-        integrationAnalysis.suggestedPosition
-      );
+      try {
+        // Update the course sequence with enhanced course data
+        const updatedSequence = await insertCourseIntoSequence(
+          path.course_sequence, 
+          courseData, 
+          integrationAnalysis.suggestedPosition
+        );
 
-      // Update the learning path
-      const { data: updatedPath, error: updateError } = await supabase
-        .from('maya_learning_paths')
-        .update({
-          course_sequence: updatedSequence,
-          updated_at: new Date().toISOString(),
-          mentor_endorsements: [
-            ...(path.mentor_endorsements || []),
-            {
-              mentor_id: mentorId,
-              course_id: courseId,
-              endorsement_type: 'course_integration',
-              timestamp: new Date().toISOString(),
-              impact_score: integrationAnalysis.impactScore
-            }
-          ]
-        })
-        .eq('id', path.id)
-        .select()
-        .single();
+        console.log(`🔧 Updating course sequence for ${path.path_name}:`, {
+          originalLength: path.course_sequence?.length || 0,
+          newLength: updatedSequence.length,
+          position: integrationAnalysis.suggestedPosition
+        });
 
-      if (!updateError) {
-        integratedPaths.push(updatedPath);
+        // Update the learning path
+        const { data: updatedPath, error: updateError } = await supabase
+          .from('maya_learning_paths')
+          .update({
+            course_sequence: updatedSequence,
+            updated_at: new Date().toISOString(),
+            mentor_endorsements: [
+              ...(path.mentor_endorsements || []),
+              {
+                mentor_id: mentorId,
+                course_id: courseId,
+                endorsement_type: 'course_integration',
+                timestamp: new Date().toISOString(),
+                impact_score: integrationAnalysis.impactScore
+              }
+            ]
+          })
+          .eq('id', path.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error(`❌ Failed to update path ${path.path_name}:`, updateError);
+        } else {
+          console.log(`✅ Successfully integrated course into ${path.path_name}`);
+          integratedPaths.push(updatedPath);
+        }
+      } catch (error) {
+        console.error(`❌ Error integrating into ${path.path_name}:`, error);
       }
     }
 
     pathPreview.push({
       pathId: path.id,
       pathName: path.path_name,
+      targetCareer: path.target_career,
       currentSequenceLength: path.course_sequence?.length || 0,
       integrationAnalysis,
       willIntegrate: integrationAnalysis.shouldIntegrate
     });
   }
 
+  console.log(`🎉 Integration complete: ${integratedPaths.length} paths updated`);
+
   // Log the integration event
-  await supabase.from('mentor_path_integrations').insert({
-    mentor_id: mentorId,
-    course_id: courseId,
-    integration_data: {
-      pathsConsidered: candidatePaths?.length || 0,
-      pathsIntegrated: integratedPaths.length,
-      integrationMethod: 'ai_guided',
-      timestamp: new Date().toISOString()
-    }
-  });
+  try {
+    await supabase.from('mentor_path_integrations').insert({
+      mentor_id: mentorId,
+      course_id: courseId,
+      integration_data: {
+        pathsConsidered: candidatePaths.length,
+        pathsIntegrated: integratedPaths.length,
+        integrationMethod: 'ai_guided_enhanced',
+        timestamp: new Date().toISOString(),
+        courseTitle: courseTitle,
+        coursePlatform: courseData.source_platform
+      }
+    });
+  } catch (logError) {
+    console.error('❌ Failed to log integration event:', logError);
+  }
 
   return new Response(
     JSON.stringify({
+      success: true,
       integratedPaths: integratedPaths.length,
       pathPreview,
-      totalPathsAnalyzed: candidatePaths?.length || 0,
+      totalPathsAnalyzed: candidatePaths.length,
       courseData: {
-        title: courseData.discovery_data.title,
+        title: courseTitle,
         platform: courseData.source_platform,
         skills: courseSkills
       }
@@ -371,40 +445,67 @@ async function getMentorPathDashboard(supabase: any, data: any) {
 // Helper Functions
 
 function analyzePathIntegration(courseData: any, path: any, aiAnalysis: any) {
-  const courseSkills = courseData.discovery_data.skill_tags || [];
-  const pathCareer = path.target_career.toLowerCase();
-  const courseTitle = courseData.discovery_data.title.toLowerCase();
+  // Enhanced skill extraction with multiple fallbacks
+  const courseSkills = courseData.discovery_data?.skill_tags || 
+                      courseData.discovery_data?.skillTags || 
+                      courseData.discovery_data?.tags || [];
+  const pathCareer = (path.target_career || '').toLowerCase();
+  const courseTitle = (courseData.discovery_data?.title || courseData.discovery_data?.name || '').toLowerCase();
   
-  // Skill alignment score
-  const skillAlignment = calculateSkillAlignment(courseSkills, pathCareer);
+  // Enhanced skill alignment score
+  const skillAlignment = calculateSkillAlignment(courseSkills, pathCareer, courseTitle);
   
-  // Career relevance score
+  // Enhanced career relevance score
   const careerRelevance = calculateCareerRelevance(courseTitle, pathCareer, aiAnalysis);
   
-  // Difficulty progression score
-  const difficultyFit = calculateDifficultyFit(courseData.discovery_data.difficulty, path.skill_level);
+  // Enhanced difficulty fit score
+  const difficultyFit = calculateDifficultyFit(courseData.discovery_data?.difficulty, path.skill_level);
   
-  // Overall integration score
-  const integrationScore = (skillAlignment * 0.4) + (careerRelevance * 0.4) + (difficultyFit * 0.2);
+  // Platform bonus for tech-related paths
+  const platformBonus = calculatePlatformBonus(courseData.source_platform, pathCareer);
+  
+  // Overall integration score with enhanced weighting
+  const integrationScore = (skillAlignment * 0.35) + (careerRelevance * 0.35) + (difficultyFit * 0.2) + (platformBonus * 0.1);
+  
+  // Lower threshold for better integration
+  const shouldIntegrate = integrationScore > 50; // Lowered from 65
   
   return {
-    shouldIntegrate: integrationScore > 65,
+    shouldIntegrate,
     integrationScore: Math.round(integrationScore),
-    impactScore: Math.round(integrationScore * 1.2), // Slightly higher impact score
+    impactScore: Math.round(integrationScore * 1.2),
     suggestedPosition: determineCoursePosition(courseData, path),
-    reasoning: generateIntegrationReasoning(skillAlignment, careerRelevance, difficultyFit),
+    reasoning: generateIntegrationReasoning(skillAlignment, careerRelevance, difficultyFit, platformBonus),
     skillAlignment: Math.round(skillAlignment),
     careerRelevance: Math.round(careerRelevance),
-    difficultyFit: Math.round(difficultyFit)
+    difficultyFit: Math.round(difficultyFit),
+    platformBonus: Math.round(platformBonus)
   };
 }
 
-function calculateSkillAlignment(courseSkills: string[], pathCareer: string): number {
+function calculateSkillAlignment(courseSkills: string[], pathCareer: string, courseTitle: string): number {
   const careerKeywords = getCareerKeywords(pathCareer);
+  
+  // Enhanced skill matching with title fallback
   const skillMatches = courseSkills.filter(skill => 
     careerKeywords.some(keyword => skill.toLowerCase().includes(keyword.toLowerCase()))
   );
-  return Math.min((skillMatches.length / Math.max(courseSkills.length, 1)) * 100, 100);
+  
+  // Title-based skill inference if no skill matches
+  const titleKeywordMatches = careerKeywords.filter(keyword =>
+    courseTitle.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  const skillScore = courseSkills.length > 0 ? 
+    (skillMatches.length / courseSkills.length) * 100 : 0;
+  
+  const titleScore = titleKeywordMatches.length > 0 ? 
+    (titleKeywordMatches.length / careerKeywords.length) * 70 : 0; // Title gets 70% weight
+  
+  // Combine scores with fallback logic
+  const finalScore = Math.max(skillScore, titleScore);
+  
+  return Math.min(finalScore, 100);
 }
 
 function calculateCareerRelevance(courseTitle: string, pathCareer: string, aiAnalysis: any): number {
@@ -469,20 +570,37 @@ function getCareerKeywords(career: string): string[] {
   return [career.toLowerCase()];
 }
 
-function generateIntegrationReasoning(skillAlignment: number, careerRelevance: number, difficultyFit: number): string {
+function calculatePlatformBonus(platform: string, pathCareer: string): number {
+  const techPlatforms = ['coursera', 'udacity', 'pluralsight', 'codecademy', 'edx'];
+  const techCareers = ['software', 'data', 'tech', 'development', 'programming', 'engineering'];
+  
+  const isPlatformTech = techPlatforms.some(p => platform?.toLowerCase().includes(p));
+  const isCareerTech = techCareers.some(c => pathCareer.includes(c));
+  
+  if (isPlatformTech && isCareerTech) return 20;
+  if (isPlatformTech || isCareerTech) return 10;
+  return 0;
+}
+
+function generateIntegrationReasoning(skillAlignment: number, careerRelevance: number, difficultyFit: number, platformBonus: number = 0): string {
   const reasons = [];
   
   if (skillAlignment > 80) reasons.push("Strong skill alignment with career path");
   else if (skillAlignment > 60) reasons.push("Good skill alignment");
-  else reasons.push("Moderate skill alignment");
+  else if (skillAlignment > 30) reasons.push("Moderate skill alignment");
+  else reasons.push("Limited skill alignment");
   
   if (careerRelevance > 80) reasons.push("highly relevant to target career");
   else if (careerRelevance > 60) reasons.push("relevant to career goals");
-  else reasons.push("some career relevance");
+  else if (careerRelevance > 30) reasons.push("some career relevance");
+  else reasons.push("minimal career relevance");
   
   if (difficultyFit > 80) reasons.push("perfect difficulty level");
   else if (difficultyFit > 60) reasons.push("appropriate difficulty");
   else reasons.push("difficulty may not be optimal");
+  
+  if (platformBonus > 15) reasons.push("excellent platform match");
+  else if (platformBonus > 5) reasons.push("good platform alignment");
   
   return reasons.join(", ");
 }
