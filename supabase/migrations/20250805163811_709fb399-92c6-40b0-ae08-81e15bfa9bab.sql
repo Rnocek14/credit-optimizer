@@ -1,0 +1,2 @@
+-- This is just a comment to trigger the secrets configuration
+-- The actual secret configuration will be done via the UI
