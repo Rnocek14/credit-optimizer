@@ -11,6 +11,7 @@ export interface DevUser {
   name: string;
   role: string;
   sessionStart: number;
+  sessionExpires?: number;
 }
 
 // Known dev users for validation/testing
@@ -39,7 +40,7 @@ export const DEV_USERS: Record<string, DevUser> = {
 };
 
 /**
- * Set up a dev user session
+ * Set up a dev user session with enhanced validation
  */
 export const setupDevUser = (userKey: keyof typeof DEV_USERS): void => {
   const user = DEV_USERS[userKey];
@@ -48,23 +49,30 @@ export const setupDevUser = (userKey: keyof typeof DEV_USERS): void => {
     return;
   }
 
-  // Update session timestamp
+  // Create session with expiration (24 hours)
+  const sessionExpiration = Date.now() + (24 * 60 * 60 * 1000);
   const userWithFreshSession = {
     ...user,
-    sessionStart: Date.now()
+    sessionStart: Date.now(),
+    sessionExpires: sessionExpiration
   };
 
-  // Store in secure storage
-  secureStorage.setItem("devUser", userWithFreshSession);
-  
-  // Also set on window for immediate access
-  window.__devUser__ = userWithFreshSession;
-  
-  console.log('Dev user session established:', {
-    name: user.name,
-    role: user.role,
-    id: user.id
-  });
+  // Store in secure storage with validation
+  try {
+    secureStorage.setItem("devUser", userWithFreshSession);
+    
+    // Also set on window for immediate access
+    window.__devUser__ = userWithFreshSession;
+    
+    console.log('Dev user session established:', {
+      name: user.name,
+      role: user.role,
+      id: user.id,
+      expires: new Date(sessionExpiration).toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to establish dev user session:', error);
+  }
 };
 
 /**
@@ -77,10 +85,46 @@ export const clearDevUserSession = (): void => {
 };
 
 /**
- * Get current active dev user
+ * Get current active dev user with session validation
  */
 export const getCurrentDevUser = (): DevUser | null => {
-  return secureStorage.getItem("devUser") || window.__devUser__ || null;
+  try {
+    // Check secure storage first
+    const storedUser = secureStorage.getItem("devUser");
+    if (storedUser) {
+      // Validate session expiration
+      const now = Date.now();
+      if (storedUser.sessionExpires && now < storedUser.sessionExpires) {
+        // Sync with window for consistency
+        window.__devUser__ = storedUser;
+        return storedUser;
+      } else {
+        // Session expired, clear it
+        console.log('Dev user session expired, clearing');
+        clearDevUserSession();
+        return null;
+      }
+    }
+
+    // Check window fallback
+    const windowUser = window.__devUser__;
+    if (windowUser) {
+      // Validate and refresh session
+      const now = Date.now();
+      if ((windowUser as DevUser).sessionExpires && now < (windowUser as DevUser).sessionExpires!) {
+        return windowUser as DevUser;
+      } else {
+        console.log('Window dev user session expired, clearing');
+        clearDevUserSession();
+        return null;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting current dev user:', error);
+    return null;
+  }
 };
 
 /**

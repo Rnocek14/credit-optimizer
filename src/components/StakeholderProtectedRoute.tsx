@@ -46,16 +46,20 @@ export function StakeholderProtectedRoute({
     );
   }
 
+  const hasRequiredPermission = hasPermission(actualRequiredRole);
+  
   console.log('DEBUG: Route protection check:', {
     stakeholderType,
     requiredRole,
     actualRequiredRole,
-    userRole: hasPermission("user") ? "user" : hasPermission("mentor") ? "mentor" : hasPermission("admin") ? "admin" : "none"
+    hasRequiredPermission,
+    pathname: location.pathname,
+    timestamp: new Date().toISOString()
   });
 
   // Single permission check based on actual required role
-  if (!hasPermission(actualRequiredRole)) {
-    console.log('DEBUG: Access denied - insufficient permissions');
+  if (!hasRequiredPermission) {
+    console.log('DEBUG: Access denied - insufficient permissions for route:', location.pathname);
     return <Navigate to="/explore-hub" replace />;
   }
 

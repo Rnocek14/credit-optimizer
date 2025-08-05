@@ -71,37 +71,23 @@ export const hasRole = async (userId: string, role: AppRole): Promise<boolean> =
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
   // SECURITY: Only allow dev mode in development environment
   if (!isProduction()) {
-    // Check for dev session expiry
-    if (isDevSessionExpired()) {
-      clearDevMode();
-      return null;
-    }
+    // Import getCurrentDevUser locally to avoid circular dependency
+    const { getCurrentDevUser } = await import("./devUserSetup");
     
-    // Check for dev user first using secure storage
-    const storedDevUser = secureStorage.getItem("devUser");
-    if (storedDevUser) {
-      window.__devUser__ = storedDevUser;
-      
-      // Use role from dev user directly (avoid double fetching)
-      console.log('DEBUG: Dev user from storage:', storedDevUser);
-      
-      return {
-        id: storedDevUser.id,
-        email: storedDevUser.email,
-        role: toAppRole(storedDevUser.role) || 'user',
-        name: storedDevUser.name,
-        isDevUser: true,
-      };
-    }
-
-    if (window.__devUser__) {
-      console.log('DEBUG: Dev user from window:', window.__devUser__);
+    const devUser = getCurrentDevUser();
+    if (devUser) {
+      console.log('DEBUG: Valid dev user session found:', {
+        name: devUser.name,
+        role: devUser.role,
+        id: devUser.id,
+        sessionValid: devUser.sessionExpires ? Date.now() < devUser.sessionExpires : true
+      });
       
       return {
-        id: window.__devUser__.id,
-        email: window.__devUser__.email,
-        role: toAppRole(window.__devUser__.role) || 'user',
-        name: window.__devUser__.name,
+        id: devUser.id,
+        email: devUser.email,
+        role: toAppRole(devUser.role),
+        name: devUser.name,
         isDevUser: true,
       };
     }

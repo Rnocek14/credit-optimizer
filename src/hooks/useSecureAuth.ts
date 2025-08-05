@@ -76,19 +76,28 @@ export function useSecureAuth(): SecureAuthState {
   useEffect(() => {
     let mounted = true;
 
-  const checkAuth = async () => {
+    const checkAuth = async () => {
       try {
+        console.log('DEBUG: Starting auth check...');
+        
         // Auto-setup dev user if none exists in development
-        if (!isProduction() && !getCurrentDevUser()) {
-          console.log('DEBUG: No dev user found, setting up Aisha for validation');
-          setupAishaForValidation();
+        if (!isProduction()) {
+          const currentDevUser = getCurrentDevUser();
+          if (!currentDevUser) {
+            console.log('DEBUG: No valid dev user found, setting up Aisha for validation');
+            setupAishaForValidation();
+          }
         }
 
         const currentUser = await getCurrentUser();
         console.log('DEBUG: Auth check result:', {
-          user: currentUser,
-          isDevUser: currentUser?.isDevUser,
-          role: currentUser?.role
+          user: currentUser ? {
+            id: currentUser.id,
+            name: currentUser.name,
+            role: currentUser.role,
+            isDevUser: currentUser.isDevUser
+          } : null,
+          isLoading: isLoading
         });
         
         if (!mounted) return;
@@ -96,11 +105,13 @@ export function useSecureAuth(): SecureAuthState {
         setUser(currentUser);
         
         if (currentUser) {
-          console.log('DEBUG: Current user in useSecureAuth:', currentUser);
-          // Use role from getCurrentUser (already validated) to avoid double fetching
-          setRole(currentUser.role || 'user');
+          // For dev users, use the role from the dev user data directly
+          // For real users, the role comes from database via getCurrentUser
+          const userRole = currentUser.role || 'user';
+          console.log('DEBUG: Setting role to:', userRole, 'for user:', currentUser.name);
+          setRole(userRole);
         } else {
-          console.log('DEBUG: No user found, setting to null');
+          console.log('DEBUG: No user found, clearing state');
           setRole(null);
         }
       } catch (error) {
@@ -110,14 +121,18 @@ export function useSecureAuth(): SecureAuthState {
           setRole(null);
         }
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+          console.log('DEBUG: Auth check completed, loading finished');
+        }
       }
     };
 
     checkAuth();
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    // Listen for auth state changes (mainly for real auth)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('DEBUG: Auth state change:', event, session?.user?.id);
       checkAuth();
     });
 
