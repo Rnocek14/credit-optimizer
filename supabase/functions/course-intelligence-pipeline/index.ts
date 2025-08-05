@@ -241,6 +241,7 @@ async function getMentorCurationQueue(supabase: any, data: any) {
   console.log('📋 Getting mentor curation queue for:', mentorId);
 
   // Get courses pending validation that match mentor's expertise
+  // Using INNER JOIN to exclude any orphaned records
   const { data: pipeline, error: pipelineError } = await supabase
     .from('course_intelligence_pipeline')
     .select(`
@@ -250,7 +251,7 @@ async function getMentorCurationQueue(supabase: any, data: any) {
       ai_analysis,
       confidence_score,
       mentor_validation_status,
-      course_discovery_queue!course_id (
+      course_discovery_queue!inner (
         id,
         source_platform,
         course_url,
@@ -259,6 +260,7 @@ async function getMentorCurationQueue(supabase: any, data: any) {
     `)
     .eq('mentor_validation_status', 'pending')
     .gte('confidence_score', 0.7) // Only high-confidence courses
+    .not('course_discovery_queue', 'is', null) // Ensure course data exists
     .order('confidence_score', { ascending: false })
     .limit(limit);
 

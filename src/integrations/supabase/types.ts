@@ -1513,7 +1513,15 @@ export type Database = {
           updated_at?: string
           validated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_course_intelligence_pipeline_course_id"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "course_discovery_queue"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_progress: {
         Row: {
