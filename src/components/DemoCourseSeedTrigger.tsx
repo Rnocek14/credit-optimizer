@@ -11,6 +11,9 @@ export function DemoCourseSeedTrigger() {
     try {
       console.log('Triggering demo course seeding...');
       
+      // Clear existing data first to allow re-seeding
+      await supabase.from('course_discovery_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      
       const { data, error } = await supabase.functions.invoke('demo-course-seeder', {
         body: {}
       });
@@ -22,7 +25,7 @@ export function DemoCourseSeedTrigger() {
       }
 
       console.log('Seeding result:', data);
-      toast.success('Course curation system populated successfully!');
+      toast.success(`Course curation system populated! ${data?.coursesProcessed || 0} courses processed.`);
       
     } catch (error) {
       console.error('Seeding failed:', error);

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HubNavigation } from "@/components/HubNavigation";
 import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
+import { DemoCourseSeedTrigger } from "@/components/DemoCourseSeedTrigger";
 
 const curationFeatures = [
   { id: "discovery", title: "Course Discovery", description: "AI-powered course discovery and analysis", icon: Search, href: "/teach/discovery", color: "text-blue-600" },
@@ -27,6 +28,10 @@ export default function TeachHub() {
         </div>
 
         <DemoSeedingPanel />
+        
+        <div className="mb-8">
+          <DemoCourseSeedTrigger />
+        </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {curationFeatures.map((feature) => {
