@@ -127,9 +127,9 @@ export function useSecureAuth(): SecureAuthState {
     };
   }, []);
 
-  // Re-validate role when user changes
+  // Don't re-validate role for dev users as it's already set correctly
   useEffect(() => {
-    if (user) {
+    if (user && !user.isDevUser) {
       refreshRole();
     }
   }, [user?.id]);
