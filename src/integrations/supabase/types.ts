@@ -1396,6 +1396,45 @@ export type Database = {
           },
         ]
       }
+      course_discovery_queue: {
+        Row: {
+          course_url: string
+          created_at: string
+          discovery_data: Json
+          discovery_method: string
+          error_message: string | null
+          id: string
+          priority_score: number | null
+          processed_at: string | null
+          processing_status: string
+          source_platform: string
+        }
+        Insert: {
+          course_url: string
+          created_at?: string
+          discovery_data?: Json
+          discovery_method?: string
+          error_message?: string | null
+          id?: string
+          priority_score?: number | null
+          processed_at?: string | null
+          processing_status?: string
+          source_platform: string
+        }
+        Update: {
+          course_url?: string
+          created_at?: string
+          discovery_data?: Json
+          discovery_method?: string
+          error_message?: string | null
+          id?: string
+          priority_score?: number | null
+          processed_at?: string | null
+          processing_status?: string
+          source_platform?: string
+        }
+        Relationships: []
+      }
       course_enrollments: {
         Row: {
           course_id: string
@@ -1433,6 +1472,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      course_intelligence_pipeline: {
+        Row: {
+          ai_analysis: Json
+          confidence_score: number | null
+          course_id: string
+          created_at: string
+          cri_predictions: Json
+          id: string
+          market_alignment_score: number | null
+          mentor_validation_status: string | null
+          pipeline_stage: string
+          updated_at: string
+          validated_by: string | null
+        }
+        Insert: {
+          ai_analysis?: Json
+          confidence_score?: number | null
+          course_id: string
+          created_at?: string
+          cri_predictions?: Json
+          id?: string
+          market_alignment_score?: number | null
+          mentor_validation_status?: string | null
+          pipeline_stage?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Update: {
+          ai_analysis?: Json
+          confidence_score?: number | null
+          course_id?: string
+          created_at?: string
+          cri_predictions?: Json
+          id?: string
+          market_alignment_score?: number | null
+          mentor_validation_status?: string | null
+          pipeline_stage?: string
+          updated_at?: string
+          validated_by?: string | null
+        }
+        Relationships: []
       }
       course_progress: {
         Row: {
@@ -2521,6 +2602,111 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      maya_learning_paths: {
+        Row: {
+          ai_confidence: number | null
+          average_outcome_score: number | null
+          completion_rate: number | null
+          course_sequence: Json
+          created_at: string
+          created_by: string | null
+          estimated_duration_weeks: number | null
+          id: string
+          market_demand_score: number | null
+          maya_reasoning: string | null
+          mentor_endorsements: string[] | null
+          path_description: string | null
+          path_name: string
+          skill_level: string
+          target_career: string
+          updated_at: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          average_outcome_score?: number | null
+          completion_rate?: number | null
+          course_sequence?: Json
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_weeks?: number | null
+          id?: string
+          market_demand_score?: number | null
+          maya_reasoning?: string | null
+          mentor_endorsements?: string[] | null
+          path_description?: string | null
+          path_name: string
+          skill_level?: string
+          target_career: string
+          updated_at?: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          average_outcome_score?: number | null
+          completion_rate?: number | null
+          course_sequence?: Json
+          created_at?: string
+          created_by?: string | null
+          estimated_duration_weeks?: number | null
+          id?: string
+          market_demand_score?: number | null
+          maya_reasoning?: string | null
+          mentor_endorsements?: string[] | null
+          path_description?: string | null
+          path_name?: string
+          skill_level?: string
+          target_career?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mentor_course_curations: {
+        Row: {
+          career_path_mappings: string[] | null
+          course_id: string
+          created_at: string
+          curation_type: string
+          endorsement_level: string | null
+          expertise_score: number | null
+          id: string
+          mentor_id: string
+          mentor_notes: string | null
+          outcome_prediction: string | null
+          roi_assessment: number | null
+          skill_tags_added: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          career_path_mappings?: string[] | null
+          course_id: string
+          created_at?: string
+          curation_type?: string
+          endorsement_level?: string | null
+          expertise_score?: number | null
+          id?: string
+          mentor_id: string
+          mentor_notes?: string | null
+          outcome_prediction?: string | null
+          roi_assessment?: number | null
+          skill_tags_added?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          career_path_mappings?: string[] | null
+          course_id?: string
+          created_at?: string
+          curation_type?: string
+          endorsement_level?: string | null
+          expertise_score?: number | null
+          id?: string
+          mentor_id?: string
+          mentor_notes?: string | null
+          outcome_prediction?: string | null
+          roi_assessment?: number | null
+          skill_tags_added?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       mentor_feedback: {
         Row: {

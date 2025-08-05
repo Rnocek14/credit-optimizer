@@ -65,6 +65,8 @@ import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
 import TeachAnalytics from "./pages/TeachAnalytics";
 import TeachCourses from "./pages/TeachCourses";
+import CourseDiscovery from "./pages/CourseDiscovery";
+import CourseCuration from "./pages/CourseCuration";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
