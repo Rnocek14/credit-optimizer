@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getCurrentUser, hasRole, type AuthUser, type AppRole } from "@/lib/authHelper";
 import { supabase } from "@/integrations/supabase/client";
 import { isProduction } from "@/lib/security";
+import { setupAishaForValidation, getCurrentDevUser } from "@/lib/devUserSetup";
 
 interface SecureAuthState {
   user: AuthUser | null;
@@ -45,22 +46,50 @@ export function useSecureAuth(): SecureAuthState {
   };
 
   const hasPermission = (requiredRole: AppRole): boolean => {
-    console.log('DEBUG: hasPermission check:', { user: user?.id, role, requiredRole });
-    if (!user || !role) return false;
+    console.log('DEBUG: hasPermission check:', { 
+      userId: user?.id,
+      userName: user?.name,
+      userRole: role,
+      requiredRole,
+      isDevUser: user?.isDevUser,
+      hasUser: !!user,
+      hasRole: !!role
+    });
+    
+    if (!user || !role) {
+      console.log('DEBUG: Permission denied - missing user or role');
+      return false;
+    }
     
     // Admin has all permissions
-    if (role === 'admin') return true;
+    if (role === 'admin') {
+      console.log('DEBUG: Permission granted - admin role');
+      return true;
+    }
     
     // Exact role match required for non-admin roles
-    return role === requiredRole;
+    const hasPermission = role === requiredRole;
+    console.log('DEBUG: Permission result:', hasPermission);
+    return hasPermission;
   };
 
   useEffect(() => {
     let mounted = true;
 
-    const checkAuth = async () => {
+  const checkAuth = async () => {
       try {
+        // Auto-setup dev user if none exists in development
+        if (!isProduction() && !getCurrentDevUser()) {
+          console.log('DEBUG: No dev user found, setting up Aisha for validation');
+          setupAishaForValidation();
+        }
+
         const currentUser = await getCurrentUser();
+        console.log('DEBUG: Auth check result:', {
+          user: currentUser,
+          isDevUser: currentUser?.isDevUser,
+          role: currentUser?.role
+        });
         
         if (!mounted) return;
         
@@ -71,6 +100,7 @@ export function useSecureAuth(): SecureAuthState {
           // Use role from getCurrentUser (already validated) to avoid double fetching
           setRole(currentUser.role || 'user');
         } else {
+          console.log('DEBUG: No user found, setting to null');
           setRole(null);
         }
       } catch (error) {

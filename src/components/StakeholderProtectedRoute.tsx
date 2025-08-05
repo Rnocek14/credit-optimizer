@@ -19,6 +19,11 @@ export function StakeholderProtectedRoute({
 
   useEffect(() => {
     if (!isLoading && !hasPermission(requiredRole)) {
+      console.log('DEBUG: Access denied to route:', {
+        requiredRole,
+        stakeholderType,
+        location: location.pathname
+      });
       toast.error("This dashboard is restricted to approved roles.");
     }
   }, [isLoading, hasPermission, requiredRole]);

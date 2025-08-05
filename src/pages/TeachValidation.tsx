@@ -32,6 +32,13 @@ export default function TeachValidation() {
   });
 
   useEffect(() => {
+    console.log('DEBUG: TeachValidation useEffect triggered:', {
+      userId: user?.id,
+      userName: user?.name,
+      userRole: user?.role,
+      isDevUser: user?.isDevUser
+    });
+    
     if (user?.id) {
       loadValidationQueue();
     }
