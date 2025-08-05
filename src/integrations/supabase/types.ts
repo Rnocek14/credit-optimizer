@@ -5217,6 +5217,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_mentor: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       lock_phase6_components: {
         Args: { target_user_id: string; baseline_snapshot_id: string }
         Returns: string[]
