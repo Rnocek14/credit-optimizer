@@ -44,10 +44,10 @@ export default function TeachValidation() {
       const queue = await getMentorCurationQueue(user.id, 20);
       setValidationQueue(queue);
       
-      // Calculate today's validation stats (use endorsement_level since validation_status doesn't exist)
+      // Calculate today's validation stats using validated_at column
       const { data: todayValidations } = await supabase
         .from('mentor_course_curations')
-        .select('endorsement_level')
+        .select('endorsement_level, validated_at')
         .eq('mentor_id', user.id)
         .gte('validated_at', new Date().toISOString().split('T')[0]);
       

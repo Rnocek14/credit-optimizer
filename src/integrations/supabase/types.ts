@@ -2686,6 +2686,7 @@ export type Database = {
           roi_assessment: number | null
           skill_tags_added: string[] | null
           updated_at: string
+          validated_at: string | null
         }
         Insert: {
           career_path_mappings?: string[] | null
@@ -2701,6 +2702,7 @@ export type Database = {
           roi_assessment?: number | null
           skill_tags_added?: string[] | null
           updated_at?: string
+          validated_at?: string | null
         }
         Update: {
           career_path_mappings?: string[] | null
@@ -2716,6 +2718,7 @@ export type Database = {
           roi_assessment?: number | null
           skill_tags_added?: string[] | null
           updated_at?: string
+          validated_at?: string | null
         }
         Relationships: [
           {

@@ -73,7 +73,7 @@ async function integrateApprovedCourse(supabase: any, data: any) {
       )
     `)
     .eq('id', courseId)
-    .eq('course_intelligence_pipeline.mentor_validation_status', 'validated')
+    .eq('course_intelligence_pipeline.mentor_validation_status', 'approved')
     .single();
 
   if (courseError || !courseData) {
