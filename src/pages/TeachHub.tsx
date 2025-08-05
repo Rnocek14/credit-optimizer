@@ -3,6 +3,7 @@ import { Brain, Search, TrendingUp, Award, Route, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { HubNavigation } from "@/components/HubNavigation";
+import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
 
 const curationFeatures = [
   { id: "discovery", title: "Course Discovery", description: "AI-powered course discovery and analysis", icon: Search, href: "/teach/discovery", color: "text-blue-600" },
@@ -24,6 +25,8 @@ export default function TeachHub() {
             AI-powered course curation and learning path optimization with Maya intelligence
           </p>
         </div>
+
+        <DemoSeedingPanel />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {curationFeatures.map((feature) => {
