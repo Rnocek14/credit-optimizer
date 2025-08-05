@@ -12,6 +12,7 @@ export function DemoCourseSeedTrigger() {
       console.log('Triggering demo course seeding...');
       
       // Clear existing data first to allow re-seeding
+      await supabase.from('course_intelligence_pipeline').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('course_discovery_queue').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       
       const { data, error } = await supabase.functions.invoke('demo-course-seeder', {

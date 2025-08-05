@@ -21,18 +21,8 @@ serve(async (req) => {
     
     console.log('Starting demo course seeding...');
     
-    // Check if we already have courses
-    const { data: existingCourses, error: checkError } = await supabase
-      .from('course_discovery_queue')
-      .select('id')
-      .limit(1);
-      
-    if (existingCourses && existingCourses.length > 0) {
-      return new Response(
-        JSON.stringify({ message: 'Demo courses already seeded' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Always allow re-seeding by removing the early exit check
+    // This ensures data consistency between course_discovery_queue and course_intelligence_pipeline
 
     // High-demand career paths for course discovery
     const searchQueries = [
