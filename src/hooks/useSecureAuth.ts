@@ -45,6 +45,7 @@ export function useSecureAuth(): SecureAuthState {
   };
 
   const hasPermission = (requiredRole: AppRole): boolean => {
+    console.log('DEBUG: hasPermission check:', { user: user?.id, role, requiredRole });
     if (!user || !role) return false;
     
     // Admin has all permissions
@@ -66,8 +67,9 @@ export function useSecureAuth(): SecureAuthState {
         setUser(currentUser);
         
         if (currentUser) {
-          // Validate role against database
-          await refreshRole();
+          console.log('DEBUG: Current user in useSecureAuth:', currentUser);
+          // Use role from getCurrentUser (already validated) to avoid double fetching
+          setRole(currentUser.role || 'user');
         } else {
           setRole(null);
         }

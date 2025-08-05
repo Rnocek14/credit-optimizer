@@ -82,25 +82,25 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
     if (storedDevUser) {
       window.__devUser__ = storedDevUser;
       
-      // Get secure role from database even for dev users
-      const secureRole = await getSecureUserRole(storedDevUser.id);
+      // Use role from dev user directly (avoid double fetching)
+      console.log('DEBUG: Dev user from storage:', storedDevUser);
       
       return {
         id: storedDevUser.id,
         email: storedDevUser.email,
-        role: secureRole || toAppRole(storedDevUser.role) || 'user',
+        role: toAppRole(storedDevUser.role) || 'user',
         name: storedDevUser.name,
         isDevUser: true,
       };
     }
 
     if (window.__devUser__) {
-      const secureRole = await getSecureUserRole(window.__devUser__.id);
+      console.log('DEBUG: Dev user from window:', window.__devUser__);
       
       return {
         id: window.__devUser__.id,
         email: window.__devUser__.email,
-        role: secureRole || toAppRole(window.__devUser__.role) || 'user',
+        role: toAppRole(window.__devUser__.role) || 'user',
         name: window.__devUser__.name,
         isDevUser: true,
       };
