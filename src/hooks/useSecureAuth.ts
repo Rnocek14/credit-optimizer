@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser, hasRole, type AuthUser, type AppRole } from "@/lib/authHelper";
 import { supabase } from "@/integrations/supabase/client";
 import { isProduction } from "@/lib/security";
@@ -19,6 +19,11 @@ export function useSecureAuth(): SecureAuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Refs to prevent race conditions
+  const isCheckingAuth = useRef(false);
+  const authCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastValidState = useRef<{ user: AuthUser | null; role: AppRole | null }>({ user: null, role: null });
 
   const refreshRole = async () => {
     if (!user) return;
@@ -73,74 +78,103 @@ export function useSecureAuth(): SecureAuthState {
     return hasPermission;
   };
 
-  useEffect(() => {
-    let mounted = true;
+  // Debounced auth check to prevent race conditions
+  const debouncedCheckAuth = useCallback(async (immediate = false) => {
+    // Clear any pending timeout
+    if (authCheckTimeoutRef.current) {
+      clearTimeout(authCheckTimeoutRef.current);
+      authCheckTimeoutRef.current = null;
+    }
 
-    const checkAuth = async () => {
-      try {
-        console.log('DEBUG: Starting auth check...');
-        
-        // Auto-setup dev user if none exists in development
-        if (!isProduction()) {
-          const currentDevUser = getCurrentDevUser();
-          if (!currentDevUser) {
-            console.log('DEBUG: No valid dev user found, setting up Aisha for validation');
-            setupAishaForValidation();
-          }
-        }
+    // If not immediate, debounce the call
+    if (!immediate) {
+      authCheckTimeoutRef.current = setTimeout(() => {
+        debouncedCheckAuth(true);
+      }, 100);
+      return;
+    }
 
-        const currentUser = await getCurrentUser();
-        console.log('DEBUG: Auth check result:', {
-          user: currentUser ? {
-            id: currentUser.id,
-            name: currentUser.name,
-            role: currentUser.role,
-            isDevUser: currentUser.isDevUser
-          } : null,
-          isLoading: isLoading
-        });
-        
-        if (!mounted) return;
-        
-        setUser(currentUser);
-        
-        if (currentUser) {
-          // For dev users, use the role from the dev user data directly
-          // For real users, the role comes from database via getCurrentUser
-          const userRole = currentUser.role || 'user';
-          console.log('DEBUG: Setting role to:', userRole, 'for user:', currentUser.name);
-          setRole(userRole);
-        } else {
-          console.log('DEBUG: No user found, clearing state');
-          setRole(null);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-          console.log('DEBUG: Auth check completed, loading finished');
+    // Prevent concurrent auth checks
+    if (isCheckingAuth.current) {
+      console.log('DEBUG: Auth check already in progress, skipping');
+      return;
+    }
+
+    isCheckingAuth.current = true;
+
+    try {
+      console.log('DEBUG: Starting auth check...');
+      
+      // Auto-setup dev user if none exists in development
+      if (!isProduction()) {
+        const currentDevUser = getCurrentDevUser();
+        if (!currentDevUser) {
+          console.log('DEBUG: No valid dev user found, setting up Aisha for validation');
+          setupAishaForValidation();
         }
       }
-    };
 
-    checkAuth();
+      const currentUser = await getCurrentUser();
+      console.log('DEBUG: Auth check result:', {
+        user: currentUser ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          role: currentUser.role,
+          isDevUser: currentUser.isDevUser
+        } : null
+      });
+      
+      if (currentUser) {
+        // For dev users, use the role from the dev user data directly
+        // For real users, the role comes from database via getCurrentUser
+        const userRole = currentUser.role || 'user';
+        console.log('DEBUG: Setting role to:', userRole, 'for user:', currentUser.name);
+        
+        // Update state consistently
+        lastValidState.current = { user: currentUser, role: userRole };
+        setUser(currentUser);
+        setRole(userRole);
+      } else {
+        // Only clear state if we don't have a valid user
+        console.log('DEBUG: No user found, clearing state');
+        lastValidState.current = { user: null, role: null };
+        setUser(null);
+        setRole(null);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      // Don't clear valid state on errors, just log them
+      if (!lastValidState.current.user) {
+        setUser(null);
+        setRole(null);
+      }
+    } finally {
+      isCheckingAuth.current = false;
+      setIsLoading(false);
+      console.log('DEBUG: Auth check completed, loading finished');
+    }
+  }, []);
+
+  useEffect(() => {
+    // Initial auth check
+    debouncedCheckAuth(true);
 
     // Listen for auth state changes (mainly for real auth)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('DEBUG: Auth state change:', event, session?.user?.id);
-      checkAuth();
+      // Only trigger auth check for meaningful events
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        debouncedCheckAuth();
+      }
     });
 
     return () => {
-      mounted = false;
+      if (authCheckTimeoutRef.current) {
+        clearTimeout(authCheckTimeoutRef.current);
+      }
       subscription.unsubscribe();
     };
-  }, []);
+  }, [debouncedCheckAuth]);
 
   // Don't re-validate role for dev users as it's already set correctly
   useEffect(() => {
