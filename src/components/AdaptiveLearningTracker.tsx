@@ -24,6 +24,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useRealTimeEngagement } from '@/hooks/useRealTimeEngagement';
+import { useEnhancedMayaFeedback } from '@/hooks/useEnhancedMayaFeedback';
+import { useCourseProgress } from '@/hooks/useCourseProgress';
 
 interface AdaptiveLearningTrackerProps {
   userId: string;
@@ -67,11 +70,29 @@ interface LearningMetrics {
 }
 
 export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearningTrackerProps) {
-  const [sessions, setSessions] = useState<LearningSession[]>([]);
-  const [metrics, setMetrics] = useState<LearningMetrics | null>(null);
-  const [recommendations, setRecommendations] = useState<AdaptiveRecommendation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeSession, setActiveSession] = useState<LearningSession | null>(null);
+  // Use new real-time engagement hooks
+  const {
+    sessions,
+    interventions,
+    activeSession,
+    sessionMetrics,
+    isLoading,
+    startSession,
+    endSession,
+    updateSessionMetrics,
+    trackActivity,
+    engagementMetrics
+  } = useRealTimeEngagement();
+
+  const {
+    feedbackHistory,
+    submitFeedback,
+    trackRecommendationOutcome,
+    feedbackAnalytics
+  } = useEnhancedMayaFeedback();
+
+  const { courseProgress } = useCourseProgress();
+
   const [sessionFeedback, setSessionFeedback] = useState({
     difficulty: 3,
     engagement: 3,
@@ -80,250 +101,97 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadLearningData();
-  }, [userId]);
-
-  const loadLearningData = async () => {
-    try {
-      // For now, use mock data since database types are not updated yet
-      const sessionsData = null; // Would fetch from learning_sessions table
-      const sessionsError = null;
-
-      if (sessionsError) throw sessionsError;
-
-      setSessions((sessionsData as any[]) || []);
-      
-      // Calculate metrics
-      if (sessionsData && sessionsData.length > 0) {
-        const calculatedMetrics = calculateLearningMetrics(sessionsData);
-        setMetrics(calculatedMetrics);
-        
-        // Generate adaptive recommendations
-        const adaptiveRecommendations = generateAdaptiveRecommendations(sessionsData, calculatedMetrics);
-        setRecommendations(adaptiveRecommendations);
-      }
-
-    } catch (error) {
-      console.error('Error loading learning data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load learning progress data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  // Convert engagement metrics to legacy format for UI compatibility
+  const metrics: LearningMetrics = {
+    averageSessionDuration: engagementMetrics.averageSessionDuration,
+    completionRate: engagementMetrics.retentionRate * 100,
+    retentionScore: engagementMetrics.retentionRate * 100,
+    engagementTrend: 0, // Calculated from historical data
+    difficultyOptimal: engagementMetrics.averageSessionDuration >= 30 && engagementMetrics.averageSessionDuration <= 90,
+    paceOptimal: engagementMetrics.learningEfficiency > 0.6,
+    burnoutRisk: engagementMetrics.burnoutRisk * 100,
+    strengthAreas: [], // Will be populated from session data
+    improvementAreas: [] // Will be populated from session data
   };
 
-  const calculateLearningMetrics = (sessions: any[]): LearningMetrics => {
-    const totalSessions = sessions.length;
-    const completedSessions = sessions.filter(s => s.completion_rate >= 80);
-    
-    const avgDuration = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) / totalSessions;
-    const avgCompletion = sessions.reduce((sum, s) => sum + (s.completion_rate || 0), 0) / totalSessions;
-    const avgDifficulty = sessions.reduce((sum, s) => sum + (s.difficulty_feedback || 3), 0) / totalSessions;
-    const avgEngagement = sessions.reduce((sum, s) => sum + (s.engagement_score || 3), 0) / totalSessions;
-    
-    // Calculate trends (last 5 vs previous 5 sessions)
-    const recent = sessions.slice(0, 5);
-    const previous = sessions.slice(5, 10);
-    
-    const recentEngagement = recent.reduce((sum, s) => sum + (s.engagement_score || 3), 0) / recent.length;
-    const previousEngagement = previous.length > 0 
-      ? previous.reduce((sum, s) => sum + (s.engagement_score || 3), 0) / previous.length 
-      : recentEngagement;
-    
-    const engagementTrend = recentEngagement - previousEngagement;
-    
-    // Assess burnout risk
-    const recentSessions = sessions.slice(0, 7); // Last week
-    const longSessions = recentSessions.filter(s => (s.duration_minutes || 0) > 120).length;
-    const lowEngagement = recentSessions.filter(s => (s.engagement_score || 3) < 3).length;
-    const burnoutRisk = Math.min(100, (longSessions * 20) + (lowEngagement * 15));
-    
-    // Identify strength and improvement areas
-    const conceptsData = sessions.flatMap(s => [
-      ...(s.mastered_concepts || []).map((c: string) => ({ concept: c, type: 'mastered' })),
-      ...(s.struggled_concepts || []).map((c: string) => ({ concept: c, type: 'struggled' }))
-    ]);
-    
-    const conceptCounts = conceptsData.reduce((acc: any, item) => {
-      if (!acc[item.concept]) acc[item.concept] = { mastered: 0, struggled: 0 };
-      acc[item.concept][item.type]++;
-      return acc;
-    }, {});
-    
-    const strengthAreas = Object.entries(conceptCounts)
-      .filter(([_, counts]: [string, any]) => counts.mastered > counts.struggled)
-      .map(([concept]) => concept)
-      .slice(0, 5);
-      
-    const improvementAreas = Object.entries(conceptCounts)
-      .filter(([_, counts]: [string, any]) => counts.struggled > counts.mastered)
-      .map(([concept]) => concept)
-      .slice(0, 5);
-
-    return {
-      averageSessionDuration: avgDuration,
-      completionRate: avgCompletion,
-      retentionScore: Math.min(100, (completedSessions.length / totalSessions) * 100),
-      engagementTrend,
-      difficultyOptimal: avgDifficulty >= 2.5 && avgDifficulty <= 3.5,
-      paceOptimal: avgDuration >= 30 && avgDuration <= 90,
-      burnoutRisk,
-      strengthAreas,
-      improvementAreas
-    };
-  };
-
-  const generateAdaptiveRecommendations = (sessions: any[], metrics: LearningMetrics): AdaptiveRecommendation[] => {
+  // Generate recommendations based on real engagement data
+  const generateRecommendationsFromEngagement = (metrics: any, interventions: any[]): AdaptiveRecommendation[] => {
     const recommendations: AdaptiveRecommendation[] = [];
-    
-    // Difficulty adjustment recommendations
-    const recentDifficulty = sessions.slice(0, 5).reduce((sum, s) => sum + (s.difficulty_feedback || 3), 0) / 5;
-    
-    if (recentDifficulty > 4) {
-      recommendations.push({
-        type: 'difficulty_adjustment',
-        title: 'Consider Easier Content',
-        description: 'Recent sessions indicate content may be too challenging',
-        action: 'Review fundamentals or seek additional resources',
-        confidence: 85,
-        reasoning: `Average difficulty rating: ${recentDifficulty.toFixed(1)}/5`
-      });
-    } else if (recentDifficulty < 2) {
-      recommendations.push({
-        type: 'difficulty_adjustment',
-        title: 'Ready for Advanced Content',
-        description: 'You\'re finding current content too easy',
-        action: 'Consider skipping ahead or tackling advanced topics',
-        confidence: 80,
-        reasoning: `Average difficulty rating: ${recentDifficulty.toFixed(1)}/5`
-      });
-    }
-    
-    // Pace recommendations
-    if (metrics.averageSessionDuration > 120) {
-      recommendations.push({
-        type: 'pace_change',
-        title: 'Shorter Learning Sessions',
-        description: 'Long sessions may reduce retention and increase fatigue',
-        action: 'Try 45-60 minute sessions with breaks',
-        confidence: 75,
-        reasoning: `Average session: ${Math.round(metrics.averageSessionDuration)} minutes`
-      });
-    } else if (metrics.averageSessionDuration < 20) {
-      recommendations.push({
-        type: 'pace_change',
-        title: 'Extend Learning Sessions',
-        description: 'Longer sessions could improve deep learning',
-        action: 'Aim for 30-45 minute focused sessions',
-        confidence: 70,
-        reasoning: `Average session: ${Math.round(metrics.averageSessionDuration)} minutes`
-      });
-    }
-    
-    // Burnout risk
-    if (metrics.burnoutRisk > 60) {
+
+    // Convert motivation interventions to recommendations
+    interventions?.forEach(intervention => {
+      if (intervention.user_response !== 'dismissed') {
+        recommendations.push({
+          type: intervention.intervention_type as any,
+          title: intervention.intervention_data.title || 'Maya Suggestion',
+          description: intervention.intervention_data.description || '',
+          action: intervention.intervention_data.actions?.[0] || 'Consider this suggestion',
+          confidence: intervention.confidence_score * 100,
+          reasoning: `Based on ${intervention.intervention_type} analysis`
+        });
+      }
+    });
+
+    // Add engagement-based recommendations
+    if (metrics.burnoutRisk > 0.6) {
       recommendations.push({
         type: 'break_recommendation',
         title: 'Take a Learning Break',
         description: 'High burnout risk detected based on recent patterns',
         action: 'Consider a 1-2 day break or switch to lighter content',
         confidence: 90,
-        reasoning: `Burnout risk: ${metrics.burnoutRisk}%`
+        reasoning: `Burnout risk: ${Math.round(metrics.burnoutRisk * 100)}%`
       });
     }
-    
-    // Engagement trends
-    if (metrics.engagementTrend < -0.5) {
+
+    if (metrics.learningEfficiency < 0.4) {
       recommendations.push({
         type: 'learning_style',
         title: 'Try Different Learning Methods',
-        description: 'Engagement has been declining recently',
+        description: 'Learning efficiency could be improved',
         action: 'Switch between videos, articles, and hands-on projects',
         confidence: 75,
-        reasoning: 'Declining engagement trend detected'
+        reasoning: 'Low learning efficiency detected'
       });
     }
-    
-    // Resource suggestions based on struggle areas
-    if (metrics.improvementAreas.length > 0) {
-      recommendations.push({
-        type: 'resource_suggestion',
-        title: 'Focus on Weak Areas',
-        description: `Struggling with: ${metrics.improvementAreas.slice(0, 2).join(', ')}`,
-        action: 'Seek additional practice materials for these concepts',
-        confidence: 85,
-        reasoning: 'Based on tracked concept difficulties'
-      });
-    }
-    
-    return recommendations.slice(0, 5); // Limit to top 5 recommendations
+
+    return recommendations.slice(0, 5);
   };
 
+  const recommendations = generateRecommendationsFromEngagement(engagementMetrics, interventions || []);
+
   const startLearningSession = async (nodeId: string, nodeTitle: string) => {
-    const newSession: LearningSession = {
-      id: `session_${Date.now()}`,
-      nodeId,
-      nodeTitle,
-      startTime: new Date().toISOString(),
-      durationMinutes: 0,
-      completionRate: 0,
-      difficultyFeedback: 3,
-      engagementScore: 3,
-      struggledConcepts: [],
-      masteredConcepts: [],
-      notes: ''
-    };
-    
-    setActiveSession(newSession);
-    
-    toast({
-      title: "Learning Session Started",
-      description: `Started tracking: ${nodeTitle}`,
+    // Start session with real-time tracking
+    await startSession.mutateAsync({
+      courseId: nodeId,
+      sessionType: 'learning'
     });
+    
+    // Track the start event
+    trackActivity('session_start', { nodeId, nodeTitle });
   };
 
   const endLearningSession = async () => {
     if (!activeSession) return;
     
     try {
-      const endTime = new Date().toISOString();
-      const startTime = new Date(activeSession.startTime);
-      const duration = Math.round((Date.now() - startTime.getTime()) / 60000);
+      // End session with collected feedback
+      await endSession.mutateAsync({
+        difficulty_feedback: sessionFeedback.difficulty,
+        completion_percentage: 75, // Estimate based on time spent
+        session_notes: sessionFeedback.notes,
+        retention_indicators: {
+          struggled_concepts: sessionFeedback.concepts.struggled.split(',').map(c => c.trim()).filter(Boolean),
+          mastered_concepts: sessionFeedback.concepts.mastered.split(',').map(c => c.trim()).filter(Boolean)
+        }
+      });
       
-      const completedSession = {
-        ...activeSession,
-        endTime,
-        durationMinutes: duration,
-        difficultyFeedback: sessionFeedback.difficulty,
-        engagementScore: sessionFeedback.engagement,
-        struggledConcepts: sessionFeedback.concepts.struggled.split(',').map(c => c.trim()).filter(Boolean),
-        masteredConcepts: sessionFeedback.concepts.mastered.split(',').map(c => c.trim()).filter(Boolean),
-        notes: sessionFeedback.notes
-      };
-      
-      // For now, simulate successful save
-      const error = null; // Would save to learning_sessions table
-      
-      if (error) throw error;
-      
-      setActiveSession(null);
+      // Reset feedback form
       setSessionFeedback({
         difficulty: 3,
         engagement: 3,
         concepts: { struggled: '', mastered: '' },
         notes: ''
-      });
-      
-      // Reload data to update metrics and recommendations
-      await loadLearningData();
-      
-      toast({
-        title: "Session Completed",
-        description: `Tracked ${duration} minutes of learning`,
       });
       
     } catch (error) {
@@ -335,6 +203,20 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
       });
     }
   };
+
+  // Track user interactions for engagement scoring
+  useEffect(() => {
+    const handleClick = () => trackActivity('click', {});
+    const handleScroll = () => trackActivity('scroll', {});
+    
+    document.addEventListener('click', handleClick);
+    document.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('scroll', handleScroll);
+    };
+  }, [trackActivity]);
 
   const getRecommendationIcon = (type: string) => {
     switch (type) {
@@ -387,10 +269,10 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="font-semibold">Active Session</h4>
-                    <p className="text-sm text-muted-foreground">{activeSession.nodeTitle}</p>
+                    <p className="text-sm text-muted-foreground">Learning Session in Progress</p>
                   </div>
                   <Badge>
-                    {Math.round((Date.now() - new Date(activeSession.startTime).getTime()) / 60000)} min
+                    {Math.round((Date.now() - new Date(activeSession.started_at).getTime()) / 60000)} min
                   </Badge>
                 </div>
                 
@@ -442,9 +324,10 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
 
       {metrics && (
         <Tabs defaultValue="metrics" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="metrics">Learning Metrics</TabsTrigger>
             <TabsTrigger value="recommendations">AI Recommendations</TabsTrigger>
+            <TabsTrigger value="feedback">Maya Feedback</TabsTrigger>
             <TabsTrigger value="history">Session History</TabsTrigger>
           </TabsList>
 
@@ -470,7 +353,7 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                       <p className="text-sm text-muted-foreground">Completion Rate</p>
                       <p className="text-2xl font-bold">{Math.round(metrics.completionRate)}%</p>
                     </div>
-                    {getMetricTrendIcon(metrics.completionRate - 80, metrics.completionRate > 80)}
+                    {getMetricTrendIcon(metrics.engagementTrend, metrics.completionRate >= 80)}
                   </div>
                   <Progress value={metrics.completionRate} className="mt-2" />
                 </CardContent>
@@ -480,17 +363,12 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Engagement Trend</p>
-                      <p className="text-2xl font-bold">
-                        {metrics.engagementTrend > 0 ? '+' : ''}{metrics.engagementTrend.toFixed(1)}
-                      </p>
+                      <p className="text-sm text-muted-foreground">Engagement</p>
+                      <p className="text-2xl font-bold">{Math.round(engagementMetrics.dailyEngagementScore * 100)}%</p>
                     </div>
-                    {getMetricTrendIcon(metrics.engagementTrend, metrics.engagementTrend > 0)}
+                    {getMetricTrendIcon(metrics.engagementTrend, engagementMetrics.dailyEngagementScore >= 0.7)}
                   </div>
-                  <Progress 
-                    value={Math.max(0, Math.min(100, (metrics.engagementTrend + 2) * 25))} 
-                    className="mt-2" 
-                  />
+                  <Progress value={engagementMetrics.dailyEngagementScore * 100} className="mt-2" />
                 </CardContent>
               </Card>
 
@@ -501,146 +379,143 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                       <p className="text-sm text-muted-foreground">Burnout Risk</p>
                       <p className="text-2xl font-bold">{Math.round(metrics.burnoutRisk)}%</p>
                     </div>
-                    {getMetricTrendIcon(-metrics.burnoutRisk, metrics.burnoutRisk < 30)}
+                    {getMetricTrendIcon(0, metrics.burnoutRisk < 40)}
                   </div>
                   <Progress 
                     value={metrics.burnoutRisk} 
-                    className={`mt-2 ${metrics.burnoutRisk > 60 ? 'bg-red-100' : ''}`} 
+                    className="mt-2"
                   />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Strength Areas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {metrics.strengthAreas.length > 0 ? (
-                    <div className="space-y-2">
-                      {metrics.strengthAreas.map((area, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          <span className="text-sm">{area}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Complete more sessions to identify strengths</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Areas for Improvement</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {metrics.improvementAreas.length > 0 ? (
-                    <div className="space-y-2">
-                      {metrics.improvementAreas.map((area, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Target className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm">{area}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Great! No major struggle areas identified</p>
-                  )}
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
           <TabsContent value="recommendations" className="space-y-4">
-            {recommendations.length > 0 ? (
-              <div className="space-y-4">
-                {recommendations.map((rec, index) => (
-                  <Alert key={index} className="border-l-4 border-l-primary">
-                    <div className="flex items-start gap-3">
-                      {getRecommendationIcon(rec.type)}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{rec.title}</h4>
-                          <Badge variant="outline">{rec.confidence}% confidence</Badge>
+            <div className="space-y-4">
+              {recommendations.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-muted-foreground">Great job! No recommendations at this time.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Keep up your current learning pace!</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                recommendations.map((rec, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          {getRecommendationIcon(rec.type)}
                         </div>
-                        <AlertDescription className="text-sm mb-2">
-                          {rec.description}
-                        </AlertDescription>
-                        <div className="text-xs text-muted-foreground mb-2">
-                          <strong>Recommended Action:</strong> {rec.action}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          <strong>Why:</strong> {rec.reasoning}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold">{rec.title}</h4>
+                            <Badge variant="outline">{rec.confidence}% confidence</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{rec.description}</p>
+                          <Alert>
+                            <Zap className="h-4 w-4" />
+                            <AlertDescription>
+                              <strong>Suggested Action:</strong> {rec.action}
+                            </AlertDescription>
+                          </Alert>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            <strong>Reasoning:</strong> {rec.reasoning}
+                          </p>
                         </div>
                       </div>
-                    </div>
-                  </Alert>
-                ))}
-              </div>
-            ) : (
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="feedback" className="space-y-4">
+            <div className="space-y-4">
               <Card>
-                <CardContent className="p-8 text-center">
-                  <Brain className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-semibold mb-2">No Recommendations Yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Complete a few learning sessions to receive personalized AI recommendations
-                  </p>
+                <CardHeader>
+                  <CardTitle className="text-lg">Maya Feedback Analytics</CardTitle>
+                  <CardDescription>
+                    How Maya's suggestions are helping your learning
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {feedbackAnalytics ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center p-4 border rounded-lg">
+                        <p className="text-2xl font-bold text-primary">{feedbackAnalytics.totalFeedbackGiven}</p>
+                        <p className="text-sm text-muted-foreground">Total Feedback Given</p>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <p className="text-2xl font-bold text-green-600">
+                          {Math.round(feedbackAnalytics.averageEffectiveness * 100)}%
+                        </p>
+                        <p className="text-sm text-muted-foreground">Average Effectiveness</p>
+                      </div>
+                      <div className="text-center p-4 border rounded-lg">
+                        <p className="text-2xl font-bold text-blue-600">
+                          {Math.round(feedbackAnalytics.userEngagementRate * 100)}%
+                        </p>
+                        <p className="text-sm text-muted-foreground">Engagement Rate</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      Start interacting with Maya's suggestions to see feedback analytics
+                    </p>
+                  )}
                 </CardContent>
               </Card>
-            )}
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">
-            {sessions.length > 0 ? (
-              <div className="space-y-4">
-                {sessions.slice(0, 10).map((session, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                  <h4 className="font-medium">{session.nodeTitle}</h4>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{session.durationMinutes}min</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      <span>{session.completionRate}% complete</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <BarChart3 className="w-3 h-3" />
-                      <span>Difficulty: {session.difficultyFeedback}/5</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3" />
-                      <span>Engagement: {session.engagementScore}/5</span>
-                    </div>
-                  </div>
-                  {session.notes && (
-                    <p className="text-sm text-muted-foreground mt-2">{session.notes}</p>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(session.startTime).toLocaleDateString()}
+            <div className="space-y-4">
+              {sessions && sessions.length > 0 ? (
+                sessions.slice(0, 10).map((session) => (
+                  <Card key={session.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h4 className="font-semibold">Learning Session</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(session.started_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{session.duration_minutes} minutes</p>
+                          <p className="text-xs text-muted-foreground">
+                            {Math.round(session.engagement_score * 100)}% engagement
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{session.completion_percentage}% completed</span>
+                        </div>
+                        {session.difficulty_feedback && (
+                          <div className="flex items-center gap-1">
+                            <BarChart3 className="w-4 h-4" />
+                            <span>Difficulty: {session.difficulty_feedback}/5</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
                   </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="font-semibold mb-2">No Learning History</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Start your first learning session to begin tracking progress
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+                ))
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground">No learning sessions yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">Start a session to see your history</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       )}
