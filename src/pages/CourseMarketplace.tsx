@@ -3,72 +3,40 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HubNavigation } from "@/components/HubNavigation";
-import { useState } from "react";
-import { Search, Star, Clock, DollarSign, ExternalLink, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Star, Clock, DollarSign, ExternalLink, Filter, Award, Users, TrendingUp, BookOpen } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Mock data for validated courses
-const mockValidatedCourses = [
-  {
-    id: "1",
-    title: "Full Stack Web Development Bootcamp",
-    platform: "Tech Academy",
-    instructor: "Sarah Johnson",
-    rating: 4.8,
-    reviews: 2341,
-    duration: "16 weeks",
-    cost: "$1299",
-    difficulty: "Intermediate",
-    validation_score: 95,
-    cri_prediction: 87,
-    skills: ["React", "Node.js", "MongoDB", "TypeScript"],
-    description: "Comprehensive bootcamp covering modern web development stack with hands-on projects.",
-    mentor_endorsed: true,
-    completion_rate: 89,
-    job_placement_rate: 76
-  },
-  {
-    id: "2", 
-    title: "Data Science with Python",
-    platform: "DataCamp Pro",
-    instructor: "Dr. Michael Chen",
-    rating: 4.6,
-    reviews: 1876,
-    duration: "12 weeks",
-    cost: "$799",
-    difficulty: "Beginner",
-    validation_score: 92,
-    cri_prediction: 82,
-    skills: ["Python", "Pandas", "Machine Learning", "Visualization"],
-    description: "Learn data science fundamentals with Python and build real-world projects.",
-    mentor_endorsed: true,
-    completion_rate: 94,
-    job_placement_rate: 68
-  },
-  {
-    id: "3",
-    title: "Cloud Architecture on AWS",
-    platform: "Cloud Institute",
-    instructor: "Amanda Rodriguez",
-    rating: 4.9,
-    reviews: 1234,
-    duration: "10 weeks", 
-    cost: "$1499",
-    difficulty: "Advanced",
-    validation_score: 98,
-    cri_prediction: 91,
-    skills: ["AWS", "Docker", "Kubernetes", "DevOps"],
-    description: "Master cloud architecture patterns and AWS services for scalable applications.",
-    mentor_endorsed: true,
-    completion_rate: 85,
-    job_placement_rate: 82
-  }
-];
+import { useCourseMarketplace } from "@/hooks/useCourseMarketplace";
+import { LoadingState } from "@/components/LoadingState";
 
 export default function CourseMarketplace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPlatform, setFilterPlatform] = useState("all");
   const [filterDifficulty, setFilterDifficulty] = useState("all");
+  const [mentorEndorsedOnly, setMentorEndorsedOnly] = useState(false);
+  
+  const { 
+    courses, 
+    stats, 
+    loading, 
+    error, 
+    loadMarketplaceCourses,
+    getPlatforms,
+    getDifficultyLevels,
+    addToLearningPath
+  } = useCourseMarketplace();
+
+  // Reload courses when filters change
+  useEffect(() => {
+    const filters = {
+      search: searchTerm || undefined,
+      platform: filterPlatform !== "all" ? filterPlatform : undefined,
+      difficulty: filterDifficulty !== "all" ? filterDifficulty : undefined,
+      mentorEndorsedOnly
+    };
+    
+    loadMarketplaceCourses(filters);
+  }, [searchTerm, filterPlatform, filterDifficulty, mentorEndorsedOnly, loadMarketplaceCourses]);
 
   const getValidationColor = (score: number) => {
     if (score >= 90) return "text-green-600";
@@ -85,14 +53,14 @@ export default function CourseMarketplace() {
     }
   };
 
-  const filteredCourses = mockValidatedCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesPlatform = filterPlatform === "all" || course.platform === filterPlatform;
-    const matchesDifficulty = filterDifficulty === "all" || course.difficulty.toLowerCase() === filterDifficulty;
-    
-    return matchesSearch && matchesPlatform && matchesDifficulty;
-  });
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <HubNavigation />
+        <LoadingState message="Loading marketplace courses..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,9 +69,60 @@ export default function CourseMarketplace() {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Course Marketplace</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             Discover mentor-validated courses with proven career outcomes.
           </p>
+          
+          {/* Stats Overview */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-2xl font-bold">{stats.totalCourses}</p>
+                    <p className="text-xs text-muted-foreground">Total Courses</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-green-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{stats.mentorEndorsed}</p>
+                    <p className="text-xs text-muted-foreground">Mentor Endorsed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{stats.averageValidationScore}%</p>
+                    <p className="text-xs text-muted-foreground">Avg Validation</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-purple-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{stats.recentlyAdded}</p>
+                    <p className="text-xs text-muted-foreground">Added This Week</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Search and Filters */}
@@ -127,9 +146,9 @@ export default function CourseMarketplace() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Platforms</SelectItem>
-                    <SelectItem value="Tech Academy">Tech Academy</SelectItem>
-                    <SelectItem value="DataCamp Pro">DataCamp Pro</SelectItem>
-                    <SelectItem value="Cloud Institute">Cloud Institute</SelectItem>
+                    {getPlatforms().map(platform => (
+                      <SelectItem key={platform} value={platform}>{platform}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -139,11 +158,22 @@ export default function CourseMarketplace() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
+                    {getDifficultyLevels().map(level => (
+                      <SelectItem key={level} value={level}>
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                
+                <Button
+                  variant={mentorEndorsedOnly ? "default" : "outline"}
+                  onClick={() => setMentorEndorsedOnly(!mentorEndorsedOnly)}
+                  className="whitespace-nowrap"
+                >
+                  <Award className="h-4 w-4 mr-2" />
+                  Mentor Endorsed
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -151,14 +181,14 @@ export default function CourseMarketplace() {
 
         {/* Course Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCourses.map((course) => (
+          {courses.map((course) => (
             <Card key={course.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                     <CardDescription className="mt-2">
-                      {course.platform} • {course.instructor}
+                      {course.platform} • {course.instructor_name || 'Unknown Instructor'}
                     </CardDescription>
                   </div>
                   {course.mentor_endorsed && (
@@ -176,24 +206,30 @@ export default function CourseMarketplace() {
                   </p>
 
                   <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span>{course.rating}</span>
-                      <span className="text-muted-foreground">({course.reviews})</span>
-                    </div>
-                    <Badge className={getDifficultyColor(course.difficulty)}>
-                      {course.difficulty}
+                    {course.instructor_rating && (
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span>{course.instructor_rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                    <Badge className={getDifficultyColor(course.difficulty || 'intermediate')}>
+                      {course.difficulty || 'intermediate'}
                     </Badge>
+                    {course.mentor_endorsement_count > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {course.mentor_endorsement_count} mentor{course.mentor_endorsement_count > 1 ? 's' : ''}
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>{course.duration}</span>
+                      <span>{course.duration_hours ? `${course.duration_hours}h` : 'Self-paced'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span>{course.cost}</span>
+                      <span>{course.cost ? `$${course.cost}` : 'Free'}</span>
                     </div>
                   </div>
 
@@ -217,7 +253,7 @@ export default function CourseMarketplace() {
                   </div>
 
                   <div className="flex flex-wrap gap-1">
-                    {course.skills.slice(0, 4).map((skill, index) => (
+                    {(course.skill_tags || []).slice(0, 4).map((skill, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {skill}
                       </Badge>
@@ -228,7 +264,12 @@ export default function CourseMarketplace() {
                     <Button className="flex-1" variant="outline">
                       View Details
                     </Button>
-                    <Button size="icon" variant="outline">
+                    <Button 
+                      size="icon" 
+                      variant="outline"
+                      onClick={() => course.url && window.open(course.url, '_blank')}
+                      disabled={!course.url}
+                    >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                   </div>
@@ -238,7 +279,7 @@ export default function CourseMarketplace() {
           ))}
         </div>
 
-        {filteredCourses.length === 0 && (
+        {courses.length === 0 && !loading && (
           <Card>
             <CardContent className="pt-6 text-center">
               <Filter className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
