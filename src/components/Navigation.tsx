@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine, DollarSign, BarChart, TrendingUp, Workflow, Brain, BarChart3, Bookmark, History } from "lucide-react";
+import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine, DollarSign, BarChart, TrendingUp, Workflow, Brain, BarChart3, Bookmark, History, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useToast } from "@/hooks/use-toast";
@@ -61,6 +61,7 @@ export default function Navigation() {
     { href: "/resume-analytics", label: "Resume Analytics", icon: BarChart },
     { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/badges", label: "Badges", icon: Award },
+    { href: "/gamification", label: "Gamification", icon: Trophy },
     { href: "/transcripts", label: "Transcripts", icon: BookOpen },
     { href: "/course-history", label: "Course History", icon: BookOpen },
     { href: "/skill-tree", label: "Skill Tree", icon: TreePine },

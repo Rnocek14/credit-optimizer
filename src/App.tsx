@@ -74,6 +74,7 @@ import TeachValidation from "./pages/TeachValidation";
 import CourseMarketplace from "./pages/CourseMarketplace";
 import Phase2Dashboard from "./pages/Phase2Dashboard";
 import InterventionHistory from "./pages/InterventionHistory";
+import Gamification from "./pages/Gamification";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -209,14 +210,22 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/goals" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Goals />
-              </ProtectedRoute>
-            } 
-          />
+           <Route 
+             path="/goals" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <Goals />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/gamification" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <Gamification />
+               </ProtectedRoute>
+             } 
+           />
           <Route 
             path="/transcript" 
             element={
