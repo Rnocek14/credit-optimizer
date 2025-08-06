@@ -1485,6 +1485,7 @@ export type Database = {
           mentor_validation_status: string | null
           pipeline_stage: string
           updated_at: string
+          validated_at: string | null
           validated_by: string | null
         }
         Insert: {
@@ -1498,6 +1499,7 @@ export type Database = {
           mentor_validation_status?: string | null
           pipeline_stage?: string
           updated_at?: string
+          validated_at?: string | null
           validated_by?: string | null
         }
         Update: {
@@ -1511,6 +1513,7 @@ export type Database = {
           mentor_validation_status?: string | null
           pipeline_stage?: string
           updated_at?: string
+          validated_at?: string | null
           validated_by?: string | null
         }
         Relationships: [
