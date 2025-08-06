@@ -48,9 +48,6 @@ export default function TeachValidation() {
     if (!user?.id) return;
     
     try {
-      const queue = await getMentorCurationQueue(user.id, 20);
-      setValidationQueue(queue);
-      
       // First validate mentor permissions before loading data
       const { data: mentorValidation, error: validationError } = await supabase
         .rpc('validate_mentor_operation', { user_uuid: user.id });
@@ -59,6 +56,20 @@ export default function TeachValidation() {
         console.error('Mentor validation failed:', validationError);
         throw new Error('Insufficient mentor permissions');
       }
+
+      // Get existing validations by this mentor to filter them out
+      const { data: existingValidations } = await supabase
+        .from('mentor_course_curations')
+        .select('course_id')
+        .eq('mentor_id', user.id);
+      
+      const validatedCourseIds = new Set(existingValidations?.map(v => v.course_id) || []);
+
+      const queue = await getMentorCurationQueue(user.id, 20);
+      
+      // Filter out courses already validated by this mentor
+      const filteredQueue = queue.filter(item => !validatedCourseIds.has(item.course_id));
+      setValidationQueue(filteredQueue);
 
       // Calculate today's validation stats using validated_at column
       const { data: todayValidations } = await supabase
@@ -70,10 +81,10 @@ export default function TeachValidation() {
       const validatedToday = todayValidations?.filter(v => v.endorsement_level !== 'rejected').length || 0;
       const rejectedToday = todayValidations?.filter(v => v.endorsement_level === 'rejected').length || 0;
       
-      // Calculate stats
-      const pending = queue.filter(item => item.mentor_validation_status === 'pending').length;
-      const avgConfidence = queue.length > 0 
-        ? queue.reduce((sum, item) => sum + item.confidence_score, 0) / queue.length 
+      // Calculate stats from filtered queue
+      const pending = filteredQueue.filter(item => item.mentor_validation_status === 'pending').length;
+      const avgConfidence = filteredQueue.length > 0 
+        ? filteredQueue.reduce((sum, item) => sum + item.confidence_score, 0) / filteredQueue.length 
         : 0;
       
       setStats({
@@ -106,10 +117,31 @@ export default function TeachValidation() {
         throw new Error('Insufficient mentor permissions for this operation');
       }
 
-      // Insert validation record
-      const { error: insertError } = await supabase
+      // Check if this mentor has already validated this course
+      const { data: existingValidation } = await supabase
         .from('mentor_course_curations')
-        .insert({
+        .select('id, endorsement_level')
+        .eq('mentor_id', user.id)
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (existingValidation) {
+        toast({
+          title: "Already Validated",
+          description: `You have already ${existingValidation.endorsement_level === 'rejected' ? 'rejected' : 'approved'} this course.`,
+          variant: "default"
+        });
+        
+        // Remove from queue optimistically since it's already validated
+        setValidationQueue(prev => prev.filter(item => item.course_id !== courseId));
+        setSelectedCourse(null);
+        return;
+      }
+
+      // UPSERT validation record (handles duplicates gracefully)
+      const { error: upsertError } = await supabase
+        .from('mentor_course_curations')
+        .upsert({
           course_id: courseId,
           mentor_id: user.id,
           validated_at: new Date().toISOString(),
@@ -117,11 +149,23 @@ export default function TeachValidation() {
           endorsement_level: action === 'approve' ? 'basic' : 'rejected',
           expertise_score: action === 'approve' ? 3 : 0,
           roi_assessment: action === 'approve' ? 3 : 1
+        }, {
+          onConflict: 'mentor_id,course_id'
         });
 
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        throw insertError;
+      if (upsertError) {
+        console.error('Upsert error:', upsertError);
+        if (upsertError.message.includes('duplicate key')) {
+          toast({
+            title: "Validation Conflict",
+            description: "This course has already been validated. Please refresh the page.",
+            variant: "default"
+          });
+          // Refresh the queue
+          loadValidationQueue();
+          return;
+        }
+        throw upsertError;
       }
 
       // Update course intelligence pipeline status

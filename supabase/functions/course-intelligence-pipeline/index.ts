@@ -241,7 +241,15 @@ async function getMentorCurationQueue(supabase: any, data: any) {
   console.log('📋 Getting mentor curation queue for:', mentorId);
 
   try {
-    // Get courses pending validation with enhanced metadata
+    // First get courses already validated by this mentor
+    const { data: existingValidations } = await supabase
+      .from('mentor_course_curations')
+      .select('course_id')
+      .eq('mentor_id', mentorId);
+    
+    const validatedCourseIds = existingValidations?.map(v => v.course_id) || [];
+
+    // Get courses pending validation with enhanced metadata, excluding already validated ones
     const { data: queueData, error: queueError } = await supabase
       .from('course_intelligence_pipeline')
       .select(`
@@ -259,7 +267,8 @@ async function getMentorCurationQueue(supabase: any, data: any) {
         )
       `)
       .eq('mentor_validation_status', 'pending')
-      .eq('pipeline_stage', 'mentor_review')
+      .in('pipeline_stage', ['analysis', 'mentor_review', 'validation'])
+      .not('course_id', 'in', `(${validatedCourseIds.join(',') || 'null'})`)
       .order('confidence_score', { ascending: false })
       .limit(limit);
 
@@ -333,10 +342,30 @@ async function submitMentorCuration(supabase: any, data: any) {
   
   console.log('✅ Submitting mentor curation:', { mentorId, courseId, endorsementLevel });
 
-  // Insert mentor curation
+  // Check for existing validation first
+  const { data: existingCuration } = await supabase
+    .from('mentor_course_curations')
+    .select('id, endorsement_level')
+    .eq('mentor_id', mentorId)
+    .eq('course_id', courseId)
+    .maybeSingle();
+
+  if (existingCuration) {
+    console.log('⚠️ Mentor has already validated this course:', existingCuration.endorsement_level);
+    return new Response(
+      JSON.stringify({ 
+        curation: existingCuration, 
+        validationStatus: existingCuration.endorsement_level === 'rejected' ? 'rejected' : 'validated',
+        message: 'Course already validated by this mentor'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // UPSERT mentor curation to handle any race conditions
   const { data: curation, error: curationError } = await supabase
     .from('mentor_course_curations')
-    .insert({
+    .upsert({
       mentor_id: mentorId,
       course_id: courseId,
       curation_type: 'validation',
@@ -346,11 +375,14 @@ async function submitMentorCuration(supabase: any, data: any) {
       skill_tags_added: skillTagsAdded,
       roi_assessment: roiAssessment || 0,
       outcome_prediction: outcomePreduction
+    }, {
+      onConflict: 'mentor_id,course_id'
     })
     .select()
     .single();
 
   if (curationError) {
+    console.error('🚨 Curation upsert error:', curationError);
     throw new Error(`Failed to create curation: ${curationError.message}`);
   }
 
