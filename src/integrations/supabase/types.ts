@@ -5712,6 +5712,10 @@ export type Database = {
         }
         Returns: string
       }
+      generate_autonomous_intervention: {
+        Args: { target_user_id: string; risk_assessment: Json }
+        Returns: string
+      }
       generate_certificate_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -5794,6 +5798,10 @@ export type Database = {
         Args: { target_user_id: string; baseline_snapshot_id: string }
         Returns: string[]
       }
+      predict_engagement_decline: {
+        Args: { target_user_id: string }
+        Returns: Json
+      }
       refresh_career_steps_with_levels: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5811,6 +5819,10 @@ export type Database = {
           emoji: string
           reason: string
         }[]
+      }
+      update_maya_feedback_model: {
+        Args: { target_user_id: string }
+        Returns: Json
       }
       validate_mentor_operation: {
         Args: { user_uuid: string }

@@ -21,12 +21,16 @@ import {
   Activity,
   BarChart3,
   Calendar,
-  Star
+  Star,
+  PlayCircle,
+  StopCircle,
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useRealTimeEngagement } from '@/hooks/useRealTimeEngagement';
 import { useEnhancedMayaFeedback } from '@/hooks/useEnhancedMayaFeedback';
+import { usePredictiveEngagement } from '@/hooks/usePredictiveEngagement';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 
 interface AdaptiveLearningTrackerProps {
@@ -91,6 +95,14 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
     trackRecommendationOutcome,
     feedbackAnalytics
   } = useEnhancedMayaFeedback();
+
+  const {
+    loading: predictiveLoading,
+    lastRiskAssessment,
+    lastModelUpdate,
+    triggerManualPrediction,
+    updateMayaFeedbackModel
+  } = usePredictiveEngagement();
 
   const { courseProgress } = useCourseProgress();
 
@@ -457,45 +469,130 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                 ))
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent value="feedback" className="space-y-4">
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Maya Feedback Analytics</CardTitle>
-                  <CardDescription>
-                    How Maya's suggestions are helping your learning
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {feedbackAnalytics ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 border rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{feedbackAnalytics.totalFeedbackGiven}</p>
-                        <p className="text-sm text-muted-foreground">Total Feedback Given</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <p className="text-2xl font-bold text-green-600">
-                          {Math.round(feedbackAnalytics.averageEffectiveness * 100)}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">Average Effectiveness</p>
-                      </div>
-                      <div className="text-center p-4 border rounded-lg">
-                        <p className="text-2xl font-bold text-blue-600">
-                          {Math.round(feedbackAnalytics.userEngagementRate * 100)}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">Engagement Rate</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      Start interacting with Maya's suggestions to see feedback analytics
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            {/* Phase 3.2: Predictive Engagement Testing */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  Phase 3.2: Predictive Engagement Analysis
+                </CardTitle>
+                <CardDescription>
+                  Test autonomous intervention generation and Maya feedback model updates
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => triggerManualPrediction('2b458624-d498-4cca-a63d-9341cc20e363')}
+                    disabled={predictiveLoading}
+                    variant="outline"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    {predictiveLoading ? 'Analyzing...' : 'Run Predictive Analysis'}
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => updateMayaFeedbackModel('2b458624-d498-4cca-a63d-9341cc20e363')}
+                    disabled={predictiveLoading}
+                    variant="outline"
+                  >
+                    <Brain className="h-4 w-4 mr-2" />
+                    Update Feedback Model
+                  </Button>
+                </div>
+
+                {lastRiskAssessment && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="border-2">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <AlertTriangle className={`h-4 w-4 ${
+                            lastRiskAssessment.risk_level === 'high' ? 'text-destructive' :
+                            lastRiskAssessment.risk_level === 'medium' ? 'text-warning' : 'text-success'
+                          }`} />
+                          Risk Assessment
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Risk Level:</span>
+                            <Badge variant={
+                              lastRiskAssessment.risk_level === 'high' ? 'destructive' :
+                              lastRiskAssessment.risk_level === 'medium' ? 'secondary' : 'default'
+                            }>
+                              {lastRiskAssessment.risk_level.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Confidence:</span>
+                            <span className="text-sm font-medium">
+                              {Math.round(lastRiskAssessment.confidence_score * 100)}%
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Sessions:</span>
+                            <span className="text-sm font-medium">{lastRiskAssessment.session_count}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Avg Engagement:</span>
+                            <span className="text-sm font-medium">
+                              {Math.round(lastRiskAssessment.avg_engagement * 100)}%
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground mb-1">Risk Factors:</p>
+                            <div className="space-y-1">
+                              {lastRiskAssessment.reasons.map((reason, index) => (
+                                <div key={index} className="text-xs bg-muted p-2 rounded">
+                                  {reason}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {lastModelUpdate && (
+                      <Card className="border-2">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Brain className="h-4 w-4 text-primary" />
+                            Model Update Results
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Updated Feedbacks:</span>
+                              <span className="text-sm font-medium">{lastModelUpdate.updated_feedbacks}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Avg Improvement:</span>
+                              <span className="text-sm font-medium">
+                                {(lastModelUpdate.average_engagement_improvement * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Model Updates:</span>
+                              <span className="text-sm font-medium">{lastModelUpdate.model_updates.length}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+                  <strong>Phase 3.2 Features:</strong> Predictive engagement decline analysis, autonomous intervention generation, 
+                  and Maya feedback model refinement. The system analyzes learning patterns to predict when users might 
+                  disengage and automatically generates personalized interventions to maintain motivation.
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">

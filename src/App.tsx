@@ -73,6 +73,7 @@ import TeachPaths from "./pages/TeachPaths";
 import TeachValidation from "./pages/TeachValidation";
 import CourseMarketplace from "./pages/CourseMarketplace";
 import Phase2Dashboard from "./pages/Phase2Dashboard";
+import InterventionHistory from "./pages/InterventionHistory";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -401,15 +402,23 @@ const App = () => (
               </StakeholderProtectedRoute>
             } 
           />
-          <Route 
-            path="/phase2-demo" 
-            element={
-              <ProtectedRoute requireAuth={true}>
-                <Phase2Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/500" element={<InternalError />} />
+           <Route 
+             path="/phase2-demo" 
+             element={
+               <ProtectedRoute requireAuth={true}>
+                 <Phase2Dashboard />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/intervention-history" 
+             element={
+               <ProtectedRoute requireAuth={true}>
+                 <InterventionHistory />
+               </ProtectedRoute>
+             } 
+           />
+           <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
