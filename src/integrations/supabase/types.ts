@@ -1799,6 +1799,48 @@ export type Database = {
         }
         Relationships: []
       }
+      enhanced_user_profiles: {
+        Row: {
+          available_hours_per_week: number | null
+          career_goals: string[] | null
+          created_at: string | null
+          id: string
+          learning_preferences: Json | null
+          learning_style: Json | null
+          motivational_factors: string[] | null
+          preferred_learning_times: string[] | null
+          skill_assessments: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          available_hours_per_week?: number | null
+          career_goals?: string[] | null
+          created_at?: string | null
+          id?: string
+          learning_preferences?: Json | null
+          learning_style?: Json | null
+          motivational_factors?: string[] | null
+          preferred_learning_times?: string[] | null
+          skill_assessments?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          available_hours_per_week?: number | null
+          career_goals?: string[] | null
+          created_at?: string | null
+          id?: string
+          learning_preferences?: Json | null
+          learning_style?: Json | null
+          motivational_factors?: string[] | null
+          preferred_learning_times?: string[] | null
+          skill_assessments?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       featured_gallery_curations: {
         Row: {
           active: boolean
@@ -2222,6 +2264,57 @@ export type Database = {
           milestone_type?: string
           user_id?: string
           xp_awarded?: number | null
+        }
+        Relationships: []
+      }
+      learning_sessions: {
+        Row: {
+          completion_rate: number | null
+          created_at: string | null
+          difficulty_feedback: number | null
+          duration_minutes: number | null
+          end_time: string | null
+          engagement_score: number | null
+          id: string
+          mastered_concepts: string[] | null
+          node_id: string
+          node_title: string
+          notes: string | null
+          start_time: string
+          struggled_concepts: string[] | null
+          user_id: string
+        }
+        Insert: {
+          completion_rate?: number | null
+          created_at?: string | null
+          difficulty_feedback?: number | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          engagement_score?: number | null
+          id?: string
+          mastered_concepts?: string[] | null
+          node_id: string
+          node_title: string
+          notes?: string | null
+          start_time: string
+          struggled_concepts?: string[] | null
+          user_id: string
+        }
+        Update: {
+          completion_rate?: number | null
+          created_at?: string | null
+          difficulty_feedback?: number | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          engagement_score?: number | null
+          id?: string
+          mastered_concepts?: string[] | null
+          node_id?: string
+          node_title?: string
+          notes?: string | null
+          start_time?: string
+          struggled_concepts?: string[] | null
+          user_id?: string
         }
         Relationships: []
       }
