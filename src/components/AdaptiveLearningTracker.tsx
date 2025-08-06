@@ -161,14 +161,28 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
   const recommendations = generateRecommendationsFromEngagement(engagementMetrics, interventions || []);
 
   const startLearningSession = async (nodeId: string, nodeTitle: string) => {
-    // Start session with real-time tracking
-    await startSession.mutateAsync({
-      courseId: nodeId,
-      sessionType: 'learning'
-    });
-    
-    // Track the start event
-    trackActivity('session_start', { nodeId, nodeTitle });
+    try {
+      // Generate a proper UUID for the course_id if nodeId is not a valid UUID
+      const validCourseId = nodeId && nodeId.length === 36 && nodeId.includes('-') 
+        ? nodeId 
+        : crypto.randomUUID();
+      
+      // Start session with real-time tracking
+      await startSession.mutateAsync({
+        courseId: validCourseId,
+        sessionType: 'learning'
+      });
+      
+      // Track the start event
+      trackActivity('session_start', { nodeId, nodeTitle });
+    } catch (error) {
+      console.error('Error starting session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to start learning session",
+        variant: "destructive",
+      });
+    }
   };
 
   const endLearningSession = async () => {
