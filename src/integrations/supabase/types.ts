@@ -1879,6 +1879,39 @@ export type Database = {
           },
         ]
       }
+      gamification_metrics: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          id: string
+          measurement_date: string
+          measurement_period: string
+          metric_type: string
+          metric_value: number
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          measurement_date?: string
+          measurement_period: string
+          metric_type: string
+          metric_value: number
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          measurement_date?: string
+          measurement_period?: string
+          metric_type?: string
+          metric_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       goal_autonomous_actions: {
         Row: {
           action_description: string
@@ -2234,6 +2267,66 @@ export type Database = {
           required_skills?: string[] | null
           salary_range?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      learning_engagement_sessions: {
+        Row: {
+          activity_data: Json
+          completion_percentage: number | null
+          course_id: string | null
+          created_at: string
+          difficulty_feedback: number | null
+          duration_minutes: number | null
+          ended_at: string | null
+          engagement_score: number | null
+          focus_events: Json | null
+          id: string
+          learning_velocity: number | null
+          retention_indicators: Json | null
+          session_notes: string | null
+          session_type: string
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_data?: Json
+          completion_percentage?: number | null
+          course_id?: string | null
+          created_at?: string
+          difficulty_feedback?: number | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          engagement_score?: number | null
+          focus_events?: Json | null
+          id?: string
+          learning_velocity?: number | null
+          retention_indicators?: Json | null
+          session_notes?: string | null
+          session_type?: string
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_data?: Json
+          completion_percentage?: number | null
+          course_id?: string | null
+          created_at?: string
+          difficulty_feedback?: number | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          engagement_score?: number | null
+          focus_events?: Json | null
+          id?: string
+          learning_velocity?: number | null
+          retention_indicators?: Json | null
+          session_notes?: string | null
+          session_type?: string
+          started_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2706,6 +2799,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      maya_feedback_correlations: {
+        Row: {
+          correlation_score: number | null
+          created_at: string
+          feedback_data: Json
+          feedback_effectiveness: number | null
+          feedback_type: string
+          id: string
+          long_term_impact: Json | null
+          measured_at: string
+          outcome_metrics: Json | null
+          time_to_action_hours: number | null
+          user_action: string | null
+          user_id: string
+        }
+        Insert: {
+          correlation_score?: number | null
+          created_at?: string
+          feedback_data: Json
+          feedback_effectiveness?: number | null
+          feedback_type: string
+          id?: string
+          long_term_impact?: Json | null
+          measured_at?: string
+          outcome_metrics?: Json | null
+          time_to_action_hours?: number | null
+          user_action?: string | null
+          user_id: string
+        }
+        Update: {
+          correlation_score?: number | null
+          created_at?: string
+          feedback_data?: Json
+          feedback_effectiveness?: number | null
+          feedback_type?: string
+          id?: string
+          long_term_impact?: Json | null
+          measured_at?: string
+          outcome_metrics?: Json | null
+          time_to_action_hours?: number | null
+          user_action?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       maya_learning_paths: {
         Row: {
@@ -3202,6 +3340,51 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      motivation_interventions: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          effectiveness_score: number | null
+          id: string
+          implementation_notes: string | null
+          intervention_data: Json
+          intervention_type: string
+          response_at: string | null
+          suggested_at: string
+          trigger_conditions: Json
+          user_id: string
+          user_response: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          effectiveness_score?: number | null
+          id?: string
+          implementation_notes?: string | null
+          intervention_data: Json
+          intervention_type: string
+          response_at?: string | null
+          suggested_at?: string
+          trigger_conditions: Json
+          user_id: string
+          user_response?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          effectiveness_score?: number | null
+          id?: string
+          implementation_notes?: string | null
+          intervention_data?: Json
+          intervention_type?: string
+          response_at?: string | null
+          suggested_at?: string
+          trigger_conditions?: Json
+          user_id?: string
+          user_response?: string | null
         }
         Relationships: []
       }
