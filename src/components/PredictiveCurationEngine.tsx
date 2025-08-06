@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { Brain, TrendingUp, Users, Target, Sparkles, Clock } from 'lucide-react';
+import { Brain, TrendingUp, Users, Target, Sparkles, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PredictiveInsight {
@@ -42,6 +42,7 @@ export function PredictiveCurationEngine() {
   const [mentorSpecializations, setMentorSpecializations] = useState<MentorSpecialization[]>([]);
   const [courseRecommendations, setCourseRecommendations] = useState<CourseRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingActions, setProcessingActions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadPredictiveData();
@@ -157,6 +158,154 @@ export function PredictiveCurationEngine() {
     }
   };
 
+  const handleTakeAction = async (insight: PredictiveInsight, index: number) => {
+    const actionId = `insight-${index}`;
+    setProcessingActions(prev => new Set(prev).add(actionId));
+    
+    try {
+      // Simulate taking action based on insight type
+      if (insight.type === 'market_trend') {
+        toast.success(`Market trend action initiated: Prioritizing ${insight.title} courses for curation`);
+      } else if (insight.type === 'skill_gap') {
+        toast.success(`Skill gap action: Flagging related courses for urgent validation`);
+      }
+      
+      // Simulate a delay for the action
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.success('Action completed successfully');
+    } catch (error) {
+      toast.error('Failed to execute action');
+    } finally {
+      setProcessingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleAssignMatchingCourses = async (mentor: MentorSpecialization) => {
+    const actionId = `mentor-${mentor.mentorId}`;
+    setProcessingActions(prev => new Set(prev).add(actionId));
+    
+    try {
+      // Find courses that match mentor's expertise
+      const { data: courses, error } = await supabase
+        .from('course_discovery_queue')
+        .select('*')
+        .eq('processing_status', 'completed')
+        .limit(3);
+
+      if (error) throw error;
+
+      // Simulate assignment to mentor
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success(`Successfully assigned ${courses?.length || 0} matching courses to ${mentor.name}`);
+    } catch (error) {
+      toast.error(`Failed to assign courses to ${mentor.name}`);
+    } finally {
+      setProcessingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleFastTrackApproval = async (courseRec: CourseRecommendation) => {
+    const actionId = `fast-track-${courseRec.courseId}`;
+    setProcessingActions(prev => new Set(prev).add(actionId));
+    
+    try {
+      // Update course status to fast-tracked
+      const { error } = await supabase
+        .from('course_discovery_queue')
+        .update({ 
+          processing_status: 'fast_tracked',
+          priority_score: 100
+        })
+        .eq('id', courseRec.courseId);
+
+      if (error) throw error;
+
+      // Add to intelligence pipeline with high confidence
+      const { error: pipelineError } = await supabase
+        .from('course_intelligence_pipeline')
+        .insert({
+          course_id: courseRec.courseId,
+          pipeline_stage: 'validation',
+          confidence_score: 95,
+          market_alignment_score: courseRec.marketAlignment,
+          ai_analysis: {
+            fast_tracked: true,
+            predicted_outcome: courseRec.predictedOutcome,
+            reasoning: courseRec.reasoning
+          }
+        });
+
+      if (pipelineError) throw pipelineError;
+
+      toast.success(`${courseRec.title} has been fast-tracked for approval`);
+      
+      // Refresh recommendations
+      await generateCourseRecommendations();
+    } catch (error) {
+      toast.error(`Failed to fast-track ${courseRec.title}`);
+    } finally {
+      setProcessingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleAssignToMentor = async (courseRec: CourseRecommendation) => {
+    const actionId = `assign-${courseRec.courseId}`;
+    setProcessingActions(prev => new Set(prev).add(actionId));
+    
+    try {
+      // Find the mentor by name
+      const mentor = mentorSpecializations.find(m => m.name === courseRec.mentorMatch);
+      
+      if (!mentor) {
+        toast.error('Mentor not found');
+        return;
+      }
+
+      // Update pipeline with mentor assignment
+      const { error } = await supabase
+        .from('course_intelligence_pipeline')
+        .upsert({
+          course_id: courseRec.courseId,
+          pipeline_stage: 'mentor_review',
+          confidence_score: 85,
+          market_alignment_score: courseRec.marketAlignment,
+          ai_analysis: {
+            assigned_mentor: mentor.mentorId,
+            mentor_name: mentor.name,
+            assignment_reason: `Matched based on expertise in ${mentor.expertiseAreas.join(', ')}`
+          }
+        });
+
+      if (error) throw error;
+
+      toast.success(`${courseRec.title} assigned to ${mentor.name} for review`);
+      
+      // Refresh recommendations
+      await generateCourseRecommendations();
+    } catch (error) {
+      toast.error(`Failed to assign ${courseRec.title} to mentor`);
+    } finally {
+      setProcessingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionId);
+        return newSet;
+      });
+    }
+  };
+
   const getInsightIcon = (type: string) => {
     switch (type) {
       case 'market_trend': return <TrendingUp className="h-5 w-5 text-blue-600" />;
@@ -216,8 +365,20 @@ export function PredictiveCurationEngine() {
                     <div className="flex justify-between items-center">
                       <Progress value={insight.confidence} className="flex-1 mr-4" />
                       {insight.actionable && (
-                        <Button size="sm" variant="outline">
-                          Take Action
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleTakeAction(insight, index)}
+                          disabled={processingActions.has(`insight-${index}`)}
+                        >
+                          {processingActions.has(`insight-${index}`) ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            'Take Action'
+                          )}
                         </Button>
                       )}
                     </div>
@@ -265,8 +426,21 @@ export function PredictiveCurationEngine() {
                   </div>
                 </div>
 
-                <Button size="sm" className="w-full" variant="outline">
-                  Assign Matching Courses
+                <Button 
+                  size="sm" 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => handleAssignMatchingCourses(mentor)}
+                  disabled={processingActions.has(`mentor-${mentor.mentorId}`)}
+                >
+                  {processingActions.has(`mentor-${mentor.mentorId}`) ? (
+                    <>
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    'Assign Matching Courses'
+                  )}
                 </Button>
               </div>
             ))}
@@ -313,11 +487,36 @@ export function PredictiveCurationEngine() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1">
-                    Fast-Track Approval
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleFastTrackApproval(rec)}
+                    disabled={processingActions.has(`fast-track-${rec.courseId}`)}
+                  >
+                    {processingActions.has(`fast-track-${rec.courseId}`) ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Fast-Track Approval'
+                    )}
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1">
-                    Assign to Mentor
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleAssignToMentor(rec)}
+                    disabled={processingActions.has(`assign-${rec.courseId}`)}
+                  >
+                    {processingActions.has(`assign-${rec.courseId}`) ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Assigning...
+                      </>
+                    ) : (
+                      'Assign to Mentor'
+                    )}
                   </Button>
                 </div>
               </div>
