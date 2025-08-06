@@ -75,7 +75,12 @@ export function IntelligentLearningPathManager({ goalId, userId, goal }: Intelli
   const generateLearningPath = async (pathType: 'primary' | 'alternative' | 'accelerated') => {
     setIsGenerating(true);
     try {
-      console.log('🛤️ Generating learning path:', pathType);
+      console.log('🛤️ Generating learning path:', { pathType, goalId, userId });
+      
+      // Validate that we have proper UUIDs
+      if (!goalId || !userId) {
+        throw new Error('Goal ID and User ID are required');
+      }
       
       const { data, error } = await supabase.functions.invoke('goal-learning-path-generator', {
         body: {
@@ -98,9 +103,10 @@ export function IntelligentLearningPathManager({ goalId, userId, goal }: Intelli
       }
     } catch (error) {
       console.error('Path generation error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Please try again later.",
+        description: `Error: ${errorMessage}. Please check that a valid goal is selected.`,
         variant: "destructive",
       });
     } finally {

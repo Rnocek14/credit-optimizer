@@ -16,6 +16,15 @@ serve(async (req) => {
     const { goalId, userId, pathType = 'primary' } = await req.json();
     
     console.log('🛤️ Generating learning path for goal:', { goalId, userId, pathType });
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(goalId)) {
+      throw new Error(`Invalid goalId format: ${goalId}. Expected UUID format.`);
+    }
+    if (!uuidRegex.test(userId)) {
+      throw new Error(`Invalid userId format: ${userId}. Expected UUID format.`);
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

@@ -307,7 +307,10 @@ export function GoalTracker({ userId, onGoalSelect, selectedGoal }: GoalTrackerP
                         </Button>
                         <Button 
                           size="sm" 
-                          onClick={() => onGoalSelect?.(goal, 'paths')}
+                          onClick={() => {
+                            console.log('🎯 Goal selected for learning paths:', goal);
+                            onGoalSelect?.(goal, 'paths');
+                          }}
                           className="flex items-center gap-2"
                           variant="outline"
                         >
