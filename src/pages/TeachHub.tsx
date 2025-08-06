@@ -6,6 +6,9 @@ import { HubNavigation } from "@/components/HubNavigation";
 import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
 import { DemoCourseSeedTrigger } from "@/components/DemoCourseSeedTrigger";
 import { CourseIntelligenceSystemValidator } from "@/components/CourseIntelligenceSystemValidator";
+import { SmartBatchOperations } from "@/components/SmartBatchOperations";
+import { PredictiveCurationEngine } from "@/components/PredictiveCurationEngine";
+import { AutoValidationDashboard } from "@/components/AutoValidationDashboard";
 
 const curationFeatures = [
   { id: "discovery", title: "Course Discovery", description: "AI-powered course discovery and analysis", icon: Search, href: "/teach/discovery", color: "text-blue-600" },
@@ -42,6 +45,21 @@ export default function TeachHub() {
 
         <div className="mb-8">
           <CourseIntelligenceSystemValidator />
+        </div>
+
+        {/* Phase 1: Intelligence Amplification Features */}
+        <div className="mb-8 space-y-6">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-2">Phase 1: Intelligence Amplification</h2>
+            <p className="text-muted-foreground">Smart batch operations, predictive curation, and auto-validation</p>
+          </div>
+          
+          <div className="grid lg:grid-cols-2 gap-6">
+            <SmartBatchOperations />
+            <PredictiveCurationEngine />
+          </div>
+          
+          <AutoValidationDashboard />
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
