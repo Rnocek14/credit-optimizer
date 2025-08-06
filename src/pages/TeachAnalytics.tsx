@@ -65,8 +65,22 @@ const TeachAnalytics: React.FC = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      
+      // Get current user (handles both real and dev users)
+      const { getCurrentUser } = await import('@/lib/authHelper');
+      const currentUser = await getCurrentUser();
+      
+      if (!currentUser) {
+        console.log('DEBUG: No authenticated user found');
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to view analytics",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('DEBUG: Fetching analytics for user:', currentUser.id, currentUser.name);
 
       // Calculate date range based on timeframe
       const endDate = new Date();
@@ -83,7 +97,7 @@ const TeachAnalytics: React.FC = () => {
       // Fetch mentor metrics
       const { data: metricsData, error: metricsError } = await supabase
         .rpc('calculate_mentor_performance_metrics', {
-          mentor_user_id: user.id,
+          mentor_user_id: currentUser.id,
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString()
         });
@@ -95,7 +109,7 @@ const TeachAnalytics: React.FC = () => {
       const { data: achievementsData, error: achievementsError } = await supabase
         .from('mentor_achievements')
         .select('*')
-        .eq('mentor_id', user.id)
+        .eq('mentor_id', currentUser.id)
         .order('earned_at', { ascending: false });
 
       if (achievementsError) throw achievementsError;
@@ -116,7 +130,7 @@ const TeachAnalytics: React.FC = () => {
       const { data: feedbackData, error: feedbackError } = await supabase
         .from('mentor_course_feedback')
         .select('*')
-        .eq('mentor_id', user.id)
+        .eq('mentor_id', currentUser.id)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false })
         .limit(20);
@@ -138,11 +152,12 @@ const TeachAnalytics: React.FC = () => {
 
   const checkForNewAchievements = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { getCurrentUser } = await import('@/lib/authHelper');
+      const currentUser = await getCurrentUser();
+      if (!currentUser) return;
 
       const { error } = await supabase.rpc('check_mentor_achievements', {
-        mentor_user_id: user.id
+        mentor_user_id: currentUser.id
       });
 
       if (error) throw error;
