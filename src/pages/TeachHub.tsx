@@ -61,7 +61,7 @@ export default function TeachHub() {
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
                     <Link to={feature.href}>
-                      {feature.id === "discovery" || feature.id === "curation" || feature.id === "paths" || feature.id === "validation" ? "Open" : "Coming Soon"}
+                      {feature.id === "discovery" || feature.id === "curation" || feature.id === "paths" || feature.id === "validation" || feature.id === "analytics" || feature.id === "marketplace" ? "Open" : "Coming Soon"}
                     </Link>
                   </Button>
                 </CardContent>
