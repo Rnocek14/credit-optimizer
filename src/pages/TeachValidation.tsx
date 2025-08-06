@@ -232,12 +232,8 @@ export default function TeachValidation() {
       setValidationQueue(prev => prev.filter(item => item.course_id !== courseId));
       setSelectedCourse(null);
       
-      // Update stats
-      setStats(prev => ({
-        ...prev,
-        totalPending: prev.totalPending - 1,
-        ...(action === 'approve' ? { validatedToday: prev.validatedToday + 1 } : { rejectedToday: prev.rejectedToday + 1 })
-      }));
+      // Reload validation queue to get accurate stats from database
+      await loadValidationQueue();
 
     } catch (error) {
       console.error('Validation action failed:', error);
