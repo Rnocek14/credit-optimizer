@@ -16,6 +16,8 @@ export function EnhancedGoalDashboard({ userId }: EnhancedGoalDashboardProps) {
   const [activeTab, setActiveTab] = useState('tracker');
 
   const handleGoalSelection = (goal: any, targetTab?: string) => {
+    console.log('🎯 Enhanced Goal Dashboard received goal:', goal);
+    console.log('🎯 Goal ID being set:', goal?.id);
     setSelectedGoal(goal);
     if (targetTab) {
       setActiveTab(targetTab);

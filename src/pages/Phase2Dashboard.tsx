@@ -219,17 +219,29 @@ export default function Phase2Dashboard() {
                   Select a career goal to generate intelligent learning paths
                 </p>
                 <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Demo goals available - these use mock IDs and won't work with the learning path generator.
+                  </p>
+                  <Card 
+                    className="p-3 cursor-pointer hover:bg-primary/5 border-primary"
+                    onClick={() => window.location.href = '/goals'}
+                  >
+                    <div className="text-sm font-medium text-primary">
+                      ✨ Go to Real Goals Dashboard
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Use your actual goals with proper learning path generation
+                    </div>
+                  </Card>
                   {['Full-Stack Developer', 'Data Scientist', 'Product Manager'].map((role) => (
                     <Card 
                       key={role} 
-                      className="p-3 cursor-pointer hover:bg-primary/5"
-                      onClick={() => setSelectedGoal({ 
-                        id: `goal_${role.toLowerCase().replace(/\s+/g, '_')}`, 
-                        target_role: role,
-                        title: `Become a ${role}`
-                      })}
+                      className="p-3 cursor-pointer hover:bg-muted/50 opacity-60"
+                      onClick={() => {
+                        alert('Demo goals use mock IDs. Please use the Real Goals Dashboard above for actual learning path generation.');
+                      }}
                     >
-                      <div className="text-sm font-medium">{role}</div>
+                      <div className="text-sm font-medium">{role} (Demo Only)</div>
                     </Card>
                   ))}
                 </div>

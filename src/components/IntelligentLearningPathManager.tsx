@@ -47,6 +47,8 @@ export function IntelligentLearningPathManager({ goalId, userId, goal }: Intelli
   const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
 
+  console.log('🛤️ IntelligentLearningPathManager received props:', { goalId, userId, goal });
+
   useEffect(() => {
     fetchLearningPaths();
   }, [goalId, userId]);
