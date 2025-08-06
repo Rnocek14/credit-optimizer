@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/authHelper';
 import { CheckCircle, XCircle, Zap, Brain, Target, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -114,19 +115,14 @@ export function SmartBatchOperations() {
     const errors: string[] = [];
 
     try {
-      // Get current user with better error handling
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Use the auth helper to get current user (supports both dev and real users)
+      const currentUser = await getCurrentUser();
       
-      if (userError) {
-        console.error('Auth error:', userError);
-        throw new Error('Authentication failed. Please try logging in again.');
-      }
-      
-      if (!user?.id) {
+      if (!currentUser?.id) {
         throw new Error('No authenticated user found. Please log in and try again.');
       }
 
-      console.log('Processing batch with user:', user.id, 'action:', batchAction);
+      console.log('Processing batch with user:', currentUser.id, 'role:', currentUser.role, 'action:', batchAction);
 
       // Process each course individually with error isolation
       for (const courseId of selectedCourses) {
@@ -135,7 +131,7 @@ export function SmartBatchOperations() {
             .from('course_intelligence_pipeline')
             .update({
               mentor_validation_status: batchAction,
-              validated_by: user.id,
+              validated_by: currentUser.id,
               validated_at: new Date().toISOString(),
               pipeline_stage: batchAction === 'approved' ? 'completed' : 'rejected'
             })
