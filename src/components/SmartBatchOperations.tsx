@@ -109,33 +109,73 @@ export function SmartBatchOperations() {
     }
 
     setProcessing(true);
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Authentication required');
-
-      // Update courses individually instead of batch upsert
-      for (const courseId of selectedCourses) {
-        const { error } = await supabase
-          .from('course_intelligence_pipeline')
-          .update({
-            mentor_validation_status: batchAction,
-            validated_by: user.user.id,
-            validated_at: new Date().toISOString(),
-            pipeline_stage: batchAction === 'approved' ? 'completed' : 'rejected'
-          })
-          .eq('id', courseId);
-
-        if (error) throw error;
+      // Get current user with better error handling
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Auth error:', userError);
+        throw new Error('Authentication failed. Please try logging in again.');
+      }
+      
+      if (!user?.id) {
+        throw new Error('No authenticated user found. Please log in and try again.');
       }
 
-      toast.success(`Successfully ${batchAction} ${selectedCourses.size} courses`);
-      setSelectedCourses(new Set());
-      setBatchAction('');
-      loadPendingCourses();
+      console.log('Processing batch with user:', user.id, 'action:', batchAction);
+
+      // Process each course individually with error isolation
+      for (const courseId of selectedCourses) {
+        try {
+          const { error } = await supabase
+            .from('course_intelligence_pipeline')
+            .update({
+              mentor_validation_status: batchAction,
+              validated_by: user.id,
+              validated_at: new Date().toISOString(),
+              pipeline_stage: batchAction === 'approved' ? 'completed' : 'rejected'
+            })
+            .eq('id', courseId);
+
+          if (error) {
+            console.error(`Error updating course ${courseId}:`, error);
+            errors.push(`Course ${courseId.slice(0, 8)}: ${error.message}`);
+            errorCount++;
+          } else {
+            successCount++;
+          }
+        } catch (courseError) {
+          console.error(`Exception for course ${courseId}:`, courseError);
+          errors.push(`Course ${courseId.slice(0, 8)}: Unexpected error`);
+          errorCount++;
+        }
+      }
+
+      // Provide detailed feedback
+      if (successCount > 0 && errorCount === 0) {
+        toast.success(`Successfully ${batchAction} ${successCount} courses`);
+      } else if (successCount > 0 && errorCount > 0) {
+        toast.success(`Processed ${successCount} courses successfully, ${errorCount} failed`);
+        console.warn('Batch errors:', errors);
+      } else {
+        toast.error(`Failed to process all ${errorCount} courses`);
+        console.error('All batch operations failed:', errors);
+      }
+
+      // Clear selections and refresh regardless of partial failures
+      if (successCount > 0) {
+        setSelectedCourses(new Set());
+        setBatchAction('');
+        loadPendingCourses();
+      }
 
     } catch (error) {
       console.error('Batch operation error:', error);
-      toast.error('Failed to process batch operation');
+      toast.error(error instanceof Error ? error.message : 'Failed to process batch operation');
     } finally {
       setProcessing(false);
     }
