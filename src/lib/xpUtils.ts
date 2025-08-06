@@ -61,6 +61,9 @@ export const XP_REWARDS = {
   FIRST_LOGIN: 25,
   COURSE_STARTED: 5,
   COURSE_COMPLETED: 50,
+  LEARNING_SESSION: 5,
+  INTERVENTION_RESPONSE: 15,
+  STREAK_MILESTONE: 0, // Calculated dynamically based on streak length
 } as const;
 
 export type XPActionType = keyof typeof XP_REWARDS;

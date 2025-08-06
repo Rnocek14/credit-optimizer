@@ -32,6 +32,9 @@ import { useRealTimeEngagement } from '@/hooks/useRealTimeEngagement';
 import { useEnhancedMayaFeedback } from '@/hooks/useEnhancedMayaFeedback';
 import { usePredictiveEngagement } from '@/hooks/usePredictiveEngagement';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
+import { useGamification } from '@/hooks/useGamification';
+import { StreakTracker } from '@/components/StreakTracker';
+import { CelebrationModal } from '@/components/CelebrationModal';
 
 interface AdaptiveLearningTrackerProps {
   userId: string;
@@ -112,7 +115,15 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
     concepts: { struggled: '', mastered: '' },
     notes: ''
   });
+  const [selectedCelebration, setSelectedCelebration] = useState<any>(null);
   const { toast } = useToast();
+
+  // Initialize gamification hooks
+  const {
+    getUnreadCelebrations,
+    updateStreak,
+    markCelebrationDisplayed
+  } = useGamification(userId);
 
   // Auto-setup Aisha for testing if no dev user is set
   useEffect(() => {
@@ -232,6 +243,9 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
         concepts: { struggled: '', mastered: '' },
         notes: ''
       });
+
+      // Update learning streak
+      updateStreak.mutate();
       
     } catch (error) {
       console.error('Error saving session:', error);
@@ -256,6 +270,15 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
       document.removeEventListener('scroll', handleScroll);
     };
   }, [trackActivity]);
+
+  const unreadCelebrations = getUnreadCelebrations();
+
+  const handleCelebrationClick = (celebration: any) => {
+    setSelectedCelebration(celebration);
+    if (!celebration.displayed_at) {
+      markCelebrationDisplayed.mutate(celebration.id);
+    }
+  };
 
   const getRecommendationIcon = (type: string) => {
     switch (type) {
@@ -424,7 +447,7 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
                     value={metrics.burnoutRisk} 
                     className="mt-2"
                   />
-                </CardContent>
+                 </CardContent>
               </Card>
             </div>
           </TabsContent>
@@ -642,6 +665,45 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
             </div>
           </TabsContent>
         </Tabs>
+      )}
+
+      {/* Streak Tracker */}
+      <StreakTracker userId={userId} />
+
+      {/* Unread Celebrations */}
+      {unreadCelebrations.length > 0 && (
+        <Card className="relative overflow-hidden border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50">
+          <div className="absolute top-2 right-2">
+            <span className="text-2xl animate-bounce">🎉</span>
+          </div>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-500" />
+              New Celebrations!
+            </CardTitle>
+            <CardDescription>
+              You have {unreadCelebrations.length} new achievement{unreadCelebrations.length > 1 ? 's' : ''} to celebrate
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => handleCelebrationClick(unreadCelebrations[0])}
+              className="w-full"
+              variant="default"
+            >
+              View Celebration ✨
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Celebration Modal */}
+      {selectedCelebration && (
+        <CelebrationModal
+          isOpen={!!selectedCelebration}
+          onClose={() => setSelectedCelebration(null)}
+          celebration={selectedCelebration}
+        />
       )}
     </div>
   );

@@ -1126,6 +1126,39 @@ export type Database = {
           },
         ]
       }
+      celebration_moments: {
+        Row: {
+          celebration_data: Json
+          celebration_type: string
+          created_at: string
+          dismissed_at: string | null
+          displayed_at: string | null
+          id: string
+          trigger_data: Json
+          user_id: string
+        }
+        Insert: {
+          celebration_data?: Json
+          celebration_type: string
+          created_at?: string
+          dismissed_at?: string | null
+          displayed_at?: string | null
+          id?: string
+          trigger_data?: Json
+          user_id: string
+        }
+        Update: {
+          celebration_data?: Json
+          celebration_type?: string
+          created_at?: string
+          dismissed_at?: string | null
+          displayed_at?: string | null
+          id?: string
+          trigger_data?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       certification_skills: {
         Row: {
           certification_id: string | null
@@ -2407,6 +2440,78 @@ export type Database = {
           notes?: string | null
           start_time?: string
           struggled_concepts?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_social_actions: {
+        Row: {
+          action_data: Json
+          action_type: string
+          created_at: string
+          id: string
+          target_id: string
+          target_type: string
+          target_user_id: string
+          user_id: string
+        }
+        Insert: {
+          action_data?: Json
+          action_type: string
+          created_at?: string
+          id?: string
+          target_id: string
+          target_type: string
+          target_user_id: string
+          user_id: string
+        }
+        Update: {
+          action_data?: Json
+          action_type?: string
+          created_at?: string
+          id?: string
+          target_id?: string
+          target_type?: string
+          target_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_streaks: {
+        Row: {
+          bonus_multiplier: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_activity_date: string
+          longest_streak: number
+          streak_start_date: string
+          streak_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bonus_multiplier?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string
+          longest_streak?: number
+          streak_start_date?: string
+          streak_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bonus_multiplier?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string
+          longest_streak?: number
+          streak_start_date?: string
+          streak_type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -5671,6 +5776,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      calculate_xp_multiplier: {
+        Args: {
+          user_id_param: string
+          action_type_param: string
+          difficulty_level?: number
+          engagement_score?: number
+        }
+        Returns: number
+      }
       capture_phase6_baseline: {
         Args: { target_user_id: string }
         Returns: string
@@ -5684,6 +5798,15 @@ export type Database = {
           user_id_param: string
           course_id_param: string
           completion_notes_param?: string
+        }
+        Returns: string
+      }
+      create_celebration_moment: {
+        Args: {
+          user_id_param: string
+          celebration_type_param: string
+          trigger_data_param: Json
+          celebration_data_param: Json
         }
         Returns: string
       }
@@ -5819,6 +5942,10 @@ export type Database = {
           emoji: string
           reason: string
         }[]
+      }
+      update_learning_streak: {
+        Args: { user_id_param: string; activity_date?: string }
+        Returns: Json
       }
       update_maya_feedback_model: {
         Args: { target_user_id: string }
