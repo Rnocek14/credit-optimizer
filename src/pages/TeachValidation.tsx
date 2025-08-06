@@ -146,8 +146,8 @@ export default function TeachValidation() {
           mentor_id: user.id,
           validated_at: new Date().toISOString(),
           mentor_notes: `Validated via Course Validation flow - ${action}`,
-          endorsement_level: action === 'approve' ? 'basic' : 'rejected',
-          expertise_score: action === 'approve' ? 3 : 0,
+          endorsement_level: action === 'approve' ? 'strong' : 'rejected',
+          expertise_score: action === 'approve' ? 4 : 0,
           roi_assessment: action === 'approve' ? 3 : 1
         }, {
           onConflict: 'mentor_id,course_id'
