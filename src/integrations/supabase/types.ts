@@ -2671,6 +2671,42 @@ export type Database = {
         }
         Relationships: []
       }
+      mentor_achievements: {
+        Row: {
+          achievement_name: string
+          achievement_type: string
+          badge_emoji: string | null
+          description: string | null
+          earned_at: string
+          id: string
+          mentor_id: string
+          metadata: Json | null
+          points_awarded: number | null
+        }
+        Insert: {
+          achievement_name: string
+          achievement_type: string
+          badge_emoji?: string | null
+          description?: string | null
+          earned_at?: string
+          id?: string
+          mentor_id: string
+          metadata?: Json | null
+          points_awarded?: number | null
+        }
+        Update: {
+          achievement_name?: string
+          achievement_type?: string
+          badge_emoji?: string | null
+          description?: string | null
+          earned_at?: string
+          id?: string
+          mentor_id?: string
+          metadata?: Json | null
+          points_awarded?: number | null
+        }
+        Relationships: []
+      }
       mentor_course_curations: {
         Row: {
           career_path_mappings: string[] | null
@@ -2730,6 +2766,119 @@ export type Database = {
           },
         ]
       }
+      mentor_course_feedback: {
+        Row: {
+          completed_course: boolean | null
+          course_id: string
+          course_quality_rating: number | null
+          created_at: string
+          feedback_text: string | null
+          id: string
+          learning_outcome_rating: number | null
+          mentor_id: string
+          rating: number
+          student_id: string
+          would_recommend: boolean | null
+        }
+        Insert: {
+          completed_course?: boolean | null
+          course_id: string
+          course_quality_rating?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          learning_outcome_rating?: number | null
+          mentor_id: string
+          rating: number
+          student_id: string
+          would_recommend?: boolean | null
+        }
+        Update: {
+          completed_course?: boolean | null
+          course_id?: string
+          course_quality_rating?: number | null
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          learning_outcome_rating?: number | null
+          mentor_id?: string
+          rating?: number
+          student_id?: string
+          would_recommend?: boolean | null
+        }
+        Relationships: []
+      }
+      mentor_discussion_replies: {
+        Row: {
+          content: string
+          created_at: string
+          discussion_id: string
+          id: string
+          mentor_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          discussion_id: string
+          id?: string
+          mentor_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          discussion_id?: string
+          id?: string
+          mentor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentor_discussion_replies_discussion_id_fkey"
+            columns: ["discussion_id"]
+            isOneToOne: false
+            referencedRelation: "mentor_discussions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentor_discussions: {
+        Row: {
+          content: string
+          course_id: string
+          created_at: string
+          discussion_type: string
+          id: string
+          is_resolved: boolean | null
+          mentor_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          course_id: string
+          created_at?: string
+          discussion_type: string
+          id?: string
+          is_resolved?: boolean | null
+          mentor_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          course_id?: string
+          created_at?: string
+          discussion_type?: string
+          id?: string
+          is_resolved?: boolean | null
+          mentor_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mentor_feedback: {
         Row: {
           created_at: string
@@ -2773,6 +2922,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mentor_leaderboard: {
+        Row: {
+          created_at: string
+          id: string
+          impact_score: number | null
+          mentor_id: string
+          period_end: string
+          period_start: string
+          period_type: string
+          quality_score: number | null
+          rank_position: number
+          speed_score: number | null
+          total_points: number | null
+          updated_at: string
+          validation_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          mentor_id: string
+          period_end: string
+          period_start: string
+          period_type: string
+          quality_score?: number | null
+          rank_position: number
+          speed_score?: number | null
+          total_points?: number | null
+          updated_at?: string
+          validation_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          mentor_id?: string
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          quality_score?: number | null
+          rank_position?: number
+          speed_score?: number | null
+          total_points?: number | null
+          updated_at?: string
+          validation_score?: number | null
+        }
+        Relationships: []
       }
       mentor_path_curations: {
         Row: {
@@ -2822,6 +3019,54 @@ export type Database = {
           id?: string
           integration_data?: Json
           mentor_id?: string
+        }
+        Relationships: []
+      }
+      mentor_performance_metrics: {
+        Row: {
+          avg_review_time_hours: number | null
+          courses_approved: number | null
+          courses_rejected: number | null
+          courses_reviewed: number | null
+          created_at: string
+          id: string
+          impact_score: number | null
+          mentor_id: string
+          period_end: string
+          period_start: string
+          quality_score: number | null
+          student_engagement_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          avg_review_time_hours?: number | null
+          courses_approved?: number | null
+          courses_rejected?: number | null
+          courses_reviewed?: number | null
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          mentor_id: string
+          period_end: string
+          period_start: string
+          quality_score?: number | null
+          student_engagement_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avg_review_time_hours?: number | null
+          courses_approved?: number | null
+          courses_rejected?: number | null
+          courses_reviewed?: number | null
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          mentor_id?: string
+          period_end?: string
+          period_start?: string
+          quality_score?: number | null
+          student_engagement_score?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -5127,6 +5372,18 @@ export type Database = {
           updated_at: string
         }[]
       }
+      calculate_mentor_performance_metrics: {
+        Args: { mentor_user_id: string; start_date: string; end_date: string }
+        Returns: {
+          courses_reviewed: number
+          courses_approved: number
+          courses_rejected: number
+          approval_rate: number
+          avg_review_time_hours: number
+          impact_score: number
+          quality_score: number
+        }[]
+      }
       calculate_profile_completeness: {
         Args: { profile_row: Database["public"]["Tables"]["profiles"]["Row"] }
         Returns: number
@@ -5138,6 +5395,10 @@ export type Database = {
       capture_phase6_baseline: {
         Args: { target_user_id: string }
         Returns: string
+      }
+      check_mentor_achievements: {
+        Args: { mentor_user_id: string }
+        Returns: undefined
       }
       complete_course_progress: {
         Args: {
