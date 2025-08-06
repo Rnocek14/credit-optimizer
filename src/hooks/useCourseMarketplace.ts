@@ -75,7 +75,7 @@ export function useCourseMarketplace() {
             discovery_data
           )
         `)
-        .eq('pipeline_stage', 'validated')
+        .eq('pipeline_stage', 'completed')
         .eq('mentor_validation_status', 'approved')
         .order('confidence_score', { ascending: false });
 
