@@ -72,6 +72,7 @@ import LearningPaths from "./pages/LearningPaths";
 import TeachPaths from "./pages/TeachPaths";
 import TeachValidation from "./pages/TeachValidation";
 import CourseMarketplace from "./pages/CourseMarketplace";
+import Phase2Dashboard from "./pages/Phase2Dashboard";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -398,6 +399,14 @@ const App = () => (
               <StakeholderProtectedRoute stakeholderType="employer">
                 <EmployerHub />
               </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/phase2-demo" 
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <Phase2Dashboard />
+              </ProtectedRoute>
             } 
           />
           <Route path="/500" element={<InternalError />} />
