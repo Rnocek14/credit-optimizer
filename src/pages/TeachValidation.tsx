@@ -189,8 +189,8 @@ export default function TeachValidation() {
                 courseId,
                 mentorId: user.id,
                 curationData: {
-                  endorsementLevel: 'basic',
-                  expertiseScore: 3,
+                  endorsementLevel: 'strong',
+                  expertiseScore: 4,
                   mentorNotes: 'Validated via Course Validation flow',
                   roiAssessment: 3
                 }
