@@ -13,6 +13,7 @@ import { AIPlanningEngineTest } from "@/components/AIPlanningEngineTest";
 import { SemanticVisualQATest } from "@/components/SemanticVisualQATest";
 import { Phase1TestPanel } from "@/components/Phase1TestPanel";
 import { Phase6Dashboard } from "@/components/Phase6Dashboard";
+import { MentorAnalyticsQATest } from "@/components/MentorAnalyticsQATest";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DemoProfile {
@@ -138,10 +139,11 @@ export default function Demos() {
 
         {/* Phase 6 Dashboard */}
         <Tabs defaultValue="phase6" className="w-full mb-8">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="phase6">Phase 6 Dashboard</TabsTrigger>
             <TabsTrigger value="planning">AI Planning</TabsTrigger>
             <TabsTrigger value="semantic">Semantic QA</TabsTrigger>
+            <TabsTrigger value="mentor-qa">Mentor Analytics QA</TabsTrigger>
             <TabsTrigger value="demos">Demo Profiles</TabsTrigger>
           </TabsList>
 
@@ -155,6 +157,10 @@ export default function Demos() {
 
           <TabsContent value="semantic" className="space-y-6">
             <SemanticVisualQATest />
+          </TabsContent>
+
+          <TabsContent value="mentor-qa" className="space-y-6">
+            <MentorAnalyticsQATest />
           </TabsContent>
 
           <TabsContent value="demos" className="space-y-6">
