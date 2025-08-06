@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentDevUser } from '@/lib/devUserSetup';
 
 export interface MayaFeedbackCorrelation {
   id: string;
@@ -42,10 +43,9 @@ export const useEnhancedMayaFeedback = () => {
 
   // Get current user ID with dev support
   const getCurrentUserId = useCallback(async () => {
-    const devUser = localStorage.getItem("devUser");
+    const devUser = getCurrentDevUser();
     if (devUser) {
-      const parsedDevUser = JSON.parse(devUser);
-      return parsedDevUser.id;
+      return devUser.id;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -76,34 +76,57 @@ export const useEnhancedMayaFeedback = () => {
   const submitFeedback = useMutation({
     mutationFn: async (feedback: FeedbackSubmission) => {
       const userId = await getCurrentUserId();
+      const devUser = getCurrentDevUser();
       
-      // Calculate initial effectiveness based on user rating
-      const initialEffectiveness = feedback.rating ? feedback.rating / 5.0 : 0.5;
-      
-      const correlationData = {
-        user_id: userId,
-        feedback_type: feedback.type,
-        feedback_data: feedback.data,
-        user_action: feedback.userAction || 'provided_feedback',
-        outcome_metrics: {
-          user_rating: feedback.rating,
-          user_feedback: feedback.feedback,
-          submission_timestamp: new Date().toISOString()
-        },
-        correlation_score: 0.0, // Will be calculated later with more data
-        feedback_effectiveness: initialEffectiveness,
-        time_to_action_hours: null,
-        long_term_impact: {}
-      };
+      if (devUser) {
+        // Use dev user function for dev users
+        const { data, error } = await supabase.rpc('dev_user_submit_maya_feedback', {
+          dev_user_id: userId,
+          feedback_type_param: feedback.type,
+          feedback_data_param: feedback.data,
+          user_rating_param: feedback.rating || null
+        });
 
-      const { data, error } = await supabase
-        .from('maya_feedback_correlations')
-        .insert(correlationData)
-        .select()
-        .single();
+        if (error) throw error;
+        
+        // Fetch the created feedback
+        const { data: feedbackData, error: fetchError } = await supabase
+          .from('maya_feedback_correlations')
+          .select('*')
+          .eq('id', data)
+          .single();
+          
+        if (fetchError) throw fetchError;
+        return feedbackData as MayaFeedbackCorrelation;
+      } else {
+        // Regular authenticated user flow
+        const initialEffectiveness = feedback.rating ? feedback.rating / 5.0 : 0.5;
+        
+        const correlationData = {
+          user_id: userId,
+          feedback_type: feedback.type,
+          feedback_data: feedback.data,
+          user_action: feedback.userAction || 'provided_feedback',
+          outcome_metrics: {
+            user_rating: feedback.rating,
+            user_feedback: feedback.feedback,
+            submission_timestamp: new Date().toISOString()
+          },
+          correlation_score: 0.0, // Will be calculated later with more data
+          feedback_effectiveness: initialEffectiveness,
+          time_to_action_hours: null,
+          long_term_impact: {}
+        };
 
-      if (error) throw error;
-      return data as MayaFeedbackCorrelation;
+        const { data, error } = await supabase
+          .from('maya_feedback_correlations')
+          .insert(correlationData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data as MayaFeedbackCorrelation;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maya-feedback-correlations'] });

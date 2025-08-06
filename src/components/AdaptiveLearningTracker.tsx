@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Slider } from '@/components/ui/slider';
+import { getCurrentDevUser, setupAishaForValidation } from '@/lib/devUserSetup';
 import { 
   TrendingUp, 
   Target, 
@@ -100,6 +101,18 @@ export function AdaptiveLearningTracker({ userId, currentPath }: AdaptiveLearnin
     notes: ''
   });
   const { toast } = useToast();
+
+  // Auto-setup Aisha for testing if no dev user is set
+  useEffect(() => {
+    const devUser = getCurrentDevUser();
+    if (!devUser) {
+      setupAishaForValidation();
+      toast({
+        title: "Dev User Setup",
+        description: "Aisha Khan setup for Phase 3.1 testing",
+      });
+    }
+  }, [toast]);
 
   // Convert engagement metrics to legacy format for UI compatibility
   const metrics: LearningMetrics = {

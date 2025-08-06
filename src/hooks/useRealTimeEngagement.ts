@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentDevUser } from '@/lib/devUserSetup';
 
 export interface LearningSession {
   id: string;
@@ -57,10 +58,9 @@ export const useRealTimeEngagement = () => {
 
   // Get current user ID with dev support
   const getCurrentUserId = useCallback(async () => {
-    const devUser = localStorage.getItem("devUser");
+    const devUser = getCurrentDevUser();
     if (devUser) {
-      const parsedDevUser = JSON.parse(devUser);
-      return parsedDevUser.id;
+      return devUser.id;
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -110,34 +110,62 @@ export const useRealTimeEngagement = () => {
   const startSession = useMutation({
     mutationFn: async ({ courseId, sessionType }: { courseId?: string; sessionType: LearningSession['session_type'] }) => {
       const userId = await getCurrentUserId();
+      const devUser = getCurrentDevUser();
       
-      const sessionData = {
-        user_id: userId,
-        course_id: courseId,
-        session_type: sessionType,
-        started_at: new Date().toISOString(),
-        duration_minutes: 0,
-        activity_data: {
-          clicks: 0,
-          scrolls: 0,
-          pauses: [],
-          navigation_events: []
-        },
-        engagement_score: 0.0,
-        completion_percentage: 0,
-        focus_events: [],
-        learning_velocity: 0.0,
-        retention_indicators: {}
-      };
+      // Generate a valid UUID for courseId if needed
+      const validCourseId = courseId && courseId.length === 36 && courseId.includes('-') 
+        ? courseId 
+        : crypto.randomUUID();
+      
+      if (devUser) {
+        // Use dev user function for dev users
+        const { data, error } = await supabase.rpc('dev_user_session_start', {
+          dev_user_id: userId,
+          course_id_param: validCourseId,
+          session_type_param: sessionType
+        });
 
-      const { data, error } = await supabase
-        .from('learning_engagement_sessions')
-        .insert(sessionData)
-        .select()
-        .single();
+        if (error) throw error;
+        
+        // Fetch the created session
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('learning_engagement_sessions')
+          .select('*')
+          .eq('id', data)
+          .single();
+          
+        if (fetchError) throw fetchError;
+        return sessionData as LearningSession;
+      } else {
+        // Regular authenticated user flow
+        const sessionData = {
+          user_id: userId,
+          course_id: validCourseId,
+          session_type: sessionType,
+          started_at: new Date().toISOString(),
+          duration_minutes: 0,
+          activity_data: {
+            clicks: 0,
+            scrolls: 0,
+            pauses: [],
+            navigation_events: []
+          },
+          engagement_score: 0.0,
+          completion_percentage: 0,
+          focus_events: [],
+          learning_velocity: 0.0,
+          retention_indicators: {}
+        };
 
-      if (error) throw error;
-      return data as LearningSession;
+        const { data, error } = await supabase
+          .from('learning_engagement_sessions')
+          .insert(sessionData)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data as LearningSession;
+      }
     },
     onSuccess: (data) => {
       setActiveSession(data);
@@ -196,6 +224,9 @@ export const useRealTimeEngagement = () => {
     mutationFn: async (finalMetrics: Partial<LearningSession>) => {
       if (!activeSession) throw new Error('No active session');
 
+      const userId = await getCurrentUserId();
+      const devUser = getCurrentDevUser();
+      
       const endTime = new Date().toISOString();
       const durationMinutes = Math.round(
         (Date.now() - new Date(activeSession.started_at).getTime()) / 60000
@@ -207,22 +238,53 @@ export const useRealTimeEngagement = () => {
         duration_minutes: durationMinutes
       });
 
-      const updateData = {
-        ended_at: endTime,
-        duration_minutes: durationMinutes,
-        engagement_score: finalEngagementScore,
+      const sessionMetricsData = {
+        difficulty: finalMetrics.difficulty_feedback || 3,
+        engagement: Math.round(finalEngagementScore * 5), // Convert to 1-5 scale
+        mastered_topics: finalMetrics.session_notes?.split('Mastered: ')[1]?.split('Struggled:')[0]?.trim(),
+        struggled_topics: finalMetrics.session_notes?.split('Struggled: ')[1]?.trim(),
         ...finalMetrics
       };
 
-      const { data, error } = await supabase
-        .from('learning_engagement_sessions')
-        .update(updateData)
-        .eq('id', activeSession.id)
-        .select()
-        .single();
+      if (devUser) {
+        // Use dev user function for dev users
+        const { data, error } = await supabase.rpc('dev_user_session_end', {
+          dev_user_id: userId,
+          session_id_param: activeSession.id,
+          session_metrics: sessionMetricsData
+        });
 
-      if (error) throw error;
-      return data as LearningSession;
+        if (error) throw error;
+        
+        // Fetch the updated session
+        const { data: sessionData, error: fetchError } = await supabase
+          .from('learning_engagement_sessions')
+          .select('*')
+          .eq('id', data)
+          .single();
+          
+        if (fetchError) throw fetchError;
+        return sessionData as LearningSession;
+      } else {
+        // Regular authenticated user flow
+        const updateData = {
+          ended_at: endTime,
+          duration_minutes: durationMinutes,
+          engagement_score: finalEngagementScore,
+          final_metrics: sessionMetricsData,
+          ...finalMetrics
+        };
+
+        const { data, error } = await supabase
+          .from('learning_engagement_sessions')
+          .update(updateData)
+          .eq('id', activeSession.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data as LearningSession;
+      }
     },
     onSuccess: (data) => {
       setActiveSession(null);

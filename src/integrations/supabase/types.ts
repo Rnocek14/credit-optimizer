@@ -5687,6 +5687,31 @@ export type Database = {
         }
         Returns: string
       }
+      dev_user_session_end: {
+        Args: {
+          dev_user_id: string
+          session_id_param: string
+          session_metrics?: Json
+        }
+        Returns: string
+      }
+      dev_user_session_start: {
+        Args: {
+          dev_user_id: string
+          course_id_param: string
+          session_type_param?: string
+        }
+        Returns: string
+      }
+      dev_user_submit_maya_feedback: {
+        Args: {
+          dev_user_id: string
+          feedback_type_param: string
+          feedback_data_param: Json
+          user_rating_param?: number
+        }
+        Returns: string
+      }
       generate_certificate_number: {
         Args: Record<PropertyKey, never>
         Returns: string
