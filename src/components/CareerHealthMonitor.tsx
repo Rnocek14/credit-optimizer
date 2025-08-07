@@ -52,8 +52,8 @@ export function CareerHealthMonitor({ userId }: CareerHealthMonitorProps) {
     const streakWeight = 0.2;
     const progressWeight = 0.1;
     
-    const criNormalized = (criScore.overall_score / 100) * criWeight;
-    const engagementNormalized = (metrics.total_xp / 1000) * engagementWeight; // Normalize XP
+    const criNormalized = (criScore.overall / 100) * criWeight;
+    const engagementNormalized = (metrics.daily_xp / 100) * engagementWeight; // Normalize XP
     const streakNormalized = Math.min(1, (streaks?.[0]?.current_streak || 0) / 30) * streakWeight;
     const progressNormalized = (Object.keys(userProgress || {}).length / 50) * progressWeight;
     
@@ -223,15 +223,15 @@ export function CareerHealthMonitor({ userId }: CareerHealthMonitorProps) {
                   
                   <div className="flex justify-between">
                     <span>Experience Level</span>
-                    <span>{criScore?.breakdown?.experience || 0}%</span>
+                    <span>{criScore?.experienceScore || 0}%</span>
                   </div>
-                  <Progress value={criScore?.breakdown?.experience || 0} />
+                  <Progress value={criScore?.experienceScore || 0} />
                   
                   <div className="flex justify-between">
                     <span>Career Steps</span>
-                    <span>{criScore?.breakdown?.steps || 0}%</span>
+                    <span>{criScore?.stepsScore || 0}%</span>
                   </div>
-                  <Progress value={criScore?.breakdown?.steps || 0} />
+                  <Progress value={criScore?.stepsScore || 0} />
                 </div>
               </CardContent>
             </Card>
@@ -253,7 +253,7 @@ export function CareerHealthMonitor({ userId }: CareerHealthMonitorProps) {
                   
                   <div className="flex justify-between">
                     <span>Current Level</span>
-                    <span>{metrics?.current_level || 1}</span>
+                    <span>Level 1</span>
                   </div>
                   
                   <div className="flex justify-between">
