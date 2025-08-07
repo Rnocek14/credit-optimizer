@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.linkedin-import]
 verify_jwt = true
+
+[functions.ai-model-router]
+verify_jwt = true
