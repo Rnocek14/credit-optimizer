@@ -6094,6 +6094,51 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_validations: {
+        Row: {
+          confidence_score: number
+          created_at: string
+          id: string
+          is_active: boolean
+          source_id: string | null
+          source_type: string
+          step_id: string | null
+          updated_at: string
+          user_id: string
+          validated_by: string | null
+          validation_data: Json
+          validation_score: number
+        }
+        Insert: {
+          confidence_score?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          source_id?: string | null
+          source_type: string
+          step_id?: string | null
+          updated_at?: string
+          user_id: string
+          validated_by?: string | null
+          validation_data?: Json
+          validation_score?: number
+        }
+        Update: {
+          confidence_score?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          source_id?: string | null
+          source_type?: string
+          step_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validated_by?: string | null
+          validation_data?: Json
+          validation_score?: number
+        }
+        Relationships: []
+      }
       xp_events: {
         Row: {
           action_type: string
@@ -6126,7 +6171,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_validation_metrics: {
+        Row: {
+          avg_confidence_score: number | null
+          avg_validation_score: number | null
+          cri_validations: number | null
+          high_score_validations: number | null
+          last_validation_at: string | null
+          maya_validations: number | null
+          mentor_validations: number | null
+          peer_validations: number | null
+          total_validations: number | null
+          user_id: string | null
+          validation_breakdown: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       award_xp: {
