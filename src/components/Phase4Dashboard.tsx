@@ -11,13 +11,14 @@ import { MayaAutonomousIntelligence } from './MayaAutonomousIntelligence';
 import { CareerReadinessMonitor } from './CareerReadinessMonitor';
 import { EnhancedWorkflowEngine } from './EnhancedWorkflowEngine';
 import { RealTimeMarketIntelligence } from './RealTimeMarketIntelligence';
+import { CareerTransitionSimulator } from './CareerTransitionSimulator';
 
 interface Phase4DashboardProps {
   userId: string;
 }
 
 export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
-  const [activeTab, setActiveTab] = useState('autonomous');
+  const [activeTab, setActiveTab] = useState('simulator');
 
   return (
     <div className="w-full space-y-6">
@@ -29,11 +30,11 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               <Bot className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Phase 5: Enhanced AI Systems</h1>
-              <p className="text-muted-foreground">Real-Time Intelligence & Autonomous Workflows</p>
+              <h1 className="text-2xl font-bold">Phase 4: Autonomous Career Co-Pilot</h1>
+              <p className="text-muted-foreground">AI-Powered Career Transition & Autonomous Workflows</p>
             </div>
             <Badge variant="outline" className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-              Phase 5 Active
+              Phase 4 Active
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -42,6 +43,10 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-8">
+          <TabsTrigger value="simulator" className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            Co-Pilot
+          </TabsTrigger>
           <TabsTrigger value="autonomous" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
             Workflows
@@ -75,6 +80,10 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
             Monitoring
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="simulator" className="space-y-6">
+          <CareerTransitionSimulator />
+        </TabsContent>
 
         <TabsContent value="autonomous" className="space-y-6">
           <AutonomousWorkflowDashboard />
