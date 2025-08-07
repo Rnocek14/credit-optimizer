@@ -81,6 +81,7 @@ import { SocialLearningTest } from "./components/SocialLearningTest";
 import Phase4 from "./pages/Phase4";
 import Phase5 from "./pages/Phase5";
 import Phase6 from "./pages/Phase6";
+import Phase7 from "./pages/Phase7";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -140,6 +141,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Phase6 />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/phase7" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Phase7 />
               </ProtectedRoute>
             } 
           />

@@ -55,6 +55,7 @@ const allNavItems: NavItem[] = [
   { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain, experienceLevel: ['intermediate', 'advanced'], category: 'ai' },
   { href: "/maya-cri-integration", label: "Maya × CRI", icon: Brain, experienceLevel: ['advanced'], category: 'ai' },
   { href: "/maya-automation", label: "Maya Automation", icon: Brain, experienceLevel: ['advanced'], category: 'ai' },
+  { href: "/phase7", label: "Trust Intelligence", icon: Brain, experienceLevel: ['advanced'], category: 'ai' },
   
   // Achievement features
   { href: "/certificates", label: "Certificates", icon: Award, experienceLevel: ['intermediate', 'advanced'], category: 'learning' },
