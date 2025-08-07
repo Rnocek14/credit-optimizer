@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,10 +6,59 @@ import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { useTrustMetrics } from '@/hooks/useTrustMetrics';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
+import { StarRating } from '@/components/ui/star-rating';
 
 export function TrustIntelligencePanel() {
   const { user } = useSecureAuth();
   const { metrics, isLoading, refresh, isRefreshing } = useTrustMetrics(user?.id);
+  const [rating, setRating] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel('trust-feedback')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'maya_feedback_correlations',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refresh]);
+
+  const submitRating = async () => {
+    if (!user?.id || rating === 0) return;
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.rpc('dev_user_submit_maya_feedback', {
+        dev_user_id: user.id,
+        feedback_type_param: 'trust_panel',
+        feedback_data_param: { source: 'TrustIntelligencePanel', page: 'phase7' },
+        user_rating_param: rating,
+      });
+      if (error) throw error;
+      toast({ title: 'Thanks for your feedback!', description: 'Your rating was recorded.' });
+      setRating(0);
+      refresh();
+    } catch (err: any) {
+      toast({ title: 'Could not submit feedback', description: err.message ?? 'Please try again later', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -112,6 +161,25 @@ export function TrustIntelligencePanel() {
                 </LineChart>
               </ResponsiveContainer>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Rate Maya</CardTitle>
+          <CardDescription>Your feedback improves recommendations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <StarRating rating={rating} onRatingChange={setRating} />
+              <span className="text-sm text-muted-foreground">{rating > 0 ? `${rating}/5` : 'Select a rating'}</span>
+            </div>
+            <Button onClick={submitRating} disabled={!user || rating === 0 || isSubmitting}>
+              {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Submit
+            </Button>
           </div>
         </CardContent>
       </Card>
