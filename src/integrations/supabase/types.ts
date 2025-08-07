@@ -1249,6 +1249,53 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_participants: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          completion_status: string
+          final_score: number | null
+          id: string
+          progress_data: Json | null
+          registered_at: string
+          registration_data: Json | null
+          team_name: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          completion_status?: string
+          final_score?: number | null
+          id?: string
+          progress_data?: Json | null
+          registered_at?: string
+          registration_data?: Json | null
+          team_name?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          completion_status?: string
+          final_score?: number | null
+          id?: string
+          progress_data?: Json | null
+          registered_at?: string
+          registration_data?: Json | null
+          team_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "learning_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       continent_bounds: {
         Row: {
           bounds: Json
@@ -2300,6 +2347,69 @@ export type Database = {
           required_skills?: string[] | null
           salary_range?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      learning_challenges: {
+        Row: {
+          badge_reward_id: string | null
+          career_paths: string[] | null
+          challenge_data: Json
+          challenge_type: string
+          created_at: string
+          created_by: string
+          description: string
+          difficulty_level: string
+          end_date: string
+          entry_requirements: Json | null
+          id: string
+          max_participants: number | null
+          skill_focus: string[] | null
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+          xp_reward: number | null
+        }
+        Insert: {
+          badge_reward_id?: string | null
+          career_paths?: string[] | null
+          challenge_data?: Json
+          challenge_type?: string
+          created_at?: string
+          created_by: string
+          description: string
+          difficulty_level?: string
+          end_date: string
+          entry_requirements?: Json | null
+          id?: string
+          max_participants?: number | null
+          skill_focus?: string[] | null
+          start_date: string
+          status?: string
+          title: string
+          updated_at?: string
+          xp_reward?: number | null
+        }
+        Update: {
+          badge_reward_id?: string | null
+          career_paths?: string[] | null
+          challenge_data?: Json
+          challenge_type?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          difficulty_level?: string
+          end_date?: string
+          entry_requirements?: Json | null
+          id?: string
+          max_participants?: number | null
+          skill_focus?: string[] | null
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          xp_reward?: number | null
         }
         Relationships: []
       }
@@ -3586,6 +3696,110 @@ export type Database = {
         }
         Relationships: []
       }
+      peer_feedback: {
+        Row: {
+          context_id: string | null
+          context_type: string
+          created_at: string
+          feedback_data: Json | null
+          feedback_text: string | null
+          feedback_type: string
+          from_user_id: string
+          id: string
+          improvement_areas: string[] | null
+          is_anonymous: boolean | null
+          rating: number
+          skills_endorsed: string[] | null
+          to_user_id: string
+        }
+        Insert: {
+          context_id?: string | null
+          context_type: string
+          created_at?: string
+          feedback_data?: Json | null
+          feedback_text?: string | null
+          feedback_type: string
+          from_user_id: string
+          id?: string
+          improvement_areas?: string[] | null
+          is_anonymous?: boolean | null
+          rating: number
+          skills_endorsed?: string[] | null
+          to_user_id: string
+        }
+        Update: {
+          context_id?: string | null
+          context_type?: string
+          created_at?: string
+          feedback_data?: Json | null
+          feedback_text?: string | null
+          feedback_type?: string
+          from_user_id?: string
+          id?: string
+          improvement_areas?: string[] | null
+          is_anonymous?: boolean | null
+          rating?: number
+          skills_endorsed?: string[] | null
+          to_user_id?: string
+        }
+        Relationships: []
+      }
+      peer_learning_sessions: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          group_id: string | null
+          id: string
+          max_participants: number | null
+          organizer_id: string
+          scheduled_for: string
+          session_data: Json | null
+          session_type: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          group_id?: string | null
+          id?: string
+          max_participants?: number | null
+          organizer_id: string
+          scheduled_for: string
+          session_data?: Json | null
+          session_type?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          group_id?: string | null
+          id?: string
+          max_participants?: number | null
+          organizer_id?: string
+          scheduled_for?: string
+          session_data?: Json | null
+          session_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peer_learning_sessions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personalized_recommendations: {
         Row: {
           action_items: Json | null
@@ -4538,6 +4752,44 @@ export type Database = {
           },
         ]
       }
+      session_participants: {
+        Row: {
+          attendance_status: string
+          contribution_rating: number | null
+          feedback: string | null
+          id: string
+          registered_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          attendance_status?: string
+          contribution_rating?: number | null
+          feedback?: string | null
+          id?: string
+          registered_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          attendance_status?: string
+          contribution_rating?: number | null
+          feedback?: string | null
+          id?: string
+          registered_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "peer_learning_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_branches: {
         Row: {
           created_at: string
@@ -4705,6 +4957,75 @@ export type Database = {
         }
         Relationships: []
       }
+      social_leaderboards: {
+        Row: {
+          id: string
+          last_updated: string
+          leaderboard_data: Json
+          leaderboard_type: string
+          period_end: string
+          period_start: string
+          scope_filter: Json | null
+          time_period: string
+        }
+        Insert: {
+          id?: string
+          last_updated?: string
+          leaderboard_data?: Json
+          leaderboard_type: string
+          period_end: string
+          period_start: string
+          scope_filter?: Json | null
+          time_period?: string
+        }
+        Update: {
+          id?: string
+          last_updated?: string
+          leaderboard_data?: Json
+          leaderboard_type?: string
+          period_end?: string
+          period_start?: string
+          scope_filter?: Json | null
+          time_period?: string
+        }
+        Relationships: []
+      }
+      social_learning_analytics: {
+        Row: {
+          calculated_at: string
+          calculation_period: string
+          id: string
+          metric_data: Json | null
+          metric_type: string
+          metric_value: number
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          calculation_period?: string
+          id?: string
+          metric_data?: Json | null
+          metric_type: string
+          metric_value: number
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          calculation_period?: string
+          id?: string
+          metric_data?: Json | null
+          metric_type?: string
+          metric_value?: number
+          period_end?: string
+          period_start?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       step_equivalents: {
         Row: {
           created_at: string | null
@@ -4749,6 +5070,89 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      study_group_members: {
+        Row: {
+          contribution_score: number | null
+          group_id: string
+          id: string
+          joined_at: string
+          last_active_at: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          contribution_score?: number | null
+          group_id: string
+          id?: string
+          joined_at?: string
+          last_active_at?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          contribution_score?: number | null
+          group_id?: string
+          id?: string
+          joined_at?: string
+          last_active_at?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_groups: {
+        Row: {
+          active_challenge_id: string | null
+          career_path: string
+          created_at: string
+          creator_id: string
+          description: string | null
+          group_type: string
+          id: string
+          max_members: number | null
+          name: string
+          privacy_level: string
+          skill_focus: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          active_challenge_id?: string | null
+          career_path: string
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          group_type?: string
+          id?: string
+          max_members?: number | null
+          name: string
+          privacy_level?: string
+          skill_focus?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          active_challenge_id?: string | null
+          career_path?: string
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          group_type?: string
+          id?: string
+          max_members?: number | null
+          name?: string
+          privacy_level?: string
+          skill_focus?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       substitution_groups: {
         Row: {

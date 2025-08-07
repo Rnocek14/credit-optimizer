@@ -76,6 +76,7 @@ import Phase2Dashboard from "./pages/Phase2Dashboard";
 import InterventionHistory from "./pages/InterventionHistory";
 import Gamification from "./pages/Gamification";
 import MayaIntelligence from "./pages/MayaIntelligence";
+import SocialLearning from "./pages/SocialLearning";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -232,6 +233,14 @@ const App = () => (
              element={
                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                  <MayaIntelligence />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/social-learning" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <SocialLearning />
                </ProtectedRoute>
              } 
            />
