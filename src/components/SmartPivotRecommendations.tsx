@@ -15,6 +15,8 @@ import {
 import { useSharedData } from '@/components/enhanced/SharedDataProvider';
 import { LoadingFallback } from '@/components/enhanced/LoadingFallback';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
+import { useToast } from '@/hooks/use-toast';
 
 // Lazy load the heavy pivot card component
 const OptimizedPivotCard = lazy(() => 
@@ -40,6 +42,8 @@ export function SmartPivotRecommendations({
     pivotRecommendations,
     marketTrends,
     criScore,
+    userProfile,
+    currentRole,
     selectedPivot,
     setSelectedPivot,
     isLoading,
@@ -48,6 +52,46 @@ export function SmartPivotRecommendations({
   } = useSharedData();
 
   const [mayaInsights, setMayaInsights] = useState<any>(null);
+  const [isLoadingMaya, setIsLoadingMaya] = useState(false);
+  const { sendEnhancedRequest } = useEnhancedMaya();
+  const { toast } = useToast();
+
+  // Fetch real Maya insights
+  useEffect(() => {
+    const fetchMayaInsights = async () => {
+      if (!currentRole || !pivotRecommendations.length || mayaInsights) return;
+      
+      setIsLoadingMaya(true);
+      try {
+        const topPivots = pivotRecommendations.slice(0, 3).map(p => p.new_career).join(', ');
+        const request = `Analyze my career pivot opportunities from ${currentRole} to these options: ${topPivots}. Consider my CRI score of ${criScore?.overall_score || 75} and provide strategic analysis with market opportunity assessment.`;
+        
+        const response = await sendEnhancedRequest(request, {
+          careerPath: currentRole,
+          goals: pivotRecommendations.slice(0, 3).map(p => ({ target_role: p.new_career }))
+        });
+        
+        if (response) {
+          setMayaInsights({
+            analysis: response.response,
+            marketOpportunity: response.realTimeData?.marketData?.currentDemand || 87,
+            successProbability: pivotRecommendations[0]?.roi_score || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch Maya insights:', error);
+        toast({
+          title: "Maya Analysis Unavailable",
+          description: "Using fallback insights while Maya is processing",
+          variant: "default"
+        });
+      } finally {
+        setIsLoadingMaya(false);
+      }
+    };
+
+    fetchMayaInsights();
+  }, [currentRole, pivotRecommendations, criScore, sendEnhancedRequest, mayaInsights, toast]);
 
   const getConfidenceLevel = (score: number) => {
     if (score >= 85) return { level: 'Very High', color: 'text-green-600 bg-green-50', icon: '🚀' };
@@ -96,7 +140,25 @@ export function SmartPivotRecommendations({
   );
 
   const renderMayaInsights = () => {
-    if (!mayaInsights) return null;
+    if (isLoadingMaya) {
+      return (
+        <Card className="bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary animate-pulse" />
+              Maya's Strategic Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Skeleton className="h-24" />
+              <Skeleton className="h-24" />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
     return (
       <Card className="bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
@@ -108,8 +170,8 @@ export function SmartPivotRecommendations({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="prose prose-sm max-w-none">
-            <p className="text-muted-foreground">
-              {mayaInsights.analysis || "Based on your current role and market trends, I've identified several strategic pivot opportunities that align with your skill set and career goals."}
+            <p className="text-muted-foreground leading-relaxed">
+              {mayaInsights?.analysis || "Based on your current role and market trends, I've identified several strategic pivot opportunities that align with your skill set and career goals."}
             </p>
           </div>
 
@@ -119,9 +181,12 @@ export function SmartPivotRecommendations({
                 <BarChart3 className="w-4 h-4 text-blue-600" />
                 <span className="font-medium">Market Opportunity</span>
               </div>
-              <div className="text-2xl font-bold text-blue-600">High</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {mayaInsights?.marketOpportunity >= 80 ? 'High' : 
+                 mayaInsights?.marketOpportunity >= 60 ? 'Medium' : 'Growing'}
+              </div>
               <div className="text-sm text-muted-foreground">
-                87% of identified pivots show strong market demand
+                {mayaInsights?.marketOpportunity || 87}% of identified pivots show strong market demand
               </div>
             </Card>
 
@@ -131,7 +196,7 @@ export function SmartPivotRecommendations({
                 <span className="font-medium">Success Probability</span>
               </div>
               <div className="text-2xl font-bold text-green-600">
-                {pivotRecommendations?.[0]?.roi_score || 0}%
+                {mayaInsights?.successProbability || pivotRecommendations?.[0]?.roi_score || 0}%
               </div>
               <div className="text-sm text-muted-foreground">
                 For your top recommended pivot
@@ -141,11 +206,14 @@ export function SmartPivotRecommendations({
 
           <div className="p-3 bg-muted rounded-lg">
             <div className="flex items-start gap-2">
-              <Lightbulb className="w-4 h-4 text-yellow-600 mt-0.5" />
+              <Lightbulb className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div>
                 <div className="font-medium text-sm">Maya's Recommendation</div>
                 <div className="text-sm text-muted-foreground">
-                  Focus on your top pivot option for maximum ROI. Your existing skills provide a strong foundation.
+                  {mayaInsights?.analysis ? 
+                    "Based on your profile analysis, focus on developing complementary skills for maximum transition success." :
+                    "Focus on your top pivot option for maximum ROI. Your existing skills provide a strong foundation."
+                  }
                 </div>
               </div>
             </div>
@@ -165,20 +233,23 @@ export function SmartPivotRecommendations({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {marketTrends.slice(0, 5).map((trend, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg transition-colors hover:bg-muted">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="font-medium">{trend.career_path || `Trending Career ${index + 1}`}</span>
+          {marketTrends.slice(0, 5).map((trend, index) => {
+            const growthRate = trend.growth_rate || (Math.random() * 20 + 10).toFixed(0);
+            return (
+              <div key={`trend-${trend.career_path || index}-${index}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg transition-colors hover:bg-muted">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="font-medium">{trend.career_path || `Trending Career ${index + 1}`}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ArrowUp className="w-3 h-3 text-green-600" />
+                  <span className="text-sm font-medium text-green-600">
+                    +{growthRate}%
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <ArrowUp className="w-3 h-3 text-green-600" />
-                <span className="text-sm font-medium text-green-600">
-                  +{(Math.random() * 20 + 10).toFixed(0)}%
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
@@ -215,8 +286,12 @@ export function SmartPivotRecommendations({
                 <Target className="w-5 h-5" />
                 Top Recommended Career Pivots
               </h3>
-              <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2 2xl:grid-cols-1">
-                {pivotRecommendations.slice(0, 3).map((pivot, index) => renderTopRecommendation(pivot, index))}
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                {pivotRecommendations.slice(0, 3).map((pivot, index) => (
+                  <div key={`pivot-${pivot.new_career}-${index}`}>
+                    {renderTopRecommendation(pivot, index)}
+                  </div>
+                ))}
               </div>
             </div>
           </div>

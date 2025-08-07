@@ -39,22 +39,22 @@ export const OptimizedPivotCard = memo(function OptimizedPivotCard({
   const getConfidenceConfig = (score: number) => {
     if (score >= 85) return { 
       level: 'Very High', 
-      colorClass: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400', 
+      colorClass: 'bg-success/10 text-success border-success/20', 
       icon: '🚀' 
     };
     if (score >= 70) return { 
       level: 'High', 
-      colorClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400', 
+      colorClass: 'bg-primary/10 text-primary border-primary/20', 
       icon: '⭐' 
     };
     if (score >= 55) return { 
       level: 'Medium', 
-      colorClass: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400', 
+      colorClass: 'bg-warning/10 text-warning border-warning/20', 
       icon: '💡' 
     };
     return { 
       level: 'Low', 
-      colorClass: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400', 
+      colorClass: 'bg-destructive/10 text-destructive border-destructive/20', 
       icon: '⚠️' 
     };
   };
@@ -66,7 +66,7 @@ export const OptimizedPivotCard = memo(function OptimizedPivotCard({
       className={`
         group cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5
         ${isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:border-primary/20'}
-        min-h-[400px] flex flex-col
+        h-full flex flex-col min-h-[420px]
       `}
       onClick={() => onSelect(pivot)}
     >
@@ -75,11 +75,11 @@ export const OptimizedPivotCard = memo(function OptimizedPivotCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl">{confidenceConfig.icon}</span>
-              <Badge className={confidenceConfig.colorClass}>
+              <Badge variant="outline" className={confidenceConfig.colorClass}>
                 {confidenceConfig.level}
               </Badge>
               {index === 0 && (
-                <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground">
+                <Badge className="bg-primary text-primary-foreground border-0">
                   <Star className="w-3 h-3 mr-1" />
                   Top Pick
                 </Badge>
@@ -150,7 +150,7 @@ export const OptimizedPivotCard = memo(function OptimizedPivotCard({
           <div className="flex flex-wrap gap-2">
             {pivot.missing_skills?.slice(0, 4).map((skill: string, idx: number) => (
               <Badge 
-                key={idx} 
+                key={`skill-${skill}-${idx}`} 
                 variant="secondary" 
                 className="text-xs hover:bg-secondary/80 transition-colors"
               >

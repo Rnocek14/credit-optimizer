@@ -1,5 +1,5 @@
-import React from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -10,6 +10,7 @@ interface LoadingFallbackProps {
   onRetry?: () => void;
   children: React.ReactNode;
   fallbackMessage?: string;
+  timeoutMs?: number;
 }
 
 export function LoadingFallback({ 
@@ -18,8 +19,30 @@ export function LoadingFallback({
   error, 
   onRetry, 
   children, 
-  fallbackMessage = "Loading your personalized career data..." 
+  fallbackMessage = "Loading your personalized career data...",
+  timeoutMs = 15000
 }: LoadingFallbackProps) {
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (isLoading && !hasTimedOut) {
+      timer = setTimeout(() => {
+        setHasTimedOut(true);
+      }, timeoutMs);
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isLoading, hasTimedOut, timeoutMs]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setHasTimedOut(false);
+    }
+  }, [isLoading]);
   if (error) {
     return (
       <Card className="border-destructive/50 bg-destructive/5">
@@ -51,8 +74,24 @@ export function LoadingFallback({
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-          <p className="text-sm text-muted-foreground text-center">{fallbackMessage}</p>
+          {hasTimedOut ? (
+            <>
+              <Clock className="w-8 h-8 text-warning mb-4" />
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                This is taking longer than expected...
+              </p>
+              {onRetry && (
+                <Button onClick={onRetry} variant="outline" size="sm">
+                  Try Again
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+              <p className="text-sm text-muted-foreground text-center">{fallbackMessage}</p>
+            </>
+          )}
         </CardContent>
       </Card>
     );

@@ -8,6 +8,7 @@ import { TimelineProgressTracker } from './enhanced/TimelineProgressTracker';
 import { LoadingFallback } from './enhanced/LoadingFallback';
 import { WorkflowActionHandler } from './enhanced/WorkflowActionHandler';
 import { SharedDataProvider } from './enhanced/SharedDataProvider';
+import { EnhancedErrorBoundary } from './enhanced/EnhancedErrorBoundary';
 import { AutonomousWorkflowDashboard } from './AutonomousWorkflowDashboard';
 import { PredictiveAnalyticsEngine } from './PredictiveAnalyticsEngine';
 import { MayaAutonomousIntelligence } from './MayaAutonomousIntelligence';
@@ -144,147 +145,148 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   ];
 
   return (
-    <SharedDataProvider userId={userId}>
-      <div className="flex h-screen bg-background">
-        {/* Sidebar */}
-        <Phase4Sidebar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
+    <EnhancedErrorBoundary>
+      <SharedDataProvider userId={userId}>
+        <div className="flex h-screen bg-background">
+          {/* Sidebar */}
+          <Phase4Sidebar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6 space-y-6">
-            {/* Header */}
-            <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/20 rounded-lg">
-                    <Bot className="w-6 h-6 text-primary" />
+          {/* Main Content */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-6 space-y-6">
+              {/* Header */}
+              <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/20 rounded-lg">
+                      <Bot className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold">Phase 4: Autonomous Career Co-Pilot</h1>
+                      <p className="text-muted-foreground">AI-Powered Career Transition & Autonomous Workflows</p>
+                    </div>
+                    <Badge variant="outline" className="ml-auto bg-primary/10 text-primary border-primary/30">
+                      Phase 4 Active
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+
+              {/* Tab Content */}
+              {activeTab === 'overview' && (
+                <Phase4Overview
+                  userId={userId}
+                  sharedState={sharedState}
+                  onNavigate={setActiveTab}
+                />
+              )}
+
+              {activeTab === 'copilot' && (
+                <LoadingFallback 
+                  isLoading={integrationLoading} 
+                  hasData={hasData}
+                  fallbackMessage="Loading your personalized AI Co-Pilot..."
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                      <CareerTransitionSimulator userId={userId} />
+                      <MayaAutonomousIntelligence />
+                    </div>
+                    <div className="space-y-6">
+                      <UnifiedProgressIndicator 
+                        data={{
+                          pivotProgress: sharedState.progressData?.currentProgress || 0,
+                          criScore: 75,
+                          roiConfidence: sharedState.selectedPivot?.roi_score || 0,
+                          timelineCompletion: 65,
+                          skillsAcquired: sharedState.progressData?.skillsAcquired || 0,
+                          totalSkills: (sharedState.selectedPivot?.missing_skills?.length || 0) + (sharedState.selectedPivot?.shared_skills?.length || 0),
+                          milestonesCompleted: sharedState.progressData?.milestones?.filter((m: any) => m.status === 'completed').length || 0,
+                          totalMilestones: sharedState.progressData?.milestones?.length || 0
+                        }}
+                        selectedPivot={sharedState.selectedPivot}
+                      />
+                      <SmartSuggestionsWidget 
+                        suggestions={getSmartSuggestions()}
+                        mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                      />
+                      <CareerReadinessMonitor userId={userId} />
+                    </div>
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold">Phase 4: Autonomous Career Co-Pilot</h1>
-                    <p className="text-muted-foreground">AI-Powered Career Transition & Autonomous Workflows</p>
-                  </div>
-                  <Badge variant="outline" className="ml-auto bg-primary/10 text-primary border-primary/30">
-                    Phase 4 Active
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-            </Card>
+                </LoadingFallback>
+              )}
 
-          {/* Tab Content */}
-
-          {activeTab === 'overview' && (
-            <Phase4Overview
-              userId={userId}
-              sharedState={sharedState}
-              onNavigate={setActiveTab}
-            />
-          )}
-
-          {activeTab === 'copilot' && (
-            <LoadingFallback 
-              isLoading={integrationLoading} 
-              hasData={hasData}
-              fallbackMessage="Loading your personalized AI Co-Pilot..."
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                  <CareerTransitionSimulator userId={userId} />
-                  <MayaAutonomousIntelligence />
-                </div>
-                <div className="space-y-6">
-                  <UnifiedProgressIndicator 
-                    data={{
-                      pivotProgress: sharedState.progressData?.currentProgress || 0,
-                      criScore: 75,
-                      roiConfidence: sharedState.selectedPivot?.roi_score || 0,
-                      timelineCompletion: 65,
-                      skillsAcquired: sharedState.progressData?.skillsAcquired || 0,
-                      totalSkills: (sharedState.selectedPivot?.missing_skills?.length || 0) + (sharedState.selectedPivot?.shared_skills?.length || 0),
-                      milestonesCompleted: sharedState.progressData?.milestones?.filter((m: any) => m.status === 'completed').length || 0,
-                      totalMilestones: sharedState.progressData?.milestones?.length || 0
+              {activeTab === 'pivot' && (
+                showComparison ? (
+                  <CrossPathComparisonPanel
+                    userId={userId}
+                    pivotPath={sharedState.selectedPivot}
+                    onGenerateRoadmap={handleGenerateRoadmap}
+                    onClose={() => {
+                      setShowComparison(false);
                     }}
-                    selectedPivot={sharedState.selectedPivot}
                   />
-                  <SmartSuggestionsWidget 
-                    suggestions={getSmartSuggestions()}
-                    mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                  />
-                  <CareerReadinessMonitor userId={userId} />
-                </div>
-              </div>
-            </LoadingFallback>
-          )}
+                ) : (
+                  <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    <div className="xl:col-span-3">
+                      <EnhancedPivotAdvisor
+                        userId={userId}
+                        currentRole={userProfile?.current_role}
+                        userSkills={userProfile?.skills}
+                        onViewComparison={handleSelectPivot}
+                      />
+                    </div>
+                    <div className="space-y-6">
+                      <SmartPivotRecommendations
+                        userId={userId}
+                        currentRole={userProfile?.current_role}
+                        userSkills={userProfile?.skills}
+                        onSelectPivot={handleSelectPivot}
+                        onViewDetails={handleViewDetails}
+                      />
+                      <SmartSuggestionsWidget 
+                        suggestions={getSmartSuggestions()}
+                        mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                      />
+                    </div>
+                  </div>
+                )
+              )}
 
-          {activeTab === 'pivot' && (
-            showComparison ? (
-              <CrossPathComparisonPanel
-                userId={userId}
-                pivotPath={sharedState.selectedPivot}
-                onGenerateRoadmap={handleGenerateRoadmap}
-                onClose={() => {
-                  setShowComparison(false);
-                }}
-              />
-            ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                <div className="xl:col-span-3">
-                  <EnhancedPivotAdvisor
-                    userId={userId}
-                    currentRole={userProfile?.current_role}
-                    userSkills={userProfile?.skills}
-                    onViewComparison={handleSelectPivot}
-                  />
-                </div>
+              {activeTab === 'tracker' && (
+                <TimelineProgressTracker
+                  targetCareer={sharedState.selectedPivot?.new_career || 'Product Manager'}
+                  overallProgress={sharedState.progressData?.currentProgress || 72}
+                  milestones={mockMilestones}
+                  skillsAcquired={sharedState.progressData?.skillsAcquired || 4}
+                  totalSkills={sharedState.progressData?.totalSkills || 7}
+                  estimatedCompletion="4 months"
+                  onMilestoneAction={handleMilestoneAction}
+                />
+              )}
+
+              {activeTab === 'workflows' && (
                 <div className="space-y-6">
-                  <SmartPivotRecommendations
-                    userId={userId}
-                    currentRole={userProfile?.current_role}
-                    userSkills={userProfile?.skills}
-                    onSelectPivot={handleSelectPivot}
-                    onViewDetails={handleViewDetails}
-                  />
-                  <SmartSuggestionsWidget 
-                    suggestions={getSmartSuggestions()}
-                    mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                  />
+                  <WorkflowActionHandler userId={userId} workflows={[]} />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <AutonomousWorkflowDashboard />
+                    <EnhancedWorkflowEngine />
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <PredictiveAnalyticsEngine />
+                    <RealTimeMarketIntelligence />
+                  </div>
                 </div>
-              </div>
-            )
-          )}
-
-          {activeTab === 'tracker' && (
-            <TimelineProgressTracker
-              targetCareer={sharedState.selectedPivot?.new_career || 'Product Manager'}
-              overallProgress={sharedState.progressData?.currentProgress || 72}
-              milestones={mockMilestones}
-              skillsAcquired={sharedState.progressData?.skillsAcquired || 4}
-              totalSkills={sharedState.progressData?.totalSkills || 7}
-              estimatedCompletion="4 months"
-              onMilestoneAction={handleMilestoneAction}
-            />
-          )}
-
-          {activeTab === 'workflows' && (
-            <div className="space-y-6">
-              <WorkflowActionHandler userId={userId} workflows={[]} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AutonomousWorkflowDashboard />
-                <EnhancedWorkflowEngine />
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PredictiveAnalyticsEngine />
-                <RealTimeMarketIntelligence />
-              </div>
+              )}
             </div>
-          )}
           </div>
         </div>
-      </div>
-    </SharedDataProvider>
+      </SharedDataProvider>
+    </EnhancedErrorBoundary>
   );
 }

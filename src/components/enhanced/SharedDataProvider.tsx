@@ -109,8 +109,23 @@ export function SharedDataProvider({ userId, children }: SharedDataProviderProps
   const refreshData = () => {
     setHasError(false);
     setErrorMessage(undefined);
-    // Trigger refetch by updating currentRole (will cause useEffect to run)
-    window.location.reload();
+    // Clear cached data and refetch
+    setMarketTrends([]);
+    setSalaryInsights(null);
+    
+    // Force refetch by calling the functions directly
+    if (currentRole) {
+      Promise.all([
+        getTopGrowingCareers("Remote", 10),
+        getSalaryInsights(currentRole)
+      ]).then(([trends, salary]) => {
+        setMarketTrends(trends || []);
+        setSalaryInsights(salary);
+      }).catch(() => {
+        setHasError(true);
+        setErrorMessage('Failed to refresh market data');
+      });
+    }
   };
   
   const clearError = () => {
