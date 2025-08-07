@@ -232,28 +232,24 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                     }}
                   />
                 ) : (
-                  <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                    <div className="xl:col-span-3">
-                      <EnhancedPivotAdvisor
-                        userId={userId}
-                        currentRole={userProfile?.current_role}
-                        userSkills={userProfile?.skills}
-                        onViewComparison={handleSelectPivot}
-                      />
-                    </div>
-                    <div className="space-y-6">
-                      <SmartPivotRecommendations
-                        userId={userId}
-                        currentRole={userProfile?.current_role}
-                        userSkills={userProfile?.skills}
-                        onSelectPivot={handleSelectPivot}
-                        onViewDetails={handleViewDetails}
-                      />
-                      <SmartSuggestionsWidget 
-                        suggestions={getSmartSuggestions()}
-                        mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                      />
-                    </div>
+                  <div className="space-y-6">
+                    <SmartPivotRecommendations
+                      userId={userId}
+                      currentRole={userProfile?.current_role}
+                      userSkills={userProfile?.skills}
+                      onSelectPivot={handleSelectPivot}
+                      onViewDetails={handleViewDetails}
+                    />
+                    <EnhancedPivotAdvisor
+                      userId={userId}
+                      currentRole={userProfile?.current_role}
+                      userSkills={userProfile?.skills}
+                      onViewComparison={handleSelectPivot}
+                    />
+                    <SmartSuggestionsWidget 
+                      suggestions={getSmartSuggestions()}
+                      mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                    />
                   </div>
                 )
               )}

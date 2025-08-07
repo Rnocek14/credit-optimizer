@@ -279,51 +279,47 @@ export function SmartPivotRecommendations({
 
         {renderMayaInsights()}
 
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          <div className="xl:col-span-3 space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                Top Recommended Career Pivots
-              </h3>
-              <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2">
-                {pivotRecommendations.slice(0, 3).map((pivot, index) => (
-                  <div key={`pivot-${pivot.new_career}-${index}`}>
-                    {renderTopRecommendation(pivot, index)}
-                  </div>
-                ))}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5" />
+            Top Recommended Career Pivots
+          </h3>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+            {pivotRecommendations.slice(0, 6).map((pivot, index) => (
+              <div key={`pivot-${pivot.new_career}-${index}`}>
+                {renderTopRecommendation(pivot, index)}
               </div>
-            </div>
+            ))}
           </div>
+        </div>
 
-          <div className="xl:col-span-1 space-y-6">
-            {renderMarketTrends()}
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Success Stories
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="font-medium">Sarah M.</div>
-                    <div className="text-muted-foreground">
-                      "Pivoted from Frontend Dev to UX Design. 40% salary increase in 8 months."
-                    </div>
-                  </div>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="font-medium">Alex K.</div>
-                    <div className="text-muted-foreground">
-                      "Transitioned to DevOps. Best career decision I've made."
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {renderMarketTrends()}
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Success Stories
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-medium">Sarah M.</div>
+                  <div className="text-muted-foreground">
+                    "Pivoted from Frontend Dev to UX Design. 40% salary increase in 8 months."
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-medium">Alex K.</div>
+                  <div className="text-muted-foreground">
+                    "Transitioned to DevOps. Best career decision I've made."
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </LoadingFallback>
