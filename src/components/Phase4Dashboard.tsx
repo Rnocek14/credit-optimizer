@@ -195,29 +195,31 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                   hasData={hasData}
                   fallbackMessage="Loading your personalized AI Co-Pilot..."
                 >
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 space-y-6">
-                    <MayaCareerCopilot userId={userId} />
-                  </div>
-                    <div className="space-y-6">
-                      <UnifiedProgressIndicator 
-                        data={{
-                          pivotProgress: sharedState.progressData?.currentProgress || 0,
-                          criScore: 75,
-                          roiConfidence: sharedState.selectedPivot?.roi_score || 0,
-                          timelineCompletion: 65,
-                          skillsAcquired: sharedState.progressData?.skillsAcquired || 0,
-                          totalSkills: (sharedState.selectedPivot?.missing_skills?.length || 0) + (sharedState.selectedPivot?.shared_skills?.length || 0),
-                          milestonesCompleted: sharedState.progressData?.milestones?.filter((m: any) => m.status === 'completed').length || 0,
-                          totalMilestones: sharedState.progressData?.milestones?.length || 0
-                        }}
-                        selectedPivot={sharedState.selectedPivot}
-                      />
-                      <SmartSuggestionsWidget 
-                        suggestions={getSmartSuggestions()}
-                        mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                      />
-                      <CareerReadinessMonitor userId={userId} />
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                      <div className="xl:col-span-3">
+                        <MayaCareerCopilot userId={userId} />
+                      </div>
+                      <div className="space-y-4">
+                        <UnifiedProgressIndicator 
+                          data={{
+                            pivotProgress: sharedState.progressData?.currentProgress || 0,
+                            criScore: 75,
+                            roiConfidence: sharedState.selectedPivot?.roi_score || 0,
+                            timelineCompletion: 65,
+                            skillsAcquired: sharedState.progressData?.skillsAcquired || 0,
+                            totalSkills: (sharedState.selectedPivot?.missing_skills?.length || 0) + (sharedState.selectedPivot?.shared_skills?.length || 0),
+                            milestonesCompleted: sharedState.progressData?.milestones?.filter((m: any) => m.status === 'completed').length || 0,
+                            totalMilestones: sharedState.progressData?.milestones?.length || 0
+                          }}
+                          selectedPivot={sharedState.selectedPivot}
+                        />
+                        <SmartSuggestionsWidget 
+                          suggestions={getSmartSuggestions()}
+                          mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                        />
+                        <CareerReadinessMonitor userId={userId} />
+                      </div>
                     </div>
                   </div>
                 </LoadingFallback>

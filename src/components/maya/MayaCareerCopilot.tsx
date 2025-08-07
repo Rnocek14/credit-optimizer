@@ -176,7 +176,7 @@ export function MayaCareerCopilot({ userId }: MayaCareerCopilotProps) {
   ];
 
   return (
-    <div className="h-[600px] flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Header */}
       <Card className="mb-4">
         <CardHeader className="pb-3">
@@ -199,7 +199,7 @@ export function MayaCareerCopilot({ userId }: MayaCareerCopilotProps) {
       {/* Quick Actions */}
       <Card className="mb-4">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {quickActions.map((action) => {
               const Icon = action.icon;
               const isLoading = quickActionLoading === action.id;
@@ -208,12 +208,12 @@ export function MayaCareerCopilot({ userId }: MayaCareerCopilotProps) {
                 <Button
                   key={action.id}
                   variant="outline"
-                  className="h-auto p-3 flex flex-col gap-2"
+                  className="h-auto p-3 flex flex-col items-center gap-2 text-center"
                   onClick={() => handleQuickAction(action.id, action.prompt)}
                   disabled={loading || isLoading}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="text-sm">{action.label}</span>
+                  <span className="text-sm font-medium">{action.label}</span>
                   {isLoading && <div className="text-xs text-muted-foreground">Processing...</div>}
                 </Button>
               );
@@ -223,16 +223,16 @@ export function MayaCareerCopilot({ userId }: MayaCareerCopilotProps) {
       </Card>
 
       {/* Messages Area */}
-      <Card className="flex-1 flex flex-col">
+      <Card className="flex-1 flex flex-col min-h-[400px]">
         <CardContent className="flex-1 flex flex-col p-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[500px]">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                  className={`max-w-[85%] p-3 rounded-lg ${
                     message.type === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'

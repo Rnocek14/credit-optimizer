@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Bot, Zap, Play, Pause, CheckCircle, Clock, AlertCircle, Settings } from 'lucide-react';
 import { useEnhancedMaya } from '@/hooks/useEnhancedMaya';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
 import { useToast } from '@/hooks/use-toast';
 
 interface WorkflowItem {
@@ -26,69 +27,62 @@ interface MayaWorkflowEngineProps {
 
 export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
   const { profile: userProfile } = useUserProfile(userId);
-  const { sendEnhancedRequest, loading } = useEnhancedMaya();
+  const { sendEnhancedRequest, loading: mayaLoading } = useEnhancedMaya();
+  const { 
+    workflows: dbWorkflows,
+    loading: workflowsLoading,
+    fetchUserWorkflows,
+    pauseWorkflow,
+    resumeWorkflow,
+    createWorkflow
+  } = useAutonomousWorkflows();
   const { toast } = useToast();
-  const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
   const [mayaInsights, setMayaInsights] = useState<any>(null);
 
+  // Convert database workflows to display format
+  const workflows: WorkflowItem[] = dbWorkflows.map(w => ({
+    id: w.id,
+    title: w.title,
+    description: w.description || '',
+    status: mapDatabaseStatus(w.status),
+    progress: w.progress_percentage || 0,
+    priority: w.priority as 'high' | 'medium' | 'low',
+    estimatedTime: w.estimated_duration_days ? `${w.estimated_duration_days} days` : '1-2 days',
+    category: w.workflow_type || 'General',
+    mayaRecommended: w.workflow_type?.includes('maya') || false
+  }));
+
+  // Helper function to map database status to display status
+  function mapDatabaseStatus(status: string): 'active' | 'paused' | 'completed' | 'pending' {
+    switch (status) {
+      case 'active':
+      case 'running':
+        return 'active';
+      case 'paused':
+        return 'paused';
+      case 'completed':
+        return 'completed';
+      case 'planning':
+      case 'pending':
+      default:
+        return 'pending';
+    }
+  }
+
   useEffect(() => {
-    // Initialize with sample workflows and get Maya's optimization suggestions
-    const initializeWorkflows = async () => {
-      const sampleWorkflows: WorkflowItem[] = [
-        {
-          id: '1',
-          title: 'Resume Optimization',
-          description: 'AI-powered resume analysis and enhancement',
-          status: 'active',
-          progress: 75,
-          priority: 'high',
-          estimatedTime: '2 hours',
-          category: 'Career Development',
-          mayaRecommended: true
-        },
-        {
-          id: '2',
-          title: 'Skill Gap Analysis',
-          description: 'Analyze current skills vs target role requirements',
-          status: 'completed',
-          progress: 100,
-          priority: 'high',
-          estimatedTime: '30 minutes',
-          category: 'Skills Assessment',
-          mayaRecommended: true
-        },
-        {
-          id: '3',
-          title: 'Market Trend Monitoring',
-          description: 'Track relevant industry trends and opportunities',
-          status: 'active',
-          progress: 45,
-          priority: 'medium',
-          estimatedTime: 'Ongoing',
-          category: 'Market Intelligence',
-          mayaRecommended: false
-        },
-        {
-          id: '4',
-          title: 'Learning Path Optimization',
-          description: 'Optimize course selection based on career goals',
-          status: 'pending',
-          progress: 0,
-          priority: 'medium',
-          estimatedTime: '1 hour',
-          category: 'Learning',
-          mayaRecommended: true
-        }
-      ];
+    // Fetch real workflows from database
+    fetchUserWorkflows();
+  }, [fetchUserWorkflows]);
 
-      setWorkflows(sampleWorkflows);
-
-      // Get Maya's workflow optimization insights
-      if (userProfile) {
+  useEffect(() => {
+    // Get Maya's workflow optimization insights
+    const getMayaInsights = async () => {
+      if (userProfile && workflows.length > 0) {
         const context = {
           careerPath: userProfile.current_role,
           goals: userProfile.career_goals,
-          skillLevel: userProfile.experience_level === 'entry' ? 1 : userProfile.experience_level === 'mid' ? 2 : 3
+          skillLevel: userProfile.experience_level === 'entry' ? 1 : userProfile.experience_level === 'mid' ? 2 : 3,
+          currentWorkflows: workflows.length
         };
 
         const response = await sendEnhancedRequest(
@@ -102,66 +96,79 @@ export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
       }
     };
 
-    initializeWorkflows();
-  }, [userProfile, sendEnhancedRequest]);
+    getMayaInsights();
+  }, [userProfile, workflows.length, sendEnhancedRequest]);
 
-  const handleWorkflowAction = (workflowId: string, action: 'start' | 'pause' | 'resume') => {
-    setWorkflows(prev => prev.map(workflow => {
-      if (workflow.id === workflowId) {
-        switch (action) {
-          case 'start':
-            return { ...workflow, status: 'active' as const };
-          case 'pause':
-            return { ...workflow, status: 'paused' as const };
-          case 'resume':
-            return { ...workflow, status: 'active' as const };
-          default:
-            return workflow;
-        }
+  const handleWorkflowAction = async (workflowId: string, action: 'start' | 'pause' | 'resume') => {
+    try {
+      switch (action) {
+        case 'pause':
+          await pauseWorkflow(workflowId);
+          break;
+        case 'resume':
+        case 'start':
+          await resumeWorkflow(workflowId);
+          break;
       }
-      return workflow;
-    }));
-
-    toast({
-      title: "Workflow Updated",
-      description: `Workflow ${action}ed successfully`,
-      variant: "default"
-    });
+      
+      // Refresh workflows after action
+      await fetchUserWorkflows();
+      
+      toast({
+        title: "Workflow Updated",
+        description: `Workflow ${action}ed successfully`,
+        variant: "default"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${action} workflow`,
+        variant: "destructive"
+      });
+    }
   };
 
   const createNewWorkflow = async () => {
     if (!userProfile) return;
 
-    const context = {
-      careerPath: userProfile.current_role,
-      goals: userProfile.career_goals,
-      skillLevel: userProfile.experience_level === 'entry' ? 1 : userProfile.experience_level === 'mid' ? 2 : 3
-    };
-
-    const response = await sendEnhancedRequest(
-      "Suggest a new autonomous workflow that would benefit my career progression right now.",
-      context
-    );
-
-    if (response && response.autonomousActions?.length > 0) {
-      const newWorkflow: WorkflowItem = {
-        id: Date.now().toString(),
-        title: response.autonomousActions[0].action || 'New Maya Workflow',
-        description: response.autonomousActions[0].reasoning || 'Maya-generated workflow',
-        status: 'pending',
-        progress: 0,
-        priority: 'medium',
-        estimatedTime: '1-2 hours',
-        category: 'Maya Suggested',
-        mayaRecommended: true
+    try {
+      // Get Maya's suggestion for a new workflow
+      const context = {
+        careerPath: userProfile.current_role,
+        goals: userProfile.career_goals,
+        skillLevel: userProfile.experience_level === 'entry' ? 1 : userProfile.experience_level === 'mid' ? 2 : 3
       };
 
-      setWorkflows(prev => [...prev, newWorkflow]);
-      
+      const mayaResponse = await sendEnhancedRequest(
+        "Suggest a new autonomous workflow that would benefit my career progression right now.",
+        context
+      );
+
+      if (mayaResponse && mayaResponse.autonomousActions?.length > 0) {
+        const suggestion = mayaResponse.autonomousActions[0];
+        
+        // Create workflow using the database
+        const customization = {
+          title: suggestion.action || 'Maya Recommended Workflow',
+          description: suggestion.reasoning || 'AI-generated workflow for career progression',
+          targetOutcome: suggestion.outcome || 'Improve career readiness',
+          priority: 'medium',
+          context: context
+        };
+
+        await createWorkflow('maya_suggested', customization);
+        
+        toast({
+          title: "New Workflow Created",
+          description: "Maya has created a new workflow for you",
+          variant: "default"
+        });
+      }
+    } catch (error) {
       toast({
-        title: "New Workflow Created",
-        description: "Maya has suggested a new workflow for you",
-        variant: "default"
+        title: "Error",
+        description: "Failed to create new workflow",
+        variant: "destructive"
       });
     }
   };
@@ -212,7 +219,7 @@ export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
               <p className="text-sm text-muted-foreground">AI-powered autonomous task management</p>
             </div>
             <div className="ml-auto flex gap-2">
-              <Button variant="outline" size="sm" onClick={createNewWorkflow} disabled={loading}>
+              <Button variant="outline" size="sm" onClick={createNewWorkflow} disabled={mayaLoading || workflowsLoading}>
                 <Zap className="w-4 h-4 mr-2" />
                 Create Workflow
               </Button>
@@ -253,7 +260,12 @@ export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeWorkflows.length > 0 ? (
+            {workflowsLoading ? (
+              <div className="text-center py-6">
+                <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p className="text-sm text-muted-foreground">Loading workflows...</p>
+              </div>
+            ) : activeWorkflows.length > 0 ? (
               activeWorkflows.map((workflow) => (
                 <div key={workflow.id} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-2">
@@ -291,6 +303,7 @@ export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleWorkflowAction(workflow.id, 'pause')}
+                      disabled={workflowsLoading}
                     >
                       <Pause className="w-3 h-3 mr-1" />
                       Pause
@@ -309,7 +322,7 @@ export function MayaWorkflowEngine({ userId }: MayaWorkflowEngineProps) {
               <div className="text-center py-6">
                 <Zap className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No active workflows</p>
-                <Button variant="outline" size="sm" className="mt-2" onClick={createNewWorkflow}>
+                <Button variant="outline" size="sm" className="mt-2" onClick={createNewWorkflow} disabled={workflowsLoading}>
                   Create Your First Workflow
                 </Button>
               </div>
