@@ -4,7 +4,7 @@ project_id = "vzpissitddpunkpythsb"
 verify_jwt = false
 
 [functions.generate-roadmap]
-verify_jwt = false
+verify_jwt = true
 
 [functions.signup-automation]
 verify_jwt = false
@@ -16,7 +16,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.ai-path-validator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.market-trend-analyzer]
 verify_jwt = false
@@ -46,4 +46,4 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.linkedin-import]
-verify_jwt = false
+verify_jwt = true
