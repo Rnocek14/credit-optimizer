@@ -24,6 +24,7 @@ import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
 import { SmartSuggestionsWidget } from './enhanced/SmartSuggestionsWidget';
 import { UnifiedProgressIndicator } from './enhanced/UnifiedProgressIndicator';
+import { IntegratedReadinessInsights } from './IntegratedReadinessInsights';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePhase4Integration } from '@/hooks/usePhase4Integration';
 import { useNavigate } from 'react-router-dom';
@@ -220,19 +221,12 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                         />
                       </div>
                       
-                      {/* Bottom Row - Smart Suggestions and Career Readiness side by side */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <SmartSuggestionsWidget 
-                            suggestions={getSmartSuggestions()}
-                            mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                          />
-                        </div>
-                        
-                        <div>
-                          <CareerReadinessMonitor userId={userId} />
-                        </div>
-                      </div>
+                      {/* Integrated Readiness + Insights */}
+                      <IntegratedReadinessInsights 
+                        userId={userId}
+                        suggestions={getSmartSuggestions()}
+                        mayaReasoning={getMayaReasoning('readiness_analysis', sharedState.selectedPivot)}
+                      />
                     </div>
                   </div>
                 </LoadingFallback>
