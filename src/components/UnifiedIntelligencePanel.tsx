@@ -320,11 +320,23 @@ export function UnifiedIntelligencePanel({ userId }: UnifiedIntelligencePanelPro
                               <Badge variant="outline" className="text-xs">
                                 {Math.round(insight.confidence * 100)}% confidence
                               </Badge>
-                              {insight.actionable && (
-                                <Button variant="outline" size="sm">
+                               {insight.actionable && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    if (insight.source === 'cri') {
+                                      window.location.href = '/goals';
+                                    } else if (insight.source === 'market') {
+                                      window.location.href = '/market-intelligence';
+                                    } else {
+                                      window.location.href = '/planner';
+                                    }
+                                  }}
+                                >
                                   Take Action
                                 </Button>
-                              )}
+                               )}
                             </div>
                           </div>
                         </div>
@@ -368,7 +380,19 @@ export function UnifiedIntelligencePanel({ userId }: UnifiedIntelligencePanelPro
                         </div>
                       </div>
                       {insight.actionable && (
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            if (insight.source === 'cri') {
+                              window.location.href = '/goals';
+                            } else if (insight.source === 'market') {
+                              window.location.href = '/market-intelligence';
+                            } else {
+                              window.location.href = '/planner';
+                            }
+                          }}
+                        >
                           Act on Insight
                         </Button>
                       )}

@@ -214,16 +214,28 @@ export function SmartPivotRecommendations({
           </div>
 
           <div className="pt-2 border-t">
-            <Button 
-              className="w-full" 
-              variant={index === 0 ? "default" : "outline"}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectPivot?.(pivot);
-              }}
-            >
-              {index === 0 ? 'Start This Pivot' : 'Explore This Option'}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewDetails?.(pivot);
+                }}
+              >
+                View Details
+              </Button>
+              <Button 
+                variant={index === 0 ? "default" : "outline"}
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectPivot?.(pivot);
+                }}
+              >
+                {index === 0 ? 'Compare' : 'Select'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

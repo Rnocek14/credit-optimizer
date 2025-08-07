@@ -419,7 +419,16 @@ export function CrossPathComparisonPanel({
                   Based on your profile and market trends
                 </p>
               </div>
-              <Button className="flex items-center gap-2">
+              <Button 
+                className="flex items-center gap-2"
+                onClick={() => {
+                  if (selectedPath === 'current') {
+                    onGenerateRoadmap?.(paths.current);
+                  } else {
+                    onGenerateRoadmap?.(paths.pivot);
+                  }
+                }}
+              >
                 <Zap className="w-4 h-4" />
                 Generate Action Plan
               </Button>

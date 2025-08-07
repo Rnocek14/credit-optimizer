@@ -18,6 +18,9 @@ import { GoalOrchestrator } from './GoalOrchestrator';
 import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
 import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface Phase4DashboardProps {
   userId: string;
@@ -27,6 +30,52 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   const [activeTab, setActiveTab] = useState('copilot');
   const [selectedPivotPath, setSelectedPivotPath] = useState<any>(null);
   const [showComparison, setShowComparison] = useState(false);
+  
+  const navigate = useNavigate();
+  const { profile, isLoading: profileLoading } = useUserProfile(userId);
+  const { toast } = useToast();
+
+  const handleGenerateRoadmap = (path: any) => {
+    toast({
+      title: "Generating roadmap...",
+      description: `Creating personalized plan for ${path.name || path.new_career}`,
+      variant: "default"
+    });
+    
+    navigate('/planner', { 
+      state: { 
+        targetRole: path.name || path.new_career,
+        pivotData: path 
+      }
+    });
+  };
+
+  const handleSelectPivot = (pivotPath: any) => {
+    toast({
+      title: "Pivot path selected",
+      description: `Analyzing ${pivotPath.new_career} career transition`,
+      variant: "default"
+    });
+    
+    setSelectedPivotPath(pivotPath);
+    setShowComparison(true);
+  };
+
+  const handleViewDetails = (pivotPath: any) => {
+    toast({
+      title: "Opening detailed analysis",
+      description: `Viewing Maya's insights for ${pivotPath.new_career}`,
+      variant: "default"
+    });
+    
+    navigate('/maya-roadmap', {
+      state: {
+        pivotPath,
+        currentRole: profile?.current_role,
+        userSkills: profile?.skills
+      }
+    });
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -82,13 +131,24 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
         </TabsList>
 
         <TabsContent value="copilot" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <CareerTransitionSimulator userId={userId} />
-            <div className="space-y-6">
-              <MayaAutonomousIntelligence />
-              <CareerReadinessMonitor userId={userId} />
+          {profileLoading ? (
+            <Card>
+              <CardContent className="p-8">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-3">Loading your profile...</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CareerTransitionSimulator userId={userId} />
+              <div className="space-y-6">
+                <MayaAutonomousIntelligence />
+                <CareerReadinessMonitor userId={userId} />
+              </div>
             </div>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="pivot" className="space-y-6">
@@ -96,10 +156,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
             <CrossPathComparisonPanel
               userId={userId}
               pivotPath={selectedPivotPath}
-              onGenerateRoadmap={(path) => {
-                console.log('Generate roadmap for:', path);
-                // Future integration with roadmap generation
-              }}
+              onGenerateRoadmap={handleGenerateRoadmap}
               onClose={() => {
                 setShowComparison(false);
                 setSelectedPivotPath(null);
@@ -110,23 +167,18 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               <div className="xl:col-span-2">
                 <EnhancedPivotAdvisor
                   userId={userId}
-                  onViewComparison={(pivotPath) => {
-                    setSelectedPivotPath(pivotPath);
-                    setShowComparison(true);
-                  }}
+                  currentRole={profile?.current_role}
+                  userSkills={profile?.skills}
+                  onViewComparison={handleSelectPivot}
                 />
               </div>
               <div>
                 <SmartPivotRecommendations
                   userId={userId}
-                  onSelectPivot={(pivotPath) => {
-                    setSelectedPivotPath(pivotPath);
-                    setShowComparison(true);
-                  }}
-                  onViewDetails={(pivotPath) => {
-                    console.log('View details for:', pivotPath);
-                    // Future integration with detailed pivot analysis
-                  }}
+                  currentRole={profile?.current_role}
+                  userSkills={profile?.skills}
+                  onSelectPivot={handleSelectPivot}
+                  onViewDetails={handleViewDetails}
                 />
               </div>
             </div>

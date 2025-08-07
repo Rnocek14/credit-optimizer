@@ -286,6 +286,7 @@ export function GoalOrchestrator({ userId }: GoalOrchestratorProps) {
                         variant="outline" 
                         size="sm"
                         onClick={() => handlePauseWorkflow(workflow.id)}
+                        title="Pause workflow"
                       >
                         <Pause className="w-4 h-4" />
                       </Button>
@@ -294,6 +295,7 @@ export function GoalOrchestrator({ userId }: GoalOrchestratorProps) {
                         variant="outline" 
                         size="sm"
                         onClick={() => handleStartWorkflow(workflow.id)}
+                        title="Start workflow"
                       >
                         <Play className="w-4 h-4" />
                       </Button>
@@ -302,6 +304,7 @@ export function GoalOrchestrator({ userId }: GoalOrchestratorProps) {
                       variant="outline" 
                       size="sm"
                       onClick={() => handleOptimizeWorkflow(workflow.id)}
+                      title="Optimize with Maya AI"
                     >
                       <Brain className="w-4 h-4" />
                     </Button>

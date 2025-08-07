@@ -232,9 +232,22 @@ export function EnhancedPivotAdvisor({
             </div>
           </div>
 
-          <Button className="w-full" onClick={() => onViewComparison?.(selectedPivot)}>
-            Compare Paths & Generate Roadmap
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => onViewComparison?.(selectedPivot)}
+            >
+              Compare Paths
+            </Button>
+            <Button 
+              onClick={() => {
+                // Navigate to planner with pivot data
+                window.location.href = `/planner?pivot=${encodeURIComponent(JSON.stringify(selectedPivot))}`;
+              }}
+            >
+              Generate Roadmap
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
