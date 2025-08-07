@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Zap, TrendingUp, Users, Brain, Activity } from 'lucide-react';
+import { Bot, Zap, TrendingUp, Users, Brain, Activity, Heart, Target } from 'lucide-react';
 import { AutonomousWorkflowDashboard } from './AutonomousWorkflowDashboard';
 import { PredictiveAnalyticsEngine } from './PredictiveAnalyticsEngine';
 import RealTimeMarketPulse from './RealTimeMarketPulse';
@@ -12,13 +12,16 @@ import { CareerReadinessMonitor } from './CareerReadinessMonitor';
 import { EnhancedWorkflowEngine } from './EnhancedWorkflowEngine';
 import { RealTimeMarketIntelligence } from './RealTimeMarketIntelligence';
 import { CareerTransitionSimulator } from './CareerTransitionSimulator';
+import { CareerHealthMonitor } from './CareerHealthMonitor';
+import { UnifiedIntelligencePanel } from './UnifiedIntelligencePanel';
+import { GoalOrchestrator } from './GoalOrchestrator';
 
 interface Phase4DashboardProps {
   userId: string;
 }
 
 export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
-  const [activeTab, setActiveTab] = useState('simulator');
+  const [activeTab, setActiveTab] = useState('copilot');
 
   return (
     <div className="w-full space-y-6">
@@ -42,79 +45,68 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
 
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
-          <TabsTrigger value="simulator" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="copilot" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
-            Co-Pilot
+            Co-Pilot Hub
           </TabsTrigger>
-          <TabsTrigger value="autonomous" className="flex items-center gap-2">
-            <Bot className="w-4 h-4" />
-            Workflows
-          </TabsTrigger>
-          <TabsTrigger value="enhanced" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            Enhanced Engine
-          </TabsTrigger>
-          <TabsTrigger value="predictive" className="flex items-center gap-2">
-            <Brain className="w-4 h-4" />
-            Predictive
-          </TabsTrigger>
-          <TabsTrigger value="market" className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Market Pulse
-          </TabsTrigger>
-          <TabsTrigger value="market-intel" className="flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            Market Intel
+          <TabsTrigger value="health" className="flex items-center gap-2">
+            <Heart className="w-4 h-4" />
+            Career Health
           </TabsTrigger>
           <TabsTrigger value="intelligence" className="flex items-center gap-2">
             <Brain className="w-4 h-4" />
-            Maya AI
+            Unified Intel
           </TabsTrigger>
-          <TabsTrigger value="collaboration" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Collaboration
+          <TabsTrigger value="goals" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Goal Orchestrator
           </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-2">
+          <TabsTrigger value="simulator" className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Transition Sim
+          </TabsTrigger>
+          <TabsTrigger value="workflows" className="flex items-center gap-2">
             <Activity className="w-4 h-4" />
-            Monitoring
+            Workflows
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="copilot" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CareerTransitionSimulator userId={userId} />
+            <div className="space-y-6">
+              <MayaAutonomousIntelligence />
+              <CareerReadinessMonitor userId={userId} />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="health" className="space-y-6">
+          <CareerHealthMonitor userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="intelligence" className="space-y-6">
+          <UnifiedIntelligencePanel userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="goals" className="space-y-6">
+          <GoalOrchestrator userId={userId} />
+        </TabsContent>
 
         <TabsContent value="simulator" className="space-y-6">
           <CareerTransitionSimulator userId={userId} />
         </TabsContent>
 
-        <TabsContent value="autonomous" className="space-y-6">
-          <AutonomousWorkflowDashboard />
-        </TabsContent>
-
-        <TabsContent value="enhanced" className="space-y-6">
-          <EnhancedWorkflowEngine />
-        </TabsContent>
-
-        <TabsContent value="predictive" className="space-y-6">
-          <PredictiveAnalyticsEngine />
-        </TabsContent>
-
-        <TabsContent value="market" className="space-y-6">
-          <RealTimeMarketPulse />
-        </TabsContent>
-
-        <TabsContent value="market-intel" className="space-y-6">
-          <RealTimeMarketIntelligence />
-        </TabsContent>
-
-        <TabsContent value="intelligence" className="space-y-6">
-          <MayaAutonomousIntelligence />
-        </TabsContent>
-
-        <TabsContent value="collaboration" className="space-y-6">
-          <EnterpriseCollaborationHub />
-        </TabsContent>
-
-        <TabsContent value="monitoring" className="space-y-6">
-          <CareerReadinessMonitor userId={userId} />
+        <TabsContent value="workflows" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AutonomousWorkflowDashboard />
+            <EnhancedWorkflowEngine />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PredictiveAnalyticsEngine />
+            <RealTimeMarketIntelligence />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
