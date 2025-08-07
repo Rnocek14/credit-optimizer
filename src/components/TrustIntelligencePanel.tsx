@@ -15,6 +15,8 @@ export function TrustIntelligencePanel() {
   const { metrics, isLoading, refresh, isRefreshing } = useTrustMetrics(user?.id);
   const [rating, setRating] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingShare, setIsCreatingShare] = useState(false);
+  const [shareLink, setShareLink] = useState<string>('');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -57,6 +59,35 @@ export function TrustIntelligencePanel() {
       toast({ title: 'Could not submit feedback', description: err.message ?? 'Please try again later', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const createShare = async () => {
+    if (!user?.id || !metrics) {
+      toast({ title: 'Nothing to share yet', description: 'Interact to generate trust metrics first.' });
+      return;
+    }
+    try {
+      setIsCreatingShare(true);
+      const payload = {
+        user_id: user.id,
+        title: 'My Maya Trust Badge',
+        metrics_snapshot: metrics as any,
+        visibility: 'public' as const,
+      };
+      const { data, error } = await supabase
+        .from('trust_badge_shares')
+        .insert(payload)
+        .select('share_token')
+        .single();
+      if (error) throw error;
+      const link = `${window.location.origin}/share/trust/${data.share_token}`;
+      setShareLink(link);
+      toast({ title: 'Share link created', description: 'You can share your Trust Badge publicly.' });
+    } catch (err: any) {
+      toast({ title: 'Could not create share link', description: err.message ?? 'Please try again later', variant: 'destructive' });
+    } finally {
+      setIsCreatingShare(false);
     }
   };
 
@@ -180,6 +211,34 @@ export function TrustIntelligencePanel() {
               {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Submit
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Share Trust Badge</CardTitle>
+          <CardDescription>Create a public link to your current Trust metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex gap-2">
+              <Button onClick={createShare} disabled={!user || !metrics || isCreatingShare} variant="outline">
+                {isCreatingShare ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {shareLink ? 'Regenerate Link' : 'Create Share Link'}
+              </Button>
+              <Button
+                onClick={() => shareLink && navigator.clipboard.writeText(shareLink).then(() => toast({ title: 'Copied to clipboard' }))}
+                disabled={!shareLink}
+              >
+                Copy Link
+              </Button>
+            </div>
+            {shareLink ? (
+              <span className="text-xs text-muted-foreground break-all">{shareLink}</span>
+            ) : (
+              <span className="text-xs text-muted-foreground">No link yet</span>
+            )}
           </div>
         </CardContent>
       </Card>

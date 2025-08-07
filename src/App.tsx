@@ -82,6 +82,7 @@ import Phase4 from "./pages/Phase4";
 import Phase5 from "./pages/Phase5";
 import Phase6 from "./pages/Phase6";
 import Phase7 from "./pages/Phase7";
+import ShareTrust from "./pages/ShareTrust";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -159,6 +160,7 @@ const App = () => (
           
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
+          <Route path="/share/trust/:token" element={<ShareTrust />} />
           <Route path="/demos" element={<Demos />} />
           <Route path="/badges" element={<Badges />} />
           <Route path="/badges/:slug" element={<BadgeDetail />} />

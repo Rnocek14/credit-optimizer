@@ -5408,6 +5408,42 @@ export type Database = {
         }
         Relationships: []
       }
+      trust_badge_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          metrics_snapshot: Json
+          share_token: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metrics_snapshot?: Json
+          share_token?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metrics_snapshot?: Json
+          share_token?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
