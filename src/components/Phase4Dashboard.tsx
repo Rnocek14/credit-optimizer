@@ -15,6 +15,9 @@ import { CareerTransitionSimulator } from './CareerTransitionSimulator';
 import { CareerHealthMonitor } from './CareerHealthMonitor';
 import { UnifiedIntelligencePanel } from './UnifiedIntelligencePanel';
 import { GoalOrchestrator } from './GoalOrchestrator';
+import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
+import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
+import { SmartPivotRecommendations } from './SmartPivotRecommendations';
 
 interface Phase4DashboardProps {
   userId: string;
@@ -22,6 +25,8 @@ interface Phase4DashboardProps {
 
 export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   const [activeTab, setActiveTab] = useState('copilot');
+  const [selectedPivotPath, setSelectedPivotPath] = useState<any>(null);
+  const [showComparison, setShowComparison] = useState(false);
 
   return (
     <div className="w-full space-y-6">
@@ -45,10 +50,14 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
 
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="copilot" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
             Co-Pilot Hub
+          </TabsTrigger>
+          <TabsTrigger value="pivot" className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Pivot Intelligence
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Heart className="w-4 h-4" />
@@ -80,6 +89,48 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               <CareerReadinessMonitor userId={userId} />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="pivot" className="space-y-6">
+          {showComparison ? (
+            <CrossPathComparisonPanel
+              userId={userId}
+              pivotPath={selectedPivotPath}
+              onGenerateRoadmap={(path) => {
+                console.log('Generate roadmap for:', path);
+                // Future integration with roadmap generation
+              }}
+              onClose={() => {
+                setShowComparison(false);
+                setSelectedPivotPath(null);
+              }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <EnhancedPivotAdvisor
+                  userId={userId}
+                  onViewComparison={(pivotPath) => {
+                    setSelectedPivotPath(pivotPath);
+                    setShowComparison(true);
+                  }}
+                />
+              </div>
+              <div>
+                <SmartPivotRecommendations
+                  userId={userId}
+                  onSelectPivot={(pivotPath) => {
+                    setSelectedPivotPath(pivotPath);
+                    setShowComparison(true);
+                  }}
+                  onViewDetails={(pivotPath) => {
+                    console.log('View details for:', pivotPath);
+                    // Future integration with detailed pivot analysis
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="health" className="space-y-6">
