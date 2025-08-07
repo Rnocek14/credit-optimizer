@@ -82,7 +82,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
         </TabsList>
 
         <TabsContent value="simulator" className="space-y-6">
-          <CareerTransitionSimulator />
+          <CareerTransitionSimulator userId={userId} />
         </TabsContent>
 
         <TabsContent value="autonomous" className="space-y-6">

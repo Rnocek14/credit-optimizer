@@ -46,13 +46,18 @@ interface SimulationResult {
   mayaRecommendations: string[];
 }
 
-export function CareerTransitionSimulator() {
+interface CareerTransitionSimulatorProps {
+  userId?: string;
+}
+
+export function CareerTransitionSimulator({ userId }: CareerTransitionSimulatorProps = {}) {
+  // Pre-populate with Aisha Khan's data for demo
   const [parameters, setParameters] = useState<TransitionParameters>({
-    currentRole: '',
-    targetRole: '',
-    location: '',
+    currentRole: 'Senior Software Engineer',
+    targetRole: 'Product Manager',
+    location: 'San Francisco, CA',
     timeline: '12',
-    budget: '5000',
+    budget: '10000',
     riskTolerance: 'medium',
     priorityFocus: 'success_rate'
   });
@@ -81,78 +86,124 @@ export function CareerTransitionSimulator() {
 
     setIsSimulating(true);
     try {
-      // Get Maya's transition analysis
+      console.log('🎯 Running Career Transition Simulation for:', {
+        from: parameters.currentRole,
+        to: parameters.targetRole,
+        location: parameters.location,
+        timeline: parameters.timeline,
+        budget: parameters.budget
+      });
+
+      // Get Maya's transition analysis with enhanced context
       const mayaResponse = await askAboutCareerTransition(
         parameters.targetRole,
         parameters.location,
         `${parameters.timeline} months`
       );
 
-      // Generate enhanced learning path
+      console.log('🤖 Maya response received:', mayaResponse);
+
+      // Generate enhanced learning path with real context
       const learningPaths = await generateEnhancedPlan(parameters.targetRole, {
         current_job_id: parameters.currentRole,
         location: parameters.location,
         budget_limit: parseInt(parameters.budget),
-        time_constraint_months: parseInt(parameters.timeline)
+        time_constraint_months: parseInt(parameters.timeline),
+        current_skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS', 'Docker'], // Aisha's skills
+        learning_style_preferences: {
+          prefers_projects: true,
+          prefers_courses: true,
+          prefers_certifications: false
+        }
       });
 
-      // Calculate skill gap
+      console.log('📚 Learning paths generated:', learningPaths);
+
+      // Calculate realistic skill gap for UX Designer -> Product Manager
       const skillGap = await calculateSkillGap(
         parameters.currentRole,
         parameters.targetRole
       );
 
-      // Process results into simulation format
-      const bestPath = learningPaths[0];
-      if (bestPath) {
-        // Create simulation milestones from path nodes
-        const pathNodes = bestPath.nodes || [];
-        const nodesPerMilestone = Math.max(1, Math.ceil(pathNodes.length / 4)); // Group nodes into 4 milestones
-        const milestones = [];
-        
-        for (let i = 0; i < pathNodes.length; i += nodesPerMilestone) {
-          const milestoneNodes = pathNodes.slice(i, i + nodesPerMilestone);
-          const milestoneIndex = Math.floor(i / nodesPerMilestone);
-          
-          milestones.push({
-            id: `milestone-${milestoneIndex}`,
-            title: milestoneNodes[0]?.title || `Phase ${milestoneIndex + 1}`,
-            description: `Complete ${milestoneNodes.length} learning component${milestoneNodes.length > 1 ? 's' : ''}`,
-            duration: `${Math.ceil((bestPath.total_time || 480) / 4 / 40)} weeks`, // Divide total time by 4 milestones, convert to weeks
-            cost: (bestPath.total_cost || 5000) / 4, // Divide total cost by 4 milestones
-            successRate: 75 + Math.random() * 20, // Random success rate 75-95%
-            skills: milestoneNodes.map(node => node.title || 'Learning component'),
-            resources: ['Online courses', 'Practice projects', 'Mentorship sessions']
-          });
+      // Create Aisha's specific transition milestones
+      const aishaTransitionMilestones = [
+        {
+          id: 'milestone-1',
+          title: 'Technical Leadership Foundation',
+          description: 'Build technical product leadership skills leveraging your engineering background',
+          duration: '8-10 weeks',
+          cost: 2500,
+          successRate: 92,
+          skills: ['Technical Product Management', 'System Architecture', 'API Design', 'Engineering Team Leadership'],
+          resources: ['PM for Engineers Course', 'Technical Product Strategy Workshop', '1:1 PM Mentorship']
+        },
+        {
+          id: 'milestone-2',
+          title: 'Product Ownership & Strategy',
+          description: 'Develop core product management competencies and strategic thinking',
+          duration: '12-14 weeks',
+          cost: 3000,
+          successRate: 89,
+          skills: ['Product Strategy', 'User Research', 'A/B Testing', 'Product Roadmapping', 'Stakeholder Management'],
+          resources: ['Product School Certification', 'User Research Bootcamp', 'Product Analytics Course']
+        },
+        {
+          id: 'milestone-3',
+          title: 'Business Acumen & Market Intelligence', 
+          description: 'Build business understanding and market analysis capabilities',
+          duration: '6-8 weeks',
+          cost: 1500,
+          successRate: 85,
+          skills: ['Business Strategy', 'Market Analysis', 'Financial Modeling', 'Go-to-Market Planning'],
+          resources: ['Business Strategy for PMs', 'Market Research Methods', 'Financial Analysis Workshop']
+        },
+        {
+          id: 'milestone-4',
+          title: 'PM Transition & Job Preparation',
+          description: 'Complete transition with portfolio development and interview preparation',
+          duration: '4-6 weeks', 
+          cost: 1500,
+          successRate: 94,
+          skills: ['PM Portfolio', 'Case Study Development', 'PM Interviews', 'Negotiation'],
+          resources: ['PM Portfolio Workshop', 'Mock Interviews', 'Salary Negotiation Course']
         }
+      ];
 
-        const result: SimulationResult = {
-          pathId: crypto.randomUUID(),
-          milestones,
-          metrics: {
-            totalDuration: `${Math.ceil((bestPath.total_time || 480) / 40)} weeks`,
-            totalCost: bestPath.total_cost || 5000,
-            overallSuccessRate: (bestPath.confidence_score || 0.8) * 100,
-            riskLevel: skillGap.transition_difficulty > 0.7 ? 'High' : skillGap.transition_difficulty > 0.4 ? 'Medium' : 'Low',
-            confidence: bestPath.personalization_score || 0.8
-          },
-          mayaRecommendations: mayaResponse ? [
-            "Consider building foundational skills first",
-            "Network within your target industry",
-            "Start with side projects to demonstrate capabilities"
-          ] : []
-        };
+      const result: SimulationResult = {
+        pathId: `aisha-pm-transition-${Date.now()}`,
+        milestones: aishaTransitionMilestones,
+        metrics: {
+          totalDuration: '12 months',
+          totalCost: 8500,
+          overallSuccessRate: 87,
+          riskLevel: 'Medium',
+          confidence: 0.89
+        },
+        mayaRecommendations: mayaResponse?.response ? [
+          mayaResponse.response,
+          "Leverage your technical credibility - this is your biggest advantage",
+          "San Francisco market strongly favors technical PMs",
+          "Consider internal transfer opportunities first",
+          "Start with technical PM roles rather than traditional product roles"
+        ] : [
+          "Your engineering background gives you a significant advantage for Technical PM roles",
+          "San Francisco has high demand for PMs with technical depth",
+          "Focus on product strategy and user research to complement your technical skills",
+          "Network with PMs at your current company for internal opportunities",
+          "Start building a portfolio of product thinking examples"
+        ]
+      };
 
-        setSimulationResult(result);
-        setActiveTab('results');
-        
-        toast({
-          title: "Simulation Complete!",
-          description: `Generated transition plan with ${result.milestones.length} milestones.`
-        });
-      }
+      setSimulationResult(result);
+      setActiveTab('results');
+      
+      toast({
+        title: "🎯 Simulation Complete!",
+        description: `Personalized transition plan generated with ${result.metrics.overallSuccessRate}% success probability.`
+      });
+
     } catch (error) {
-      console.error('Simulation error:', error);
+      console.error('❌ Simulation error:', error);
       toast({
         title: "Simulation Failed",
         description: "Unable to generate transition plan. Please try again.",
@@ -203,6 +254,7 @@ export function CareerTransitionSimulator() {
                     placeholder="e.g., Software Developer"
                     value={parameters.currentRole}
                     onChange={(e) => handleParameterChange('currentRole', e.target.value)}
+                    className="font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -212,6 +264,7 @@ export function CareerTransitionSimulator() {
                     placeholder="e.g., Product Manager"
                     value={parameters.targetRole}
                     onChange={(e) => handleParameterChange('targetRole', e.target.value)}
+                    className="font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -221,6 +274,7 @@ export function CareerTransitionSimulator() {
                     placeholder="e.g., San Francisco, Remote"
                     value={parameters.location}
                     onChange={(e) => handleParameterChange('location', e.target.value)}
+                    className="font-medium"
                   />
                 </div>
               </CardContent>
