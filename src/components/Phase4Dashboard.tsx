@@ -196,11 +196,14 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                   fallbackMessage="Loading your personalized AI Co-Pilot..."
                 >
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                      <div className="xl:col-span-3">
-                        <MayaCareerCopilot userId={userId} />
-                      </div>
-                      <div className="space-y-4">
+                    {/* Main Chat Area */}
+                    <div className="w-full">
+                      <MayaCareerCopilot userId={userId} />
+                    </div>
+                    
+                    {/* Progress and Insights Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-1">
                         <UnifiedProgressIndicator 
                           data={{
                             pivotProgress: sharedState.progressData?.currentProgress || 0,
@@ -214,10 +217,16 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                           }}
                           selectedPivot={sharedState.selectedPivot}
                         />
+                      </div>
+                      
+                      <div className="lg:col-span-1">
                         <SmartSuggestionsWidget 
                           suggestions={getSmartSuggestions()}
                           mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
                         />
+                      </div>
+                      
+                      <div className="lg:col-span-1">
                         <CareerReadinessMonitor userId={userId} />
                       </div>
                     </div>
