@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { UserJourneyProvider } from "./contexts/UserJourneyContext";
+import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DevLogin from "./pages/DevLogin";
@@ -91,9 +93,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+        <UserJourneyProvider>
+          <UnifiedDataProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route 
@@ -490,6 +494,8 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+          </UnifiedDataProvider>
+        </UserJourneyProvider>
     </TooltipProvider>
     </HelmetProvider>
   </QueryClientProvider>
