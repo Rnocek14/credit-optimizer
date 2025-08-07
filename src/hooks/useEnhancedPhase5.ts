@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { getCurrentDevUser } from '@/lib/devUserSetup';
 
 interface Phase5Metrics {
   autonomousWorkflows: number;
@@ -40,14 +41,24 @@ export function useEnhancedPhase5() {
 
   const fetchPhase5Metrics = useCallback(async () => {
     try {
+      let userId: string;
+      
+      // Try Supabase auth first
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('User not authenticated');
+      if (user.user) {
+        userId = user.user.id;
+      } else {
+        // Fallback to dev user session
+        const devUser = getCurrentDevUser();
+        if (!devUser) throw new Error('User not authenticated');
+        userId = devUser.id;
+      }
 
       // Fetch autonomous workflows
       const { data: workflows, error: workflowError } = await supabase
         .from('autonomous_workflows')
         .select('*')
-        .eq('user_id', user.user.id);
+        .eq('user_id', userId);
 
       if (workflowError) throw workflowError;
 
@@ -55,14 +66,14 @@ export function useEnhancedPhase5() {
       const { data: decisions, error: decisionsError } = await supabase
         .from('maya_decisions')
         .select('*')
-        .eq('user_id', user.user.id)
+        .eq('user_id', userId)
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
       // Fetch market alerts
       const { data: alerts, error: alertsError } = await supabase
         .from('career_monitoring_alerts')
         .select('*')
-        .eq('user_id', user.user.id)
+        .eq('user_id', userId)
         .eq('status', 'active');
 
       // Calculate metrics
