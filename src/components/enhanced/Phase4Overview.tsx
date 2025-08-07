@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { MayaDailyBriefing } from '@/components/maya/MayaDailyBriefing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -99,6 +100,8 @@ export function Phase4Overview({ userId, sharedState, onNavigate }: Phase4Overvi
 
   return (
     <div className="space-y-6">
+      {/* Maya Daily Briefing */}
+      <MayaDailyBriefing userId={userId} onNavigate={onNavigate} />
       {/* Welcome Header */}
       <Card className="bg-gradient-to-r from-primary/10 via-accent/5 to-secondary/10 border-primary/20">
         <CardHeader>

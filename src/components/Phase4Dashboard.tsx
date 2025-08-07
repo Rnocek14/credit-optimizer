@@ -17,6 +17,9 @@ import { EnhancedWorkflowEngine } from './EnhancedWorkflowEngine';
 import { RealTimeMarketIntelligence } from './RealTimeMarketIntelligence';
 import { CareerTransitionSimulator } from './CareerTransitionSimulator';
 import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
+import { MayaCareerCopilot } from './maya/MayaCareerCopilot';
+import { MayaTimelineInsights } from './maya/MayaTimelineInsights';
+import { MayaWorkflowEngine } from './maya/MayaWorkflowEngine';
 import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
 import { SmartSuggestionsWidget } from './enhanced/SmartSuggestionsWidget';
@@ -193,10 +196,9 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                   fallbackMessage="Loading your personalized AI Co-Pilot..."
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                      <CareerTransitionSimulator userId={userId} />
-                      <MayaAutonomousIntelligence />
-                    </div>
+                  <div className="lg:col-span-2 space-y-6">
+                    <MayaCareerCopilot userId={userId} />
+                  </div>
                     <div className="space-y-6">
                       <UnifiedProgressIndicator 
                         data={{
@@ -255,28 +257,29 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               )}
 
               {activeTab === 'tracker' && (
-                <TimelineProgressTracker
-                  targetCareer={sharedState.selectedPivot?.new_career || 'Product Manager'}
-                  overallProgress={sharedState.progressData?.currentProgress || 72}
-                  milestones={mockMilestones}
-                  skillsAcquired={sharedState.progressData?.skillsAcquired || 4}
-                  totalSkills={sharedState.progressData?.totalSkills || 7}
-                  estimatedCompletion="4 months"
-                  onMilestoneAction={handleMilestoneAction}
-                />
+                <div className="space-y-6">
+                  <MayaTimelineInsights
+                    userId={userId}
+                    milestones={mockMilestones}
+                    targetCareer={sharedState.selectedPivot?.new_career || 'Product Manager'}
+                    overallProgress={sharedState.progressData?.currentProgress || 72}
+                  />
+                  <TimelineProgressTracker
+                    targetCareer={sharedState.selectedPivot?.new_career || 'Product Manager'}
+                    overallProgress={sharedState.progressData?.currentProgress || 72}
+                    milestones={mockMilestones}
+                    skillsAcquired={sharedState.progressData?.skillsAcquired || 4}
+                    totalSkills={sharedState.progressData?.totalSkills || 7}
+                    estimatedCompletion="4 months"
+                    onMilestoneAction={handleMilestoneAction}
+                  />
+                </div>
               )}
 
               {activeTab === 'workflows' && (
                 <div className="space-y-6">
+                  <MayaWorkflowEngine userId={userId} />
                   <WorkflowActionHandler userId={userId} workflows={[]} />
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <AutonomousWorkflowDashboard />
-                    <EnhancedWorkflowEngine />
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <PredictiveAnalyticsEngine />
-                    <RealTimeMarketIntelligence />
-                  </div>
                 </div>
               )}
             </div>
