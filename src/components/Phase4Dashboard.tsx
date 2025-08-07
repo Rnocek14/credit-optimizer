@@ -19,7 +19,10 @@ import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
 import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
 import { PivotOutcomeTracker } from './PivotOutcomeTracker';
+import { SmartSuggestionsWidget } from './enhanced/SmartSuggestionsWidget';
+import { UnifiedProgressIndicator } from './enhanced/UnifiedProgressIndicator';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { usePhase4Integration } from '@/hooks/usePhase4Integration';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
@@ -29,12 +32,21 @@ interface Phase4DashboardProps {
 
 export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   const [activeTab, setActiveTab] = useState('copilot');
-  const [selectedPivotPath, setSelectedPivotPath] = useState<any>(null);
   const [showComparison, setShowComparison] = useState(false);
   
   const navigate = useNavigate();
   const { profile, isLoading: profileLoading } = useUserProfile(userId);
   const { toast } = useToast();
+  
+  // Enhanced Phase 4 integration with cross-tab synchronization
+  const {
+    sharedState,
+    syncPivotSelection,
+    userProfile,
+    getMayaReasoning,
+    getSmartSuggestions,
+    isLoading: integrationLoading
+  } = usePhase4Integration(userId);
 
   const handleGenerateRoadmap = (path: any) => {
     toast({
@@ -52,13 +64,8 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   };
 
   const handleSelectPivot = (pivotPath: any) => {
-    toast({
-      title: "Pivot path selected",
-      description: `Analyzing ${pivotPath.new_career} career transition`,
-      variant: "default"
-    });
-    
-    setSelectedPivotPath(pivotPath);
+    // Use integrated pivot selection that syncs across all components
+    syncPivotSelection(pivotPath);
     setShowComparison(true);
   };
 
@@ -136,7 +143,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
         </TabsList>
 
         <TabsContent value="copilot" className="space-y-6">
-          {profileLoading ? (
+          {profileLoading || integrationLoading ? (
             <Card>
               <CardContent className="p-8">
                 <div className="flex items-center justify-center">
@@ -146,10 +153,29 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <CareerTransitionSimulator userId={userId} />
-              <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <CareerTransitionSimulator userId={userId} />
                 <MayaAutonomousIntelligence />
+              </div>
+              <div className="space-y-6">
+                <UnifiedProgressIndicator 
+                  data={{
+                    pivotProgress: sharedState.progressData?.currentProgress || 0,
+                    criScore: 75,
+                    roiConfidence: sharedState.selectedPivot?.roi_score || 0,
+                    timelineCompletion: 65,
+                    skillsAcquired: sharedState.progressData?.skillsAcquired || 0,
+                    totalSkills: (sharedState.selectedPivot?.missing_skills?.length || 0) + (sharedState.selectedPivot?.shared_skills?.length || 0),
+                    milestonesCompleted: sharedState.progressData?.milestones?.filter((m: any) => m.status === 'completed').length || 0,
+                    totalMilestones: sharedState.progressData?.milestones?.length || 0
+                  }}
+                  selectedPivot={sharedState.selectedPivot}
+                />
+                <SmartSuggestionsWidget 
+                  suggestions={getSmartSuggestions()}
+                  mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                />
                 <CareerReadinessMonitor userId={userId} />
               </div>
             </div>
@@ -160,30 +186,33 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
           {showComparison ? (
             <CrossPathComparisonPanel
               userId={userId}
-              pivotPath={selectedPivotPath}
+              pivotPath={sharedState.selectedPivot}
               onGenerateRoadmap={handleGenerateRoadmap}
               onClose={() => {
                 setShowComparison(false);
-                setSelectedPivotPath(null);
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+              <div className="xl:col-span-3">
                 <EnhancedPivotAdvisor
                   userId={userId}
-                  currentRole={profile?.current_role}
-                  userSkills={profile?.skills}
+                  currentRole={userProfile?.current_role}
+                  userSkills={userProfile?.skills}
                   onViewComparison={handleSelectPivot}
                 />
               </div>
-              <div>
+              <div className="space-y-6">
                 <SmartPivotRecommendations
                   userId={userId}
-                  currentRole={profile?.current_role}
-                  userSkills={profile?.skills}
+                  currentRole={userProfile?.current_role}
+                  userSkills={userProfile?.skills}
                   onSelectPivot={handleSelectPivot}
                   onViewDetails={handleViewDetails}
+                />
+                <SmartSuggestionsWidget 
+                  suggestions={getSmartSuggestions()}
+                  mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
                 />
               </div>
             </div>
@@ -191,7 +220,12 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
         </TabsContent>
 
         <TabsContent value="tracker" className="space-y-6">
-          <PivotOutcomeTracker userId={userId} />
+          <PivotOutcomeTracker 
+            userId={userId} 
+            activePivots={sharedState.activePivots}
+            selectedPivot={sharedState.selectedPivot}
+            sharedData={sharedState}
+          />
         </TabsContent>
 
         <TabsContent value="health" className="space-y-6">

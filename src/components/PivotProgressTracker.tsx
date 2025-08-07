@@ -34,6 +34,8 @@ interface ActivePivot {
 interface PivotProgressTrackerProps {
   userId: string;
   activePivots?: ActivePivot[];
+  selectedPivot?: any;
+  progressData?: any;
 }
 
 export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgressTrackerProps) {

@@ -25,6 +25,7 @@ interface ROISimulationEngineProps {
     estimated_cost: string;
     estimated_time: string;
   };
+  sharedROIData?: any;
 }
 
 export function ROISimulationEngine({ userId, pivotPath }: ROISimulationEngineProps) {

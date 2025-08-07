@@ -29,6 +29,7 @@ interface PivotTimelineAdjustorProps {
   currentProgress: number;
   originalTimeline: string;
   targetCareer: string;
+  sharedTimelineData?: any;
 }
 
 export function PivotTimelineAdjustor({ 

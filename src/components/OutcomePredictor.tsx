@@ -39,6 +39,7 @@ interface OutcomePredictorProps {
   targetCareer: string;
   currentProgress: number;
   pivotData?: any;
+  sharedPredictionData?: any;
 }
 
 export function OutcomePredictor({ 

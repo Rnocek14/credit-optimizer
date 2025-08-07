@@ -11,15 +11,23 @@ import { OutcomePredictor } from './OutcomePredictor';
 interface PivotOutcomeTrackerProps {
   userId: string;
   activePivots?: any[];
+  selectedPivot?: any;
+  sharedData?: any;
 }
 
-export function PivotOutcomeTracker({ userId, activePivots = [] }: PivotOutcomeTrackerProps) {
+export function PivotOutcomeTracker({ 
+  userId, 
+  activePivots = [], 
+  selectedPivot,
+  sharedData 
+}: PivotOutcomeTrackerProps) {
   const [activeTab, setActiveTab] = useState('progress');
 
-  // Mock active pivot data
-  const currentPivot = activePivots[0] || {
+  // Use selected pivot from shared state or fall back to first active pivot
+  const currentPivot = selectedPivot || activePivots[0] || {
     id: '1',
     targetCareer: 'Product Manager',
+    new_career: 'Product Manager',
     currentProgress: 65,
     roi_score: 85,
     estimated_cost: '$1200',
@@ -70,11 +78,20 @@ export function PivotOutcomeTracker({ userId, activePivots = [] }: PivotOutcomeT
         </TabsList>
 
         <TabsContent value="progress" className="space-y-6">
-          <PivotProgressTracker userId={userId} activePivots={activePivots} />
+          <PivotProgressTracker 
+            userId={userId} 
+            activePivots={activePivots}
+            selectedPivot={currentPivot}
+            progressData={sharedData?.progressData}
+          />
         </TabsContent>
 
         <TabsContent value="roi" className="space-y-6">
-          <ROISimulationEngine userId={userId} pivotPath={currentPivot} />
+          <ROISimulationEngine 
+            userId={userId} 
+            pivotPath={currentPivot}
+            sharedROIData={sharedData?.roiData}
+          />
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-6">
@@ -82,16 +99,18 @@ export function PivotOutcomeTracker({ userId, activePivots = [] }: PivotOutcomeT
             userId={userId}
             currentProgress={currentPivot.currentProgress}
             originalTimeline={currentPivot.estimated_time}
-            targetCareer={currentPivot.targetCareer}
+            targetCareer={currentPivot.targetCareer || currentPivot.new_career}
+            sharedTimelineData={sharedData?.timelineData}
           />
         </TabsContent>
 
         <TabsContent value="predictor" className="space-y-6">
           <OutcomePredictor 
             userId={userId}
-            targetCareer={currentPivot.targetCareer}
+            targetCareer={currentPivot.targetCareer || currentPivot.new_career}
             currentProgress={currentPivot.currentProgress}
             pivotData={currentPivot}
+            sharedPredictionData={sharedData?.predictionData}
           />
         </TabsContent>
       </Tabs>
