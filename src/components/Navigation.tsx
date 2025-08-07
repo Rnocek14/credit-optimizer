@@ -54,6 +54,7 @@ export default function Navigation() {
     { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain },
     { href: "/maya-cri-integration", label: "Maya × CRI", icon: Brain },
     { href: "/maya-automation", label: "Maya Automation", icon: Brain },
+    { href: "/phase4", label: "Phase 4", icon: Brain },
     { href: "/planner", label: "Planner", icon: Target },
     { href: "/goals", label: "Goals", icon: Target },
     { href: "/certificates", label: "Certificates", icon: Award },
