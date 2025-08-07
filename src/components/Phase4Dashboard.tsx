@@ -7,6 +7,7 @@ import { Phase4Overview } from './enhanced/Phase4Overview';
 import { TimelineProgressTracker } from './enhanced/TimelineProgressTracker';
 import { LoadingFallback } from './enhanced/LoadingFallback';
 import { WorkflowActionHandler } from './enhanced/WorkflowActionHandler';
+import { SharedDataProvider } from './enhanced/SharedDataProvider';
 import { AutonomousWorkflowDashboard } from './AutonomousWorkflowDashboard';
 import { PredictiveAnalyticsEngine } from './PredictiveAnalyticsEngine';
 import { MayaAutonomousIntelligence } from './MayaAutonomousIntelligence';
@@ -143,35 +144,36 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
   ];
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Phase4Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+    <SharedDataProvider userId={userId}>
+      <div className="flex h-screen bg-background">
+        {/* Sidebar */}
+        <Phase4Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-6 space-y-6">
-          {/* Header */}
-          <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <div className="p-2 bg-primary/20 rounded-lg">
-                  <Bot className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">Phase 4: Autonomous Career Co-Pilot</h1>
-                  <p className="text-muted-foreground">AI-Powered Career Transition & Autonomous Workflows</p>
-                </div>
-                <Badge variant="outline" className="ml-auto bg-primary/10 text-primary border-primary/30">
-                  Phase 4 Active
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto">
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Bot className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold">Phase 4: Autonomous Career Co-Pilot</h1>
+                    <p className="text-muted-foreground">AI-Powered Career Transition & Autonomous Workflows</p>
+                  </div>
+                  <Badge variant="outline" className="ml-auto bg-primary/10 text-primary border-primary/30">
+                    Phase 4 Active
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+            </Card>
 
           {/* Tab Content */}
 
@@ -280,8 +282,9 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
+    </SharedDataProvider>
   );
 }
