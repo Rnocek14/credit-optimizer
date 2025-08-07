@@ -77,6 +77,7 @@ import InterventionHistory from "./pages/InterventionHistory";
 import Gamification from "./pages/Gamification";
 import MayaIntelligence from "./pages/MayaIntelligence";
 import SocialLearning from "./pages/SocialLearning";
+import { SocialLearningTest } from "./components/SocialLearningTest";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -244,6 +245,7 @@ const App = () => (
                </ProtectedRoute>
              } 
            />
+           <Route path="/social-learning-test" element={<SocialLearningTest />} />
           <Route 
             path="/transcript" 
             element={
