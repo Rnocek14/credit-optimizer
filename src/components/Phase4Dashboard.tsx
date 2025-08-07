@@ -201,9 +201,10 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                       <MayaCareerCopilot userId={userId} />
                     </div>
                     
-                    {/* Progress and Insights Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <div className="lg:col-span-1">
+                    {/* Progress and Insights Layout */}
+                    <div className="space-y-6">
+                      {/* Top Row - Progress Indicator gets full width */}
+                      <div className="w-full">
                         <UnifiedProgressIndicator 
                           data={{
                             pivotProgress: sharedState.progressData?.currentProgress || 0,
@@ -219,15 +220,18 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                         />
                       </div>
                       
-                      <div className="lg:col-span-1">
-                        <SmartSuggestionsWidget 
-                          suggestions={getSmartSuggestions()}
-                          mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
-                        />
-                      </div>
-                      
-                      <div className="lg:col-span-1">
-                        <CareerReadinessMonitor userId={userId} />
+                      {/* Bottom Row - Smart Suggestions and Career Readiness side by side */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                          <SmartSuggestionsWidget 
+                            suggestions={getSmartSuggestions()}
+                            mayaReasoning={getMayaReasoning('pivot_selection', sharedState.selectedPivot)}
+                          />
+                        </div>
+                        
+                        <div>
+                          <CareerReadinessMonitor userId={userId} />
+                        </div>
                       </div>
                     </div>
                   </div>
