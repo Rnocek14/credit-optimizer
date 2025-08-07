@@ -11,11 +11,15 @@ interface MayaOnboardingProps {
   onComplete: () => void;
 }
 
+// Add imports for the experience level hook
+import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
+
 export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [userResponses, setUserResponses] = useState<Record<string, any>>({});
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { state, actions } = useUserJourney();
+  const { updateExperienceLevel, completeOnboarding: completeUserExperience } = useUserExperienceLevel();
   const { callRouter } = useModelRouter();
   const { toast } = useToast();
 
@@ -76,11 +80,11 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
     if (currentStep < steps.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
-      completeOnboarding();
+      handleCompleteOnboarding();
     }
   };
 
-  const completeOnboarding = async () => {
+  const handleCompleteOnboarding = async () => {
     setIsAnalyzing(true);
     console.log('🎯 Completing Maya onboarding with responses:', userResponses);
     
@@ -166,30 +170,58 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
         await actions.setCurrentPhase('assessment');
       }
 
-      // Complete onboarding AFTER all steps are tracked
+      // Complete onboarding in BOTH systems for proper synchronization
       actions.updatePreference('onboardingComplete', true);
       actions.updatePreference('mayaIntroComplete', true);
       await actions.completeStep('maya-onboarding');
+      
+      // Parse strategy data from AI response
+      let parsedStrategy = null;
+      if (analysis) {
+        try {
+          parsedStrategy = typeof analysis === 'string' ? JSON.parse(analysis) : analysis;
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse strategy data:', parseError);
+        }
+      }
+      
+      // Also update the user experience level hook state
+      await updateExperienceLevel?.(parsedStrategy?.recommendedPhase || 'intermediate');
+      await completeUserExperience?.();
+      
+      console.log('✅ Onboarding completed in both systems');
 
       toast({
         title: "Welcome to your personalized career journey!",
         description: "Maya has created a custom plan just for you.",
       });
 
-      onComplete();
+      // Add small delay before calling completion to ensure state is persisted
+      setTimeout(() => {
+        onComplete();
+      }, 200);
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
       
-      // Fallback to default phase progression
+      // Fallback to default phase progression with full synchronization
       await actions.setCurrentPhase('assessment');
       await actions.completeStep('maya-onboarding');
+      actions.updatePreference('onboardingComplete', true);
+      actions.updatePreference('mayaIntroComplete', true);
+      
+      // Also complete in the experience level hook
+      await updateExperienceLevel?.('intermediate');
+      await completeUserExperience?.();
       
       toast({
         title: "Welcome to your career journey!",
         description: "I've set up your profile. Let's continue building your path!",
       });
       
-      onComplete();
+      // Add delay for state synchronization
+      setTimeout(() => {
+        onComplete();
+      }, 200);
     } finally {
       setIsAnalyzing(false);
     }

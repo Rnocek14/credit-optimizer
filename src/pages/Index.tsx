@@ -42,12 +42,20 @@ export default function Index() {
   }
 
   // Maya-powered onboarding for new users
-  if (isNewUser || !journeyState.preferences.onboardingComplete) {
+  // Check both systems for onboarding completion status
+  const needsOnboarding = isNewUser && !journeyState.preferences.onboardingComplete;
+  
+  if (needsOnboarding) {
     return (
       <MayaOnboarding 
         onComplete={() => {
+          console.log('🎯 Onboarding completed, triggering state sync...');
           completeOnboarding();
-          // Navigate to adaptive dashboard
+          
+          // Force re-render by updating journey state
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
         }}
       />
     );
