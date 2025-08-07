@@ -18,6 +18,7 @@ import { MayaControlCenter } from './MayaControlCenter';
 import { WorkflowManagementInterface } from './WorkflowManagementInterface';
 import { MayaControlDashboard } from './MayaControlDashboard';
 import { ProductionReadinessTest } from './ProductionReadinessTest';
+import { TrustIntelligencePanel } from './TrustIntelligencePanel';
 
 interface FeatureStatus {
   name: string;
@@ -108,7 +109,7 @@ export function Phase6FeedbackControlUI() {
 
       {/* Main Feature Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="feedback" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Feedback System
@@ -124,6 +125,10 @@ export function Phase6FeedbackControlUI() {
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Control Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="trust" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Trust Intelligence
           </TabsTrigger>
           <TabsTrigger value="testing" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -199,6 +204,23 @@ export function Phase6FeedbackControlUI() {
             </CardHeader>
             <CardContent>
               <MayaControlDashboard />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="trust" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Trust & Intelligence Dashboard
+              </CardTitle>
+              <CardDescription>
+                Transparent trust metrics and satisfaction trends derived from real user feedback.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TrustIntelligencePanel />
             </CardContent>
           </Card>
         </TabsContent>

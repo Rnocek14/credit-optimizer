@@ -1959,6 +1959,39 @@ export type Database = {
           },
         ]
       }
+      feedback_intelligence_insights: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          insight_type: string
+          metadata: Json
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          insight_type: string
+          metadata?: Json
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          insight_type?: string
+          metadata?: Json
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       gamification_metrics: {
         Row: {
           context_data: Json | null
@@ -5867,6 +5900,51 @@ export type Database = {
           },
         ]
       }
+      user_trust_metrics: {
+        Row: {
+          created_at: string
+          engagement_score: number
+          feedback_volume: number
+          id: string
+          last_calculated_at: string
+          metadata: Json
+          recommendation_accuracy: number
+          satisfaction_score: number
+          trend: Json
+          trust_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          engagement_score?: number
+          feedback_volume?: number
+          id?: string
+          last_calculated_at?: string
+          metadata?: Json
+          recommendation_accuracy?: number
+          satisfaction_score?: number
+          trend?: Json
+          trust_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          engagement_score?: number
+          feedback_volume?: number
+          id?: string
+          last_calculated_at?: string
+          metadata?: Json
+          recommendation_accuracy?: number
+          satisfaction_score?: number
+          trend?: Json
+          trust_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_xp: {
         Row: {
           created_at: string
@@ -6240,6 +6318,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      calculate_user_trust_metrics: {
+        Args: { user_id_param: string; days_back?: number }
+        Returns: Json
+      }
       calculate_xp_multiplier: {
         Args: {
           user_id_param: string
@@ -6414,6 +6496,10 @@ export type Database = {
       update_maya_feedback_model: {
         Args: { target_user_id: string }
         Returns: Json
+      }
+      upsert_user_trust_metrics: {
+        Args: { user_id_param: string; days_back?: number }
+        Returns: string
       }
       validate_mentor_operation: {
         Args: { user_uuid: string }
