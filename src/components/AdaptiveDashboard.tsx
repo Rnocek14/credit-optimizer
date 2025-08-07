@@ -79,6 +79,7 @@ export function AdaptiveDashboard() {
             weeklyFocus: { type: 'string' },
             insight: { type: 'string' }
           },
+          required: ['welcomeMessage', 'priorityActions', 'weeklyFocus', 'insight'],
           additionalProperties: false
         }
       });

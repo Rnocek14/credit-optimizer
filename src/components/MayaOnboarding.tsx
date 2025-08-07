@@ -136,6 +136,7 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
             personality: { type: 'string' },
             features: { type: 'array', items: { type: 'string' } }
           },
+          required: ['recommendedPhase', 'actionItems', 'personality', 'features'],
           additionalProperties: false
         }
       });
