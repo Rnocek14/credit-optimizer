@@ -279,14 +279,14 @@ export function SmartPivotRecommendations({
 
         {renderMayaInsights()}
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="xl:col-span-3 space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Target className="w-5 h-5" />
                 Top Recommended Career Pivots
               </h3>
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2">
                 {pivotRecommendations.slice(0, 3).map((pivot, index) => (
                   <div key={`pivot-${pivot.new_career}-${index}`}>
                     {renderTopRecommendation(pivot, index)}
@@ -296,7 +296,7 @@ export function SmartPivotRecommendations({
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="xl:col-span-1 space-y-6">
             {renderMarketTrends()}
             
             <Card>
