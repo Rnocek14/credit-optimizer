@@ -75,6 +75,7 @@ import CourseMarketplace from "./pages/CourseMarketplace";
 import Phase2Dashboard from "./pages/Phase2Dashboard";
 import InterventionHistory from "./pages/InterventionHistory";
 import Gamification from "./pages/Gamification";
+import MayaIntelligence from "./pages/MayaIntelligence";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -223,6 +224,14 @@ const App = () => (
              element={
                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                  <Gamification />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/maya-intelligence" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <MayaIntelligence />
                </ProtectedRoute>
              } 
            />

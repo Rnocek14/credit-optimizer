@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
+import { useGamification } from './useGamification';
 
 interface EnhancedMayaResponse {
   response: string;
@@ -8,6 +9,13 @@ interface EnhancedMayaResponse {
   autonomousActions: any[];
   requestAnalysis: any;
   timestamp: string;
+  decisionReasoning?: {
+    primaryFactors: string[];
+    confidenceScore: number;
+    gamificationContext: any;
+    riskAssessment: string;
+    expectedOutcome: string;
+  };
 }
 
 interface MayaContext {
@@ -16,10 +24,17 @@ interface MayaContext {
   goals?: any[];
   skillLevel?: number;
   marketPreferences?: any;
+  gamificationData?: {
+    currentStreak: number;
+    longestStreak: number;
+    streakMultiplier: number;
+    engagementMetrics: any;
+  };
 }
 
 export function useEnhancedMaya() {
   const { state } = useUnifiedData();
+  const { getCurrentStreak, getLongestStreak, getStreakMultiplier, metrics } = useGamification();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResponse, setLastResponse] = useState<EnhancedMayaResponse | null>(null);
@@ -34,7 +49,7 @@ export function useEnhancedMaya() {
     try {
       console.log('🤖 Sending enhanced Maya request:', request);
 
-      // Prepare comprehensive context
+      // Prepare comprehensive context with gamification data
       const enhancedContext = {
         profile: state.user || {},
         goals: state.currentGoal ? [{ target_role: state.currentGoal }] : [],
@@ -45,6 +60,12 @@ export function useEnhancedMaya() {
         },
         criScore: 75, // Would come from user data
         readinessScore: 80, // Would come from user data
+        gamificationData: {
+          currentStreak: getCurrentStreak(),
+          longestStreak: getLongestStreak(),
+          streakMultiplier: getStreakMultiplier(),
+          engagementMetrics: metrics
+        },
         ...context
       };
 
@@ -148,11 +169,11 @@ export function useEnhancedMaya() {
     });
   }, [sendEnhancedRequest]);
 
-  // Enhanced response analysis
+  // Enhanced response analysis with decision transparency
   const getResponseInsights = useCallback(() => {
     if (!lastResponse) return null;
 
-    const { realTimeData, autonomousActions, requestAnalysis } = lastResponse;
+    const { realTimeData, autonomousActions, requestAnalysis, decisionReasoning } = lastResponse;
 
     return {
       hasMarketData: !!realTimeData?.marketData,
@@ -170,9 +191,30 @@ export function useEnhancedMaya() {
       
       marketHealthScore: realTimeData?.marketData?.currentDemand || 0,
       skillAlignment: realTimeData?.skillGaps?.skillAlignment || 0,
-      careerReadiness: realTimeData?.personalized?.readinessScore || 0
+      careerReadiness: realTimeData?.personalized?.readinessScore || 0,
+      
+      // Decision transparency features
+      decisionConfidence: decisionReasoning?.confidenceScore || 0,
+      primaryFactors: decisionReasoning?.primaryFactors || [],
+      gamificationInfluence: decisionReasoning?.gamificationContext || null,
+      riskLevel: decisionReasoning?.riskAssessment || 'medium',
+      expectedSuccess: decisionReasoning?.expectedOutcome || 'positive'
     };
   }, [lastResponse]);
+
+  // Get explanation for Maya's reasoning
+  const explainDecision = useCallback(async (decisionContext: string) => {
+    const request = `Explain your reasoning for this decision: ${decisionContext}. Include the primary factors you considered, how my learning streak and engagement patterns influenced the recommendation, confidence level, and expected outcomes.`;
+    
+    return await sendEnhancedRequest(request, {
+      gamificationData: {
+        currentStreak: getCurrentStreak(),
+        longestStreak: getLongestStreak(),
+        streakMultiplier: getStreakMultiplier(),
+        engagementMetrics: metrics
+      }
+    });
+  }, [sendEnhancedRequest, getCurrentStreak, getLongestStreak, getStreakMultiplier, metrics]);
 
   return {
     // Core functions
@@ -184,6 +226,7 @@ export function useEnhancedMaya() {
     createLearningPlan,
     recommendCourses,
     getPersonalizedRecommendations,
+    explainDecision,
     
     // State
     loading,

@@ -62,6 +62,7 @@ export default function Navigation() {
     { href: "/resume-gallery", label: "Talent Gallery", icon: User },
     { href: "/badges", label: "Badges", icon: Award },
     { href: "/gamification", label: "Gamification", icon: Trophy },
+    { href: "/maya-intelligence", label: "Maya Intelligence", icon: Brain },
     { href: "/transcripts", label: "Transcripts", icon: BookOpen },
     { href: "/course-history", label: "Course History", icon: BookOpen },
     { href: "/skill-tree", label: "Skill Tree", icon: TreePine },
