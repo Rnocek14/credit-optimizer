@@ -23,48 +23,88 @@ export function AdaptiveDashboard() {
   }, [state.currentPhase, state.role, state.goals]);
 
   const generateMayaInsights = async () => {
-    if (!state.user) return;
-
+    if (!state.user?.id || isLoadingInsights) return;
+    
+    // Debug logging for dashboard state
+    console.log('🧭 Current Phase:', state.currentPhase);
+    console.log('🎯 Available Features:', state.availableFeatures);
+    console.log('✅ Completed Steps:', state.completedSteps);
+    console.log('🏆 Milestones:', state.milestones);
+    console.log('👤 User Info:', state.user);
+    
     setIsLoadingInsights(true);
+    
     try {
-      const prompt = `
-        As Maya, the AI career guide, provide personalized insights for this user:
-        
-        Role: ${state.role}
-        Phase: ${state.currentPhase}
-        Goals: ${state.goals.join(', ')}
-        Completed Steps: ${state.completedSteps.length}
-        
-        Generate:
-        1. A personalized welcome message (conversational, encouraging)
-        2. Top 3 priority actions for today
-        3. Weekly focus area
-        4. Motivational insight based on their progress
-        5. Feature recommendations
-        
-        Return as JSON with keys: welcomeMessage, priorityActions, weeklyFocus, insight, features
-      `;
+      const promptData = {
+        userPhase: state.currentPhase,
+        completedSteps: state.completedSteps,
+        userGoals: state.goals,
+        availableFeatures: state.availableFeatures,
+        milestones: Object.keys(state.milestones),
+        userRole: state.role,
+        experienceLevel: state.user.experienceLevel
+      };
+
+      console.log('🧠 Generating Maya insights with data:', promptData);
 
       const response = await callRouter({
-        task: 'chat',
-        messages: [{ role: 'user', content: prompt }]
+        task: 'json',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Maya, a supportive AI career coach. Generate personalized insights and motivation for the user based on their current journey state. Keep it encouraging and actionable.'
+          },
+          {
+            role: 'user',
+            content: `Generate personalized insights for my career journey. Current state: ${JSON.stringify(promptData)}`
+          }
+        ],
+        json_schema: {
+          type: 'object',
+          properties: {
+            welcomeMessage: { type: 'string' },
+            priorityActions: { type: 'array', items: { type: 'string' } },
+            weeklyFocus: { type: 'string' },
+            insight: { type: 'string' }
+          }
+        }
       });
 
-      try {
-        const insights = JSON.parse(response.message?.content || '{}');
-        setMayaInsights(insights);
-      } catch {
-        // Fallback if JSON parsing fails
+      console.log('📥 Maya insights response:', response);
+
+      if (response) {
+        try {
+          // Handle both parsed objects and string responses
+          const insights = typeof response === 'string' ? JSON.parse(response) : response;
+          setMayaInsights(insights);
+          console.log('✅ Maya insights updated:', insights);
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse Maya insights, using fallback');
+          setMayaInsights({
+            welcomeMessage: `Welcome back! You're in the ${state.currentPhase} phase.`,
+            priorityActions: ["Continue your current learning path", "Review your goals", "Take the next assessment"],
+            weeklyFocus: "Focus on consistent daily progress",
+            insight: "Every step forward is progress, no matter how small. Keep building on your strengths!"
+          });
+        }
+      } else {
+        console.warn('⚠️ No Maya insights response, using fallback');
         setMayaInsights({
-          welcomeMessage: "Welcome back! Let's continue building your career path.",
-          priorityActions: ["Complete your profile", "Take a skill assessment", "Explore career paths"],
-          weeklyFocus: "Skill Development",
-          insight: "You're making great progress!",
-          features: ["resume-builder", "skill-tree", "market-intelligence"]
+          welcomeMessage: `Welcome back! You're in the ${state.currentPhase} phase.`,
+          priorityActions: ["Continue your current learning path", "Review your goals", "Take the next assessment"],
+          weeklyFocus: "Focus on consistent daily progress",
+          insight: "Every step forward is progress, no matter how small. Keep building on your strengths!"
         });
       }
     } catch (error) {
-      console.error('Error generating Maya insights:', error);
+      console.error('❌ Error generating Maya insights:', error);
+      // Fallback insights
+      setMayaInsights({
+        welcomeMessage: `Welcome back! You're in the ${state.currentPhase} phase.`,
+        priorityActions: ["Continue your current learning path", "Review your goals", "Take the next assessment"],
+        weeklyFocus: "Focus on consistent daily progress",
+        insight: "Every step forward is progress, no matter how small. Keep building on your strengths!"
+      });
     } finally {
       setIsLoadingInsights(false);
     }

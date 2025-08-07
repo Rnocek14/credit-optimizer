@@ -55,7 +55,7 @@ type UserJourneyAction =
   | { type: 'SET_ROLE'; payload: UserRole }
   | { type: 'ADD_GOAL'; payload: string }
   | { type: 'UPDATE_PREFERENCE'; payload: { key: string; value: any } }
-  | { type: 'TRACK_MILESTONE'; payload: keyof UserJourneyState['milestones'] }
+  | { type: 'TRACK_MILESTONE'; payload: { milestoneKey: string; data?: any } }
   | { type: 'TRACK_FEATURE_ENGAGEMENT'; payload: string }
   | { type: 'UPDATE_MAYA_CONTEXT'; payload: Partial<UserJourneyState['mayaContext']> }
   | { type: 'SET_MAYA_PERSONALITY'; payload: UserJourneyState['mayaPersonality'] };
@@ -121,7 +121,7 @@ function userJourneyReducer(state: UserJourneyState, action: UserJourneyAction):
     case 'TRACK_MILESTONE':
       return { 
         ...state, 
-        milestones: { ...state.milestones, [action.payload]: true }
+        milestones: { ...state.milestones, [action.payload.milestoneKey]: true }
       };
     case 'TRACK_FEATURE_ENGAGEMENT':
       return { 
@@ -166,12 +166,12 @@ const UserJourneyContext = createContext<{
   state: UserJourneyState;
   dispatch: React.Dispatch<UserJourneyAction>;
   actions: {
-    setCurrentPhase: (phase: UserPhase) => void;
+    setCurrentPhase: (phase: UserPhase) => Promise<void>;
     completeStep: (step: string) => Promise<void>;
     setUserRole: (role: UserRole) => void;
-    addGoal: (goal: string) => void;
+    addGoal: (goal: string) => Promise<void>;
     updatePreference: (key: string, value: any) => void;
-    trackMilestone: (milestone: keyof UserJourneyState['milestones']) => void;
+    trackMilestone: (milestone: string, data?: any) => Promise<void>;
     trackFeatureEngagement: (feature: string) => void;
     updateMayaContext: (context: Partial<UserJourneyState['mayaContext']>) => void;
     getNextRecommendedAction: () => string | null;
@@ -186,71 +186,138 @@ export function UserJourneyProvider({ children }: { children: React.ReactNode })
   // Initialize user state
   useEffect(() => {
     const initializeUser = async () => {
+      console.log('📊 Initializing user journey...');
       const user = await getCurrentUser();
-      dispatch({ type: 'SET_USER', payload: user });
       
-      if (user) {
-        dispatch({ type: 'TRACK_MILESTONE', payload: 'firstLogin' });
-        
-        // Load user journey state from database
-        const { data } = await supabase
+      if (!user) {
+        console.log('❌ No authenticated user found');
+        return;
+      }
+
+      try {
+        // First, try to load existing preferences from database
+        const { data: preferences, error } = await supabase
           .from('user_preferences')
-          .select('*')
+          .select('completed_steps, milestones, user_goals, current_phase, has_completed_onboarding, experience_level')
           .eq('user_id', user.id)
           .maybeSingle();
+
+        if (error) {
+          console.error('Error loading user preferences:', error);
+        }
+
+        // Set user info
+        dispatch({ type: 'SET_USER', payload: user });
+        dispatch({ type: 'TRACK_MILESTONE', payload: { milestoneKey: 'firstLogin' } });
+
+        // Restore state from database if available
+        if (preferences) {
+          console.log('🔄 Restoring user journey state from database:', preferences);
           
-        if (data) {
-          // Restore user journey state from preferences
-          if (data.experience_level) {
-            const phase = mapExperienceLevelToPhase(data.experience_level);
+          if (preferences.completed_steps?.length > 0) {
+            preferences.completed_steps.forEach((step: string) => {
+              dispatch({ type: 'COMPLETE_STEP', payload: step });
+            });
+          }
+
+          if (preferences.milestones && typeof preferences.milestones === 'object') {
+            Object.entries(preferences.milestones).forEach(([key, value]) => {
+              if (value) {
+                dispatch({ type: 'TRACK_MILESTONE', payload: { milestoneKey: key } });
+              }
+            });
+          }
+
+          if (preferences.user_goals?.length > 0) {
+            preferences.user_goals.forEach((goal: string) => {
+              dispatch({ type: 'ADD_GOAL', payload: goal });
+            });
+          }
+
+          if (preferences.current_phase) {
+            dispatch({ type: 'SET_PHASE', payload: preferences.current_phase as UserPhase });
+          } else if (preferences.experience_level) {
+            const phase = mapExperienceLevelToPhase(preferences.experience_level);
             dispatch({ type: 'SET_PHASE', payload: phase });
           }
-          
-          if (data.has_completed_onboarding) {
+
+          if (preferences.has_completed_onboarding) {
             dispatch({ type: 'UPDATE_PREFERENCE', payload: { key: 'onboardingComplete', value: true } });
           }
         }
+      } catch (error) {
+        console.error('Error initializing user journey:', error);
       }
     };
     
     initializeUser();
   }, []);
 
+  // Persist user journey state to database
+  const persistUserJourney = useCallback(async () => {
+    if (!state.user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: state.user.id,
+          completed_steps: state.completedSteps,
+          milestones: state.milestones,
+          user_goals: state.goals,
+          current_phase: state.currentPhase,
+        });
+
+      if (error) {
+        console.error('Error persisting user journey:', error);
+      } else {
+        console.log('💾 User journey persisted to database');
+      }
+    } catch (error) {
+      console.error('Error persisting user journey:', error);
+    }
+  }, [state]);
+
   const actions = {
-    setCurrentPhase: useCallback((phase: UserPhase) => {
+    setCurrentPhase: useCallback(async (phase: UserPhase) => {
+      console.log(`📍 Moving to phase: ${phase}`);
       dispatch({ type: 'SET_PHASE', payload: phase });
-    }, []),
+      
+      // Persist to database
+      setTimeout(() => persistUserJourney(), 100);
+    }, [persistUserJourney]),
 
     completeStep: useCallback(async (step: string) => {
+      console.log(`✅ Completing step: ${step}`);
       dispatch({ type: 'COMPLETE_STEP', payload: step });
       
-        // Persist to database - using user_preferences for now
-        if (state.user) {
-          await supabase
-            .from('user_preferences')
-            .upsert({
-              user_id: state.user.id,
-              journey_step: step,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'user_id' });
-        }
-    }, [state.user]),
+      // Persist to database
+      setTimeout(() => persistUserJourney(), 100);
+    }, [persistUserJourney]),
 
     setUserRole: useCallback((role: UserRole) => {
       dispatch({ type: 'SET_ROLE', payload: role });
     }, []),
 
-    addGoal: useCallback((goal: string) => {
+    addGoal: useCallback(async (goal: string) => {
+      console.log(`🎯 Adding goal: ${goal}`);
       dispatch({ type: 'ADD_GOAL', payload: goal });
-    }, []),
+      
+      // Persist to database
+      setTimeout(() => persistUserJourney(), 100);
+    }, [persistUserJourney]),
 
     updatePreference: useCallback((key: string, value: any) => {
       dispatch({ type: 'UPDATE_PREFERENCE', payload: { key, value } });
     }, []),
 
-    trackMilestone: useCallback((milestone: keyof UserJourneyState['milestones']) => {
-      dispatch({ type: 'TRACK_MILESTONE', payload: milestone });
-    }, []),
+    trackMilestone: useCallback(async (milestone: string, data: any = {}) => {
+      console.log(`🏆 Milestone achieved: ${milestone}`, data);
+      dispatch({ type: 'TRACK_MILESTONE', payload: { milestoneKey: milestone, data } });
+      
+      // Persist to database
+      setTimeout(() => persistUserJourney(), 100);
+    }, [persistUserJourney]),
 
     trackFeatureEngagement: useCallback((feature: string) => {
       dispatch({ type: 'TRACK_FEATURE_ENGAGEMENT', payload: feature });

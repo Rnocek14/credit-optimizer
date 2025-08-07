@@ -51,29 +51,51 @@ export const useModelRouter = () => {
 
   const callRouter = useCallback(async (
     request: ModelRouterRequest
-  ): Promise<ModelRouterResponse | null> => {
+  ): Promise<any> => {
     setLoading(true);
     setError(null);
 
     try {
+      console.log('🤖 Calling AI model router:', request.task, request);
+      
       const { data, error: invokeError } = await supabase.functions.invoke('ai-model-router', {
         body: request
       });
+
+      console.log('📥 Raw AI Response:', { data, error: invokeError });
 
       if (invokeError) {
         throw new Error(invokeError.message || 'Failed to invoke AI model router');
       }
 
-      if (data.error) {
+      if (data?.error) {
         const errorResponse = data as ModelRouterError;
         throw new Error(errorResponse.details || errorResponse.error);
       }
 
-      const response = data as ModelRouterResponse;
-      setLastResponse(response);
-      return response;
+      // Handle different response formats based on task type
+      let parsedData = data;
+      
+      if (request.task === 'json' && typeof data === 'string') {
+        try {
+          parsedData = JSON.parse(data);
+          console.log('✅ Parsed JSON response:', parsedData);
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse AI response as JSON, using raw response:', parseError);
+          parsedData = data;
+        }
+      } else if (request.task === 'chat' && data?.message?.content) {
+        // For chat responses, return the message content
+        parsedData = data.message.content;
+      }
+
+      setLastResponse(data);
+      console.log('✅ Final processed AI Response:', parsedData);
+      
+      return parsedData;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      console.error('❌ AI Router Exception:', err);
       setError(errorMessage);
       
       toast({

@@ -47,8 +47,31 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
     }
   ];
 
-  const handleStepComplete = (stepData: any) => {
+  const handleStepComplete = async (stepData: any) => {
     setUserResponses(prev => ({ ...prev, [steps[currentStep].id]: stepData }));
+    
+    // Track completion of critical steps
+    const stepId = steps[currentStep].id;
+    console.log(`📝 Completing onboarding step: ${stepId}`, stepData);
+    
+    // Track specific milestones
+    if (stepId === 'role-discovery') {
+      await actions.completeStep('profile-setup');
+      await actions.trackMilestone('profileComplete', stepData);
+    } else if (stepId === 'quick-analysis') {
+      await actions.completeStep('first-assessment');
+      await actions.trackMilestone('firstAssessment', stepData);
+    } else if (stepId === 'goals-setting') {
+      await actions.completeStep('first-plan');
+      await actions.trackMilestone('firstPlan', stepData);
+      
+      // Add goals to user journey
+      if (stepData.goals && Array.isArray(stepData.goals)) {
+        for (const goal of stepData.goals) {
+          await actions.addGoal(goal);
+        }
+      }
+    }
     
     if (currentStep < steps.length - 1) {
       setCurrentStep(prev => prev + 1);
@@ -59,9 +82,12 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
 
   const completeOnboarding = async () => {
     setIsAnalyzing(true);
+    console.log('🎯 Completing Maya onboarding with responses:', userResponses);
     
     try {
-      // Use Maya AI to analyze user responses and create personalized recommendations
+      // Call the AI router to generate personalized career strategy
+      console.log('🧠 Calling AI Router for onboarding analysis...');
+      
       const analysisPrompt = `
         Based on the user's onboarding responses, create a personalized career strategy:
         
@@ -71,32 +97,71 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
         Experience Level: ${userResponses['role-discovery']?.experience}
         
         Provide:
-        1. Recommended starting phase
+        1. Recommended starting phase (discovery/assessment/planning/execution/optimization)
         2. Top 3 immediate action items
         3. Suggested Maya personality (friendly/professional/encouraging)
         4. Feature recommendations based on their goals
+        
+        Return as JSON with keys: recommendedPhase, actionItems, personality, features
       `;
 
       const analysis = await callRouter({
-        task: 'chat',
-        messages: [{ role: 'user', content: analysisPrompt }]
+        task: 'json',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Maya, an expert career strategist. Generate a personalized career strategy based on the user\'s onboarding responses. Return a JSON object with career recommendations, next steps, and personalized insights.'
+          },
+          {
+            role: 'user',
+            content: analysisPrompt
+          }
+        ],
+        json_schema: {
+          type: 'object',
+          properties: {
+            recommendedPhase: { type: 'string' },
+            actionItems: { type: 'array', items: { type: 'string' } },
+            personality: { type: 'string' },
+            features: { type: 'array', items: { type: 'string' } }
+          }
+        }
       });
+
+      console.log('📥 AI onboarding analysis response:', analysis);
 
       // Update user journey based on Maya's analysis
       if (userResponses['role-discovery']?.role) {
         actions.setUserRole(userResponses['role-discovery'].role);
       }
 
-      if (userResponses['goals-setting']?.goals) {
-        userResponses['goals-setting'].goals.forEach((goal: string) => {
-          actions.addGoal(goal);
-        });
+      if (analysis) {
+        try {
+          // Handle both parsed objects and string responses
+          const strategyData = typeof analysis === 'string' ? JSON.parse(analysis) : analysis;
+          
+          // Update user journey with AI-generated insights
+          await actions.updateMayaContext(strategyData);
+          
+          // Set the recommended phase
+          if (strategyData.recommendedPhase) {
+            await actions.setCurrentPhase(strategyData.recommendedPhase);
+          }
+          
+          console.log('✅ Applied AI strategy recommendations:', strategyData);
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse AI response, using fallback phase');
+          await actions.setCurrentPhase('assessment');
+        }
+      } else {
+        console.warn('⚠️ No AI analysis response, using fallback');
+        await actions.setCurrentPhase('assessment');
       }
 
-      // Complete onboarding
+      // Complete onboarding AFTER all steps are tracked
       actions.updatePreference('onboardingComplete', true);
       actions.updatePreference('mayaIntroComplete', true);
-      actions.completeStep('maya-onboarding');
+      await actions.completeStep('maya-onboarding');
 
       toast({
         title: "Welcome to your personalized career journey!",
@@ -105,12 +170,18 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
 
       onComplete();
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('❌ Error completing onboarding:', error);
+      
+      // Fallback to default phase progression
+      await actions.setCurrentPhase('assessment');
+      await actions.completeStep('maya-onboarding');
+      
       toast({
-        title: "Something went wrong",
-        description: "Let's try that again. Don't worry, I've saved your progress!",
-        variant: "destructive",
+        title: "Welcome to your career journey!",
+        description: "I've set up your profile. Let's continue building your path!",
       });
+      
+      onComplete();
     } finally {
       setIsAnalyzing(false);
     }

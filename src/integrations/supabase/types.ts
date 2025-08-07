@@ -5880,27 +5880,39 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          completed_steps: string[] | null
+          current_phase: string | null
           experience_level: string | null
           has_completed_onboarding: boolean | null
           last_active_date: string | null
+          milestones: Json | null
           preferred_features: string[] | null
           updated_at: string | null
+          user_goals: string[] | null
           user_id: string
         }
         Insert: {
+          completed_steps?: string[] | null
+          current_phase?: string | null
           experience_level?: string | null
           has_completed_onboarding?: boolean | null
           last_active_date?: string | null
+          milestones?: Json | null
           preferred_features?: string[] | null
           updated_at?: string | null
+          user_goals?: string[] | null
           user_id: string
         }
         Update: {
+          completed_steps?: string[] | null
+          current_phase?: string | null
           experience_level?: string | null
           has_completed_onboarding?: boolean | null
           last_active_date?: string | null
+          milestones?: Json | null
           preferred_features?: string[] | null
           updated_at?: string | null
+          user_goals?: string[] | null
           user_id?: string
         }
         Relationships: []
