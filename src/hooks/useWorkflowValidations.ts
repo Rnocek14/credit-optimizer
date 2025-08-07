@@ -160,18 +160,32 @@ export function useWorkflowValidations(userId?: string) {
     if (!userId) return;
 
     try {
+      console.log('🔄 Syncing Phase 5 data for user:', userId);
+
+      // Check existing validations to avoid duplicates
+      const { data: existingValidations } = await supabase
+        .from('workflow_validations')
+        .select('source_id')
+        .eq('user_id', userId);
+
+      const existingSourceIds = new Set(existingValidations?.map(v => v.source_id) || []);
+
       // Fetch Maya decisions and create validations
       const { data: mayaDecisions } = await supabase
         .from('maya_decisions')
         .select('*')
         .eq('user_id', userId)
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(5);
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(10);
 
+      let newValidations = 0;
       if (mayaDecisions) {
         for (const decision of mayaDecisions) {
-          const validationScore = Math.min(decision.confidence_score * 100, 95);
-          await createMayaValidation(decision.id, validationScore, decision.confidence_score);
+          if (!existingSourceIds.has(decision.id)) {
+            const validationScore = Math.min(decision.confidence_score * 100, 95);
+            await createMayaValidation(decision.id, validationScore, decision.confidence_score);
+            newValidations++;
+          }
         }
       }
 
@@ -181,19 +195,22 @@ export function useWorkflowValidations(userId?: string) {
         .select('*')
         .eq('user_id', userId)
         .not('cri_average', 'is', null)
-        .limit(3);
+        .limit(5);
 
       if (resumeDrafts) {
         for (const resume of resumeDrafts) {
-          if (resume.cri_average) {
+          if (resume.cri_average && !existingSourceIds.has(resume.id)) {
             await createCRIValidation(resume.id, resume.cri_average);
+            newValidations++;
           }
         }
       }
 
+      console.log(`✅ Sync complete: ${newValidations} new validations created`);
+
       toast({
-        title: "Phase 5 Data Synced",
-        description: "Validation tracking updated with existing Phase 5 data",
+        title: "Phase 5 Data Synced", 
+        description: `Created ${newValidations} new validations from existing Phase 5 data`,
       });
 
     } catch (err: any) {

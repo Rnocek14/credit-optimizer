@@ -54,6 +54,8 @@ export function useEnhancedPhase5() {
         userId = devUser.id;
       }
 
+      console.log('📊 Phase 5: Fetching metrics for user:', userId);
+
       // Fetch autonomous workflows
       const { data: workflows, error: workflowError } = await supabase
         .from('autonomous_workflows')
@@ -85,6 +87,14 @@ export function useEnhancedPhase5() {
         realTimeConnections: 1, // Simulated
         predictiveAccuracy: calculatePredictiveAccuracy(decisions || [])
       };
+
+      console.log('✅ Phase 5: Metrics calculated:', {
+        workflows: workflows?.length,
+        decisions: decisions?.length,
+        alerts: alerts?.length,
+        systemHealth: metrics.systemHealth,
+        predictiveAccuracy: metrics.predictiveAccuracy
+      });
 
       setStatus(prev => ({
         ...prev,
