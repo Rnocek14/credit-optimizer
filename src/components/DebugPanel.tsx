@@ -3,7 +3,9 @@ import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronUp, Bug } from 'lucide-react';
+import { AIUsageViewer } from './AIUsageViewer';
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,13 +50,13 @@ export function DebugPanel() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-96 max-h-[80vh] overflow-auto">
+    <div className="fixed bottom-4 right-4 z-50 w-[900px] max-w-[90vw] max-h-[80vh] overflow-auto">
       <Card className="bg-background/95 backdrop-blur border-border">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <Bug className="w-4 h-4" />
-              Unified State Debug
+              Debug Panel
             </CardTitle>
             <Button
               onClick={() => setIsOpen(false)}
@@ -66,6 +68,13 @@ export function DebugPanel() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 text-xs">
+          <Tabs defaultValue="state" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="state">App State</TabsTrigger>
+              <TabsTrigger value="usage">AI Usage</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="state" className="space-y-4">
           {/* Quick Actions */}
           <div className="space-y-2">
             <h4 className="font-medium">Quick Tests:</h4>
@@ -164,6 +173,12 @@ export function DebugPanel() {
               </div>
             </div>
           </div>
+            </TabsContent>
+            
+            <TabsContent value="usage" className="mt-4">
+              <AIUsageViewer />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
