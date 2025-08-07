@@ -165,48 +165,132 @@ export function useWorkflowValidations(userId?: string) {
       // Check existing validations to avoid duplicates
       const { data: existingValidations } = await supabase
         .from('workflow_validations')
-        .select('source_id')
+        .select('source_id, source_type')
         .eq('user_id', userId);
 
       const existingSourceIds = new Set(existingValidations?.map(v => v.source_id) || []);
+      console.log('📋 Existing validation source IDs:', Array.from(existingSourceIds));
 
       // Fetch Maya decisions and create validations
-      const { data: mayaDecisions } = await supabase
+      const { data: mayaDecisions, error: mayaError } = await supabase
         .from('maya_decisions')
         .select('*')
         .eq('user_id', userId)
         .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(10);
+        .order('created_at', { ascending: false });
+
+      if (mayaError) {
+        console.error('Error fetching Maya decisions:', mayaError);
+      } else {
+        console.log(`📊 Found ${mayaDecisions?.length || 0} Maya decisions`);
+      }
 
       let newValidations = 0;
+      let skippedValidations = 0;
+
       if (mayaDecisions) {
         for (const decision of mayaDecisions) {
           if (!existingSourceIds.has(decision.id)) {
-            const validationScore = Math.min(decision.confidence_score * 100, 95);
-            await createMayaValidation(decision.id, validationScore, decision.confidence_score);
-            newValidations++;
+            console.log(`🔨 Creating validation for Maya decision ${decision.id} with confidence ${decision.confidence_score}`);
+            
+            try {
+              const validationScore = Math.min((decision.confidence_score || 0.8) * 100, 95);
+              
+              const { data, error } = await supabase
+                .from('workflow_validations')
+                .insert({
+                  user_id: userId,
+                  source_type: 'maya_decision',
+                  source_id: decision.id,
+                  validation_score: validationScore,
+                  confidence_score: decision.confidence_score || 0.8,
+                  validation_data: {
+                    decision_type: decision.decision_type || 'autonomous_workflow',
+                    decision_context: decision.decision_context,
+                    execution_result: decision.execution_result,
+                    timestamp: new Date().toISOString()
+                  }
+                })
+                .select()
+                .single();
+
+              if (error) {
+                console.error(`❌ Failed to create Maya validation for ${decision.id}:`, error);
+              } else {
+                console.log(`✅ Created Maya validation: ${data.id}`);
+                newValidations++;
+              }
+            } catch (validationError) {
+              console.error(`❌ Exception creating Maya validation:`, validationError);
+            }
+          } else {
+            skippedValidations++;
           }
         }
       }
 
       // Fetch CRI scores from resume drafts
-      const { data: resumeDrafts } = await supabase
+      const { data: resumeDrafts, error: resumeError } = await supabase
         .from('ai_resume_drafts')
         .select('*')
         .eq('user_id', userId)
         .not('cri_average', 'is', null)
-        .limit(5);
+        .order('created_at', { ascending: false });
+
+      if (resumeError) {
+        console.error('Error fetching resume drafts:', resumeError);
+      } else {
+        console.log(`📊 Found ${resumeDrafts?.length || 0} CRI scores`);
+      }
 
       if (resumeDrafts) {
         for (const resume of resumeDrafts) {
           if (resume.cri_average && !existingSourceIds.has(resume.id)) {
-            await createCRIValidation(resume.id, resume.cri_average);
-            newValidations++;
+            console.log(`🔨 Creating validation for CRI score ${resume.id} with score ${resume.cri_average}`);
+            
+            try {
+              const { data, error } = await supabase
+                .from('workflow_validations')
+                .insert({
+                  user_id: userId,
+                  source_type: 'cri_score',
+                  source_id: resume.id,
+                  validation_score: resume.cri_average,
+                  confidence_score: 0.85,
+                  validation_data: {
+                    cri_score: resume.cri_average,
+                    readiness_score: resume.readiness_score,
+                    source: 'resume_analysis',
+                    timestamp: new Date().toISOString()
+                  }
+                })
+                .select()
+                .single();
+
+              if (error) {
+                console.error(`❌ Failed to create CRI validation for ${resume.id}:`, error);
+              } else {
+                console.log(`✅ Created CRI validation: ${data.id}`);
+                newValidations++;
+              }
+            } catch (validationError) {
+              console.error(`❌ Exception creating CRI validation:`, validationError);
+            }
+          } else {
+            if (!resume.cri_average) {
+              console.log(`⏭️ Skipping resume ${resume.id} - no CRI score`);
+            } else {
+              skippedValidations++;
+            }
           }
         }
       }
 
-      console.log(`✅ Sync complete: ${newValidations} new validations created`);
+      console.log(`✅ Sync complete: ${newValidations} new validations created, ${skippedValidations} skipped`);
+
+      // Refresh data
+      await fetchValidations();
+      await fetchMetrics();
 
       toast({
         title: "Phase 5 Data Synced", 
@@ -215,6 +299,11 @@ export function useWorkflowValidations(userId?: string) {
 
     } catch (err: any) {
       console.error('Error syncing Phase 5 data:', err);
+      toast({
+        title: "Sync Error",
+        description: `Failed to sync Phase 5 data: ${err.message}`,
+        variant: "destructive"
+      });
     }
   };
 

@@ -41,10 +41,10 @@ export function Phase6ValidationDashboard({ userId }: Phase6ValidationDashboardP
       );
 
       const validationCounts = {
-        maya: metrics.maya_validations || 0,
-        cri: metrics.cri_validations || 0,
-        mentor: metrics.mentor_validations || 0,
-        total: metrics.total_validations || 0
+        maya: metrics?.maya_validations || 0,
+        cri: metrics?.cri_validations || 0,
+        mentor: metrics?.mentor_validations || 0,
+        total: metrics?.total_validations || 0
       };
 
       setValidationSteps(prev => prev.map(step => {
