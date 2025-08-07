@@ -27,27 +27,52 @@ export function Phase6BaselineLockPanel({ userId }: Phase6BaselineLockPanelProps
   const executeBaselineLock = async () => {
     setIsLocking(true);
     try {
+      console.log('🚀 Starting Phase 6 baseline lock for userId:', userId);
+      
       // Call the edge function to execute the baseline lock
       const { data, error } = await supabase.functions.invoke('phase6-baseline-lock', {
         body: { userId }
       });
 
+      console.log('📡 Edge function response:', { data, error });
+
       if (error) {
+        console.error('❌ Edge function error:', error);
         throw error;
       }
 
-      setLockResult(data.data);
+      if (!data) {
+        console.error('❌ No data returned from edge function');
+        throw new Error('No data returned from edge function');
+      }
+
+      // The edge function returns data directly, not wrapped in data.data
+      const lockData = data.data || data;
+      console.log('✅ Lock data parsed:', lockData);
+
+      if (!lockData || !lockData.certification) {
+        console.error('❌ Invalid response structure:', lockData);
+        throw new Error('Invalid response structure from edge function');
+      }
+
+      setLockResult(lockData);
       
       toast({
         title: "🔒 Phase 6 Baseline Locked",
-        description: `Enterprise certification generated with ${data.data.certification.overallScore.toFixed(1)}% overall score`,
+        description: `Enterprise certification generated with ${lockData.certification.overallScore.toFixed(1)}% overall score`,
       });
 
     } catch (error: any) {
-      console.error('Baseline lock error:', error);
+      console.error('❌ Baseline lock error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        context: error.context,
+        details: error.details
+      });
+      
       toast({
-        title: "❌ Baseline Lock Failed",
-        description: error.message || "Failed to lock Phase 6 baseline",
+        title: "❌ Baseline Lock Failed", 
+        description: error.message || error.details?.message || "Failed to lock Phase 6 baseline",
         variant: "destructive"
       });
     } finally {
