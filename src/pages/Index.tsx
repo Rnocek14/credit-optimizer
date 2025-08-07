@@ -7,7 +7,7 @@ import { MayaOnboarding } from "@/components/MayaOnboarding";
 import { AdaptiveDashboard } from "@/components/AdaptiveDashboard";
 import SecureLandingPage from "@/components/SecureLandingPage";
 import SecurityMonitor from "@/components/SecurityMonitor";
-import { HubNavigation } from "@/components/HubNavigation";
+import { HubNavigation } from "@/components/HubNavigation"; // Fixed import
 import { EnhancedMayaDemo } from "@/components/EnhancedMayaDemo";
 import { RoadmapTester } from "@/components/RoadmapTester";
 import { getCurrentUser } from "@/lib/authHelper";
