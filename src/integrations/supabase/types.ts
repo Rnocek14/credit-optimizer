@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_model_usage: {
+        Row: {
+          complexity: string | null
+          created_at: string
+          error_message: string | null
+          function_name: string | null
+          id: string
+          latency_ms: number | null
+          model: string | null
+          request_id: string | null
+          route: string | null
+          success: boolean
+          task: string
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string
+        }
+        Insert: {
+          complexity?: string | null
+          created_at?: string
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          request_id?: string | null
+          route?: string | null
+          success?: boolean
+          task: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id: string
+        }
+        Update: {
+          complexity?: string | null
+          created_at?: string
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          request_id?: string | null
+          route?: string | null
+          success?: boolean
+          task?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_operation_cache: {
         Row: {
           confidence_score: number | null
