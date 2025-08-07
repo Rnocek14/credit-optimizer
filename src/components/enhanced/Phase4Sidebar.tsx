@@ -4,6 +4,7 @@ import {
   ChevronLeft, ChevronRight, Home 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface Phase4SidebarProps {
@@ -78,35 +79,51 @@ export function Phase4Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2">
-        <div className="space-y-1">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            
-            return (
-              <Button
-                key={item.id}
-                variant={isActive ? "secondary" : "ghost"}
-                onClick={() => onTabChange(item.id)}
-                className={cn(
-                  "w-full justify-start gap-3 h-10",
-                  collapsed && "justify-center",
-                  isActive && "bg-primary/10 text-primary border-primary/20"
-                )}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {!collapsed && (
-                  <div className="flex-1 text-left">
-                    <div className="text-sm font-medium">{item.label}</div>
-                    <div className="text-xs text-muted-foreground">{item.description}</div>
-                  </div>
-                )}
-              </Button>
-            );
-          })}
-        </div>
-      </nav>
+      <TooltipProvider>
+        <nav className="flex-1 p-2">
+          <div className="space-y-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              const buttonElement = (
+                <Button
+                  key={item.id}
+                  variant={isActive ? "secondary" : "ghost"}
+                  onClick={() => onTabChange(item.id)}
+                  className={cn(
+                    "w-full justify-start gap-3 h-10",
+                    collapsed && "justify-center",
+                    isActive && "bg-primary/10 text-primary border-primary/20"
+                  )}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {!collapsed && (
+                    <div className="flex-1 text-left">
+                      <div className="text-sm font-medium">{item.label}</div>
+                      <div className="text-xs text-muted-foreground">{item.description}</div>
+                    </div>
+                  )}
+                </Button>
+              );
+
+              return collapsed ? (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    {buttonElement}
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div>
+                      <div className="font-medium">{item.label}</div>
+                      <div className="text-xs text-muted-foreground">{item.description}</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              ) : buttonElement;
+            })}
+          </div>
+        </nav>
+      </TooltipProvider>
 
       {/* Status Indicator */}
       {!collapsed && (

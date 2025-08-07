@@ -5,6 +5,8 @@ import { Bot } from 'lucide-react';
 import { Phase4Sidebar } from './enhanced/Phase4Sidebar';
 import { Phase4Overview } from './enhanced/Phase4Overview';
 import { TimelineProgressTracker } from './enhanced/TimelineProgressTracker';
+import { LoadingFallback } from './enhanced/LoadingFallback';
+import { WorkflowActionHandler } from './enhanced/WorkflowActionHandler';
 import { AutonomousWorkflowDashboard } from './AutonomousWorkflowDashboard';
 import { PredictiveAnalyticsEngine } from './PredictiveAnalyticsEngine';
 import { MayaAutonomousIntelligence } from './MayaAutonomousIntelligence';
@@ -15,7 +17,6 @@ import { CareerTransitionSimulator } from './CareerTransitionSimulator';
 import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
 import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
-import { PivotOutcomeTracker } from './PivotOutcomeTracker';
 import { SmartSuggestionsWidget } from './enhanced/SmartSuggestionsWidget';
 import { UnifiedProgressIndicator } from './enhanced/UnifiedProgressIndicator';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -43,7 +44,8 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
     userProfile,
     getMayaReasoning,
     getSmartSuggestions,
-    isLoading: integrationLoading
+    isLoading: integrationLoading,
+    hasData
   } = usePhase4Integration(userId);
 
   const handleGenerateRoadmap = (path: any) => {
@@ -182,16 +184,11 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
           )}
 
           {activeTab === 'copilot' && (
-            profileLoading || integrationLoading ? (
-              <Card>
-                <CardContent className="p-8">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <span className="ml-3">Loading your profile...</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
+            <LoadingFallback 
+              isLoading={integrationLoading} 
+              hasData={hasData}
+              fallbackMessage="Loading your personalized AI Co-Pilot..."
+            >
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                   <CareerTransitionSimulator userId={userId} />
@@ -218,7 +215,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
                   <CareerReadinessMonitor userId={userId} />
                 </div>
               </div>
-            )
+            </LoadingFallback>
           )}
 
           {activeTab === 'pivot' && (
@@ -272,6 +269,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
 
           {activeTab === 'workflows' && (
             <div className="space-y-6">
+              <WorkflowActionHandler userId={userId} workflows={[]} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AutonomousWorkflowDashboard />
                 <EnhancedWorkflowEngine />

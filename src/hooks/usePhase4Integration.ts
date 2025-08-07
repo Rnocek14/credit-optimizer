@@ -16,7 +16,7 @@ export interface SharedPivotState {
 
 export function usePhase4Integration(userId: string) {
   const { state, actions } = useUnifiedData();
-  const { profile } = useUserProfile(userId);
+  const { profile, isLoading: profileLoading } = useUserProfile(userId);
   const { toast } = useToast();
   
   // Shared state across all Phase 4 components
@@ -39,6 +39,26 @@ export function usePhase4Integration(userId: string) {
 
   // Get CRI data
   const { criScore } = useCareerReadiness({ userId });
+
+  // Combined loading state with timeout protection
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const isLoading = (profileLoading || pivotsLoading) && !loadingTimeout;
+
+  // Timeout protection for loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Reset timeout when loading completes
+  useEffect(() => {
+    if (!profileLoading && !pivotsLoading) {
+      setLoadingTimeout(false);
+    }
+  }, [profileLoading, pivotsLoading]);
 
   // Update shared state when pivot paths load
   useEffect(() => {
@@ -152,9 +172,10 @@ export function usePhase4Integration(userId: string) {
     
     // Data
     userProfile: profile,
-    pivotPaths,
+    pivotPaths: pivotPaths || [],
     criScore,
-    isLoading: pivotsLoading,
+    isLoading,
+    hasData: !!profile && (!!pivotPaths || loadingTimeout),
     
     // AI insights
     getMayaReasoning,
