@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { getCurrentUser } from '@/lib/authHelper';
 import { supabase } from '@/integrations/supabase/client';
+import { setupAishaForValidation, getCurrentDevUser } from '@/lib/devUserSetup';
+import { isProduction } from '@/lib/security';
 
 export type UserPhase = 'discovery' | 'assessment' | 'planning' | 'execution' | 'optimization';
 export type UserRole = 'learner' | 'professional' | 'career_changer' | 'student' | 'employer';
@@ -183,20 +185,58 @@ const UserJourneyContext = createContext<{
 export function UserJourneyProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(userJourneyReducer, initialState);
 
-  // Initialize user state
+  // Debug auth state changes
+  useEffect(() => {
+    console.log('🔍 UserJourney state changed:', {
+      hasUser: !!state.user,
+      userId: state.user?.id,
+      isAuthenticated: state.isAuthenticated,
+      currentPhase: state.currentPhase,
+      completedSteps: state.completedSteps.length
+    });
+  }, [state.user, state.isAuthenticated, state.currentPhase, state.completedSteps]);
+
+  // Initialize user state with enhanced auth handling
   useEffect(() => {
     const initializeUser = async () => {
       console.log('📊 Initializing user journey...');
-      const user = await getCurrentUser();
+      
+      // Phase 1: Auto-setup dev user in development
+      if (!isProduction()) {
+        console.log('🔧 Development mode: Setting up dev user session...');
+        
+        // Check if dev user already exists
+        const existingDevUser = getCurrentDevUser();
+        if (!existingDevUser) {
+          console.log('🔧 No dev user found, setting up Aisha for validation...');
+          setupAishaForValidation();
+          
+          // Small delay to ensure session is established
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      // Phase 2: Get authenticated user with retry logic
+      let user = await getCurrentUser();
+      let retryCount = 0;
+      
+      // Retry authentication if needed (handles race conditions)
+      while (!user && retryCount < 3) {
+        console.log(`🔄 Retry authentication attempt ${retryCount + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        user = await getCurrentUser();
+        retryCount++;
+      }
       
       console.log('🔐 Auth initialization:', {
         hasUser: !!user,
         userId: user?.id,
-        userEmail: user?.email
+        userEmail: user?.email,
+        retryCount
       });
       
       if (!user) {
-        console.log('❌ No authenticated user found');
+        console.log('❌ No authenticated user found after retries');
         return;
       }
 
@@ -257,12 +297,51 @@ export function UserJourneyProvider({ children }: { children: React.ReactNode })
     };
     
     initializeUser();
+
+    // Set up auth state change listener for real-time updates
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', { event, hasSession: !!session, userId: session?.user?.id });
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('✅ User signed in, re-initializing journey...');
+          
+          // Re-run user initialization when auth state changes
+          setTimeout(() => {
+            initializeUser();
+          }, 100);
+        } else if (event === 'SIGNED_OUT') {
+          console.log('👋 User signed out, clearing journey state...');
+          dispatch({ type: 'SET_USER', payload: null });
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Persist user journey state to database
+  // Persist user journey state to database with enhanced error handling
   const persistUserJourney = useCallback(async () => {
     if (!state.user?.id) {
-      console.warn('⚠️ No user ID for persisting journey state');
+      console.warn('⚠️ No user ID for persisting journey state, attempting re-authentication...');
+      
+      // Try to re-authenticate if no user ID
+      try {
+        const user = await getCurrentUser();
+        if (user?.id) {
+          console.log('✅ Re-authentication successful, updating user state...');
+          dispatch({ type: 'SET_USER', payload: user });
+          
+          // Retry persistence with new user ID
+          setTimeout(() => persistUserJourney(), 100);
+          return;
+        }
+      } catch (error) {
+        console.error('❌ Re-authentication failed:', error);
+      }
+      
       return;
     }
     
