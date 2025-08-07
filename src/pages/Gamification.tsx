@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { GamificationDashboard } from '@/components/GamificationDashboard';
 import { CelebrationModal } from '@/components/CelebrationModal';
@@ -12,6 +12,16 @@ export default function Gamification() {
   const { getUnreadCelebrations, markCelebrationDisplayed } = useGamification();
 
   const unreadCelebrations = getUnreadCelebrations();
+
+  // Auto-show unread celebrations
+  useEffect(() => {
+    if (unreadCelebrations.length > 0 && !selectedCelebration) {
+      const latestCelebration = unreadCelebrations[0];
+      setSelectedCelebration(latestCelebration);
+      // Mark as displayed when shown
+      markCelebrationDisplayed.mutate(latestCelebration.id);
+    }
+  }, [unreadCelebrations, selectedCelebration, markCelebrationDisplayed]);
 
   const handleCelebrationClick = (celebration: any) => {
     setSelectedCelebration(celebration);

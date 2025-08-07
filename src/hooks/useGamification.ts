@@ -84,8 +84,8 @@ export function useGamification(userId?: string) {
         .from('gamification_metrics')
         .select('*')
         .eq('user_id', currentUserId)
-        .gte('period_start', startDate.toISOString())
-        .lte('period_end', endDate.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
 
       if (error) throw error;
 
