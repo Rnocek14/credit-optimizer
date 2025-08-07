@@ -23,7 +23,19 @@ export function AdaptiveDashboard() {
   }, [state.currentPhase, state.role, state.goals]);
 
   const generateMayaInsights = async () => {
-    if (!state.user?.id || isLoadingInsights) return;
+    if (isLoadingInsights) return;
+    
+    // Debug authentication state
+    console.log('🔐 Auth state check:', {
+      hasUser: !!state.user,
+      userId: state.user?.id,
+      isAuthenticated: state.isAuthenticated
+    });
+    
+    if (!state.user?.id) {
+      console.warn('⚠️ No authenticated user for Maya insights, skipping...');
+      return;
+    }
     
     // Debug logging for dashboard state
     console.log('🧭 Current Phase:', state.currentPhase);
@@ -66,7 +78,8 @@ export function AdaptiveDashboard() {
             priorityActions: { type: 'array', items: { type: 'string' } },
             weeklyFocus: { type: 'string' },
             insight: { type: 'string' }
-          }
+          },
+          additionalProperties: false
         }
       });
 

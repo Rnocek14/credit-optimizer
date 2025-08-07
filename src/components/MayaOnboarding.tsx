@@ -84,6 +84,13 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
     setIsAnalyzing(true);
     console.log('🎯 Completing Maya onboarding with responses:', userResponses);
     
+    // Debug authentication state
+    console.log('🔐 Auth state check:', {
+      hasUser: !!state.user,
+      userId: state.user?.id,
+      isAuthenticated: state.isAuthenticated
+    });
+    
     try {
       // Call the AI router to generate personalized career strategy
       console.log('🧠 Calling AI Router for onboarding analysis...');
@@ -124,7 +131,8 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
             actionItems: { type: 'array', items: { type: 'string' } },
             personality: { type: 'string' },
             features: { type: 'array', items: { type: 'string' } }
-          }
+          },
+          additionalProperties: false
         }
       });
 

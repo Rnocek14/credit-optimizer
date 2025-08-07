@@ -189,6 +189,12 @@ export function UserJourneyProvider({ children }: { children: React.ReactNode })
       console.log('📊 Initializing user journey...');
       const user = await getCurrentUser();
       
+      console.log('🔐 Auth initialization:', {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email
+      });
+      
       if (!user) {
         console.log('❌ No authenticated user found');
         return;
@@ -255,7 +261,12 @@ export function UserJourneyProvider({ children }: { children: React.ReactNode })
 
   // Persist user journey state to database
   const persistUserJourney = useCallback(async () => {
-    if (!state.user?.id) return;
+    if (!state.user?.id) {
+      console.warn('⚠️ No user ID for persisting journey state');
+      return;
+    }
+    
+    console.log('💾 Persisting user journey for user:', state.user.id);
 
     try {
       const { error } = await supabase
