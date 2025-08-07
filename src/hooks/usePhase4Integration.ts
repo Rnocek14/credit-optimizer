@@ -76,18 +76,23 @@ export function usePhase4Integration(userId: string) {
 
     toast({
       title: "Pivot synchronized",
-      description: `All components updated for ${pivot.new_career}`,
+      description: `All components updated for ${pivot?.new_career || 'selected career'}`,
       variant: "default"
     });
   }, [profile, criScore, actions, toast]);
 
   // Maya AI decision reasoning
   const getMayaReasoning = useCallback((context: string, data: any) => {
+    // Add null checks to prevent accessing properties on null objects
+    if (!data) {
+      return "Maya is analyzing your career data to provide personalized insights.";
+    }
+
     const reasoningMap = {
-      'pivot_selection': `Based on your ${profile?.experience_level} experience in ${profile?.current_role} and strong skills in ${profile?.skills?.slice(0, 2).join(' and ')}, this pivot to ${data.new_career} aligns well with market trends and offers ${data.roi_score}% ROI confidence.`,
-      'timeline_adjustment': `Considering your current progress of ${data.currentProgress}% and learning intensity, Maya suggests this timeline adjustment will optimize your transition efficiency while maintaining quality.`,
-      'roi_projection': `Market analysis shows ${data.new_career} roles command 30% higher salaries than ${profile?.current_role}, with strong demand in ${profile?.location}. Your skill overlap of ${data.skillOverlap}% provides a solid foundation.`,
-      'outcome_prediction': `With ${data.currentProgress}% completion and current market velocity, Maya predicts ${data.successRate}% success probability for your ${data.new_career} transition.`
+      'pivot_selection': `Based on your ${profile?.experience_level || 'current'} experience in ${profile?.current_role || 'your field'} and strong skills in ${profile?.skills?.slice(0, 2).join(' and ') || 'your core competencies'}, this pivot to ${data.new_career || 'your target career'} aligns well with market trends and offers ${data.roi_score || 75}% ROI confidence.`,
+      'timeline_adjustment': `Considering your current progress of ${data.currentProgress || 0}% and learning intensity, Maya suggests this timeline adjustment will optimize your transition efficiency while maintaining quality.`,
+      'roi_projection': `Market analysis shows ${data.new_career || 'your target career'} roles command 30% higher salaries than ${profile?.current_role || 'your current role'}, with strong demand in ${profile?.location || 'your area'}. Your skill overlap of ${data.skillOverlap || 50}% provides a solid foundation.`,
+      'outcome_prediction': `With ${data.currentProgress || 0}% completion and current market velocity, Maya predicts ${data.successRate || 75}% success probability for your ${data.new_career || 'career'} transition.`
     };
 
     return reasoningMap[context as keyof typeof reasoningMap] || "Maya is analyzing this decision based on your profile and market intelligence.";
@@ -113,7 +118,7 @@ export function usePhase4Integration(userId: string) {
     }
 
     // ROI-based suggestions
-    if (pivot.roi_score > 85 && currentCRI > 75) {
+    if ((pivot.roi_score || 0) > 85 && currentCRI > 75) {
       suggestions.push({
         type: 'opportunity',
         title: 'High Opportunity Window',
