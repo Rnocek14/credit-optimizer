@@ -38,8 +38,13 @@ interface PivotProgressTrackerProps {
   progressData?: any;
 }
 
-export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgressTrackerProps) {
-  const [selectedPivot, setSelectedPivot] = useState<string>(activePivots[0]?.id || '');
+export function PivotProgressTracker({ 
+  userId, 
+  activePivots = [], 
+  selectedPivot,
+  progressData 
+}: PivotProgressTrackerProps) {
+  const [selectedPivotId, setSelectedPivotId] = useState<string>(activePivots[0]?.id || '');
   const { toast } = useToast();
 
   // Demo data for active pivots
@@ -132,7 +137,18 @@ export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgres
     }
   ];
 
-  const currentPivot = mockPivots.find(p => p.id === selectedPivot) || mockPivots[0];
+  // Use shared data if available, otherwise fall back to mock data
+  const currentPivot = selectedPivot ? {
+    id: selectedPivot.id || '1',
+    targetCareer: selectedPivot.new_career || selectedPivot.targetCareer || 'Product Manager',
+    startDate: '2024-07-01',
+    estimatedDuration: selectedPivot.estimated_time || '4 months',
+    actualProgress: progressData?.currentProgress || 65,
+    skillsAcquired: progressData?.skillsAcquired || 4,
+    totalSkills: progressData?.totalSkills || 7,
+    roi_score: selectedPivot.roi_score || 85,
+    milestones: progressData?.milestones || mockPivots[0].milestones
+  } : (mockPivots.find(p => p.id === selectedPivotId) || mockPivots[0]);
 
   const handleMilestoneAction = (milestoneId: string, action: string) => {
     toast({
@@ -189,7 +205,7 @@ export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgres
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs value={selectedPivot} onValueChange={setSelectedPivot}>
+          <Tabs value={selectedPivotId} onValueChange={setSelectedPivotId}>
             <TabsList className="grid w-full grid-cols-2">
               {mockPivots.map((pivot) => (
                 <TabsTrigger key={pivot.id} value={pivot.id} className="flex items-center gap-2">
@@ -264,9 +280,9 @@ export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgres
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {currentPivot.milestones.map((milestone, index) => (
+                {(currentPivot.milestones || []).map((milestone, index) => (
                   <div key={milestone.id} className="relative">
-                    {index < currentPivot.milestones.length - 1 && (
+                    {index < (currentPivot.milestones || []).length - 1 && (
                       <div className="absolute left-6 top-12 w-0.5 h-16 bg-border"></div>
                     )}
                     
@@ -308,14 +324,14 @@ export function PivotProgressTracker({ userId, activePivots = [] }: PivotProgres
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between">
-                          <div className="flex gap-1">
-                            {milestone.skills.map((skill) => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
+                         <div className="flex items-center justify-between">
+                           <div className="flex gap-1">
+                             {(milestone.skills || []).map((skill) => (
+                               <Badge key={skill} variant="secondary" className="text-xs">
+                                 {skill}
+                               </Badge>
+                             ))}
+                           </div>
                           
                           {milestone.status === 'in_progress' && (
                             <Button 
