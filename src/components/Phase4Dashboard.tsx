@@ -18,6 +18,7 @@ import { GoalOrchestrator } from './GoalOrchestrator';
 import { EnhancedPivotAdvisor } from './EnhancedPivotAdvisor';
 import { CrossPathComparisonPanel } from './CrossPathComparisonPanel';
 import { SmartPivotRecommendations } from './SmartPivotRecommendations';
+import { PivotOutcomeTracker } from './PivotOutcomeTracker';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -99,7 +100,7 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
 
       {/* Main Dashboard */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="copilot" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
             Co-Pilot Hub
@@ -107,6 +108,10 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
           <TabsTrigger value="pivot" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             Pivot Intelligence
+          </TabsTrigger>
+          <TabsTrigger value="tracker" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Progress Tracker
           </TabsTrigger>
           <TabsTrigger value="health" className="flex items-center gap-2">
             <Heart className="w-4 h-4" />
@@ -183,6 +188,10 @@ export function Phase4Dashboard({ userId }: Phase4DashboardProps) {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="tracker" className="space-y-6">
+          <PivotOutcomeTracker userId={userId} />
         </TabsContent>
 
         <TabsContent value="health" className="space-y-6">
