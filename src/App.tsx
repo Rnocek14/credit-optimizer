@@ -79,6 +79,7 @@ import MayaIntelligence from "./pages/MayaIntelligence";
 import SocialLearning from "./pages/SocialLearning";
 import { SocialLearningTest } from "./components/SocialLearningTest";
 import Phase4 from "./pages/Phase4";
+import Phase5 from "./pages/Phase5";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -122,6 +123,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Phase4 />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/phase5" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Phase5 />
               </ProtectedRoute>
             } 
           />
