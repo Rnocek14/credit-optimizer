@@ -304,7 +304,7 @@ export default function CourseDiscovery() {
                         <Button variant="outline" size="sm" onClick={() => {
                           import('@/state/planStore').then(({ usePlanStore }) => {
                             const add = usePlanStore.getState().addCourseToPlan;
-                            add({ title: course.title, provider: course.source_platform, url: course.url });
+                            add({ title: course.title, provider: (course as any).provider || (course as any).platform, url: (course as any).url });
                             import('sonner').then(({ toast }) => toast.success('Added to Plan (demo)'));
                           });
                         }}>

@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
-import { MayaCareerCopilot } from "@/components/maya/MayaCareerCopilot";
 import { EnhancedPivotAdvisor } from "@/components/EnhancedPivotAdvisor";
+import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 
 export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);

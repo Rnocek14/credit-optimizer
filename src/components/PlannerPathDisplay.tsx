@@ -355,7 +355,7 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
                           import('@/state/transcriptStore').then(({ useTranscriptStore }) => {
                             const add = useTranscriptStore.getState().addEntry;
                             add({
-                              title: path.title || 'Planned Step Completed',
+                              title: (path as any).title || (path as any).nodes?.[0]?.title || 'Planned Step Completed',
                               skill_tags: ['Demo'],
                               cri_score: Math.round((path.average_roi || 0.75) * 10),
                               difficulty: 'intermediate',

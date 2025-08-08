@@ -56,7 +56,7 @@ export function CRIROIPanel({ userId }: CRIROIPanelProps) {
         {criLoading ? (
           <Skeleton className="h-6 w-24" />
         ) : (
-          <div className="text-sm">Your CRI: <span className="font-semibold">{Math.round(criScore || 72)}</span></div>
+          <div className="text-sm">Your CRI: <span className="font-semibold">{Math.round(Number((criScore as any) ?? 72))}</span></div>
         )}
         {loading ? (
           <div className="space-y-2">

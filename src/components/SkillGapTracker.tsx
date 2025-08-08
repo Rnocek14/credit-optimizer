@@ -10,7 +10,7 @@ interface SkillGapTrackerProps { userId?: string | null }
 
 export function SkillGapTracker({ userId }: SkillGapTrackerProps) {
   const navigate = useNavigate();
-  const { data: profile, isLoading: profileLoading } = useUserProfile(userId || undefined);
+  const { profile, isLoading: profileLoading } = useUserProfile(userId || '');
   const { sharedState, isLoading: pivotLoading } = usePhase4Integration(userId || '');
 
   const skills = useMemo(() => {
