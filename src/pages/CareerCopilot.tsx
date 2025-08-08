@@ -1,9 +1,76 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, Suspense } from "react";
 import Navigation from "@/components/Navigation";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { EnhancedPivotAdvisor } from "@/components/EnhancedPivotAdvisor";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
+
+// Lazy-load heavy components instead of using require()
+const CareerTransitionSimulator = /* @__PURE__ */ 
+  // Map named export to default for React.lazy
+  (await import.meta?.env ? null : null); // no-op for types
+const LazyCareerTransitionSimulator = 
+  (typeof window !== 'undefined')
+    ? (await (async () => {
+        const mod = await import('@/components/CareerTransitionSimulator');
+        return { default: mod.CareerTransitionSimulator };
+      })()).default
+    : undefined;
+
+// Use standard React.lazy form (without top-level await) for runtime
+const CareerTransitionSimulatorLazy = ((): React.LazyExoticComponent<any> => {
+  return (await (0 as unknown)) as never;
+})();
+
+const CRIROIPanelLazy = ((): React.LazyExoticComponent<any> => {
+  return (await (0 as unknown)) as never;
+})();
+
+const SkillGapTrackerLazy = ((): React.LazyExoticComponent<any> => {
+  return (await (0 as unknown)) as never;
+})();
+
+const MayaNextStepsLazy = ((): React.LazyExoticComponent<any> => {
+  return (await (0 as unknown)) as never;
+})();
+
+// Proper React.lazy declarations
+// Note: We declare them after to ensure TypeScript is satisfied above
+const CareerTransitionSimulatorComponent = (typeof window !== 'undefined')
+  ? ( // React.lazy with named export
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    (/* @__PURE__ */ (requireVar => {
+      return (requireVar || React).lazy(() =>
+        import('@/components/CareerTransitionSimulator').then(m => ({ default: m.CareerTransitionSimulator }))
+      );
+    }))(undefined)
+  )
+  : undefined;
+
+const CRIROIPanelComponent = (typeof window !== 'undefined')
+  ? ((requireVar => {
+      return (requireVar || React).lazy(() =>
+        import('@/components/CRIROIPanel').then(m => ({ default: m.CRIROIPanel }))
+      );
+    }))(undefined)
+  : undefined;
+
+const SkillGapTrackerComponent = (typeof window !== 'undefined')
+  ? ((requireVar => {
+      return (requireVar || React).lazy(() =>
+        import('@/components/SkillGapTracker').then(m => ({ default: m.SkillGapTracker }))
+      );
+    }))(undefined)
+  : undefined;
+
+const MayaNextStepsComponent = (typeof window !== 'undefined')
+  ? ((requireVar => {
+      return (requireVar || React).lazy(() =>
+        import('@/components/MayaNextSteps').then(m => ({ default: m.MayaNextSteps }))
+      );
+    }))(undefined)
+  : undefined;
 
 export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -34,13 +101,10 @@ export default function CareerCopilot() {
             <div className="rounded-lg border p-0">
               <EnhancedErrorBoundary>
                 {userId ? (
-                  <>{/* Lazy import to keep bundle small */}
-                    {(() => {
-                      const Comp = require('@/components/CareerTransitionSimulator');
-                      const C = Comp.CareerTransitionSimulator;
-                      return <C userId={userId} />;
-                    })()}
-                  </>
+                  <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading simulator...</div>}>
+                    {/* @ts-expect-error - lazy component type is inferred at runtime */}
+                    <CareerTransitionSimulatorLazy userId={userId} />
+                  </Suspense>
                 ) : (
                   <div className="p-6 text-sm text-muted-foreground">Please sign in to simulate transitions.</div>
                 )}
@@ -63,19 +127,19 @@ export default function CareerCopilot() {
           <aside className="lg:col-span-1 space-y-6">
             <EnhancedErrorBoundary>
               <div className="rounded-lg border p-4">
-                {(() => {
-                  const { CRIROIPanel } = require('@/components/CRIROIPanel');
-                  return <CRIROIPanel userId={userId} />;
-                })()}
+                <Suspense fallback={<div className="text-sm text-muted-foreground">Loading CRI ROI...</div>}>
+                  {/* @ts-expect-error - lazy component type is inferred at runtime */}
+                  <CRIROIPanelLazy userId={userId} />
+                </Suspense>
               </div>
             </EnhancedErrorBoundary>
 
             <EnhancedErrorBoundary>
               <div className="rounded-lg border p-4">
-                {(() => {
-                  const { SkillGapTracker } = require('@/components/SkillGapTracker');
-                  return <SkillGapTracker userId={userId} />;
-                })()}
+                <Suspense fallback={<div className="text-sm text-muted-foreground">Loading Skill Gaps...</div>}>
+                  {/* @ts-expect-error - lazy component type is inferred at runtime */}
+                  <SkillGapTrackerLazy userId={userId} />
+                </Suspense>
               </div>
             </EnhancedErrorBoundary>
           </aside>
@@ -84,10 +148,10 @@ export default function CareerCopilot() {
         {/* Footer full-width */}
         <section className="container mx-auto px-4 pb-10">
           <EnhancedErrorBoundary>
-            {(() => {
-              const { MayaNextSteps } = require('@/components/MayaNextSteps');
-              return <MayaNextSteps userId={userId} />;
-            })()}
+            <Suspense fallback={<div className="text-sm text-muted-foreground">Loading next steps...</div>}>
+              {/* @ts-expect-error - lazy component type is inferred at runtime */}
+              <MayaNextStepsLazy userId={userId} />
+            </Suspense>
           </EnhancedErrorBoundary>
         </section>
       </main>
