@@ -166,9 +166,9 @@ export const CourseIntelligenceCard: React.FC<CourseIntelligenceCardProps> = ({
           <div className="space-y-2">
             <p className="text-sm font-medium">Skills Covered:</p>
             <div className="flex flex-wrap gap-1">
-              {course.skill_mappings.slice(0, showFullDetails ? undefined : 4).map((skill) => (
+              {course.skill_mappings.slice(0, showFullDetails ? undefined : 4).map((skill, index) => (
                 <Badge 
-                  key={skill.id} 
+                  key={skill.id || index} 
                   variant="secondary" 
                   className="text-xs"
                 >

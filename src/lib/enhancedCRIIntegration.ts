@@ -1,22 +1,18 @@
-/**
- * Enhanced CRI Integration with Instructor Prestige and Advanced Course Intelligence
- * Extends the existing CRI system with instructor ratings and course intelligence engine
- */
-
 import { supabase } from '@/integrations/supabase/client';
+import type { Json, CriHistoryRow, CriCalculationData } from '@/types/json';
 
-// ===== ENHANCED CRI WEIGHTS =====
-
+// Enhanced CRI Weights - including instructor prestige
 export const ENHANCED_CRI_WEIGHTS = {
-  difficulty: 0.20,          // Course difficulty appropriateness
-  skillCoverage: 0.25,       // Breadth and depth of skills covered
-  projectRigor: 0.20,        // Hands-on project quality
-  outcomeConversion: 0.15,   // Career impact potential
-  instructorPrestige: 0.10,  // NEW: Instructor reputation and prestige
-  platformCredibility: 0.05, // Platform reliability and recognition
-  marketRelevance: 0.05      // Current market demand for skills
+  difficulty: 0.15,
+  skillCoverage: 0.20,
+  projectRigor: 0.15,
+  outcomeConversion: 0.20,
+  instructorPrestige: 0.15, // New: instructor credibility factor
+  platformCredibility: 0.10,
+  marketRelevance: 0.05
 } as const;
 
+// Enhanced CRI Breakdown interface
 export interface EnhancedCRIBreakdown {
   overall_cri_score: number;
   difficulty_score: number;
@@ -26,21 +22,15 @@ export interface EnhancedCRIBreakdown {
   instructor_prestige_score: number;
   platform_credibility_score: number;
   market_relevance_score: number;
-  calculation_version: string;
-  calculation_data: {
-    instructor_data?: any;
-    platform_analysis?: any;
-    skill_analysis?: any;
-    market_data?: any;
-  };
-  historical_scores: any[];
+  calculation_version: '2.0';
+  calculation_data: CriCalculationData;
+  historical_scores: CriHistoryRow[];
 }
 
-// ===== ENHANCED CRI CALCULATION =====
-
+// Enhanced CRI calculation with instructor prestige
 export async function calculateEnhancedCourseCRI(courseData: any): Promise<EnhancedCRIBreakdown> {
   try {
-    // Get existing scores or calculate new ones
+    // Calculate component scores
     const difficultyScore = await calculateDifficultyScore(
       courseData.difficulty_level,
       courseData.estimated_hours,
@@ -88,38 +78,36 @@ export async function calculateEnhancedCourseCRI(courseData: any): Promise<Enhan
       (marketRelevanceScore * ENHANCED_CRI_WEIGHTS.marketRelevance)
     );
 
-  return {
-    overall_cri_score: overallScore,
-    difficulty_score: difficultyScore,
-    skill_coverage_score: skillCoverageScore,
-    project_rigor_score: projectRigorScore,
-    outcome_conversion_score: outcomeConversionScore,
-    instructor_prestige_score: instructorPrestigeScore,
-    platform_credibility_score: platformCredibilityScore,
-    market_relevance_score: marketRelevanceScore,
-    calculation_version: '2.0' as const,
-    calculation_data: {
-      instructor_data: courseData.instructor_profile as Json,
-      platform_analysis: { platform: courseData.platform } as Json,
-      skill_analysis: courseData.skill_mappings as Json,
-      market_data: { category: courseData.category } as Json
-    },
-    historical_scores: [] as CriHistoryRow[]
-  };
+    return {
+      overall_cri_score: overallScore,
+      difficulty_score: difficultyScore,
+      skill_coverage_score: skillCoverageScore,
+      project_rigor_score: projectRigorScore,
+      outcome_conversion_score: outcomeConversionScore,
+      instructor_prestige_score: instructorPrestigeScore,
+      platform_credibility_score: platformCredibilityScore,
+      market_relevance_score: marketRelevanceScore,
+      calculation_version: '2.0' as const,
+      calculation_data: {
+        instructor_data: courseData.instructor_profile,
+        platform_analysis: { platform: courseData.platform },
+        skill_analysis: courseData.skill_mappings,
+        market_data: { category: courseData.category }
+      } as CriCalculationData,
+      historical_scores: [] as CriHistoryRow[]
+    };
   } catch (error) {
     console.error('Error calculating enhanced CRI:', error);
     throw error;
   }
 }
 
-// ===== ENHANCED COMPONENT CALCULATORS =====
-
+// Component score calculators
 async function calculateDifficultyScore(
   difficultyLevel?: string,
   estimatedHours?: number,
   userAverageDifficulty?: number
 ): Promise<number> {
-  // Base difficulty mapping
   const difficultyMap = {
     'beginner': 70,
     'intermediate': 85,
@@ -128,16 +116,13 @@ async function calculateDifficultyScore(
 
   let baseScore = difficultyMap[difficultyLevel as keyof typeof difficultyMap] || 75;
 
-  // Adjust based on duration (longer courses generally more comprehensive)
   if (estimatedHours) {
     if (estimatedHours > 40) baseScore += 10;
     else if (estimatedHours > 20) baseScore += 5;
     else if (estimatedHours < 5) baseScore -= 10;
   }
 
-  // Incorporate user feedback if available
   if (userAverageDifficulty) {
-    // Normalize user difficulty (1-5) to score adjustment (-10 to +10)
     const userAdjustment = (userAverageDifficulty - 3) * 5;
     baseScore += userAdjustment;
   }
@@ -149,23 +134,19 @@ async function calculateSkillCoverageScore(
   skillMappings: any[],
   description?: string
 ): Promise<number> {
-  let score = 50; // Base score
+  let score = 50;
 
-  // Score based on number and depth of skills
   if (skillMappings.length > 0) {
     const skillCount = skillMappings.length;
-    score += Math.min(25, skillCount * 3); // Up to 25 points for skill count
+    score += Math.min(25, skillCount * 3);
 
-    // Bonus for skill depth diversity
     const depthLevels = new Set(skillMappings.map(s => s.skill_depth));
-    score += depthLevels.size * 5; // 5 points per depth level
+    score += depthLevels.size * 5;
 
-    // Bonus for high relevance scores
-    const avgRelevance = skillMappings.reduce((sum, s) => sum + s.relevance_score, 0) / skillMappings.length;
+    const avgRelevance = skillMappings.reduce((sum, s) => sum + (s.relevance_score || 0), 0) / skillMappings.length;
     score += avgRelevance * 10;
   }
 
-  // Description analysis bonus
   if (description) {
     const keyTerms = ['project', 'hands-on', 'practical', 'real-world', 'portfolio'];
     const termCount = keyTerms.filter(term => 
@@ -182,9 +163,8 @@ async function calculateProjectRigorScore(
   platform?: string,
   estimatedHours?: number
 ): Promise<number> {
-  let score = 40; // Base score
+  let score = 40;
 
-  // Platform-based scoring
   const platformScores = {
     'Coursera': 80,
     'edX': 85,
@@ -198,7 +178,6 @@ async function calculateProjectRigorScore(
     score = platformScores[platform as keyof typeof platformScores];
   }
 
-  // Project-related terms in description
   if (description) {
     const projectTerms = [
       'project', 'portfolio', 'capstone', 'hands-on', 'build', 'create',
@@ -211,7 +190,6 @@ async function calculateProjectRigorScore(
     score += Math.min(20, termCount * 4);
   }
 
-  // Duration factor (longer courses more likely to have substantial projects)
   if (estimatedHours) {
     if (estimatedHours > 30) score += 10;
     else if (estimatedHours > 15) score += 5;
@@ -226,9 +204,8 @@ async function calculateOutcomeConversionScore(
   title?: string,
   category?: string
 ): Promise<number> {
-  let score = 60; // Base score
+  let score = 60;
 
-  // Platform reputation for career outcomes
   const platformOutcomes = {
     'Coursera': 85,
     'edX': 80,
@@ -242,7 +219,6 @@ async function calculateOutcomeConversionScore(
     score = platformOutcomes[platform as keyof typeof platformOutcomes];
   }
 
-  // High-demand skill categories
   if (category) {
     const highDemandCategories = [
       'Data Science', 'Machine Learning', 'Artificial Intelligence',
@@ -257,7 +233,6 @@ async function calculateOutcomeConversionScore(
     }
   }
 
-  // Title indicators of practical applicability
   if (title) {
     const careerTerms = ['career', 'professional', 'job', 'certification', 'bootcamp', 'masterclass'];
     const termCount = careerTerms.filter(term => 
@@ -269,34 +244,30 @@ async function calculateOutcomeConversionScore(
   return Math.min(100, Math.max(0, score));
 }
 
-// ===== NEW: INSTRUCTOR PRESTIGE CALCULATION =====
-
 async function calculateInstructorPrestigeScore(
   instructorId?: string,
   instructorProfile?: any
 ): Promise<number> {
   if (!instructorId && !instructorProfile) {
-    return 50; // Default score for unknown instructors
+    return 50;
   }
 
-  let score = 50; // Base score
+  let score = 50;
 
   try {
     let instructor = instructorProfile;
     
-    // Fetch instructor profile if not provided
     if (!instructor && instructorId) {
       const { data } = await supabase
         .from('instructor_profiles')
         .select('*')
         .eq('id', instructorId)
-        .single();
+        .maybeSingle();
       instructor = data;
     }
 
     if (!instructor) return 50;
 
-    // Prestige tier scoring
     const prestigeScores = {
       'bronze': 50,
       'silver': 65,
@@ -307,21 +278,17 @@ async function calculateInstructorPrestigeScore(
     
     score = prestigeScores[instructor.prestige_tier as keyof typeof prestigeScores] || 50;
 
-    // Verification bonus
     if (instructor.verification_status === 'verified') {
       score += 10;
     }
 
-    // Experience bonus
     if (instructor.years_experience) {
       score += Math.min(15, instructor.years_experience * 1.5);
     }
 
-    // Student reach bonus
     if (instructor.total_students > 1000) score += 10;
     else if (instructor.total_students > 100) score += 5;
 
-    // Rating bonus
     if (instructor.average_rating >= 4.5) score += 10;
     else if (instructor.average_rating >= 4.0) score += 5;
 
@@ -351,9 +318,8 @@ async function calculateMarketRelevanceScore(
   skillMappings: any[],
   category?: string
 ): Promise<number> {
-  let score = 60; // Base score
+  let score = 60;
 
-  // High-demand skills boost
   const highDemandSkills = [
     'Python', 'JavaScript', 'React', 'Node.js', 'AWS', 'Docker',
     'Kubernetes', 'Machine Learning', 'Data Analysis', 'SQL',
@@ -370,7 +336,6 @@ async function calculateMarketRelevanceScore(
     score += Math.min(30, relevantSkills.length * 8);
   }
 
-  // Category relevance
   if (category) {
     const emergingCategories = [
       'Artificial Intelligence', 'Machine Learning', 'Data Science',
@@ -387,43 +352,61 @@ async function calculateMarketRelevanceScore(
   return Math.min(100, Math.max(0, score));
 }
 
-// ===== CRI MANAGEMENT FUNCTIONS =====
+export async function updateCourseCRIScore(courseId: string, courseData: any): Promise<EnhancedCRIBreakdown> {
+  try {
+    const criBreakdown = await calculateEnhancedCourseCRI(courseData);
+    
+    // Get existing scores for history
+    const { data: existing } = await supabase
+      .from('course_cri_scores')
+      .select('overall_cri_score, calculation_version, historical_scores')
+      .eq('course_id', courseId)
+      .maybeSingle();
 
-export async function updateCourseCRIScore(
-  courseId: string,
-  courseData: any
-): Promise<EnhancedCRIBreakdown> {
-  const criBreakdown = await calculateEnhancedCourseCRI(courseData);
+    let historical: CriHistoryRow[] = [];
+    if (existing?.historical_scores) {
+      // Safely parse existing history
+      const prevHistory = Array.isArray(existing.historical_scores) 
+        ? (existing.historical_scores as any[]).map((h: any) => ({
+            score: Number(h.score) || 0,
+            calculated_at: String(h.calculated_at),
+            version: h.version ? String(h.version) : undefined,
+          }))
+        : [];
+      
+      historical = [
+        ...prevHistory,
+        { 
+          score: existing.overall_cri_score || 0, 
+          calculated_at: new Date().toISOString(), 
+          version: existing.calculation_version || '1.0' 
+        }
+      ].slice(-10); // Keep last 10 scores
+    }
 
-  // Store historical score before updating
-  const { data: existingCRI } = await supabase
-    .from('course_cri_scores')
-    .select('*')
-    .eq('course_id', courseId)
-    .single();
-
-  let historicalScores = criBreakdown.historical_scores;
-  if (existingCRI) {
-    historicalScores = [
-      ...(Array.isArray(existingCRI.historical_scores) ? existingCRI.historical_scores : []),
-      {
-        score: existingCRI.overall_cri_score,
-        calculated_at: new Date().toISOString(),
-        version: existingCRI.calculation_version
-      }
-    ].slice(-10); // Keep last 10 scores
-  }
-
-  const { error } = await supabase
-    .from('course_cri_scores')
-    .upsert({
+    const payload = {
       course_id: courseId,
-      ...criBreakdown,
-      historical_scores: historicalScores
-    });
+      overall_cri_score: criBreakdown.overall_cri_score,
+      difficulty_score: criBreakdown.difficulty_score,
+      skill_coverage_score: criBreakdown.skill_coverage_score,
+      project_rigor_score: criBreakdown.project_rigor_score,
+      outcome_conversion_score: criBreakdown.outcome_conversion_score,
+      instructor_prestige_score: criBreakdown.instructor_prestige_score,
+      platform_credibility_score: criBreakdown.platform_credibility_score,
+      market_relevance_score: criBreakdown.market_relevance_score,
+      calculation_version: criBreakdown.calculation_version,
+      calculation_data: criBreakdown.calculation_data as Json,
+      historical_scores: historical as Json
+    };
 
-  if (error) throw error;
-  return { ...criBreakdown, historical_scores: historicalScores };
+    const { error } = await supabase.from('course_cri_scores').upsert(payload);
+    if (error) throw error;
+    
+    return { ...criBreakdown, historical_scores: historical };
+  } catch (error) {
+    console.error('Error updating course CRI score:', error);
+    throw error;
+  }
 }
 
 export async function getCRIBasedRecommendations(
@@ -447,13 +430,11 @@ export async function getCRIBasedRecommendations(
     const { data: courses, error } = await query;
     if (error) throw error;
 
-    // Filter and score courses based on CRI and skill gaps
     const scoredCourses = courses
-      ?.filter(course => course.cri_score?.overall_cri_score >= targetCRI)
+      ?.filter(course => (course.cri_score?.overall_cri_score || 0) >= targetCRI)
       .map(course => {
         let relevanceScore = course.cri_score?.overall_cri_score || 0;
 
-        // Boost score for courses that address skill gaps
         if (skillGaps.length > 0 && course.skill_mappings) {
           const matchingSkills = course.skill_mappings.filter((mapping: any) =>
             skillGaps.some(gap => 
