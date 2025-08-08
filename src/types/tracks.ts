@@ -26,6 +26,7 @@ export interface CreateTrackInput {
 
 export interface UpdateTrackInput {
   track_name?: string;
+  title?: string | null;
   goal?: string | null;
   icon?: string | null;
   color?: string | null;
