@@ -44,13 +44,23 @@ export default function CourseMarketplace() {
     return "text-red-600";
   };
 
-  const getDifficultyColor = (level: string) => {
+  const legacyGetDifficultyColor = (level: string) => {
     switch (level.toLowerCase()) {
       case 'beginner': return 'bg-green-100 text-green-800';
       case 'intermediate': return 'bg-yellow-100 text-yellow-800';
       case 'advanced': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleRateCourse = (courseId: string) => {
+    // TODO: Implement course rating modal
+    console.log('Rate course:', courseId);
+  };
+
+  const handleViewDetails = (courseId: string) => {
+    // TODO: Navigate to course details page
+    console.log('View course details:', courseId);
   };
 
   if (loading) {
@@ -212,7 +222,7 @@ export default function CourseMarketplace() {
                         <span>{course.instructor_rating.toFixed(1)}</span>
                       </div>
                     )}
-                    <Badge className={getDifficultyColor(course.difficulty || 'intermediate')}>
+                    <Badge className={legacyGetDifficultyColor(course.difficulty || 'intermediate')}>
                       {course.difficulty || 'intermediate'}
                     </Badge>
                     {course.mentor_endorsement_count > 0 && (

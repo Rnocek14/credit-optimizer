@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_prevention_logs: {
+        Row: {
+          action_type: string
+          automated_action: boolean | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          moderator_id: string | null
+          reason: string | null
+          resolution_status: string | null
+          severity_level: string | null
+          target_id: string
+          target_type: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          automated_action?: boolean | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          moderator_id?: string | null
+          reason?: string | null
+          resolution_status?: string | null
+          severity_level?: string | null
+          target_id: string
+          target_type: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          automated_action?: boolean | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          moderator_id?: string | null
+          reason?: string | null
+          resolution_status?: string | null
+          severity_level?: string | null
+          target_id?: string
+          target_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_model_usage: {
         Row: {
           complexity: string | null
@@ -1527,6 +1572,171 @@ export type Database = {
           },
         ]
       }
+      course_completion_feedback: {
+        Row: {
+          career_impact_level: string | null
+          completion_date: string
+          course_id: string
+          created_at: string | null
+          difficulty_rating: number | null
+          feedback_text: string | null
+          id: string
+          practical_application_score: number | null
+          satisfaction_rating: number | null
+          skills_gained: string[] | null
+          time_investment_hours: number | null
+          user_id: string
+          verification_documents: Json | null
+        }
+        Insert: {
+          career_impact_level?: string | null
+          completion_date: string
+          course_id: string
+          created_at?: string | null
+          difficulty_rating?: number | null
+          feedback_text?: string | null
+          id?: string
+          practical_application_score?: number | null
+          satisfaction_rating?: number | null
+          skills_gained?: string[] | null
+          time_investment_hours?: number | null
+          user_id: string
+          verification_documents?: Json | null
+        }
+        Update: {
+          career_impact_level?: string | null
+          completion_date?: string
+          course_id?: string
+          created_at?: string | null
+          difficulty_rating?: number | null
+          feedback_text?: string | null
+          id?: string
+          practical_application_score?: number | null
+          satisfaction_rating?: number | null
+          skills_gained?: string[] | null
+          time_investment_hours?: number | null
+          user_id?: string
+          verification_documents?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_completion_feedback_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_cri_scores: {
+        Row: {
+          calculation_data: Json | null
+          calculation_version: string | null
+          course_id: string
+          created_at: string | null
+          difficulty_score: number | null
+          historical_scores: Json | null
+          id: string
+          instructor_prestige_score: number | null
+          market_relevance_score: number | null
+          outcome_conversion_score: number | null
+          overall_cri_score: number | null
+          platform_credibility_score: number | null
+          project_rigor_score: number | null
+          skill_coverage_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          calculation_data?: Json | null
+          calculation_version?: string | null
+          course_id: string
+          created_at?: string | null
+          difficulty_score?: number | null
+          historical_scores?: Json | null
+          id?: string
+          instructor_prestige_score?: number | null
+          market_relevance_score?: number | null
+          outcome_conversion_score?: number | null
+          overall_cri_score?: number | null
+          platform_credibility_score?: number | null
+          project_rigor_score?: number | null
+          skill_coverage_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          calculation_data?: Json | null
+          calculation_version?: string | null
+          course_id?: string
+          created_at?: string | null
+          difficulty_score?: number | null
+          historical_scores?: Json | null
+          id?: string
+          instructor_prestige_score?: number | null
+          market_relevance_score?: number | null
+          outcome_conversion_score?: number | null
+          overall_cri_score?: number | null
+          platform_credibility_score?: number | null
+          project_rigor_score?: number | null
+          skill_coverage_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_cri_scores_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_difficulty_ratings: {
+        Row: {
+          ai_analysis_data: Json | null
+          ai_difficulty_score: number | null
+          confidence_score: number | null
+          course_id: string
+          created_at: string | null
+          id: string
+          normalized_difficulty: number | null
+          total_user_ratings: number | null
+          updated_at: string | null
+          user_average_difficulty: number | null
+        }
+        Insert: {
+          ai_analysis_data?: Json | null
+          ai_difficulty_score?: number | null
+          confidence_score?: number | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          normalized_difficulty?: number | null
+          total_user_ratings?: number | null
+          updated_at?: string | null
+          user_average_difficulty?: number | null
+        }
+        Update: {
+          ai_analysis_data?: Json | null
+          ai_difficulty_score?: number | null
+          confidence_score?: number | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          normalized_difficulty?: number | null
+          total_user_ratings?: number | null
+          updated_at?: string | null
+          user_average_difficulty?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_difficulty_ratings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_discovery_queue: {
         Row: {
           course_url: string
@@ -1741,6 +1951,47 @@ export type Database = {
           },
         ]
       }
+      course_skill_mappings: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          hours_focus: number | null
+          id: string
+          relevance_score: number | null
+          skill_category: string | null
+          skill_depth: string | null
+          skill_name: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          hours_focus?: number | null
+          id?: string
+          relevance_score?: number | null
+          skill_category?: string | null
+          skill_depth?: string | null
+          skill_name: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          hours_focus?: number | null
+          id?: string
+          relevance_score?: number | null
+          skill_category?: string | null
+          skill_depth?: string | null
+          skill_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_skill_mappings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_submissions: {
         Row: {
           cost: number | null
@@ -1812,6 +2063,77 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      courses: {
+        Row: {
+          category: string | null
+          cost_usd: number | null
+          course_url: string
+          created_at: string | null
+          description: string | null
+          difficulty_level: string | null
+          estimated_hours: number | null
+          id: string
+          instructor_id: string | null
+          instructor_name: string | null
+          is_active: boolean | null
+          language: string | null
+          last_analyzed_at: string | null
+          platform: string
+          subcategory: string | null
+          title: string
+          updated_at: string | null
+          verification_status: string | null
+        }
+        Insert: {
+          category?: string | null
+          cost_usd?: number | null
+          course_url: string
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          estimated_hours?: number | null
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          is_active?: boolean | null
+          language?: string | null
+          last_analyzed_at?: string | null
+          platform: string
+          subcategory?: string | null
+          title: string
+          updated_at?: string | null
+          verification_status?: string | null
+        }
+        Update: {
+          category?: string | null
+          cost_usd?: number | null
+          course_url?: string
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          estimated_hours?: number | null
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          is_active?: boolean | null
+          language?: string | null
+          last_analyzed_at?: string | null
+          platform?: string
+          subcategory?: string | null
+          title?: string
+          updated_at?: string | null
+          verification_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       data_imports: {
         Row: {
@@ -2394,6 +2716,138 @@ export type Database = {
             columns: ["goal_id"]
             isOneToOne: false
             referencedRelation: "career_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instructor_profiles: {
+        Row: {
+          average_rating: number | null
+          bio: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          last_prestige_calc_at: string | null
+          linkedin_url: string | null
+          name: string
+          prestige_score: number | null
+          prestige_tier: string | null
+          profile_image_url: string | null
+          specialization_areas: string[] | null
+          total_courses: number | null
+          total_students: number | null
+          updated_at: string | null
+          verification_documents: Json | null
+          verification_status: string | null
+          website_url: string | null
+          years_experience: number | null
+        }
+        Insert: {
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_prestige_calc_at?: string | null
+          linkedin_url?: string | null
+          name: string
+          prestige_score?: number | null
+          prestige_tier?: string | null
+          profile_image_url?: string | null
+          specialization_areas?: string[] | null
+          total_courses?: number | null
+          total_students?: number | null
+          updated_at?: string | null
+          verification_documents?: Json | null
+          verification_status?: string | null
+          website_url?: string | null
+          years_experience?: number | null
+        }
+        Update: {
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          last_prestige_calc_at?: string | null
+          linkedin_url?: string | null
+          name?: string
+          prestige_score?: number | null
+          prestige_tier?: string | null
+          profile_image_url?: string | null
+          specialization_areas?: string[] | null
+          total_courses?: number | null
+          total_students?: number | null
+          updated_at?: string | null
+          verification_documents?: Json | null
+          verification_status?: string | null
+          website_url?: string | null
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
+      instructor_ratings: {
+        Row: {
+          content_expertise: number | null
+          course_id: string
+          created_at: string | null
+          engagement_level: number | null
+          id: string
+          instructor_id: string
+          overall_rating: number | null
+          response_time: number | null
+          review_text: string | null
+          teaching_quality: number | null
+          updated_at: string | null
+          user_id: string
+          verification_status: string | null
+          would_recommend: boolean | null
+        }
+        Insert: {
+          content_expertise?: number | null
+          course_id: string
+          created_at?: string | null
+          engagement_level?: number | null
+          id?: string
+          instructor_id: string
+          overall_rating?: number | null
+          response_time?: number | null
+          review_text?: string | null
+          teaching_quality?: number | null
+          updated_at?: string | null
+          user_id: string
+          verification_status?: string | null
+          would_recommend?: boolean | null
+        }
+        Update: {
+          content_expertise?: number | null
+          course_id?: string
+          created_at?: string | null
+          engagement_level?: number | null
+          id?: string
+          instructor_id?: string
+          overall_rating?: number | null
+          response_time?: number | null
+          review_text?: string | null
+          teaching_quality?: number | null
+          updated_at?: string | null
+          user_id?: string
+          verification_status?: string | null
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructor_ratings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instructor_ratings_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "instructor_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5668,6 +6122,59 @@ export type Database = {
             columns: ["career_path_id"]
             isOneToOne: false
             referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_course_ratings: {
+        Row: {
+          completion_verified: boolean | null
+          course_id: string
+          created_at: string | null
+          difficulty_rating: number
+          helpful_votes: number | null
+          id: string
+          review_text: string | null
+          time_to_complete_hours: number | null
+          updated_at: string | null
+          user_id: string
+          verification_status: string | null
+          would_recommend: boolean | null
+        }
+        Insert: {
+          completion_verified?: boolean | null
+          course_id: string
+          created_at?: string | null
+          difficulty_rating: number
+          helpful_votes?: number | null
+          id?: string
+          review_text?: string | null
+          time_to_complete_hours?: number | null
+          updated_at?: string | null
+          user_id: string
+          verification_status?: string | null
+          would_recommend?: boolean | null
+        }
+        Update: {
+          completion_verified?: boolean | null
+          course_id?: string
+          created_at?: string | null
+          difficulty_rating?: number
+          helpful_votes?: number | null
+          id?: string
+          review_text?: string | null
+          time_to_complete_hours?: number | null
+          updated_at?: string | null
+          user_id?: string
+          verification_status?: string | null
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_course_ratings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
