@@ -54,9 +54,12 @@ export function MayaNextSteps({ userId }: { userId?: string | null }) {
       const badges = await supabase.functions.invoke('assign-badges', {
         body: { user_id: uid, dry_run: true }
       });
-      const verify = await supabase.functions.invoke('verify-certificate', {
-        body: { code: 'demo-123' }
+      const base = import.meta.env.VITE_SUPABASE_URL;
+      const verifyResp = await fetch(`${base}/functions/v1/verify-certificate?code=demo-123`, {
+        headers: { 'content-type': 'application/json' }
       });
+      const verify = await verifyResp.json();
+
       setResults({ wf: wf.data, badges: badges.data, verify: verify.data });
       localStorage.setItem('day1_done', 'true');
     } catch (e) {

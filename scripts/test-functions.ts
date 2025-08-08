@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.VITE_SUPABASE_URL || 'https://vzpissitddpunkpythsb.supabase.co';
-const anon = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cGlzc2l0ZGRwdW5rcHl0aHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3ODUxMDUsImV4cCI6MjA2ODM2MTEwNX0.qm92R4H0_rQpNipa2u1PjJqjnKrlRz_RJe6h6J9G-RI';
+import 'dotenv/config';
+
+const url = process.env.VITE_SUPABASE_URL as string;
+const anon = process.env.VITE_SUPABASE_ANON_KEY as string;
+if (!url || !anon) {
+  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in environment');
+  process.exit(1);
+}
+
 
 const supabase = createClient(url, anon);
 
