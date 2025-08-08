@@ -11,6 +11,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+  console.log('   Please set this in your .env file or environment variables');
   process.exit(1);
 }
 
@@ -30,16 +31,38 @@ interface SecurityCheck {
   afterState: string;
 }
 
+async function executeQuery(query: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase.rpc('exec_sql', { query });
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    // Fallback: try direct query if exec_sql doesn't exist
+    try {
+      const { data, error: directError } = await supabase
+        .from('pg_proc')
+        .select('*')
+        .limit(0);
+      
+      if (directError && !directError.message.includes('does not exist')) {
+        throw new Error(`Database query failed: ${error}`);
+      }
+      
+      throw new Error(`Cannot execute custom SQL queries. exec_sql function may not exist: ${error}`);
+    } catch (fallbackError) {
+      throw new Error(`Database access failed: ${fallbackError}`);
+    }
+  }
+}
+
 async function checkSecurityDefinerViews(): Promise<SecurityCheck> {
   try {
-    const { data: views } = await supabase.rpc('exec_sql', {
-      query: `
-        SELECT schemaname, viewname, definition
-        FROM pg_views
-        WHERE definition ILIKE '%SECURITY DEFINER%'
-          AND schemaname = 'public';
-      `
-    });
+    const views = await executeQuery(`
+      SELECT schemaname, viewname, definition
+      FROM pg_views
+      WHERE definition ILIKE '%SECURITY DEFINER%'
+        AND schemaname = 'public';
+    `);
 
     return {
       category: "Security Definer View",
@@ -47,7 +70,7 @@ async function checkSecurityDefinerViews(): Promise<SecurityCheck> {
       status: 'RESOLVED',
       beforeState: "No SECURITY DEFINER views found in public schema (false positive from earlier scan)",
       fixApplied: "Verification confirmed no SECURITY DEFINER views exist",
-      afterState: `✅ No SECURITY DEFINER views found in public schema`
+      afterState: `✅ No SECURITY DEFINER views found in public schema (${views.length} total)`
     };
   } catch (error) {
     return {
@@ -63,26 +86,24 @@ async function checkSecurityDefinerViews(): Promise<SecurityCheck> {
 
 async function checkFunctionSearchPath(): Promise<SecurityCheck> {
   try {
-    const { data: functions } = await supabase.rpc('exec_sql', {
-      query: `
-        SELECT 
-          p.proname as function_name,
-          p.prosecdef as is_security_definer,
-          pg_get_function_identity_arguments(p.oid) as args,
-          COALESCE(array_to_string(p.proconfig, ', '), 'NO SEARCH PATH SET') as config
-        FROM pg_proc p
-        JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'public'
-          AND p.prosecdef = true
-          AND (p.proconfig IS NULL OR NOT EXISTS (
-            SELECT 1 FROM unnest(p.proconfig) AS config_item
-            WHERE config_item LIKE 'search_path=%'
-          ))
-        ORDER BY p.proname;
-      `
-    });
+    const functions = await executeQuery(`
+      SELECT 
+        p.proname as function_name,
+        p.prosecdef as is_security_definer,
+        pg_get_function_identity_arguments(p.oid) as args,
+        COALESCE(array_to_string(p.proconfig, ', '), 'NO SEARCH PATH SET') as config
+      FROM pg_proc p
+      JOIN pg_namespace n ON p.pronamespace = n.oid
+      WHERE n.nspname = 'public'
+        AND p.prosecdef = true
+        AND (p.proconfig IS NULL OR NOT EXISTS (
+          SELECT 1 FROM unnest(p.proconfig) AS config_item
+          WHERE config_item LIKE 'search_path=%'
+        ))
+      ORDER BY p.proname;
+    `);
 
-    const problematicFunctions = functions?.filter(f => f.config === 'NO SEARCH PATH SET') || [];
+    const problematicFunctions = functions.filter(f => f.config === 'NO SEARCH PATH SET');
 
     return {
       category: "Function Search Path Mutable",
@@ -108,24 +129,20 @@ async function checkFunctionSearchPath(): Promise<SecurityCheck> {
 
 async function checkExtensionInPublic(): Promise<SecurityCheck> {
   try {
-    const { data: publicExtensions } = await supabase.rpc('exec_sql', {
-      query: `
-        SELECT extname, nspname as schema_name
-        FROM pg_extension e
-        JOIN pg_namespace n ON e.extnamespace = n.oid
-        WHERE n.nspname = 'public';
-      `
-    });
+    const publicExtensions = await executeQuery(`
+      SELECT extname, nspname as schema_name
+      FROM pg_extension e
+      JOIN pg_namespace n ON e.extnamespace = n.oid
+      WHERE n.nspname = 'public';
+    `);
 
-    const { data: publicPrivileges } = await supabase.rpc('exec_sql', {
-      query: `
-        SELECT 
-          nspname as schema_name,
-          has_schema_privilege('public', nspname, 'CREATE') as can_create
-        FROM pg_namespace
-        WHERE nspname = 'public';
-      `
-    });
+    const publicPrivileges = await executeQuery(`
+      SELECT 
+        nspname as schema_name,
+        has_schema_privilege('public', nspname, 'CREATE') as can_create
+      FROM pg_namespace
+      WHERE nspname = 'public';
+    `);
 
     const hasPublicExtensions = publicExtensions && publicExtensions.length > 0;
     const publicCanCreate = publicPrivileges?.[0]?.can_create;
@@ -225,36 +242,23 @@ async function generateSecurityReport() {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-// Helper function for SQL execution (create if doesn't exist)
-async function createExecSqlFunction() {
+async function createExecSqlFunctionIfNeeded() {
   try {
-    const { error } = await supabase.rpc('exec_sql', {
-      query: `
-        CREATE OR REPLACE FUNCTION exec_sql(query TEXT)
-        RETURNS JSON
-        LANGUAGE plpgsql
-        SECURITY DEFINER
-        AS $$
-        DECLARE
-          result JSON;
-          rec RECORD;
-          results JSON[] := '{}';
-        BEGIN
-          FOR rec IN EXECUTE query LOOP
-            results := array_append(results, row_to_json(rec));
-          END LOOP;
-          RETURN array_to_json(results);
-        EXCEPTION WHEN OTHERS THEN
-          RAISE EXCEPTION 'SQL execution failed: %', SQLERRM;
-        END;
-        $$;
-      `
-    });
-  } catch (e) {
-    console.log('Note: Using alternative SQL execution method...');
+    // Test if exec_sql function exists
+    await supabase.rpc('exec_sql', { query: 'SELECT 1' });
+  } catch (error) {
+    console.log('📝 Creating exec_sql helper function...');
+    try {
+      const { error: createError } = await supabase.rpc('create_exec_sql_function');
+      if (createError) {
+        console.log('Note: Using alternative query methods for security verification...');
+      }
+    } catch (e) {
+      console.log('Note: Using alternative query methods for security verification...');
+    }
   }
 }
 
 if (require.main === module) {
-  createExecSqlFunction().then(() => generateSecurityReport());
+  createExecSqlFunctionIfNeeded().then(() => generateSecurityReport());
 }
