@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, Suspense } from "react";
 import Navigation from "@/components/Navigation";
 import { Helmet } from "react-helmet-async";
@@ -52,7 +53,6 @@ export default function CareerCopilot() {
               <EnhancedErrorBoundary>
                 {userId ? (
                   <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading simulator...</div>}>
-                    {/* @ts-expect-error - lazy component type is inferred at runtime */}
                     <CareerTransitionSimulatorLazy userId={userId} />
                   </Suspense>
                 ) : (
@@ -78,7 +78,6 @@ export default function CareerCopilot() {
             <EnhancedErrorBoundary>
               <div className="rounded-lg border p-4">
                 <Suspense fallback={<div className="text-sm text-muted-foreground">Loading CRI ROI...</div>}>
-                  {/* @ts-expect-error - lazy component type is inferred at runtime */}
                   <CRIROIPanelLazy userId={userId} />
                 </Suspense>
               </div>
@@ -87,7 +86,6 @@ export default function CareerCopilot() {
             <EnhancedErrorBoundary>
               <div className="rounded-lg border p-4">
                 <Suspense fallback={<div className="text-sm text-muted-foreground">Loading Skill Gaps...</div>}>
-                  {/* @ts-expect-error - lazy component type is inferred at runtime */}
                   <SkillGapTrackerLazy userId={userId} />
                 </Suspense>
               </div>
@@ -99,7 +97,6 @@ export default function CareerCopilot() {
         <section className="container mx-auto px-4 pb-10">
           <EnhancedErrorBoundary>
             <Suspense fallback={<div className="text-sm text-muted-foreground">Loading next steps...</div>}>
-              {/* @ts-expect-error - lazy component type is inferred at runtime */}
               <MayaNextStepsLazy userId={userId} />
             </Suspense>
           </EnhancedErrorBoundary>
