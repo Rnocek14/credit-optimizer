@@ -62,7 +62,21 @@ const Transcripts = () => {
         return;
       }
 
-      setTranscripts(data || []);
+      const clientEntries = (await import('@/state/transcriptStore')).useTranscriptStore.getState().entries;
+      setTranscripts([ 
+        ...clientEntries.map((e, i) => ({
+          id: `client-${i}`,
+          title: e.title,
+          description: 'Client-side demo entry',
+          skill_tags: e.skill_tags || [],
+          cri_score: e.cri_score || 7.5,
+          use_in_resume: true,
+          grade: 'A',
+          difficulty: (e.difficulty as any) || 'intermediate',
+          created_at: e.created_at
+        })),
+        ...(data || [])
+      ]);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load transcripts');

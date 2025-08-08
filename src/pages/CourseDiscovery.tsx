@@ -301,7 +301,13 @@ export default function CourseDiscovery() {
                       </div>
                       
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => {
+                          import('@/state/planStore').then(({ usePlanStore }) => {
+                            const add = usePlanStore.getState().addCourseToPlan;
+                            add({ title: course.title, provider: course.source_platform, url: course.url });
+                            import('sonner').then(({ toast }) => toast.success('Added to Plan (demo)'));
+                          });
+                        }}>
                           <Plus className="h-3 w-3 mr-1" />
                           Add to Path
                         </Button>

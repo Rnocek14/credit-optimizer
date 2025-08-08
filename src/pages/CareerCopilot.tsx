@@ -29,23 +29,66 @@ export default function CareerCopilot() {
           <h1 className="text-2xl font-bold">Career Co-Pilot</h1>
         </header>
         <section className="container mx-auto px-4 py-6 grid gap-6 lg:grid-cols-3">
-          <article className="lg:col-span-2">
-            {userId ? (
-              <MayaCareerCopilot userId={userId} />
-            ) : (
-              <div className="rounded-lg border p-6">Please sign in to chat with Maya.</div>
-            )}
-          </article>
-          <aside className="lg:col-span-1 space-y-6">
+          <article className="lg:col-span-2 space-y-6">
+            {/* Transition Simulator */}
+            <div className="rounded-lg border p-0">
+              <EnhancedErrorBoundary>
+                {userId ? (
+                  <>{/* Lazy import to keep bundle small */}
+                    {(() => {
+                      const Comp = require('@/components/CareerTransitionSimulator');
+                      const C = Comp.CareerTransitionSimulator;
+                      return <C userId={userId} />;
+                    })()}
+                  </>
+                ) : (
+                  <div className="p-6 text-sm text-muted-foreground">Please sign in to simulate transitions.</div>
+                )}
+              </EnhancedErrorBoundary>
+            </div>
+
+            {/* Smart Pivot Advisor */}
             <div className="rounded-lg border p-4">
               <h2 className="text-lg font-semibold mb-3">Smart Pivot Advisor</h2>
-              {userId ? (
-                <EnhancedPivotAdvisor userId={userId} onViewComparison={() => {}} />
-              ) : (
-                <div className="text-sm text-muted-foreground">Sign in to see personalized pivot suggestions.</div>
-              )}
+              <EnhancedErrorBoundary>
+                {userId ? (
+                  <EnhancedPivotAdvisor userId={userId} onViewComparison={() => {}} />
+                ) : (
+                  <div className="text-sm text-muted-foreground">Sign in to see personalized pivot suggestions.</div>
+                )}
+              </EnhancedErrorBoundary>
             </div>
+          </article>
+
+          <aside className="lg:col-span-1 space-y-6">
+            <EnhancedErrorBoundary>
+              <div className="rounded-lg border p-4">
+                {(() => {
+                  const { CRIROIPanel } = require('@/components/CRIROIPanel');
+                  return <CRIROIPanel userId={userId} />;
+                })()}
+              </div>
+            </EnhancedErrorBoundary>
+
+            <EnhancedErrorBoundary>
+              <div className="rounded-lg border p-4">
+                {(() => {
+                  const { SkillGapTracker } = require('@/components/SkillGapTracker');
+                  return <SkillGapTracker userId={userId} />;
+                })()}
+              </div>
+            </EnhancedErrorBoundary>
           </aside>
+        </section>
+
+        {/* Footer full-width */}
+        <section className="container mx-auto px-4 pb-10">
+          <EnhancedErrorBoundary>
+            {(() => {
+              const { MayaNextSteps } = require('@/components/MayaNextSteps');
+              return <MayaNextSteps userId={userId} />;
+            })()}
+          </EnhancedErrorBoundary>
         </section>
       </main>
     </>

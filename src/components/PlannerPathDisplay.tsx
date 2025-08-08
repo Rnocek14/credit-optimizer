@@ -327,25 +327,48 @@ export function PlannerPathDisplay({ learningPaths, loading, userId }: PlannerPa
                   </div>
 
                   {/* Action Button */}
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => handleSetAsGoal(path)}
-                      disabled={savingPaths.has(path.id)}
-                      className="hover:bg-primary/10 hover:border-primary/30"
-                    >
-                      {savingPaths.has(path.id) ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 mr-2 animate-pulse" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Target className="w-4 h-4 mr-2" />
-                          Set as Goal
-                        </>
-                      )}
-                    </Button>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleSetAsGoal(path)}
+                        disabled={savingPaths.has(path.id)}
+                        className="hover:bg-primary/10 hover:border-primary/30"
+                      >
+                        {savingPaths.has(path.id) ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2 animate-pulse" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Target className="w-4 h-4 mr-2" />
+                            Set as Goal
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          import('@/state/transcriptStore').then(({ useTranscriptStore }) => {
+                            const add = useTranscriptStore.getState().addEntry;
+                            add({
+                              title: path.title || 'Planned Step Completed',
+                              skill_tags: ['Demo'],
+                              cri_score: Math.round((path.average_roi || 0.75) * 10),
+                              difficulty: 'intermediate',
+                              instructor: 'Maya (demo)',
+                              created_at: new Date().toISOString(),
+                            });
+                            import('sonner').then(({ toast }) => toast.success('Marked Step Complete (demo)'));
+                          });
+                        }}
+                      >
+                        Mark Step Complete (demo)
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
