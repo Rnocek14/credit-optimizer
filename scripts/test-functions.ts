@@ -61,6 +61,18 @@ async function run() {
       if (error) throw new Error(error.message);
       if (data?.valid) ok('verify-certificate'); else fail('verify-certificate', 'not valid');
     }
+    // openbadge-export
+    {
+      const { data, error } = await supabase.functions.invoke('openbadge-export', { body: { badge: { slug: 'react-fundamentals', name: 'React Fundamentals' } } });
+      if (error) throw new Error(error.message);
+      if (data?.badge_json) ok('openbadge-export'); else fail('openbadge-export', 'missing badge_json');
+    }
+    // linkedin-parse (demo)
+    {
+      const { data, error } = await supabase.functions.invoke('linkedin-parse', { body: { demo: true } });
+      if (error) throw new Error(error.message);
+      if (Array.isArray(data?.skills)) ok('linkedin-parse'); else fail('linkedin-parse', 'missing skills');
+    }
   } catch (e: any) {
     console.error('Test run failed:', e?.message || e);
     process.exitCode = 1;

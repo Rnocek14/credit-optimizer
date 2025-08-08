@@ -30,6 +30,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
+import { useProjectsStore } from '@/state/projectsStore';
 
 interface ResumeContent {
   personalInfo?: {
@@ -85,6 +86,7 @@ const ResumeBuilder = () => {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { items: proofProjects } = useProjectsStore();
 
   useEffect(() => {
     loadSavedDrafts();

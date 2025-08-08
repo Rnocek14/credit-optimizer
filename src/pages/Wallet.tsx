@@ -89,8 +89,7 @@ const Wallet: React.FC = () => {
     try {
       const { data, error } = await supabase.functions.invoke('verify-certificate', {
         body: { 
-          certificate_number: `DEMO-${badge.slug.toUpperCase()}`,
-          verification_code: 'DEMO123'
+          code: 'demo-123'
         }
       });
 

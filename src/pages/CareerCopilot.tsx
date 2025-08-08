@@ -18,7 +18,9 @@ const SkillGapTrackerLazy = React.lazy(() =>
 const MayaNextStepsLazy = React.lazy(() =>
   import("@/components/MayaNextSteps").then(m => ({ default: m.MayaNextSteps }))
 );
-
+const LinkedInImportDemoLazy = React.lazy(() =>
+  import("@/components/LinkedInImportDemo").then(m => ({ default: m.LinkedInImportDemo }))
+);
 export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -108,6 +110,12 @@ export default function CareerCopilot() {
         <EnhancedErrorBoundary>
           <Suspense fallback={<div>Loading next steps...</div>}>
             <MayaNextStepsLazy userId={userId ?? undefined} />
+          </Suspense>
+        </EnhancedErrorBoundary>
+
+        <EnhancedErrorBoundary>
+          <Suspense fallback={<div>Loading LinkedIn Import...</div>}>
+            <LinkedInImportDemoLazy />
           </Suspense>
         </EnhancedErrorBoundary>
       </main>
