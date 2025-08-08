@@ -78,7 +78,7 @@ export interface CourseCRIScore {
   market_relevance_score: number;
   calculation_version: string;
   calculation_data: any;
-  historical_scores: any[];
+  historical_scores: any;
 }
 
 export interface CourseSkillMapping {
