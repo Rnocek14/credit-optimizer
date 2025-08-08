@@ -547,6 +547,42 @@ const ResumeBuilder = () => {
                       </CardContent>
                     </Card>
 
+                    {/* Proof Projects (demo) */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Proof Projects</CardTitle>
+                        <CardDescription>Projects attached from your skill tree</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {proofProjects.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No projects added yet. Attach a project from the Skill Tree.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {proofProjects.map((p) => (
+                              <div key={p.id} className="flex items-start justify-between rounded-md border p-3">
+                                <div>
+                                  <div className="font-medium">{p.title}</div>
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {p.skills.slice(0, 4).map((s, idx) => (
+                                      <Badge key={idx} variant="outline">{s}</Badge>
+                                    ))}
+                                  </div>
+                                  {p.links?.length ? (
+                                    <div className="mt-1 text-xs text-muted-foreground">
+                                      {p.links[0]}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <Badge className={p.verified ? '' : 'opacity-70'}>
+                                  {p.verified ? 'Verified' : 'Unverified'}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     {/* Key Achievements */}
                     {editableContent.bullets && (
                       <Card>
