@@ -61,6 +61,7 @@ function TaskCard({
 }
 
 const SprintBoard: React.FC = () => {
+  const day1Done = (typeof window !== 'undefined') && localStorage.getItem('day1_done') === 'true';
   return (
     <div>
       <Helmet>
@@ -76,14 +77,19 @@ const SprintBoard: React.FC = () => {
 
       <main className="container mx-auto px-4 pb-10">
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {sprintBoardData.columns.map((col) => (
-            <div key={col.id} className="space-y-3" aria-labelledby={`${col.id}-title`}>
-              <h2 id={`${col.id}-title`} className="text-lg font-semibold">{col.title}</h2>
-              {col.tasks.map((t) => (
-                <TaskCard key={t.id} {...t} />
-              ))}
-            </div>
-          ))}
+          {sprintBoardData.columns.map((col) => {
+            const tasks = col.id === 'day1' && day1Done
+              ? col.tasks.map((t) => ({ ...t, title: `${t.title} — Done` }))
+              : col.tasks;
+            return (
+              <div key={col.id} className="space-y-3" aria-labelledby={`${col.id}-title`}>
+                <h2 id={`${col.id}-title`} className="text-lg font-semibold">{col.title}</h2>
+                {tasks.map((t) => (
+                  <TaskCard key={t.id} {...t} />
+                ))}
+              </div>
+            );
+          })}
         </section>
       </main>
     </div>

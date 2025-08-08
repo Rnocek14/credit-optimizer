@@ -4,7 +4,7 @@ project_id = "vzpissitddpunkpythsb"
 verify_jwt = false
 
 [functions.generate-roadmap]
-verify_jwt = true
+verify_jwt = false
 
 [functions.signup-automation]
 verify_jwt = false
@@ -59,3 +59,22 @@ verify_jwt = true
 
 [functions.send-resume-to-mentor]
 verify_jwt = true
+
+# Added (dry-run) public functions
+[functions.assign-badges]
+verify_jwt = false
+
+[functions.autonomous-workflow-engine]
+verify_jwt = false
+
+[functions.getMentorCurationQueue]
+verify_jwt = false
+
+[functions.course-path-integrator]
+verify_jwt = false
+
+[functions.pdf-export]
+verify_jwt = false
+
+[functions.verify-certificate]
+verify_jwt = false
