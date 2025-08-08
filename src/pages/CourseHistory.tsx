@@ -200,83 +200,91 @@ export default function CourseHistory() {
         </div>
       </div>
 
-      {courses.length === 0 ? (
-        <Card className="p-8 text-center">
-          <CardContent className="pt-6">
-            <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No courses yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Start building your learning journey by exploring and saving courses!
-            </p>
-            <Button>Explore Courses</Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <Card key={course.id} className="shadow-sm hover:shadow-md transition-shadow border rounded-md">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start mb-2">
-                  <Badge variant="outline" className={getStatusColor(course.status)}>
-                    {course.status}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {course.source}
-                  </Badge>
-                </div>
-                <CardTitle className="text-lg leading-tight">{course.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{course.platform}</p>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    {course.difficulty && (
-                      <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
-                        {course.difficulty}
-                      </Badge>
-                    )}
-                    {course.cost && (
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {course.cost}
-                      </span>
-                    )}
-                  </div>
-
-                  {course.skill_tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {course.skill_tags.slice(0, 3).map((tag, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {course.skill_tags.length > 3 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{course.skill_tags.length - 3} more
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xs text-muted-foreground">
-                      Added {format(new Date(course.created_at), 'MMM dd, yyyy')}
-                    </span>
-                    {course.url && (
-                      <Button size="sm" variant="outline" asChild>
-                        <a href={course.url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          View
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-                </div>
+      {(() => {
+        const filtered = (filterMode === 'active' && activeTrackId) ? [] : courses;
+        if (filtered.length === 0) {
+          return (
+            <Card className="p-8 text-center">
+              <CardContent className="pt-6">
+                <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">{filterMode === 'active' && activeTrackId ? 'No track-scoped entries yet' : 'No courses yet'}</h3>
+                <p className="text-muted-foreground mb-4">
+                  {filterMode === 'active' && activeTrackId
+                    ? 'Switch back to All to see your full history.'
+                    : 'Start building your learning journey by exploring and saving courses!'}
+                </p>
+                {!(filterMode === 'active' && activeTrackId) && <Button>Explore Courses</Button>}
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          );
+        }
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((course) => (
+              <Card key={course.id} className="shadow-sm hover:shadow-md transition-shadow border rounded-md">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge variant="outline" className={getStatusColor(course.status)}>
+                      {course.status}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {course.source}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-lg leading-tight">{course.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{course.platform}</p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      {course.difficulty && (
+                        <Badge variant="outline" className={getDifficultyColor(course.difficulty)}>
+                          {course.difficulty}
+                        </Badge>
+                      )}
+                      {course.cost && (
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {course.cost}
+                        </span>
+                      )}
+                    </div>
+
+                    {course.skill_tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {course.skill_tags.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {course.skill_tags.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{course.skill_tags.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-xs text-muted-foreground">
+                        Added {format(new Date(course.created_at), 'MMM dd, yyyy')}
+                      </span>
+                      {course.url && (
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={course.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            View
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

@@ -381,28 +381,66 @@ const ResumeBuilder = () => {
           {/* Main Content Area */}
           <div className="lg:col-span-3">
             {!resumeData ? (
-              <Card className="text-center">
-                <CardContent className="py-12">
-                  <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                  <h2 className="text-2xl font-semibold mb-2">AI Resume Builder</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Generate professional resumes using your learning data and get AI-powered CRI scoring
-                  </p>
-                  <Button onClick={generateResume} disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Generating Resume...
-                      </>
+              <div className="space-y-6">
+                <Card className="text-center">
+                  <CardContent className="py-12">
+                    <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                    <h2 className="text-2xl font-semibold mb-2">AI Resume Builder</h2>
+                    <p className="text-muted-foreground mb-6">
+                      Generate professional resumes using your learning data and get AI-powered CRI scoring
+                    </p>
+                    <Button onClick={generateResume} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating Resume...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Create Your First Resume
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Proof Projects (demo) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Proof Projects</CardTitle>
+                    <CardDescription>Projects attached from your skill tree</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {proofProjects.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No projects added yet. Attach a project from the Skill Tree.</p>
                     ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Create Your First Resume
-                      </>
+                      <div className="space-y-3">
+                        {proofProjects.map((p) => (
+                          <div key={p.id} className="flex items-start justify-between rounded-md border p-3">
+                            <div>
+                              <div className="font-medium">{p.title}</div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {p.skills.slice(0, 4).map((s, idx) => (
+                                  <Badge key={idx} variant="outline">{s}</Badge>
+                                ))}
+                              </div>
+                              {p.links?.length ? (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {p.links[0]}
+                                </div>
+                              ) : null}
+                            </div>
+                            <Badge className={p.verified ? '' : 'opacity-70'}>
+                              {p.verified ? 'Verified' : 'Unverified'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </Button>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
               <div className="space-y-6">
                 {/* Resume Header & Actions */}
