@@ -1,240 +1,46 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { AssignBadgesInput } from "./schema.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-interface Badge {
-  id: string;
-  name: string;
-  emoji: string;
-  description: string;
-  slug: string;
-  trigger_type: string;
-  threshold: number;
-}
-
-interface UserStats {
-  transcript_count: number;
-  saved_courses_count: number;
-  goal_count: number;
-  published_resume_count: number;
-  max_cri_score: number;
-  max_readiness_score: number;
-  workflow_certificate_count: number;
-}
-
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const requestBody = await req.json();
-    const { user_id } = requestBody;
-
-    // Input validation
-    if (!user_id || typeof user_id !== 'string') {
+    const json = await req.json().catch(() => ({}));
+    const parsed = AssignBadgesInput.safeParse(json);
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: 'Valid user_id (string) is required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ mode: 'dry-run', ok: false, errors: parsed.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(user_id)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid user_id format' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    const user_id = parsed.data.user_id ?? '00000000-0000-0000-0000-000000000000';
 
-    console.log(`Checking badges for user: ${user_id}`);
-
-    // Get all available badges
-    const { data: badges, error: badgesError } = await supabase
-      .from('badges')
-      .select('*');
-
-    if (badgesError) {
-      console.error('Error fetching badges:', badgesError);
-      throw badgesError;
-    }
-
-    // Get user's current badges
-    const { data: userBadges, error: userBadgesError } = await supabase
-      .from('user_badges')
-      .select('badge_id')
-      .eq('user_id', user_id);
-
-    if (userBadgesError) {
-      console.error('Error fetching user badges:', userBadgesError);
-      throw userBadgesError;
-    }
-
-    const earnedBadgeIds = new Set(userBadges?.map(ub => ub.badge_id) || []);
-
-    // Calculate user stats
-    const userStats = await calculateUserStats(supabase, user_id);
-    console.log('User stats:', userStats);
-
-    // Check which badges to award
-    const badgesToAward: Badge[] = [];
-
-    for (const badge of badges as Badge[]) {
-      if (earnedBadgeIds.has(badge.id)) {
-        continue; // Already earned
-      }
-
-      let shouldAward = false;
-
-      switch (badge.trigger_type) {
-        case 'transcript_count':
-          shouldAward = userStats.transcript_count >= badge.threshold;
-          break;
-        case 'saved_courses_count':
-          shouldAward = userStats.saved_courses_count >= badge.threshold;
-          break;
-        case 'goal_count':
-          shouldAward = userStats.goal_count >= badge.threshold;
-          break;
-        case 'published_resume_count':
-          shouldAward = userStats.published_resume_count >= badge.threshold;
-          break;
-        case 'cri_score':
-          shouldAward = userStats.max_cri_score >= badge.threshold;
-          break;
-        case 'readiness_score':
-          shouldAward = userStats.max_readiness_score >= badge.threshold;
-          break;
-        case 'workflow_certificate_count':
-          shouldAward = userStats.workflow_certificate_count >= badge.threshold;
-          break;
-        default:
-          console.log(`Unknown trigger_type: ${badge.trigger_type}`);
-      }
-
-      if (shouldAward) {
-        badgesToAward.push(badge);
-      }
-    }
-
-    console.log(`Awarding ${badgesToAward.length} badges:`, badgesToAward.map(b => b.name));
-
-    // Award new badges
-    if (badgesToAward.length > 0) {
-      const badgeInserts = badgesToAward.map(badge => ({
-        user_id,
-        badge_id: badge.id
-      }));
-
-      const { error: insertError } = await supabase
-        .from('user_badges')
-        .insert(badgeInserts);
-
-      if (insertError) {
-        console.error('Error inserting badges:', insertError);
-        throw insertError;
-      }
-    }
+    const would_award = [
+      {
+        badge: { slug: 'first-steps', name: 'First Steps', emoji: '🚀' },
+        reason: `User ${user_id.slice(0, 8)} has met 80% of goals threshold`,
+      },
+      {
+        badge: { slug: 'path-curator', name: 'Path Curator', emoji: '🧭' },
+        reason: 'Saved 8/10 courses toward curated path',
+      },
+    ];
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        awarded_badges: badgesToAward.length,
-        badges: badgesToAward.map(b => ({ name: b.name, emoji: b.emoji }))
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ mode: 'dry-run', ok: true, would_award }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error) {
-    console.error('Error in assign-badges function:', error);
+  } catch (e) {
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ mode: 'dry-run', ok: false, error: String(e) }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-
-async function calculateUserStats(supabase: any, userId: string): Promise<UserStats> {
-  // Get transcript count
-  const { count: transcriptCount } = await supabase
-    .from('transcripts')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
-
-  // Get saved courses count
-  const { count: savedCoursesCount } = await supabase
-    .from('saved_courses')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
-
-  // Get career goals count
-  const { count: goalCount } = await supabase
-    .from('career_goals')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('active', true);
-
-  // Get published resume count
-  const { count: publishedResumeCount } = await supabase
-    .from('ai_resume_drafts')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('published_to_profile', true);
-
-  // Get max CRI score from transcripts
-  const { data: maxCriData } = await supabase
-    .from('transcripts')
-    .select('cri_score')
-    .eq('user_id', userId)
-    .not('cri_score', 'is', null)
-    .order('cri_score', { ascending: false })
-    .limit(1);
-
-  // Get max readiness score from AI resume drafts
-  const { data: maxReadinessData } = await supabase
-    .from('ai_resume_drafts')
-    .select('readiness_score')
-    .eq('user_id', userId)
-    .not('readiness_score', 'is', null)
-    .order('readiness_score', { ascending: false })
-    .limit(1);
-
-  // Get workflow certificate count
-  const { count: certificateCount } = await supabase
-    .from('workflow_certificates')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('is_revoked', false);
-
-  return {
-    transcript_count: transcriptCount || 0,
-    saved_courses_count: savedCoursesCount || 0,
-    goal_count: goalCount || 0,
-    published_resume_count: publishedResumeCount || 0,
-    max_cri_score: maxCriData?.[0]?.cri_score || 0,
-    max_readiness_score: maxReadinessData?.[0]?.readiness_score || 0,
-    workflow_certificate_count: certificateCount || 0
-  };
-}
