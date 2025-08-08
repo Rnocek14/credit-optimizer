@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertTriangle, CheckCircle, XCircle, Star, Flag, Users, Settings, Zap, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { AdminDevToolsPanel } from "@/components/AdminDevToolsPanel";
 
 interface ModerationProfile {
   id: string;
@@ -296,8 +297,12 @@ const AdminModeration = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="flagged" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="devtools" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="devtools" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Dev Tools
+            </TabsTrigger>
             <TabsTrigger value="flagged" className="flex items-center gap-2">
               <Flag className="h-4 w-4" />
               Flagged Content ({flaggedProfiles.length})
@@ -315,6 +320,10 @@ const AdminModeration = () => {
               Settings
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="devtools" className="space-y-4">
+            <AdminDevToolsPanel />
+          </TabsContent>
 
           <TabsContent value="flagged" className="space-y-4">
             <Card>

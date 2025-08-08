@@ -45,7 +45,7 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // SECURITY: Block dev login in production
+  // SECURITY: Block dev login in production completely
   if (isProduction()) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -54,14 +54,17 @@ export default function DevLogin() {
             <div className="flex items-center justify-center space-x-2 mb-4">
               <AlertTriangle className="h-8 w-8 text-destructive" />
             </div>
-            <CardTitle className="text-destructive">Development Login Disabled</CardTitle>
+            <CardTitle className="text-destructive">Access Denied</CardTitle>
             <CardDescription>
-              Dev login is disabled in production for security reasons.
+              Development tools are disabled in production for security.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              Please use the standard authentication flow.
+              This endpoint is only available in development environments.
+            </p>
+            <p className="text-xs text-muted-foreground border rounded p-2 bg-muted">
+              <strong>For administrators:</strong> Use the standard authentication flow and admin panel.
             </p>
             <Button asChild className="w-full">
               <Link to="/auth">Go to Login</Link>
