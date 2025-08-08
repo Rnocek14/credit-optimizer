@@ -60,7 +60,7 @@ export default function Navigation() {
     { href: "/phase4", label: "Phase 4", icon: Brain },
     { href: "/phase5", label: "Phase 5", icon: Brain },
     { href: "/phase6", label: "Phase 6", icon: Brain },
-    { href: "/planner", label: "Planner", icon: Target },
+    
     { href: "/goals", label: "Goals", icon: Target },
     { href: "/certificates", label: "Certificates", icon: Award },
     { href: "/certificate-gallery", label: "Gallery", icon: Award },
@@ -70,11 +70,12 @@ export default function Navigation() {
     { href: "/gamification", label: "Gamification", icon: Trophy },
     { href: "/maya-intelligence", label: "Maya Intelligence", icon: Brain },
     { href: "/transcripts", label: "Transcripts", icon: BookOpen },
-    { href: "/course-history", label: "Course History", icon: BookOpen },
+    
     { href: "/skill-tree", label: "Skill Tree", icon: TreePine },
     { href: "/teach", label: "Teach", icon: GraduationCap },
     { href: "/onboarding", label: "Onboarding", icon: User },
     { href: "/dashboard", label: "Dashboard", icon: Target },
+    { href: "/sprint-board", label: "Sprint Board", icon: Target },
   ];
 
   const isActive = (path: string) => location.pathname === path;

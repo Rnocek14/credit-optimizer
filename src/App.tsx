@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
@@ -67,6 +67,7 @@ import TeachHub from "./pages/TeachHub";
 import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
 import CareerCopilot from "./pages/CareerCopilot";
+import SprintBoard from "./pages/SprintBoard";
 import TeachAnalytics from "./pages/TeachAnalytics";
 import TeachCourses from "./pages/TeachCourses";
 import CourseDiscovery from "./pages/CourseDiscovery";
@@ -170,6 +171,14 @@ const App = () => (
           <Route path="/resume/:userId" element={<PublicResume />} />
           <Route path="/share/trust/:token" element={<ShareTrust />} />
           <Route path="/demos" element={<Demos />} />
+          <Route 
+            path="/sprint-board" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <SprintBoard />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/badges" element={<Badges />} />
           <Route path="/badges/:slug" element={<BadgeDetail />} />
           <Route path="/discover" element={<Discover />} />
@@ -224,22 +233,8 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/learning-history" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <LearningHistory />
-              </ProtectedRoute>
-            } 
-           />
-           <Route 
-             path="/planner" 
-             element={
-               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                 <Planner />
-               </ProtectedRoute>
-             } 
-           />
+          <Route path="/learning-history" element={<Navigate to="/history" replace />} />
+           <Route path="/planner" element={<Navigate to="/plan" replace />} />
            <Route 
              path="/certificates" 
              element={
@@ -316,14 +311,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/course-history" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <CourseHistory />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/course-history" element={<Navigate to="/history" replace />} />
           <Route 
             path="/skill-tree" 
             element={
