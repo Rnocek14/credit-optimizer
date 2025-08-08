@@ -2,6 +2,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import Navigation from "@/components/Navigation";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthenticatedUserId } from "@/lib/authHelper";
 import { EnhancedPivotAdvisor } from "@/components/EnhancedPivotAdvisor";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 
@@ -22,13 +23,29 @@ export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const applyFallback = async () => {
+      try {
+        const devId = await getAuthenticatedUserId();
+        if (devId) setUserId(devId);
+      } catch {
+        // ignore
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUserId(session?.user?.id ?? null);
+      const id = session?.user?.id ?? null;
+      setUserId(id);
+      if (!id) applyFallback();
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
+      const id = session?.user?.id ?? null;
+      setUserId(id);
+      if (!id) applyFallback();
     });
+
+    // Initial fallback in case there's no Supabase session (dev mode)
+    applyFallback();
 
     return () => {
       subscription.unsubscribe();
