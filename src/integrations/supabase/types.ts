@@ -153,6 +153,7 @@ export type Database = {
           scored_at: string | null
           submitted_for_cri: boolean | null
           title: string
+          track_id: string | null
           updated_at: string
           user_id: string
         }
@@ -168,6 +169,7 @@ export type Database = {
           scored_at?: string | null
           submitted_for_cri?: boolean | null
           title: string
+          track_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -183,10 +185,19 @@ export type Database = {
           scored_at?: string | null
           submitted_for_cri?: boolean | null
           title?: string
+          track_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_resume_drafts_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       alert_configurations: {
         Row: {
@@ -1180,35 +1191,53 @@ export type Database = {
       }
       career_tracks: {
         Row: {
+          archived: boolean
+          color: string | null
           created_at: string
           description: string | null
+          goal: string | null
           growth_potential: string | null
+          icon: string | null
           id: string
+          order_index: number
           reasoning: string | null
           time_to_proficiency: string | null
           title: string
+          track_name: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          archived?: boolean
+          color?: string | null
           created_at?: string
           description?: string | null
+          goal?: string | null
           growth_potential?: string | null
+          icon?: string | null
           id?: string
+          order_index?: number
           reasoning?: string | null
           time_to_proficiency?: string | null
           title: string
+          track_name?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          archived?: boolean
+          color?: string | null
           created_at?: string
           description?: string | null
+          goal?: string | null
           growth_potential?: string | null
+          icon?: string | null
           id?: string
+          order_index?: number
           reasoning?: string | null
           time_to_proficiency?: string | null
           title?: string
+          track_name?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -1914,6 +1943,44 @@ export type Database = {
           xp_awarded?: number | null
         }
         Relationships: []
+      }
+      course_progress_track_usage: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          note: string | null
+          progress_id: string | null
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          progress_id?: string | null
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          progress_id?: string | null
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_track_usage_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       course_skill_map: {
         Row: {
@@ -5868,6 +5935,186 @@ export type Database = {
         }
         Relationships: []
       }
+      track_courses: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          track_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          track_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_courses_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_mentor_verifications: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          impact_notes: string | null
+          mentor_id: string
+          status: string
+          track_id: string
+          user_id: string
+          verification_data: Json
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          impact_notes?: string | null
+          mentor_id: string
+          status?: string
+          track_id: string
+          user_id: string
+          verification_data?: Json
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          impact_notes?: string | null
+          mentor_id?: string
+          status?: string
+          track_id?: string
+          user_id?: string
+          verification_data?: Json
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_mentor_verifications_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_projects: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_projects_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_skills: {
+        Row: {
+          created_at: string
+          id: string
+          skill_node_id: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          skill_node_id: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          skill_node_id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_skills_skill_node_id_fkey"
+            columns: ["skill_node_id"]
+            isOneToOne: false
+            referencedRelation: "career_graph_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "track_skills_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_steps: {
+        Row: {
+          created_at: string
+          id: string
+          step_id: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          step_id: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          step_id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_steps_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "track_steps_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transcripts: {
         Row: {
           created_at: string
@@ -6553,6 +6800,118 @@ export type Database = {
           },
         ]
       }
+      user_track_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_track_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_track_badges_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_track_xp: {
+        Row: {
+          id: string
+          last_updated: string
+          total_xp: number
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_updated?: string
+          total_xp?: number
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_updated?: string
+          total_xp?: number
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_track_xp_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_track_xp_events: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string | null
+          source: string | null
+          track_id: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          source?: string | null
+          track_id: string
+          user_id: string
+          xp: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          source?: string | null
+          track_id?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_track_xp_events_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_trust_metrics: {
         Row: {
           created_at: string
@@ -6991,6 +7350,15 @@ export type Database = {
       check_mentor_achievements: {
         Args: { mentor_user_id: string }
         Returns: undefined
+      }
+      clone_career_track: {
+        Args: {
+          source_track_id: string
+          new_track_name: string
+          new_icon?: string
+          new_color?: string
+        }
+        Returns: string
       }
       complete_course_progress: {
         Args: {
