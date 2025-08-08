@@ -62,6 +62,8 @@ function TaskCard({
 
 const SprintBoard: React.FC = () => {
   const day1Done = (typeof window !== 'undefined') && localStorage.getItem('day1_done') === 'true';
+  const day2Done = (typeof window !== 'undefined') && localStorage.getItem('day2_done') === 'true';
+  
   return (
     <div>
       <Helmet>
@@ -73,6 +75,18 @@ const SprintBoard: React.FC = () => {
       <header className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold">Life Path — 72-Hour Export Sprint Board</h1>
         <p className="text-muted-foreground mt-1">Three columns: Day 1 — Blockers, Day 2 — High-Impact, Day 3 — Polish & Demo Readiness.</p>
+        
+        {day1Done && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-200 rounded-lg">
+            <p className="text-green-800 text-sm">✅ Day 1 — Blockers: Done</p>
+          </div>
+        )}
+        
+        {day2Done && (
+          <div data-testid="day2-banner" className="mt-2 p-3 bg-blue-100 border border-blue-200 rounded-lg">
+            <p className="text-blue-800 text-sm">✅ Day 2 — High-Impact: Done</p>
+          </div>
+        )}
       </header>
 
       <main className="container mx-auto px-4 pb-10">

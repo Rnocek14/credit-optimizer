@@ -87,6 +87,10 @@ import Phase5 from "./pages/Phase5";
 import Phase6 from "./pages/Phase6";
 import Phase7 from "./pages/Phase7";
 import ShareTrust from "./pages/ShareTrust";
+import Projects from "./pages/Projects";
+import Wallet from "./pages/Wallet";
+import Institution from "./pages/Institution";
+import Employer from "./pages/Employer";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -481,6 +485,10 @@ const App = () => (
               </StakeholderProtectedRoute>
             } 
           />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/institution" element={<Institution />} />
+          <Route path="/employer" element={<Employer />} />
            <Route 
              path="/phase2-demo" 
              element={

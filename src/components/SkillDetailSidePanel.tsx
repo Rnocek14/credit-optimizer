@@ -8,8 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Target, Award, TrendingUp, X } from 'lucide-react';
+import { BookOpen, Target, Award, TrendingUp, X, Plus } from 'lucide-react';
 import { CourseCard } from './CourseCard';
+import { useProjectsStore } from '@/state/projectsStore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 
 interface SkillDetailSidePanelProps {
   skill: {
@@ -58,6 +64,12 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
   onClose,
   onPlanSkill
 }) => {
+  const [projectModalOpen, setProjectModalOpen] = React.useState(false);
+  const [projectTitle, setProjectTitle] = React.useState('');
+  const [projectSkills, setProjectSkills] = React.useState('');
+  const [projectLinks, setProjectLinks] = React.useState('');
+  const { addProject } = useProjectsStore();
+  const { toast } = useToast();
   // Fetch related courses for this skill
   const { data: relatedCourses = [], isLoading: coursesLoading } = useQuery({
     queryKey: ['skill-courses', skill?.id],
@@ -86,6 +98,39 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
     },
     enabled: !!skill?.id && open
   });
+
+  const handleSaveProject = () => {
+    if (!projectTitle.trim()) return;
+    
+    const skills = projectSkills.split(',').map(s => s.trim()).filter(Boolean);
+    const links = projectLinks.split('\n').map(l => l.trim()).filter(Boolean);
+    
+    addProject({
+      id: `project-${Date.now()}`,
+      title: projectTitle,
+      skills: skills.length > 0 ? skills : [skill.name],
+      links,
+      verified: false,
+      created_at: new Date().toISOString()
+    });
+    
+    toast({
+      title: "Project added to Proof Projects",
+      description: "Your project has been saved successfully",
+    });
+    
+    setProjectModalOpen(false);
+    setProjectTitle('');
+    setProjectSkills('');
+    setProjectLinks('');
+  };
+
+  React.useEffect(() => {
+    if (skill && projectModalOpen) {
+      setProjectTitle(`${skill.name} — Proof Project`);
+      setProjectSkills(skill.name);
+    }
+  }, [skill, projectModalOpen]);
 
   if (!skill) return null;
 
@@ -196,16 +241,75 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
               </Card>
             </div>
 
-            {canPlan && (
-              <Button 
-                onClick={() => onPlanSkill(skill.id)}
-                className="w-full"
-                size="lg"
-              >
-                <Target className="h-4 w-4 mr-2" />
-                Plan This Skill with Maya
-              </Button>
-            )}
+            <div className="space-y-3">
+              {canPlan && (
+                <Button 
+                  onClick={() => onPlanSkill(skill.id)}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Plan This Skill with Maya
+                </Button>
+              )}
+              
+              <Dialog open={projectModalOpen} onOpenChange={setProjectModalOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    size="lg"
+                    data-testid="attach-proof-skill"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Attach Proof Project
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Attach Proof Project</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="project-title">Title</Label>
+                      <Input
+                        id="project-title"
+                        placeholder="Project title"
+                        value={projectTitle}
+                        onChange={(e) => setProjectTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="project-skills">Skills (comma-separated)</Label>
+                      <Input
+                        id="project-skills"
+                        placeholder="React, TypeScript, CSS"
+                        value={projectSkills}
+                        onChange={(e) => setProjectSkills(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="project-links">Links (one per line)</Label>
+                      <Textarea
+                        id="project-links"
+                        placeholder="https://github.com/user/project&#10;https://demo.project.com"
+                        value={projectLinks}
+                        onChange={(e) => setProjectLinks(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveProject} className="flex-1">
+                        Save
+                      </Button>
+                      <Button variant="outline" onClick={() => setProjectModalOpen(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </TabsContent>
 
           <TabsContent value="progress" className="space-y-4 mt-4">

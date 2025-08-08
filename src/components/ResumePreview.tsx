@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
-import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X } from 'lucide-react';
+import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useProjectsStore } from '@/state/projectsStore';
 
 // Types for proof items
 interface ProofItem {
@@ -280,6 +281,11 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [mentorEmail, setMentorEmail] = useState('');
   const [mentorMessage, setMentorMessage] = useState('');
   const [sendingToMentor, setSendingToMentor] = useState(false);
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [projectTitle, setProjectTitle] = useState('');
+  const [projectSkills, setProjectSkills] = useState('');
+  const [projectLinks, setProjectLinks] = useState('');
+  const { items: projects, addProject } = useProjectsStore();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -490,6 +496,32 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
     } finally {
       setSendingToMentor(false);
     }
+  };
+
+  const handleSaveProject = () => {
+    if (!projectTitle.trim()) return;
+    
+    const skills = projectSkills.split(',').map(s => s.trim()).filter(Boolean);
+    const links = projectLinks.split('\n').map(l => l.trim()).filter(Boolean);
+    
+    addProject({
+      id: `project-${Date.now()}`,
+      title: projectTitle,
+      skills,
+      links,
+      verified: false,
+      created_at: new Date().toISOString()
+    });
+    
+    toast({
+      title: "Project added to Proof Projects",
+      description: "Your project has been saved successfully",
+    });
+    
+    setProjectModalOpen(false);
+    setProjectTitle('');
+    setProjectSkills('');
+    setProjectLinks('');
   };
 
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
@@ -872,6 +904,36 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
           );
         })}
       </section>
+
+      {/* Proof Projects Section (Demo) */}
+      {projects.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Proof Projects (demo)</h2>
+          <div className="space-y-3">
+            {projects.map((project) => (
+              <Card key={project.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{project.title}</h4>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {project.skills.map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <Badge variant={project.verified ? "default" : "outline"}>
+                      {project.verified ? "✅ Verified" : "📋 Unverified"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="flex gap-4 pt-4">
         <PDFDownloadLink

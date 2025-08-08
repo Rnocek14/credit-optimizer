@@ -78,3 +78,9 @@ verify_jwt = false
 
 [functions.verify-certificate]
 verify_jwt = false
+
+[functions.openbadge-export]
+verify_jwt = false
+
+[functions.linkedin-parse]
+verify_jwt = false
