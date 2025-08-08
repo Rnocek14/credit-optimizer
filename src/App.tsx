@@ -66,6 +66,7 @@ import HistoryHub from "./pages/HistoryHub";
 import TeachHub from "./pages/TeachHub";
 import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
+import CareerCopilot from "./pages/CareerCopilot";
 import TeachAnalytics from "./pages/TeachAnalytics";
 import TeachCourses from "./pages/TeachCourses";
 import CourseDiscovery from "./pages/CourseDiscovery";
@@ -161,6 +162,9 @@ const App = () => (
           <Route path="/explore-hub" element={<ExploreHub />} />
           <Route path="/plan-hub" element={<PlanHub />} />
           <Route path="/history-hub" element={<HistoryHub />} />
+          {/* Unified aliases */}
+          <Route path="/plan" element={<PlanHub />} />
+          <Route path="/history" element={<HistoryHub />} />
           
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
@@ -185,6 +189,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Workflows />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/career-copilot" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <CareerCopilot />
               </ProtectedRoute>
             } 
           />
@@ -355,6 +367,14 @@ const App = () => (
         <Route path="/admin" element={<Admin />} />
         <Route 
           path="/mentor" 
+          element={
+            <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+              <MentorChat />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/maya" 
           element={
             <ProtectedRoute requireAuth={true} requireOnboarding={true}>
               <MentorChat />
