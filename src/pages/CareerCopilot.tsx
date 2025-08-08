@@ -1,76 +1,26 @@
-
-import { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import Navigation from "@/components/Navigation";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { EnhancedPivotAdvisor } from "@/components/EnhancedPivotAdvisor";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 
-// Lazy-load heavy components instead of using require()
-const CareerTransitionSimulator = /* @__PURE__ */ 
-  // Map named export to default for React.lazy
-  (await import.meta?.env ? null : null); // no-op for types
-const LazyCareerTransitionSimulator = 
-  (typeof window !== 'undefined')
-    ? (await (async () => {
-        const mod = await import('@/components/CareerTransitionSimulator');
-        return { default: mod.CareerTransitionSimulator };
-      })()).default
-    : undefined;
+// Proper React.lazy declarations for lazy-loaded components
+const CareerTransitionSimulatorLazy = React.lazy(() =>
+  import('@/components/CareerTransitionSimulator').then(m => ({ default: m.CareerTransitionSimulator }))
+);
 
-// Use standard React.lazy form (without top-level await) for runtime
-const CareerTransitionSimulatorLazy = ((): React.LazyExoticComponent<any> => {
-  return (await (0 as unknown)) as never;
-})();
+const CRIROIPanelLazy = React.lazy(() =>
+  import('@/components/CRIROIPanel').then(m => ({ default: m.CRIROIPanel }))
+);
 
-const CRIROIPanelLazy = ((): React.LazyExoticComponent<any> => {
-  return (await (0 as unknown)) as never;
-})();
+const SkillGapTrackerLazy = React.lazy(() =>
+  import('@/components/SkillGapTracker').then(m => ({ default: m.SkillGapTracker }))
+);
 
-const SkillGapTrackerLazy = ((): React.LazyExoticComponent<any> => {
-  return (await (0 as unknown)) as never;
-})();
-
-const MayaNextStepsLazy = ((): React.LazyExoticComponent<any> => {
-  return (await (0 as unknown)) as never;
-})();
-
-// Proper React.lazy declarations
-// Note: We declare them after to ensure TypeScript is satisfied above
-const CareerTransitionSimulatorComponent = (typeof window !== 'undefined')
-  ? ( // React.lazy with named export
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    (/* @__PURE__ */ (requireVar => {
-      return (requireVar || React).lazy(() =>
-        import('@/components/CareerTransitionSimulator').then(m => ({ default: m.CareerTransitionSimulator }))
-      );
-    }))(undefined)
-  )
-  : undefined;
-
-const CRIROIPanelComponent = (typeof window !== 'undefined')
-  ? ((requireVar => {
-      return (requireVar || React).lazy(() =>
-        import('@/components/CRIROIPanel').then(m => ({ default: m.CRIROIPanel }))
-      );
-    }))(undefined)
-  : undefined;
-
-const SkillGapTrackerComponent = (typeof window !== 'undefined')
-  ? ((requireVar => {
-      return (requireVar || React).lazy(() =>
-        import('@/components/SkillGapTracker').then(m => ({ default: m.SkillGapTracker }))
-      );
-    }))(undefined)
-  : undefined;
-
-const MayaNextStepsComponent = (typeof window !== 'undefined')
-  ? ((requireVar => {
-      return (requireVar || React).lazy(() =>
-        import('@/components/MayaNextSteps').then(m => ({ default: m.MayaNextSteps }))
-      );
-    }))(undefined)
-  : undefined;
+const MayaNextStepsLazy = React.lazy(() =>
+  import('@/components/MayaNextSteps').then(m => ({ default: m.MayaNextSteps }))
+);
 
 export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);
