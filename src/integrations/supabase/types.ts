@@ -6565,6 +6565,15 @@ export type Database = {
           earned_at: string
         }[]
       }
+      get_badge_statistics: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          badge_id: string
+          badge_name: string
+          badge_emoji: string
+          earned_count: number
+        }[]
+      }
       get_demo_resume_profiles: {
         Args: Record<PropertyKey, never>
         Returns: {
