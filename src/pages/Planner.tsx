@@ -7,12 +7,15 @@ import { PlannerPathDisplay } from "@/components/PlannerPathDisplay";
 import { PlannerUnlockPreview } from "@/components/PlannerUnlockPreview";
 import { useAIPlanningEngine, type LearningPath } from "@/hooks/useAIPlanningEngine";
 import { useAnalytics } from "@/lib/analytics";
+import TrackSelector from "@/components/tracks/TrackSelector";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 
 const Planner = () => {
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [user, setUser] = useState<any>(null);
   const { loading, error, suggestions = [], generateBackwardPlan } = useAIPlanningEngine();
   const { trackPlannerGeneratePlan } = useAnalytics();
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
 
   useEffect(() => {
     checkUser();
@@ -41,6 +44,16 @@ const Planner = () => {
       <Navigation />
       
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-2">
+            {activeTrackId && (
+              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
+                Track: {activeTrackId.slice(0,8)}
+              </span>
+            )}
+            <TrackSelector />
+          </div>
+        </div>
         {/* Hero Section */}
         <div className="text-center mb-12">
           <div className="mb-6">

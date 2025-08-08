@@ -50,6 +50,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import TrackSelector from "@/components/tracks/TrackSelector";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 
 interface Course {
   id: string;
@@ -390,11 +392,21 @@ export default function Explore() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">🔍 Explore & Discover</h1>
-          <p className="text-muted-foreground text-lg">
-            AI-powered course and mentor recommendations tailored to your goals
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">🔍 Explore & Discover</h1>
+            <p className="text-muted-foreground text-lg">
+              AI-powered course and mentor recommendations tailored to your goals
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {useActiveTrackStore(s => s.activeTrackId) && (
+              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
+                Track: {useActiveTrackStore.getState().activeTrackId?.slice(0,8)}
+              </span>
+            )}
+            <TrackSelector />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

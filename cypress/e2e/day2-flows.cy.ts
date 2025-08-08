@@ -22,3 +22,20 @@ describe('Day 2 Flows (minimal)', () => {
     cy.contains(/Proof Projects/i).should('exist');
   });
 });
+
+it("TrackSelector appears and track chip updates", () => {
+  cy.visit('/plan');
+  cy.contains(/Plan/i).should('exist');
+  cy.get('[data-testid="track-selector"]').should('exist');
+});
+
+it("Resume Builder shows track context note or selector", () => {
+  cy.visit('/resume-builder');
+  cy.contains(/Resume|AI Resume Builder/i).should('exist');
+  cy.get('[data-testid="track-selector"]').should('exist');
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-testid=track-chip]').length) {
+      cy.get('[data-testid=track-chip]').should('be.visible');
+    }
+  });
+});

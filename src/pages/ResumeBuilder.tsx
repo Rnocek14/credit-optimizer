@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import Navigation from '@/components/Navigation';
 import { useProjectsStore } from '@/state/projectsStore';
+import TrackSelector from '@/components/tracks/TrackSelector';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 
 interface ResumeContent {
   personalInfo?: {
@@ -87,6 +89,7 @@ const ResumeBuilder = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { items: proofProjects } = useProjectsStore();
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
 
   useEffect(() => {
     loadSavedDrafts();
@@ -97,11 +100,29 @@ const ResumeBuilder = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: drafts, error } = await supabase
+      let query = supabase
         .from('ai_resume_drafts')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      if (activeTrackId) {
+        query = query.eq('track_id', activeTrackId);
+      }
+
+      const { data: drafts, error } = await query;
+
+      // Fallback if track_id column doesn't exist
+      if (error && (error as any).code === '42703' && activeTrackId) {
+        const { data: draftsNoTrack, error: err2 } = await supabase
+          .from('ai_resume_drafts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (err2) throw err2;
+        setSavedDrafts((draftsNoTrack || []) as ResumeData[]);
+        return;
+      }
 
       if (error) throw error;
       setSavedDrafts((drafts || []) as ResumeData[]);
@@ -267,6 +288,17 @@ const ResumeBuilder = () => {
       <Navigation />
       
       <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-muted-foreground">
+            {activeTrackId ? 'Rendering resume in context of active track.' : 'No track selected — showing global profile.'}
+          </div>
+          <div className="flex items-center gap-2">
+            {activeTrackId && (
+              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">Track: {activeTrackId.slice(0,8)}</span>
+            )}
+            <TrackSelector />
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
           {/* Sidebar - Saved Drafts */}

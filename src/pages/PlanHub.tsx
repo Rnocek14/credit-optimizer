@@ -3,6 +3,8 @@ import { Target, Map, Brain, Calculator, Lightbulb } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HubNavigation } from "@/components/HubNavigation";
+import TrackSelector from "@/components/tracks/TrackSelector";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 
 const planFeatures = [
   {
@@ -36,11 +38,23 @@ const planFeatures = [
 ];
 
 export default function PlanHub() {
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
   return (
     <div className="min-h-screen bg-background">
       <HubNavigation />
       
       <div className="container mx-auto px-4 py-8 mb-20 md:mb-8">
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center gap-2">
+            {activeTrackId && (
+              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
+                Track: {activeTrackId.slice(0,8)}
+              </span>
+            )}
+            <TrackSelector />
+          </div>
+        </div>
+
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">

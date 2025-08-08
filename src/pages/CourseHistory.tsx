@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, BookOpen } from "lucide-react";
 import { format } from "date-fns";
+import TrackSelector from "@/components/tracks/TrackSelector";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 
 interface Course {
   id: string;
@@ -73,6 +75,8 @@ const demoCoursesHistory: Course[] = [
 export default function CourseHistory() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterMode, setFilterMode] = useState<'all' | 'active'>('all');
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
 
   useEffect(() => {
     fetchCourseHistory();
@@ -176,10 +180,24 @@ export default function CourseHistory() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">📘 Course History</h1>
-        <p className="text-muted-foreground mt-2">
-          Review your saved and completed courses, including skill tags and learning status
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">📘 Course History</h1>
+            <p className="text-muted-foreground mt-2">
+              Review your saved and completed courses, including skill tags and learning status
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {activeTrackId && (
+              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">Track: {activeTrackId.slice(0,8)}</span>
+            )}
+            <div className="flex items-center gap-1">
+              <Button variant={filterMode === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('all')}>All</Button>
+              <Button variant={filterMode === 'active' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('active')}>Active Track</Button>
+            </div>
+            <TrackSelector />
+          </div>
+        </div>
       </div>
 
       {courses.length === 0 ? (
