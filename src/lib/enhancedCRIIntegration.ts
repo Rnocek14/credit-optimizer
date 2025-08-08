@@ -88,24 +88,24 @@ export async function calculateEnhancedCourseCRI(courseData: any): Promise<Enhan
       (marketRelevanceScore * ENHANCED_CRI_WEIGHTS.marketRelevance)
     );
 
-    return {
-      overall_cri_score: overallScore,
-      difficulty_score: difficultyScore,
-      skill_coverage_score: skillCoverageScore,
-      project_rigor_score: projectRigorScore,
-      outcome_conversion_score: outcomeConversionScore,
-      instructor_prestige_score: instructorPrestigeScore,
-      platform_credibility_score: platformCredibilityScore,
-      market_relevance_score: marketRelevanceScore,
-      calculation_version: '2.0',
-      calculation_data: {
-        instructor_data: courseData.instructor_profile,
-        platform_analysis: { platform: courseData.platform },
-        skill_analysis: courseData.skill_mappings,
-        market_data: { category: courseData.category }
-      },
-      historical_scores: []
-    };
+  return {
+    overall_cri_score: overallScore,
+    difficulty_score: difficultyScore,
+    skill_coverage_score: skillCoverageScore,
+    project_rigor_score: projectRigorScore,
+    outcome_conversion_score: outcomeConversionScore,
+    instructor_prestige_score: instructorPrestigeScore,
+    platform_credibility_score: platformCredibilityScore,
+    market_relevance_score: marketRelevanceScore,
+    calculation_version: '2.0' as const,
+    calculation_data: {
+      instructor_data: courseData.instructor_profile as Json,
+      platform_analysis: { platform: courseData.platform } as Json,
+      skill_analysis: courseData.skill_mappings as Json,
+      market_data: { category: courseData.category } as Json
+    },
+    historical_scores: [] as CriHistoryRow[]
+  };
   } catch (error) {
     console.error('Error calculating enhanced CRI:', error);
     throw error;
