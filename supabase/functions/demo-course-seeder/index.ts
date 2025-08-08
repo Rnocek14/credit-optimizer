@@ -17,7 +17,47 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Admin role check for dev seeding function
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Extract JWT token and validate user role
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has admin role
+    const { data: userRole, error: roleError } = await supabase.rpc('get_user_role', { 
+      user_uuid: user.id 
+    });
+    
+    if (roleError || userRole !== 'admin') {
+      console.warn(`SECURITY: Non-admin user ${user.email} attempted to access demo-course-seeder`, {
+        userId: user.id,
+        userRole,
+        timestamp: new Date().toISOString()
+      });
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: Admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`SECURITY: Admin ${user.email} authorized for demo course seeding`);
     
     console.log('Starting demo course seeding...');
     

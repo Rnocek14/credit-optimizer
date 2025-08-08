@@ -50,3 +50,12 @@ verify_jwt = true
 
 [functions.ai-model-router]
 verify_jwt = true
+
+[functions.demo-course-seeder]
+verify_jwt = true
+
+[functions.social-learning-seeder]
+verify_jwt = true
+
+[functions.send-resume-to-mentor]
+verify_jwt = true
