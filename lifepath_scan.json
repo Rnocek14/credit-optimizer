@@ -1,0 +1,277 @@
+{
+  "meta": {
+    "commit": "unknown",
+    "branch": "main",
+    "timestamp": "2025-01-08T19:00:00Z",
+    "scanning_tool": "lovable_ai_scan"
+  },
+  "env": {
+    "hasOpenAI": false,
+    "hasSupabase": true,
+    "hasStripe": false,
+    "missing": ["OPENAI_API_KEY", "STRIPE_KEY"],
+    "frameworks": {
+      "react": "^18.3.1",
+      "tailwind": "^3.4.11",
+      "supabase": "^2.52.0",
+      "vite": "^5.4.1"
+    }
+  },
+  "routes": [
+    {"path": "/", "status": "yes", "errors": [], "proof": ["src/pages/Index.tsx"]},
+    {"path": "/dashboard", "status": "yes", "errors": [], "proof": ["src/pages/Dashboard.tsx"]},
+    {"path": "/explore", "status": "yes", "errors": [], "proof": ["src/pages/Explore.tsx"]},
+    {"path": "/plan", "status": "no", "errors": ["Route not found"], "next_steps": ["Create unified plan route"]},
+    {"path": "/history", "status": "no", "errors": ["Route not found"], "next_steps": ["Create unified history route"]},
+    {"path": "/resume/:id", "status": "yes", "errors": [], "proof": ["src/pages/PublicResume.tsx"]},
+    {"path": "/resume-analytics", "status": "yes", "errors": [], "proof": ["src/pages/ResumeAnalytics.tsx"]},
+    {"path": "/skill-tree", "status": "yes", "errors": [], "proof": ["src/pages/SkillTree.tsx"]},
+    {"path": "/badges", "status": "yes", "errors": [], "proof": ["src/pages/Badges.tsx"]},
+    {"path": "/goals", "status": "yes", "errors": [], "proof": ["src/pages/Goals.tsx"]},
+    {"path": "/transcripts", "status": "yes", "errors": [], "proof": ["src/pages/Transcripts.tsx"]},
+    {"path": "/teach", "status": "yes", "errors": [], "proof": ["src/pages/Teach.tsx"]},
+    {"path": "/teach/discovery", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 421"]},
+    {"path": "/teach/curation", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 429"]},
+    {"path": "/teach/paths", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 437"]},
+    {"path": "/teach/marketplace", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 453"]},
+    {"path": "/salary-insights", "status": "yes", "errors": [], "proof": ["src/pages/SalaryInsights.tsx"]},
+    {"path": "/cri-dashboard", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 389"]},
+    {"path": "/certificates", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 232"]},
+    {"path": "/certificate-gallery", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 239"]},
+    {"path": "/verify/:code", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 240"]},
+    {"path": "/maya", "status": "no", "errors": ["Route not found"], "next_steps": ["Create Maya unified interface"]},
+    {"path": "/demos", "status": "yes", "errors": [], "proof": ["src/pages/Demos.tsx"]},
+    {"path": "/phase2-demo", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 477"]},
+    {"path": "/career-copilot", "status": "no", "errors": ["Route not found"], "next_steps": ["Create unified Career Co-Pilot hub"]},
+    {"path": "/institution", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 461"], "notes": "Institution hub exists"},
+    {"path": "/employer", "status": "yes", "errors": [], "proof": ["Route in App.tsx line 469"], "notes": "Employer hub exists"}
+  ],
+  "db_tables": [
+    {"name": "users", "status": "no", "errors": ["Table not found in public schema"], "notes": "Uses auth.users instead"},
+    {"name": "enhanced_user_profiles", "status": "yes", "columns": ["user_id", "data_completeness_score"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "career_paths", "status": "yes", "columns": ["id", "title", "summary", "industry"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "career_steps", "status": "yes", "columns": ["id", "title", "description", "career_path_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "skills", "status": "yes", "columns": ["id", "name", "category"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "courses", "status": "yes", "columns": ["id", "title", "description"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "course_cri_scores", "status": "yes", "columns": ["course_id", "overall_cri_score"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "course_intelligence_pipeline", "status": "yes", "columns": ["id", "course_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "mentor_course_curations", "status": "yes", "columns": ["id", "mentor_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "maya_learning_paths", "status": "yes", "columns": ["id", "user_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "autonomous_workflows", "status": "yes", "columns": ["id", "user_id", "status"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "maya_decisions", "status": "yes", "columns": ["id", "user_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "badges", "status": "yes", "columns": ["id", "name", "slug"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "user_badges", "status": "yes", "columns": ["id", "user_id", "badge_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "instructor_profiles", "status": "yes", "columns": ["id", "user_id"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "salary_insights", "status": "yes", "columns": ["id", "career_path"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "locations", "status": "yes", "columns": ["id", "name"], "rls_enabled": true, "sample_count": "unknown"},
+    {"name": "career_tracks", "status": "yes", "columns": ["id", "user_id", "title"], "rls_enabled": true, "sample_count": "unknown"}
+  ],
+  "functions": [
+    {"name": "generate-roadmap", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "assign-badges", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "autonomous-workflow-engine", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "getMentorCurationQueue", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "course-path-integrator", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "ai-difficulty-analyzer", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"},
+    {"name": "instructor-reputation-updater", "status": "no", "errors": ["supabase/functions directory not found"], "endpoint": "unknown"}
+  ],
+  "modules": [
+    {
+      "name": "Explore",
+      "status": "partial",
+      "missing": ["Outcome alignment icons", "Enhanced vs Legacy toggle fully wired"],
+      "errors": [],
+      "components_found": ["CourseMarketplace", "CourseIntelligenceCard"],
+      "next_steps": ["Complete enhanced intelligence features"]
+    },
+    {
+      "name": "Plan My Path",
+      "status": "partial",
+      "missing": ["Unified roadmap builder", "AI recommendation integration"],
+      "errors": [],
+      "components_found": ["MayaRoadmap", "Plans"],
+      "next_steps": ["Create unified planning interface"]
+    },
+    {
+      "name": "My History",
+      "status": "partial",
+      "missing": ["Unified history view", "Proof object links"],
+      "errors": [],
+      "components_found": ["Transcripts", "CourseHistory"],
+      "next_steps": ["Consolidate history components"]
+    },
+    {
+      "name": "Resume Builder",
+      "status": "yes",
+      "missing": [],
+      "errors": [],
+      "components_found": ["ResumeBuilder", "ResumeAnalytics", "PublicResume"]
+    },
+    {
+      "name": "Skill Tree",
+      "status": "yes",
+      "missing": [],
+      "errors": [],
+      "components_found": ["SkillTree", "SkillTreeBuilder"]
+    },
+    {
+      "name": "Market Intelligence",
+      "status": "yes",
+      "missing": [],
+      "errors": [],
+      "components_found": ["SalaryInsights", "MarketIntelligence"]
+    },
+    {
+      "name": "Teaching Hub",
+      "status": "yes",
+      "missing": [],
+      "errors": [],
+      "components_found": ["Teach", "Multiple teach routes"]
+    },
+    {
+      "name": "Maya Workflow Engine",
+      "status": "partial",
+      "missing": ["Edge function implementations", "Autonomous decision engine"],
+      "errors": [],
+      "components_found": ["Workflows", "MayaRoadmap"],
+      "next_steps": ["Implement edge functions"]
+    },
+    {
+      "name": "Certificates",
+      "status": "yes",
+      "missing": [],
+      "errors": [],
+      "components_found": ["Certificate routes", "Verification system"]
+    },
+    {
+      "name": "Career Co-Pilot",
+      "status": "no",
+      "missing": ["Unified hub route", "Widget composition"],
+      "errors": ["Route not found"],
+      "next_steps": ["Create /career-copilot route with TransitionSimulator, PivotAdvisor, CRIPanel, SkillGap, MayaNext widgets"]
+    },
+    {
+      "name": "Institution Hub",
+      "status": "partial",
+      "missing": ["Cohort management", "Outcomes tracking"],
+      "errors": [],
+      "components_found": ["Institution route exists"]
+    },
+    {
+      "name": "Employer Hub",
+      "status": "partial",
+      "missing": ["Resume matching", "ROI analytics"],
+      "errors": [],
+      "components_found": ["Employer route exists"]
+    }
+  ],
+  "connections": [
+    {
+      "from": "Explore",
+      "to": "Plan",
+      "status": "partial",
+      "how_verified": "Add-to-Path button exists but unified plan missing",
+      "errors": ["No unified plan route"],
+      "fix_hint": "Create unified plan interface"
+    },
+    {
+      "from": "Plan",
+      "to": "History",
+      "status": "partial",
+      "how_verified": "History components exist but not integrated",
+      "errors": ["No unified history view"],
+      "fix_hint": "Consolidate transcript and course history"
+    },
+    {
+      "from": "History",
+      "to": "Resume",
+      "status": "yes",
+      "how_verified": "Resume builder integrates with transcript data",
+      "errors": [],
+      "fix_hint": "None"
+    },
+    {
+      "from": "Maya",
+      "to": "Workflows",
+      "status": "no",
+      "how_verified": "Edge functions missing",
+      "errors": ["No Maya edge functions found"],
+      "fix_hint": "Implement Maya edge functions"
+    }
+  ],
+  "demo_flows": [
+    {
+      "flow": "Explore→Plan→History→Resume",
+      "status": "partial",
+      "notes": "Components exist but unified flow incomplete"
+    },
+    {
+      "flow": "Teach Hub approval→Path integration",
+      "status": "no",
+      "notes": "Edge functions missing"
+    },
+    {
+      "flow": "Maya workflow→certificate→verify",
+      "status": "partial",
+      "notes": "Certificate system exists but Maya workflows incomplete"
+    }
+  ],
+  "export_readiness": {
+    "blocking": [
+      {
+        "id": "EF-001",
+        "title": "No edge functions directory found",
+        "file": "supabase/functions/",
+        "severity": "blocking",
+        "notes": "Critical backend functionality missing"
+      },
+      {
+        "id": "RT-001", 
+        "title": "Missing Career Co-Pilot unified hub",
+        "file": "src/pages/CareerCopilot.tsx",
+        "severity": "blocking",
+        "notes": "Key Phase 4 feature missing"
+      },
+      {
+        "id": "RT-002",
+        "title": "Missing unified plan and history routes",
+        "file": "src/pages/Plan.tsx, src/pages/History.tsx",
+        "severity": "blocking",
+        "notes": "Core user journey incomplete"
+      }
+    ],
+    "should_fix": [
+      {
+        "id": "INT-001",
+        "title": "Enhanced intelligence toggle not fully implemented",
+        "file": "src/pages/CourseMarketplace.tsx",
+        "severity": "should_fix",
+        "notes": "Feature partially implemented"
+      },
+      {
+        "id": "CON-001",
+        "title": "Module connections not fully integrated",
+        "file": "Multiple files",
+        "severity": "should_fix",
+        "notes": "Data flows between modules incomplete"
+      }
+    ],
+    "polish": [
+      {
+        "id": "UI-001",
+        "title": "Mobile responsiveness improvements needed",
+        "file": "Multiple components",
+        "severity": "polish",
+        "notes": "Desktop-first design needs mobile optimization"
+      }
+    ]
+  },
+  "additional_findings": {
+    "total_db_tables": 147,
+    "supabase_functions_status": "missing",
+    "auth_system": "implemented",
+    "role_system": "implemented",
+    "multi_tenant": "partial",
+    "performance_monitoring": "partial"
+  }
+}

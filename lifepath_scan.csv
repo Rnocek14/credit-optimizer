@@ -1,0 +1,39 @@
+area,path_or_name,status,severity,notes,proof,fix_hint
+Routes,/,yes,none,Landing page,src/pages/Index.tsx,None
+Routes,/dashboard,yes,none,Dashboard exists,src/pages/Dashboard.tsx,None
+Routes,/explore,yes,none,Course exploration,src/pages/Explore.tsx,None
+Routes,/plan,no,blocking,Unified plan route missing,None,Create unified plan route
+Routes,/history,no,blocking,Unified history route missing,None,Create unified history route
+Routes,/resume/:id,yes,none,Public resume,src/pages/PublicResume.tsx,None
+Routes,/career-copilot,no,blocking,Career Co-Pilot hub missing,None,Create unified hub with widgets
+Routes,/maya,no,blocking,Maya interface missing,None,Create Maya chat interface
+Database,courses,yes,none,Course table exists,147 total tables,None
+Database,course_cri_scores,yes,none,CRI scoring,Database verified,None
+Database,autonomous_workflows,yes,none,Workflow engine data,Database verified,None
+Database,maya_decisions,yes,none,Maya decision tracking,Database verified,None
+Functions,generate-roadmap,no,blocking,Edge function missing,supabase/functions not found,Create edge functions directory
+Functions,assign-badges,no,blocking,Badge assignment missing,supabase/functions not found,Implement badge logic
+Functions,autonomous-workflow-engine,no,blocking,Workflow engine missing,supabase/functions not found,Implement Maya workflows
+Functions,ai-difficulty-analyzer,no,blocking,AI analysis missing,supabase/functions not found,Implement difficulty AI
+Modules,Explore,partial,should_fix,Enhanced toggle incomplete,CourseMarketplace component,Complete enhanced features
+Modules,Plan My Path,partial,blocking,Unified interface missing,MayaRoadmap exists,Create unified planner
+Modules,My History,partial,should_fix,Consolidated view needed,Transcripts + CourseHistory,Merge history components
+Modules,Resume Builder,yes,none,Complete implementation,ResumeBuilder component,None
+Modules,Skill Tree,yes,none,Interactive skill tree,SkillTree component,None
+Modules,Teaching Hub,yes,none,Mentor tools complete,Teach routes,None
+Modules,Career Co-Pilot,no,blocking,Hub not implemented,None,Create widget composition
+Modules,Maya Workflow Engine,partial,blocking,Backend missing,Workflows UI exists,Implement edge functions
+Connections,Explore→Plan,partial,should_fix,Add-to-Path exists but plan incomplete,Component inspection,Create unified plan
+Connections,Plan→History,partial,should_fix,Components exist separately,Component inspection,Integrate history flow
+Connections,History→Resume,yes,none,Resume integrates transcripts,ResumeBuilder,None
+Connections,Maya→Workflows,no,blocking,Edge functions missing,No backend,Implement Maya functions
+Demo_Flows,Explore→Plan→History→Resume,partial,should_fix,Components exist but flow incomplete,Route analysis,Unify user journey
+Demo_Flows,Teach Hub→Path integration,no,blocking,Backend missing,No edge functions,Implement approval flow
+Demo_Flows,Maya→Certificate→Verify,partial,should_fix,Certificate system exists,Certificate routes,Complete Maya integration
+Environment,OpenAI API,no,should_fix,API key missing,Environment check,Add OpenAI integration
+Environment,Stripe,no,polish,Payment system missing,Environment check,Add payment features
+Environment,Supabase,yes,none,Database connected,Client verified,None
+Performance,Build,unknown,should_fix,Build status unknown,No build test,Run production build test
+Performance,Route_loading,unknown,should_fix,Load times unknown,No performance test,Add performance monitoring
+Security,RLS_policies,yes,none,Row level security enabled,Database policies,None
+Security,Auth_system,yes,none,Authentication working,useSecureAuth hook,None
