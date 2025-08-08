@@ -22,11 +22,17 @@ export default function CareerCopilot() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
     };
-    loadUser();
   }, []);
 
   return (
