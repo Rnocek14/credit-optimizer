@@ -4260,6 +4260,7 @@ export type Database = {
           created_at: string
           data_completeness_score: number | null
           education: string | null
+          email: string | null
           experience_level: string | null
           gallery_enabled: boolean | null
           gallery_featured: boolean | null
@@ -4293,6 +4294,7 @@ export type Database = {
           created_at?: string
           data_completeness_score?: number | null
           education?: string | null
+          email?: string | null
           experience_level?: string | null
           gallery_enabled?: boolean | null
           gallery_featured?: boolean | null
@@ -4326,6 +4328,7 @@ export type Database = {
           created_at?: string
           data_completeness_score?: number | null
           education?: string | null
+          email?: string | null
           experience_level?: string | null
           gallery_enabled?: boolean | null
           gallery_featured?: boolean | null
