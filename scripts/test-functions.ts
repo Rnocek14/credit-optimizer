@@ -21,7 +21,7 @@ async function run() {
   try {
     // generate-roadmap
     {
-      const { data, error } = await supabase.functions.invoke('generate-roadmap', { body: { goal: 'PM', skills: ['SQL'] } });
+      const { data, error } = await supabase.functions.invoke('generate-roadmap', { body: { goal: 'PM', user_skills: ['SQL'] } });
       if (error) throw new Error(error.message);
       if (data?.steps && data?.fastest_path && data?.lowest_cost_path && data?.highest_roi_path) ok('generate-roadmap'); else fail('generate-roadmap', 'missing keys');
     }
@@ -66,7 +66,7 @@ async function run() {
     }
     // openbadge-export
     {
-      const { data, error } = await supabase.functions.invoke('openbadge-export', { body: { slug: 'react-fundamentals', name: 'React Fundamentals' } });
+      const { data, error } = await supabase.functions.invoke('openbadge-export', { body: { badge: { slug: 'react-fundamentals', name: 'React Fundamentals' } } });
       if (error) throw new Error(error.message);
       if (data?.badge_json) ok('openbadge-export'); else fail('openbadge-export', 'missing badge_json');
     }
