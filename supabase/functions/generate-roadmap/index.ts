@@ -1,45 +1,42 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GenerateRoadmapInput } from "./schema.ts";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
-const corsHeaders = {
+const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+const Body = z.object({
+  goal: z.string().optional(),
+  user_skills: z.array(z.string()).optional(),
+});
 
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   try {
     const json = await req.json().catch(() => ({}));
-    const parsed = GenerateRoadmapInput.safeParse(json);
+    const parsed = Body.safeParse(json);
     if (!parsed.success) {
-      return new Response(
-        JSON.stringify({ mode: 'dry-run', ok: false, errors: parsed.error.flatten() }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ mode: "dry-run", ok: false, errors: parsed.error.flatten() }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
-
-    const { goal = 'Product Manager', user_skills = ['SQL', 'Excel'] } = parsed.data;
-
+    const goal = parsed.data.goal ?? "Frontend Developer";
     const steps = [
-      { title: 'Foundations', description: `Core skills for ${goal}`, estimated_time: '4 weeks', estimated_cost: '$0' },
-      { title: 'Analytics', description: 'Quant skills + SQL practice', estimated_time: '6 weeks', estimated_cost: '$99' },
-      { title: 'Projects', description: 'Build portfolio artifacts', estimated_time: '6 weeks', estimated_cost: '$0' },
+      { id: "r1", title: `Clarify target role → ${goal}`, est_hours: 2 },
+      { id: "r2", title: "Fill skill gaps: React/TS", est_hours: 20 },
+      { id: "r3", title: "Build 2 proof projects", est_hours: 30 },
+      { id: "r4", title: "Publish portfolio + apply", est_hours: 8 },
     ];
-
-    const fastest_path = { total_time: '4 months', total_cost: '$199', roi_score: 8.3 };
-    const lowest_cost_path = { total_time: '5 months', total_cost: '$0', roi_score: 7.4 };
-    const highest_roi_path = { total_time: '6 months', total_cost: '$149', roi_score: 8.9 };
-
-    return new Response(
-      JSON.stringify({ mode: 'dry-run', ok: true, goal, user_skills, steps, fastest_path, lowest_cost_path, highest_roi_path }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const ids = steps.map(s => s.id);
+    return new Response(JSON.stringify({
+      mode: "dry-run", ok: true, goal,
+      steps, fastest_path: ids, lowest_cost_path: ids, highest_roi_path: ids
+    }), { headers: { ...cors, "Content-Type": "application/json" }});
   } catch (e) {
-    return new Response(
-      JSON.stringify({ mode: 'dry-run', ok: false, error: String(e) }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ mode: "dry-run", ok: false, error: String(e) }), {
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
+    });
   }
 });
