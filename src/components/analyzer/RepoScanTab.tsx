@@ -119,30 +119,67 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
       }, 300);
 
       try {
-        // Try to call the actual API with demo data
-        const { data, error } = await supabase.functions.invoke('ai-analyzer-index', {
-          body: { repoId: `${repoId}-demo`, files }
+        // Create demo repository and chunks for other tabs to use
+        const repoId = "current-repo-demo";
+        
+        // Insert demo repository
+        await supabase.from("ai_analyzer_repos").upsert({
+          id: repoId,
+          user_id: "demo-user",
+          name: "Demo Project (Lovable)",
+          repo_type: "demo",
+          file_count: files.length,
+          language_breakdown: {
+            "TypeScript": 75,
+            "JavaScript": 15,
+            "CSS": 7,
+            "JSON": 3
+          },
+          indexed_at: new Date().toISOString()
         });
+        
+        // Create demo chunks for other tabs to access
+        const demoChunks = files.map((file, index) => {
+          // Detect language from file extension
+          const ext = file.path.split('.').pop()?.toLowerCase();
+          const language = ext === 'tsx' || ext === 'ts' ? 'TypeScript' : 
+                          ext === 'js' || ext === 'jsx' ? 'JavaScript' :
+                          ext === 'json' ? 'JSON' : 
+                          ext === 'md' ? 'Markdown' : 'Text';
+          
+          return {
+            id: `demo-chunk-${index}`,
+            repo_id: repoId,
+            file_path: file.path,
+            chunk_content: file.content,
+            chunk_index: 0,
+            total_chunks: 1,
+            language: language,
+            content_hash: `demo-hash-${index}`,
+            symbols: [] // Extract basic symbols if needed
+          };
+        });
+        
+        await supabase.from("ai_analyzer_chunks").upsert(demoChunks);
         
         clearInterval(progressInterval);
         setScanProgress(100);
-
-        // Use API result if successful, otherwise fallback to demo
-        const result = error ? generateDemoScanResult() : data;
-
-      setTimeout(() => {
-        setScanResult(result);
-        setIsScanning(false);
-        setScanProgress(0);
         
+        const result = generateDemoScanResult();
+        
+        setTimeout(() => {
+          setScanResult(result);
+          setIsScanning(false);
+          setScanProgress(0);
+          
           toast({
             title: "Demo scan completed",
-            description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+            description: `Analyzed ${result.filesIndexed} demo files - other tabs are now ready!`,
           });
         }, 1000);
 
       } catch (apiError) {
-        console.warn('Demo API call failed, using fallback:', apiError);
+        console.warn('Demo setup failed, using fallback results:', apiError);
         clearInterval(progressInterval);
         setScanProgress(100);
         
@@ -154,8 +191,8 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
           setScanProgress(0);
           
           toast({
-            title: "Demo scan completed",
-            description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+            title: "Demo scan completed (offline)",
+            description: `Analyzed ${result.filesIndexed} demo files`,
           });
         }, 1000);
       }
@@ -170,8 +207,8 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
       setScanProgress(0);
       
       toast({
-        title: "Demo scan completed",
-        description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+        title: "Demo scan completed (fallback)",
+        description: `Analyzed ${result.filesIndexed} demo files`,
       });
     }
   };
