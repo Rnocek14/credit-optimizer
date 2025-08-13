@@ -1,166 +1,237 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import OpenAI from "https://esm.sh/openai@4.67.3";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+function chunkText(content: string, targetSize = 1600, overlap = 200): string[] {
+  const chunks: string[] = [];
+  let position = 0;
+  
+  while (position < content.length) {
+    const end = Math.min(position + targetSize, content.length);
+    chunks.push(content.slice(position, end));
+    
+    position = end - overlap;
+    if (position <= 0) position = end;
+    if (position >= content.length) break;
+  }
+  
+  return chunks;
+}
+
+function detectLanguage(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  
+  const languageMap: Record<string, string> = {
+    ts: "TypeScript",
+    tsx: "TypeScript",
+    js: "JavaScript", 
+    jsx: "JavaScript",
+    json: "JSON",
+    md: "Markdown",
+    css: "CSS",
+    scss: "SCSS",
+    html: "HTML",
+    py: "Python",
+    java: "Java",
+    cpp: "C++",
+    c: "C",
+    go: "Go",
+    rs: "Rust",
+    php: "PHP",
+    rb: "Ruby",
+    sql: "SQL"
+  };
+  
+  return languageMap[ext] || "Text";
+}
+
+function extractSymbols(content: string, language: string): string[] {
+  const symbols: string[] = [];
+  
+  try {
+    if (language === "TypeScript" || language === "JavaScript") {
+      // Extract functions, classes, interfaces
+      const functionMatches = content.match(/(?:function|const|let|var)\s+(\w+)|class\s+(\w+)|interface\s+(\w+)|type\s+(\w+)/g);
+      if (functionMatches) {
+        functionMatches.forEach(match => {
+          const name = match.replace(/^(function|const|let|var|class|interface|type)\s+/, '').split(/[\s=(/]/)[0];
+          if (name && name.length > 2) symbols.push(name);
+        });
+      }
+    }
+  } catch (error) {
+    console.log("Symbol extraction failed:", error);
+  }
+  
+  return [...new Set(symbols)].slice(0, 10); // Limit and dedupe
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { repoId } = await req.json();
-    
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
+    const { repoId, files } = await req.json();
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
-    
-    // Get auth user
-    const authHeader = req.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Get user from auth header
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
-    const startTime = Date.now();
-    
-    // Update job status to running
-    const { data: job } = await supabase
-      .from('ai_analyzer_jobs')
+    if (!repoId) {
+      throw new Error("repoId is required");
+    }
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      throw new Error("No files provided. Send { files: [{path, content}] } from the client.");
+    }
+
+    console.log(`📊 Starting indexing for repo ${repoId} with ${files.length} files`);
+
+    // Create job record
+    const { data: job, error: jobError } = await supabase
+      .from("ai_analyzer_jobs")
       .insert({
         repo_id: repoId,
         user_id: user.id,
-        job_type: 'index',
-        status: 'running',
+        job_type: "index",
+        status: "running",
         started_at: new Date().toISOString(),
-        input_data: { repoId }
+        input_data: { repoId, fileCount: files.length }
       })
       .select()
       .single();
 
-    console.log('Starting repository indexing for:', repoId);
+    if (jobError) throw jobError;
 
-    // Simulate file discovery and processing
-    // In a real implementation, this would:
-    // 1. Walk the repository files
-    // 2. Filter by ignore patterns
-    // 3. Chunk files semantically
-    // 4. Generate embeddings
-    // 5. Store in database
-
-    const mockFiles = [
-      'src/App.tsx',
-      'src/components/Navigation.tsx',
-      'src/pages/Dashboard.tsx',
-      'src/hooks/useAuth.ts',
-      'package.json',
-      'README.md'
-    ];
-
-    const languageBreakdown = {
-      'TypeScript': 4,
-      'JSON': 1,
-      'Markdown': 1
-    };
-
-    // Mock chunking and embedding generation
     let totalChunks = 0;
-    let tokenUsage = 0;
+    const languageBreakdown: Record<string, number> = {};
+    let totalTokenUsage = 0;
 
-    for (const filePath of mockFiles) {
-      const fileContent = `// Mock content for ${filePath}\n// This would contain actual file content`;
-      const contentHash = btoa(fileContent).slice(0, 16);
-      
-      // Simulate chunking (1-3 chunks per file)
-      const chunksPerFile = Math.floor(Math.random() * 3) + 1;
-      
-      for (let i = 0; i < chunksPerFile; i++) {
-        // Generate mock embedding using OpenAI (in real implementation)
-        const mockEmbedding = Array.from({ length: 1536 }, () => Math.random() - 0.5);
+    // Process each file
+    for (const file of files) {
+      const language = detectLanguage(file.path);
+      languageBreakdown[language] = (languageBreakdown[language] || 0) + 1;
+
+      const chunks = chunkText(file.content);
+      const symbols = extractSymbols(file.content, language);
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkContent = chunks[i];
         
-        // Store chunk in database
-        await supabase
-          .from('ai_analyzer_chunks')
-          .insert({
-            repo_id: repoId,
-            file_path: filePath,
-            content_hash: contentHash,
-            chunk_content: fileContent,
-            embedding_data: { vector: mockEmbedding },
-            language: filePath.endsWith('.tsx') || filePath.endsWith('.ts') ? 'TypeScript' : 
-                     filePath.endsWith('.json') ? 'JSON' : 'Markdown',
-            chunk_index: i,
-            total_chunks: chunksPerFile,
-            symbols: filePath.includes('component') ? ['Component', 'JSX'] : 
-                    filePath.includes('hook') ? ['Hook', 'useState'] : []
+        try {
+          // Create embedding with OpenAI
+          const embeddingResponse = await openai.embeddings.create({
+            model: "text-embedding-3-large",
+            input: chunkContent,
+            dimensions: 3072
           });
-        
-        totalChunks++;
-        tokenUsage += Math.floor(Math.random() * 200) + 100;
+
+          const embedding = embeddingResponse.data[0].embedding;
+          totalTokenUsage += embeddingResponse.usage?.total_tokens || 0;
+
+          // Store chunk in database
+          const { error: chunkError } = await supabase
+            .from("ai_analyzer_chunks")
+            .insert({
+              repo_id: repoId,
+              file_path: file.path,
+              content_hash: btoa(file.content).slice(0, 16),
+              chunk_index: i,
+              total_chunks: chunks.length,
+              language,
+              symbols,
+              chunk_content: chunkContent,
+              embedding_data: { vector: embedding }
+            });
+
+          if (chunkError) {
+            console.error("Chunk insert error:", chunkError);
+            throw chunkError;
+          }
+
+          totalChunks++;
+        } catch (embeddingError) {
+          console.error("Embedding error for chunk:", embeddingError);
+          throw embeddingError;
+        }
       }
     }
 
-    // Update repository record
-    await supabase
-      .from('ai_analyzer_repos')
+    // Update/create repo record
+    const { error: repoError } = await supabase
+      .from("ai_analyzer_repos")
       .upsert({
         id: repoId,
         user_id: user.id,
-        name: 'Current Repository',
-        repo_type: 'local',
+        name: "Current Repository", 
+        repo_type: "local",
         indexed_at: new Date().toISOString(),
-        file_count: mockFiles.length,
+        file_count: files.length,
         language_breakdown: languageBreakdown
       });
 
-    const durationMs = Date.now() - startTime;
+    if (repoError) throw repoError;
 
-    // Update job as completed
-    await supabase
-      .from('ai_analyzer_jobs')
+    // Complete job
+    const costEstimate = (totalTokenUsage / 1_000_000) * 0.13; // text-embedding-3-large pricing
+    
+    const { error: jobUpdateError } = await supabase
+      .from("ai_analyzer_jobs")
       .update({
-        status: 'completed',
+        status: "completed",
         completed_at: new Date().toISOString(),
         results: {
-          filesIndexed: mockFiles.length,
+          filesIndexed: files.length,
           chunks: totalChunks,
           languages: Object.keys(languageBreakdown),
-          durationMs
+          languageBreakdown
         },
-        token_usage: tokenUsage,
-        cost_estimate: (tokenUsage / 1000) * 0.002 // Rough OpenAI pricing
+        token_usage: totalTokenUsage,
+        cost_estimate: costEstimate
       })
-      .eq('id', job.id);
+      .eq("id", job.id);
 
-    console.log(`Indexing completed: ${mockFiles.length} files, ${totalChunks} chunks, ${durationMs}ms`);
+    if (jobUpdateError) throw jobUpdateError;
+
+    console.log(`✅ Indexing completed: ${files.length} files, ${totalChunks} chunks, ${totalTokenUsage} tokens`);
 
     return new Response(JSON.stringify({
-      filesIndexed: mockFiles.length,
+      success: true,
+      filesIndexed: files.length,
       chunks: totalChunks,
       languages: Object.keys(languageBreakdown),
-      durationMs
+      languageBreakdown,
+      tokenUsage: totalTokenUsage,
+      costEstimate
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
+
   } catch (error) {
-    console.error('Error in ai-analyzer-index:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("AI Analyzer Index Error:", error);
+    return new Response(JSON.stringify({ 
+      error: error.message || "An error occurred during indexing",
+      details: error.toString()
+    }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });

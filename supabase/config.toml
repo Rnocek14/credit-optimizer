@@ -93,3 +93,9 @@ verify_jwt = false
 
 [functions.linkedin-parse]
 verify_jwt = false
+
+[functions.ai-analyzer-refactor]
+verify_jwt = true
+
+[functions.ai-analyzer-tests]
+verify_jwt = true
