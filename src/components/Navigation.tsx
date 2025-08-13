@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine, DollarSign, BarChart, TrendingUp, Workflow, Brain, BarChart3, Bookmark, History, Trophy } from "lucide-react";
+import { Menu, X, Target, LogOut, User, Home, Award, BookOpen, GraduationCap, Compass, TreePine, DollarSign, BarChart, TrendingUp, Workflow, Brain, BarChart3, Bookmark, History, Trophy, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,7 @@ export default function Navigation() {
     { href: "/maya-roadmap", label: "Maya Roadmap", icon: Brain },
     { href: "/maya-cri-integration", label: "Maya × CRI", icon: Brain },
     { href: "/maya-automation", label: "Maya Automation", icon: Brain },
+    { href: "/ai-analyzer", label: "AI Analyzer", icon: Activity },
     { href: "/phase4", label: "Phase 4", icon: Brain },
     { href: "/phase5", label: "Phase 5", icon: Brain },
     { href: "/phase6", label: "Phase 6", icon: Brain },

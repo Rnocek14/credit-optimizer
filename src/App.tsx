@@ -91,6 +91,7 @@ import Projects from "./pages/Projects";
 import Wallet from "./pages/Wallet";
 import Institution from "./pages/Institution";
 import Employer from "./pages/Employer";
+import AIAnalyzer from "./pages/AIAnalyzer";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -229,14 +230,22 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/maya-automation" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <MayaAutomation />
-              </ProtectedRoute>
-            } 
-          />
+           <Route 
+             path="/maya-automation" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <MayaAutomation />
+               </ProtectedRoute>
+             } 
+           />
+           <Route 
+             path="/ai-analyzer" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <AIAnalyzer />
+               </ProtectedRoute>
+             } 
+           />
           <Route path="/learning-history" element={<Navigate to="/history" replace />} />
            <Route path="/planner" element={<Navigate to="/plan" replace />} />
            <Route 
