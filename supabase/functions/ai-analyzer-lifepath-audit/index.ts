@@ -1,171 +1,132 @@
 import { corsHeaders, supabase, openai, authenticateUser } from "../_shared/util.ts";
 
-const LIFEPATH_AUDIT_PROMPT = `You are an expert Life Path platform architecture auditor. Analyze the provided codebase and score each pillar (0-10). Return ONLY valid JSON:
+const LIFEPATH_AUDIT_PROMPT = `You are an expert Life Path platform architect. Audit the provided codebase and return JSON ONLY:
 
 {
   "scorecard": {
-    "explore": 0-10,
-    "plan": 0-10,
-    "history": 0-10,
-    "mentorship": 0-10,
-    "resume": 0-10,
-    "cri_difficulty": 0-10,
-    "ai_planner": 0-10,
-    "trust_fairness": 0-10,
-    "multi_track": 0-10
+    "explore": 8.5,
+    "plan": 7.2,
+    "history": 6.8,
+    "mentorship": 9.1,
+    "resume": 7.5,
+    "cri_difficulty": 8.0,
+    "ai_planner": 8.8,
+    "trust_fairness": 7.9,
+    "multi_track": 6.5
   },
   "gaps": [
     {
-      "area": "Area name",
-      "impact": "low|med|high", 
-      "why": "Why this is a gap",
-      "fix": "How to fix it"
+      "area": "Career exploration features",
+      "impact": "high",
+      "why": "Missing interactive career path visualization",
+      "fix": "Implement dynamic career graph with user interaction"
     }
   ],
-  "quick_wins": [
-    "Quick improvement 1",
-    "Quick improvement 2"
-  ],
-  "architecture_recs": [
-    "Architecture recommendation 1",
-    "Architecture recommendation 2"
-  ],
-  "ux_recs": [
-    "UX improvement 1", 
-    "UX improvement 2"
-  ]
+  "quick_wins": ["Add loading states", "Improve error messages"],
+  "architecture_recs": ["Implement state management", "Add caching layer"],
+  "ux_recs": ["Add onboarding flow", "Improve mobile responsiveness"]
 }
 
-Life Path Pillars:
-1. EXPLORE: Career discovery, market data, industry insights
-2. PLAN: Roadmap creation, goal setting, milestone tracking
-3. HISTORY: Transcript management, progress tracking, achievements
-4. MENTORSHIP: Instructor ratings, feedback systems, social features
-5. RESUME: Profile building, export features, showcase capabilities
-6. CRI_DIFFICULTY: Complexity analysis, instructor difficulty ratings
-7. AI_PLANNER: Intelligent recommendations, substitutions, automation
-8. TRUST_FAIRNESS: Bias prevention, transparency, ethical AI
-9. MULTI_TRACK: Multiple career paths, parallel planning
+Life Path Pillars (score 0-10):
+- Explore: Career discovery, skill mapping, market intelligence
+- Plan: Roadmap creation, milestone tracking, adaptive planning
+- History: Progress tracking, achievement records, learning history
+- Mentorship: Expert guidance, peer collaboration, feedback loops
+- Resume: Profile building, skill validation, career readiness
+- CRI/Difficulty: Challenge rating, skill assessment, growth metrics
+- AI Planner: Intelligent recommendations, automated workflows
+- Trust & Fairness: Transparency, bias detection, ethical AI
+- Multi-Track: Parallel paths, career pivoting, flexibility
 
-Be specific about missing components and provide actionable recommendations.`;
+Return strict JSON only.`;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const user = await authenticateUser(req);
     const { repoId } = await req.json();
+    
+    if (!repoId) throw new Error("repoId is required");
 
-    if (!repoId) {
-      throw new Error("repoId is required");
-    }
-
-    console.log(`🏗️ Starting Life Path audit for repo ${repoId}`);
-
-    // Get representative chunks from the codebase
-    const { data: chunks, error: chunksError } = await supabase
+    // Get all indexed code chunks for this repository
+    const { data: chunks, error } = await supabase
       .from("ai_analyzer_chunks")
-      .select("file_path, chunk_content, symbols, language")
+      .select("file_path, chunk_content, language")
       .eq("repo_id", repoId)
-      .limit(100);
-
-    if (chunksError) throw chunksError;
-
-    if (!chunks || chunks.length === 0) {
-      throw new Error("No indexed content found. Please index the repository first.");
-    }
-
+      .limit(50); // Limit to prevent token overflow
+    
+    if (error) throw error;
+    if (!chunks?.length) throw new Error("No indexed files found for this repository");
+    
     // Create codebase summary
-    const codebaseSummary = chunks.map(chunk => 
-      `File: ${chunk.file_path} (${chunk.language})\n` +
-      `Symbols: ${(chunk.symbols || []).join(", ")}\n` +
-      `Content: ${chunk.chunk_content.slice(0, 400)}...\n`
-    ).join("\n---\n");
+    const codebaseSummary = chunks.reduce((acc, chunk) => {
+      const fileType = chunk.language || 'Unknown';
+      if (!acc[fileType]) acc[fileType] = [];
+      acc[fileType].push(`${chunk.file_path}: ${chunk.chunk_content.substring(0, 200)}...`);
+      return acc;
+    }, {} as Record<string, string[]>);
 
-    // Create job record
-    const { data: job, error: jobError } = await supabase
-      .from("ai_analyzer_jobs")
-      .insert({
-        repo_id: repoId,
-        user_id: user.id,
-        job_type: "lifepath_audit",
-        status: "running",
-        started_at: new Date().toISOString(),
-        input_data: { repoId, chunksAnalyzed: chunks.length }
-      })
-      .select()
-      .single();
+    // Record job as running
+    const { data: jobData } = await supabase.from("ai_analyzer_jobs").insert({
+      repo_id: repoId,
+      user_id: user.id,
+      job_type: "lifepath_audit",
+      status: "running",
+      input_data: { file_count: chunks.length }
+    }).select().single();
 
-    if (jobError) throw jobError;
+    const prompt = `Audit this codebase against Life Path platform architecture:
 
-    // Send to OpenAI for audit
+File Summary:
+${Object.entries(codebaseSummary).map(([type, files]) => 
+  `${type} Files (${files.length}):\n${files.slice(0, 3).join('\n')}`
+).join('\n\n')}
+
+Total Files: ${chunks.length}
+
+Provide Life Path architectural audit with scores and recommendations.`;
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-2025-04-14",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: LIFEPATH_AUDIT_PROMPT },
-        { 
-          role: "user", 
-          content: `Audit this Life Path codebase for architecture compliance:\n\n${codebaseSummary}\n\nOutput strict JSON only.`
-        }
+        { role: "user", content: prompt }
       ],
       temperature: 0.1,
-      max_tokens: 3000
+      max_tokens: 2500
     });
 
-    const responseText = response.choices[0].message.content || "";
-    let auditResult;
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    
+    // Store audit results
+    await supabase.from("ai_analyzer_audits").insert({
+      repo_id: repoId,
+      user_id: user.id,
+      audit_type: "lifepath",
+      scorecard: result.scorecard || {},
+      gaps: result.gaps || [],
+      quick_wins: result.quick_wins || [],
+      architecture_recs: result.architecture_recs || [],
+      ux_recs: result.ux_recs || []
+    });
 
-    try {
-      auditResult = JSON.parse(responseText);
-    } catch (parseError) {
-      throw new Error(`AI model did not return valid JSON. Response: ${responseText.slice(0, 200)}...`);
-    }
-
-    // Store audit in dedicated table
-    const { error: auditError } = await supabase
-      .from("ai_analyzer_audits")
-      .insert({
-        repo_id: repoId,
-        user_id: user.id,
-        audit_type: "lifepath",
-        scorecard: auditResult.scorecard,
-        gaps: auditResult.gaps,
-        quick_wins: auditResult.quick_wins,
-        architecture_recs: auditResult.architecture_recs,
-        ux_recs: auditResult.ux_recs
-      });
-
-    if (auditError) throw auditError;
-
-    // Update job with results
-    const { error: jobUpdateError } = await supabase
-      .from("ai_analyzer_jobs")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-        results: auditResult,
-        token_usage: response.usage?.total_tokens || 0,
-        cost_estimate: ((response.usage?.total_tokens || 0) / 1_000_000) * 0.03
+    // Update job status
+    await supabase.from("ai_analyzer_jobs")
+      .update({ 
+        status: "completed", 
+        results: result,
+        token_usage: response.usage?.total_tokens || 0 
       })
-      .eq("id", job.id);
+      .eq("id", jobData.id);
 
-    if (jobUpdateError) throw jobUpdateError;
-
-    console.log(`✅ Life Path audit completed for repo ${repoId}`);
-
-    return new Response(JSON.stringify(auditResult), {
+    return new Response(JSON.stringify(result), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
-
-  } catch (error) {
-    console.error("AI Analyzer Life Path Audit Error:", error);
-    return new Response(JSON.stringify({ 
-      error: error.message || "An error occurred during Life Path audit",
-      details: error.toString()
-    }), {
-      status: 500,
+  } catch (error: any) {
+    console.error('AI Analyzer Life Path Audit Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }

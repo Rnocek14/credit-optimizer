@@ -30,7 +30,7 @@ ${fileContent}
 Output STRICT JSON as per schema.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-2025-04-14",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt }
