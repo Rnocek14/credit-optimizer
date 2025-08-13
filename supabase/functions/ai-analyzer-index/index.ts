@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
           const embeddingResponse = await openai.embeddings.create({
             model: "text-embedding-3-large",
             input: chunkContent,
-            dimensions: 3072
+            dimensions: 1536
           });
 
           const embedding = embeddingResponse.data[0].embedding;
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
               language,
               symbols,
               chunk_content: chunkContent,
-              embedding_data: { vector: embedding }
+              embedding: embedding
             });
 
           if (chunkError) {

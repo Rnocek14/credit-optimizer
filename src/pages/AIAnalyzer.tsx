@@ -7,6 +7,8 @@ import { Brain, RefreshCw, Clock, Activity } from "lucide-react";
 import { RepoScanTab } from "@/components/analyzer/RepoScanTab";
 import { FileReviewTab } from "@/components/analyzer/FileReviewTab";
 import { LifePathAuditTab } from "@/components/analyzer/LifePathAuditTab";
+import { RefactorsTab } from "@/components/analyzer/RefactorsTab";
+import { TestsTab } from "@/components/analyzer/TestsTab";
 import { TasksDrawer } from "@/components/analyzer/TasksDrawer";
 import { TokenBudgetMeter } from "@/components/analyzer/TokenBudgetMeter";
 
@@ -90,31 +92,11 @@ export default function AIAnalyzer() {
                 </TabsContent>
 
                 <TabsContent value="refactors" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Refactoring Plans</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">
-                        Generate safe refactors with step-by-step plans and diff previews.
-                      </p>
-                      <Button className="mt-4">Generate Refactor Plan</Button>
-                    </CardContent>
-                  </Card>
+                  <RefactorsTab repoId={repoId} />
                 </TabsContent>
 
                 <TabsContent value="tests" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Test Generation</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">
-                        Generate unit and integration tests with coverage hints.
-                      </p>
-                      <Button className="mt-4">Generate Tests</Button>
-                    </CardContent>
-                  </Card>
+                  <TestsTab repoId={repoId} />
                 </TabsContent>
 
                 <TabsContent value="lifepath" className="space-y-6">

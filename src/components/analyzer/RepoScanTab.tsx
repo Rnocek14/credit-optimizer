@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Scan, FileText, Code, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { pickAndReadWorkspace } from "@/lib/collectFiles";
 
 interface RepoScanTabProps {
   repoId: string;
@@ -29,6 +30,15 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
     setScanProgress(0);
     
     try {
+      // Pick and read workspace files
+      toast({
+        title: "Select Workspace",
+        description: "Please select your project folder to scan.",
+      });
+      
+      const files = await pickAndReadWorkspace();
+      setScanProgress(20);
+      
       // Simulate progress updates
       const progressInterval = setInterval(() => {
         setScanProgress(prev => {
@@ -36,12 +46,12 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
             clearInterval(progressInterval);
             return prev;
           }
-          return prev + Math.random() * 15;
+          return prev + Math.random() * 10;
         });
       }, 500);
 
       const { data, error } = await supabase.functions.invoke('ai-analyzer-index', {
-        body: { repoId }
+        body: { repoId, files }
       });
 
       clearInterval(progressInterval);
@@ -49,21 +59,27 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
 
       if (error) throw error;
 
-      setScanResult(data);
-      toast({
-        title: "Repository scan completed",
-        description: `Indexed ${data.filesIndexed} files in ${Math.round(data.durationMs / 1000)}s`,
-      });
-    } catch (error) {
+      setTimeout(() => {
+        setScanResult(data);
+        setIsScanning(false);
+        setScanProgress(0);
+        
+        toast({
+          title: "Repository scan completed",
+          description: `Indexed ${data.filesIndexed} files in ${data.chunks} chunks`,
+        });
+      }, 1000);
+      
+    } catch (error: any) {
       console.error('Scan failed:', error);
-      toast({
-        title: "Scan failed", 
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
       setIsScanning(false);
       setScanProgress(0);
+      
+      toast({
+        title: "Scan failed", 
+        description: error.message || "Failed to scan repository",
+        variant: "destructive",
+      });
     }
   };
 
