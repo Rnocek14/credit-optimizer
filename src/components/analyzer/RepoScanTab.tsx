@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Scan, FileText, Code, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Scan, FileText, Code, AlertTriangle, CheckCircle2, TestTube, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { pickAndReadWorkspace } from "@/lib/collectFiles";
+import { getDemoFiles, generateDemoScanResult } from "@/lib/demoFiles";
 
 interface RepoScanTabProps {
   repoId: string;
@@ -23,11 +24,13 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const { toast } = useToast();
 
   const handleScan = async () => {
     setIsScanning(true);
     setScanProgress(0);
+    setIsDemoMode(false);
     
     try {
       // Pick and read workspace files
@@ -72,6 +75,13 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
       
     } catch (error: any) {
       console.error('Scan failed:', error);
+      
+      // Check if it's the iframe/cross-origin error
+      if (error.message?.includes('Cross origin') || error.message?.includes('showDirectoryPicker')) {
+        handleDemoScan();
+        return;
+      }
+      
       setIsScanning(false);
       setScanProgress(0);
       
@@ -79,6 +89,69 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
         title: "Scan failed", 
         description: error.message || "Failed to scan repository",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleDemoScan = async () => {
+    setIsScanning(true);
+    setScanProgress(0);
+    setIsDemoMode(true);
+    
+    try {
+      toast({
+        title: "Demo Mode Active",
+        description: "Using sample project files for demonstration.",
+      });
+      
+      const files = getDemoFiles();
+      setScanProgress(20);
+      
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setScanProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + Math.random() * 10;
+        });
+      }, 300);
+
+      // Simulate API call with demo data
+      const { data, error } = await supabase.functions.invoke('ai-analyzer-index', {
+        body: { repoId: `${repoId}-demo`, files }
+      });
+
+      clearInterval(progressInterval);
+      setScanProgress(100);
+
+      // If the API call fails, use local demo results
+      const result = error ? generateDemoScanResult() : data;
+
+      setTimeout(() => {
+        setScanResult(result);
+        setIsScanning(false);
+        setScanProgress(0);
+        
+        toast({
+          title: "Demo scan completed",
+          description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+        });
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Demo scan failed:', error);
+      
+      // Fallback to local demo results
+      const result = generateDemoScanResult();
+      setScanResult(result);
+      setIsScanning(false);
+      setScanProgress(0);
+      
+      toast({
+        title: "Demo scan completed",
+        description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
       });
     }
   };
@@ -114,6 +187,15 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isDemoMode && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <Info className="h-4 w-4 text-blue-600" />
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                Demo mode: Using sample files. Deploy your app to access full file picker functionality.
+              </p>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
@@ -124,17 +206,31 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
                   <Badge variant="outline">{scanResult.filesIndexed} files</Badge>
                   <Badge variant="outline">{scanResult.chunks} chunks</Badge>
                   <Badge variant="outline">{scanResult.languages.join(", ")}</Badge>
+                  {isDemoMode && <Badge variant="secondary">Demo</Badge>}
                 </div>
               )}
             </div>
-            <Button 
-              onClick={handleScan} 
-              disabled={isScanning}
-              className="gap-2"
-            >
-              <Scan className={`h-4 w-4 ${isScanning ? 'animate-pulse' : ''}`} />
-              {isScanning ? 'Scanning...' : 'Scan Repository'}
-            </Button>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleDemoScan} 
+                disabled={isScanning}
+                variant="outline"
+                className="gap-2"
+              >
+                <TestTube className={`h-4 w-4 ${isScanning && isDemoMode ? 'animate-pulse' : ''}`} />
+                {isScanning && isDemoMode ? 'Demo Scanning...' : 'Demo Mode'}
+              </Button>
+              
+              <Button 
+                onClick={handleScan} 
+                disabled={isScanning}
+                className="gap-2"
+              >
+                <Scan className={`h-4 w-4 ${isScanning && !isDemoMode ? 'animate-pulse' : ''}`} />
+                {isScanning && !isDemoMode ? 'Scanning...' : 'Scan Repository'}
+              </Button>
+            </div>
           </div>
 
           {isScanning && (
