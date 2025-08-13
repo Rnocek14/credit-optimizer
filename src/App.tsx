@@ -63,6 +63,9 @@ import LocationManagerPanel from "./components/LocationManagerPanel";
 import ExploreHub from "./pages/ExploreHub";
 import PlanHub from "./pages/PlanHub";
 import HistoryHub from "./pages/HistoryHub";
+import DiscoverHub from "./pages/DiscoverHub";
+import ProgressHub from "./pages/ProgressHub";
+import ContributeHub from "./pages/ContributeHub";
 import TeachHub from "./pages/TeachHub";
 import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
@@ -164,13 +167,17 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          {/* Hub Routes */}
-          <Route path="/explore-hub" element={<ExploreHub />} />
-          <Route path="/plan-hub" element={<PlanHub />} />
-          <Route path="/history-hub" element={<HistoryHub />} />
-          {/* Unified aliases */}
+          {/* New Hub Routes */}
+          <Route path="/discover" element={<DiscoverHub />} />
           <Route path="/plan" element={<PlanHub />} />
-          <Route path="/history" element={<HistoryHub />} />
+          <Route path="/progress" element={<ProgressHub />} />
+          <Route path="/contribute" element={<ContributeHub />} />
+          
+          {/* Legacy Hub Routes with Redirects */}
+          <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
+          <Route path="/plan-hub" element={<Navigate to="/plan" replace />} />
+          <Route path="/history-hub" element={<Navigate to="/progress" replace />} />
+          <Route path="/history" element={<Navigate to="/progress" replace />} />
           
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
@@ -248,6 +255,18 @@ const App = () => (
            />
           <Route path="/learning-history" element={<Navigate to="/history" replace />} />
            <Route path="/planner" element={<Navigate to="/plan" replace />} />
+           <Route path="/explore" element={<Navigate to="/discover" replace />} />
+           <Route path="/explore-courses" element={<Navigate to="/discover" replace />} />
+           <Route path="/learning-history" element={<Navigate to="/progress" replace />} />
+           <Route path="/course-history" element={<Navigate to="/progress" replace />} />
+           <Route path="/skill-tree" element={<Navigate to="/progress" replace />} />
+           <Route path="/transcripts" element={<Navigate to="/progress" replace />} />
+           <Route path="/badges" element={<Navigate to="/progress" replace />} />
+           <Route path="/certificates" element={<Navigate to="/progress" replace />} />
+           <Route path="/resume-builder" element={<Navigate to="/progress" replace />} />
+           <Route path="/resume-analytics" element={<Navigate to="/progress" replace />} />
+           <Route path="/projects" element={<Navigate to="/progress" replace />} />
+           <Route path="/wallet" element={<Navigate to="/progress" replace />} />
            <Route 
              path="/certificates" 
              element={
