@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,18 +36,42 @@ export function FileReviewTab({ repoId }: FileReviewTabProps) {
   const [isReviewing, setIsReviewing] = useState(false);
   const { toast } = useToast();
 
-  const mockFiles = [
-    "src/App.tsx",
-    "src/components/Navigation.tsx", 
-    "src/pages/Dashboard.tsx",
-    "src/hooks/useAuth.ts",
-    "src/utils/helpers.ts",
-    "src/components/ui/button.tsx",
-    "src/components/ui/card.tsx",
-    "src/lib/supabase.ts"
-  ];
+  const [availableFiles, setAvailableFiles] = useState<string[]>([]);
+  const [filesLoaded, setFilesLoaded] = useState(false);
 
-  const filteredFiles = mockFiles.filter(file => 
+  // Load available files from indexed repository
+  const loadAvailableFiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ai_analyzer_chunks")
+        .select("file_path")
+        .eq("repo_id", repoId);
+
+      if (error) throw error;
+
+      const uniqueFiles = [...new Set(data?.map(chunk => chunk.file_path) || [])];
+      setAvailableFiles(uniqueFiles);
+      setFilesLoaded(true);
+    } catch (error) {
+      console.error('Failed to load files:', error);
+      // Fallback to demo files if no indexed files found
+      setAvailableFiles([
+        "src/App.tsx",
+        "src/components/Navigation.tsx", 
+        "src/pages/Dashboard.tsx",
+        "src/hooks/useAuth.ts",
+        "src/utils/helpers.ts"
+      ]);
+      setFilesLoaded(true);
+    }
+  };
+
+  // Load files on component mount
+  React.useEffect(() => {
+    loadAvailableFiles();
+  }, [repoId]);
+
+  const filteredFiles = availableFiles.filter(file => 
     file.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -117,20 +141,30 @@ export function FileReviewTab({ repoId }: FileReviewTabProps) {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-            {filteredFiles.map((file) => (
-              <Button
-                key={file}
-                variant={selectedFile === file ? "default" : "outline"}
-                className="justify-start h-auto p-3"
-                onClick={() => handleFileReview(file)}
-                disabled={isReviewing}
-              >
-                <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
-                <span className="text-left truncate">{file}</span>
-              </Button>
-            ))}
-          </div>
+          {!filesLoaded ? (
+            <div className="text-center py-4">
+              <div className="animate-pulse">Loading available files...</div>
+            </div>
+          ) : filteredFiles.length === 0 ? (
+            <div className="text-center py-4 text-muted-foreground">
+              {searchQuery ? 'No files match your search.' : 'No files available. Please scan your repository first.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+              {filteredFiles.map((file) => (
+                <Button
+                  key={file}
+                  variant={selectedFile === file ? "default" : "outline"}
+                  className="justify-start h-auto p-3"
+                  onClick={() => handleFileReview(file)}
+                  disabled={isReviewing}
+                >
+                  <FileText className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="text-left truncate">{file}</span>
+                </Button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

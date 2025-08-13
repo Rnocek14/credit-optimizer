@@ -118,32 +118,52 @@ export function RepoScanTab({ repoId }: RepoScanTabProps) {
         });
       }, 300);
 
-      // Simulate API call with demo data
-      const { data, error } = await supabase.functions.invoke('ai-analyzer-index', {
-        body: { repoId: `${repoId}-demo`, files }
-      });
+      try {
+        // Try to call the actual API with demo data
+        const { data, error } = await supabase.functions.invoke('ai-analyzer-index', {
+          body: { repoId: `${repoId}-demo`, files }
+        });
+        
+        clearInterval(progressInterval);
+        setScanProgress(100);
 
-      clearInterval(progressInterval);
-      setScanProgress(100);
-
-      // If the API call fails, use local demo results
-      const result = error ? generateDemoScanResult() : data;
+        // Use API result if successful, otherwise fallback to demo
+        const result = error ? generateDemoScanResult() : data;
 
       setTimeout(() => {
         setScanResult(result);
         setIsScanning(false);
         setScanProgress(0);
         
-        toast({
-          title: "Demo scan completed",
-          description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
-        });
-      }, 1000);
+          toast({
+            title: "Demo scan completed",
+            description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+          });
+        }, 1000);
+
+      } catch (apiError) {
+        console.warn('Demo API call failed, using fallback:', apiError);
+        clearInterval(progressInterval);
+        setScanProgress(100);
+        
+        // Fallback to local demo results
+        const result = generateDemoScanResult();
+        setTimeout(() => {
+          setScanResult(result);
+          setIsScanning(false);
+          setScanProgress(0);
+          
+          toast({
+            title: "Demo scan completed",
+            description: `Analyzed ${result.filesIndexed} demo files in ${result.chunks} chunks`,
+          });
+        }, 1000);
+      }
       
     } catch (error: any) {
-      console.error('Demo scan failed:', error);
+      console.error('Demo scan failed completely:', error);
       
-      // Fallback to local demo results
+      // Final fallback to local demo results
       const result = generateDemoScanResult();
       setScanResult(result);
       setIsScanning(false);

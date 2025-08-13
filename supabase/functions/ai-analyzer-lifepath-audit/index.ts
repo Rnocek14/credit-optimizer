@@ -1,17 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import OpenAI from "https://esm.sh/openai@4.67.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
+import { corsHeaders, supabase, openai, authenticateUser } from "../_shared/util.ts";
 
 const LIFEPATH_AUDIT_PROMPT = `You are an expert Life Path platform architecture auditor. Analyze the provided codebase and score each pillar (0-10). Return ONLY valid JSON:
 
@@ -68,16 +55,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const user = await authenticateUser(req);
     const { repoId } = await req.json();
-
-    // Get user from auth header
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      throw new Error("Unauthorized");
-    }
 
     if (!repoId) {
       throw new Error("repoId is required");
