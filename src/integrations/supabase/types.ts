@@ -112,6 +112,7 @@ export type Database = {
           chunk_index: number
           content_hash: string
           created_at: string
+          embedding: string | null
           embedding_data: Json | null
           file_path: string
           id: string
@@ -126,6 +127,7 @@ export type Database = {
           chunk_index?: number
           content_hash: string
           created_at?: string
+          embedding?: string | null
           embedding_data?: Json | null
           file_path: string
           id?: string
@@ -140,6 +142,7 @@ export type Database = {
           chunk_index?: number
           content_hash?: string
           created_at?: string
+          embedding?: string | null
           embedding_data?: Json | null
           file_path?: string
           id?: string
