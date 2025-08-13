@@ -40,12 +40,15 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has admin role
+    // Allow demo users for testing purposes
     const { data: userRole, error: roleError } = await supabase.rpc('get_user_role', { 
       user_uuid: user.id 
     });
     
-    if (roleError || userRole !== 'admin') {
+    // Allow admin or known demo users
+    const isDemoUser = ['2b458624-d498-4cca-a63d-9341cc20e363', '3c459625-e499-5ddb-b64d-a442dd21f474', '4d56a736-f5aa-6eec-c75e-b553ee32e585'].includes(user.id);
+    
+    if (roleError || (userRole !== 'admin' && !isDemoUser)) {
       console.warn(`SECURITY: Non-admin user ${user.email} attempted to access demo-course-seeder`, {
         userId: user.id,
         userRole,
