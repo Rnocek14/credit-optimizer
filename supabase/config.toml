@@ -6,6 +6,15 @@ verify_jwt = false
 [functions.generate-roadmap]
 verify_jwt = false
 
+[functions.ai-analyzer-index]
+verify_jwt = true
+
+[functions.ai-analyzer-review]
+verify_jwt = true
+
+[functions.ai-analyzer-lifepath-audit]
+verify_jwt = true
+
 [functions.signup-automation]
 verify_jwt = false
 

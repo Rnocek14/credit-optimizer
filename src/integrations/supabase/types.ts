@@ -59,6 +59,204 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_analyzer_audits: {
+        Row: {
+          architecture_recs: Json | null
+          audit_type: string
+          created_at: string
+          gaps: Json | null
+          id: string
+          quick_wins: Json | null
+          repo_id: string
+          scorecard: Json
+          user_id: string
+          ux_recs: Json | null
+        }
+        Insert: {
+          architecture_recs?: Json | null
+          audit_type?: string
+          created_at?: string
+          gaps?: Json | null
+          id?: string
+          quick_wins?: Json | null
+          repo_id: string
+          scorecard?: Json
+          user_id: string
+          ux_recs?: Json | null
+        }
+        Update: {
+          architecture_recs?: Json | null
+          audit_type?: string
+          created_at?: string
+          gaps?: Json | null
+          id?: string
+          quick_wins?: Json | null
+          repo_id?: string
+          scorecard?: Json
+          user_id?: string
+          ux_recs?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analyzer_audits_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analyzer_repos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_analyzer_chunks: {
+        Row: {
+          chunk_content: string
+          chunk_index: number
+          content_hash: string
+          created_at: string
+          embedding_data: Json | null
+          file_path: string
+          id: string
+          language: string | null
+          repo_id: string
+          symbols: string[] | null
+          total_chunks: number
+          updated_at: string
+        }
+        Insert: {
+          chunk_content: string
+          chunk_index?: number
+          content_hash: string
+          created_at?: string
+          embedding_data?: Json | null
+          file_path: string
+          id?: string
+          language?: string | null
+          repo_id: string
+          symbols?: string[] | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Update: {
+          chunk_content?: string
+          chunk_index?: number
+          content_hash?: string
+          created_at?: string
+          embedding_data?: Json | null
+          file_path?: string
+          id?: string
+          language?: string | null
+          repo_id?: string
+          symbols?: string[] | null
+          total_chunks?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analyzer_chunks_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analyzer_repos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_analyzer_jobs: {
+        Row: {
+          completed_at: string | null
+          cost_estimate: number | null
+          created_at: string
+          error_message: string | null
+          id: string
+          input_data: Json
+          job_type: string
+          repo_id: string
+          results: Json | null
+          started_at: string | null
+          status: string
+          token_usage: number | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json
+          job_type: string
+          repo_id: string
+          results?: Json | null
+          started_at?: string | null
+          status?: string
+          token_usage?: number | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          cost_estimate?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json
+          job_type?: string
+          repo_id?: string
+          results?: Json | null
+          started_at?: string | null
+          status?: string
+          token_usage?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analyzer_jobs_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analyzer_repos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_analyzer_repos: {
+        Row: {
+          created_at: string
+          file_count: number | null
+          id: string
+          ignore_patterns: string[] | null
+          indexed_at: string | null
+          language_breakdown: Json | null
+          name: string
+          repo_type: string
+          source_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_count?: number | null
+          id?: string
+          ignore_patterns?: string[] | null
+          indexed_at?: string | null
+          language_breakdown?: Json | null
+          name: string
+          repo_type?: string
+          source_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_count?: number | null
+          id?: string
+          ignore_patterns?: string[] | null
+          indexed_at?: string | null
+          language_breakdown?: Json | null
+          name?: string
+          repo_type?: string
+          source_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_model_usage: {
         Row: {
           complexity: string | null
@@ -7289,6 +7487,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       calculate_alert_accuracy: {
         Args: { config_id: string; days_back?: number }
         Returns: number
@@ -7482,6 +7684,22 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
       has_role: {
         Args: {
           user_uuid: string
@@ -7489,9 +7707,45 @@ export type Database = {
         }
         Returns: boolean
       }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_mentor: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
       }
       lock_phase6_components: {
         Args: { target_user_id: string; baseline_snapshot_id: string }
@@ -7504,6 +7758,18 @@ export type Database = {
       refresh_career_steps_with_levels: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
       start_course_progress: {
         Args: { user_id_param: string; course_id_param: string }
@@ -7534,6 +7800,30 @@ export type Database = {
       validate_mentor_operation: {
         Args: { user_uuid: string }
         Returns: boolean
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
