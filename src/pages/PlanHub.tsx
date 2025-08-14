@@ -9,6 +9,7 @@ import { TodayDashboard } from "@/components/TodayDashboard";
 import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
 import { EnhancedGoalDashboard } from "@/components/EnhancedGoalDashboard";
 import { GoalOrchestrator } from "@/components/GoalOrchestrator";
+import { RecommendationFeed } from "@/components/reco/RecommendationFeed";
 import { useCrossHubIntegration } from "@/hooks/useCrossHubIntegration";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
@@ -54,15 +55,20 @@ export default function PlanHub() {
     queryFn: getCurrentUser
   });
 
-  const { skillGaps } = useCrossHubIntegration(currentUser?.id);
+  const { skillGaps, recommendations } = useCrossHubIntegration(currentUser?.id);
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab });
   };
 
   const handleNextStepClick = () => {
-    setSearchParams({ tab: 'roadmap' });
-    // Focus on the in-progress step - would scroll to specific element in real app
+    // Use first recommendation if available
+    const firstReco = recommendations[0];
+    if (firstReco?.actions[0]?.href) {
+      window.location.href = firstReco.actions[0].href;
+    } else {
+      setSearchParams({ tab: 'roadmap' });
+    }
   };
 
   return (
@@ -83,8 +89,7 @@ export default function PlanHub() {
           </div>
         </div>
 
-        {/* Today Dashboard */}
-        <TodayDashboard onNextStepClick={handleNextStepClick} />
+        {/* Today Dashboard - Now integrated in Overview tab */}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content */}
@@ -100,39 +105,14 @@ export default function PlanHub() {
               </TabsList>
 
               <TabsContent value="overview" className="mt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-6">
-                    <TodayDashboard onNextStepClick={handleNextStepClick} />
-                  </div>
-                  <div className="space-y-4">
-                    <SkillGapRecommendations compact maxGaps={3} />
-                    {skillGaps.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full justify-start"
-                            onClick={() => window.open('/discover?filter=skill-gaps', '_self')}
-                          >
-                            Find Courses for Skill Gaps
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full justify-start"
-                            onClick={() => window.open('/discover?tab=mentors', '_self')}
-                          >
-                            Connect with Mentors
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                </div>
+                {/* Today Dashboard */}
+                <TodayDashboard 
+                  onNextStepClick={handleNextStepClick} 
+                  nextStepData={recommendations[0]}
+                />
+                
+                {/* Unified Recommendation Feed */}
+                <RecommendationFeed userId={currentUser?.id} className="mt-6" />
               </TabsContent>
 
               <TabsContent value="goals" className="mt-6">

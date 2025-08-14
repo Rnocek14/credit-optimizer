@@ -7,15 +7,24 @@ import {
   CheckCircle, ArrowRight, Flame, Brain
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { UnifiedRecommendation } from "@/types/recommendations";
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
+  nextStepData?: UnifiedRecommendation;
 }
 
-export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
-  // Mock data - in real app this would come from stores/API
+export function TodayDashboard({ onNextStepClick, nextStepData }: TodayDashboardProps) {
+  // Use recommendation data if available, otherwise fallback to mock data
   const todayData = {
-    nextStep: {
+    nextStep: nextStepData ? {
+      title: nextStepData.title,
+      description: nextStepData.description,
+      progress: nextStepData.progress || 0,
+      timeEstimate: nextStepData.timeEstimate || "2 hours",
+      difficulty: nextStepData.priority === 'critical' ? 'High' : 
+                  nextStepData.priority === 'high' ? 'Medium' : 'Low'
+    } : {
       title: "Complete Python Pandas Module",
       description: "Data manipulation essentials for your Data Scientist journey",
       progress: 65,
@@ -85,7 +94,8 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       {/* Today Cards Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Next Step Card */}
-        <Card className="md:col-span-2" data-testid="today-next-step">
+        <Card className="md:col-span-2">
+          <div data-testid="today-next-step">{/* Content wrapper for test ID */}
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -117,7 +127,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
               <Button 
                 size="sm" 
                 onClick={handleNextStepClick}
-                data-testid="cta-next-step"
+                data-testid="today-next-step"
                 className="text-xs px-3 py-1 h-7"
               >
                 Continue
@@ -125,6 +135,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
               </Button>
             </div>
           </CardContent>
+          </div>
         </Card>
 
         {/* Focus Skills Card */}
