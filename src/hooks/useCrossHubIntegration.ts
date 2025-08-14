@@ -39,9 +39,8 @@ export const useCrossHubIntegration = (userId?: string) => {
       try {
         const recommendations: UnifiedRecommendation[] = [];
 
-        // Get skill gaps and apply CRI boosting
+        // Get skill gaps from the completed query (will be empty if not loaded yet)
         const skillGaps = skillGapsQuery.data || [];
-        console.log('Skill gaps detected:', skillGaps.length, skillGaps);
         
         skillGaps.forEach((gap, index) => {
           const priorityScore = gap.priority === 'critical' ? 4 : 
@@ -171,14 +170,6 @@ export const useCrossHubIntegration = (userId?: string) => {
           const bPriority = priorityOrder[b.priority];
           if (aPriority !== bPriority) return bPriority - aPriority;
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        
-        console.log('Generated recommendations by type:', {
-          skill_gap: sortedRecommendations.filter(r => r.type === 'skill_gap').length,
-          maya_action: sortedRecommendations.filter(r => r.type === 'maya_action').length,
-          market_alert: sortedRecommendations.filter(r => r.type === 'market_alert').length,
-          proof_project: sortedRecommendations.filter(r => r.type === 'proof_project').length,
-          total: sortedRecommendations.length
         });
         
         return sortedRecommendations;
