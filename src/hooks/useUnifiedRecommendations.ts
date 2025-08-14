@@ -7,7 +7,7 @@ import type { SkillGap, UnifiedRecommendation } from '@/types'
 const debug = (...a: any[]) => 
   process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
 
-function dedupeByKey<T>(arr: T[], key: (x: T) => string) {
+function dedupeByKey<T>(arr: T[], key: (x: T) => string): T[] {
   const seen = new Set<string>()
   return arr.filter(x => {
     const k = key(x)
@@ -44,7 +44,7 @@ export function buildFromSkillGaps(skillGaps: SkillGap[], now?: Date): UnifiedRe
         { label: 'Find Mentors', href: `/discover?tab=mentors&skill=${encodeURIComponent(gap.skill)}` },
         { label: 'Take Next Step', href: '/plan?tab=roadmap' },
       ],
-      createdAt: (now || new Date()).toISOString(),
+      createdAt: (now ?? new Date()).toISOString(),
       score: (priorityScore * 1.2) + (criBoost / 10),
       criBoost,
       criExplanation: `Addresses a ${gap.priority} ${gap.skill} gap`,
@@ -66,7 +66,7 @@ export function useUnifiedRecommendations(userId?: string) {
     [skillGaps]
   )
 
-  return useQuery({
+  return useQuery<UnifiedRecommendation[]>({
     queryKey: ['unified-recommendations', userId, skillGapsKey],
     enabled: !!userId && (!gapsLoading || gapsError),
     placeholderData: keepPreviousData,
