@@ -18,7 +18,12 @@ export const SortingControls: React.FC<SortingControlsProps> = ({
   showTimeSort = false,
   className = ''
 }) => {
-  const sortOptions = [
+  const sortOptions: Array<{
+    value: SortOption;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    description: string;
+  }> = [
     {
       value: 'opportunity' as const,
       label: 'Opportunity Score',
