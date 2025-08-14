@@ -10,6 +10,7 @@ import { CourseProgressBadge } from '@/components/CourseProgressBadge';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { CourseCompletionModal } from '@/components/CourseCompletionModal';
 import { Trophy } from 'lucide-react';
+import { SaveToPlanButton } from '@/components/SaveToPlanButton';
 
 interface CourseCardProps {
   course: {
@@ -171,10 +172,23 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             )}
             
             {showSaveButton && (
-              <SaveButton 
-                courseId={course.id} 
+              <SaveToPlanButton 
+                item={{
+                  type: 'course',
+                  id: course.id,
+                  title: course.title,
+                  description: course.description,
+                  skillTags: course.skill_tags,
+                  metadata: {
+                    platform: course.platform,
+                    difficulty: course.difficulty,
+                    cost: course.cost,
+                    url: course.url
+                  }
+                }}
                 variant="outline" 
                 size="default"
+                showPrioritySelector={true}
               />
             )}
           </div>
