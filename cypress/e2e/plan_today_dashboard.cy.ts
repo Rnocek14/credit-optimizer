@@ -1,286 +1,451 @@
+/// <reference types="cypress" />
+
 describe('Plan Today Dashboard', () => {
   beforeEach(() => {
-    // Set up test data and intercept API calls
-    cy.intercept('GET', '**/rest/v1/career_goals*', { fixture: 'multiple_goals.json' });
-    cy.intercept('GET', '**/rest/v1/learning_streaks*', {
-      body: [
-        {
-          id: 'streak-1',
-          user_id: '2b458624-d498-4cca-a63d-9341cc20e363',
-          streak_type: 'daily',
-          current_streak: 5,
-          longest_streak: 12,
-          last_activity_date: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]
-    });
-    
-    // Mock unified recommendations with quick wins
-    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
-      body: [
-        {
-          id: 'rec-1',
-          type: 'skill_gap',
-          title: 'Master React Context API',
-          description: 'Learn advanced state management patterns',
-          priority: 'high',
-          timeEstimate: '2-3 hrs',
-          progress: 65,
-          actions: [
-            { label: 'Find Courses', on: 'discover', params: { filter: 'react' } },
-            { label: 'Start Project', on: 'contribute' }
-          ],
-          score: 95,
-          createdAt: new Date().toISOString(),
-          criBoost: 15,
-          criExplanation: 'High market demand for React skills'
-        },
-        {
-          id: 'rec-2',
-          type: 'maya_action',
-          title: 'Review Git Commands',
-          description: 'Quick refresher on essential Git workflow',
-          priority: 'medium',
-          timeEstimate: '30 min',
-          actions: [
-            { label: 'Start Review', on: 'discover', params: { topic: 'git' } }
-          ],
-          score: 80,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'rec-3',
-          type: 'proof_project',
-          title: 'Practice API Integration',
-          description: 'Build a small API consumer app',
-          priority: 'medium',
-          timeEstimate: '45 min',
-          actions: [
-            { label: 'Plan Project', on: 'plan' }
-          ],
-          score: 75,
-          createdAt: new Date().toISOString(),
-          criBoost: 8
-        }
-      ]
+    // Mock authentication
+    cy.window().then((win) => {
+      win.localStorage.setItem('sb-auth-token', 'mock-auth-token');
     });
 
+    // Mock API responses
+    cy.intercept('GET', '**/career-goals**', { fixture: 'career-goals.json' }).as('getCareerGoals');
+    cy.intercept('GET', '**/learning-streaks**', { 
+      body: { 
+        currentStreak: 5, 
+        level: 'Consistent Learner',
+        lastActivity: new Date().toISOString() 
+      } 
+    }).as('getLearningStreaks');
+    
+    // Mock recommendations with time estimates and CRI boosts
+    cy.intercept('GET', '**/unified-recommendations**', {
+      body: {
+        recommendations: [
+          {
+            id: 'next-step-rec',
+            title: 'Advanced React Hooks',
+            type: 'course',
+            timeEstimate: '2 hours',
+            description: 'Master advanced React patterns with hooks',
+            criBoost: 12.5,
+            criExplanation: 'Addresses React skill gap for Senior role',
+            actionUrl: '/course/advanced-react-hooks',
+            progress: 0.3
+          },
+          {
+            id: 'quick-win-1',
+            title: 'CSS Grid Layout',
+            type: 'skill',
+            timeEstimate: '45 minutes',
+            description: 'Quick CSS Grid tutorial',
+            criBoost: 5.2,
+            criExplanation: 'Improves frontend design skills'
+          },
+          {
+            id: 'quick-win-2',
+            title: 'Git Workflow Best Practices',
+            type: 'project',
+            timeEstimate: '30 minutes',
+            description: 'Learn proper Git branching strategies',
+            criBoost: 0, // Should not show CRI chip
+          },
+          {
+            id: 'quick-win-3',
+            title: 'API Testing with Postman',
+            type: 'skill',
+            timeEstimate: '1 hour',
+            description: 'Learn API testing fundamentals',
+            criBoost: 8.1,
+            criExplanation: 'Essential for backend development'
+          },
+          {
+            id: 'too-long',
+            title: 'Full Stack Bootcamp',
+            type: 'course',
+            timeEstimate: '12 weeks',
+            description: 'Comprehensive full stack course',
+            criBoost: 25.0,
+            criExplanation: 'Major career advancement'
+          }
+        ]
+      }
+    }).as('getRecommendations');
+
+    cy.intercept('POST', '**/plan-items**', {
+      statusCode: 201,
+      body: { id: 'new-plan-item', success: true }
+    }).as('saveToPlan');
+    
+    // Navigate to plan route
     cy.visit('/plan');
   });
 
-  it('renders a clear next step from the recommendation feed', () => {
-    // Verify next step card is visible
-    cy.get('[data-testid*="next-step"]').should('be.visible');
-    
-    // Check that it shows the top recommendation
-    cy.contains('Master React Context API').should('be.visible');
-    cy.contains('Learn advanced state management patterns').should('be.visible');
-    
-    // Verify time estimate and difficulty are shown
-    cy.contains('2-3 hrs').should('be.visible');
-    cy.contains('skill gap').should('be.visible');
-    
-    // Check CRI boost chip is displayed
-    cy.get('[data-testid*="cri-boost"]').should('be.visible');
-    cy.contains('15%').should('be.visible');
-  });
-
-  it('displays progress bar for next step when available', () => {
-    // Check progress is shown
-    cy.contains('Progress').should('be.visible');
-    cy.contains('65%').should('be.visible');
-    
-    // Verify progress bar exists
-    cy.get('[role="progressbar"]').should('exist');
-  });
-
-  it('shows dynamic action buttons based on recommendation type', () => {
-    // Verify skill gap actions
-    cy.get('[data-testid="next-step-action-0"]').should('contain', 'Find Courses');
-    cy.get('[data-testid="next-step-action-1"]').should('contain', 'Start Project');
-  });
-
-  it('handles next step click-through correctly', () => {
-    // Intercept the saveToPlan mutation
-    cy.intercept('POST', '**/rest/v1/rpc/save_to_plan*', { body: { success: true } });
-    
-    // Click the primary action
-    cy.get('[data-testid="next-step-action-0"]').click();
-    
-    // Should trigger the appropriate navigation/action
-    // Note: This would typically navigate or trigger a state change
-    // In a real test, we'd verify the URL change or API call
-  });
-
-  it('displays quick wins from filtered recommendations', () => {
-    // Verify quick wins section exists
-    cy.contains('Quick Wins').should('be.visible');
-    
-    // Check that quick wins are populated (30-45 min tasks)
-    cy.get('[data-testid*="quick-win"]').should('have.length.at.least', 1);
-    cy.contains('Review Git Commands').should('be.visible');
-    cy.contains('30 min').should('be.visible');
-    
-    cy.contains('Practice API Integration').should('be.visible');
-    cy.contains('45 min').should('be.visible');
-  });
-
-  it('shows CRI boost chips on quick wins when applicable', () => {
-    // Look for CRI boost on the API integration quick win
-    cy.contains('Practice API Integration')
-      .parent()
-      .within(() => {
-        cy.get('[data-testid*="cri-boost"]').should('be.visible');
+  describe('Next Step Recommendation', () => {
+    it('should display the top recommendation as Next Step', () => {
+      cy.wait('@getRecommendations');
+      
+      // Verify Next Step card is rendered
+      cy.get('[data-testid="next-step-card"]').should('be.visible');
+      cy.get('[data-testid="next-step-card"]').within(() => {
+        cy.contains('Advanced React Hooks').should('be.visible');
+        cy.contains('Master advanced React patterns').should('be.visible');
+        cy.contains('2 hours').should('be.visible');
       });
+    });
+
+    it('should show progress bar when progress data exists', () => {
+      cy.wait('@getRecommendations');
+      
+      cy.get('[data-testid="next-step-card"]').within(() => {
+        cy.get('[role="progressbar"]').should('exist');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuenow', '30');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuemin', '0');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuemax', '100');
+      });
+    });
+
+    it('should display CRI boost chip with tooltip', () => {
+      cy.wait('@getRecommendations');
+      
+      cy.get('[data-testid="next-step-card"]').within(() => {
+        cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+12.5%');
+        
+        // Test tooltip
+        cy.get('[data-testid="cri-boost-chip"]').trigger('mouseover');
+      });
+      
+      cy.get('[role="tooltip"]').should('be.visible');
+      cy.get('[role="tooltip"]').should('contain', 'CRI Boost Applied');
+      cy.get('[role="tooltip"]').should('contain', 'Addresses React skill gap');
+      cy.get('[role="tooltip"]').should('contain', 'raises your Career Readiness Index');
+    });
+
+    it('should handle click-through action', () => {
+      cy.wait('@getRecommendations');
+      
+      cy.get('[data-testid="next-step-card"]').within(() => {
+        cy.get('[data-testid="next-step-action-0"]').should('be.visible');
+        cy.get('[data-testid="next-step-action-0"]').should('contain', 'Start Learning');
+        cy.get('[data-testid="next-step-action-0"]').click();
+      });
+      
+      // Verify save to plan API call
+      cy.wait('@saveToPlan').then((interception) => {
+        expect(interception.request.body).to.include({
+          type: 'quick_win',
+          id: 'next-step-rec',
+          title: 'Advanced React Hooks'
+        });
+        expect(interception.request.body.metadata).to.include({
+          source: 'today_dashboard'
+        });
+      });
+      
+      // Verify success toast
+      cy.get('.toast').should('contain', 'Added to your plan');
+    });
   });
 
-  it('handles quick win actions correctly', () => {
-    // Intercept the quick win action
-    cy.intercept('POST', '**/rest/v1/rpc/save_to_plan*', { body: { success: true } });
-    
-    // Click on a quick win
-    cy.get('[data-testid="quick-win-0"]').click();
-    
-    // Should trigger the save to plan action
-    // Verify the API call was made with correct data
+  describe('Quick Wins Section', () => {
+    it('should display exactly 3 quick wins within 30-60 minute range', () => {
+      cy.wait('@getRecommendations');
+      
+      // Should show quick wins section
+      cy.get('[data-testid="quick-wins-section"]').should('be.visible');
+      cy.get('[data-testid="quick-wins-section"]').within(() => {
+        cy.contains('Quick Wins').should('be.visible');
+        cy.contains('30-60 minute activities').should('be.visible');
+      });
+      
+      // Should show exactly 3 items (45min, 30min, 1hour)
+      cy.get('[data-testid^="quick-win-"]').should('have.length', 3);
+      
+      // Verify the correct items are shown (in time range)
+      cy.get('[data-testid="quick-win-0"]').should('contain', 'CSS Grid Layout'); // 45min
+      cy.get('[data-testid="quick-win-1"]').should('contain', 'Git Workflow Best Practices'); // 30min  
+      cy.get('[data-testid="quick-win-2"]').should('contain', 'API Testing with Postman'); // 1hour
+      
+      // Should NOT show the next step item (2 hours) or too long items (12 weeks)
+      cy.get('[data-testid="quick-wins-section"]').should('not.contain', 'Advanced React Hooks');
+      cy.get('[data-testid="quick-wins-section"]').should('not.contain', 'Full Stack Bootcamp');
+    });
+
+    it('should show CRI boost chips only when criBoost > 0', () => {
+      cy.wait('@getRecommendations');
+      
+      // First item has CRI boost
+      cy.get('[data-testid="quick-win-0"]').within(() => {
+        cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+5.2%');
+      });
+      
+      // Second item has no CRI boost (criBoost: 0)
+      cy.get('[data-testid="quick-win-1"]').within(() => {
+        cy.get('[data-testid="cri-boost-chip"]').should('not.exist');
+      });
+      
+      // Third item has CRI boost
+      cy.get('[data-testid="quick-win-2"]').within(() => {
+        cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+8.1%');
+      });
+    });
+
+    it('should handle quick win start action', () => {
+      cy.wait('@getRecommendations');
+      
+      cy.get('[data-testid="quick-win-0"]').within(() => {
+        cy.get('[data-testid="start-quick-win"]').should('be.visible');
+        cy.get('[data-testid="start-quick-win"]').should('contain', 'Start');
+        cy.get('[data-testid="start-quick-win"]').click();
+      });
+      
+      // Verify save to plan with correct data
+      cy.wait('@saveToPlan').then((interception) => {
+        expect(interception.request.body).to.include({
+          type: 'quick_win',
+          id: 'quick-win-1',
+          title: 'CSS Grid Layout'
+        });
+        expect(interception.request.body.metadata).to.include({
+          source: 'today_dashboard'
+        });
+      });
+      
+      cy.get('.toast').should('contain', 'Quick win started!');
+    });
   });
 
-  it('displays current streak information', () => {
-    // Verify streak section
-    cy.contains('Progress').should('be.visible');
-    cy.contains('Day Streak').should('be.visible');
-    cy.contains('5').should('be.visible'); // Current streak from mock data
-    
-    // Check level display
-    cy.contains('Level').should('be.visible');
-    cy.contains('3').should('be.visible');
-  });
+  describe('Learning Streak and User Engagement', () => {
+    it('should display current streak information', () => {
+      cy.wait('@getLearningStreaks');
+      
+      cy.get('[data-testid="learning-streak"]').should('be.visible');
+      cy.get('[data-testid="learning-streak"]').within(() => {
+        cy.contains('5 day streak').should('be.visible');
+        cy.contains('Consistent Learner').should('be.visible');
+        cy.get('[data-testid="streak-icon"]').should('be.visible');
+      });
+    });
 
-  it('shows unstick nudge for inactive users', () => {
-    // Mock an inactive user (no recent activity)
-    cy.intercept('GET', '**/rest/v1/learning_streaks*', {
-      body: [
-        {
-          id: 'streak-1',
-          user_id: '2b458624-d498-4cca-a63d-9341cc20e363',
-          streak_type: 'daily',
-          current_streak: 0, // Inactive
-          longest_streak: 12,
-          last_activity_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+    it('should show unstick nudge for inactive users', () => {
+      // Mock inactive user state
+      cy.intercept('GET', '**/learning-streaks**', {
+        body: {
+          currentStreak: 0,
+          level: 'Getting Started',
+          lastActivity: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4 days ago
+          daysInactive: 4
         }
-      ]
+      }).as('getInactiveStreaks');
+      
+      cy.reload();
+      cy.wait('@getInactiveStreaks');
+      
+      // Verify unstick prompt appears
+      cy.get('[data-testid="unstick-prompt"]').should('be.visible');
+      cy.get('[data-testid="unstick-prompt"]').within(() => {
+        cy.contains('Been away for a while?').should('be.visible');
+        cy.contains('4 days since your last activity').should('be.visible');
+        cy.get('[data-testid="unstick-button"]').should('be.visible');
+        cy.get('[data-testid="unstick-button"]').should('contain', 'Get me unstuck');
+      });
     });
-    
-    // Reload to get new data
-    cy.reload();
-    
-    // Check for unstick button
-    cy.get('[data-testid="unstick-button"]').should('be.visible');
-    cy.contains('5 days since last activity').should('be.visible');
-    cy.contains('Unstick me').should('be.visible');
-  });
 
-  it('handles unstick action correctly', () => {
-    // Set up inactive user state
-    cy.intercept('GET', '**/rest/v1/learning_streaks*', {
-      body: [
-        {
-          id: 'streak-1',
-          user_id: '2b458624-d498-4cca-a63d-9341cc20e363',
-          streak_type: 'daily',
-          current_streak: 0,
-          longest_streak: 12,
-          last_activity_date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+    it('should handle unstick action', () => {
+      // Set up inactive user scenario
+      cy.intercept('GET', '**/learning-streaks**', {
+        body: {
+          currentStreak: 0,
+          daysInactive: 3,
+          lastActivity: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
         }
-      ]
+      }).as('getInactiveStreaks');
+      
+      cy.reload();
+      cy.wait('@getInactiveStreaks');
+      
+      cy.get('[data-testid="unstick-button"]').click();
+      
+      // Verify unstick micro-task creation
+      cy.wait('@saveToPlan').then((interception) => {
+        expect(interception.request.body).to.include({
+          type: 'micro_task',
+          title: 'Get Back on Track'
+        });
+        expect(interception.request.body.metadata).to.deep.include({
+          source: 'today_dashboard',
+          days_inactive: 3,
+          unstick_action: true
+        });
+      });
+      
+      cy.get('.toast').should('contain', 'Welcome back! Let\'s get you unstuck');
     });
-    
-    // Mock the unstick action
-    cy.intercept('POST', '**/rest/v1/rpc/save_to_plan*', { body: { success: true } });
-    
-    cy.reload();
-    
-    // Click unstick button
-    cy.get('[data-testid="unstick-button"]').click();
-    
-    // Should trigger micro-task creation
-    // Verify the API call was made
   });
 
-  it('updates quick wins as goals and skills change', () => {
-    // Mock a goal completion that would trigger recommendation refresh
-    cy.intercept('POST', '**/rest/v1/rpc/complete_goal*', { body: { success: true } });
-    
-    // Update recommendations to show new quick wins
-    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
-      body: [
-        {
-          id: 'rec-new',
-          type: 'skill_gap',
-          title: 'Learn TypeScript Basics',
-          description: 'Essential typing for JavaScript',
-          priority: 'high',
-          timeEstimate: '1 hr',
-          actions: [
-            { label: 'Find Tutorial', on: 'discover' }
-          ],
-          score: 90,
-          createdAt: new Date().toISOString()
+  describe('Dynamic Updates and Empty States', () => {
+    it('should update quick wins when goals change', () => {
+      cy.wait('@getRecommendations');
+      
+      // Initial state
+      cy.get('[data-testid^="quick-win-"]').should('have.length', 3);
+      
+      // Mock updated recommendations
+      cy.intercept('GET', '**/unified-recommendations**', {
+        body: {
+          recommendations: [
+            {
+              id: 'new-rec',
+              title: 'New 45-minute Course',
+              type: 'course',
+              timeEstimate: '45 minutes',
+              criBoost: 10.0
+            }
+          ]
         }
-      ]
+      }).as('getUpdatedRecommendations');
+      
+      // Trigger refresh (could be from completing a goal)
+      cy.window().then((win) => {
+        win.dispatchEvent(new CustomEvent('recommendations-updated'));
+      });
+      
+      cy.wait('@getUpdatedRecommendations');
+      
+      // Verify updated content
+      cy.get('[data-testid="quick-win-0"]').should('contain', 'New 45-minute Course');
     });
-    
-    // Trigger a change (simulate goal completion)
-    cy.window().then((win) => {
-      win.postMessage({ type: 'GOAL_COMPLETED', goalId: 'goal-1' }, '*');
+
+    it('should handle empty recommendations gracefully', () => {
+      cy.intercept('GET', '**/unified-recommendations**', {
+        body: { recommendations: [] }
+      }).as('getEmptyRecommendations');
+      
+      cy.reload();
+      cy.wait('@getEmptyRecommendations');
+      
+      // Verify empty state
+      cy.get('[data-testid="empty-recommendations"]').should('be.visible');
+      cy.get('[data-testid="empty-recommendations"]').within(() => {
+        cy.contains('No recommendations available').should('be.visible');
+        cy.contains('Check back later for personalized suggestions').should('be.visible');
+      });
     });
-    
-    // Verify recommendations updated
-    cy.contains('Learn TypeScript Basics').should('be.visible');
   });
 
-  it('handles empty recommendation state gracefully', () => {
-    // Mock empty recommendations
-    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', { body: [] });
-    
-    cy.reload();
-    
-    // Verify empty state messaging
-    cy.contains('No recommendations available').should('be.visible');
-    cy.contains('Check back later for personalized suggestions').should('be.visible');
-    
-    // Quick wins should also show empty state
-    cy.contains('No quick wins available').should('be.visible');
-  });
-
-  it('maintains accessibility standards', () => {
-    // Check for proper ARIA labels and roles
-    cy.get('[role="progressbar"]').should('exist');
-    
-    // Verify all interactive elements are keyboard accessible
-    cy.get('[data-testid="next-step-action-0"]').should('be.visible').focus();
-    cy.get('[data-testid="quick-win-0"]').should('be.visible').focus();
-    
-    // Check contrast and text sizing
-    cy.get('h3').should('have.css', 'font-weight', '600');
-  });
-
-  it('shows loading states while fetching data', () => {
-    // Mock slow API response
-    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
-      delay: 2000,
-      body: []
+  describe('Feature Flag Behavior', () => {
+    it('should show fallback when unified dashboard is disabled', () => {
+      // Disable unified dashboard feature flag
+      cy.window().then((win) => {
+        win.localStorage.setItem('featureFlags', JSON.stringify({
+          unifiedTodayDashboard: false
+        }));
+      });
+      
+      cy.reload();
+      
+      // Should show fallback card instead of new dashboard
+      cy.get('[data-testid="today-dashboard-fallback"]').should('be.visible');
+      cy.get('[data-testid="today-dashboard-fallback"]').within(() => {
+        cy.contains('Today\'s recommendations are being prepared').should('be.visible');
+        cy.contains('Check back soon for personalized suggestions').should('be.visible');
+      });
+      
+      // Should NOT show new dashboard components
+      cy.get('[data-testid="next-step-card"]').should('not.exist');
+      cy.get('[data-testid="quick-wins-section"]').should('not.exist');
     });
-    
-    cy.reload();
-    
-    // Verify skeleton loading states
-    cy.get('.animate-pulse').should('be.visible');
+
+    it('should enable dashboard with query parameter', () => {
+      // Start with disabled flag
+      cy.window().then((win) => {
+        win.localStorage.setItem('featureFlags', JSON.stringify({
+          unifiedTodayDashboard: false
+        }));
+      });
+      
+      // Visit with enableToday query param
+      cy.visit('/plan?enableToday=1');
+      cy.wait('@getRecommendations');
+      
+      // Should show new dashboard despite disabled flag
+      cy.get('[data-testid="next-step-card"]').should('be.visible');
+      cy.get('[data-testid="quick-wins-section"]').should('be.visible');
+      cy.get('[data-testid="today-dashboard-fallback"]').should('not.exist');
+    });
+  });
+
+  describe('Loading States and Performance', () => {
+    it('should show skeleton loaders while data is loading', () => {
+      // Intercept with delay to test loading state
+      cy.intercept('GET', '**/unified-recommendations**', {
+        delay: 2000,
+        body: { recommendations: [] }
+      }).as('getSlowRecommendations');
+      
+      cy.visit('/plan');
+      
+      // Verify skeleton loaders are shown
+      cy.get('[data-testid="next-step-skeleton"]').should('be.visible');
+      cy.get('[data-testid="quick-wins-skeleton"]').should('be.visible');
+      
+      cy.wait('@getSlowRecommendations');
+      
+      // Verify skeletons are replaced with content or empty state
+      cy.get('[data-testid="next-step-skeleton"]').should('not.exist');
+      cy.get('[data-testid="quick-wins-skeleton"]').should('not.exist');
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('should have proper ARIA labels and roles', () => {
+      cy.wait('@getRecommendations');
+      
+      // Check progress bar accessibility
+      cy.get('[data-testid="next-step-card"]').within(() => {
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-label');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuenow');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuemin', '0');
+        cy.get('[role="progressbar"]').should('have.attr', 'aria-valuemax', '100');
+      });
+      
+      // Check button accessibility
+      cy.get('[data-testid="next-step-action-0"]').should('have.attr', 'aria-label');
+      cy.get('[data-testid="start-quick-win"]').first().should('have.attr', 'aria-label');
+      
+      // Check tooltip accessibility
+      cy.get('[data-testid="cri-boost-chip"]').first().should('have.attr', 'aria-describedby');
+    });
+
+    it('should support keyboard navigation', () => {
+      cy.wait('@getRecommendations');
+      
+      // Tab through interactive elements
+      cy.get('body').tab();
+      cy.focused().should('have.attr', 'data-testid', 'next-step-action-0');
+      
+      cy.focused().tab();
+      cy.focused().should('have.attr', 'data-testid', 'start-quick-win');
+      
+      // Test Enter key activation
+      cy.focused().type('{enter}');
+      cy.wait('@saveToPlan');
+    });
+
+    it('should announce important changes to screen readers', () => {
+      cy.wait('@getRecommendations');
+      
+      // Check for live regions
+      cy.get('[aria-live="polite"]').should('exist');
+      
+      // Trigger an action that should announce changes
+      cy.get('[data-testid="start-quick-win"]').first().click();
+      cy.wait('@saveToPlan');
+      
+      // Verify announcement
+      cy.get('[aria-live="polite"]').should('contain', 'Added to your plan');
+    });
   });
 });

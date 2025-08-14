@@ -213,12 +213,38 @@ cy.wait('@saveToPlan')
 - Monitor network tab for query invalidation patterns
 - Use Supabase dashboard to verify database triggers
 
+## Database Architecture
+
+### Idempotency Safeguards
+- **career_goals_user_source_uidx**: Prevents duplicate micro-goals from same source
+- **auto_create_micro_goal()**: Database trigger with idempotency checks
+- **handle_milestone_completion()**: Triggers celebrations and cross-hub updates
+
+### Cross-Hub Triggers
+1. **Discover → Plan**: Auto micro-goal creation with T+7 due dates
+2. **Plan → Progress**: Milestone completion triggers celebrations
+3. **Progress → Plan**: Skill mastery creates next step suggestions
+
+## Security Considerations
+
+### Current Security Warnings
+The database has some security warnings that should be addressed:
+- **ERROR**: Security Definer View detected
+- **WARN**: Function search paths need hardening
+- **WARN**: Extensions in public schema
+
+### Recommendations
+1. Review all SECURITY DEFINER functions for least privilege
+2. Set explicit search_path in function definitions
+3. Move extensions to dedicated schemas where possible
+
 ## Known Limitations
 
-1. **Time Parsing**: Complex formats like "1 hour and 15 minutes" not supported
+1. **Time Parsing**: Complex formats like "1 hour and 15 minutes" now supported ✅
 2. **CRI Calculation**: Only considers immediate skill gaps, not career trajectory
 3. **Feature Flags**: Require page refresh when changed via query params
 4. **Telemetry**: Events logged to console in development, need production analytics setup
+5. **Database Security**: Some security warnings need attention (see above)
 
 ## Future Enhancements
 
