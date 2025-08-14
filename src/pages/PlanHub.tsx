@@ -6,6 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
 import { TodayDashboard } from "@/components/TodayDashboard";
+import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
+import { EnhancedGoalDashboard } from "@/components/EnhancedGoalDashboard";
+import { GoalOrchestrator } from "@/components/GoalOrchestrator";
+import { useCrossHubIntegration } from "@/hooks/useCrossHubIntegration";
+import { useQuery } from "@tanstack/react-query";
+import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
 
 const planFeatures = [
@@ -41,7 +47,14 @@ const planFeatures = [
 
 export default function PlanHub() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'roadmap';
+  const activeTab = searchParams.get('tab') || 'overview';
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser
+  });
+
+  const { skillGaps } = useCrossHubIntegration(currentUser?.id);
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab });
@@ -77,12 +90,54 @@ export default function PlanHub() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
+                <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
+                <TabsTrigger value="gaps" data-testid="tab-gaps">Skill Gaps</TabsTrigger>
                 <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
                 <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="overview" className="mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                    <TodayDashboard onNextStepClick={handleNextStepClick} />
+                  </div>
+                  <div className="space-y-4">
+                    <SkillGapRecommendations compact maxGaps={3} />
+                    {skillGaps.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full justify-start"
+                            onClick={() => window.open('/discover?filter=skill-gaps', '_self')}
+                          >
+                            Find Courses for Skill Gaps
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full justify-start"
+                            onClick={() => window.open('/discover?tab=mentors', '_self')}
+                          >
+                            Connect with Mentors
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="goals" className="mt-6">
+                <EnhancedGoalDashboard userId={currentUser?.id} />
+              </TabsContent>
 
               <TabsContent value="roadmap" className="mt-6">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -136,115 +191,14 @@ export default function PlanHub() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="goals" className="mt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {planFeatures.filter(f => f.tab === 'goals').map((feature) => {
-                    const Icon = feature.icon;
-                    return (
-                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${feature.color}`}>
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{feature.title}</CardTitle>
-                              <CardDescription>{feature.description}</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Button className="w-full" variant="default" data-testid="cta-next-step">
-                            Set Goals
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  
-                  {/* Add example goals content */}
-                  <Card className="md:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Your Career Goals</CardTitle>
-                      <CardDescription>Track your progress towards your objectives</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <h4 className="font-medium">Complete Python Course</h4>
-                            <Badge variant="secondary">75%</Badge>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
-                          </div>
-                        </div>
-                        <div className="p-4 border rounded-lg">
-                          <div className="flex justify-between items-center mb-2">
-                            <h4 className="font-medium">Build Portfolio Project</h4>
-                            <Badge variant="outline">Not Started</Badge>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div className="bg-primary h-2 rounded-full" style={{ width: '0%' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+              <TabsContent value="gaps" className="mt-6">
+                <SkillGapRecommendations />
               </TabsContent>
 
               <TabsContent value="workflows" className="mt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {planFeatures.filter(f => f.tab === 'workflows').map((feature) => {
-                    const Icon = feature.icon;
-                    return (
-                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${feature.color}`}>
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{feature.title}</CardTitle>
-                              <CardDescription>{feature.description}</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Button className="w-full" variant="default" data-testid="cta-next-step">
-                            Open Maya
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  
-                  {/* Add example workflows content */}
-                  <Card className="md:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Maya's Recommendations</CardTitle>
-                      <CardDescription>AI-powered suggestions for your next steps</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
-                          <Brain className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Focus on pandas library for data manipulation</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
-                          <Brain className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Practice with real datasets from Kaggle</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
-                          <Brain className="h-4 w-4 text-primary" />
-                          <span className="text-sm">Consider taking a statistics refresher course</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <GoalOrchestrator userId={currentUser?.id} />
               </TabsContent>
+
 
               <TabsContent value="proof" className="mt-6">
                 <div className="grid gap-4 md:grid-cols-2">

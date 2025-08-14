@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -5504,6 +5504,57 @@ export type Database = {
           },
         ]
       }
+      saved_plan_items: {
+        Row: {
+          added_from_hub: string
+          created_at: string
+          description: string | null
+          estimated_time_to_complete: string | null
+          id: string
+          item_id: string
+          item_type: string
+          metadata: Json | null
+          priority: string
+          skill_tags: string[] | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          added_from_hub?: string
+          created_at?: string
+          description?: string | null
+          estimated_time_to_complete?: string | null
+          id?: string
+          item_id: string
+          item_type: string
+          metadata?: Json | null
+          priority?: string
+          skill_tags?: string[] | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          added_from_hub?: string
+          created_at?: string
+          description?: string | null
+          estimated_time_to_complete?: string | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          metadata?: Json | null
+          priority?: string
+          skill_tags?: string[] | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       security_audit_log: {
         Row: {
           action_details: Json | null
@@ -6397,6 +6448,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           visibility?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_type: string
+          course_id: string | null
+          created_at: string
+          goal_id: string | null
+          id: string
+          metadata: Json | null
+          milestone_id: string | null
+          user_id: string
+          xp_awarded: number | null
+        }
+        Insert: {
+          achievement_type: string
+          course_id?: string | null
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          metadata?: Json | null
+          milestone_id?: string | null
+          user_id: string
+          xp_awarded?: number | null
+        }
+        Update: {
+          achievement_type?: string
+          course_id?: string | null
+          created_at?: string
+          goal_id?: string | null
+          id?: string
+          metadata?: Json | null
+          milestone_id?: string | null
+          user_id?: string
+          xp_awarded?: number | null
         }
         Relationships: []
       }
@@ -7482,11 +7569,11 @@ export type Database = {
     Functions: {
       award_xp: {
         Args: {
-          user_id_param: string
-          xp_amount_param: number
           action_type_param: string
           reason_param: string
           source_id_param?: string
+          user_id_param: string
+          xp_amount_param: number
         }
         Returns: undefined
       }
@@ -7501,28 +7588,28 @@ export type Database = {
       calculate_career_step_levels: {
         Args: { career_path_id_param: string }
         Returns: {
-          id: string
-          title: string
-          description: string
-          step_order: number
-          prerequisites: string[]
-          level: number
           career_path_id: string
-          is_terminal: boolean
-          estimated_duration: string
           completed: boolean
           created_at: string
+          description: string
+          estimated_duration: string
+          id: string
+          is_terminal: boolean
+          level: number
+          prerequisites: string[]
+          step_order: number
+          title: string
           updated_at: string
         }[]
       }
       calculate_mentor_performance_metrics: {
-        Args: { mentor_user_id: string; start_date: string; end_date: string }
+        Args: { end_date: string; mentor_user_id: string; start_date: string }
         Returns: {
-          courses_reviewed: number
-          courses_approved: number
-          courses_rejected: number
           approval_rate: number
           avg_review_time_hours: number
+          courses_approved: number
+          courses_rejected: number
+          courses_reviewed: number
           impact_score: number
           quality_score: number
         }[]
@@ -7536,15 +7623,15 @@ export type Database = {
         Returns: number
       }
       calculate_user_trust_metrics: {
-        Args: { user_id_param: string; days_back?: number }
+        Args: { days_back?: number; user_id_param: string }
         Returns: Json
       }
       calculate_xp_multiplier: {
         Args: {
-          user_id_param: string
           action_type_param: string
           difficulty_level?: number
           engagement_score?: number
+          user_id_param: string
         }
         Returns: number
       }
@@ -7558,27 +7645,27 @@ export type Database = {
       }
       clone_career_track: {
         Args: {
-          source_track_id: string
-          new_track_name: string
-          new_icon?: string
           new_color?: string
+          new_icon?: string
+          new_track_name: string
+          source_track_id: string
         }
         Returns: string
       }
       complete_course_progress: {
         Args: {
-          user_id_param: string
-          course_id_param: string
           completion_notes_param?: string
+          course_id_param: string
+          user_id_param: string
         }
         Returns: string
       }
       create_celebration_moment: {
         Args: {
-          user_id_param: string
+          celebration_data_param: Json
           celebration_type_param: string
           trigger_data_param: Json
-          celebration_data_param: Json
+          user_id_param: string
         }
         Returns: string
       }
@@ -7592,8 +7679,8 @@ export type Database = {
       }
       dev_user_session_start: {
         Args: {
-          dev_user_id: string
           course_id_param: string
+          dev_user_id: string
           session_type_param?: string
         }
         Returns: string
@@ -7601,14 +7688,14 @@ export type Database = {
       dev_user_submit_maya_feedback: {
         Args: {
           dev_user_id: string
-          feedback_type_param: string
           feedback_data_param: Json
+          feedback_type_param: string
           user_rating_param?: number
         }
         Returns: string
       }
       generate_autonomous_intervention: {
-        Args: { target_user_id: string; risk_assessment: Json }
+        Args: { risk_assessment: Json; target_user_id: string }
         Returns: string
       }
       generate_certificate_number: {
@@ -7617,9 +7704,9 @@ export type Database = {
       }
       generate_phase6_enterprise_certification: {
         Args: {
-          target_user_id: string
           baseline_snapshot_id: string
           component_lock_ids: string[]
+          target_user_id: string
         }
         Returns: string
       }
@@ -7634,38 +7721,38 @@ export type Database = {
       get_badge_for_user: {
         Args: { badge_slug: string; user_uuid?: string }
         Returns: {
+          description: string
+          earned_at: string
+          emoji: string
           id: string
           name: string
           slug: string
-          emoji: string
-          trigger_type: string
-          description: string
           threshold: number
+          trigger_type: string
           user_has_earned: boolean
-          earned_at: string
         }[]
       }
       get_badge_statistics: {
         Args: Record<PropertyKey, never>
         Returns: {
+          badge_emoji: string
           badge_id: string
           badge_name: string
-          badge_emoji: string
           earned_count: number
         }[]
       }
       get_demo_resume_profiles: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_id: string
-          name: string
-          email: string
-          resume_id: string
           created_at: string
-          slug: string
-          total_xp: number
           current_level: number
           earned_badges: Json
+          email: string
+          name: string
+          resume_id: string
+          slug: string
+          total_xp: number
+          user_id: string
         }[]
       }
       get_mentor_by_user_id: {
@@ -7675,9 +7762,9 @@ export type Database = {
       get_user_level: {
         Args: { user_id_param: string }
         Returns: {
-          user_id: string
-          total_xp: number
           current_level: number
+          total_xp: number
+          user_id: string
           xp_for_current_level: number
           xp_for_next_level: number
           xp_progress_in_level: number
@@ -7705,8 +7792,8 @@ export type Database = {
       }
       has_role: {
         Args: {
-          user_uuid: string
           check_role: Database["public"]["Enums"]["app_role"]
+          user_uuid: string
         }
         Returns: boolean
       }
@@ -7751,7 +7838,7 @@ export type Database = {
         Returns: unknown
       }
       lock_phase6_components: {
-        Args: { target_user_id: string; baseline_snapshot_id: string }
+        Args: { baseline_snapshot_id: string; target_user_id: string }
         Returns: string[]
       }
       predict_engagement_decline: {
@@ -7775,21 +7862,21 @@ export type Database = {
         Returns: number
       }
       start_course_progress: {
-        Args: { user_id_param: string; course_id_param: string }
+        Args: { course_id_param: string; user_id_param: string }
         Returns: string
       }
       suggest_badges_for_user: {
         Args: { user_uuid: string }
         Returns: {
           badge_id: string
-          slug: string
-          name: string
           emoji: string
+          name: string
           reason: string
+          slug: string
         }[]
       }
       update_learning_streak: {
-        Args: { user_id_param: string; activity_date?: string }
+        Args: { activity_date?: string; user_id_param: string }
         Returns: Json
       }
       update_maya_feedback_model: {
@@ -7797,7 +7884,7 @@ export type Database = {
         Returns: Json
       }
       upsert_user_trust_metrics: {
-        Args: { user_id_param: string; days_back?: number }
+        Args: { days_back?: number; user_id_param: string }
         Returns: string
       }
       validate_mentor_operation: {
