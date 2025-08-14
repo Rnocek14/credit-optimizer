@@ -97,7 +97,7 @@ export const SkillGapRecommendations: React.FC<SkillGapRecommendationsProps> = (
                       description: action,
                       skillTags: [gap.skill],
                       priority: gap.priority as 'high' | 'medium' | 'low',
-                      estimatedTimeToComplete: gap.estimatedTimeToClose
+                      timeEstimate: gap.estimatedTimeToClose
                     }}
                     variant="outline"
                     size="sm"

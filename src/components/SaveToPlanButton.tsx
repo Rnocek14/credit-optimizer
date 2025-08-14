@@ -7,7 +7,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CheckCircle, Clock, Target } from 'lucide-react';
-import { useCrossHubIntegration, type SaveToPlanItem } from '@/hooks/useCrossHubIntegration';
+import { useCrossHubIntegration } from '@/hooks/useCrossHubIntegration';
+import { SaveToPlanItem } from '@/types/plan';
 import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { 
   DropdownMenu, 
@@ -70,7 +71,7 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
     saveToPlan({
       ...item,
       priority,
-      estimatedTimeToComplete: item.estimatedTimeToComplete || getEstimatedTime(item.type)
+      timeEstimate: item.timeEstimate || getEstimatedTime(item.type)
     });
   };
 
