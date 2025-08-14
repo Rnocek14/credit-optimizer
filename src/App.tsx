@@ -182,7 +182,7 @@ const App = () => (
           <Route path="/history" element={<Navigate to="/progress?tab=history" replace />} />
           <Route path="/learning-history" element={<Navigate to="/progress?tab=history" replace />} />
           <Route path="/course-history" element={<Navigate to="/progress?tab=history" replace />} />
-          <Route path="/skill-tree" element={<Navigate to="/progress?tab=portfolio" replace />} />
+          <Route path="/skill-tree" element={<Navigate to="/progress?tab=skill-tree" replace />} />
           <Route path="/transcripts" element={<Navigate to="/progress?tab=achievements" replace />} />
           <Route path="/badges" element={<Navigate to="/progress?tab=achievements" replace />} />
           <Route path="/certificates" element={<Navigate to="/progress?tab=achievements" replace />} />

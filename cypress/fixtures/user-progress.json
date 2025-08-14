@@ -1,0 +1,28 @@
+[
+  {
+    "id": "progress-1",
+    "user_id": "user-123",
+    "skill_id": "skill-python",
+    "status": "completed",
+    "xp_earned": 200,
+    "completed_at": "2024-01-15T10:30:00Z",
+    "cri_score": 85
+  },
+  {
+    "id": "progress-2",
+    "user_id": "user-123", 
+    "skill_id": "skill-data-analysis",
+    "status": "in_progress",
+    "xp_earned": 120,
+    "started_at": "2024-01-20T09:00:00Z",
+    "cri_score": 60
+  },
+  {
+    "id": "progress-3",
+    "user_id": "user-123",
+    "skill_id": "skill-machine-learning", 
+    "status": "available",
+    "xp_earned": 0,
+    "cri_score": 25
+  }
+]

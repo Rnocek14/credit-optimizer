@@ -1,0 +1,42 @@
+[
+  {
+    "id": "skill-python",
+    "type": "skill",
+    "title": "Python Programming",
+    "description": "Master Python fundamentals and advanced concepts",
+    "category": "Programming",
+    "difficulty_level": 2,
+    "market_demand_score": 0.9,
+    "active": true
+  },
+  {
+    "id": "skill-data-analysis",
+    "type": "skill", 
+    "title": "Data Analysis",
+    "description": "Analyze data using statistical methods and tools",
+    "category": "Data Science",
+    "difficulty_level": 3,
+    "market_demand_score": 0.8,
+    "active": true
+  },
+  {
+    "id": "skill-machine-learning",
+    "type": "skill",
+    "title": "Machine Learning",
+    "description": "Build and deploy ML models",
+    "category": "AI/ML",
+    "difficulty_level": 4,
+    "market_demand_score": 0.95,
+    "active": true
+  },
+  {
+    "id": "course-python-basics",
+    "type": "course",
+    "title": "Python Fundamentals",
+    "description": "Learn Python from scratch",
+    "category": "Programming",
+    "difficulty_level": 1,
+    "estimated_time_hours": 20,
+    "active": true
+  }
+]

@@ -6,15 +6,36 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   History, Trophy, Award, FileText, Share, ExternalLink, 
-  CheckCircle, Calendar, Star, BookOpen, Target
+  CheckCircle, Calendar, Star, BookOpen, Target, TreePine
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
-// Track selector component would be imported here
 import { MayaGuidancePanel } from "@/components/MayaGuidancePanel";
+import { SkillTreeProgress } from "@/components/progress/SkillTreeProgress";
+import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 export default function ProgressHub() {
   const { activeTrackId } = useActiveTrackStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    return searchParams.get('tab') || 'skill-tree';
+  });
+
+  // Update URL when tab changes
+  useEffect(() => {
+    if (activeTab !== 'skill-tree') {
+      setSearchParams({ tab: activeTab });
+    } else {
+      setSearchParams({});
+    }
+  }, [activeTab, setSearchParams]);
+
+  // Handle incoming URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'skill-tree';
+    setActiveTab(tab);
+  }, [searchParams]);
 
   const learningHistory = [
     {
@@ -189,8 +210,12 @@ export default function ProgressHub() {
           </Card>
         </div>
 
-        <Tabs defaultValue="history" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="skill-tree" data-testid="tab-skill-tree" className="flex items-center gap-2">
+              <TreePine className="h-4 w-4" />
+              Skill Tree
+            </TabsTrigger>
             <TabsTrigger value="history" data-testid="tab-history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
               History
@@ -208,6 +233,10 @@ export default function ProgressHub() {
               Resume
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="skill-tree" className="mt-6">
+            <SkillTreeProgress />
+          </TabsContent>
 
           <TabsContent value="history" className="mt-6">
             <Card>

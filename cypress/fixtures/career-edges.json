@@ -1,0 +1,32 @@
+[
+  {
+    "id": "edge-1",
+    "from_id": "course-python-basics",
+    "to_id": "skill-python",
+    "from_type": "course",
+    "to_type": "skill",
+    "edge_type": "enables",
+    "confidence_score": 0.9,
+    "importance_weight": 1.0
+  },
+  {
+    "id": "edge-2", 
+    "from_id": "skill-python",
+    "to_id": "skill-data-analysis",
+    "from_type": "skill",
+    "to_type": "skill",
+    "edge_type": "prerequisite",
+    "confidence_score": 0.8,
+    "importance_weight": 0.9
+  },
+  {
+    "id": "edge-3",
+    "from_id": "skill-data-analysis", 
+    "to_id": "skill-machine-learning",
+    "from_type": "skill",
+    "to_type": "skill",
+    "edge_type": "prerequisite",
+    "confidence_score": 0.85,
+    "importance_weight": 0.95
+  }
+]
