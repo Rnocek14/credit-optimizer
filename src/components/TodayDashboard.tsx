@@ -196,10 +196,18 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                     <p className="font-medium text-sm">{skill.name}</p>
                     <p className="text-xs text-muted-foreground">{skill.level}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{skill.progress}%</p>
-                    <Progress value={skill.progress} className="h-1 w-16" />
-                  </div>
+                   <div className="text-right">
+                     <p className="text-sm font-medium">{skill.progress}%</p>
+                     <Progress 
+                       value={skill.progress} 
+                       className="h-1 w-16"
+                       role="progressbar"
+                       aria-valuenow={skill.progress}
+                       aria-valuemin={0}
+                       aria-valuemax={100}
+                       aria-label={`${skill.name} progress: ${skill.progress}%`}
+                     />
+                   </div>
                 </div>
               ))}
             </div>

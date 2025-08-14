@@ -89,7 +89,7 @@ describe('Cross-Hub Intelligence Flows', () => {
       const courseId = 'react-basics-course';
       
       // Mock response for duplicate check
-      cy.intercept('POST', '**/plan-items**', {
+      cy.intercept('POST', '**/rest/v1/saved_plan_items*', {
         statusCode: 409,
         body: { error: 'Item already exists in plan' }
       }).as('duplicateSave');
@@ -242,7 +242,7 @@ describe('Cross-Hub Intelligence Flows', () => {
 
     it('should hide CRI chips when boost is 0 or negative', () => {
       // Mock recommendations with no CRI boost
-      cy.intercept('GET', '**/unified-recommendations**', {
+      cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
         body: {
           recommendations: [{
             id: 'no-boost-item',
@@ -300,7 +300,7 @@ describe('Cross-Hub Intelligence Flows', () => {
   describe('Error Handling and Edge Cases', () => {
     it('should handle API failures gracefully', () => {
       // Mock API failure
-      cy.intercept('POST', '**/plan-items**', {
+      cy.intercept('POST', '**/rest/v1/saved_plan_items*', {
         statusCode: 500,
         body: { error: 'Internal server error' }
       }).as('saveFailure');
@@ -319,8 +319,8 @@ describe('Cross-Hub Intelligence Flows', () => {
 
     it('should handle missing user data', () => {
       // Mock empty user data
-      cy.intercept('GET', '**/skill-gaps**', { body: { gaps: [] } }).as('getEmptyGaps');
-      cy.intercept('GET', '**/unified-recommendations**', { body: { recommendations: [] } }).as('getEmptyRecommendations');
+      cy.intercept('GET', '**/rest/v1/skill_gaps*', { body: { gaps: [] } }).as('getEmptyGaps');
+      cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', { body: { recommendations: [] } }).as('getEmptyRecommendations');
       
       cy.visit('/plan');
       cy.wait('@getEmptyGaps');
@@ -351,7 +351,7 @@ describe('Cross-Hub Intelligence Flows', () => {
 
 // Helper functions for test data setup
 function setupUserWithSkillGaps() {
-  cy.intercept('GET', '**/skill-gaps**', {
+  cy.intercept('GET', '**/rest/v1/skill_gaps*', {
     body: {
       gaps: [
         {
@@ -372,7 +372,7 @@ function setupUserWithSkillGaps() {
 }
 
 function setupCompleteCareerPath() {
-  cy.intercept('GET', '**/career-goals**', {
+  cy.intercept('GET', '**/rest/v1/career_goals*', {
     body: {
       goals: [
         {

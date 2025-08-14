@@ -235,7 +235,7 @@ describe('Plan Today Dashboard', () => {
 
     it('should show unstick nudge for inactive users', () => {
       // Mock inactive user state
-      cy.intercept('GET', '**/learning-streaks**', {
+      cy.intercept('GET', '**/rest/v1/learning_streaks*', {
         body: {
           currentStreak: 0,
           level: 'Getting Started',
@@ -259,7 +259,7 @@ describe('Plan Today Dashboard', () => {
 
     it('should handle unstick action', () => {
       // Set up inactive user scenario
-      cy.intercept('GET', '**/learning-streaks**', {
+      cy.intercept('GET', '**/rest/v1/learning_streaks*', {
         body: {
           currentStreak: 0,
           daysInactive: 3,
