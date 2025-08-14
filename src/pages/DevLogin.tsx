@@ -45,8 +45,10 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // SECURITY: Block dev login in production completely
-  if (isProduction()) {
+  // SECURITY: Block dev login only in true production (not preview builds)
+  const isTrueProduction = isProduction();
+  
+  if (isTrueProduction) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -62,6 +64,9 @@ export default function DevLogin() {
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
               This endpoint is only available in development environments.
+            </p>
+            <p className="text-xs text-muted-foreground border rounded p-2 bg-muted">
+              <strong>Environment:</strong> {import.meta.env.MODE} | <strong>Host:</strong> {window.location.hostname}
             </p>
             <p className="text-xs text-muted-foreground border rounded p-2 bg-muted">
               <strong>For administrators:</strong> Use the standard authentication flow and admin panel.

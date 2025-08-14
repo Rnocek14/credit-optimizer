@@ -132,11 +132,23 @@ export const isDevSessionExpired = (): boolean => {
 
 // Environment check
 export const isProduction = (): boolean => {
-  return import.meta.env.PROD;
+  // Allow dev mode override in development environments
+  const hasDevOverride = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname.includes('.lovableproject.com') ||
+                         window.location.port !== '';
+  
+  return import.meta.env.PROD && !hasDevOverride;
 };
 
 export const isDevelopment = (): boolean => {
-  return import.meta.env.DEV;
+  // Consider development if DEV flag is true OR if we're on a development domain
+  const hasDevOverride = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname.includes('.lovableproject.com') ||
+                         window.location.port !== '';
+  
+  return import.meta.env.DEV || hasDevOverride;
 };
 
 // Enhanced input validation
