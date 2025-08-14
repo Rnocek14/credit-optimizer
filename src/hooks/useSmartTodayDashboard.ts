@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCrossHubIntegration } from './useCrossHubIntegration';
 import { useGamification } from './useGamification';
 import { UnifiedRecommendation } from '@/types/recommendations';
 import { SaveToPlanItem } from '@/types/plan';
 import { parseTimeEstimateToMinutes } from '@/utils/time';
+import { telemetry } from '@/lib/telemetry';
 
 export interface QuickWin {
   id: string;
@@ -139,10 +140,13 @@ export function useSmartTodayDashboard(userId?: string) {
   const currentStreak = getCurrentStreak ? getCurrentStreak() : 0;
 
   // Handle actions with cross-hub sync
-  const handleNextStepAction = async (action: SmartNextStep['actions'][0]) => {
-    if (!nextStep) return;
+  const handleNextStepAction = useCallback(async (action: SmartNextStep['actions'][0]) => {
+    if (!nextStep || !userId) return;
     
     try {
+      // Track CTA click
+      telemetry.feedCtaClick(userId, nextStep.id, 'today', nextStep.type);
+      
       if (action.on === 'plan') {
         const payload: SaveToPlanItem = {
           type: 'quick_win',
@@ -155,6 +159,10 @@ export function useSmartTodayDashboard(userId?: string) {
             recommendation_id: nextStep.id 
           }
         };
+        
+        // Track save to plan with CRI boost if available
+        telemetry.saveToPlan(userId, 'quick_win', 'today_dashboard', nextStep.criBoost);
+        
         await saveToPlan(payload);
       }
       
@@ -165,10 +173,15 @@ export function useSmartTodayDashboard(userId?: string) {
     } catch (error) {
       console.error('Error handling next step action:', error);
     }
-  };
+  }, [nextStep, userId, saveToPlan]);
 
-  const handleQuickWinAction = async (quickWin: QuickWin, action: QuickWin['actions'][0]) => {
+  const handleQuickWinAction = useCallback(async (quickWin: QuickWin, action: QuickWin['actions'][0]) => {
+    if (!userId) return;
+    
     try {
+      // Track quick win start
+      telemetry.quickWinStart(userId, quickWin.id);
+      
       if (action.on === 'plan') {
         const payload: SaveToPlanItem = {
           type: 'quick_win',
@@ -181,6 +194,10 @@ export function useSmartTodayDashboard(userId?: string) {
             priority: quickWin.priority
           }
         };
+        
+        // Track save to plan with CRI boost if available
+        telemetry.saveToPlan(userId, 'quick_win', 'today_dashboard_quick_win', quickWin.criBoost);
+        
         await saveToPlan(payload);
       }
       
@@ -190,12 +207,15 @@ export function useSmartTodayDashboard(userId?: string) {
     } catch (error) {
       console.error('Error handling quick win action:', error);
     }
-  };
+  }, [userId, saveToPlan]);
 
-  const handleUnstickAction = async () => {
-    if (!unstickData) return;
+  const handleUnstickAction = useCallback(async () => {
+    if (!unstickData || !userId) return;
     
     try {
+      // Track unstick creation
+      telemetry.unstickCreated(userId, unstickData.daysSinceActivity);
+      
       const payload: SaveToPlanItem = {
         type: 'micro_task',
         id: `unstick-${Date.now()}`,
@@ -207,13 +227,17 @@ export function useSmartTodayDashboard(userId?: string) {
           days_inactive: unstickData.daysSinceActivity
         }
       };
+      
+      // Track save to plan
+      telemetry.saveToPlan(userId, 'micro_task', 'unstick_suggestion');
+      
       await saveToPlan(payload);
     } catch (error) {
       console.error('Error handling unstick action:', error);
     }
-  };
+  }, [unstickData, userId, saveToPlan]);
 
-  // Check for user activity data
+  // Check for user activity data and emit telemetry for next step
   useEffect(() => {
     // TODO: Replace with actual last activity check from user data
     // For now, simulate based on current streak
@@ -223,6 +247,13 @@ export function useSmartTodayDashboard(userId?: string) {
       setLastActivityDate(new Date()); // Active
     }
   }, [currentStreak]);
+
+  // Track next step rendering
+  useEffect(() => {
+    if (nextStep && userId) {
+      telemetry.nextStepRendered(userId, nextStep.id, nextStep.type);
+    }
+  }, [nextStep, userId]);
 
   return {
     nextStep,

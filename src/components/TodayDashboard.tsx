@@ -8,12 +8,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
 import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
+import { useFeatureFlags } from '@/lib/featureFlags';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
 }
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
+  const { unifiedTodayDashboard } = useFeatureFlags();
   const { data: user } = useQuery({
     queryKey: ['user'],
     queryFn: async () => (await supabase.auth.getUser()).data.user
@@ -26,6 +28,25 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     isLoading,
     actions
   } = useSmartTodayDashboard(user?.id);
+
+  // Feature flag fallback
+  if (!unifiedTodayDashboard) {
+    return (
+      <Card className="border-primary">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            Today's Focus
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Today Dashboard is currently being updated. Check back soon for personalized recommendations!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const handleNextStepClick = (actionIndex = 0) => {
     if (!nextStep || !nextStep.actions[actionIndex]) return;
@@ -168,7 +189,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         </Card>
 
         {/* Smart Quick Wins Card */}
-        <Card>
+        <Card data-testid="quick-wins-section">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-500" />
@@ -215,7 +236,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         </Card>
 
         {/* Smart Progress & Streak Card */}
-        <Card>
+        <Card data-testid="progress-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5 text-purple-500" />

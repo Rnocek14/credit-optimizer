@@ -32,7 +32,6 @@ export interface TelemetryPayload {
   id?: string;
   type?: string;
   rank?: number;
-  origin?: 'discover' | 'plan' | 'today';
   
   // Save events
   item_type?: string;
@@ -119,8 +118,8 @@ export const telemetry = {
   feedCardView: (userId: string, id: string, type: string, rank: number) =>
     track('feed_card_view', { userId, id, type, rank }),
     
-  feedCtaClick: (userId: string, id: string, origin: 'discover' | 'plan' | 'today', type: string) =>
-    track('feed_primary_cta_click', { userId, id, origin, type }),
+  feedCtaClick: (userId: string, id: string, source: 'discover' | 'plan' | 'today', type: string) =>
+    track('feed_primary_cta_click', { userId, id, source, type }),
     
   saveToPlan: (userId: string, itemType: string, source: string, criBoost?: number) =>
     track('save_to_plan', { userId, item_type: itemType, source, criBoost }),

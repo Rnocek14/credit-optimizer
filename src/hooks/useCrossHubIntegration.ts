@@ -12,18 +12,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
-
-export interface SaveToPlanItem {
-  type: 'course' | 'career_path' | 'mentor' | 'skill' | 'project' | 'quick_win' | 'micro_task';
-  id: string;
-  title: string;
-  description?: string;
-  metadata?: any;
-  priority?: 'high' | 'medium' | 'low';
-  estimatedTimeToComplete?: string;
-  timeEstimate?: string;
-  skillTags?: string[];
-}
+import { SaveToPlanItem } from '@/types/plan';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 export interface SkillGap {
   skill: string;
@@ -43,7 +33,7 @@ export const useCrossHubIntegration = (userId?: string) => {
 
   // Detect skill gaps based on user's goals and current progress
   const detectSkillGapsQuery = useQuery({
-    queryKey: ['skill-gaps', userId, userGoals],
+    queryKey: QUERY_KEYS.SKILL_GAPS(userId),
     queryFn: async (): Promise<SkillGap[]> => {
       if (!userId || !userGoals?.length) return [];
 
@@ -107,7 +97,7 @@ export const useCrossHubIntegration = (userId?: string) => {
 
   // Unified recommendations query
   const unifiedRecommendationsQuery = useQuery({
-    queryKey: ['unified-recommendations', userId, detectSkillGapsQuery.data],
+    queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId),
     queryFn: async (): Promise<UnifiedRecommendation[]> => {
       if (!userId) return [];
 
@@ -274,7 +264,7 @@ export const useCrossHubIntegration = (userId?: string) => {
           description: item.description,
           metadata: item.metadata || {},
           priority: item.priority || 'medium',
-          estimated_time_to_complete: item.estimatedTimeToComplete,
+          estimated_time_to_complete: item.timeEstimate,
           skill_tags: item.skillTags || [],
           added_from_hub: 'discover',
           status: 'pending',
@@ -295,9 +285,9 @@ export const useCrossHubIntegration = (userId?: string) => {
       return { ...data, criBoost, criExplanation };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['plan-items', userId] });
-      queryClient.invalidateQueries({ queryKey: ['micro-goals', userId] });
-      queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
       
       let successMessage = `${data.title} saved to your Plan!`;
       if (data.criBoost && data.criBoost > 0) {
@@ -356,6 +346,19 @@ export const useCrossHubIntegration = (userId?: string) => {
     }
   }, [userId, getPersonalizedRecommendations, detectSkillGapsQuery.data]);
 
+  // Centralized query invalidation for cross-hub triggers
+  const refreshCrossHubData = useCallback(() => {
+    if (!userId) return;
+    
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SMART_DASHBOARD(userId) });
+  }, [userId, queryClient]);
+
   // Enhanced milestone completion with cross-hub triggers
   const onMilestoneCompleted = useCallback(async (milestoneData: any) => {
     if (!userId) return;
@@ -406,10 +409,10 @@ export const useCrossHubIntegration = (userId?: string) => {
       }
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['skill-gaps', userId] });
-      queryClient.invalidateQueries({ queryKey: ['recommendations', userId] });
-      queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
-      queryClient.invalidateQueries({ queryKey: ['celebration-moments', userId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId) });
       
     } catch (error) {
       console.error('Error handling milestone completion:', error);
@@ -527,13 +530,6 @@ export const useCrossHubIntegration = (userId?: string) => {
     calculateCRIBoost,
     
     // Data refresh
-    refreshCrossHubData: () => {
-      queryClient.invalidateQueries({ queryKey: ['skill-gaps', userId] });
-      queryClient.invalidateQueries({ queryKey: ['plan-items', userId] });
-      queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
-      queryClient.invalidateQueries({ queryKey: ['micro-goals', userId] });
-      queryClient.invalidateQueries({ queryKey: ['completion-triggers', userId] });
-      actions.refreshAllData();
-    }
+    refreshCrossHubData
   };
 };
