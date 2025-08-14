@@ -1,0 +1,44 @@
+{
+  "gaps": [
+    {
+      "skill": "React",
+      "priority": "high",
+      "estimatedTimeToClose": "4 weeks",
+      "criImpact": 15.0,
+      "currentLevel": 2,
+      "targetLevel": 4,
+      "reasoning": "Essential for Senior Frontend Developer role",
+      "recommendedActions": [
+        "Complete Advanced React Patterns course",
+        "Build a complex React application",
+        "Learn React testing best practices"
+      ]
+    },
+    {
+      "skill": "TypeScript",
+      "priority": "medium",
+      "estimatedTimeToClose": "2 weeks",
+      "criImpact": 8.5,
+      "currentLevel": 1,
+      "targetLevel": 3,
+      "reasoning": "Improves code quality and team collaboration",
+      "recommendedActions": [
+        "TypeScript fundamentals course",
+        "Convert existing JS project to TS"
+      ]
+    },
+    {
+      "skill": "Testing",
+      "priority": "medium",
+      "estimatedTimeToClose": "3 weeks",
+      "criImpact": 12.0,
+      "currentLevel": 1,
+      "targetLevel": 3,
+      "reasoning": "Critical for senior-level development practices",
+      "recommendedActions": [
+        "Learn Jest and React Testing Library",
+        "Write comprehensive test suite for existing project"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "recommendations": [
+    {
+      "id": "next-step-rec",
+      "title": "Advanced React Hooks",
+      "type": "course",
+      "timeEstimate": "2 hours",
+      "description": "Master advanced React patterns with hooks including useReducer, useContext, and custom hooks",
+      "criBoost": 12.5,
+      "criExplanation": "Addresses React skill gap for Senior Frontend Developer role",
+      "skillTags": ["React", "JavaScript"],
+      "priority": "high",
+      "actionUrl": "/course/advanced-react-hooks",
+      "progress": 0.3,
+      "source": "skill_gap_analysis",
+      "metadata": {
+        "difficulty": "intermediate",
+        "provider": "TechEd Pro",
+        "rating": 4.8
+      }
+    },
+    {
+      "id": "quick-win-1",
+      "title": "CSS Grid Layout",
+      "type": "skill",
+      "timeEstimate": "45 minutes",
+      "description": "Quick CSS Grid tutorial covering container and item properties",
+      "criBoost": 5.2,
+      "criExplanation": "Improves frontend design skills for better UI development",
+      "skillTags": ["CSS", "Frontend"],
+      "priority": "medium",
+      "actionUrl": "/skill/css-grid",
+      "source": "maya_recommendation",
+      "metadata": {
+        "interactive": true,
+        "hasQuiz": true
+      }
+    },
+    {
+      "id": "quick-win-2",
+      "title": "Git Workflow Best Practices",
+      "type": "project",
+      "timeEstimate": "30 minutes",
+      "description": "Learn proper Git branching strategies and collaboration workflows",
+      "criBoost": 0,
+      "skillTags": ["Git", "DevOps"],
+      "priority": "low",
+      "actionUrl": "/project/git-workflows",
+      "source": "general_recommendation",
+      "metadata": {
+        "hasHands0n": true,
+        "difficulty": "beginner"
+      }
+    },
+    {
+      "id": "quick-win-3",
+      "title": "API Testing with Postman",
+      "type": "skill",
+      "timeEstimate": "1 hour",
+      "description": "Learn API testing fundamentals using Postman for better backend integration",
+      "criBoost": 8.1,
+      "criExplanation": "Essential for full-stack development and backend integration",
+      "skillTags": ["API", "Testing", "Backend"],
+      "priority": "medium",
+      "actionUrl": "/skill/api-testing",
+      "source": "proof_project",
+      "metadata": {
+        "tools": ["Postman"],
+        "includesTemplates": true
+      }
+    },
+    {
+      "id": "too-long",
+      "title": "Full Stack Bootcamp",
+      "type": "course",
+      "timeEstimate": "12 weeks",
+      "description": "Comprehensive full stack development course covering frontend, backend, and deployment",
+      "criBoost": 25.0,
+      "criExplanation": "Major career advancement opportunity for full-stack mastery",
+      "skillTags": ["React", "Node.js", "Database", "DevOps"],
+      "priority": "high",
+      "actionUrl": "/course/fullstack-bootcamp",
+      "source": "career_path_analysis",
+      "metadata": {
+        "commitment": "high",
+        "certification": true,
+        "jobPlacementAssistance": true
+      }
+    },
+    {
+      "id": "market-alert-1",
+      "title": "React Developer Demand Surge",
+      "type": "market_alert",
+      "timeEstimate": "5 minutes",
+      "description": "React developer roles increased 35% in your area this month",
+      "criBoost": 0,
+      "skillTags": ["React", "Career"],
+      "priority": "info",
+      "actionUrl": "/market/react-demand",
+      "source": "market_analysis",
+      "metadata": {
+        "location": "San Francisco Bay Area",
+        "trendDirection": "up",
+        "percentageChange": 35
+      }
+    }
+  ]
+}

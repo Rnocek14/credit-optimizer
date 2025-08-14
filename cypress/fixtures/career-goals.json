@@ -1,0 +1,36 @@
+{
+  "goals": [
+    {
+      "id": "frontend-developer-path",
+      "title": "Frontend Developer Path",
+      "description": "Become a proficient frontend developer",
+      "targetRole": "Senior Frontend Developer",
+      "currentProgress": 65,
+      "estimatedTimelineWeeks": 12,
+      "priorityScore": 85,
+      "microGoal": false,
+      "active": true,
+      "skillGaps": ["React", "TypeScript", "Testing"],
+      "targetDate": "2024-06-15",
+      "createdAt": "2024-01-15T00:00:00Z",
+      "updatedAt": "2024-02-01T00:00:00Z"
+    },
+    {
+      "id": "react-micro-goal",
+      "title": "Complete Advanced React Patterns",
+      "description": "Master React hooks and advanced patterns",
+      "currentProgress": 30,
+      "estimatedTimelineWeeks": 2,
+      "priorityScore": 75,
+      "microGoal": true,
+      "active": true,
+      "autoCreated": true,
+      "sourceHub": "discover",
+      "sourceItemId": "react-advanced-course",
+      "suggestedDueDate": "2024-02-15",
+      "skillGaps": ["React"],
+      "createdAt": "2024-02-01T00:00:00Z",
+      "updatedAt": "2024-02-01T00:00:00Z"
+    }
+  ]
+}
