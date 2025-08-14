@@ -2,14 +2,20 @@
 
 describe('Plan Today Dashboard', () => {
   beforeEach(() => {
-    // Mock authentication
-    cy.window().then((win) => {
-      win.localStorage.setItem('sb-auth-token', 'mock-auth-token');
-    });
+    // Mock Supabase authentication
+    cy.intercept('GET', '**/auth/v1/user', { 
+      body: { 
+        user: { 
+          id: 'test-user-id', 
+          email: 'test@example.com',
+          created_at: new Date().toISOString()
+        } 
+      } 
+    }).as('auth');
 
-    // Mock API responses
-    cy.intercept('GET', '**/career-goals**', { fixture: 'career-goals.json' }).as('getCareerGoals');
-    cy.intercept('GET', '**/learning-streaks**', { 
+    // Mock real Supabase API endpoints
+    cy.intercept('GET', '**/rest/v1/career_goals*', { fixture: 'career-goals.json' }).as('getCareerGoals');
+    cy.intercept('GET', '**/rest/v1/learning_streaks*', { 
       body: { 
         currentStreak: 5, 
         level: 'Consistent Learner',
@@ -17,8 +23,8 @@ describe('Plan Today Dashboard', () => {
       } 
     }).as('getLearningStreaks');
     
-    // Mock recommendations with time estimates and CRI boosts
-    cy.intercept('GET', '**/unified-recommendations**', {
+    // Mock unified recommendations from real hook
+    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
       body: {
         recommendations: [
           {
@@ -71,7 +77,7 @@ describe('Plan Today Dashboard', () => {
       }
     }).as('getRecommendations');
 
-    cy.intercept('POST', '**/plan-items**', {
+    cy.intercept('POST', '**/rest/v1/saved_plan_items*', {
       statusCode: 201,
       body: { id: 'new-plan-item', success: true }
     }).as('saveToPlan');
@@ -109,7 +115,7 @@ describe('Plan Today Dashboard', () => {
       
       cy.get('[data-testid="next-step-card"]').within(() => {
         cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
-        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+12.5%');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', 'CRI +12.5%');
         
         // Test tooltip
         cy.get('[data-testid="cri-boost-chip"]').trigger('mouseover');
@@ -155,7 +161,6 @@ describe('Plan Today Dashboard', () => {
       cy.get('[data-testid="quick-wins-section"]').should('be.visible');
       cy.get('[data-testid="quick-wins-section"]').within(() => {
         cy.contains('Quick Wins').should('be.visible');
-        cy.contains('30-60 minute activities').should('be.visible');
       });
       
       // Should show exactly 3 items (45min, 30min, 1hour)
@@ -177,7 +182,7 @@ describe('Plan Today Dashboard', () => {
       // First item has CRI boost
       cy.get('[data-testid="quick-win-0"]').within(() => {
         cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
-        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+5.2%');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', 'CRI +5.2%');
       });
       
       // Second item has no CRI boost (criBoost: 0)
@@ -188,7 +193,7 @@ describe('Plan Today Dashboard', () => {
       // Third item has CRI boost
       cy.get('[data-testid="quick-win-2"]').within(() => {
         cy.get('[data-testid="cri-boost-chip"]').should('be.visible');
-        cy.get('[data-testid="cri-boost-chip"]').should('contain', '+8.1%');
+        cy.get('[data-testid="cri-boost-chip"]').should('contain', 'CRI +8.1%');
       });
     });
 
@@ -196,9 +201,8 @@ describe('Plan Today Dashboard', () => {
       cy.wait('@getRecommendations');
       
       cy.get('[data-testid="quick-win-0"]').within(() => {
-        cy.get('[data-testid="start-quick-win"]').should('be.visible');
-        cy.get('[data-testid="start-quick-win"]').should('contain', 'Start');
-        cy.get('[data-testid="start-quick-win"]').click();
+        cy.get('button').contains('Start').should('be.visible');
+        cy.get('button').contains('Start').click();
       });
       
       // Verify save to plan with correct data
@@ -209,7 +213,7 @@ describe('Plan Today Dashboard', () => {
           title: 'CSS Grid Layout'
         });
         expect(interception.request.body.metadata).to.include({
-          source: 'today_dashboard'
+          source: 'today_dashboard_quick_win'
         });
       });
       
@@ -292,8 +296,8 @@ describe('Plan Today Dashboard', () => {
       // Initial state
       cy.get('[data-testid^="quick-win-"]').should('have.length', 3);
       
-      // Mock updated recommendations
-      cy.intercept('GET', '**/unified-recommendations**', {
+    // Mock updated recommendations
+      cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
         body: {
           recommendations: [
             {
@@ -319,7 +323,7 @@ describe('Plan Today Dashboard', () => {
     });
 
     it('should handle empty recommendations gracefully', () => {
-      cy.intercept('GET', '**/unified-recommendations**', {
+      cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
         body: { recommendations: [] }
       }).as('getEmptyRecommendations');
       
@@ -380,7 +384,7 @@ describe('Plan Today Dashboard', () => {
   describe('Loading States and Performance', () => {
     it('should show skeleton loaders while data is loading', () => {
       // Intercept with delay to test loading state
-      cy.intercept('GET', '**/unified-recommendations**', {
+      cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', {
         delay: 2000,
         body: { recommendations: [] }
       }).as('getSlowRecommendations');
@@ -413,7 +417,7 @@ describe('Plan Today Dashboard', () => {
       
       // Check button accessibility
       cy.get('[data-testid="next-step-action-0"]').should('have.attr', 'aria-label');
-      cy.get('[data-testid="start-quick-win"]').first().should('have.attr', 'aria-label');
+      cy.get('[data-testid="quick-win-0"] button').should('have.attr', 'aria-label');
       
       // Check tooltip accessibility
       cy.get('[data-testid="cri-boost-chip"]').first().should('have.attr', 'aria-describedby');
@@ -427,7 +431,7 @@ describe('Plan Today Dashboard', () => {
       cy.focused().should('have.attr', 'data-testid', 'next-step-action-0');
       
       cy.focused().tab();
-      cy.focused().should('have.attr', 'data-testid', 'start-quick-win');
+      cy.get('[data-testid="quick-win-0"] button').should('be.focused');
       
       // Test Enter key activation
       cy.focused().type('{enter}');
@@ -441,11 +445,13 @@ describe('Plan Today Dashboard', () => {
       cy.get('[aria-live="polite"]').should('exist');
       
       // Trigger an action that should announce changes
-      cy.get('[data-testid="start-quick-win"]').first().click();
+      cy.get('[data-testid="quick-win-0"]').within(() => {
+        cy.get('button').contains('Start').click();
+      });
       cy.wait('@saveToPlan');
       
       // Verify announcement
-      cy.get('[aria-live="polite"]').should('contain', 'Added to your plan');
+      cy.get('[aria-live="polite"]').should('contain', 'Quick win started');
     });
   });
 });

@@ -2,24 +2,29 @@
 
 describe('Cross-Hub Intelligence Flows', () => {
   beforeEach(() => {
-    // Set up user authentication and mocks
-    cy.window().then((win) => {
-      win.localStorage.setItem('sb-auth-token', 'mock-auth-token');
-    });
+    // Set up Supabase authentication
+    cy.intercept('GET', '**/auth/v1/user', { 
+      body: { 
+        user: { 
+          id: 'test-user-id', 
+          email: 'test@example.com' 
+        } 
+      } 
+    }).as('auth');
 
-    // Mock API responses for cross-hub integration
-    cy.intercept('GET', '**/career-goals**', { fixture: 'career-goals.json' }).as('getCareerGoals');
-    cy.intercept('GET', '**/skill-gaps**', { fixture: 'skill-gaps.json' }).as('getSkillGaps');
-    cy.intercept('GET', '**/unified-recommendations**', { fixture: 'unified-recommendations.json' }).as('getRecommendations');
-    cy.intercept('POST', '**/plan-items**', { 
+    // Mock real Supabase API responses for cross-hub integration
+    cy.intercept('GET', '**/rest/v1/career_goals*', { fixture: 'career-goals.json' }).as('getCareerGoals');
+    cy.intercept('GET', '**/rest/v1/skill_gaps*', { fixture: 'skill-gaps.json' }).as('getSkillGaps');
+    cy.intercept('GET', '**/rest/v1/rpc/get_unified_recommendations*', { fixture: 'unified-recommendations.json' }).as('getRecommendations');
+    cy.intercept('POST', '**/rest/v1/saved_plan_items*', { 
       statusCode: 201, 
       body: { id: 'new-plan-item-id', success: true }
     }).as('saveToPlan');
-    cy.intercept('POST', '**/completion-triggers**', { 
+    cy.intercept('POST', '**/rest/v1/completion_triggers*', { 
       statusCode: 201, 
       body: { id: 'completion-trigger-id', success: true }
     }).as('createCompletionTrigger');
-    cy.intercept('POST', '**/celebration-moments**', { 
+    cy.intercept('POST', '**/rest/v1/celebration_moments*', { 
       statusCode: 201, 
       body: { id: 'celebration-id', success: true }
     }).as('createCelebration');

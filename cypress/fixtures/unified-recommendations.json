@@ -3,15 +3,18 @@
     {
       "id": "next-step-rec",
       "title": "Advanced React Hooks",
-      "type": "course",
+      "type": "skill_gap",
       "timeEstimate": "2 hours",
       "description": "Master advanced React patterns with hooks including useReducer, useContext, and custom hooks",
       "criBoost": 12.5,
       "criExplanation": "Addresses React skill gap for Senior Frontend Developer role",
       "skillTags": ["React", "JavaScript"],
       "priority": "high",
-      "actionUrl": "/course/advanced-react-hooks",
-      "progress": 0.3,
+      "actions": [
+        { "label": "Start Learning", "on": "plan", "href": "/course/advanced-react-hooks" },
+        { "label": "Save to Plan", "on": "plan" }
+      ],
+      "progress": 30,
       "source": "skill_gap_analysis",
       "metadata": {
         "difficulty": "intermediate",
@@ -22,14 +25,16 @@
     {
       "id": "quick-win-1",
       "title": "CSS Grid Layout",
-      "type": "skill",
+      "type": "maya_action",
       "timeEstimate": "45 minutes",
       "description": "Quick CSS Grid tutorial covering container and item properties",
       "criBoost": 5.2,
       "criExplanation": "Improves frontend design skills for better UI development",
       "skillTags": ["CSS", "Frontend"],
       "priority": "medium",
-      "actionUrl": "/skill/css-grid",
+      "actions": [
+        { "label": "Start", "on": "plan", "href": "/skill/css-grid" }
+      ],
       "source": "maya_recommendation",
       "metadata": {
         "interactive": true,
@@ -39,13 +44,15 @@
     {
       "id": "quick-win-2",
       "title": "Git Workflow Best Practices",
-      "type": "project",
+      "type": "proof_project",
       "timeEstimate": "30 minutes",
       "description": "Learn proper Git branching strategies and collaboration workflows",
       "criBoost": 0,
       "skillTags": ["Git", "DevOps"],
       "priority": "low",
-      "actionUrl": "/project/git-workflows",
+      "actions": [
+        { "label": "Start", "on": "plan", "href": "/project/git-workflows" }
+      ],
       "source": "general_recommendation",
       "metadata": {
         "hasHands0n": true,
@@ -55,14 +62,16 @@
     {
       "id": "quick-win-3",
       "title": "API Testing with Postman",
-      "type": "skill",
+      "type": "skill_gap",
       "timeEstimate": "1 hour",
       "description": "Learn API testing fundamentals using Postman for better backend integration",
       "criBoost": 8.1,
       "criExplanation": "Essential for full-stack development and backend integration",
       "skillTags": ["API", "Testing", "Backend"],
       "priority": "medium",
-      "actionUrl": "/skill/api-testing",
+      "actions": [
+        { "label": "Start", "on": "plan", "href": "/skill/api-testing" }
+      ],
       "source": "proof_project",
       "metadata": {
         "tools": ["Postman"],
@@ -72,14 +81,17 @@
     {
       "id": "too-long",
       "title": "Full Stack Bootcamp",
-      "type": "course",
+      "type": "skill_gap",
       "timeEstimate": "12 weeks",
       "description": "Comprehensive full stack development course covering frontend, backend, and deployment",
       "criBoost": 25.0,
       "criExplanation": "Major career advancement opportunity for full-stack mastery",
       "skillTags": ["React", "Node.js", "Database", "DevOps"],
       "priority": "high",
-      "actionUrl": "/course/fullstack-bootcamp",
+      "actions": [
+        { "label": "Learn More", "on": "discover", "href": "/course/fullstack-bootcamp" },
+        { "label": "Add to Plan", "on": "plan" }
+      ],
       "source": "career_path_analysis",
       "metadata": {
         "commitment": "high",

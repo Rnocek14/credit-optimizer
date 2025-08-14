@@ -32,7 +32,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   // Feature flag fallback
   if (!unifiedTodayDashboard) {
     return (
-      <Card className="border-primary">
+      <Card className="border-primary" data-testid="today-dashboard-fallback">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
@@ -41,7 +41,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Today Dashboard is currently being updated. Check back soon for personalized recommendations!
+            Today's recommendations are being prepared. Check back soon for personalized suggestions!
           </p>
         </CardContent>
       </Card>
@@ -68,19 +68,28 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-6 bg-muted rounded w-3/4"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="h-4 bg-muted rounded w-full"></div>
-                <div className="h-4 bg-muted rounded w-2/3"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="next-step-skeleton">
+          <CardHeader>
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="h-4 bg-muted rounded w-full"></div>
+              <div className="h-4 bg-muted rounded w-2/3"></div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="animate-pulse" data-testid="quick-wins-skeleton">
+          <CardHeader>
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="h-4 bg-muted rounded w-full"></div>
+              <div className="h-4 bg-muted rounded w-2/3"></div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -128,37 +137,46 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                   </Badge>
                 </div>
 
-                {nextStep.progress && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span>{nextStep.progress}%</span>
-                    </div>
-                    <Progress value={nextStep.progress} className="h-2" />
-                  </div>
-                )}
+                 {nextStep.progress && (
+                   <div className="space-y-2">
+                     <div className="flex justify-between text-sm">
+                       <span>Progress</span>
+                       <span>{nextStep.progress}%</span>
+                     </div>
+                     <Progress 
+                       value={nextStep.progress} 
+                       className="h-2"
+                       role="progressbar"
+                       aria-valuenow={nextStep.progress}
+                       aria-valuemin={0}
+                       aria-valuemax={100}
+                       aria-label={`${nextStep.title} progress: ${nextStep.progress}%`}
+                     />
+                   </div>
+                 )}
 
                 <div className="flex gap-2">
                   {nextStep.actions.slice(0, 2).map((action, index) => (
-                    <Button 
-                      key={index}
-                      onClick={() => handleNextStepClick(index)}
-                      variant={index === 0 ? 'default' : 'outline'}
-                      className="flex-1"
-                      data-testid={`next-step-action-${index}`}
-                    >
-                      {action.label}
-                    </Button>
+                     <Button 
+                       key={index}
+                       onClick={() => handleNextStepClick(index)}
+                       variant={index === 0 ? 'default' : 'outline'}
+                       className="flex-1"
+                       data-testid={`next-step-action-${index}`}
+                       aria-label={`${action.label} for ${nextStep.title}`}
+                     >
+                       {action.label}
+                     </Button>
                   ))}
                 </div>
               </>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No recommendations available</p>
-                <p className="text-sm">Check back later for personalized suggestions</p>
-              </div>
-            )}
+             ) : (
+               <div className="text-center py-8 text-muted-foreground" data-testid="empty-recommendations">
+                 <Target className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                 <p>No recommendations available</p>
+                 <p className="text-sm">Check back later for personalized suggestions</p>
+               </div>
+             )}
           </CardContent>
         </Card>
 
@@ -215,14 +233,15 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                       <p className="text-xs text-muted-foreground line-clamp-1">{win.description}</p>
                       <p className="text-xs text-muted-foreground">{win.timeEstimate}</p>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => actions.handleQuickWinAction(win, win.actions[0])}
-                      data-testid={`quick-win-${index}`}
-                    >
-                      Start
-                    </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost"
+                       onClick={() => actions.handleQuickWinAction(win, win.actions[0])}
+                       data-testid={`quick-win-${index}`}
+                       aria-label={`Start ${win.title} (${win.timeEstimate})`}
+                     >
+                       Start
+                     </Button>
                   </div>
                 ))
               ) : (
@@ -235,23 +254,23 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Smart Progress & Streak Card */}
-        <Card data-testid="progress-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5 text-purple-500" />
-              Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Flame className="h-5 w-5 text-orange-500" />
-                </div>
-                <p className="text-2xl font-bold">{currentStreak}</p>
-                <p className="text-xs text-muted-foreground">Day Streak</p>
-              </div>
+         {/* Smart Progress & Streak Card */}
+         <Card data-testid="learning-streak">
+           <CardHeader>
+             <CardTitle className="flex items-center gap-2">
+               <Award className="h-5 w-5 text-purple-500" />
+               Progress
+             </CardTitle>
+           </CardHeader>
+           <CardContent className="space-y-4">
+             <div className="grid grid-cols-2 gap-4">
+               <div className="text-center">
+                 <div className="flex items-center justify-center mb-2">
+                   <Flame className="h-5 w-5 text-orange-500" data-testid="streak-icon" />
+                 </div>
+                 <p className="text-2xl font-bold">{currentStreak} day streak</p>
+                 <p className="text-xs text-muted-foreground">Consistent Learner</p>
+               </div>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
                   <TrendingUp className="h-5 w-5 text-green-500" />
@@ -261,26 +280,26 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
               </div>
             </div>
             
-            {unstickData && (
-              <div className="p-3 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-4 w-4 text-orange-600" />
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                    {unstickData.daysSinceActivity} days since last activity
-                  </p>
-                </div>
-                 <Button 
-                   size="sm" 
-                   variant="outline" 
-                   className="w-full"
-                   onClick={actions.handleUnstickAction}
-                   data-testid="unstick-button"
-                   aria-label="Unstick me"
-                 >
-                   Unstick me • {unstickData.timeEstimate}
-                 </Button>
-              </div>
-            )}
+             {unstickData && (
+               <div className="p-3 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30" data-testid="unstick-prompt">
+                 <div className="flex items-center gap-2 mb-2">
+                   <AlertCircle className="h-4 w-4 text-orange-600" />
+                   <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                     Been away for a while? {unstickData.daysSinceActivity} days since your last activity
+                   </p>
+                 </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={actions.handleUnstickAction}
+                    data-testid="unstick-button"
+                    aria-label="Get me unstuck"
+                  >
+                    Get me unstuck
+                  </Button>
+               </div>
+             )}
             
             <div className="space-y-2">
               <div className="flex justify-between text-sm">

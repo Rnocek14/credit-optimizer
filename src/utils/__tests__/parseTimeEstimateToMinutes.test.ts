@@ -36,6 +36,12 @@ describe('parseTimeEstimateToMinutes', () => {
     expect(parseTimeEstimateToMinutes('2 hours and 45 mins')).toBe(165);
   });
 
+  it('should handle "and" in hour-minute formats', () => {
+    expect(parseTimeEstimateToMinutes('1 hour and 15 minutes')).toBe(75);
+    expect(parseTimeEstimateToMinutes('2 hours and 30 minutes')).toBe(150);
+    expect(parseTimeEstimateToMinutes('3 hr and 45 min')).toBe(225);
+  });
+
   it('should handle range formats (lower bound)', () => {
     expect(parseTimeEstimateToMinutes('30–45min')).toBe(30);
     expect(parseTimeEstimateToMinutes('30-45min')).toBe(30);

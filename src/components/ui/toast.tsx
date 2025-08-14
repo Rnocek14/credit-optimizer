@@ -46,7 +46,8 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(toastVariants({ variant }), "toast", className)}
+      data-testid="toast"
       {...props}
     />
   )
@@ -105,6 +106,7 @@ const ToastDescription = React.forwardRef<
   <ToastPrimitives.Description
     ref={ref}
     className={cn("text-sm opacity-90", className)}
+    aria-live="polite"
     {...props}
   />
 ))
