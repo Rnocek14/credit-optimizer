@@ -1,10 +1,10 @@
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import { MarketIntelligenceDashboard } from "@/components/MarketIntelligenceDashboardMigrated";
 
 export default function MarketIntelligence() {
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <MarketIntelligenceDashboard />
     </>
   );

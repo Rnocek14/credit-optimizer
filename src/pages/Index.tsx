@@ -13,7 +13,7 @@ import { RoadmapTester } from "@/components/RoadmapTester";
 import { getCurrentUser } from "@/lib/authHelper";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
 import { useEffect } from "react";
 import { checkRateLimit, generateRateLimitKey } from "@/lib/security";
@@ -61,26 +61,9 @@ export default function Index() {
     );
   }
 
-  // Authenticated users with completed onboarding get the adaptive dashboard
+  // Authenticated users with completed onboarding get redirected to plan
   if (journeyState.preferences.onboardingComplete) {
-    return (
-      <>
-        <Navigation />
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto px-4 py-6">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">
-                Welcome back{journeyState.user?.email ? `, ${journeyState.user.email.split('@')[0]}` : ''}! 👋
-              </h1>
-              <p className="text-muted-foreground">
-                Ready to continue your career journey?
-              </p>
-            </div>
-            <AdaptiveDashboard />
-          </div>
-        </div>
-      </>
-    );
+    return <Navigate to="/plan" replace />;
   }
 
   // Fallback to original landing page

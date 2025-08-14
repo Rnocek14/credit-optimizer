@@ -20,7 +20,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 
 interface AnalyticsData {
   views: { date: string; count: number; source: string; }[];
@@ -398,7 +398,7 @@ export default function Analytics() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
+        <HubNavigation />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading analytics...</div>
         </div>
@@ -409,7 +409,7 @@ export default function Analytics() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
+        <HubNavigation />
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardContent className="text-center py-8">
@@ -429,7 +429,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">

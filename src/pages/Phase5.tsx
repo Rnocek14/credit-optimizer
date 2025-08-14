@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { Phase5Dashboard } from '@/components/Phase5Dashboard';
 import { LoadingState } from '@/components/LoadingState';
 
@@ -17,7 +17,7 @@ export default function Phase5() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       <div className="container mx-auto px-4 py-6">
         <Phase5Dashboard userId={user.id} />
       </div>

@@ -127,14 +127,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
           <Route 
             path="/phase4" 
             element={
@@ -178,6 +171,10 @@ const App = () => (
           <Route path="/plan-hub" element={<Navigate to="/plan" replace />} />
           <Route path="/history-hub" element={<Navigate to="/progress" replace />} />
           <Route path="/history" element={<Navigate to="/progress" replace />} />
+          <Route path="/market-intelligence" element={<Navigate to="/discover" replace />} />
+          <Route path="/salary-insights" element={<Navigate to="/discover" replace />} />
+          <Route path="/goals" element={<Navigate to="/plan" replace />} />
+          <Route path="/workflows" element={<Navigate to="/plan" replace />} />
           
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />

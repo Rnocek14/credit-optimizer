@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Target, BookOpen, Clock, TrendingUp, CheckCircle, Brain, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import ProgressBar from "@/components/ProgressBar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { WorkflowTestPanel } from "@/components/WorkflowTestPanel";
@@ -158,7 +158,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <>
-        <Navigation />
+        <HubNavigation />
         <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-6 md:py-8">
             <div className="mb-6 md:mb-8">
@@ -178,7 +178,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="mb-6 md:mb-8">
