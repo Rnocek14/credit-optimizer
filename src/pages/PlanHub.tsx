@@ -108,7 +108,6 @@ export default function PlanHub() {
                 {/* Today Dashboard */}
                 <TodayDashboard 
                   onNextStepClick={handleNextStepClick} 
-                  nextStepData={recommendations[0]}
                 />
                 
                 {/* Unified Recommendation Feed */}
