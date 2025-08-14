@@ -14,15 +14,10 @@ import { toast } from 'sonner';
 import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
 import { SaveToPlanItem } from '@/types/plan';
 import { QUERY_KEYS } from '@/lib/queryKeys';
+import { useSkillGaps } from '@/hooks/useSkillGaps';
 
-export interface SkillGap {
-  skill: string;
-  currentLevel: number;
-  targetLevel: number;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  suggestedActions: string[];
-  estimatedTimeToClose: string;
-}
+// Re-export SkillGap type from the dedicated module
+export type { SkillGap } from '@/types/skill';
 
 export const useCrossHubIntegration = (userId?: string) => {
   const { state, actions } = useUnifiedData();
@@ -31,115 +26,8 @@ export const useCrossHubIntegration = (userId?: string) => {
   const { generateCRIGuidance } = useMayaCRIIntegration(userId);
   const queryClient = useQueryClient();
 
-  // Detect skill gaps based on user's goals and current progress
-  const detectSkillGapsQuery = useQuery({
-    queryKey: QUERY_KEYS.SKILL_GAPS(userId),
-    queryFn: async (): Promise<SkillGap[]> => {
-      if (!userId || !userGoals?.length) return [];
-
-      // Get user's current skills from profile and completed courses
-      const [profileResponse, coursesResponse] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('name, role')
-          .eq('user_id', userId)
-          .single(),
-        supabase
-          .from('course_progress')
-          .select('course_id')
-          .eq('user_id', userId)
-          .eq('status', 'completed')
-      ]);
-
-      // Get user's current skills from profile and completed courses
-      const currentSkills = new Set([
-        // Add skills from profile and completed courses
-        'JavaScript', 'React', 'Node.js'
-      ]);
-
-      // Add skills from completed courses
-      if (coursesResponse.data) {
-        // For now, we'll add some skills based on common course completions
-        currentSkills.add('HTML');
-        currentSkills.add('CSS');
-      }
-
-      console.log('Current user skills:', Array.from(currentSkills));
-      console.log('User goals for skill gap analysis:', userGoals?.length || 0);
-
-      // Analyze gaps for each goal
-      const gaps: SkillGap[] = [];
-      
-      if (userGoals && userGoals.length > 0) {
-        for (const goal of userGoals) {
-          if (goal.target_role) {
-            console.log('Analyzing skill gaps for target role:', goal.target_role);
-            
-            // Get required skills for target role
-            const { data: roleSkills } = await supabase
-              .from('career_paths')
-              .select('key_skills')
-              .eq('title', goal.target_role)
-              .single();
-
-            console.log('Role skills data:', roleSkills);
-
-            if (roleSkills?.key_skills) {
-              for (const skill of roleSkills.key_skills) {
-                if (!currentSkills.has(skill)) {
-                  gaps.push({
-                    skill,
-                    currentLevel: 0,
-                    targetLevel: 3, // Intermediate level
-                    priority: 'high',
-                    suggestedActions: [
-                      `Find courses for ${skill}`,
-                      `Practice ${skill} through projects`,
-                      `Connect with mentors in ${skill}`
-                    ],
-                    estimatedTimeToClose: '2-3 months'
-                  });
-                }
-              }
-            }
-          }
-        }
-      } else {
-        // Generate sample skill gaps when no goals exist
-        console.log('No user goals found, generating sample skill gaps');
-        
-        const sampleSkills = [
-          { skill: 'Python', priority: 'high' as const },
-          { skill: 'Machine Learning', priority: 'medium' as const },
-          { skill: 'Data Analysis', priority: 'high' as const },
-          { skill: 'SQL', priority: 'critical' as const },
-          { skill: 'Docker', priority: 'medium' as const }
-        ];
-
-        sampleSkills.forEach(({ skill, priority }) => {
-          if (!currentSkills.has(skill)) {
-            gaps.push({
-              skill,
-              currentLevel: 0,
-              targetLevel: 3,
-              priority,
-              suggestedActions: [
-                `Find courses for ${skill}`,
-                `Practice ${skill} through projects`,
-                `Connect with mentors in ${skill}`
-              ],
-              estimatedTimeToClose: priority === 'critical' ? '1-2 months' : '2-3 months'
-            });
-          }
-        });
-      }
-
-      console.log('Final skill gaps generated:', gaps.length, gaps);
-      return gaps;
-    },
-    enabled: !!userId, // Always enabled when userId exists
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
+  // Use the dedicated skill gaps hook for production-ready detection
+  const skillGapsQuery = useSkillGaps(userId);
 
   // Unified recommendations query
   const unifiedRecommendationsQuery = useQuery({
@@ -151,7 +39,7 @@ export const useCrossHubIntegration = (userId?: string) => {
         const recommendations: UnifiedRecommendation[] = [];
 
         // Get skill gaps and apply CRI boosting
-        const skillGaps = detectSkillGapsQuery.data || [];
+        const skillGaps = skillGapsQuery.data || [];
         console.log('Skill gaps detected:', skillGaps.length, skillGaps);
         
         skillGaps.forEach((gap, index) => {
@@ -381,7 +269,7 @@ export const useCrossHubIntegration = (userId?: string) => {
 
     try {
       const recommendations = await getPersonalizedRecommendations();
-      const skillGaps = detectSkillGapsQuery.data || [];
+      const skillGaps = skillGapsQuery.data || [];
       
       // Combine Maya recommendations with skill gap analysis
       const contextualRecs = [
@@ -555,7 +443,7 @@ export const useCrossHubIntegration = (userId?: string) => {
     // Save to Plan
     saveToPlan: (item: SaveToPlanItem) => {
       // Calculate CRI boost before saving
-      const skillGaps = detectSkillGapsQuery.data || [];
+      const skillGaps = skillGapsQuery.data || [];
       const { boost, explanation } = calculateCRIBoost(item, skillGaps);
       
       saveToplanMutation.mutate({
@@ -567,8 +455,8 @@ export const useCrossHubIntegration = (userId?: string) => {
     isSavingToPlan: saveToplanMutation.isPending,
     
     // Skill Gap Detection
-    skillGaps: detectSkillGapsQuery.data || [],
-    isAnalyzingSkillGaps: detectSkillGapsQuery.isLoading,
+    skillGaps: skillGapsQuery.data || [],
+    isAnalyzingSkillGaps: skillGapsQuery.isLoading,
     
     // Unified Recommendations with CRI boosting
     recommendations: unifiedRecommendationsQuery.data || [],

@@ -10,4 +10,5 @@ export interface SaveToPlanItem {
   skillTags?: string[];
   priority?: 'high' | 'medium' | 'low';
   metadata?: Record<string, any>;
+  source?: string; // Track which hub/feature generated this item
 }
