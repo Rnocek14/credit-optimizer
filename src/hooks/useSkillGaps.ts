@@ -27,11 +27,11 @@ export function useSkillGaps(userId?: string) {
       try {
         debug('Fetching skill gaps for user:', userId);
 
-        // Fetch user goals, skills, and career paths in parallel
+        // Fetch user goals and skills in parallel
         const [goalsResult, userSkillsResult] = await Promise.all([
           supabase
             .from('career_goals')
-            .select('id, target_role, career_path_id')
+            .select('id, target_role')
             .eq('user_id', userId)
             .eq('active', true),
           supabase
@@ -66,24 +66,20 @@ export function useSkillGaps(userId?: string) {
 
         let requiredSkills: string[] = [];
 
-        // Fetch required skills from career paths
+        // Fetch required skills from career paths using target_role
         for (const goal of goals) {
-          if (!goal) continue;
+          if (!goal || !goal.target_role) continue;
 
           try {
-            // Prefer career_path_id lookup, fallback to target_role title
-            const pathQuery = goal.career_path_id
-              ? supabase.from('career_paths').select('key_skills').eq('id', goal.career_path_id).single()
-              : goal.target_role
-              ? supabase.from('career_paths').select('key_skills').eq('title', goal.target_role).single()
-              : null;
+            const { data: pathData } = await supabase
+              .from('career_paths')
+              .select('key_skills')
+              .eq('title', goal.target_role)
+              .maybeSingle();
 
-            if (pathQuery) {
-              const { data: pathData } = await pathQuery;
-              if (Array.isArray(pathData?.key_skills)) {
-                requiredSkills.push(...pathData.key_skills.map((skill: string) => String(skill)));
-                debug('Added skills from path:', pathData.key_skills);
-              }
+            if (Array.isArray(pathData?.key_skills)) {
+              requiredSkills.push(...pathData.key_skills.map((skill: string) => String(skill)));
+              debug('Added skills from path:', pathData.key_skills);
             }
           } catch (error) {
             debug('Error fetching career path for goal:', goal, error);

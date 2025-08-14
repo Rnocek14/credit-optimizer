@@ -15,9 +15,10 @@ import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
 import { SaveToPlanItem } from '@/types/plan';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useSkillGaps } from '@/hooks/useSkillGaps';
+import type { SkillGap } from '@/types/skill';
 
-// Re-export SkillGap type from the dedicated module
-export type { SkillGap } from '@/types/skill';
+// Re-export SkillGap type for components
+export type { SkillGap };
 
 export const useCrossHubIntegration = (userId?: string) => {
   const { state, actions } = useUnifiedData();
@@ -290,7 +291,7 @@ export const useCrossHubIntegration = (userId?: string) => {
       console.error('Error getting contextual recommendations:', error);
       return [];
     }
-  }, [userId, getPersonalizedRecommendations, detectSkillGapsQuery.data]);
+  }, [userId, getPersonalizedRecommendations, skillGapsQuery.data]);
 
   // Centralized query invalidation for cross-hub triggers
   const refreshCrossHubData = useCallback(() => {
