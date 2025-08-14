@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { QUERY_KEYS } from '@/lib/queryKeys'
 import { useSkillGaps } from '@/hooks/useSkillGaps'
 import type { SkillGap, UnifiedRecommendation } from '@/types'
@@ -9,7 +9,12 @@ const debug = (...a: any[]) =>
 
 function dedupeByKey<T>(arr: T[], key: (x: T) => string) {
   const seen = new Set<string>()
-  return arr.filter(x => (seen.has(key(x)) ? false : (seen.add(key(x)), true)))
+  return arr.filter(x => {
+    const k = key(x)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 }
 
 export function buildFromSkillGaps(skillGaps: SkillGap[], now?: Date): UnifiedRecommendation[] {
@@ -64,7 +69,7 @@ export function useUnifiedRecommendations(userId?: string) {
   return useQuery({
     queryKey: ['unified-recommendations', userId, skillGapsKey],
     enabled: !!userId && (!gapsLoading || gapsError),
-    placeholderData: [] as UnifiedRecommendation[],
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<UnifiedRecommendation[]> => {
       // Pure build — no reaching into other query objects here
