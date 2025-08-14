@@ -113,12 +113,17 @@ export const useCrossHubIntegration = (userId?: string) => {
       try {
         const recommendations: UnifiedRecommendation[] = [];
 
-        // Get skill gaps
+        // Get skill gaps and apply CRI boosting
         const skillGaps = detectSkillGapsQuery.data || [];
         skillGaps.forEach((gap, index) => {
           const priorityScore = gap.priority === 'critical' ? 4 : 
                                gap.priority === 'high' ? 3 :
                                gap.priority === 'medium' ? 2 : 1;
+          
+          // Calculate CRI boost for skill gap recommendations
+          let criBoost = priorityScore * 5; // Base boost of 5% per priority level
+          if (gap.priority === 'critical') criBoost += 15; // Extra boost for critical gaps
+          if (gap.priority === 'high') criBoost += 10; // Extra boost for high priority gaps
           
           recommendations.push({
             id: `skill-gap-${index}`,
@@ -126,7 +131,7 @@ export const useCrossHubIntegration = (userId?: string) => {
             title: `Close ${gap.skill} gap`,
             description: `You need ${gap.skill} for your career goals`,
             priority: gap.priority,
-            reason: `Required for your target role`,
+            reason: `Required for your target role - CRI boosted +${criBoost}%`,
             timeEstimate: gap.estimatedTimeToClose,
             skills: [gap.skill],
             actions: [
@@ -145,7 +150,9 @@ export const useCrossHubIntegration = (userId?: string) => {
               }
             ],
             createdAt: new Date().toISOString(),
-            score: priorityScore * 1.2 // Boost skill gaps
+            score: (priorityScore * 1.2) + (criBoost / 10), // Boost score based on CRI
+            criBoost,
+            criExplanation: `Addresses critical skill gap in ${gap.skill} required for your career goals`
           });
         });
 
@@ -247,10 +254,14 @@ export const useCrossHubIntegration = (userId?: string) => {
     staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
-  // Save items from Discover to Plan
+// Enhanced save to Plan with micro-goal creation and CRI boosting
   const saveToplanMutation = useMutation({
-    mutationFn: async (item: SaveToPlanItem) => {
+    mutationFn: async (item: SaveToPlanItem & { criBoost?: number; criExplanation?: string }) => {
       if (!userId) throw new Error('User ID required');
+
+      // Check for CRI influence on this item
+      const criBoost = item.criBoost || 0;
+      const criExplanation = item.criExplanation || '';
 
       const { data, error } = await supabase
         .from('saved_plan_items')
@@ -265,27 +276,43 @@ export const useCrossHubIntegration = (userId?: string) => {
           estimated_time_to_complete: item.estimatedTimeToComplete,
           skill_tags: item.skillTags || [],
           added_from_hub: 'discover',
-          status: 'pending'
+          status: 'pending',
+          cri_boost_score: criBoost,
+          cri_explanation: criExplanation
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Trigger Maya analysis for recommendations
+      // The micro-goal creation is now handled by the database trigger
+      // But we still need to trigger Maya analysis for recommendations
       if (item.skillTags && item.skillTags.length > 0) {
         await analyzeSkillGaps(item.title, item.skillTags);
       }
 
-      return data;
+      return { ...data, criBoost, criExplanation };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['plan-items', userId] });
-      toast.success(`${data.title} saved to your Plan!`);
+      queryClient.invalidateQueries({ queryKey: ['micro-goals', userId] });
+      queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
+      
+      let successMessage = `${data.title} saved to your Plan!`;
+      if (data.criBoost && data.criBoost > 0) {
+        successMessage += ` (CRI boosted +${Math.round(data.criBoost)}%)`;
+      }
+      
+      toast.success(successMessage);
+      
+      // Show micro-goal creation notification
+      setTimeout(() => {
+        toast.info('Micro-goal created automatically! Check your Plan for next steps.');
+      }, 1000);
       
       // Auto-navigate to Plan hub with specific tab
       if (data.item_type === 'course') {
-        window.location.href = '/plan?tab=learning&highlight=' + data.id;
+        window.location.href = '/plan?tab=overview&highlight=' + data.id;
       } else if (data.item_type === 'career_path') {
         window.location.href = '/plan?tab=roadmap&highlight=' + data.id;
       } else {
@@ -328,7 +355,7 @@ export const useCrossHubIntegration = (userId?: string) => {
     }
   }, [userId, getPersonalizedRecommendations, detectSkillGapsQuery.data]);
 
-  // Progress milestone completion triggers
+  // Enhanced milestone completion with cross-hub triggers
   const onMilestoneCompleted = useCallback(async (milestoneData: any) => {
     if (!userId) return;
 
@@ -342,16 +369,46 @@ export const useCrossHubIntegration = (userId?: string) => {
         created_at: new Date().toISOString()
       });
 
+      // Create celebration moment
+      await supabase.from('celebration_moments').insert({
+        user_id: userId,
+        celebration_type: 'milestone_completed',
+        trigger_data: {
+          milestone_id: milestoneData.id,
+          milestone_title: milestoneData.title,
+          xp_awarded: 50
+        },
+        celebration_data: {
+          type: 'confetti',
+          duration: 3000,
+          message: `Milestone completed: ${milestoneData.title}!`
+        }
+      });
+
+      // Create completion trigger for next step recommendations
+      await supabase.from('completion_triggers').insert({
+        user_id: userId,
+        trigger_type: 'milestone_completed',
+        source_data: {
+          milestone_id: milestoneData.id,
+          milestone_title: milestoneData.title,
+          skills_unlocked: milestoneData.skills || []
+        },
+        target_action: 'create_recommendation'
+      });
+
       // Check if this unlocks new Discover content
       const newRecommendations = await getContextualRecommendations();
       
       if (newRecommendations.length > 0) {
-        toast.success('Milestone completed! New recommendations available in Discover.');
+        toast.success('Milestone completed! New recommendations available.');
       }
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['skill-gaps', userId] });
       queryClient.invalidateQueries({ queryKey: ['recommendations', userId] });
+      queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
+      queryClient.invalidateQueries({ queryKey: ['celebration-moments', userId] });
       
     } catch (error) {
       console.error('Error handling milestone completion:', error);
@@ -408,16 +465,50 @@ export const useCrossHubIntegration = (userId?: string) => {
     }
   }, [userId, createGoal, actions]);
 
+  // Enhanced CRI boost calculation for items
+  const calculateCRIBoost = useCallback((item: SaveToPlanItem, userSkillGaps: SkillGap[]) => {
+    if (!item.skillTags || !userSkillGaps.length) return { boost: 0, explanation: '' };
+    
+    const relevantGaps = userSkillGaps.filter(gap => 
+      item.skillTags?.includes(gap.skill)
+    );
+    
+    if (relevantGaps.length === 0) return { boost: 0, explanation: '' };
+    
+    const highPriorityGaps = relevantGaps.filter(gap => 
+      gap.priority === 'critical' || gap.priority === 'high'
+    );
+    
+    let boost = relevantGaps.length * 5; // 5% per relevant skill gap
+    if (highPriorityGaps.length > 0) {
+      boost += highPriorityGaps.length * 10; // Extra 10% for high-priority gaps
+    }
+    
+    const explanation = `Addresses ${relevantGaps.length} skill gap${relevantGaps.length > 1 ? 's' : ''}: ${relevantGaps.map(g => g.skill).join(', ')}`;
+    
+    return { boost: Math.min(boost, 50), explanation }; // Cap at 50%
+  }, []);
+
   return {
     // Save to Plan
-    saveToPlan: saveToplanMutation.mutate,
+    saveToPlan: (item: SaveToPlanItem) => {
+      // Calculate CRI boost before saving
+      const skillGaps = detectSkillGapsQuery.data || [];
+      const { boost, explanation } = calculateCRIBoost(item, skillGaps);
+      
+      saveToplanMutation.mutate({
+        ...item,
+        criBoost: boost,
+        criExplanation: explanation
+      });
+    },
     isSavingToPlan: saveToplanMutation.isPending,
     
     // Skill Gap Detection
     skillGaps: detectSkillGapsQuery.data || [],
     isAnalyzingSkillGaps: detectSkillGapsQuery.isLoading,
     
-    // Unified Recommendations
+    // Unified Recommendations with CRI boosting
     recommendations: unifiedRecommendationsQuery.data || [],
     isLoading: unifiedRecommendationsQuery.isLoading,
     
@@ -431,11 +522,16 @@ export const useCrossHubIntegration = (userId?: string) => {
     // Unified Goals
     createUnifiedGoal,
     
+    // CRI boost calculation
+    calculateCRIBoost,
+    
     // Data refresh
     refreshCrossHubData: () => {
       queryClient.invalidateQueries({ queryKey: ['skill-gaps', userId] });
       queryClient.invalidateQueries({ queryKey: ['plan-items', userId] });
       queryClient.invalidateQueries({ queryKey: ['unified-recommendations', userId] });
+      queryClient.invalidateQueries({ queryKey: ['micro-goals', userId] });
+      queryClient.invalidateQueries({ queryKey: ['completion-triggers', userId] });
       actions.refreshAllData();
     }
   };

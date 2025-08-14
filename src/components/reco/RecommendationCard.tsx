@@ -4,18 +4,23 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Info, ExternalLink, MoreHorizontal } from 'lucide-react';
 import { UnifiedRecommendation, RecommendationDensity } from '@/types/recommendations';
+import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { cn } from '@/lib/utils';
 
 interface RecommendationCardProps {
   recommendation: UnifiedRecommendation;
   density: RecommendationDensity;
   isPrimary?: boolean;
+  criBoost?: number;
+  criExplanation?: string;
 }
 
 export function RecommendationCard({ 
   recommendation, 
   density, 
-  isPrimary = false 
+  isPrimary = false,
+  criBoost = 0,
+  criExplanation = ''
 }: RecommendationCardProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -97,6 +102,13 @@ export function RecommendationCard({
               <Badge variant="outline" className="text-xs">
                 {getTypeLabel(recommendation.type)}
               </Badge>
+              {criBoost > 0 && (
+                <CRIBoostChip 
+                  boostPercentage={criBoost} 
+                  explanation={criExplanation}
+                  size={density === 'compact' ? 'sm' : 'default'}
+                />
+              )}
             </div>
             <p className={cn(
               "text-muted-foreground",

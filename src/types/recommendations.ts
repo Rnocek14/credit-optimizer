@@ -27,6 +27,9 @@ export interface UnifiedRecommendation {
   updatedAt?: string;       // ISO
   // for sorting
   score: number;            // combined priority + market + maya
+  // CRI boost properties
+  criBoost?: number;        // percentage boost from CRI gaps
+  criExplanation?: string;  // explanation of why this is boosted
 }
 
 export interface RecommendationFilters {

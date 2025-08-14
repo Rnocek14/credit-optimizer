@@ -126,6 +126,8 @@ export function RecommendationFeed({ userId, className }: RecommendationFeedProp
                         recommendation={recommendation}
                         density={density}
                         isPrimary={index === 0}
+                        criBoost={recommendation.criBoost || 0}
+                        criExplanation={recommendation.criExplanation || ''}
                       />
                     ))}
                   </div>

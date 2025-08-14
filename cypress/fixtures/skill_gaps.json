@@ -1,0 +1,38 @@
+[
+  {
+    "skill": "Python",
+    "currentLevel": 1,
+    "targetLevel": 3,
+    "priority": "high",
+    "suggestedActions": [
+      "Find Python courses",
+      "Practice coding challenges",
+      "Build Python projects"
+    ],
+    "estimatedTimeToClose": "6-8 weeks"
+  },
+  {
+    "skill": "SQL",
+    "currentLevel": 0,
+    "targetLevel": 3,
+    "priority": "medium",
+    "suggestedActions": [
+      "Learn SQL basics",
+      "Practice database queries",
+      "Complete SQL certification"
+    ],
+    "estimatedTimeToClose": "4-6 weeks"
+  },
+  {
+    "skill": "Machine Learning",
+    "currentLevel": 2,
+    "targetLevel": 4,
+    "priority": "critical",
+    "suggestedActions": [
+      "Advanced ML courses",
+      "Implement ML algorithms",
+      "Complete ML projects"
+    ],
+    "estimatedTimeToClose": "8-12 weeks"
+  }
+]

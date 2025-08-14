@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CheckCircle, Clock, Target } from 'lucide-react';
 import { useCrossHubIntegration, type SaveToPlanItem } from '@/hooks/useCrossHubIntegration';
+import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -36,7 +37,10 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   showPrioritySelector = false
 }) => {
   const [selectedPriority, setSelectedPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const { saveToPlan, isSavingToPlan } = useCrossHubIntegration();
+  const { saveToPlan, isSavingToPlan, skillGaps, calculateCRIBoost } = useCrossHubIntegration();
+  
+  // Calculate CRI boost for this item
+  const { boost: criBoost, explanation: criExplanation } = calculateCRIBoost(item, skillGaps);
   
   // Check if already saved
   const { data: currentUser } = useQuery({
@@ -173,15 +177,25 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   }
 
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={() => handleSave()}
-      disabled={isSavingToPlan}
-      className="gap-2"
-    >
-      <Plus className="h-4 w-4" />
-      {!compact && (isSavingToPlan ? "Saving..." : "Save to Plan")}
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => handleSave()}
+        disabled={isSavingToPlan}
+        className="gap-2"
+        data-testid="save-to-plan-btn"
+      >
+        <Plus className="h-4 w-4" />
+        {!compact && (isSavingToPlan ? "Saving..." : "Save to Plan")}
+      </Button>
+      {criBoost > 0 && (
+        <CRIBoostChip 
+          boostPercentage={criBoost} 
+          explanation={criExplanation}
+          size={size === 'sm' ? 'sm' : 'default'}
+        />
+      )}
+    </div>
   );
 };
