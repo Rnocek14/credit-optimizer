@@ -92,13 +92,13 @@ export function HubNavigation() {
                   "gap-2 font-medium",
                   isActive(hub.href) && "bg-primary text-primary-foreground"
                 )}
-                data-testid={`hub-link-${hub.id}`}
-              >
-                <Link to={hub.href}>
-                  <Icon className="h-4 w-4" />
-                  {hub.label}
-                </Link>
-              </Button>
+              data-testid={`nav-${hub.id}`}
+            >
+              <Link to={hub.href}>
+                <Icon className="h-4 w-4" />
+                {hub.label}
+              </Link>
+            </Button>
             );
           })}
 
@@ -109,7 +109,7 @@ export function HubNavigation() {
                   variant={location.pathname.startsWith("/contribute") ? "default" : "ghost"}
                   size="sm"
                   className="gap-2 font-medium"
-                  data-testid="hub-link-contribute"
+                  data-testid="nav-contribute"
                 >
                   <Settings className="h-4 w-4" />
                   CONTRIBUTE
@@ -117,36 +117,36 @@ export function HubNavigation() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link to="/teach-hub" className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Teach
-                  </Link>
-                </DropdownMenuItem>
-                {hasPermission("user") && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/institution-hub" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Institution
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/employer-hub" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Employer
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                {hasPermission("admin") && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin" className="flex items-center gap-2">
+                    <Link to="/contribute?tab=teach" className="flex items-center gap-2">
                       <Settings className="h-4 w-4" />
-                      Admin
+                      Teach
                     </Link>
                   </DropdownMenuItem>
-                )}
+                  {hasPermission("user") && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/contribute?tab=institution" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Institution
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/contribute?tab=employer" className="flex items-center gap-2">
+                          <Settings className="h-4 w-4" />
+                          Employer
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {hasPermission("admin") && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/contribute?tab=admin" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -167,7 +167,7 @@ export function HubNavigation() {
                       ? "text-primary font-medium" 
                       : "text-muted-foreground"
                   )}
-                  data-testid={`hub-link-${hub.id}`}
+                  data-testid={`nav-${hub.id}`}
                 >
                   <Icon className="h-5 w-5" />
                   {hub.label}
@@ -184,7 +184,7 @@ export function HubNavigation() {
                     ? "text-primary font-medium"
                     : "text-muted-foreground"
                 )}
-                data-testid="hub-link-contribute"
+                data-testid="nav-contribute"
               >
                 <Settings className="h-5 w-5" />
                 MORE

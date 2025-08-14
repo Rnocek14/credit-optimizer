@@ -191,19 +191,19 @@ export default function ProgressHub() {
 
         <Tabs defaultValue="history" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="history" className="flex items-center gap-2">
+            <TabsTrigger value="history" data-testid="tab-history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
               History
             </TabsTrigger>
-            <TabsTrigger value="portfolio" className="flex items-center gap-2">
+            <TabsTrigger value="portfolio" data-testid="tab-portfolio" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Portfolio
             </TabsTrigger>
-            <TabsTrigger value="credentials" className="flex items-center gap-2">
+            <TabsTrigger value="credentials" data-testid="tab-credentials" className="flex items-center gap-2">
               <Award className="h-4 w-4" />
               Credentials
             </TabsTrigger>
-            <TabsTrigger value="resume" className="flex items-center gap-2">
+            <TabsTrigger value="resume" data-testid="tab-resume" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Resume
             </TabsTrigger>
@@ -288,7 +288,7 @@ export default function ProgressHub() {
                         ))}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button asChild variant="outline" size="sm">
+                        <Button asChild variant="outline" size="sm" data-testid="add-to-resume">
                           <Link to="/resume-builder">
                             <Share className="h-4 w-4 mr-2" />
                             Add to Resume
@@ -328,7 +328,7 @@ export default function ProgressHub() {
                       Your verified achievements and credentials
                     </CardDescription>
                   </div>
-                  <Button asChild>
+                  <Button asChild data-testid="manage-wallet">
                     <Link to="/wallet">
                       Manage Wallet
                     </Link>

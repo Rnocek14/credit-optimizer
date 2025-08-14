@@ -125,15 +125,15 @@ export default function DiscoverHub() {
 
         <Tabs defaultValue="careers" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="careers" className="flex items-center gap-2">
+            <TabsTrigger value="careers" data-testid="tab-careers" className="flex items-center gap-2">
               <Briefcase className="h-4 w-4" />
               Career Paths
             </TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center gap-2">
+            <TabsTrigger value="courses" data-testid="tab-courses" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Courses
             </TabsTrigger>
-            <TabsTrigger value="mentors" className="flex items-center gap-2">
+            <TabsTrigger value="mentors" data-testid="tab-mentors" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Mentors
             </TabsTrigger>
@@ -170,7 +170,7 @@ export default function DiscoverHub() {
                         <span className="text-muted-foreground">Time to Role:</span>
                         <span className="font-medium">{career.timeToRole}</span>
                       </div>
-                      <Button asChild className="w-full mt-4">
+                      <Button asChild className="w-full mt-4" data-testid="save-to-plan">
                         <Link to={career.href}>
                           <Plus className="h-4 w-4 mr-2" />
                           Save to Plan
@@ -210,7 +210,7 @@ export default function DiscoverHub() {
                         <span className="text-muted-foreground">Price:</span>
                         <span className="font-medium">{course.price}</span>
                       </div>
-                      <Button asChild className="w-full mt-4">
+                      <Button asChild className="w-full mt-4" data-testid="save-to-plan">
                         <Link to={course.href}>
                           <Plus className="h-4 w-4 mr-2" />
                           Save to Plan
@@ -253,7 +253,7 @@ export default function DiscoverHub() {
                           </Badge>
                         ))}
                       </div>
-                      <Button asChild className="w-full mt-4">
+                      <Button asChild className="w-full mt-4" data-testid="save-to-plan">
                         <Link to={mentor.href}>
                           <Plus className="h-4 w-4 mr-2" />
                           Save to Plan

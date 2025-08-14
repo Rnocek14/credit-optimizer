@@ -78,7 +78,7 @@ export default function Index() {
   }
 
   // Authenticated users with completed onboarding get redirected to plan
-  if (journeyState.preferences.onboardingComplete) {
+  if (preferences?.hasCompletedOnboarding) {
     return <Navigate to="/plan" replace />;
   }
 

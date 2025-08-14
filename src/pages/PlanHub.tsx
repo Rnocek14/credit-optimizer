@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
+import { TodayDashboard } from "@/components/TodayDashboard";
 import { useSearchParams } from "react-router-dom";
 
 const planFeatures = [
@@ -46,6 +47,11 @@ export default function PlanHub() {
     setSearchParams({ tab });
   };
 
+  const handleNextStepClick = () => {
+    setSearchParams({ tab: 'roadmap' });
+    // Focus on the in-progress step - would scroll to specific element in real app
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <HubNavigation />
@@ -63,6 +69,9 @@ export default function PlanHub() {
             {/* Track selector will be added later when the component exists */}
           </div>
         </div>
+
+        {/* Today Dashboard */}
+        <TodayDashboard onNextStepClick={handleNextStepClick} />
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content */}

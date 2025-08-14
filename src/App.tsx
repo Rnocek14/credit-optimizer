@@ -65,7 +65,7 @@ import PlanHub from "./pages/PlanHub";
 import HistoryHub from "./pages/HistoryHub";
 import DiscoverHub from "./pages/DiscoverHub";
 import ProgressHub from "./pages/ProgressHub";
-import ContributeHub from "./pages/ContributeHub";
+import ContributeTabbed from "./pages/ContributeTabbed";
 import TeachHub from "./pages/TeachHub";
 import InstitutionHub from "./pages/InstitutionHub";
 import EmployerHub from "./pages/EmployerHub";
@@ -159,7 +159,7 @@ const App = () => (
             path="/contribute" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <ContributeHub />
+                <ContributeTabbed />
               </ProtectedRoute>
             } 
           />
