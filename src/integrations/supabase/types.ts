@@ -813,14 +813,19 @@ export type Database = {
       career_goals: {
         Row: {
           active: boolean | null
+          auto_created: boolean | null
           created_at: string
           current_progress: number | null
           description: string | null
           estimated_timeline_weeks: number | null
           id: string
           market_demand_score: number | null
+          micro_goal: boolean | null
           priority_score: number | null
           skill_gaps: string[] | null
+          source_hub: string | null
+          source_item_id: string | null
+          suggested_due_date: string | null
           target_date: string | null
           target_role: string | null
           title: string
@@ -829,14 +834,19 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          auto_created?: boolean | null
           created_at?: string
           current_progress?: number | null
           description?: string | null
           estimated_timeline_weeks?: number | null
           id?: string
           market_demand_score?: number | null
+          micro_goal?: boolean | null
           priority_score?: number | null
           skill_gaps?: string[] | null
+          source_hub?: string | null
+          source_item_id?: string | null
+          suggested_due_date?: string | null
           target_date?: string | null
           target_role?: string | null
           title: string
@@ -845,14 +855,19 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          auto_created?: boolean | null
           created_at?: string
           current_progress?: number | null
           description?: string | null
           estimated_timeline_weeks?: number | null
           id?: string
           market_demand_score?: number | null
+          micro_goal?: boolean | null
           priority_score?: number | null
           skill_gaps?: string[] | null
+          source_hub?: string | null
+          source_item_id?: string | null
+          suggested_due_date?: string | null
           target_date?: string | null
           target_role?: string | null
           title?: string
@@ -1621,6 +1636,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      completion_triggers: {
+        Row: {
+          created_at: string | null
+          id: string
+          processed_at: string | null
+          source_data: Json
+          status: string | null
+          target_action: string
+          trigger_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          processed_at?: string | null
+          source_data: Json
+          status?: string | null
+          target_action: string
+          trigger_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          processed_at?: string | null
+          source_data?: Json
+          status?: string | null
+          target_action?: string
+          trigger_type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       continent_bounds: {
         Row: {
@@ -4325,6 +4373,60 @@ export type Database = {
         }
         Relationships: []
       }
+      micro_goals: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          estimated_duration: string | null
+          id: string
+          metadata: Json | null
+          priority: string | null
+          source_hub: string
+          source_item_id: string
+          source_item_type: string
+          status: string | null
+          suggested_due_date: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string | null
+          source_hub: string
+          source_item_id: string
+          source_item_type: string
+          status?: string | null
+          suggested_due_date?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          estimated_duration?: string | null
+          id?: string
+          metadata?: Json | null
+          priority?: string | null
+          source_hub?: string
+          source_item_id?: string
+          source_item_type?: string
+          status?: string | null
+          suggested_due_date?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       milestone_plans: {
         Row: {
           completed_at: string | null
@@ -5508,6 +5610,8 @@ export type Database = {
         Row: {
           added_from_hub: string
           created_at: string
+          cri_boost_score: number | null
+          cri_explanation: string | null
           description: string | null
           estimated_time_to_complete: string | null
           id: string
@@ -5524,6 +5628,8 @@ export type Database = {
         Insert: {
           added_from_hub?: string
           created_at?: string
+          cri_boost_score?: number | null
+          cri_explanation?: string | null
           description?: string | null
           estimated_time_to_complete?: string | null
           id?: string
@@ -5540,6 +5646,8 @@ export type Database = {
         Update: {
           added_from_hub?: string
           created_at?: string
+          cri_boost_score?: number | null
+          cri_explanation?: string | null
           description?: string | null
           estimated_time_to_complete?: string | null
           id?: string
