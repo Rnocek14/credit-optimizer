@@ -1,96 +1,311 @@
-import { Link } from "react-router-dom";
-import { Target, Map, Brain, Calculator, Lightbulb } from "lucide-react";
+import { HubNavigation } from "@/components/HubNavigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { HubNavigation } from "@/components/HubNavigation";
-import TrackSelector from "@/components/tracks/TrackSelector";
-import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
+import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
+import { useSearchParams } from "react-router-dom";
 
 const planFeatures = [
   {
     title: "AI Roadmap Generator",
     description: "Get personalized career roadmaps powered by AI",
-    href: "/planner",
+    tab: "roadmap",
     icon: Map,
     color: "bg-blue-500/10 text-blue-600"
   },
   {
-    title: "Goal Setting & Tracking",
+    title: "Goal Setting & Tracking", 
     description: "Set SMART goals and track your progress",
-    href: "/goals",
+    tab: "goals",
     icon: Target,
     color: "bg-green-500/10 text-green-600"
   },
   {
     title: "Maya Planning Assistant",
-    description: "AI-powered planning and recommendations",
-    href: "/maya-roadmap",
+    description: "AI-powered planning and recommendations", 
+    tab: "workflows",
     icon: Brain,
     color: "bg-purple-500/10 text-purple-600"
   },
   {
-    title: "Career ROI Calculator",
-    description: "Calculate return on investment for career moves",
-    href: "/salary-insights",
-    icon: Calculator,
+    title: "Project Planning",
+    description: "Plan and track your proof projects",
+    tab: "proof",
+    icon: CheckSquare,
     color: "bg-orange-500/10 text-orange-600"
   }
 ];
 
 export default function PlanHub() {
-  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'roadmap';
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <HubNavigation />
       
-      <div className="container mx-auto px-4 py-8 mb-20 md:mb-8">
-        <div className="flex justify-end mb-4">
-          <div className="flex items-center gap-2">
-            {activeTrackId && (
-              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
-                Track: {activeTrackId.slice(0,8)}
-              </span>
-            )}
-            <TrackSelector />
+      <div className="container mx-auto px-4 py-6">
+        {/* Header with Track Selector */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Plan Your Career Journey</h1>
+            <p className="text-muted-foreground">
+              Create strategic plans, set goals, and get AI-powered recommendations
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Track selector will be added later when the component exists */}
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
-              Plan Your Career Journey
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Create strategic plans, set goals, and get AI-powered recommendations for your career growth
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
+                <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
+                <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
+                <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="roadmap" className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {planFeatures.filter(f => f.tab === 'roadmap').map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${feature.color}`}>
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{feature.title}</CardTitle>
+                              <CardDescription>{feature.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" variant="default" data-testid="cta-next-step">
+                            Start Planning
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* Add example roadmap content */}
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Your AI-Generated Roadmap</CardTitle>
+                      <CardDescription>Based on your goal to become a Data Scientist</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <span className="text-sm">Learn Python fundamentals (Current)</span>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                          <span className="text-sm text-muted-foreground">Master statistics and probability</span>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                          <span className="text-sm text-muted-foreground">Learn machine learning basics</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="goals" className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {planFeatures.filter(f => f.tab === 'goals').map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${feature.color}`}>
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{feature.title}</CardTitle>
+                              <CardDescription>{feature.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" variant="default" data-testid="cta-next-step">
+                            Set Goals
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* Add example goals content */}
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Your Career Goals</CardTitle>
+                      <CardDescription>Track your progress towards your objectives</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-4 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-medium">Complete Python Course</h4>
+                            <Badge variant="secondary">75%</Badge>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
+                          </div>
+                        </div>
+                        <div className="p-4 border rounded-lg">
+                          <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-medium">Build Portfolio Project</h4>
+                            <Badge variant="outline">Not Started</Badge>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div className="bg-primary h-2 rounded-full" style={{ width: '0%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="workflows" className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {planFeatures.filter(f => f.tab === 'workflows').map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${feature.color}`}>
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{feature.title}</CardTitle>
+                              <CardDescription>{feature.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" variant="default" data-testid="cta-next-step">
+                            Open Maya
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* Add example workflows content */}
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Maya's Recommendations</CardTitle>
+                      <CardDescription>AI-powered suggestions for your next steps</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                          <Brain className="h-4 w-4 text-primary" />
+                          <span className="text-sm">Focus on pandas library for data manipulation</span>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                          <Brain className="h-4 w-4 text-primary" />
+                          <span className="text-sm">Practice with real datasets from Kaggle</span>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg">
+                          <Brain className="h-4 w-4 text-primary" />
+                          <span className="text-sm">Consider taking a statistics refresher course</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="proof" className="mt-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {planFeatures.filter(f => f.tab === 'proof').map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${feature.color}`}>
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{feature.title}</CardTitle>
+                              <CardDescription>{feature.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Button className="w-full" variant="default" data-testid="cta-next-step">
+                            Plan Project
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* Add example projects content */}
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Suggested Proof Projects</CardTitle>
+                      <CardDescription>Build projects that demonstrate your skills</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-2">Customer Churn Prediction</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Build a machine learning model to predict customer churn using historical data
+                          </p>
+                          <div className="flex gap-2">
+                            <Badge variant="secondary">Python</Badge>
+                            <Badge variant="secondary">Pandas</Badge>
+                            <Badge variant="secondary">Scikit-learn</Badge>
+                          </div>
+                        </div>
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-medium mb-2">Sales Dashboard</h4>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Create an interactive dashboard to visualize sales trends and KPIs
+                          </p>
+                          <div className="flex gap-2">
+                            <Badge variant="secondary">Python</Badge>
+                            <Badge variant="secondary">Plotly</Badge>
+                            <Badge variant="secondary">Streamlit</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {planFeatures.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <Card key={feature.href} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${feature.color}`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{feature.title}</CardTitle>
-                        <CardDescription>{feature.description}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Button asChild className="w-full">
-                      <Link to={feature.href}>
-                        Start Planning
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          {/* Maya Guidance Panel */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <MayaInlinePanel context="plan" />
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
 import { useUserJourney } from "@/contexts/UserJourneyContext";
+import { useJourneyStore } from "@/stores/journeyStore";
 import OnboardingWelcome from "@/components/OnboardingWelcome";
 import OnboardingConfirmation from "@/components/OnboardingConfirmation";
 import { MayaOnboarding } from "@/components/MayaOnboarding";
@@ -18,15 +19,31 @@ import { useEffect } from "react";
 import { checkRateLimit, generateRateLimitKey } from "@/lib/security";
 
 export default function Index() {
-  const { user, isLoading: authLoading } = useSecureAuth();
+  const { user, isLoading: authLoading, hasPermission } = useSecureAuth();
   const { 
     isNewUser, 
     isLoading: experienceLoading,
     completeOnboarding,
-    updateExperienceLevel 
+    updateExperienceLevel,
+    preferences 
   } = useUserExperienceLevel();
   
   const { state: journeyState } = useUserJourney();
+  const { initializeFromUser } = useJourneyStore();
+
+  // Initialize journey store when user data is available
+  useEffect(() => {
+    if (user && preferences) {
+      const userPermissions = {
+        admin: hasPermission("admin"),
+        institution: hasPermission("user"), // Using "user" as fallback for institution 
+        employer: hasPermission("user"), // Using "user" as fallback for employer
+        teach: hasPermission("user") // Using "user" as fallback for teach
+      };
+      
+      initializeFromUser(preferences.hasCompletedOnboarding, userPermissions);
+    }
+  }, [user, preferences, hasPermission, initializeFromUser]);
 
   if (authLoading || experienceLoading) {
     return (
