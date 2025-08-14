@@ -15,7 +15,7 @@ interface MarketTrend {
   raw_data: any;
   ai_insights: any;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 interface MarketAnalysis {

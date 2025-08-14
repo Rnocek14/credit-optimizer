@@ -4,41 +4,97 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, DollarSign, BookOpen, Users, Briefcase, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
-// Track selector component would be imported here
 import { MayaGuidancePanel } from "@/components/MayaGuidancePanel";
+import { MarketEnhancedCareerCard } from "@/components/discover/MarketEnhancedCareerCard";
+import { MarketEnhancedCourseCard } from "@/components/discover/MarketEnhancedCourseCard";
+import { SortingControls, type SortOption } from "@/components/discover/SortingControls";
+import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
+import { useRealCourseRecommendations } from "@/hooks/useRealCourseRecommendations";
+import { sortMarketTrends } from "@/lib/marketScoring";
+import { useState, useEffect } from "react";
 
 export default function DiscoverHub() {
   const { activeTrackId } = useActiveTrackStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentSort, setCurrentSort] = useState<SortOption>('opportunity');
+  
+  // Market intelligence
+  const { 
+    marketData, 
+    fetchMarketTrends, 
+    loading: marketLoading 
+  } = useMarketIntelligence();
+  
+  // Course recommendations
+  const { 
+    recommendations, 
+    trendingCourses, 
+    isLoadingRecommendations 
+  } = useRealCourseRecommendations();
+
+  // Fetch market data on mount
+  useEffect(() => {
+    fetchMarketTrends();
+  }, [fetchMarketTrends]);
+
+  // Handle sorting
+  const handleSortChange = (sort: SortOption) => {
+    setCurrentSort(sort);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('sort', sort);
+      return newParams;
+    });
+  };
+
+  // Sort market data
+  const sortedMarketData = sortMarketTrends(marketData, currentSort);
+
+  // Get market data for specific career paths
+  const getMarketDataForCareer = (careerTitle: string) => {
+    return sortedMarketData.find(trend => 
+      trend.career_path.toLowerCase().includes(careerTitle.toLowerCase()) ||
+      careerTitle.toLowerCase().includes(trend.career_path.toLowerCase())
+    );
+  };
 
   const careerPaths = [
     {
+      id: "data-scientist",
       title: "Data Scientist",
       description: "Analyze complex data to drive business decisions",
-      avgSalary: "$95,000",
-      growth: "+8.5%",
-      market: "High Demand",
       timeToRole: "6-12 months",
-      href: "/explore"
+      industry: "Technology"
     },
     {
-      title: "Software Engineer", 
-      description: "Build applications and systems that power the digital world",
-      avgSalary: "$88,000",
-      growth: "+13%",
-      market: "Very High Demand",
+      id: "software-engineer", 
+      title: "Software Engineer",
+      description: "Build applications and systems that power the digital world", 
       timeToRole: "4-8 months",
-      href: "/explore"
+      industry: "Technology"
     },
     {
+      id: "ux-designer",
       title: "UX Designer",
       description: "Create intuitive user experiences for digital products",
-      avgSalary: "$75,000",
-      growth: "+5%",
-      market: "Moderate Demand",
       timeToRole: "3-6 months",
-      href: "/explore"
+      industry: "Design"
+    },
+    {
+      id: "product-manager",
+      title: "Product Manager", 
+      description: "Drive product strategy and development from conception to launch",
+      timeToRole: "8-14 months",
+      industry: "Business"
+    },
+    {
+      id: "devops-engineer",
+      title: "DevOps Engineer",
+      description: "Automate and optimize software deployment and infrastructure",
+      timeToRole: "6-10 months", 
+      industry: "Technology"
     }
   ];
 
@@ -118,8 +174,16 @@ export default function DiscoverHub() {
 
         {/* Maya Guidance */}
         <MayaGuidancePanel 
-          title="Courses that unlock your next step..."
-          message="Based on your goal to become a Data Scientist, I recommend starting with Python fundamentals, then moving to statistics and machine learning."
+          title="Market-driven recommendations for your career growth..."
+          message="Based on current market trends, I recommend focusing on high-growth areas like DevOps Engineering (+18.9% growth) and Data Science. The job market shows strong demand with competitive salaries."
+          className="mb-6"
+        />
+
+        {/* Sorting Controls */}
+        <SortingControls 
+          currentSort={currentSort}
+          onSortChange={handleSortChange}
+          showTimeSort={true}
           className="mb-6"
         />
 
@@ -140,87 +204,88 @@ export default function DiscoverHub() {
           </TabsList>
 
           <TabsContent value="careers" className="mt-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {careerPaths.map((career, index) => (
-                <Card key={index} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{career.title}</CardTitle>
-                        <CardDescription className="mt-1">
-                          {career.description}
-                        </CardDescription>
+            {marketLoading ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                      <div className="h-3 bg-muted rounded w-full mt-2"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="h-2 bg-muted rounded"></div>
+                        <div className="h-8 bg-muted rounded"></div>
                       </div>
-                      <Badge variant={career.market === "Very High Demand" ? "default" : "secondary"}>
-                        {career.market}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Avg Salary:</span>
-                        <span className="font-medium">{career.avgSalary}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Growth:</span>
-                        <span className="font-medium text-green-600">{career.growth}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Time to Role:</span>
-                        <span className="font-medium">{career.timeToRole}</span>
-                      </div>
-                      <Button asChild className="w-full mt-4" data-testid="save-to-plan">
-                        <Link to={career.href}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Save to Plan
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {careerPaths.map((career) => (
+                  <MarketEnhancedCareerCard
+                    key={career.id}
+                    careerPath={career}
+                    marketData={getMarketDataForCareer(career.title) ? {
+                      ...getMarketDataForCareer(career.title)!,
+                      updated_at: new Date().toISOString()
+                    } : undefined}
+                    locationMultiplier={1.0}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {recommendedCourses.map((course, index) => (
-                <Card key={index} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{course.title}</CardTitle>
-                        <CardDescription>{course.provider}</CardDescription>
+            {isLoadingRecommendations ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                      <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="h-2 bg-muted rounded"></div>
+                        <div className="h-8 bg-muted rounded"></div>
                       </div>
-                      <Badge variant="outline">{course.relevantTo}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Rating:</span>
-                        <span className="font-medium">⭐ {course.rating}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Duration:</span>
-                        <span className="font-medium">{course.duration}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Price:</span>
-                        <span className="font-medium">{course.price}</span>
-                      </div>
-                      <Button asChild className="w-full mt-4" data-testid="save-to-plan">
-                        <Link to={course.href}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Save to Plan
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {(recommendations.length > 0 ? recommendations : trendingCourses).slice(0, 12).map((course) => {
+                  // Find relevant market data for the course
+                  const relevantMarketData = sortedMarketData.find(trend => 
+                    course.skill_tags?.some(tag => 
+                      trend.career_path.toLowerCase().includes(tag.toLowerCase()) ||
+                      tag.toLowerCase().includes(trend.career_path.toLowerCase())
+                    )
+                  );
+                  
+                  return (
+                  <MarketEnhancedCourseCard
+                      key={course.id}
+                      course={{
+                        ...course,
+                        cost: course.cost ? String(course.cost) : undefined
+                      }}
+                      marketData={relevantMarketData ? {
+                        ...relevantMarketData,
+                        updated_at: new Date().toISOString()
+                      } : undefined}
+                      currentSalary={75000}
+                      targetRole={relevantMarketData?.career_path}
+                      showROI={true}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="mentors" className="mt-6">
