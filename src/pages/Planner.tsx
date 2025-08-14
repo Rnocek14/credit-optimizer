@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import { PlannerJobInput } from "@/components/PlannerJobInput";
 import { PlannerPathDisplay } from "@/components/PlannerPathDisplay";
 import { PlannerUnlockPreview } from "@/components/PlannerUnlockPreview";
@@ -41,7 +41,7 @@ const Planner = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-      <Navigation />
+      <HubNavigation />
       
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="flex justify-end mb-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { GamificationDashboard } from '@/components/GamificationDashboard';
 import { CelebrationModal } from '@/components/CelebrationModal';
 import { useGamification } from '@/hooks/useGamification';
@@ -32,7 +32,7 @@ export default function Gamification() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">

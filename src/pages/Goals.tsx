@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { EnhancedGoalDashboard } from '@/components/EnhancedGoalDashboard';
 import { getCurrentUser } from '@/lib/authHelper';
 
@@ -41,7 +41,7 @@ export default function Goals() {
   if (loading) {
     return (
       <>
-        <Navigation />
+        <HubNavigation />
         <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-8">
             <div className="animate-pulse space-y-6">
@@ -60,7 +60,7 @@ export default function Goals() {
   if (!currentUser) {
     return (
       <>
-        <Navigation />
+        <HubNavigation />
         <div className="min-h-screen bg-background">
           <div className="container mx-auto px-4 py-8">
             <div className="text-center">
@@ -75,7 +75,7 @@ export default function Goals() {
 
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <EnhancedGoalDashboard userId={currentUser.id} />

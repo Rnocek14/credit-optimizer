@@ -1,5 +1,5 @@
 import React from 'react';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { SocialLearningDashboard } from '@/components/SocialLearningDashboard';
 import { SocialMayaIntegration } from '@/components/SocialMayaIntegration';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,7 @@ export default function SocialLearning() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-8">
           <div className="text-center mb-8">

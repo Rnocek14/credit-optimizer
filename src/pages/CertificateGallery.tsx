@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { 
   Award, 
   ExternalLink, 
@@ -99,7 +99,7 @@ export default function CertificateGallery() {
   if (loading) {
     return (
       <>
-        <Navigation />
+        <HubNavigation />
         <div className="container mx-auto py-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -114,7 +114,7 @@ export default function CertificateGallery() {
 
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">

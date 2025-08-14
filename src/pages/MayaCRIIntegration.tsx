@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { MayaCRIDashboard } from '@/components/MayaCRIDashboard';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +21,7 @@ const MayaCRIIntegration = () => {
 
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <MayaCRIDashboard userId={user?.id} />

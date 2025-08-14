@@ -1,4 +1,4 @@
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import { EnhancedWorkflowDashboard } from "@/components/EnhancedWorkflowDashboard";
 import { ManualStepTest } from "@/components/ManualStepTest";
 import { MayaIntelligenceDashboard } from "@/components/MayaIntelligenceDashboard";
@@ -6,7 +6,7 @@ import { MayaIntelligenceDashboard } from "@/components/MayaIntelligenceDashboar
 export default function Workflows() {
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="container mx-auto py-6 space-y-6">
         <MayaIntelligenceDashboard />
         <ManualStepTest />

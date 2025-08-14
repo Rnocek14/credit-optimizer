@@ -3,6 +3,7 @@ import { Search, Target, BookOpen, Settings, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
+import { useJourneyStore } from "@/stores/journeyStore";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ const primaryHubs = [
 export function HubNavigation() {
   const location = useLocation();
   const { hasPermission } = useSecureAuth();
+  const { stage, permissions } = useJourneyStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const isActive = (href: string) => {
@@ -52,11 +54,19 @@ export function HubNavigation() {
     return location.pathname === href;
   };
 
-  // Show contribute if user has any stakeholder roles
-  const showContribute = hasPermission("admin") || hasPermission("user");
+  // Progressive disclosure based on journey stage
+  const showProgress = stage !== 'new';
+  const showContribute = permissions.admin || permissions.institution || permissions.employer || permissions.teach || hasPermission("admin") || hasPermission("user");
+
+  // Visible hubs based on progressive disclosure
+  const visibleHubs = [
+    primaryHubs[0], // DISCOVER - always shown
+    primaryHubs[1], // PLAN - always shown
+    ...(showProgress ? [primaryHubs[2]] : []), // PROGRESS - shown after onboarding
+  ];
 
   return (
-    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+    <nav data-testid="hub-nav" data-stage={stage} className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="container mx-auto px-4">
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2 py-3">
@@ -70,7 +80,7 @@ export function HubNavigation() {
             </span>
           </Link>
 
-          {primaryHubs.map((hub) => {
+          {visibleHubs.map((hub) => {
             const Icon = hub.icon;
             return (
               <Button
@@ -82,6 +92,7 @@ export function HubNavigation() {
                   "gap-2 font-medium",
                   isActive(hub.href) && "bg-primary text-primary-foreground"
                 )}
+                data-testid={`hub-link-${hub.id}`}
               >
                 <Link to={hub.href}>
                   <Icon className="h-4 w-4" />
@@ -98,6 +109,7 @@ export function HubNavigation() {
                   variant={location.pathname.startsWith("/contribute") ? "default" : "ghost"}
                   size="sm"
                   className="gap-2 font-medium"
+                  data-testid="hub-link-contribute"
                 >
                   <Settings className="h-4 w-4" />
                   CONTRIBUTE
@@ -143,7 +155,7 @@ export function HubNavigation() {
         {/* Mobile Navigation */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
           <div className="flex items-center justify-around py-2">
-            {primaryHubs.map((hub) => {
+            {visibleHubs.map((hub) => {
               const Icon = hub.icon;
               return (
                 <Link
@@ -155,6 +167,7 @@ export function HubNavigation() {
                       ? "text-primary font-medium" 
                       : "text-muted-foreground"
                   )}
+                  data-testid={`hub-link-${hub.id}`}
                 >
                   <Icon className="h-5 w-5" />
                   {hub.label}
@@ -171,6 +184,7 @@ export function HubNavigation() {
                     ? "text-primary font-medium"
                     : "text-muted-foreground"
                 )}
+                data-testid="hub-link-contribute"
               >
                 <Settings className="h-5 w-5" />
                 MORE

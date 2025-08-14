@@ -29,7 +29,7 @@ import {
   Award,
   Sparkles
 } from 'lucide-react';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { useProjectsStore } from '@/state/projectsStore';
 import TrackSelector from '@/components/tracks/TrackSelector';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
@@ -285,7 +285,7 @@ const ResumeBuilder = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">

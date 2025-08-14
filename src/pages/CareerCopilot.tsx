@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense } from "react";
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { getAuthenticatedUserId } from "@/lib/authHelper";
@@ -62,7 +62,7 @@ export default function CareerCopilot() {
         <link rel="canonical" href="/career-copilot" />
       </Helmet>
 
-      <Navigation />
+      <HubNavigation />
 
       <main className="mx-auto max-w-7xl px-4 py-6 space-y-6">
         <h1 className="text-2xl font-semibold">Career Co-Pilot</h1>

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 
 interface Message {
   id: string;
@@ -442,7 +442,7 @@ export default function MentorChat() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       
       {/* Plan Completion Celebration */}
       {showPlanCelebration && (

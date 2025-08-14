@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Filter, BookOpen, Star, Clock, DollarSign, GraduationCap, TrendingUp } from 'lucide-react';
-import Navigation from '@/components/Navigation';
+import { HubNavigation } from '@/components/HubNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CourseCard } from '@/components/CourseCard';
@@ -184,7 +184,7 @@ export default function ExploreCourses() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navigation />
+        <HubNavigation />
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -199,7 +199,7 @@ export default function ExploreCourses() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      <HubNavigation />
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}

@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, User, Target, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import OnboardingConfirmation from "@/components/OnboardingConfirmation";
 import { LinkedInImport } from "@/components/LinkedInImport";
 
@@ -159,7 +159,7 @@ export default function Onboarding() {
 
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background py-4 md:py-8">
         <div className="container max-w-2xl mx-auto px-4">
           <div className="text-center mb-6 md:mb-8">

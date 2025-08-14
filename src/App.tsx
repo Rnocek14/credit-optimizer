@@ -109,7 +109,9 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
         <Routes>
+          {/* Core Routes */}
           <Route path="/" element={<Index />} />
+          <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
           <Route 
             path="/auth" 
             element={
@@ -127,7 +129,78 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
+
+          {/* 4-Hub Routes */}
+          <Route 
+            path="/discover" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <DiscoverHub />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/plan" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <PlanHub />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/progress" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ProgressHub />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/contribute" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ContributeHub />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* DISCOVER Hub Redirects */}
+          <Route path="/explore" element={<Navigate to="/discover?tab=career" replace />} />
+          <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
+          <Route path="/explore-courses" element={<Navigate to="/discover?tab=courses" replace />} />
+          <Route path="/market-intelligence" element={<Navigate to="/discover?tab=intel" replace />} />
+          <Route path="/salary-insights" element={<Navigate to="/discover?tab=intel" replace />} />
+
+          {/* PLAN Hub Redirects */}
+          <Route path="/plan-hub" element={<Navigate to="/plan" replace />} />
+          <Route path="/planner" element={<Navigate to="/plan?tab=roadmap" replace />} />
+          <Route path="/goals" element={<Navigate to="/plan?tab=goals" replace />} />
+          <Route path="/maya-roadmap" element={<Navigate to="/plan?tab=roadmap" replace />} />
+          <Route path="/career-copilot" element={<Navigate to="/plan?tab=roadmap" replace />} />
+          <Route path="/workflows" element={<Navigate to="/plan?tab=workflows" replace />} />
+
+          {/* PROGRESS Hub Redirects */}
+          <Route path="/progress-hub" element={<Navigate to="/progress" replace />} />
+          <Route path="/history-hub" element={<Navigate to="/progress" replace />} />
+          <Route path="/history" element={<Navigate to="/progress?tab=history" replace />} />
+          <Route path="/learning-history" element={<Navigate to="/progress?tab=history" replace />} />
+          <Route path="/course-history" element={<Navigate to="/progress?tab=history" replace />} />
+          <Route path="/skill-tree" element={<Navigate to="/progress?tab=portfolio" replace />} />
+          <Route path="/transcripts" element={<Navigate to="/progress?tab=achievements" replace />} />
+          <Route path="/badges" element={<Navigate to="/progress?tab=achievements" replace />} />
+          <Route path="/certificates" element={<Navigate to="/progress?tab=achievements" replace />} />
+          <Route path="/resume-builder" element={<Navigate to="/progress?tab=resume" replace />} />
+          <Route path="/resume-analytics" element={<Navigate to="/progress?tab=resume" replace />} />
+          <Route path="/projects" element={<Navigate to="/progress?tab=portfolio" replace />} />
+          <Route path="/wallet" element={<Navigate to="/progress?tab=achievements" replace />} />
+
+          {/* CONTRIBUTE Hub Redirects */}
+          <Route path="/teach-hub" element={<Navigate to="/contribute?tab=teach" replace />} />
+          <Route path="/institution-hub" element={<Navigate to="/contribute?tab=institution" replace />} />
+          <Route path="/employer-hub" element={<Navigate to="/contribute?tab=employer" replace />} />
+          <Route path="/admin" element={<Navigate to="/contribute?tab=admin" replace />} />
+
+          {/* Legacy Phase Routes */}
           <Route 
             path="/phase4" 
             element={
@@ -160,21 +233,6 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          {/* New Hub Routes */}
-          <Route path="/discover" element={<DiscoverHub />} />
-          <Route path="/plan" element={<PlanHub />} />
-          <Route path="/progress" element={<ProgressHub />} />
-          <Route path="/contribute" element={<ContributeHub />} />
-          
-          {/* Legacy Hub Routes with Redirects */}
-          <Route path="/explore-hub" element={<Navigate to="/discover" replace />} />
-          <Route path="/plan-hub" element={<Navigate to="/plan" replace />} />
-          <Route path="/history-hub" element={<Navigate to="/progress" replace />} />
-          <Route path="/history" element={<Navigate to="/progress" replace />} />
-          <Route path="/market-intelligence" element={<Navigate to="/discover" replace />} />
-          <Route path="/salary-insights" element={<Navigate to="/discover" replace />} />
-          <Route path="/goals" element={<Navigate to="/plan" replace />} />
-          <Route path="/workflows" element={<Navigate to="/plan" replace />} />
           
           <Route path="/resume-gallery" element={<ResumeGallery />} />
           <Route path="/resume/:userId" element={<PublicResume />} />
@@ -188,14 +246,15 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          {/* Other Protected Routes */}
           <Route path="/badges" element={<Badges />} />
           <Route path="/badges/:slug" element={<BadgeDetail />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/explore" element={<Explore />} />
-          <Route path="/explore-courses" element={<ExploreCourses />} />
-          <Route path="/salary-insights" element={<SalaryInsights />} />
+          <Route path="/discover-legacy" element={<Discover />} />
+          <Route path="/explore-legacy" element={<Explore />} />
+          <Route path="/explore-courses-legacy" element={<ExploreCourses />} />
+          <Route path="/salary-insights-legacy" element={<SalaryInsights />} />
           <Route 
-            path="/market-intelligence" 
+            path="/market-intelligence-legacy" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <MarketIntelligence />
@@ -203,7 +262,7 @@ const App = () => (
             } 
           />
           <Route 
-            path="/workflows" 
+            path="/workflows-legacy" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <Workflows />
@@ -211,7 +270,7 @@ const App = () => (
             } 
           />
           <Route 
-            path="/career-copilot" 
+            path="/career-copilot-legacy" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <CareerCopilot />
@@ -219,7 +278,7 @@ const App = () => (
             } 
           />
           <Route 
-            path="/maya-roadmap" 
+            path="/maya-roadmap-legacy" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <MayaRoadmap />
@@ -250,22 +309,8 @@ const App = () => (
                </ProtectedRoute>
              } 
            />
-          <Route path="/learning-history" element={<Navigate to="/history" replace />} />
-           <Route path="/planner" element={<Navigate to="/plan" replace />} />
-           <Route path="/explore" element={<Navigate to="/discover" replace />} />
-           <Route path="/explore-courses" element={<Navigate to="/discover" replace />} />
-           <Route path="/learning-history" element={<Navigate to="/progress" replace />} />
-           <Route path="/course-history" element={<Navigate to="/progress" replace />} />
-           <Route path="/skill-tree" element={<Navigate to="/progress" replace />} />
-           <Route path="/transcripts" element={<Navigate to="/progress" replace />} />
-           <Route path="/badges" element={<Navigate to="/progress" replace />} />
-           <Route path="/certificates" element={<Navigate to="/progress" replace />} />
-           <Route path="/resume-builder" element={<Navigate to="/progress" replace />} />
-           <Route path="/resume-analytics" element={<Navigate to="/progress" replace />} />
-           <Route path="/projects" element={<Navigate to="/progress" replace />} />
-           <Route path="/wallet" element={<Navigate to="/progress" replace />} />
            <Route 
-             path="/certificates" 
+             path="/certificates-legacy" 
              element={
                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                  <Certificates />
@@ -292,7 +337,7 @@ const App = () => (
             } 
           />
            <Route 
-             path="/goals" 
+             path="/goals-legacy" 
              element={
                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                  <Goals />
@@ -340,7 +385,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route path="/course-history" element={<Navigate to="/history" replace />} />
+          
           <Route 
             path="/skill-tree" 
             element={
@@ -373,14 +418,14 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/resume-builder" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <ResumeBuilder />
-              </ProtectedRoute>
-            } 
-          />
+           <Route 
+             path="/resume-builder-legacy" 
+             element={
+               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                 <ResumeBuilder />
+               </ProtectedRoute>
+             } 
+           />
         <Route path="/admin" element={<Admin />} />
         <Route 
           path="/mentor" 

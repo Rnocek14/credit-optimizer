@@ -1,10 +1,10 @@
-import Navigation from "@/components/Navigation";
+import { HubNavigation } from "@/components/HubNavigation";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
 
 export default function ResumeAnalytics() {
   return (
     <>
-      <Navigation />
+      <HubNavigation />
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="mb-6 md:mb-8">

@@ -7,11 +7,10 @@ import { MayaOnboarding } from "@/components/MayaOnboarding";
 import { AdaptiveDashboard } from "@/components/AdaptiveDashboard";
 import SecureLandingPage from "@/components/SecureLandingPage";
 import SecurityMonitor from "@/components/SecurityMonitor";
-import { HubNavigation } from "@/components/HubNavigation"; // Fixed import
+import { HubNavigation } from "@/components/HubNavigation";
 import { EnhancedMayaDemo } from "@/components/EnhancedMayaDemo";
 import { RoadmapTester } from "@/components/RoadmapTester";
 import { getCurrentUser } from "@/lib/authHelper";
-import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
@@ -82,19 +81,19 @@ export default function Index() {
               Get personalized career guidance powered by AI. Create your profile and receive a custom roadmap to achieve your professional goals.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-              <Button asChild size="lg" variant="gradient" className="w-full sm:w-auto">
-                <Link to="/plan-hub">
+              <Button asChild size="lg" variant="gradient" className="w-full sm:w-auto" data-testid="cta-start-planning">
+                <Link to="/plan">
                   Start Planning
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-                <Link to="/explore-hub">
+                <Link to="/discover">
                   Explore Careers
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-                <Link to="/history-hub">
+                <Link to="/progress">
                   View Progress
                 </Link>
               </Button>
