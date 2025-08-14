@@ -53,7 +53,16 @@ export function RecommendationFeed({ userId, className }: RecommendationFeedProp
   // Filter recommendations based on active tab
   const filteredRecommendations = recommendations.filter(rec => {
     if (activeTab === 'all') return true;
-    return rec.type === activeTab.replace('-', '_');
+    
+    // Map tab names to recommendation types
+    const tabToTypeMap: Record<string, string> = {
+      'skill-gaps': 'skill_gap',
+      'maya': 'maya_action', 
+      'market': 'market_alert',
+      'projects': 'proof_project'
+    };
+    
+    return rec.type === tabToTypeMap[activeTab];
   });
 
   // Check if user has skill gaps for QuickActions
