@@ -4,9 +4,15 @@ import { QUERY_KEYS } from '@/lib/queryKeys'
 import { useSkillGaps } from '@/hooks/useSkillGaps'
 import type { SkillGap, UnifiedRecommendation } from '@/types'
 
-const debug = (...a: any[]) => process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
+const debug = (...a: any[]) => 
+  process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
 
-function buildFromSkillGaps(skillGaps: SkillGap[]): UnifiedRecommendation[] {
+function dedupeByKey<T>(arr: T[], key: (x: T) => string) {
+  const seen = new Set<string>()
+  return arr.filter(x => (seen.has(key(x)) ? false : (seen.add(key(x)), true)))
+}
+
+export function buildFromSkillGaps(skillGaps: SkillGap[], now?: Date): UnifiedRecommendation[] {
   const recos: UnifiedRecommendation[] = []
 
   for (const gap of skillGaps) {
@@ -33,7 +39,7 @@ function buildFromSkillGaps(skillGaps: SkillGap[]): UnifiedRecommendation[] {
         { label: 'Find Mentors', href: `/discover?tab=mentors&skill=${encodeURIComponent(gap.skill)}` },
         { label: 'Take Next Step', href: '/plan?tab=roadmap' },
       ],
-      createdAt: new Date().toISOString(),
+      createdAt: (now || new Date()).toISOString(),
       score: (priorityScore * 1.2) + (criBoost / 10),
       criBoost,
       criExplanation: `Addresses a ${gap.priority} ${gap.skill} gap`,
@@ -44,7 +50,7 @@ function buildFromSkillGaps(skillGaps: SkillGap[]): UnifiedRecommendation[] {
 }
 
 export function useUnifiedRecommendations(userId?: string) {
-  const { data: skillGaps = [], isLoading: gapsLoading } = useSkillGaps(userId)
+  const { data: skillGaps = [], isLoading: gapsLoading, isError: gapsError } = useSkillGaps(userId)
 
   // Encode skill gaps into the query key so React Query knows when to recompute
   const skillGapsKey = useMemo(
@@ -56,13 +62,13 @@ export function useUnifiedRecommendations(userId?: string) {
   )
 
   return useQuery({
-    queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId ? `${userId}:${skillGapsKey}` : undefined),
-    enabled: !!userId && !gapsLoading,
+    queryKey: ['unified-recommendations', userId, skillGapsKey],
+    enabled: !!userId && (!gapsLoading || gapsError),
     placeholderData: [] as UnifiedRecommendation[],
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<UnifiedRecommendation[]> => {
       // Pure build — no reaching into other query objects here
-      const fromGaps = buildFromSkillGaps(skillGaps)
+      const fromGaps = dedupeByKey(buildFromSkillGaps(skillGaps), r => r.id)
 
       // (Optional) add maya/proof/market items behind flags or as separate fetches
       const recommendations = fromGaps /* .concat(await maybeMore()) */
