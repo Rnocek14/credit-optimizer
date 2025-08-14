@@ -12,11 +12,11 @@ import {
   ExternalLink,
   ArrowRight
 } from 'lucide-react';
-import { useCrossHubIntegration } from '@/hooks/useCrossHubIntegration';
+import { useUnifiedRecommendations } from '@/hooks/useUnifiedRecommendations';
 import { Link } from 'react-router-dom';
 
 export const AchievementsRail: React.FC = () => {
-  const { recommendations, isLoading: loading } = useCrossHubIntegration();
+  const { data: recommendations = [], isLoading: loading } = useUnifiedRecommendations();
 
   // Mock recent achievements - in real implementation, fetch from backend
   const recentAchievements = [

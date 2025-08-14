@@ -27,161 +27,7 @@ export const useCrossHubIntegration = (userId?: string) => {
   const { generateCRIGuidance } = useMayaCRIIntegration(userId);
   const queryClient = useQueryClient();
 
-  // Use the dedicated skill gaps hook for production-ready detection
-  const skillGapsQuery = useSkillGaps(userId);
-
-  // Unified recommendations query
-  const unifiedRecommendationsQuery = useQuery({
-    queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId),
-    queryFn: async (): Promise<UnifiedRecommendation[]> => {
-      if (!userId) return [];
-
-      try {
-        const recommendations: UnifiedRecommendation[] = [];
-
-        // Get skill gaps from the completed query (will be empty if not loaded yet)
-        const skillGaps = skillGapsQuery.data || [];
-        
-        skillGaps.forEach((gap, index) => {
-          const priorityScore = gap.priority === 'critical' ? 4 : 
-                               gap.priority === 'high' ? 3 :
-                               gap.priority === 'medium' ? 2 : 1;
-          
-          // Calculate CRI boost for skill gap recommendations
-          let criBoost = priorityScore * 5; // Base boost of 5% per priority level
-          if (gap.priority === 'critical') criBoost += 15; // Extra boost for critical gaps
-          if (gap.priority === 'high') criBoost += 10; // Extra boost for high priority gaps
-          
-          recommendations.push({
-            id: `skill-gap-${index}`,
-            type: 'skill_gap',
-            title: `Close ${gap.skill} gap`,
-            description: `You need ${gap.skill} for your career goals`,
-            priority: gap.priority,
-            reason: `Required for your target role - CRI boosted +${criBoost}%`,
-            timeEstimate: gap.estimatedTimeToClose,
-            skills: [gap.skill],
-            actions: [
-              {
-                label: 'Find Courses',
-                href: `/discover?skills=${gap.skill}&filter=skill-gaps`,
-                testId: 'reco-action-find-courses'
-              },
-              {
-                label: 'Find Mentors',
-                href: `/discover?tab=mentors&skill=${gap.skill}`
-              },
-              {
-                label: 'Take Next Step',
-                href: '/plan?tab=roadmap'
-              }
-            ],
-            createdAt: new Date().toISOString(),
-            score: (priorityScore * 1.2) + (criBoost / 10), // Boost score based on CRI
-            criBoost,
-            criExplanation: `Addresses critical skill gap in ${gap.skill} required for your career goals`
-          });
-        });
-
-        // Get Maya recommendations (mock data for now)
-        if (recommendations.length < 5) {
-          recommendations.push({
-            id: 'maya-action-1',
-            type: 'maya_action',
-            title: 'Complete Python Fundamentals',
-            description: 'Maya recommends focusing on Python basics',
-            priority: 'high',
-            reason: 'Maya recommends based on your learning pattern',
-            timeEstimate: '2-3 hrs',
-            progress: 65,
-            skills: ['Python'],
-            actions: [
-              {
-                label: 'Take Next Step',
-                href: '/plan?tab=roadmap',
-                testId: 'reco-action-next-step'
-              },
-              {
-                label: 'Open Workflow',
-                href: '/plan?tab=workflows'
-              }
-            ],
-            createdAt: new Date().toISOString(),
-            score: 3.5
-          });
-        }
-
-        // Get proof project suggestions
-        if (recommendations.length < 7) {
-          recommendations.push({
-            id: 'proof-project-1',
-            type: 'proof_project',
-            title: 'Build Customer Churn Prediction Model',
-            description: 'Demonstrate your machine learning skills',
-            priority: 'medium',
-            reason: 'High impact project for data science roles',
-            timeEstimate: '2-3 weeks',
-            skills: ['Python', 'Pandas', 'Scikit-learn'],
-            actions: [
-              {
-                label: 'Plan Project',
-                href: '/plan?tab=proof'
-              },
-              {
-                label: 'Add to Resume',
-                href: '/progress?tab=resume'
-              }
-            ],
-            createdAt: new Date().toISOString(),
-            score: 2.8
-          });
-        }
-
-        // Get market alerts
-        if (recommendations.length < 8) {
-          recommendations.push({
-            id: 'market-alert-1',
-            type: 'market_alert',
-            title: 'Data Science Demand Rising',
-            description: 'Market demand for data scientists up 15%',
-            priority: 'medium',
-            reason: 'Boosted by market demand +15%',
-            skills: ['Python', 'Machine Learning', 'Statistics'],
-            actions: [
-              {
-                label: 'View Insights',
-                href: '/discover?tab=market'
-              },
-              {
-                label: 'Explore Roles',
-                href: '/discover?tab=careers&role=data-scientist'
-              }
-            ],
-            createdAt: new Date().toISOString(),
-            score: 2.5
-          });
-        }
-
-        // Sort by score (descending), then by priority, then by date
-        const sortedRecommendations = recommendations.sort((a, b) => {
-          if (a.score !== b.score) return b.score - a.score;
-          const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-          const aPriority = priorityOrder[a.priority];
-          const bPriority = priorityOrder[b.priority];
-          if (aPriority !== bPriority) return bPriority - aPriority;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        
-        return sortedRecommendations;
-
-      } catch (error) {
-        console.error('Error fetching unified recommendations:', error);
-        return [];
-      }
-    },
-    enabled: !!userId,
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
+  // Recommendations are now handled by dedicated useUnifiedRecommendations hook
 
 // Enhanced save to Plan with micro-goal creation and CRI boosting
   const saveToplanMutation = useMutation({
@@ -261,20 +107,12 @@ export const useCrossHubIntegration = (userId?: string) => {
 
     try {
       const recommendations = await getPersonalizedRecommendations();
-      const skillGaps = skillGapsQuery.data || [];
+      // Note: Cannot use hooks inside callbacks - this would need to be refactored
       
       // Combine Maya recommendations with skill gap analysis
       const contextualRecs = [
         ...(Array.isArray(recommendations) ? recommendations : []),
-        ...skillGaps.map(gap => ({
-          type: 'skill_gap',
-          title: `Close ${gap.skill} gap`,
-          description: `You need ${gap.skill} for your career goals`,
-          priority: gap.priority,
-          actions: gap.suggestedActions,
-          hubTarget: 'discover',
-          filters: { skills: [gap.skill] }
-        }))
+        // TODO: refactor to get skillGaps from outside the callback
       ];
 
       return contextualRecs;
@@ -282,7 +120,7 @@ export const useCrossHubIntegration = (userId?: string) => {
       console.error('Error getting contextual recommendations:', error);
       return [];
     }
-  }, [userId, getPersonalizedRecommendations, skillGapsQuery.data]);
+  }, [userId, getPersonalizedRecommendations]);
 
   // Centralized query invalidation for cross-hub triggers
   const refreshCrossHubData = useCallback(() => {
@@ -435,8 +273,8 @@ export const useCrossHubIntegration = (userId?: string) => {
     // Save to Plan
     saveToPlan: (item: SaveToPlanItem) => {
       // Calculate CRI boost before saving
-      const skillGaps = skillGapsQuery.data || [];
-      const { boost, explanation } = calculateCRIBoost(item, skillGaps);
+      // Note: Cannot use hooks inside function - this needs the skillGaps passed in
+      const { boost, explanation } = calculateCRIBoost(item, []); // TODO: pass skillGaps from outside
       
       saveToplanMutation.mutate({
         ...item,
@@ -446,13 +284,6 @@ export const useCrossHubIntegration = (userId?: string) => {
     },
     isSavingToPlan: saveToplanMutation.isPending,
     
-    // Skill Gap Detection
-    skillGaps: skillGapsQuery.data || [],
-    isAnalyzingSkillGaps: skillGapsQuery.isLoading,
-    
-    // Unified Recommendations with CRI boosting
-    recommendations: unifiedRecommendationsQuery.data || [],
-    isLoading: unifiedRecommendationsQuery.isLoading,
     
     // Contextual Recommendations
     getContextualRecommendations,

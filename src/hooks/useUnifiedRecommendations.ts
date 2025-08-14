@@ -1,0 +1,84 @@
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { QUERY_KEYS } from '@/lib/queryKeys'
+import { useSkillGaps } from '@/hooks/useSkillGaps'
+import type { SkillGap, UnifiedRecommendation } from '@/types'
+
+const debug = (...a: any[]) => process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
+
+function buildFromSkillGaps(skillGaps: SkillGap[]): UnifiedRecommendation[] {
+  const recos: UnifiedRecommendation[] = []
+
+  for (const gap of skillGaps) {
+    const priorityScore =
+      gap.priority === 'critical' ? 4 :
+      gap.priority === 'high'     ? 3 :
+      gap.priority === 'medium'   ? 2 : 1
+
+    let criBoost = priorityScore * 5
+    if (gap.priority === 'critical') criBoost += 15
+    if (gap.priority === 'high')     criBoost += 10
+
+    recos.push({
+      id: `sg-${gap.skill.toLowerCase()}`, // stable id (no index)
+      type: 'skill_gap',
+      title: `Close ${gap.skill} gap`,
+      description: `You need ${gap.skill} for your career goals`,
+      priority: gap.priority,
+      reason: `CRI +${criBoost}% (priority ${gap.priority})`,
+      timeEstimate: gap.estimatedTimeToClose,
+      skills: [gap.skill],
+      actions: [
+        { label: 'Find Courses', href: `/discover?skills=${encodeURIComponent(gap.skill)}&filter=skill-gaps` },
+        { label: 'Find Mentors', href: `/discover?tab=mentors&skill=${encodeURIComponent(gap.skill)}` },
+        { label: 'Take Next Step', href: '/plan?tab=roadmap' },
+      ],
+      createdAt: new Date().toISOString(),
+      score: (priorityScore * 1.2) + (criBoost / 10),
+      criBoost,
+      criExplanation: `Addresses a ${gap.priority} ${gap.skill} gap`,
+    })
+  }
+
+  return recos
+}
+
+export function useUnifiedRecommendations(userId?: string) {
+  const { data: skillGaps = [], isLoading: gapsLoading } = useSkillGaps(userId)
+
+  // Encode skill gaps into the query key so React Query knows when to recompute
+  const skillGapsKey = useMemo(
+    () => skillGaps
+      .map(g => `${g.skill.toLowerCase()}:${g.priority}`)
+      .sort()
+      .join('|'),
+    [skillGaps]
+  )
+
+  return useQuery({
+    queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId ? `${userId}:${skillGapsKey}` : undefined),
+    enabled: !!userId && !gapsLoading,
+    placeholderData: [] as UnifiedRecommendation[],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<UnifiedRecommendation[]> => {
+      // Pure build — no reaching into other query objects here
+      const fromGaps = buildFromSkillGaps(skillGaps)
+
+      // (Optional) add maya/proof/market items behind flags or as separate fetches
+      const recommendations = fromGaps /* .concat(await maybeMore()) */
+
+      // Deterministic sort
+      const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 } as const
+      recommendations.sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score
+        const ap = priorityOrder[a.priority as keyof typeof priorityOrder]
+        const bp = priorityOrder[b.priority as keyof typeof priorityOrder]
+        if (ap !== bp) return bp - ap
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
+
+      debug('built', { gaps: skillGaps.length, total: recommendations.length })
+      return recommendations
+    },
+  })
+}

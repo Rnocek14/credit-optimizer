@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCrossHubIntegration } from './useCrossHubIntegration';
+import { useUnifiedRecommendations } from './useUnifiedRecommendations';
+import { useSkillGaps } from './useSkillGaps';
 import { useGamification } from './useGamification';
 import { UnifiedRecommendation } from '@/types/recommendations';
 import { SaveToPlanItem } from '@/types/plan';
@@ -49,12 +51,9 @@ export interface UnstickData {
 }
 
 export function useSmartTodayDashboard(userId?: string) {
-  const { 
-    recommendations, 
-    isLoading: isLoadingRecommendations,
-    skillGaps,
-    saveToPlan 
-  } = useCrossHubIntegration();
+  const { data: recommendations = [], isLoading: isLoadingRecommendations } = useUnifiedRecommendations(userId);
+  const { data: skillGaps = [] } = useSkillGaps(userId);
+  const { saveToPlan } = useCrossHubIntegration();
   
   const { 
     getCurrentStreak, 

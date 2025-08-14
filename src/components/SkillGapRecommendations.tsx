@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, BookOpen, Users, Target, Clock } from 'lucide-react';
-import { useCrossHubIntegration, type SkillGap } from '@/hooks/useCrossHubIntegration';
+import { useSkillGaps } from '@/hooks/useSkillGaps';
+import type { SkillGap } from '@/types';
 import { SaveToPlanButton } from '@/components/SaveToPlanButton';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentUser } from '@/lib/authHelper';
@@ -27,7 +28,7 @@ export const SkillGapRecommendations: React.FC<SkillGapRecommendationsProps> = (
     queryFn: getCurrentUser
   });
 
-  const { skillGaps, isAnalyzingSkillGaps } = useCrossHubIntegration(currentUser?.id);
+  const { data: skillGaps = [], isLoading: isAnalyzingSkillGaps } = useSkillGaps(currentUser?.id);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

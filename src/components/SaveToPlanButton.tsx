@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CheckCircle, Clock, Target } from 'lucide-react';
 import { useCrossHubIntegration } from '@/hooks/useCrossHubIntegration';
+import { useSkillGaps } from '@/hooks/useSkillGaps';
 import { SaveToPlanItem } from '@/types/plan';
 import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { 
@@ -38,7 +39,8 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   showPrioritySelector = false
 }) => {
   const [selectedPriority, setSelectedPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const { saveToPlan, isSavingToPlan, skillGaps, calculateCRIBoost } = useCrossHubIntegration();
+  const { saveToPlan, isSavingToPlan, calculateCRIBoost } = useCrossHubIntegration();
+  const { data: skillGaps = [] } = useSkillGaps();
   
   // Calculate CRI boost for this item
   const { boost: criBoost, explanation: criExplanation } = calculateCRIBoost(item, skillGaps);

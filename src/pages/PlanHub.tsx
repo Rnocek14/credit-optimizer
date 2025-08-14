@@ -10,7 +10,8 @@ import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
 import { EnhancedGoalDashboard } from "@/components/EnhancedGoalDashboard";
 import { GoalOrchestrator } from "@/components/GoalOrchestrator";
 import { RecommendationFeed } from "@/components/reco/RecommendationFeed";
-import { useCrossHubIntegration } from "@/hooks/useCrossHubIntegration";
+import { useSkillGaps } from "@/hooks/useSkillGaps";
+import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
@@ -55,7 +56,8 @@ export default function PlanHub() {
     queryFn: getCurrentUser
   });
 
-  const { skillGaps, recommendations } = useCrossHubIntegration(currentUser?.id);
+  const { data: skillGaps = [] } = useSkillGaps(currentUser?.id);
+  const { data: recommendations = [] } = useUnifiedRecommendations(currentUser?.id);
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab });

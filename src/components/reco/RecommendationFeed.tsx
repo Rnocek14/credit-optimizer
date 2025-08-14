@@ -10,7 +10,7 @@ import { RecommendationCard } from './RecommendationCard';
 import { RecommendationEmptyState } from './RecommendationEmptyState';
 import { RecommendationSkeleton } from './RecommendationSkeleton';
 import { QuickActions } from './QuickActions';
-import { useCrossHubIntegration } from '@/hooks/useCrossHubIntegration';
+import { useUnifiedRecommendations } from '@/hooks/useUnifiedRecommendations';
 
 interface RecommendationFeedProps {
   userId?: string;
@@ -20,7 +20,7 @@ interface RecommendationFeedProps {
 export function RecommendationFeed({ userId, className }: RecommendationFeedProps) {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [density, setDensity] = useState<RecommendationDensity>('cozy');
-  const { recommendations, isLoading } = useCrossHubIntegration(userId);
+  const { data: recommendations = [], isLoading } = useUnifiedRecommendations(userId);
 
   // Load density preference from localStorage
   useEffect(() => {
