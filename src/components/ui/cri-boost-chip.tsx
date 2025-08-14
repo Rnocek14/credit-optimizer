@@ -41,19 +41,20 @@ export function CRIBoostChip({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "gap-1 border-2 text-xs font-medium",
-              size === 'sm' && "px-1.5 py-0.5 text-xs",
-              className
-            )}
-            style={{ 
-              borderColor: boostColor,
-              color: boostColor,
-              backgroundColor: `hsl(from ${boostColor} h s l / 0.1)`
-            }}
-          >
+           <Badge 
+             variant="outline" 
+             className={cn(
+               "gap-1 border-2 text-xs font-medium",
+               size === 'sm' && "px-1.5 py-0.5 text-xs",
+               className
+             )}
+             style={{ 
+               borderColor: boostColor,
+               color: boostColor,
+               backgroundColor: `hsl(from ${boostColor} h s l / 0.1)`
+             }}
+             data-testid="cri-boost-chip"
+           >
             <Zap className={cn(
               "fill-current",
               size === 'sm' ? "h-2.5 w-2.5" : "h-3 w-3"

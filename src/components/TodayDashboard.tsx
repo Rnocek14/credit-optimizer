@@ -66,27 +66,27 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Smart Next Step Card */}
-        <Card className="md:col-span-2 lg:col-span-1 border-l-4 border-l-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Next Step
-            </CardTitle>
-          </CardHeader>
+         {/* Smart Next Step Card */}
+         <Card className="md:col-span-2 lg:col-span-1 border-l-4 border-l-primary" data-testid="next-step-card">
+           <CardHeader>
+             <CardTitle className="flex items-center gap-2">
+               <Target className="h-5 w-5 text-primary" />
+               Next Step
+             </CardTitle>
+           </CardHeader>
           <CardContent className="space-y-4">
             {nextStep ? (
               <>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-semibold text-lg">{nextStep.title}</h3>
-                    {nextStep.criBoost && (
-                      <CRIBoostChip 
-                        boostPercentage={nextStep.criBoost}
-                        explanation={nextStep.criExplanation}
-                        size="sm"
-                      />
-                    )}
+                     {nextStep.criBoost && nextStep.criBoost > 0 && (
+                       <CRIBoostChip 
+                         boostPercentage={nextStep.criBoost}
+                         explanation={nextStep.criExplanation}
+                         size="sm"
+                       />
+                     )}
                   </div>
                   <p className="text-muted-foreground text-sm">
                     {nextStep.description}
@@ -183,13 +183,13 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm">{win.title}</p>
-                        {win.criBoost && (
-                          <CRIBoostChip 
-                            boostPercentage={win.criBoost}
-                            explanation="CRI boost applied"
-                            size="sm"
-                          />
-                        )}
+                         {win.criBoost && win.criBoost > 0 && (
+                           <CRIBoostChip 
+                             boostPercentage={win.criBoost}
+                             explanation={win.criExplanation || "CRI boost applied"}
+                             size="sm"
+                           />
+                         )}
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-1">{win.description}</p>
                       <p className="text-xs text-muted-foreground">{win.timeEstimate}</p>
@@ -248,15 +248,16 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                     {unstickData.daysSinceActivity} days since last activity
                   </p>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={actions.handleUnstickAction}
-                  data-testid="unstick-button"
-                >
-                  Unstick me • {unstickData.timeEstimate}
-                </Button>
+                 <Button 
+                   size="sm" 
+                   variant="outline" 
+                   className="w-full"
+                   onClick={actions.handleUnstickAction}
+                   data-testid="unstick-button"
+                   aria-label="Unstick me"
+                 >
+                   Unstick me • {unstickData.timeEstimate}
+                 </Button>
               </div>
             )}
             

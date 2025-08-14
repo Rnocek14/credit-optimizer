@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useCrossHubIntegration } from './useCrossHubIntegration';
 import { useGamification } from './useGamification';
 import { UnifiedRecommendation } from '@/types/recommendations';
+import { SaveToPlanItem } from '@/types/plan';
+import { parseTimeEstimateToMinutes } from '@/utils/time';
 
 export interface QuickWin {
   id: string;
@@ -17,6 +19,7 @@ export interface QuickWin {
     params?: Record<string, string | number | boolean>;
   }>;
   criBoost?: number;
+  criExplanation?: string;
 }
 
 export interface SmartNextStep {
@@ -85,14 +88,12 @@ export function useSmartTodayDashboard(userId?: string) {
     if (!recommendations) return [];
     
     return recommendations
-      .filter(rec => {
-        if (!rec.timeEstimate) return false;
-        const timeStr = rec.timeEstimate.toLowerCase();
-        // Check for quick tasks: 30 min, 45 min, 1 hr, etc.
-        return timeStr.includes('min') || 
-               (timeStr.includes('hr') && (timeStr.includes('1') || timeStr.includes('0.5')));
+      .filter((rec, i) => {
+        if (i === 0) return false; // skip Next Step
+        const mins = parseTimeEstimateToMinutes(rec.timeEstimate);
+        return mins !== null && mins >= 30 && mins <= 60;
       })
-      .slice(1, 4) // Skip first item (it's the next step)
+      .slice(0, 3)
       .map(rec => ({
         id: rec.id,
         title: rec.title,
@@ -101,7 +102,8 @@ export function useSmartTodayDashboard(userId?: string) {
         priority: rec.priority,
         type: rec.type,
         actions: rec.actions,
-        criBoost: rec.criBoost
+        criBoost: rec.criBoost,
+        criExplanation: rec.criExplanation
       }));
   }, [recommendations]);
 
@@ -119,9 +121,15 @@ export function useSmartTodayDashboard(userId?: string) {
     const firstSkillGap = skillGaps?.[0];
     if (!firstSkillGap) return null;
     
+    const skillName = typeof firstSkillGap === 'string' 
+      ? firstSkillGap 
+      : firstSkillGap.skill || 'a core skill';
+    
     return {
       daysSinceActivity: daysSince,
-      suggestedTask: `Practice ${firstSkillGap} basics`,
+      suggestedTask: firstSkillGap
+        ? `Practice ${skillName} basics`
+        : 'Do a 10-min warmup',
       timeEstimate: '15 min',
       type: 'skill_practice'
     };
@@ -135,19 +143,19 @@ export function useSmartTodayDashboard(userId?: string) {
     if (!nextStep) return;
     
     try {
-      if (action.on === 'plan' && action.params?.courseId) {
-        await saveToPlan({
-          type: 'course',
-          id: action.params.courseId as string,
+      if (action.on === 'plan') {
+        const payload: SaveToPlanItem = {
+          type: 'quick_win',
+          id: nextStep.id,
           title: nextStep.title,
           description: nextStep.description,
-          skillTags: [],
-          metadata: {
-            source: 'today_dashboard',
-            recommendation_id: nextStep.id,
-            timeEstimate: nextStep.timeEstimate
+          timeEstimate: nextStep.timeEstimate,
+          metadata: { 
+            source: 'today_dashboard', 
+            recommendation_id: nextStep.id 
           }
-        });
+        };
+        await saveToPlan(payload);
       }
       
       // Navigate if href provided
@@ -162,18 +170,18 @@ export function useSmartTodayDashboard(userId?: string) {
   const handleQuickWinAction = async (quickWin: QuickWin, action: QuickWin['actions'][0]) => {
     try {
       if (action.on === 'plan') {
-        await saveToPlan({
-          type: 'skill',
+        const payload: SaveToPlanItem = {
+          type: 'quick_win',
           id: quickWin.id,
           title: quickWin.title,
           description: quickWin.description,
-          skillTags: [],
+          timeEstimate: quickWin.timeEstimate,
           metadata: {
             source: 'today_dashboard_quick_win',
-            priority: quickWin.priority,
-            timeEstimate: quickWin.timeEstimate
+            priority: quickWin.priority
           }
-        });
+        };
+        await saveToPlan(payload);
       }
       
       if (action.href) {
@@ -188,18 +196,18 @@ export function useSmartTodayDashboard(userId?: string) {
     if (!unstickData) return;
     
     try {
-      await saveToPlan({
-        type: 'skill',
+      const payload: SaveToPlanItem = {
+        type: 'micro_task',
         id: `unstick-${Date.now()}`,
         title: unstickData.suggestedTask,
-        description: `Quick task to get back on track`,
-        skillTags: skillGaps?.slice(0, 1).map(gap => gap.skill) || [],
+        description: 'Quick task to get back on track',
+        timeEstimate: unstickData.timeEstimate,
         metadata: {
           source: 'unstick_suggestion',
-          days_inactive: unstickData.daysSinceActivity,
-          timeEstimate: unstickData.timeEstimate
+          days_inactive: unstickData.daysSinceActivity
         }
-      });
+      };
+      await saveToPlan(payload);
     } catch (error) {
       console.error('Error handling unstick action:', error);
     }

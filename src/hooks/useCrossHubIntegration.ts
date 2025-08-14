@@ -14,13 +14,14 @@ import { toast } from 'sonner';
 import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
 
 export interface SaveToPlanItem {
-  type: 'course' | 'career_path' | 'mentor' | 'skill' | 'project';
+  type: 'course' | 'career_path' | 'mentor' | 'skill' | 'project' | 'quick_win' | 'micro_task';
   id: string;
   title: string;
   description?: string;
   metadata?: any;
   priority?: 'high' | 'medium' | 'low';
   estimatedTimeToComplete?: string;
+  timeEstimate?: string;
   skillTags?: string[];
 }
 
