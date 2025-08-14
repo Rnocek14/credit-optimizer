@@ -66,9 +66,6 @@ import HistoryHub from "./pages/HistoryHub";
 import DiscoverHub from "./pages/DiscoverHub";
 import ProgressHub from "./pages/ProgressHub";
 import ContributeTabbed from "./pages/ContributeTabbed";
-import TeachHub from "./pages/TeachHub";
-import InstitutionHub from "./pages/InstitutionHub";
-import EmployerHub from "./pages/EmployerHub";
 import CareerCopilot from "./pages/CareerCopilot";
 import SprintBoard from "./pages/SprintBoard";
 import TeachAnalytics from "./pages/TeachAnalytics";
@@ -475,86 +472,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/teach-hub" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <TeachHub />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/analytics" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <TeachAnalytics />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/courses" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <TeachCourses />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/discovery" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <CourseDiscovery />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/curation" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <CourseCuration />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/paths" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <TeachPaths />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/validation" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <TeachValidation />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/teach/marketplace" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="teach">
-                <CourseMarketplace />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/institution-hub"
-            element={
-              <StakeholderProtectedRoute stakeholderType="institution">
-                <InstitutionHub />
-              </StakeholderProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/employer-hub" 
-            element={
-              <StakeholderProtectedRoute stakeholderType="employer">
-                <EmployerHub />
-              </StakeholderProtectedRoute>
-            } 
-          />
+          {/* These routes now redirect to /contribute hub */}
           <Route path="/projects" element={<Projects />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/institution" element={<Institution />} />
