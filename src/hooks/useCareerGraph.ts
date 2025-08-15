@@ -39,6 +39,22 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
   // PR-2: GraphHash for stable layout triggering
   const [graphHash, setGraphHash] = useState<string>('');
 
+  // PR-2: Graph hash calculation for layout cache
+  const calculateGraphHash = useCallback((nodes: any[], edges: any[]): string => {
+    const nodeHashes = nodes.map(n => `${n.id}:${n.type}:${n.title}`).sort();
+    const edgeHashes = edges.map(e => `${e.from_id}->${e.to_id}:${e.edge_type}`).sort();
+    const combined = [...nodeHashes, ...edgeHashes].join('|');
+    
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }, []);
+
   // Load graph data
   const loadGraph = useCallback(async (pathId?: string) => {
     console.log('🔄 Loading career graph...', { pathId });
@@ -58,11 +74,11 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
       }
       
       const statistics = graph.getStatistics();
-      const nodes = Array.from((graph as any).nodes.values());
-      const edges = (graph as any).edges;
+      const nodes = Array.from((graph as any).nodes.values()) as GraphNode[];
+      const edges = (graph as any).edges as GraphEdge[];
       
       // PR-2: Calculate stable graph hash for layout cache invalidation
-      const newGraphHash = this.calculateGraphHash(nodes, edges);
+      const newGraphHash = calculateGraphHash(nodes, edges);
       setGraphHash(newGraphHash);
       
       setState({
@@ -84,7 +100,7 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
         error: error instanceof Error ? error.message : 'Unknown error'
       }));
     }
-  }, [autoValidate]);
+  }, [autoValidate, calculateGraphHash]);
 
   // Reload graph data
   const reload = useCallback(() => {
@@ -167,22 +183,6 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
   useEffect(() => {
     loadGraph(careerPathId);
   }, [loadGraph, careerPathId]);
-
-  // PR-2: Graph hash calculation for layout cache
-  const calculateGraphHash = useCallback((nodes: any[], edges: any[]): string => {
-    const nodeHashes = nodes.map(n => `${n.id}:${n.type}:${n.title}`).sort();
-    const edgeHashes = edges.map(e => `${e.from_id}->${e.to_id}:${e.edge_type}`).sort();
-    const combined = [...nodeHashes, ...edgeHashes].join('|');
-    
-    // Simple hash function
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-      const char = combined.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(36);
-  }, []);
 
   return {
     // State

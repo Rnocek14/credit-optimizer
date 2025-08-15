@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowRight, Zap, Star, MapPin, Award, Clock, CheckCircle } from 'lucide-react';
 import { SemanticNode, SubstitutionOption } from '@/types/semantic';
-import { SubstitutionOverlay } from './SubstitutionOverlay';
+// import { SubstitutionOverlay } from './SubstitutionOverlay';
 
 interface SemanticSkillNodeProps {
   data: {
@@ -245,13 +245,14 @@ export const SemanticSkillNode: React.FC<SemanticSkillNodeProps> = ({ data }) =>
           </div>
         </Card>
 
-        {/* Substitution overlay */}
+        {/* TODO: Add SubstitutionOverlay component when ready */}
         {showSubstitutions && hasSubstitutions && (
-          <SubstitutionOverlay
-            substitutions={node.substitutions!}
-            onSelect={onSubstitutionSelect}
-            onClose={() => setShowSubstitutions(false)}
-          />
+          <div className="absolute top-full left-0 mt-2 p-2 bg-card border rounded shadow-lg z-10">
+            <p className="text-xs text-muted-foreground">Substitution options coming soon...</p>
+            <Button size="sm" variant="ghost" onClick={() => setShowSubstitutions(false)}>
+              Close
+            </Button>
+          </div>
         )}
       </div>
     </TooltipProvider>
