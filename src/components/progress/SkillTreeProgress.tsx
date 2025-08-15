@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
-import { useCareerGraph } from '@/hooks/useCareerGraph';
+import { useAICareerGraph } from '@/hooks/useAICareerGraph';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { AchievementsRail } from './AchievementsRail';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,13 +46,67 @@ export const SkillTreeProgress: React.FC = () => {
 
   // Get career graph data
   const { 
-    nodes, 
-    edges, 
+    nodes: aiNodes, 
     loading: graphLoading, 
-    error: graphError 
-  } = useCareerGraph({ 
-    careerPathId: null // Show all nodes initially
-  });
+    error: graphError,
+    loadNodes 
+  } = useAICareerGraph();
+
+  // Transform AI nodes to match expected format
+  const nodes = React.useMemo(() => {
+    if (!aiNodes) return [];
+    
+    return aiNodes.map(node => ({
+      id: node.id,
+      type: node.node_type,
+      title: node.title,
+      name: node.title,
+      data: {
+        ...node,
+        name: node.title,
+        category: node.category || 'general',
+        description: node.description || '',
+        xpValue: node.estimated_time_hours || 0,
+        difficultyLevel: node.difficulty_level || 1
+      },
+      position: { x: 0, y: 0 } // Will be calculated by layout algorithm
+    }));
+  }, [aiNodes]);
+
+  // Load edges separately from career_graph_edges
+  const [edges, setEdges] = useState([]);
+
+  useEffect(() => {
+    const loadEdges = async () => {
+      if (!aiNodes?.length) return;
+      
+      const { data: edgeData, error } = await supabase
+        .from('career_graph_edges')
+        .select('*')
+        .eq('is_validated', true);
+      
+      if (error) {
+        console.error('Error loading edges:', error);
+        return;
+      }
+
+      const transformedEdges = edgeData.map(edge => ({
+        id: edge.id,
+        source: edge.from_id,
+        target: edge.to_id,
+        type: edge.edge_type,
+        data: {
+          ...edge,
+          weight: edge.importance_weight || 1,
+          confidence: edge.confidence_score || 0.8
+        }
+      }));
+
+      setEdges(transformedEdges);
+    };
+
+    loadEdges();
+  }, [aiNodes]);
 
   // Listen for real-time progress updates
   useEffect(() => {
