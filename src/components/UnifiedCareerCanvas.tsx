@@ -48,13 +48,29 @@ const calculateLayout = (
   selectedCareerPath?: string | null,
   showGoalPathOnly: boolean = false
 ): Node[] => {
-  if (graphNodes.length === 0) return [];
+  // Validate inputs & avoid early empty returns
+  const safeNodes = Array.isArray(graphNodes)
+    ? graphNodes.filter(n => n?.id && n?.type && n?.title)
+    : [];
 
-  console.log('🎨 Starting enhanced layout calculation for', graphNodes.length, 'nodes');
+  const safeEdges = Array.isArray(graphEdges)
+    ? graphEdges.filter(e => e?.source && e?.target)
+    : [];
+
+  if (safeNodes.length === 0) {
+    console.warn('🪵 Canvas received 0 valid nodes. Check upstream loader.', {
+      originalNodes: graphNodes?.length || 0,
+      filteredNodes: safeNodes.length,
+      sample: graphNodes?.slice(0, 3)
+    });
+    return [];
+  }
+
+  console.log('🎨 Starting enhanced layout calculation for', safeNodes.length, 'validated nodes');
 
   try {
-    // Convert GraphNodes to LayoutNodes
-    const layoutNodes: LayoutNode[] = graphNodes.map(node => ({
+    // Convert validated GraphNodes to LayoutNodes
+    const layoutNodes: LayoutNode[] = safeNodes.map(node => ({
       id: node.id,
       type: node.type,
       title: node.title,
@@ -63,8 +79,8 @@ const calculateLayout = (
       data: node.data
     }));
 
-    // Convert GraphEdges to LayoutEdges - fix mapping
-    const layoutEdges: LayoutEdge[] = graphEdges.map(edge => ({
+    // Convert validated GraphEdges to LayoutEdges - fix mapping
+    const layoutEdges: LayoutEdge[] = safeEdges.map(edge => ({
       source: edge.source || edge.from_id,
       target: edge.target || edge.to_id,
       type: mapEdgeType(edge.edge_type || edge.type)
@@ -102,7 +118,7 @@ const calculateLayout = (
 
     // Convert to React Flow Node format
     return positionedNodes.map(posNode => {
-      const originalNode = graphNodes.find(n => n.id === posNode.id);
+      const originalNode = safeNodes.find(n => n.id === posNode.id);
       if (!originalNode) {
         console.warn(`Original node not found for ${posNode.id}`);
         return {
@@ -170,10 +186,14 @@ const calculateLayout = (
     });
 
   } catch (error) {
-    console.error('❌ Error in enhanced layout calculation:', error);
-    // Fallback to basic positioning
-    return graphNodes.map((node, index) => ({
-      id: `${node.type}:${node.id}`,
+    console.error('❌ Error in enhanced layout calculation:', error, {
+      safeNodesCount: safeNodes.length,
+      safeEdgesCount: safeEdges.length,
+      algorithm
+    });
+    // Fallback to basic positioning with validated nodes
+    return safeNodes.map((node, index) => ({
+      id: node.id,
       position: { x: (index % 5) * 200 + 50, y: Math.floor(index / 5) * 150 + 50 },
       data: {
         title: node.title,

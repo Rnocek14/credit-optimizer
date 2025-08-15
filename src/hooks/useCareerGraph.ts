@@ -55,52 +55,118 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
     return Math.abs(hash).toString(36);
   }, []);
 
-  // Load graph data
+  // Load graph data - UNIFIED SOURCE ONLY
   const loadGraph = useCallback(async (pathId?: string) => {
-    console.log('🔄 Loading career graph...', { pathId });
+    console.log('🚀 Loading unified career graph...', { pathId });
     
     setState(prev => ({ ...prev, loading: true, error: null }));
     
     try {
-      const graph = await createCareerGraphFromDatabase(pathId);
+      // Import here to avoid circular dependencies
+      const { supabase } = await import('@/integrations/supabase/client');
       
-      // Validate graph if requested
-      if (autoValidate) {
-        const validation = graph.validateGraph();
-        if (!validation.isValid) {
-          console.warn('⚠️ Graph validation issues:', validation.errors);
-          // Continue anyway but log warnings
-        }
+      // Load nodes from unified table only
+      console.log('📦 Fetching career_graph_nodes...');
+      const { data: nodes, error: nodesErr } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('active', true);
+
+      // Load edges from unified table only  
+      console.log('🔗 Fetching career_graph_edges...');
+      const { data: edges, error: edgesErr } = await supabase
+        .from('career_graph_edges')
+        .select('*')
+        .limit(5000);
+
+      // Hard validation and logging (no silent fallbacks)
+      if (nodesErr || edgesErr) {
+        console.error('❌ SkillGraph load failed', { nodesErr, edgesErr });
+        throw nodesErr ?? edgesErr;
       }
-      
-      const statistics = graph.getStatistics();
-      const nodes = Array.from((graph as any).nodes.values()) as GraphNode[];
-      const edges = (graph as any).edges as GraphEdge[];
-      
-      // PR-2: Calculate stable graph hash for layout cache invalidation
-      const newGraphHash = calculateGraphHash(nodes, edges);
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        console.warn('⚠️ No career_graph_nodes found (active=true). Found:', nodes?.length || 0);
+      }
+      if (!Array.isArray(edges)) {
+        console.warn('⚠️ career_graph_edges returned non-array.');
+      }
+
+      // Normalize minimal shape before returning
+      const graphNodes = nodes.map(n => ({
+        id: n.id,
+        type: (n.node_type ?? 'skill') as any,
+        title: n.title ?? 'Untitled',
+        description: n.description ?? '',
+        category: n.category ?? null,
+        data: n,
+        estimated_time_hours: n.estimated_time_hours,
+        difficulty_level: n.difficulty_level,
+        market_demand_score: n.market_demand_score
+      })) as any;
+
+      const graphEdges = edges.map(e => ({
+        id: e.id ?? `${e.from_id}->${e.to_id}:${e.edge_type}`,
+        from_id: e.from_id,
+        to_id: e.to_id,
+        from_type: 'skill' as any,
+        to_type: 'skill' as any,
+        source: e.from_id,
+        target: e.to_id,
+        edge_type: (e.edge_type ?? 'supports').toLowerCase(),
+        type: e.edge_type,
+        importance_weight: e.importance_weight ?? 1,
+        confidence_score: e.confidence_score ?? 0.8,
+        reasoning: e.reasoning,
+        time_cost_hours: 0,
+        monetary_cost: 0,
+        difficulty_multiplier: 1.0
+      })) as any;
+
+      console.log('🧩 Unified data loaded', {
+        nodes: graphNodes?.length, 
+        edges: graphEdges?.length,
+        nodeTypes: [...new Set(graphNodes.map(n => n.type))],
+        edgeTypes: [...new Set(graphEdges.map(e => e.edge_type))]
+      });
+
+      // Calculate hash for layout stability
+      const newGraphHash = calculateGraphHash(graphNodes, graphEdges);
       setGraphHash(newGraphHash);
       
+      const statistics = {
+        totalNodes: graphNodes.length,
+        totalEdges: graphEdges.length,
+        nodesByType: graphNodes.reduce((acc, n) => {
+          acc[n.type] = (acc[n.type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        edgesByType: graphEdges.reduce((acc, e) => {
+          acc[e.edge_type] = (acc[e.edge_type] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        averageConnections: graphNodes.length > 0 ? graphEdges.length / graphNodes.length : 0
+      };
+
       setState({
-        graph,
-        nodes,
-        edges,
+        graph: null, // We don't need the old graph object
+        nodes: graphNodes,
+        edges: graphEdges,
         loading: false,
         error: null,
         statistics
       });
       
-      console.log('✅ Career graph loaded successfully:', statistics, `Hash: ${newGraphHash}`);
+      console.log('✅ Unified career graph loaded successfully:', statistics, `Hash: ${newGraphHash}`);
       
     } catch (error) {
-      console.error('❌ Error loading career graph:', error);
+      console.error('❌ Error loading unified career graph:', error);
       setState(prev => ({
         ...prev,
         loading: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       }));
     }
-  }, [autoValidate, calculateGraphHash]);
+  }, [calculateGraphHash]);
 
   // Reload graph data
   const reload = useCallback(() => {

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
-import { useAICareerGraph } from '@/hooks/useAICareerGraph';
+import { useCareerGraph } from '@/hooks/useCareerGraph';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { AchievementsRail } from './AchievementsRail';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Brain, Target, TrendingUp } from 'lucide-react';
+import { Loader2, Brain, Target, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -44,75 +44,43 @@ export const SkillTreeProgress: React.FC = () => {
     enabled: !!user?.id
   });
 
-  // Get career graph data
+  // Get unified career graph data
   const { 
-    nodes: aiNodes, 
+    nodes: graphNodes, 
+    edges: graphEdges,
     loading: graphLoading, 
     error: graphError,
-    loadNodes 
-  } = useAICareerGraph();
+    reload
+  } = useCareerGraph();
 
-  // Transform AI nodes to match expected format
+  console.log('🧩 SkillTreeProgress load', {
+    nodes: graphNodes?.length, 
+    edges: graphEdges?.length
+  });
+
+  // Transform and validate nodes
   const nodes = React.useMemo(() => {
-    if (!aiNodes) return [];
-    
-    return aiNodes.map(node => ({
-      id: node.id,
-      type: node.node_type,
-      title: node.title,
+    if (!Array.isArray(graphNodes)) return [];
+    return graphNodes.map(node => ({
+      ...node,
       name: node.title,
       data: {
-        ...node,
+        ...node.data,
         name: node.title,
-        category: node.category || 'general',
+        category: (node as any).category || 'general',
         description: node.description || '',
-        xpValue: node.estimated_time_hours || 0,
-        difficultyLevel: node.difficulty_level || 1
+        xpValue: (node as any).estimated_time_hours || 0,
+        difficultyLevel: (node as any).difficulty_level || 1
       },
       position: { x: 0, y: 0 } // Will be calculated by layout algorithm
     }));
-  }, [aiNodes]);
+  }, [graphNodes]);
 
-  // Load edges separately from career_graph_edges
-  const [edges, setEdges] = useState([]);
-
-  useEffect(() => {
-    const loadEdges = async () => {
-      if (!aiNodes?.length) return;
-      
-      const { data: edgeData, error } = await supabase
-        .from('career_graph_edges')
-        .select('*');
-        // Removed is_validated filter since it's causing zero results
-      
-      if (error) {
-        console.error('Error loading edges:', error);
-        return;
-      }
-
-  const transformedEdges = edgeData.map(edge => ({
-    id: edge.id,
-    from_id: edge.from_id,
-    to_id: edge.to_id,
-    source: edge.from_id,
-    target: edge.to_id,
-    edge_type: edge.edge_type?.toLowerCase() || 'connection',
-    type: edge.edge_type,
-    importance_weight: edge.importance_weight || 1,
-    confidence_score: edge.confidence_score || 0.8,
-    reasoning: edge.reasoning,
-    data: {
-      ...edge,
-      weight: edge.importance_weight || 1,
-      confidence: edge.confidence_score || 0.8
-    }
-  }));
-
-      setEdges(transformedEdges);
-    };
-
-    loadEdges();
-  }, [aiNodes]);
+  // Transform and validate edges
+  const edges = React.useMemo(() => {
+    if (!Array.isArray(graphEdges)) return [];
+    return graphEdges;
+  }, [graphEdges]);
 
   // Listen for real-time progress updates
   useEffect(() => {
@@ -228,6 +196,29 @@ export const SkillTreeProgress: React.FC = () => {
 
   const isLoading = criLoading || graphLoading;
 
+  // Render meaningful empty state (not a blank canvas)
+  if ((nodes?.length ?? 0) === 0 && !isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card className="p-6 text-center max-w-md">
+          <CardContent className="space-y-4">
+            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="font-semibold text-lg">No skills to display</h3>
+              <p className="text-sm text-muted-foreground">
+                We couldn't load any skill nodes. Check active data in career_graph_nodes.
+              </p>
+            </div>
+            <Button onClick={reload} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Reload
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -251,9 +242,11 @@ export const SkillTreeProgress: React.FC = () => {
       <div className="flex items-center justify-center h-96">
         <Card className="p-6">
           <CardContent className="text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
             <p className="text-destructive mb-4">Error loading skill tree</p>
             <p className="text-sm text-muted-foreground mb-4">{graphError}</p>
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={reload} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
               Reload
             </Button>
           </CardContent>
@@ -265,7 +258,7 @@ export const SkillTreeProgress: React.FC = () => {
   const readiness = criScore ? getReadinessLevel(criScore.overall) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="skill-tree-canvas">
       {/* CRI Overview */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
