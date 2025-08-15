@@ -53,6 +53,20 @@ export const SkillTreeProgress: React.FC = () => {
     reload
   } = useCareerGraph();
 
+  // 🧪 SKILL TREE DIAGNOSTIC - First render after data load
+  React.useEffect(() => {
+    if (graphNodes && graphEdges && !graphLoading) {
+      console.log('🧪 ST DIAG', {
+        nodesCount: graphNodes?.length,
+        edgesCount: graphEdges?.length,
+        sampleNode: graphNodes?.[0],
+        sampleEdge: graphEdges?.[0],
+        validNodes: Array.isArray(graphNodes) && graphNodes.every(n => n?.id && n?.type && n?.title),
+        validEdges: Array.isArray(graphEdges) && graphEdges.every(e => e?.from_id && e?.to_id),
+      });
+    }
+  }, [graphNodes, graphEdges, graphLoading]);
+
   console.log('🧩 SkillTreeProgress load', {
     nodes: graphNodes?.length, 
     edges: graphEdges?.length
@@ -97,11 +111,8 @@ export const SkillTreeProgress: React.FC = () => {
         },
         (payload) => {
           console.log('📈 Progress update received:', payload);
-          // Trigger re-fetch of progress data
-          setTimeout(() => {
-            // This will cause the useCareerReadiness hook to refetch
-            window.location.reload();
-          }, 500);
+          // Trigger re-fetch without full page reload
+          reload();
         }
       )
       .on(

@@ -38,7 +38,25 @@ interface UnifiedCareerCanvasProps {
   layoutConfig?: Partial<LayoutConfig>;
 }
 
-// Enhanced layout calculation using the new enhanced layout system
+// Grid fallback helper for when enhanced layout fails
+function gridFallback(nodes: GraphNode[]) {
+  const COLS = 6, X0 = 60, Y0 = 60, DX = 220, DY = 160;
+  return nodes.map((n, i) => ({
+    id: n.id,
+    position: { x: X0 + (i % COLS) * DX, y: Y0 + Math.floor(i / COLS) * DY },
+    data: { 
+      title: n.title, 
+      type: n.type, 
+      node: n, 
+      'data-testid': 'skill-node',
+      'data-node-type': n.type,
+      'data-node-id': n.id
+    },
+    type: 'default',
+  }));
+}
+
+// Enhanced layout calculation with safe fallback system
 const calculateLayout = (
   graphNodes: GraphNode[], 
   graphEdges: ExtendedGraphEdge[], 
@@ -48,14 +66,28 @@ const calculateLayout = (
   selectedCareerPath?: string | null,
   showGoalPathOnly: boolean = false
 ): Node[] => {
-  // Validate inputs & avoid early empty returns
+  console.time('layout');
+  
+  // 🧪 Sanitize inputs: keep only nodes with truthy id, type, title
   const safeNodes = Array.isArray(graphNodes)
     ? graphNodes.filter(n => n?.id && n?.type && n?.title)
     : [];
 
+  // 🧪 Map edges to source/target using fallback
   const safeEdges = Array.isArray(graphEdges)
-    ? graphEdges.filter(e => e?.source && e?.target)
+    ? graphEdges.map(e => ({
+        ...e,
+        source: e.source || e.from_id,
+        target: e.target || e.to_id
+      })).filter(e => e.source && e.target)
     : [];
+
+  console.log('🧪 ST DIAG - Sanitized Input', {
+    safeNodesCount: safeNodes.length,
+    safeEdgesCount: safeEdges.length,
+    sampleNode: safeNodes?.[0],
+    sampleEdge: safeEdges?.[0]
+  });
 
   if (safeNodes.length === 0) {
     console.warn('🪵 Canvas received 0 valid nodes. Check upstream loader.', {
@@ -79,10 +111,10 @@ const calculateLayout = (
       data: node.data
     }));
 
-    // Convert validated GraphEdges to LayoutEdges - fix mapping
+    // Convert validated GraphEdges to LayoutEdges
     const layoutEdges: LayoutEdge[] = safeEdges.map(edge => ({
-      source: edge.source || edge.from_id,
-      target: edge.target || edge.to_id,
+      source: edge.source!,
+      target: edge.target!,
       type: mapEdgeType(edge.edge_type || edge.type)
     }));
 
@@ -91,20 +123,17 @@ const calculateLayout = (
     const estimatedWidth = Math.max(1600, Math.ceil(Math.sqrt(nodeCount)) * 250);
     const estimatedHeight = Math.max(1200, Math.ceil(nodeCount / Math.ceil(Math.sqrt(nodeCount))) * 200);
 
-    // Use the algorithm directly since it's already mapped correctly
-    const enhancedAlgorithm = algorithm;
-
     // Use enhanced layout algorithm with collision detection
-    const positionedNodes = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
-      algorithm: enhancedAlgorithm,
+    const result = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
+      algorithm,
       containerWidth: estimatedWidth,
       containerHeight: estimatedHeight,
       nodeSpacing: {
-        horizontal: 220, // Increased spacing to prevent overlaps
-        vertical: 160,   // Increased vertical spacing
-        category: 100    // Increased category spacing
+        horizontal: 220,
+        vertical: 160,
+        category: 100
       },
-      layerHeight: 250, // Increased layer height
+      layerHeight: 250,
       focusNodeId: searchTerm ? layoutNodes.find(n => 
         n.title.toLowerCase().includes(searchTerm.toLowerCase())
       )?.id : undefined,
@@ -114,10 +143,18 @@ const calculateLayout = (
         .map(n => n.id) : undefined
     });
 
-    console.log('✅ Enhanced layout completed for', positionedNodes.length, 'positioned nodes');
+    // Check for layout failure conditions
+    if (!result || result.length === 0) {
+      console.warn('🪜 Enhanced layout returned 0 nodes, using grid fallback');
+      console.timeEnd('layout');
+      return gridFallback(safeNodes);
+    }
 
-    // Convert to React Flow Node format
-    return positionedNodes.map(posNode => {
+    console.log('✅ Enhanced layout completed for', result.length, 'positioned nodes');
+    console.timeEnd('layout');
+
+    // Convert to React Flow Node format with data-testid
+    return result.map(posNode => {
       const originalNode = safeNodes.find(n => n.id === posNode.id);
       if (!originalNode) {
         console.warn(`Original node not found for ${posNode.id}`);
@@ -127,7 +164,10 @@ const calculateLayout = (
           data: { 
             title: posNode.title,
             type: posNode.type,
-            category: posNode.clusterGroup
+            category: posNode.clusterGroup,
+            'data-testid': 'skill-node',
+            'data-node-type': posNode.type,
+            'data-node-id': posNode.id
           },
           type: 'default'
         };
@@ -139,7 +179,7 @@ const calculateLayout = (
       const pathType = originalNode.data && (originalNode.data as any).pathType;
       
       return {
-        id: originalNode.id, // Use simple node ID instead of composite
+        id: originalNode.id,
         position: { x: posNode.x, y: posNode.y },
         data: {
           title: originalNode.title,
@@ -151,12 +191,15 @@ const calculateLayout = (
           isBranchPoint,
           pathType,
           estimatedTime: originalNode.estimated_time_hours,
+          'data-testid': 'skill-node',
+          'data-node-type': originalNode.type,
+          'data-node-id': originalNode.id,
           style: {
             borderColor: getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint),
             backgroundColor: getNodeBackgroundColor(originalNode.type, pathType)
           }
         },
-        type: originalNode.type, // Use actual node type for proper rendering
+        type: originalNode.type,
         style: {
           background: getNodeBackgroundColor(originalNode.type, pathType),
           border: `${isCheckpoint ? '4px' : isBranchPoint ? '3px' : '2px'} solid ${getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint)}`,
@@ -191,17 +234,9 @@ const calculateLayout = (
       safeEdgesCount: safeEdges.length,
       algorithm
     });
-    // Fallback to basic positioning with validated nodes
-    return safeNodes.map((node, index) => ({
-      id: node.id,
-      position: { x: (index % 5) * 200 + 50, y: Math.floor(index / 5) * 150 + 50 },
-      data: {
-        title: node.title,
-        type: node.type,
-        node: node
-      },
-      type: 'default'
-    }));
+    console.warn('🪜 Using grid fallback layout', { inputNodes: safeNodes.length });
+    console.timeEnd('layout');
+    return gridFallback(safeNodes);
   }
 };
 

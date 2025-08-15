@@ -65,6 +65,9 @@ const JobNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 140
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -162,6 +165,9 @@ const SkillNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 100
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
@@ -233,6 +239,9 @@ const CourseNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 110
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-2">
@@ -318,6 +327,9 @@ const ProjectNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 120
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-2">
@@ -417,6 +429,9 @@ const CertificationNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 100
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">
@@ -506,6 +521,9 @@ const StepNode = memo<BaseNodeProps>(({ data, selected }) => {
           minHeight: (style as any)?.height || 90
         }}
         onClick={data.onClick}
+        data-testid="skill-node"
+        data-node-type={data.type}
+        data-node-id={data.id}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-2">

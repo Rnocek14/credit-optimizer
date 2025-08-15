@@ -38,12 +38,18 @@ export interface PositionedNode extends LayoutNode {
   clusterGroup?: string;
 }
 
+export interface LayoutResult {
+  nodes: PositionedNode[];
+  hadCycles: boolean;
+}
+
 export class EnhancedSkillTreeLayout {
   private nodes: LayoutNode[];
   private edges: LayoutEdge[];
   private config: LayoutConfig;
   private categoryColors: Map<string, string>;
   private depthCache: Map<string, number>;
+  private hadCycles: boolean = false;
 
   constructor(nodes: LayoutNode[], edges: LayoutEdge[], config: LayoutConfig) {
     this.nodes = nodes;
@@ -78,19 +84,51 @@ export class EnhancedSkillTreeLayout {
 
   public calculateLayout(): PositionedNode[] {
     console.log(`🎨 Starting enhanced layout calculation with ${this.config.algorithm}`);
+    this.hadCycles = false;
     
+    let result: PositionedNode[];
     switch (this.config.algorithm) {
       case 'semantic-hierarchy':
-        return this.calculateSemanticHierarchy();
+        result = this.calculateSemanticHierarchy();
+        break;
       case 'category-cluster':
-        return this.calculateCategoryCluster();
+        result = this.calculateCategoryCluster();
+        break;
       case 'goal-focused':
-        return this.calculateGoalFocused();
+        result = this.calculateGoalFocused();
+        break;
       case 'progressive-disclosure':
-        return this.calculateProgressiveDisclosure();
+        result = this.calculateProgressiveDisclosure();
+        break;
       default:
-        return this.calculateSemanticHierarchy();
+        result = this.calculateSemanticHierarchy();
     }
+
+    // Guarantee every input node yields a positioned node
+    const missingNodes = this.nodes.filter(n => !result.find(r => r.id === n.id));
+    if (missingNodes.length > 0) {
+      console.warn(`🔧 Adding ${missingNodes.length} missing nodes to layout`);
+      const maxY = Math.max(...result.map(n => n.y)) + 200;
+      missingNodes.forEach((node, i) => {
+        result.push({
+          ...node,
+          x: 100 + (i * 220),
+          y: maxY,
+          depth: 999,
+          clusterGroup: 'orphan'
+        });
+      });
+    }
+
+    if (this.hadCycles) {
+      console.warn('Layout cycles detected; fell back to heuristic depth for cycle nodes');
+    }
+
+    return result;
+  }
+
+  public getHadCycles(): boolean {
+    return this.hadCycles;
   }
 
   private calculateSemanticHierarchy(): PositionedNode[] {
@@ -149,9 +187,17 @@ export class EnhancedSkillTreeLayout {
       if (depths.has(nodeId)) return depths.get(nodeId)!;
       if (visiting.has(nodeId)) {
         console.warn(`🔄 Circular dependency detected involving node ${nodeId}`);
-        // Mark the cycle edge for future reference
+        // Mark cycle but don't bail - assign heuristic depth
         cycleEdges.add(nodeId);
-        return 0;
+        this.hadCycles = true;
+        
+        // Assign max(depths of sources) + 1 for cycle nodes
+        const dependencies = this.edges.filter(e => e.target === nodeId);
+        const depthValues = dependencies.map(dep => depths.get(dep.source) || 0);
+        const heuristicDepth = depthValues.length > 0 ? Math.max(...depthValues) + 1 : 0;
+        depths.set(nodeId, heuristicDepth);
+        visiting.delete(nodeId);
+        return heuristicDepth;
       }
 
       visiting.add(nodeId);
@@ -563,5 +609,12 @@ export function calculateEnhancedSkillTreeLayout(
   };
 
   const layout = new EnhancedSkillTreeLayout(nodes, edges, defaultConfig);
-  return layout.calculateLayout();
+  const result = layout.calculateLayout();
+  
+  // Expose hadCycles for caller logging
+  if (layout.getHadCycles()) {
+    console.warn('🔄 Layout cycles were detected and handled with heuristic depth assignment');
+  }
+  
+  return result;
 }
