@@ -19,9 +19,16 @@ import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
 import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
 import { calculateEnhancedSkillTreeLayout, type LayoutNode, type LayoutEdge } from '@/lib/enhancedSkillTreeLayout';
 
+// Extended edge interface to handle the transformed edges
+interface ExtendedGraphEdge extends GraphEdge {
+  source?: string;
+  target?: string;
+  type?: string;
+}
+
 interface UnifiedCareerCanvasProps {
   nodes: GraphNode[];
-  edges: GraphEdge[];
+  edges: ExtendedGraphEdge[];
   onNodeClick?: (node: GraphNode) => void;
   showPivotPaths?: boolean;
   focusMode?: boolean;
@@ -34,7 +41,7 @@ interface UnifiedCareerCanvasProps {
 // Enhanced layout calculation using the new enhanced layout system
 const calculateLayout = (
   graphNodes: GraphNode[], 
-  graphEdges: GraphEdge[], 
+  graphEdges: ExtendedGraphEdge[], 
   algorithm: 'semantic-hierarchy' | 'category-cluster' | 'goal-focused' | 'progressive-disclosure' = 'semantic-hierarchy',
   config?: Partial<LayoutConfig>,
   searchTerm?: string,
@@ -56,11 +63,11 @@ const calculateLayout = (
       data: node.data
     }));
 
-    // Convert GraphEdges to LayoutEdges
+    // Convert GraphEdges to LayoutEdges - fix mapping
     const layoutEdges: LayoutEdge[] = graphEdges.map(edge => ({
-      source: edge.from_id,
-      target: edge.to_id,
-      type: mapEdgeType(edge.edge_type)
+      source: edge.source || edge.from_id,
+      target: edge.target || edge.to_id,
+      type: mapEdgeType(edge.edge_type || edge.type)
     }));
 
     // Calculate dynamic container size based on node count
@@ -233,32 +240,33 @@ const mapEdgeType = (edgeType: string): 'teaches' | 'requires' | 'qualifies_for'
 };
 
 // Convert GraphEdge to React Flow Edge with enhanced styling
-const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
-  // Use simple node IDs to match the layout engine format
-  const sourceId = graphEdge.from_id;
-  const targetId = graphEdge.to_id;
+const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
+  // Use source/target if available, fallback to from_id/to_id
+  const sourceId = graphEdge.source || graphEdge.from_id;
+  const targetId = graphEdge.target || graphEdge.to_id;
+  const edgeType = graphEdge.edge_type || graphEdge.type || 'connection';
   
-  const isTeachingEdge = graphEdge.edge_type === 'teaches' || graphEdge.edge_type === 'unlocks';
-  const isRequirementEdge = graphEdge.edge_type === 'requires' || graphEdge.edge_type === 'prerequisite';
+  const isTeachingEdge = edgeType === 'teaches' || edgeType === 'unlocks';
+  const isRequirementEdge = edgeType === 'requires' || edgeType === 'prerequisite';
   
   return {
     id: `${sourceId}-${targetId}`,
     source: sourceId,
     target: targetId,
     type: isTeachingEdge ? 'smoothstep' : 'default',
-    animated: graphEdge.edge_type === 'unlocks' || graphEdge.edge_type === 'leads_to' || graphEdge.edge_type === 'teaches',
+    animated: edgeType === 'unlocks' || edgeType === 'leads_to' || edgeType === 'teaches',
     style: {
-      stroke: getEdgeColor(graphEdge.edge_type),
+      stroke: getEdgeColor(edgeType),
       strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1),
       opacity: 0.8
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: getEdgeColor(graphEdge.edge_type),
+      color: getEdgeColor(edgeType),
       width: 20,
       height: 20
     },
-    label: (graphEdge.edge_type || 'connection').replace('_', ' '),
+    label: edgeType.replace('_', ' '),
     labelStyle: {
       fontSize: '9px',
       fontWeight: '500',
@@ -267,7 +275,7 @@ const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
       borderRadius: '4px'
     },
     data: {
-      edgeType: graphEdge.edge_type,
+      edgeType: edgeType,
       reasoning: graphEdge.reasoning,
       importance: graphEdge.importance_weight
     }

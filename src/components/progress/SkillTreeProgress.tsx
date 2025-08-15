@@ -90,17 +90,23 @@ export const SkillTreeProgress: React.FC = () => {
         return;
       }
 
-      const transformedEdges = edgeData.map(edge => ({
-        id: edge.id,
-        source: edge.from_id,
-        target: edge.to_id,
-        type: edge.edge_type,
-        data: {
-          ...edge,
-          weight: edge.importance_weight || 1,
-          confidence: edge.confidence_score || 0.8
-        }
-      }));
+  const transformedEdges = edgeData.map(edge => ({
+    id: edge.id,
+    from_id: edge.from_id,
+    to_id: edge.to_id,
+    source: edge.from_id,
+    target: edge.to_id,
+    edge_type: edge.edge_type?.toLowerCase() || 'connection',
+    type: edge.edge_type,
+    importance_weight: edge.importance_weight || 1,
+    confidence_score: edge.confidence_score || 0.8,
+    reasoning: edge.reasoning,
+    data: {
+      ...edge,
+      weight: edge.importance_weight || 1,
+      confidence: edge.confidence_score || 0.8
+    }
+  }));
 
       setEdges(transformedEdges);
     };
