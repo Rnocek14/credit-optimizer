@@ -10,8 +10,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Target, ArrowLeft, Linkedin } from "lucide-react";
+import { Loader2, Target, ArrowLeft, Linkedin, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { enableDevAuth } from "@/lib/security";
+import { setupDevUser } from "@/lib/devUserSetup";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -194,6 +196,32 @@ export default function Auth() {
     }
   };
 
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    try {
+      // Enable dev auth and set up demo user
+      enableDevAuth();
+      setupDevUser('mateo');
+      
+      toast({
+        title: "Demo account ready!",
+        description: "You're now signed in as Mateo (demo user).",
+      });
+      
+      // Navigate to explore-hub
+      navigate("/explore-hub");
+    } catch (error: any) {
+      console.error("Demo login error:", error);
+      toast({
+        title: "Demo login failed",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -289,16 +317,38 @@ export default function Auth() {
                        </div>
                      </div>
                      
-                     <Button 
-                       type="button" 
-                       variant="outline" 
-                       className="w-full" 
-                       disabled={isLoading}
-                       onClick={handleLinkedInSignIn}
-                     >
-                       <Linkedin className="mr-2 h-4 w-4" />
-                       Sign in with LinkedIn
-                     </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="w-full" 
+                        disabled={isLoading}
+                        onClick={handleLinkedInSignIn}
+                      >
+                        <Linkedin className="mr-2 h-4 w-4" />
+                        Sign in with LinkedIn
+                      </Button>
+                      
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <Separator className="w-full" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background px-2 text-muted-foreground">
+                            Or try demo
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        type="button" 
+                        variant="secondary" 
+                        className="w-full" 
+                        disabled={isLoading}
+                        onClick={handleDemoLogin}
+                      >
+                        <Play className="mr-2 h-4 w-4" />
+                        Try demo account
+                      </Button>
                    </form>
                  </Form>
               </TabsContent>
