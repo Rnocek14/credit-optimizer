@@ -82,8 +82,8 @@ export const SkillTreeProgress: React.FC = () => {
       
       const { data: edgeData, error } = await supabase
         .from('career_graph_edges')
-        .select('*')
-        .eq('is_validated', true);
+        .select('*');
+        // Removed is_validated filter since it's causing zero results
       
       if (error) {
         console.error('Error loading edges:', error);

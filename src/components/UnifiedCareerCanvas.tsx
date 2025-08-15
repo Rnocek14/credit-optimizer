@@ -116,7 +116,7 @@ const calculateLayout = (
       const pathType = originalNode.data && (originalNode.data as any).pathType;
       
       return {
-        id: `${originalNode.type}:${originalNode.id}`,
+        id: originalNode.id, // Use simple node ID instead of composite
         position: { x: posNode.x, y: posNode.y },
         data: {
           title: originalNode.title,
@@ -234,9 +234,9 @@ const mapEdgeType = (edgeType: string): 'teaches' | 'requires' | 'qualifies_for'
 
 // Convert GraphEdge to React Flow Edge with enhanced styling
 const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
-  // Use composite node IDs to match the layout engine format
-  const sourceId = `${graphEdge.from_type}:${graphEdge.from_id}`;
-  const targetId = `${graphEdge.to_type}:${graphEdge.to_id}`;
+  // Use simple node IDs to match the layout engine format
+  const sourceId = graphEdge.from_id;
+  const targetId = graphEdge.to_id;
   
   const isTeachingEdge = graphEdge.edge_type === 'teaches' || graphEdge.edge_type === 'unlocks';
   const isRequirementEdge = graphEdge.edge_type === 'requires' || graphEdge.edge_type === 'prerequisite';
@@ -385,17 +385,15 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   }, [flowEdges, setEdges]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    // Extract node ID from the composite ID format "type:id"
-    const [nodeType, nodeId] = node.id.split(':');
-    const graphNode = graphNodes.find(gn => gn.id === nodeId && gn.type === nodeType);
+    // Use simple node ID to find the graph node
+    const graphNode = graphNodes.find(gn => gn.id === node.id);
     if (graphNode && onNodeClick) {
       onNodeClick(graphNode);
     }
   }, [graphNodes, onNodeClick]);
 
   const handleNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
-    const [nodeType, nodeId] = node.id.split(':');
-    const graphNode = graphNodes.find(gn => gn.id === nodeId && gn.type === nodeType);
+    const graphNode = graphNodes.find(gn => gn.id === node.id);
     if (graphNode) {
       setTooltipNode({
         node: graphNode,
