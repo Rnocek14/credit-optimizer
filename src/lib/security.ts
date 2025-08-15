@@ -132,6 +132,12 @@ export const isDevSessionExpired = (): boolean => {
 export const isProduction = (): boolean => {
   const host = window.location.hostname;
   const isLocal = host === 'localhost' || host === '127.0.0.1';
+  
+  // Check if dev auth is explicitly enabled (override production check)
+  if (isDevAuthEnabled()) {
+    return false;
+  }
+  
   return import.meta.env.PROD && !isLocal;
 };
 
@@ -146,11 +152,29 @@ export const isDevAuthEnabled = (): boolean => {
   try {
     const flag = localStorage.getItem('enableDevAuth');
     const winFlag = (window as any).__ENABLE_DEV_AUTH__;
-    return (!!flag && flag === 'true') || winFlag === true;
+    const urlParam = new URLSearchParams(window.location.search).get('enableDevAuth');
+    return (!!flag && flag === 'true') || winFlag === true || urlParam === 'true';
   } catch {
     return false;
   }
 };
+
+// Helper to enable dev auth mode
+export const enableDevAuth = (): void => {
+  try {
+    localStorage.setItem('enableDevAuth', 'true');
+    (window as any).__ENABLE_DEV_AUTH__ = true;
+    console.log('✅ Dev auth enabled! You can now access /dev-login');
+    console.log('🔗 Visit: /dev-login');
+  } catch (error) {
+    console.error('Failed to enable dev auth:', error);
+  }
+};
+
+// Make enableDevAuth globally available in console
+if (typeof window !== 'undefined') {
+  (window as any).enableDevAuth = enableDevAuth;
+}
 
 // Enhanced input validation
 export const validateAndSanitizeInput = (

@@ -45,7 +45,7 @@ export default function DevLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // SECURITY: Block dev login only in true production (not preview builds)
+  // SECURITY: Block dev login unless dev auth is enabled
   const isTrueProduction = isProduction();
   
   if (isTrueProduction) {
@@ -70,6 +70,9 @@ export default function DevLogin() {
             </p>
             <p className="text-xs text-muted-foreground border rounded p-2 bg-muted">
               <strong>For administrators:</strong> Use the standard authentication flow and admin panel.
+            </p>
+            <p className="text-xs text-muted-foreground border rounded p-2 bg-muted">
+              <strong>To enable dev auth:</strong> Run <code>enableDevAuth()</code> in browser console, then refresh.
             </p>
             <Button asChild className="w-full">
               <Link to="/auth">Go to Login</Link>
