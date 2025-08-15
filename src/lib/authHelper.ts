@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { isProduction, secureStorage, isDevSessionExpired, clearDevMode } from "./security";
+import { isProduction, secureStorage, isDevAuthEnabled } from "./security";
 import type { User } from "@supabase/supabase-js";
 
 // App role type to match database enum
@@ -69,38 +68,12 @@ export const hasRole = async (userId: string, role: AppRole): Promise<boolean> =
 };
 
 export const getCurrentUser = async (): Promise<AuthUser | null> => {
-  // SECURITY: Only allow dev mode in development environment
-  if (!isProduction()) {
-    // Import getCurrentDevUser locally to avoid circular dependency
-    const { getCurrentDevUser } = await import("./devUserSetup");
-    
-    const devUser = getCurrentDevUser();
-    if (devUser) {
-      console.log('DEBUG: Valid dev user session found:', {
-        name: devUser.name,
-        role: devUser.role,
-        id: devUser.id,
-        sessionValid: devUser.sessionExpires ? Date.now() < devUser.sessionExpires : true
-      });
-      
-      return {
-        id: devUser.id,
-        email: devUser.email,
-        role: toAppRole(devUser.role),
-        name: devUser.name,
-        isDevUser: true,
-      };
-    }
-  }
-
-  // Fall back to real Supabase auth
+  // Try real Supabase auth FIRST
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // Get secure role from database
       const role = await getSecureUserRole(user.id);
       const profile = await getUserProfile(user.id);
-      
       return {
         id: user.id,
         email: user.email || "",
@@ -111,6 +84,27 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
     }
   } catch (error) {
     console.error("Error getting user:", error);
+  }
+
+  // If explicitly enabled, allow dev user in development
+  if (isDevAuthEnabled() && !isProduction()) {
+    const { getCurrentDevUser } = await import("./devUserSetup");
+    const devUser = getCurrentDevUser();
+    if (devUser) {
+      console.log('DEBUG: Valid dev user session found:', {
+        name: devUser.name,
+        role: devUser.role,
+        id: devUser.id,
+        sessionValid: devUser.sessionExpires ? Date.now() < devUser.sessionExpires : true
+      });
+      return {
+        id: devUser.id,
+        email: devUser.email,
+        role: toAppRole(devUser.role),
+        name: devUser.name,
+        isDevUser: true,
+      };
+    }
   }
 
   return null;

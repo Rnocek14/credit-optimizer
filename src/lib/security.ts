@@ -116,11 +116,9 @@ export const clearDevMode = (): void => {
 export const DEV_SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
 
 export const isDevSessionExpired = (): boolean => {
-  if (!isDevelopment()) return false;
-  
+  if (!isDevelopment() || !isDevAuthEnabled()) return false;
   const devUser = localStorage.getItem("devUser");
   if (!devUser) return false;
-  
   try {
     const userData = JSON.parse(devUser);
     const sessionStart = userData.sessionStart || Date.now();
@@ -132,23 +130,26 @@ export const isDevSessionExpired = (): boolean => {
 
 // Environment check
 export const isProduction = (): boolean => {
-  // Allow dev mode override in development environments
-  const hasDevOverride = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.hostname.includes('.lovableproject.com') ||
-                         window.location.port !== '';
-  
-  return import.meta.env.PROD && !hasDevOverride;
+  const host = window.location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  return import.meta.env.PROD && !isLocal;
 };
 
 export const isDevelopment = (): boolean => {
-  // Consider development if DEV flag is true OR if we're on a development domain
-  const hasDevOverride = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.hostname.includes('.lovableproject.com') ||
-                         window.location.port !== '';
-  
-  return import.meta.env.DEV || hasDevOverride;
+  const host = window.location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  return import.meta.env.DEV || isLocal;
+};
+
+// Explicit dev-auth toggle; must be enabled to allow dev users
+export const isDevAuthEnabled = (): boolean => {
+  try {
+    const flag = localStorage.getItem('enableDevAuth');
+    const winFlag = (window as any).__ENABLE_DEV_AUTH__;
+    return (!!flag && flag === 'true') || winFlag === true;
+  } catch {
+    return false;
+  }
 };
 
 // Enhanced input validation

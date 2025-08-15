@@ -17,6 +17,10 @@ export default function SecurityMonitor() {
   const { toast } = useToast();
 
   useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/auth') || path.startsWith('/dev-login')) {
+      return;
+    }
     const checkSecurityStatus = async () => {
       try {
         const user = await getCurrentUser();

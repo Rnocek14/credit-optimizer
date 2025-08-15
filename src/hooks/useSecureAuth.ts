@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getCurrentUser, hasRole, type AuthUser, type AppRole } from "@/lib/authHelper";
 import { supabase } from "@/integrations/supabase/client";
 import { isProduction } from "@/lib/security";
-import { setupAishaForValidation, getCurrentDevUser } from "@/lib/devUserSetup";
 
 interface SecureAuthState {
   user: AuthUser | null;
@@ -105,14 +104,7 @@ export function useSecureAuth(): SecureAuthState {
     try {
       console.log('DEBUG: Starting auth check...');
       
-      // Auto-setup dev user if none exists in development
-      if (!isProduction()) {
-        const currentDevUser = getCurrentDevUser();
-        if (!currentDevUser) {
-          console.log('DEBUG: No valid dev user found, setting up Aisha for validation');
-          setupAishaForValidation();
-        }
-      }
+      // Dev user auto-setup removed to avoid interfering with real auth
 
       const currentUser = await getCurrentUser();
       console.log('DEBUG: Auth check result:', {
