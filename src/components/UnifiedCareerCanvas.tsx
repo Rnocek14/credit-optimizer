@@ -258,7 +258,7 @@ const convertToFlowEdge = (graphEdge: GraphEdge): Edge => {
       width: 20,
       height: 20
     },
-    label: graphEdge.edge_type.replace('_', ' '),
+    label: (graphEdge.edge_type || 'connection').replace('_', ' '),
     labelStyle: {
       fontSize: '9px',
       fontWeight: '500',
