@@ -17,11 +17,11 @@ export function getFeatureFlags(): FeatureFlags {
   const isProduction = process.env.NODE_ENV === 'production';
   
   return {
-    // Today Dashboard - OFF by default in production, enabled via ?enableToday=1
-    unifiedTodayDashboard: searchParams.has('enableToday'),
+    // Today Dashboard - ENABLED for demo
+    unifiedTodayDashboard: true,
     
-    // Cross-hub triggers - enabled by default except in prod without flag
-    crossHubTriggers: !isProduction || searchParams.has('enableCrossHub'),
+    // Cross-hub triggers - ENABLED for demo
+    crossHubTriggers: true,
     
     // CRI boost display - enabled everywhere
     criBoostDisplay: true,

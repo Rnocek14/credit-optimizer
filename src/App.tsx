@@ -65,6 +65,7 @@ import PlanHub from "./pages/PlanHub";
 import HistoryHub from "./pages/HistoryHub";
 import DiscoverHub from "./pages/DiscoverHub";
 import ProgressHub from "./pages/ProgressHub";
+import TodayDashboard from "./pages/TodayDashboard";
 import ContributeTabbed from "./pages/ContributeTabbed";
 import CareerCopilot from "./pages/CareerCopilot";
 import SprintBoard from "./pages/SprintBoard";
@@ -127,7 +128,7 @@ const App = () => (
             } 
           />
 
-          {/* 4-Hub Routes */}
+          {/* 4-Hub Routes - KEEP Features */}
           <Route 
             path="/discover" 
             element={
@@ -149,6 +150,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <ProgressHub />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/today" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <TodayDashboard />
               </ProtectedRoute>
             } 
           />

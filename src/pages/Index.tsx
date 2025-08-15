@@ -91,9 +91,9 @@ export default function Index() {
     );
   }
 
-  // Authenticated users with completed onboarding get redirected to plan
+  // Authenticated users with completed onboarding get redirected to Today Dashboard for demo
   if (preferences?.hasCompletedOnboarding) {
-    return <Navigate to="/plan" replace />;
+    return <Navigate to="/today" replace />;
   }
 
   // Fallback to original landing page
