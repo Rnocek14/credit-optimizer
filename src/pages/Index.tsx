@@ -1,3 +1,4 @@
+
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
 import { useUserJourney } from "@/contexts/UserJourneyContext";
@@ -15,7 +16,7 @@ import { getCurrentUser } from "@/lib/authHelper";
 import { Button } from "@/components/ui/button";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, Target, BookOpen, Users } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { checkRateLimit, generateRateLimitKey } from "@/lib/security";
 
 export default function Index() {
@@ -29,11 +30,16 @@ export default function Index() {
   } = useUserExperienceLevel();
   
   const { state: journeyState } = useUserJourney();
-  const { initializeFromUser } = useJourneyStore();
+  const { initializeFromUser, stage } = useJourneyStore();
+  
+  // Use a ref to track if we've already initialized to prevent infinite loops
+  const hasInitialized = useRef(false);
 
   // Initialize journey store when user data is available
   useEffect(() => {
-    if (user && preferences) {
+    if (user && preferences && !hasInitialized.current) {
+      console.log('🔄 Initializing journey store for user:', user.id);
+      
       const userPermissions = {
         admin: hasPermission("admin"),
         institution: hasPermission("user"), // Using "user" as fallback for institution 
@@ -42,8 +48,16 @@ export default function Index() {
       };
       
       initializeFromUser(preferences.hasCompletedOnboarding, userPermissions);
+      hasInitialized.current = true;
     }
-  }, [user, preferences, hasPermission, initializeFromUser]);
+  }, [user?.id, preferences?.hasCompletedOnboarding]); // Only depend on stable values
+
+  // Reset initialization flag when user changes
+  useEffect(() => {
+    if (!user) {
+      hasInitialized.current = false;
+    }
+  }, [user]);
 
   if (authLoading || experienceLoading) {
     return (
@@ -121,5 +135,3 @@ export default function Index() {
     </>
   );
 }
-
-
