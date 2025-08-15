@@ -69,9 +69,24 @@ verify_jwt = true
 [functions.send-resume-to-mentor]
 verify_jwt = true
 
-# Added (dry-run) public functions
+# Core AI Functions - Production Safe
+[functions.maya-chat]
+verify_jwt = true
+
+[functions.roadmap-generate]
+verify_jwt = true
+
+[functions.course-intel-score]
+verify_jwt = true
+
+[functions.market-forecast]
+verify_jwt = true
+
 [functions.assign-badges]
-verify_jwt = false
+verify_jwt = true
+
+[functions.resume-draft]
+verify_jwt = true
 
 [functions.autonomous-workflow-engine]
 verify_jwt = false
