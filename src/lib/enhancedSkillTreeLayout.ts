@@ -143,11 +143,14 @@ export class EnhancedSkillTreeLayout {
     const depths = new Map<string, number>();
     const visited = new Set<string>();
     const visiting = new Set<string>();
+    const cycleEdges = new Set<string>();
 
     const calculateDepth = (nodeId: string): number => {
       if (depths.has(nodeId)) return depths.get(nodeId)!;
       if (visiting.has(nodeId)) {
-        console.warn(`Circular dependency detected involving node ${nodeId}`);
+        console.warn(`🔄 Circular dependency detected involving node ${nodeId}`);
+        // Mark the cycle edge for future reference
+        cycleEdges.add(nodeId);
         return 0;
       }
 
@@ -174,13 +177,52 @@ export class EnhancedSkillTreeLayout {
       return maxDepth;
     };
 
+    // PR-3: Enhanced orphan handling
     this.nodes.forEach(node => {
       if (!visited.has(node.id)) {
-        calculateDepth(node.id);
+        const depth = calculateDepth(node.id);
+        
+        // Check if node is truly orphaned (no incoming or outgoing edges)
+        const hasEdges = this.edges.some(e => 
+          e.source === node.id || e.target === node.id
+        );
+        
+        if (!hasEdges) {
+          console.log(`🏝️ Orphan node detected: ${node.title} (${node.id})`);
+          depths.set(node.id, 999); // Place orphans at bottom
+        }
       }
     });
 
+    // PR-3: Longest path refinement for complex DAGs
+    this.refineLongestPath(depths);
+
     return depths;
+  }
+
+  // PR-3: New method for longest-path refinement
+  private refineLongestPath(depths: Map<string, number>): void {
+    let changed = true;
+    let iterations = 0;
+    const maxIterations = 10;
+    
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      iterations++;
+      
+      this.edges.forEach(edge => {
+        const sourceDepth = depths.get(edge.source) ?? 0;
+        const targetDepth = depths.get(edge.target) ?? 0;
+        
+        // Target should be at least source + 1
+        if (targetDepth <= sourceDepth) {
+          depths.set(edge.target, sourceDepth + 1);
+          changed = true;
+        }
+      });
+    }
+    
+    console.log(`🔄 Longest path refinement completed in ${iterations} iterations`);
   }
 
   private groupNodesByDepthAndType(depthMap: Map<string, number>): Map<number, Map<string, LayoutNode[]>> {
@@ -207,7 +249,10 @@ export class EnhancedSkillTreeLayout {
   private positionSemanticLayers(layers: Map<number, Map<string, LayoutNode[]>>): PositionedNode[] {
     const positioned: PositionedNode[] = [];
     const typeOrder = ['skill', 'course', 'project', 'certification', 'step', 'job'];
-    const layerHeight = this.config.layerHeight;
+    
+    // PR-1 FIX: Use depth-based positioning instead of typeIndex override
+    const LAYER_GAP = 180; // Consistent vertical spacing between depths  
+    const GROUP_Y_OFFSET = 35; // Small offset for type grouping within depth
     
     // Node dimensions for collision detection
     const nodeWidth = 170;
@@ -217,9 +262,15 @@ export class EnhancedSkillTreeLayout {
     // Sort layers by depth
     const sortedDepths = Array.from(layers.keys()).sort((a, b) => a - b);
     
+    console.log('🎨 Positioning layers with depths:', sortedDepths);
+    
     sortedDepths.forEach((depth, depthIndex) => {
       const depthLayer = layers.get(depth)!;
-      let layerY = 100 + depthIndex * layerHeight;
+      
+      // PR-1 CRITICAL FIX: Base Y coordinate determined by depth only
+      const baseY = 120 + depth * LAYER_GAP; // Use depth, not depthIndex
+      
+      console.log(`📍 Depth ${depth} positioned at baseY: ${baseY}`);
       
       // Position each type within the layer
       typeOrder.forEach((type, typeIndex) => {
@@ -230,15 +281,16 @@ export class EnhancedSkillTreeLayout {
         // Group by category within type
         const categoryGroups = this.groupNodesByCategory(nodesOfType);
         
-        let typeY = layerY + typeIndex * (nodeHeight + 40); // Ensure vertical spacing
+        // PR-1 FIX: Small type offset from base depth position
+        const finalY = baseY + (typeIndex * GROUP_Y_OFFSET);
         let currentX = 100;
         
         categoryGroups.forEach((categoryNodes, category) => {
           // Sort nodes within category by edge relationships and title
           const sortedNodes = this.sortNodesByRelationships(categoryNodes);
           
-          // Create category cluster with proper spacing
-          const clusterNodes = this.createCategoryCluster(sortedNodes, currentX, typeY, nodeWidth, nodeHeight, minSpacing);
+          // PR-1 FIX: Use finalY instead of typeY to preserve depth-based positioning
+          const clusterNodes = this.createCategoryCluster(sortedNodes, currentX, finalY, nodeWidth, nodeHeight, minSpacing);
           
           clusterNodes.forEach(positionedNode => {
             // Check for collisions with existing nodes

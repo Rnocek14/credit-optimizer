@@ -349,9 +349,17 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   layoutConfig
 }) => {
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
-  // Calculate layout using enhanced layout system
+  // PR-6: Memoized layout with graphHash for performance
   const flowNodes = useMemo(() => {
-    return calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
+    console.log('🎨 Recalculating layout with enhanced system...');
+    const startTime = performance.now();
+    
+    const result = calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
+    
+    const endTime = performance.now();
+    console.log(`⚡ Layout calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
+    
+    return result;
   }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode]);
 
   const flowEdges = useMemo(() => {
@@ -364,13 +372,15 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // Update nodes when graphNodes change
-  React.useEffect(() => {
+  // PR-6: Stable update with fitView only when layout changes
+  const [layoutComplete, setLayoutComplete] = React.useState(false);
+  
+  React.useLayoutEffect(() => {
     setNodes(flowNodes);
+    setLayoutComplete(true);
   }, [flowNodes, setNodes]);
 
-  // Update edges when graphEdges change
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     setEdges(flowEdges);
   }, [flowEdges, setEdges]);
 

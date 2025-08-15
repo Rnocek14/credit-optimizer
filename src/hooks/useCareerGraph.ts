@@ -36,6 +36,9 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
     statistics: null
   });
 
+  // PR-2: GraphHash for stable layout triggering
+  const [graphHash, setGraphHash] = useState<string>('');
+
   // Load graph data
   const loadGraph = useCallback(async (pathId?: string) => {
     console.log('🔄 Loading career graph...', { pathId });
@@ -55,17 +58,23 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
       }
       
       const statistics = graph.getStatistics();
+      const nodes = Array.from((graph as any).nodes.values());
+      const edges = (graph as any).edges;
+      
+      // PR-2: Calculate stable graph hash for layout cache invalidation
+      const newGraphHash = this.calculateGraphHash(nodes, edges);
+      setGraphHash(newGraphHash);
       
       setState({
         graph,
-        nodes: Array.from((graph as any).nodes.values()),
-        edges: (graph as any).edges,
+        nodes,
+        edges,
         loading: false,
         error: null,
         statistics
       });
       
-      console.log('✅ Career graph loaded successfully:', statistics);
+      console.log('✅ Career graph loaded successfully:', statistics, `Hash: ${newGraphHash}`);
       
     } catch (error) {
       console.error('❌ Error loading career graph:', error);
@@ -159,9 +168,26 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
     loadGraph(careerPathId);
   }, [loadGraph, careerPathId]);
 
+  // PR-2: Graph hash calculation for layout cache
+  const calculateGraphHash = useCallback((nodes: any[], edges: any[]): string => {
+    const nodeHashes = nodes.map(n => `${n.id}:${n.type}:${n.title}`).sort();
+    const edgeHashes = edges.map(e => `${e.from_id}->${e.to_id}:${e.edge_type}`).sort();
+    const combined = [...nodeHashes, ...edgeHashes].join('|');
+    
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+  }, []);
+
   return {
     // State
     ...state,
+    graphHash,
     
     // Actions
     reload,
