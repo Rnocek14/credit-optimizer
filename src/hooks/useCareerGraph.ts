@@ -91,18 +91,26 @@ export const useCareerGraph = (options: UseCareerGraphOptions = {}) => {
         console.warn('⚠️ career_graph_edges returned non-array.');
       }
 
-      // Normalize minimal shape before returning
-      const graphNodes = nodes.map(n => ({
-        id: n.id,
-        type: (n.node_type ?? 'skill') as any,
-        title: n.title ?? 'Untitled',
-        description: n.description ?? '',
-        category: n.category ?? null,
-        data: n,
-        estimated_time_hours: n.estimated_time_hours,
-        difficulty_level: n.difficulty_level,
-        market_demand_score: n.market_demand_score
-      })) as any;
+      // 🔧 STEP 3: Normalize titles at source - guarantee title at top level
+      const graphNodes = nodes.map(node => {
+        // Extract title from root properties (nodes table doesn't have data column)
+        const normalizedTitle = node.title || 'Untitled';
+        
+        return {
+          id: String(node.id), // ensure string ID
+          type: (node.node_type ?? 'skill') as any,
+          title: normalizedTitle, // always present at top level
+          description: node.description ?? '',
+          category: node.category ?? null,
+          data: { 
+            title: normalizedTitle, // ensure in data for compatibility
+            ...node // include all original properties
+          },
+          estimated_time_hours: node.estimated_time_hours,
+          difficulty_level: node.difficulty_level,
+          market_demand_score: node.market_demand_score
+        };
+      }) as any;
 
       const graphEdges = edges.map(e => ({
         id: e.id ?? `${e.from_id}->${e.to_id}:${e.edge_type}`,

@@ -39,21 +39,24 @@ interface UnifiedCareerCanvasProps {
   layoutConfig?: Partial<LayoutConfig>;
 }
 
-// Grid fallback helper for when enhanced layout fails
-function gridFallback(nodes: GraphNode[]) {
+// 🔧 STEP 4: Bulletproof grid fallback function (unified implementation)
+function gridFallback(nodes: GraphNode[] | { id: string; title: string; type: string; data?: any }[]): Node[] {
   const COLS = 6, X0 = 60, Y0 = 60, DX = 220, DY = 160;
+  console.log('📐 Using grid fallback for nodes:', nodes.length);
+  
   return nodes.map((n, i) => ({
     id: n.id,
+    type: "default",
     position: { x: X0 + (i % COLS) * DX, y: Y0 + Math.floor(i / COLS) * DY },
-    data: { 
-      title: n.title, 
-      type: n.type, 
-      node: n, 
-      'data-testid': 'skill-node',
-      'data-node-type': n.type,
-      'data-node-id': n.id
+    data: {
+      label: n.title,
+      title: n.title,
+      type: n.type,
+      node: n,
+      "data-testid": "skill-node",
+      "data-node-id": n.id,
+      "data-node-type": n.type,
     },
-    type: n.type || 'default',
   }));
 }
 
@@ -69,15 +72,17 @@ const calculateLayout = (
 ): Node[] => {
   console.time('layout');
   
-  // 🧪 Sanitize inputs: keep only nodes with truthy id, type, and title (including data.title)  
+  // 🧪 STEP 3: Simple filter since titles are normalized at source
   const safeNodes = Array.isArray(graphNodes)
-    ? graphNodes.filter(n => {
-        const hasId = n?.id;
-        const hasType = n?.type;
-        const hasTitle = n?.title || (n?.data && typeof n.data === 'object' && (n.data as any)?.title);
-        return hasId && hasType && hasTitle;
-      })
+    ? graphNodes.filter(n => n?.id && n?.type && n?.title)
     : [];
+    
+  console.log('🔍 SafeNodes filter:', { 
+    inputNodes: graphNodes?.length || 0, 
+    outputNodes: safeNodes.length,
+    sampleInput: graphNodes?.[0],
+    sampleOutput: safeNodes[0]
+  });
 
   // 🧪 Map edges to source/target using fallback
   const safeEdges = Array.isArray(graphEdges)
@@ -115,10 +120,11 @@ const calculateLayout = (
 
   try {
     // Convert validated GraphNodes to LayoutNodes
+    // 🔧 STEP 3: Simple mapping since titles are normalized
     const layoutNodes: LayoutNode[] = safeNodes.map(node => ({
       id: node.id,
       type: node.type,
-      title: node.title || (node.data && typeof node.data === 'object' && (node.data as any)?.title) || 'Untitled',
+      title: node.title, // guaranteed to exist from normalization
       category: extractCategoryFromNode(node) || 'Uncategorized',
       level: extractLevelFromNode(node),
       data: node.data

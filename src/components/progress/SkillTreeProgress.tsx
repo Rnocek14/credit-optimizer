@@ -11,6 +11,7 @@ import { Loader2, Brain, Target, TrendingUp, AlertCircle, RefreshCw } from 'luci
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+// import SkillTreeHarness from "@/components/SkillTreeHarness";
 
 export const SkillTreeProgress: React.FC = () => {
   const navigate = useNavigate();
@@ -368,6 +369,10 @@ export const SkillTreeProgress: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="min-h-[800px] h-[800px] relative">
+                {/* 🧪 STEP 1: Harness mode - uncomment to test ReactFlow rendering */}
+                {/* {typeof window !== 'undefined' && localStorage.getItem('ST_HARNESS') === '1' ? (
+                  <SkillTreeHarness />
+                ) : ( */}
                 <ReactFlowProvider>
                   <UnifiedCareerCanvas
                     nodes={renderNodes}
@@ -378,6 +383,7 @@ export const SkillTreeProgress: React.FC = () => {
                     focusMode={false}
                   />
                 </ReactFlowProvider>
+                {/* )} */}
               </div>
             </CardContent>
           </Card>
