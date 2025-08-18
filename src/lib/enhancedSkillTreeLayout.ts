@@ -1,6 +1,67 @@
 // Enhanced Skill Tree Layout Engine
 // Implements semantic clustering, category grouping, and intelligent positioning
 
+type NodeId = string;
+
+// Cycle-tolerant Kahn topological sort with grid fallback
+function topoWithCycleCut(nodes: LayoutNode[], edges: LayoutEdge[]) {
+  const out: PositionedNode[] = [];
+  const idToNode = new Map(nodes.map(n => [n.id, n]));
+  const indeg = new Map<NodeId, number>();
+  const adj = new Map<NodeId, NodeId[]>();
+
+  nodes.forEach(n => { indeg.set(n.id, 0); adj.set(n.id, []); });
+  edges.forEach(e => {
+    if (!idToNode.has(e.source) || !idToNode.has(e.target)) return;
+    indeg.set(e.target, (indeg.get(e.target) ?? 0) + 1);
+    adj.get(e.source)!.push(e.target);
+  });
+
+  const q: NodeId[] = [];
+  indeg.forEach((d, id) => { if (d === 0) q.push(id); });
+
+  const order: NodeId[] = [];
+  while (q.length) {
+    const u = q.shift()!;
+    order.push(u);
+    for (const v of adj.get(u)!) {
+      indeg.set(v, (indeg.get(v) ?? 0) - 1);
+      if ((indeg.get(v) ?? 0) === 0) q.push(v);
+    }
+  }
+
+  // If we didn't visit everything, we have cycles.
+  const hadCycles = order.length !== nodes.length;
+
+  if (hadCycles) {
+    // break cycles deterministically: cut any remaining incoming edge per node
+    const remaining = nodes.map(n => n.id).filter(id => !order.includes(id));
+    for (const id of remaining) {
+      // pretend this node is now a root for layout purposes
+      order.push(id);
+    }
+  }
+
+  // Pack ordered nodes into a simple layered grid (category/level aware if you have it)
+  const COLS = 6, X0 = 60, Y0 = 60, DX = 220, DY = 160;
+  const pos = new Map<NodeId, {x:number,y:number}>();
+  order.forEach((id, i) => {
+    pos.set(id, { x: X0 + (i % COLS) * DX, y: Y0 + Math.floor(i / COLS) * DY });
+  });
+
+  const placed = nodes.map(n => ({
+    id: n.id,
+    x: pos.get(n.id)!.x,
+    y: pos.get(n.id)!.y,
+    title: n.title,
+    type: n.type,
+    clusterGroup: n.category ?? 'uncategorized',
+    depth: 0,
+  }));
+
+  return { placed, hadCycles };
+}
+
 export interface LayoutNode {
   id: string;
   type: 'skill' | 'job' | 'course' | 'project' | 'certification' | 'step';
@@ -589,7 +650,7 @@ export class EnhancedSkillTreeLayout {
   }
 }
 
-// Utility function for easy usage
+// Utility function for easy usage with bulletproof fallback
 export function calculateEnhancedSkillTreeLayout(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
@@ -608,13 +669,24 @@ export function calculateEnhancedSkillTreeLayout(
     ...config
   };
 
-  const layout = new EnhancedSkillTreeLayout(nodes, edges, defaultConfig);
-  const result = layout.calculateLayout();
-  
-  // Expose hadCycles for caller logging
-  if (layout.getHadCycles()) {
-    console.warn('🔄 Layout cycles were detected and handled with heuristic depth assignment');
+  try {
+    const layout = new EnhancedSkillTreeLayout(nodes, edges, defaultConfig);
+    const result = layout.calculateLayout();
+    
+    // Check for failure conditions
+    if (!Array.isArray(result) || result.length === 0) {
+      console.warn('🪜 Enhanced returned 0 → using Kahn fallback');
+      return topoWithCycleCut(nodes, edges).placed;
+    }
+    
+    // Expose hadCycles for caller logging
+    if (layout.getHadCycles()) {
+      console.warn('🔄 Layout cycles were detected and handled with heuristic depth assignment');
+    }
+    
+    return result;
+  } catch (err) {
+    console.error('❌ Enhanced layout threw → using Kahn fallback', err);
+    return topoWithCycleCut(nodes, edges).placed;
   }
-  
-  return result;
 }

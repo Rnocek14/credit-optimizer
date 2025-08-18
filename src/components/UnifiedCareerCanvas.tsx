@@ -179,9 +179,15 @@ const calculateLayout = (
   // 🧪 FORCE_GRID debug mode  
     const FORCE_GRID = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_GRID') === '1';
     
-    // Check for layout failure conditions or debug override
-    if (FORCE_GRID || !result || result.length === 0) {
-      console.warn('🪜 Enhanced layout returned 0 nodes or FORCE_GRID enabled, using grid fallback');
+    // Strengthen fallback trigger with tooFew check
+    const tooFew = !result || result.length === 0 || result.length < safeNodes.length * 0.6;
+    
+    if (FORCE_GRID || tooFew) {
+      console.warn('📐 Fallback grid engaged', {
+        force: FORCE_GRID, 
+        input: safeNodes.length, 
+        result: result?.length ?? 0
+      });
       console.timeEnd('layout');
       return gridFallback(safeNodes);
     }
