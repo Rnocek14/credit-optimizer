@@ -114,3 +114,15 @@ verify_jwt = true
 
 [functions.ai-analyzer-tests]
 verify_jwt = true
+
+[functions.maya-execution-engine]
+verify_jwt = true
+
+[functions.course-intelligence-pipeline]
+verify_jwt = true
+
+[functions.cri-calculation-engine]
+verify_jwt = true
+
+[functions.certificate-generation]
+verify_jwt = true
