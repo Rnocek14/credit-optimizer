@@ -28,7 +28,7 @@ export function useSocialChallengeProgress(userId: string) {
   // Fetch user's challenge progress
   const { data: challengeProgress = [], isLoading } = useQuery({
     queryKey: ['challenge-progress', userId],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       const { data, error } = await supabase
         .from('challenge_participants')
         .select(`
@@ -43,7 +43,7 @@ export function useSocialChallengeProgress(userId: string) {
         .eq('user_id', userId);
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!userId,
   });
@@ -61,7 +61,7 @@ export function useSocialChallengeProgress(userId: string) {
         .eq('challenge_id', challengeId)
         .eq('user_id', userId)
         .select()
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       
@@ -91,7 +91,7 @@ export function useSocialChallengeProgress(userId: string) {
       queryClient.invalidateQueries({ queryKey: ['certificates', userId] });
       queryClient.invalidateQueries({ queryKey: ['user-xp', userId] });
       
-      const progressValue = data.progress_data?.progress || 0;
+      const progressValue = (data.progress_data as any)?.progress || 0;
       if (progressValue >= 100) {
         toast({
           title: "Challenge Completed! 🎉",
