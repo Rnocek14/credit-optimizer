@@ -90,18 +90,22 @@ import Phase7 from "./pages/Phase7";
 import ShareTrust from "./pages/ShareTrust";
 import Projects from "./pages/Projects";
 import Wallet from "./pages/Wallet";
-import Institution from "./pages/Institution";
-import Employer from "./pages/Employer";
-import InstitutionStudents from "./pages/InstitutionStudents";
-import InstitutionPrograms from "./pages/InstitutionPrograms";
-import InstitutionFaculty from "./pages/InstitutionFaculty";
-import InstitutionReports from "./pages/InstitutionReports";
-import InstitutionSettings from "./pages/InstitutionSettings";
-import EmployerTalent from "./pages/EmployerTalent";
-import EmployerWorkforce from "./pages/EmployerWorkforce";
-import EmployerSkills from "./pages/EmployerSkills";
-import EmployerPartnerships from "./pages/EmployerPartnerships";
-import EmployerJobs from "./pages/EmployerJobs";
+import {
+  Institution,
+  InstitutionStudents,
+  InstitutionPrograms,
+  InstitutionFaculty,
+  InstitutionReports,
+  InstitutionSettings
+} from "./pages/institution";
+import {
+  Employer,
+  EmployerTalent,
+  EmployerWorkforce,
+  EmployerSkills,
+  EmployerPartnerships,
+  EmployerJobs
+} from "./pages/employer";
 import AIAnalyzer from "./pages/AIAnalyzer";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
