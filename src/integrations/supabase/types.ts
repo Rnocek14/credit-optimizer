@@ -675,6 +675,7 @@ export type Database = {
           target_completion_date: string | null
           target_outcome: string
           title: string
+          track_id: string | null
           updated_at: string
           user_id: string
           workflow_type: string
@@ -695,6 +696,7 @@ export type Database = {
           target_completion_date?: string | null
           target_outcome: string
           title: string
+          track_id?: string | null
           updated_at?: string
           user_id: string
           workflow_type: string
@@ -715,6 +717,7 @@ export type Database = {
           target_completion_date?: string | null
           target_outcome?: string
           title?: string
+          track_id?: string | null
           updated_at?: string
           user_id?: string
           workflow_type?: string
@@ -2157,6 +2160,7 @@ export type Database = {
           started_at: string | null
           status: string
           time_spent_hours: number | null
+          track_id: string | null
           updated_at: string
           user_id: string
           xp_awarded: number | null
@@ -2172,6 +2176,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           time_spent_hours?: number | null
+          track_id?: string | null
           updated_at?: string
           user_id: string
           xp_awarded?: number | null
@@ -2187,6 +2192,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           time_spent_hours?: number | null
+          track_id?: string | null
           updated_at?: string
           user_id?: string
           xp_awarded?: number | null
