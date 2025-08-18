@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { HubNavigation } from '@/components/HubNavigation';
+import { useCertificateEngine } from '@/hooks/useCertificateEngine';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Award, 
   ExternalLink, 
@@ -13,7 +17,12 @@ import {
   Star,
   Zap,
   TrendingUp,
-  Shield
+  Shield,
+  Download,
+  Copy,
+  Plus,
+  Check,
+  X
 } from 'lucide-react';
 
 interface PublicCertificate {
@@ -31,8 +40,35 @@ interface PublicCertificate {
 }
 
 export default function CertificateGallery() {
-  const [certificates, setCertificates] = useState<PublicCertificate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+
+  // Get current user
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    }
+  });
+
+  // Use certificate engine
+  const { 
+    certificates, 
+    totalCount, 
+    verifiedCount, 
+    isLoading, 
+    isGenerating, 
+    isVerifying,
+    generateCertificate, 
+    verifyCertificate,
+    verificationResult 
+  } = useCertificateEngine(user?.id);
+
+  // Get public certificates for gallery display
+  const [publicCertificates, setPublicCertificates] = useState<PublicCertificate[]>([]);
+  const [publicLoading, setPublicLoading] = useState(true);
   const [stats, setStats] = useState({
     totalCertificates: 0,
     avgConfidence: 0,
@@ -46,7 +82,7 @@ export default function CertificateGallery() {
 
   const fetchPublicCertificates = async () => {
     try {
-      setLoading(true);
+      setPublicLoading(true);
       
       // Fetch recent certificates (last 30 days) for public display
       const thirtyDaysAgo = new Date();
@@ -74,7 +110,7 @@ export default function CertificateGallery() {
 
       if (error) throw error;
 
-      setCertificates(data || []);
+      setPublicCertificates(data || []);
       
       // Calculate stats
       const totalCertificates = data?.length || 0;
@@ -92,11 +128,44 @@ export default function CertificateGallery() {
     } catch (error) {
       console.error('Error fetching public certificates:', error);
     } finally {
-      setLoading(false);
+      setPublicLoading(false);
     }
   };
 
-  if (loading) {
+  const handleGenerateTestCertificate = async () => {
+    if (!user) return;
+    
+    try {
+      await generateCertificate({
+        certificateType: 'workflow_completion',
+        certificateData: {
+          title: 'Demo Workflow Completion',
+          description: 'Successfully completed a demo Maya workflow',
+          skills: ['Problem Solving', 'AI Collaboration'],
+          metadata: { demo: true }
+        }
+      });
+      setShowGenerateDialog(false);
+    } catch (error) {
+      console.error('Error generating test certificate:', error);
+    }
+  };
+
+  const handleVerifyCertificate = async () => {
+    if (!verificationCode.trim()) return;
+    
+    try {
+      await verifyCertificate(verificationCode.trim());
+    } catch (error) {
+      console.error('Error verifying certificate:', error);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  if (publicLoading || isLoading) {
     return (
       <>
         <HubNavigation />
@@ -151,7 +220,7 @@ export default function CertificateGallery() {
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg">
                 <div className="text-2xl font-bold text-purple-600">
-                  {certificates.reduce((sum, cert) => sum + cert.autonomous_steps, 0)}
+                  {publicCertificates.reduce((sum, cert) => sum + cert.autonomous_steps, 0)}
                 </div>
                 <div className="text-sm text-purple-700">Autonomous Steps</div>
               </div>
@@ -163,13 +232,172 @@ export default function CertificateGallery() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Recently Certified</h2>
-            <Button variant="outline" size="sm">
-              <Shield className="w-4 h-4 mr-2" />
-              Verify Certificate
-            </Button>
+            <div className="flex gap-2">
+              {user && (
+                <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Generate Test Certificate
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Generate Test Certificate</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        This will generate a demo certificate for testing purposes.
+                      </p>
+                      <Button 
+                        onClick={handleGenerateTestCertificate} 
+                        disabled={isGenerating}
+                        className="w-full"
+                      >
+                        {isGenerating ? 'Generating...' : 'Generate Certificate'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+              
+              <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Verify Certificate
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Verify Certificate</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Verification Code</label>
+                      <Input
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        placeholder="Enter verification code"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    {verificationResult && (
+                      <div className={`p-3 rounded-lg border ${
+                        verificationResult.valid 
+                          ? 'bg-green-50 border-green-200' 
+                          : 'bg-red-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          {verificationResult.valid ? (
+                            <Check className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <X className="w-4 h-4 text-red-600" />
+                          )}
+                          <span className={`font-medium ${
+                            verificationResult.valid ? 'text-green-900' : 'text-red-900'
+                          }`}>
+                            {verificationResult.valid ? 'Valid Certificate' : 'Invalid Certificate'}
+                          </span>
+                        </div>
+                        {verificationResult.valid && verificationResult.certificate && (
+                          <div className="text-sm space-y-1">
+                            <p><strong>Title:</strong> {verificationResult.certificate.title}</p>
+                            <p><strong>Type:</strong> {verificationResult.certificate.type}</p>
+                            <p><strong>Issued:</strong> {new Date(verificationResult.certificate.issueDate).toLocaleDateString()}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <Button 
+                      onClick={handleVerifyCertificate} 
+                      disabled={isVerifying || !verificationCode.trim()}
+                      className="w-full"
+                    >
+                      {isVerifying ? 'Verifying...' : 'Verify'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
           
-          {certificates.length === 0 ? (
+          {/* User's Personal Certificates */}
+          {user && certificates.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4">Your Certificates</h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {certificates.map((certificate) => (
+                  <Card key={certificate.id} className="border-l-4 border-l-primary">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{certificate.title}</CardTitle>
+                        <Badge variant="outline" className="bg-primary/10">
+                          {certificate.type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <CardDescription className="text-xs">
+                        #{certificate.certificateNumber}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Verification Code:</span>
+                          <div className="flex items-center gap-1">
+                            <code className="text-xs bg-muted px-1 rounded">
+                              {certificate.verificationCode}
+                            </code>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => copyToClipboard(certificate.verificationCode)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Issued:</span>
+                          <span>{new Date(certificate.issueDate).toLocaleDateString()}</span>
+                        </div>
+                        
+                        {certificate.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {certificate.skills.slice(0, 3).map((skill, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                            {certificate.skills.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{certificate.skills.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2 mt-3">
+                          <Button size="sm" variant="outline" className="flex-1">
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Public Gallery */}
+          <h3 className="text-lg font-semibold mb-4">Public Gallery</h3>
+          
+          {publicCertificates.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -185,7 +413,7 @@ export default function CertificateGallery() {
             </Card>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {certificates.map((certificate) => (
+              {publicCertificates.map((certificate) => (
                 <Card key={certificate.id} className="border-l-4 border-l-yellow-500 hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -204,7 +432,7 @@ export default function CertificateGallery() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="text-center p-2 bg-card rounded-lg">
                         <Brain className="w-4 h-4 text-primary mx-auto mb-1" />
-                        <div className="text-sm font-bold">{(certificate.maya_confidence_score * 100).toFixed(1)}%</div>
+                        <div className="text-sm font-bold">{((certificate.maya_confidence_score || 0) * 100).toFixed(1)}%</div>
                         <div className="text-xs text-muted-foreground">Confidence</div>
                       </div>
                       <div className="text-center p-2 bg-card rounded-lg">
