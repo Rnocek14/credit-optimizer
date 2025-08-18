@@ -170,7 +170,7 @@ export default function ContributeTabbed() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className={`grid w-full grid-cols-${availableTabs.length}`}>
+          <TabsList className={`grid w-full ${availableTabs.length === 1 ? 'grid-cols-1' : availableTabs.length === 2 ? 'grid-cols-2' : availableTabs.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
             {availableTabs.map(([key, feature]) => (
               <TabsTrigger 
                 key={key} 

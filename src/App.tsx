@@ -618,9 +618,30 @@ const App = () => (
             </ProtectedRoute>
           } 
         />
-        <Route path="/admin/badges" element={<AdminBadges />} />
-        <Route path="/admin/moderation" element={<AdminModeration />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route 
+          path="/admin/badges" 
+          element={
+            <StakeholderProtectedRoute requiredRole="admin">
+              <AdminBadges />
+            </StakeholderProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/moderation" 
+          element={
+            <StakeholderProtectedRoute requiredRole="admin">
+              <AdminModeration />
+            </StakeholderProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/settings" 
+          element={
+            <StakeholderProtectedRoute requiredRole="admin">
+              <AdminSettings />
+            </StakeholderProtectedRoute>
+          } 
+        />
         <Route path="/admin/locations" element={<LocationManagerPanel />} />
         <Route path="/embed-explorer" element={<EmbedExplorer />} />
           <Route 
