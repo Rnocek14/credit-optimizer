@@ -7,6 +7,7 @@ import { CourseProgressBadge } from './CourseProgressBadge';
 interface StartLearningButtonProps {
   courseId: string;
   courseUrl?: string;
+  trackId?: string;
   variant?: "default" | "outline" | "ghost" | "destructive" | "secondary";
   size?: "default" | "sm" | "lg";
   showProgressBadge?: boolean;
@@ -16,6 +17,7 @@ interface StartLearningButtonProps {
 export function StartLearningButton({ 
   courseId, 
   courseUrl, 
+  trackId,
   variant = "default",
   size = "default",
   showProgressBadge = false,
@@ -26,7 +28,7 @@ export function StartLearningButton({
     getProgressForCourse, 
     getProgressStatus,
     updateProgress 
-  } = useCourseProgress();
+  } = useCourseProgress(trackId);
 
   const progress = getProgressForCourse(courseId);
   const status = getProgressStatus(courseId);
@@ -34,7 +36,7 @@ export function StartLearningButton({
   const handleClick = async () => {
     if (status === 'not_started') {
       // Start the course first
-      await startCourse.mutateAsync(courseId);
+      await startCourse.mutateAsync({ courseId, trackId });
     } else {
       // Update last accessed time
       updateProgress.mutate({ courseId });

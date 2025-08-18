@@ -7,6 +7,7 @@ export interface CourseProgress {
   id: string;
   user_id: string;
   course_id: string;
+  track_id?: string;
   status: 'not_started' | 'in_progress' | 'completed' | 'paused';
   progress_percentage: number;
   started_at?: string;
@@ -31,13 +32,13 @@ export interface LearningMilestone {
   created_at: string;
 }
 
-export function useCourseProgress() {
+export function useCourseProgress(trackId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get all course progress for the current user
+  // Get course progress for the current user, optionally filtered by track
   const { data: courseProgress, isLoading } = useQuery({
-    queryKey: ['course-progress'],
+    queryKey: ['course-progress', trackId],
     queryFn: async () => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
@@ -52,10 +53,17 @@ export function useCourseProgress() {
         userId = user.id;
       }
 
-      const { data: progressData, error } = await supabase
+      let query = supabase
         .from('course_progress')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+
+      // Filter by track if provided
+      if (trackId) {
+        query = query.eq('track_id', trackId);
+      }
+
+      const { data: progressData, error } = await query
         .order('last_accessed_at', { ascending: false });
 
       if (error) throw error;
@@ -114,7 +122,7 @@ export function useCourseProgress() {
 
   // Start course progress
   const startCourse = useMutation({
-    mutationFn: async (courseId: string) => {
+    mutationFn: async ({ courseId, trackId: courseTrackId }: { courseId: string; trackId?: string }) => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
       let userId: string;
@@ -132,6 +140,15 @@ export function useCourseProgress() {
         user_id_param: userId,
         course_id_param: courseId
       });
+
+      // Update with track_id if provided
+      if (courseTrackId && data) {
+        await supabase
+          .from('course_progress')
+          .update({ track_id: courseTrackId })
+          .eq('user_id', userId)
+          .eq('course_id', courseId);
+      }
 
       if (error) throw error;
       return data;

@@ -31,13 +31,13 @@ export interface CourseRecommendation {
   category: 'career_aligned' | 'skill_gaps' | 'trending' | 'personalized';
 }
 
-export function useCourseIntelligencePipeline(userId: string) {
+export function useCourseIntelligencePipeline(userId: string, trackId?: string) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch course history (simplified for now - using dummy data)
   const courseHistoryQuery = useQuery({
-    queryKey: ['course-history', userId],
+    queryKey: ['course-history', userId, trackId],
     queryFn: async () => {
       // For now, return empty array since the table structure is not ready
       return [];
@@ -55,7 +55,8 @@ export function useCourseIntelligencePipeline(userId: string) {
         body: {
           action: 'parse_course',
           userId,
-          url
+          url,
+          trackId
         }
       });
       
@@ -63,7 +64,7 @@ export function useCourseIntelligencePipeline(userId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId] });
+      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
       toast({
         title: "Course Parsed Successfully",
         description: "Course has been analyzed and added to your history",
@@ -86,7 +87,8 @@ export function useCourseIntelligencePipeline(userId: string) {
         body: {
           action: 'analyze_quality',
           userId,
-          courseData
+          courseData,
+          trackId
         }
       });
       
@@ -94,7 +96,7 @@ export function useCourseIntelligencePipeline(userId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId] });
+      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
       toast({
         title: "Quality Analysis Complete",
         description: "Course quality factors have been analyzed",
@@ -117,7 +119,8 @@ export function useCourseIntelligencePipeline(userId: string) {
         body: {
           action: 'extract_skills',
           userId,
-          courseData
+          courseData,
+          trackId
         }
       });
       
@@ -125,7 +128,7 @@ export function useCourseIntelligencePipeline(userId: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId] });
+      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
       toast({
         title: "Skills Extracted",
         description: "Skills have been identified and categorized",
@@ -143,12 +146,13 @@ export function useCourseIntelligencePipeline(userId: string) {
 
   // Get course recommendations
   const recommendationsQuery = useQuery({
-    queryKey: ['course-recommendations', userId],
+    queryKey: ['course-recommendations', userId, trackId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('course-intelligence-pipeline', {
         body: {
           action: 'generate_recommendations',
           userId,
+          trackId,
           careerPath: 'full_stack_developer' // This could be dynamic based on user profile
         }
       });
@@ -171,14 +175,15 @@ export function useCourseIntelligencePipeline(userId: string) {
           user_id: userId,
           course_id: courseId,
           status: 'planned',
-          progress_percentage: 0
+          progress_percentage: 0,
+          track_id: trackId
         });
       
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-progress', userId] });
+      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
       toast({
         title: "Added to Plan",
         description: "Course has been added to your learning plan",

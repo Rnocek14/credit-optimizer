@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface AutonomousWorkflow {
   id: string;
   user_id: string;
+  track_id?: string;
   workflow_type: string;
   title: string;
   description: string;
@@ -62,7 +63,7 @@ export interface WorkflowTemplate {
   usage_count: number;
 }
 
-export function useAutonomousWorkflows() {
+export function useAutonomousWorkflows(trackId?: string) {
   const [workflows, setWorkflows] = useState<AutonomousWorkflow[]>([]);
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,12 +75,19 @@ export function useAutonomousWorkflows() {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('autonomous_workflows')
         .select(`
           *,
           workflow_steps (*)
-        `)
+        `);
+
+      // Filter by track if provided
+      if (trackId) {
+        query = query.eq('track_id', trackId);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -115,7 +123,7 @@ export function useAutonomousWorkflows() {
     }
   }, []);
 
-  const createWorkflow = useCallback(async (templateName: string, customization: any) => {
+  const createWorkflow = useCallback(async (templateName: string, customization: any, workflowTrackId?: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -128,7 +136,8 @@ export function useAutonomousWorkflows() {
           type: 'create_workflow',
           templateName,
           customization,
-          userId: user.user.id
+          userId: user.user.id,
+          trackId: workflowTrackId || trackId
         }
       });
 
@@ -159,7 +168,7 @@ export function useAutonomousWorkflows() {
     }
   }, [toast, fetchUserWorkflows]);
 
-  const executeStep = useCallback(async (stepId: string) => {
+  const executeStep = useCallback(async (stepId: string, stepTrackId?: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -167,7 +176,8 @@ export function useAutonomousWorkflows() {
       const { data, error } = await supabase.functions.invoke('autonomous-workflow-engine', {
         body: {
           type: 'execute_step',
-          stepId
+          stepId,
+          trackId: stepTrackId || trackId
         }
       });
 
