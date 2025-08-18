@@ -1,9 +1,14 @@
 import { HubNavigation } from "@/components/HubNavigation";
 import { TodayDashboard } from "@/components/TodayDashboard";
-
+import { Helmet } from "react-helmet-async";
 export default function TodayDashboardPage() {
   return (
     <>
+      <Helmet>
+        <title>Today Dashboard – Personalized Focus | PathfindAI</title>
+        <meta name="description" content="View your personalized daily recommendations, quick wins, and learning streak on the Today dashboard." />
+        <link rel="canonical" href={`${window.location.origin}/today`} />
+      </Helmet>
       <HubNavigation />
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">

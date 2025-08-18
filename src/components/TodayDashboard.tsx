@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
 import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { useFeatureFlags } from '@/lib/featureFlags';
+import { seedTodayDemoData } from '@/utils/seedTodayDemoData';
+import { useToast } from '@/hooks/use-toast';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -16,6 +18,8 @@ interface TodayDashboardProps {
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { unifiedTodayDashboard } = useFeatureFlags();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: user } = useQuery({
     queryKey: ['user'],
     queryFn: async () => (await supabase.auth.getUser()).data.user
@@ -309,6 +313,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                </div>
              )}
             
+            
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Weekly Goal</span>
@@ -319,6 +324,29 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                 2 more sessions this week
               </p>
             </div>
+
+            {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
+              <div className="pt-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await seedTodayDemoData();
+                      toast({ title: 'Demo data seeded', description: 'Refresh applied to your Today dashboard.' });
+                      // Refresh gamification queries
+                      queryClient.invalidateQueries({ queryKey: ['learning-streaks'] });
+                      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
+                      queryClient.invalidateQueries({ queryKey: ['gamification-metrics'] });
+                    } catch (e: any) {
+                      toast({ title: 'Seeding failed', description: e.message || 'Please sign in first.', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  Seed demo data for Today
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
