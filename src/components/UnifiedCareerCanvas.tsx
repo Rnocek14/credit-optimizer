@@ -425,6 +425,19 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
   const reactFlowInstance = useReactFlow();
   
+  // ✅ HARD OVERRIDE FOR TESTING (temporary) - uncomment to test ReactFlow + container
+  // const __forceNodes = [{ 
+  //   id: 'test-node', 
+  //   type: 'skill', 
+  //   position: { x: 100, y: 100 }, 
+  //   data: { 
+  //     title: 'Hello Test Node',
+  //     'data-testid': 'skill-node',
+  //     'data-node-type': 'skill',
+  //     'data-node-id': 'test-node'
+  //   } 
+  // }];
+
   // PR-6: Memoized layout with graphHash for performance
   const flowNodes = useMemo(() => {
     console.log('🎨 Recalculating layout with enhanced system...');

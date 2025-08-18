@@ -84,6 +84,7 @@ export const SkillTreeProgress: React.FC = () => {
   const canaryNodes = SHOW_CANARY ? [{
     id: 'canary-node',
     type: 'skill' as const,
+    position: { x: 100, y: 100 },  // ✅ Add required position for React Flow
     title: '👋 Canary Node - Data Loading Test',
     description: 'This node proves the canvas is working',
     data: {
