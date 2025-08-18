@@ -5,13 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   GraduationCap, Building, Briefcase, Settings, 
-  Users, BookOpen, BarChart3, Shield, ChevronRight
+  Users, BookOpen, BarChart3, Shield, ChevronRight,
+  Search, TrendingUp, Target, FileText, Brain,
+  Zap, TrendingDown, Award, MessageSquare
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
+import { useMentorAnalytics } from "@/hooks/useMentorAnalytics";
+import { WorkflowManagementInterface } from "@/components/WorkflowManagementInterface";
 
 export default function ContributeTabbed() {
-  const { hasPermission } = useSecureAuth();
+  const { hasPermission, user } = useSecureAuth();
+  const { metrics, achievements, loading } = useMentorAnalytics();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'teach';
 
@@ -22,38 +27,75 @@ export default function ContributeTabbed() {
   const contributionFeatures = {
     teach: {
       title: "Teach & Mentor",
-      description: "Share your expertise by creating courses and mentoring learners",
+      description: "Share your expertise through AI-powered course curation and mentoring",
       icon: GraduationCap,
-      permission: "user",
-      stats: { courses: 0, students: 0, rating: 0 },
+      permission: "mentor",
+      stats: { 
+        courses: metrics?.courses_reviewed || 0, 
+        students: metrics?.impact_score || 0, 
+        rating: metrics?.quality_score || 0 
+      },
       actions: [
-        { label: "Create Course", href: "/upload-course" },
-        { label: "View Analytics", href: "/teach/analytics" },
-        { label: "Manage Courses", href: "/teach/courses" }
+        { label: "Course Discovery", href: "/teach/discovery" },
+        { label: "Course Curation", href: "/teach/curation" },
+        { label: "Learning Paths", href: "/teach/paths" },
+        { label: "Validation Hub", href: "/teach/validation" },
+        { label: "Marketplace", href: "/teach/marketplace" },
+        { label: "Analytics", href: "/teach/analytics" }
+      ],
+      features: [
+        { title: "AI-Powered Course Discovery", description: "Discover and validate course content using intelligent algorithms", icon: Search },
+        { title: "Smart Course Curation", description: "Create structured learning experiences with AI assistance", icon: Brain },
+        { title: "Predictive Learning Paths", description: "Build adaptive pathways that respond to learner needs", icon: TrendingUp },
+        { title: "Real-time Validation", description: "Instant feedback and quality assurance for course content", icon: Award },
+        { title: "Impact Analytics", description: "Track your teaching effectiveness and student outcomes", icon: BarChart3 },
+        { title: "Mentor Community", description: "Connect with other educators and share best practices", icon: MessageSquare }
       ]
     },
     institution: {
       title: "Institution Portal",
-      description: "Educational institution tools and management features",
+      description: "Comprehensive institutional management and analytics platform",
       icon: Building,
-      permission: "user",
+      permission: "admin",
       stats: { programs: 0, enrollments: 0, completion: 0 },
       actions: [
-        { label: "Manage Programs", href: "/institution" },
-        { label: "Student Analytics", href: "/analytics" },
-        { label: "Certification Tools", href: "/certificates" }
+        { label: "Institution Overview", href: "/institution/overview" },
+        { label: "Student Management", href: "/institution/students" },
+        { label: "Program Analytics", href: "/institution/programs" },
+        { label: "Faculty Dashboard", href: "/institution/faculty" },
+        { label: "Reports", href: "/institution/reports" },
+        { label: "Settings", href: "/institution/settings" }
+      ],
+      features: [
+        { title: "Institution Overview", description: "View institutional metrics and KPIs", icon: BarChart3 },
+        { title: "Student Management", description: "Manage student enrollment and records", icon: Users },
+        { title: "Program Analytics", description: "Track program performance and outcomes", icon: GraduationCap },
+        { title: "Faculty Dashboard", description: "Manage teaching staff and resources", icon: Building },
+        { title: "Institutional Reports", description: "Generate compliance and performance reports", icon: FileText },
+        { title: "Institution Settings", description: "Configure institutional preferences", icon: Settings }
       ]
     },
     employer: {
       title: "Employer Tools",
-      description: "Talent recruitment and employee development features",
+      description: "Connect with talent and build your workforce of the future",
       icon: Briefcase,
-      permission: "user",
+      permission: "admin",
       stats: { jobs: 0, candidates: 0, hires: 0 },
       actions: [
-        { label: "Post Jobs", href: "/employer" },
-        { label: "Browse Talent", href: "/resume-gallery" },
-        { label: "Analytics Dashboard", href: "/analytics" }
+        { label: "Talent Pipeline", href: "/employer/talent" },
+        { label: "Workforce Analytics", href: "/employer/workforce" },
+        { label: "Hiring Dashboard", href: "/employer/hiring" },
+        { label: "Skills Assessment", href: "/employer/skills" },
+        { label: "Training Partnerships", href: "/employer/partnerships" },
+        { label: "Job Postings", href: "/employer/jobs" }
+      ],
+      features: [
+        { title: "Talent Pipeline", description: "Browse and recruit top candidates", icon: Search },
+        { title: "Workforce Analytics", description: "Track employee skills and development", icon: TrendingUp },
+        { title: "Hiring Dashboard", description: "Manage recruitment and onboarding", icon: Users },
+        { title: "Skills Assessment", description: "Evaluate candidate and employee skills", icon: Target },
+        { title: "Training Partnerships", description: "Partner with educational institutions", icon: Building },
+        { title: "Job Postings", description: "Create and manage job openings", icon: Briefcase }
       ]
     },
     admin: {
@@ -140,24 +182,26 @@ export default function ContributeTabbed() {
             const Icon = feature.icon;
             return (
               <TabsContent key={key} value={key} className="mt-6">
-                <div className="grid gap-6 lg:grid-cols-3">
+                <div className="grid gap-6">
                   {/* Main Feature Card */}
-                  <Card className="lg:col-span-2">
+                  <Card>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <Icon className="h-6 w-6 text-primary" />
+                          <div className="p-3 bg-primary/10 rounded-lg">
+                            <Icon className="h-8 w-8 text-primary" />
                           </div>
                           <div>
-                            <CardTitle className="text-xl">{feature.title}</CardTitle>
-                            <CardDescription className="mt-1">
+                            <CardTitle className="text-2xl">{feature.title}</CardTitle>
+                            <CardDescription className="mt-1 text-lg">
                               {feature.description}
                             </CardDescription>
                           </div>
                         </div>
-                        {feature.permission === "admin" && (
-                          <Badge variant="destructive">Admin</Badge>
+                        {(feature.permission === "admin" || feature.permission === "mentor") && (
+                          <Badge variant={feature.permission === "admin" ? "destructive" : "secondary"}>
+                            {feature.permission === "admin" ? "Admin" : "Mentor"}
+                          </Badge>
                         )}
                       </div>
                     </CardHeader>
@@ -165,72 +209,107 @@ export default function ContributeTabbed() {
                       {/* Stats */}
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         {Object.entries(feature.stats).map(([statKey, value]) => (
-                          <div key={statKey} className="text-center">
-                            <p className="text-2xl font-bold">{value}</p>
-                            <p className="text-xs text-muted-foreground capitalize">
+                          <div key={statKey} className="text-center p-4 border rounded-lg">
+                            <p className="text-3xl font-bold text-primary">{value}</p>
+                            <p className="text-sm text-muted-foreground capitalize">
                               {statKey}
                             </p>
                           </div>
                         ))}
                       </div>
 
+                      {/* Feature Grid */}
+                      {(feature as any).features && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-4">Key Features</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(feature as any).features.map((feat: any, index: number) => (
+                              <Card key={index} className="border-muted">
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                      <feat.icon className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm mb-1">{feat.title}</h4>
+                                      <p className="text-xs text-muted-foreground">{feat.description}</p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Actions */}
-                      <div className="space-y-2">
-                        <Button asChild className="w-full">
-                          <Link to={feature.actions[0]?.href || '#'}>
-                            <ChevronRight className="h-4 w-4 mr-2" />
-                            {feature.actions[0]?.label || 'Get Started'}
-                          </Link>
-                        </Button>
-                        <div className="grid grid-cols-2 gap-2">
-                          {feature.actions.slice(1).map((action, index) => (
-                            <Button key={index} asChild variant="outline" size="sm">
-                              <Link to={action.href}>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {feature.actions.map((action, index) => (
+                            <Button 
+                              key={index} 
+                              asChild 
+                              variant={index === 0 ? "default" : "outline"}
+                              className="h-12"
+                            >
+                              <Link to={action.href} className="flex items-center justify-center gap-2">
+                                <ChevronRight className="h-4 w-4" />
                                 {action.label}
                               </Link>
                             </Button>
                           ))}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
 
-                  {/* Getting Started Sidebar */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Getting Started
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="text-center p-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <BookOpen className="h-6 w-6 text-blue-600" />
+                      {/* Special Content for Teach Tab */}
+                      {key === 'teach' && (
+                        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                          <h4 className="font-semibold mb-3 flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-primary" />
+                            AI-Powered Teaching Tools
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <h5 className="font-medium">Course Intelligence</h5>
+                              <p className="text-muted-foreground">AI validates and optimizes your course content</p>
+                            </div>
+                            <div>
+                              <h5 className="font-medium">Predictive Curation</h5>
+                              <p className="text-muted-foreground">Smart recommendations for learning paths</p>
+                            </div>
+                            <div>
+                              <h5 className="font-medium">Auto-Validation</h5>
+                              <p className="text-muted-foreground">Real-time quality assurance and feedback</p>
+                            </div>
+                            <div>
+                              <h5 className="font-medium">Impact Analytics</h5>
+                              <p className="text-muted-foreground">Track student success and engagement</p>
+                            </div>
+                          </div>
+                          {!loading && achievements && achievements.length > 0 && (
+                            <div className="mt-4 p-3 bg-background rounded border">
+                              <h5 className="font-medium mb-2 flex items-center gap-2">
+                                <Award className="h-4 w-4 text-amber-500" />
+                                Recent Achievement
+                              </h5>
+                              <p className="text-sm text-muted-foreground">
+                                {achievements[0].achievement_name}: {achievements[0].description}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <h3 className="font-medium mb-2">Share Knowledge</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Create content based on your professional experience
-                        </p>
-                      </div>
-                      <div className="text-center p-4">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Users className="h-6 w-6 text-green-600" />
+                      )}
+
+                      {/* Special Content for Admin Tab - Workflow Management */}
+                      {key === 'admin' && (
+                        <div className="mt-6">
+                          <h4 className="font-semibold mb-4 flex items-center gap-2">
+                            <Settings className="h-5 w-5 text-primary" />
+                            Workflow Management
+                          </h4>
+                          <WorkflowManagementInterface />
                         </div>
-                        <h3 className="font-medium mb-2">Help Others</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Guide learners through their career journey
-                        </p>
-                      </div>
-                      <div className="text-center p-4">
-                        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <BarChart3 className="h-6 w-6 text-purple-600" />
-                        </div>
-                        <h3 className="font-medium mb-2">Track Impact</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Monitor your contribution metrics
-                        </p>
-                      </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

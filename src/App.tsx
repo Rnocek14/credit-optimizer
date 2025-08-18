@@ -206,6 +206,164 @@ const App = () => (
           <Route path="/employer-hub" element={<Navigate to="/contribute?tab=employer" replace />} />
           <Route path="/admin" element={<Navigate to="/contribute?tab=admin" replace />} />
 
+          {/* Teach Feature Routes */}
+          <Route 
+            path="/teach/discovery" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <CourseDiscovery />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/curation" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <CourseCuration />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/paths" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <TeachPaths />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/validation" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <TeachValidation />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/marketplace" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <CourseMarketplace />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/analytics" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <TeachAnalytics />
+              </StakeholderProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/teach/courses" 
+            element={
+              <StakeholderProtectedRoute stakeholderType="teach" requiredRole="mentor">
+                <TeachCourses />
+              </StakeholderProtectedRoute>
+            } 
+          />
+
+          {/* Institution Feature Routes */}
+          <Route 
+            path="/institution/overview" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Institution />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution/students" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Analytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution/programs" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <TeachAnalytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution/faculty" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <TeachCourses />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution/reports" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ResumeAnalytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/institution/settings" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <AdminSettings />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Employer Feature Routes */}
+          <Route 
+            path="/employer/talent" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ResumeGallery />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/workforce" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Analytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/hiring" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Employer />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/skills" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <ResumeAnalytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/partnerships" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Institution />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employer/jobs" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Employer />
+              </ProtectedRoute>
+            } 
+          />
+
           {/* Legacy Phase Routes */}
           <Route 
             path="/phase4" 
