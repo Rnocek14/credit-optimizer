@@ -42,9 +42,9 @@ export default function Index() {
       
       const userPermissions = {
         admin: hasPermission("admin"),
-        institution: hasPermission("user"), // Using "user" as fallback for institution 
-        employer: hasPermission("user"), // Using "user" as fallback for employer
-        teach: hasPermission("user") // Using "user" as fallback for teach
+        institution: hasPermission("admin"),
+        employer: hasPermission("admin"),
+        teach: hasPermission("mentor") || hasPermission("admin")
       };
       
       initializeFromUser(preferences.hasCompletedOnboarding, userPermissions);

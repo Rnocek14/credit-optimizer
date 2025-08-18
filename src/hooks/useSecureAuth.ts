@@ -64,17 +64,27 @@ export function useSecureAuth(): SecureAuthState {
       console.log('DEBUG: Permission denied - missing user or role');
       return false;
     }
-    
-    // Admin has all permissions
-    if (role === 'admin') {
-      console.log('DEBUG: Permission granted - admin role');
-      return true;
+
+    // Role hierarchy: user < mentor < admin
+    const hierarchy: AppRole[] = ['user', 'mentor', 'admin'];
+    const userIdx = hierarchy.indexOf(role);
+    const requiredIdx = hierarchy.indexOf(requiredRole);
+
+    // Fallback safety: if role not found, deny
+    if (userIdx === -1 || requiredIdx === -1) {
+      console.log('DEBUG: Permission denied - invalid role mapping', { role, requiredRole });
+      return false;
     }
-    
-    // Exact role match required for non-admin roles
-    const hasPermission = role === requiredRole;
-    console.log('DEBUG: Permission result:', hasPermission);
-    return hasPermission;
+
+    const allowed = userIdx >= requiredIdx;
+
+    if (allowed) {
+      console.log('DEBUG: Permission granted via hierarchy', { role, requiredRole });
+    } else {
+      console.log('DEBUG: Permission denied via hierarchy', { role, requiredRole });
+    }
+
+    return allowed;
   };
 
   // Debounced auth check to prevent race conditions
