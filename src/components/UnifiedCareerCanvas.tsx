@@ -69,9 +69,14 @@ const calculateLayout = (
 ): Node[] => {
   console.time('layout');
   
-  // 🧪 Sanitize inputs: keep only nodes with truthy id, type, title
+  // 🧪 Sanitize inputs: keep only nodes with truthy id, type, and title (including data.title)  
   const safeNodes = Array.isArray(graphNodes)
-    ? graphNodes.filter(n => n?.id && n?.type && n?.title)
+    ? graphNodes.filter(n => {
+        const hasId = n?.id;
+        const hasType = n?.type;
+        const hasTitle = n?.title || (n?.data && typeof n.data === 'object' && (n.data as any)?.title);
+        return hasId && hasType && hasTitle;
+      })
     : [];
 
   // 🧪 Map edges to source/target using fallback
@@ -113,7 +118,7 @@ const calculateLayout = (
     const layoutNodes: LayoutNode[] = safeNodes.map(node => ({
       id: node.id,
       type: node.type,
-      title: node.title,
+      title: node.title || (node.data && typeof node.data === 'object' && (node.data as any)?.title) || 'Untitled',
       category: extractCategoryFromNode(node) || 'Uncategorized',
       level: extractLevelFromNode(node),
       data: node.data
@@ -425,23 +430,28 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
   const reactFlowInstance = useReactFlow();
   
-  // ✅ HARD OVERRIDE FOR TESTING (temporary) - uncomment to test ReactFlow + container
-  // const __forceNodes = [{ 
-  //   id: 'test-node', 
-  //   type: 'skill', 
-  //   position: { x: 100, y: 100 }, 
-  //   data: { 
-  //     title: 'Hello Test Node',
-  //     'data-testid': 'skill-node',
-  //     'data-node-type': 'skill',
-  //     'data-node-id': 'test-node'
-  //   } 
-  // }];
-
   // PR-6: Memoized layout with graphHash for performance
   const flowNodes = useMemo(() => {
     console.log('🎨 Recalculating layout with enhanced system...');
     const startTime = performance.now();
+    
+    // ✅ FORCE TEST MODE - shows single test node if ST_FORCE_TEST=1
+    const FORCE_TEST = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_TEST') === '1';
+    if (FORCE_TEST) {
+      const forceNodes = [{ 
+        id: 'test-node', 
+        type: 'skill', 
+        position: { x: 200, y: 200 }, 
+        data: { 
+          title: 'Hello Debug Node',
+          'data-testid': 'skill-node',
+          'data-node-type': 'skill',
+          'data-node-id': 'test-node'
+        } 
+      }];
+      console.log('🧪 FORCE_TEST enabled - rendering test node');
+      return forceNodes;
+    }
     
     const result = calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
     

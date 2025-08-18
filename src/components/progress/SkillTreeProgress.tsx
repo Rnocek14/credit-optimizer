@@ -158,6 +158,21 @@ export const SkillTreeProgress: React.FC = () => {
     };
   }, [user?.id]);
 
+  // Debug bridge for runtime diagnostics
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__skillTreeDiag = {
+        nodesCount: nodes.length,
+        edgesCount: edges.length,
+        sampleNode: nodes[0],
+        sampleEdge: edges[0],
+        graphLoading: graphLoading,
+        userProgress: userProgress?.length || 0
+      };
+      console.log('🔬 ST DEBUG BRIDGE', (window as any).__skillTreeDiag);
+    }
+  }, [nodes, edges, graphLoading, userProgress]);
+
   // Enhanced node click handler with deep linking
   const handleNodeClick = (node: any) => {
     console.log('🎯 Skill node clicked:', node);
