@@ -92,6 +92,16 @@ import Projects from "./pages/Projects";
 import Wallet from "./pages/Wallet";
 import Institution from "./pages/Institution";
 import Employer from "./pages/Employer";
+import InstitutionStudents from "./pages/InstitutionStudents";
+import InstitutionPrograms from "./pages/InstitutionPrograms";
+import InstitutionFaculty from "./pages/InstitutionFaculty";
+import InstitutionReports from "./pages/InstitutionReports";
+import InstitutionSettings from "./pages/InstitutionSettings";
+import EmployerTalent from "./pages/EmployerTalent";
+import EmployerWorkforce from "./pages/EmployerWorkforce";
+import EmployerSkills from "./pages/EmployerSkills";
+import EmployerPartnerships from "./pages/EmployerPartnerships";
+import EmployerJobs from "./pages/EmployerJobs";
 import AIAnalyzer from "./pages/AIAnalyzer";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
@@ -269,7 +279,7 @@ const App = () => (
             path="/institution/overview" 
             element={
               <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
-                <InstitutionHub />
+                <Institution />
               </StakeholderProtectedRoute>
             } 
           />
