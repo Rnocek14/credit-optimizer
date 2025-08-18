@@ -13,6 +13,12 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useMentorAnalytics } from "@/hooks/useMentorAnalytics";
 import { WorkflowManagementInterface } from "@/components/WorkflowManagementInterface";
+import { DemoSeedingPanel } from "@/components/DemoSeedingPanel";
+import { DemoCourseSeedTrigger } from "@/components/DemoCourseSeedTrigger";
+import { CourseIntelligenceSystemValidator } from "@/components/CourseIntelligenceSystemValidator";
+import { SmartBatchOperations } from "@/components/SmartBatchOperations";
+import { PredictiveCurationEngine } from "@/components/PredictiveCurationEngine";
+import { AutoValidationDashboard } from "@/components/AutoValidationDashboard";
 
 export default function ContributeTabbed() {
   const { hasPermission, user } = useSecureAuth();
@@ -56,7 +62,7 @@ export default function ContributeTabbed() {
       title: "Institution Portal",
       description: "Comprehensive institutional management and analytics platform",
       icon: Building,
-      permission: "admin",
+      permission: "mentor",
       stats: { programs: 0, enrollments: 0, completion: 0 },
       actions: [
         { label: "Institution Overview", href: "/institution/overview" },
@@ -79,7 +85,7 @@ export default function ContributeTabbed() {
       title: "Employer Tools",
       description: "Connect with talent and build your workforce of the future",
       icon: Briefcase,
-      permission: "admin",
+      permission: "mentor",
       stats: { jobs: 0, candidates: 0, hires: 0 },
       actions: [
         { label: "Talent Pipeline", href: "/employer/talent" },
@@ -164,7 +170,7 @@ export default function ContributeTabbed() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full grid-cols-${availableTabs.length}`}>
             {availableTabs.map(([key, feature]) => (
               <TabsTrigger 
                 key={key} 
@@ -297,6 +303,85 @@ export default function ContributeTabbed() {
                               </p>
                             </div>
                           )}
+                          
+                          {/* Advanced Teaching Components */}
+                          <div className="mt-6 space-y-6">
+                            <DemoSeedingPanel />
+                            <DemoCourseSeedTrigger />
+                            <CourseIntelligenceSystemValidator />
+                            
+                            <div className="text-center">
+                              <h3 className="text-xl font-bold mb-2">Intelligence Amplification Tools</h3>
+                              <p className="text-muted-foreground mb-4">Smart batch operations, predictive curation, and auto-validation</p>
+                            </div>
+                            
+                            <div className="grid lg:grid-cols-2 gap-6">
+                              <SmartBatchOperations />
+                              <PredictiveCurationEngine />
+                            </div>
+                            
+                            <AutoValidationDashboard />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Special Content for Institution Tab */}
+                      {key === 'institution' && (
+                        <div className="mt-6 space-y-6">
+                          <div className="p-4 bg-muted/50 rounded-lg">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <Building className="h-5 w-5 text-primary" />
+                              Institutional Management Tools
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <h5 className="font-medium">Student Lifecycle Management</h5>
+                                <p className="text-muted-foreground">End-to-end student journey tracking and analytics</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Program Performance Analytics</h5>
+                                <p className="text-muted-foreground">Real-time insights into program effectiveness</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Faculty Resource Optimization</h5>
+                                <p className="text-muted-foreground">Optimize teaching assignments and resources</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Compliance Reporting</h5>
+                                <p className="text-muted-foreground">Automated reporting for regulatory compliance</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Special Content for Employer Tab */}
+                      {key === 'employer' && (
+                        <div className="mt-6 space-y-6">
+                          <div className="p-4 bg-muted/50 rounded-lg">
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <Briefcase className="h-5 w-5 text-primary" />
+                              Workforce Development Platform
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <h5 className="font-medium">AI-Powered Talent Matching</h5>
+                                <p className="text-muted-foreground">Find candidates with precise skill alignment</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Skills Gap Analysis</h5>
+                                <p className="text-muted-foreground">Identify and address workforce skill gaps</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Training Partnership Network</h5>
+                                <p className="text-muted-foreground">Connect with educational providers for upskilling</p>
+                              </div>
+                              <div>
+                                <h5 className="font-medium">Performance Prediction</h5>
+                                <p className="text-muted-foreground">Predictive analytics for hiring decisions</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
 
