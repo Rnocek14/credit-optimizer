@@ -16,7 +16,7 @@ import '@xyflow/react/dist/style.css';
 
 import { nodeTypes } from '@/components/nodes/UnifiedNodeTypes';
 import { EnhancedNodeTooltip } from '@/components/EnhancedNodeTooltip';
-import type { GraphNode, GraphEdge } from '@/lib/careerGraph';
+import type { GraphNode, GraphEdge, NodeType } from '@/lib/careerGraph';
 import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
 import { calculateEnhancedSkillTreeLayout, type LayoutNode, type LayoutEdge } from '@/lib/enhancedSkillTreeLayout';
 
@@ -72,9 +72,16 @@ const calculateLayout = (
 ): Node[] => {
   console.time('layout');
   
-  // 🧪 STEP 3: Simple filter since titles are normalized at source
+  // 🧪 STEP 3: Enhanced input sanitization - already done in useMemo
   const safeNodes = Array.isArray(graphNodes)
-    ? graphNodes.filter(n => n?.id && n?.type && n?.title)
+    ? graphNodes
+        .map(n => ({
+          ...n,
+          id: String(n.id), // Force string IDs
+          type: (n.type && ['job', 'skill', 'step', 'course', 'project', 'certification'].includes(n.type)) ? n.type : 'skill' as NodeType,
+          title: n.title || 'Untitled',
+        }))
+        .filter(n => n.id && n.type && n.title)
     : [];
     
   console.log('🔍 SafeNodes filter:', { 
@@ -84,27 +91,34 @@ const calculateLayout = (
     sampleOutput: safeNodes[0]
   });
 
-  // 🧪 Map edges to source/target using fallback
+  // 🧪 Enhanced edge mapping with proper fallbacks
   const safeEdges = Array.isArray(graphEdges)
-    ? graphEdges.map(e => ({
-        ...e,
-        source: e.source || e.from_id,
-        target: e.target || e.to_id
-      })).filter(e => e.source && e.target)
+    ? graphEdges
+        .map(e => ({
+          ...e,
+          source: String(e.source || e.from_id || ''),
+          target: String(e.target || e.to_id || ''),
+        }))
+        .filter(e => e.source && e.target)
     : [];
+
+  // 🧪 Prune edges against actual node IDs
+  const nodeIdSet = new Set(safeNodes.map(n => n.id));
+  const prunedEdges = safeEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
 
   console.log('🧪 ST DIAG - Sanitized Input', {
     safeNodesCount: safeNodes.length,
     safeEdgesCount: safeEdges.length,
+    prunedEdgesCount: prunedEdges.length,
     sampleNode: safeNodes?.[0],
-    sampleEdge: safeEdges?.[0]
+    sampleEdge: prunedEdges?.[0]
   });
 
   // Debug edge mapping for console
   console.log('🧪 ST Edge Shape Check', {
-    haveSourceTarget: safeEdges.every(e => e.source && e.target),
-    sample: safeEdges.slice(0, 3),
-    totalEdges: safeEdges.length
+    haveSourceTarget: prunedEdges.every(e => e.source && e.target),
+    sample: prunedEdges.slice(0, 3),
+    totalPrunedEdges: prunedEdges.length
   });
 
   if (safeNodes.length === 0) {
@@ -130,8 +144,8 @@ const calculateLayout = (
       data: node.data
     }));
 
-    // Convert validated GraphEdges to LayoutEdges
-    const layoutEdges: LayoutEdge[] = safeEdges.map(edge => ({
+    // Convert validated GraphEdges to LayoutEdges - use pruned edges
+    const layoutEdges: LayoutEdge[] = prunedEdges.map(edge => ({
       source: edge.source!,
       target: edge.target!,
       type: mapEdgeType(edge.edge_type || edge.type)
@@ -446,20 +460,78 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     if (FORCE_TEST) {
       const forceNodes = [{ 
         id: 'test-node', 
-        type: 'skill', 
+        type: 'default',  // Use default type for guaranteed rendering
         position: { x: 200, y: 200 }, 
         data: { 
-          title: 'Hello Debug Node',
+          title: '🧪 Debug Test Node',
+          label: '🧪 Debug Test Node',
           'data-testid': 'skill-node',
-          'data-node-type': 'skill',
+          'data-node-type': 'default',
           'data-node-id': 'test-node'
-        } 
+        },
+        style: {
+          background: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '10px',
+          width: 140,
+          height: 60
+        }
       }];
       console.log('🧪 FORCE_TEST enabled - rendering test node');
       return forceNodes;
     }
     
-    const result = calculateLayout(graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
+    // 🧪 STEP 3A: Robust Input Sanitization
+    const safeNodes = Array.isArray(graphNodes)
+      ? graphNodes
+          .map(n => ({
+            ...n,
+            id: String(n.id), // Force string IDs
+            type: (n.type && ['job', 'skill', 'step', 'course', 'project', 'certification'].includes(n.type)) ? n.type : 'skill' as NodeType, // Ensure valid NodeType
+            title: n.title || (n as any)?.data?.title || 'Untitled',
+          }))
+          .filter(n => n.id && n.type && n.title)
+      : [];
+
+    // 🧪 STEP 3B: Robust Edge Sanitization  
+    const safeEdges = Array.isArray(graphEdges)
+      ? graphEdges
+          .map(e => ({
+            ...e,
+            source: String((e as any).source ?? (e as any).from_id ?? ''),
+            target: String((e as any).target ?? (e as any).to_id ?? ''),
+          }))
+          .filter(e => e.source && e.target)
+      : [];
+
+    // 🧪 STEP 3C: Prune edges against actual node IDs
+    const nodeIdSet = new Set(safeNodes.map(n => n.id));
+    const prunedEdges = safeEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
+
+    console.log('🔍 Pipeline Sanitization:', {
+      originalNodes: graphNodes?.length || 0,
+      safeNodes: safeNodes.length,
+      originalEdges: graphEdges?.length || 0,
+      safeEdges: safeEdges.length,
+      prunedEdges: prunedEdges.length,
+      sampleNode: safeNodes[0]
+    });
+
+    const result = calculateLayout(safeNodes, prunedEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
+    
+    // 🧪 STEP 2: Enhanced Pipeline Assertions - throw on empty result
+    if (!Array.isArray(result) || result.length === 0) {
+      const error = new Error(`❌ Skill Tree pipeline produced 0 flow nodes`);
+      console.error('❌ PIPELINE BROKE: flowNodes empty', {
+        originalNodes: graphNodes?.length || 0,
+        safeNodes: safeNodes.length,
+        prunedEdges: prunedEdges.length,
+        layoutResult: result?.length || 0,
+        sampleInput: safeNodes[0]
+      });
+      throw error;
+    }
     
     const endTime = performance.now();
     console.log(`⚡ Layout calculation completed in ${(endTime - startTime).toFixed(2)}ms`);

@@ -48,7 +48,46 @@ export function runSkillTreeProbe() {
   return probe;
 }
 
-// Global probe function for console
+// 🔧 Enhanced quick probe for instant diagnosis
+export function quickProbe() {
+  const diag = (window as any).__skillTreeDiag;
+  const rf = document.querySelector('.react-flow');
+  const canvas = document.querySelector('[data-testid="skill-tree-canvas"]');
+  const domNodes = [...document.querySelectorAll('[data-testid="skill-node"]')];
+
+  const flags = {
+    ST_FORCE_TEST: localStorage.getItem('ST_FORCE_TEST'),
+    ST_FORCE_GRID: localStorage.getItem('ST_FORCE_GRID'),
+  };
+
+  const out = {
+    rfMounted: !!rf,
+    canvas: !!canvas,
+    domNodes: domNodes.length,
+    first3DomIds: domNodes.slice(0, 3).map(n => n.getAttribute('data-node-id')),
+    hookNodes: diag?.hook?.nodes ?? diag?.nodesCount ?? 'n/a',
+    hookEdges: diag?.hook?.edges ?? diag?.edgesCount ?? 'n/a',
+    canvasH: canvas?.clientHeight ?? 0,
+    overlayAt10x10: document.elementFromPoint(10, 10)?.className || 'none',
+    flags
+  };
+
+  console.log('🔎 QUICK SKILL TREE PROBE', out);
+
+  // Instant diagnosis
+  if (!out.rfMounted) {
+    console.warn('❌ ReactFlow not mounted (container/JSX issue).');
+  } else if (out.hookNodes > 0 && out.domNodes === 0) {
+    console.warn('❌ Data present but nothing rendered (types/IDs/layout).');
+  } else if (out.domNodes > 0) {
+    console.log('✅ Nodes are in the DOM.');
+  }
+
+  return out;
+}
+
+// Global probe functions for console
 if (typeof window !== 'undefined') {
   (window as any).probeSkillTree = runSkillTreeProbe;
+  (window as any).quickProbe = quickProbe;
 }
