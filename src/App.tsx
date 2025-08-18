@@ -268,49 +268,49 @@ const App = () => (
           <Route 
             path="/institution/overview" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Institution />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionHub />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/institution/students" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Analytics />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionStudents />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/institution/programs" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <TeachAnalytics />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionPrograms />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/institution/faculty" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <TeachCourses />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionFaculty />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/institution/reports" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <ResumeAnalytics />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionReports />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/institution/settings" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <AdminSettings />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="institution" requiredRole="user">
+                <InstitutionSettings />
+              </StakeholderProtectedRoute>
             } 
           />
 
@@ -318,49 +318,49 @@ const App = () => (
           <Route 
             path="/employer/talent" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <ResumeGallery />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerTalent />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/employer/workforce" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Analytics />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerWorkforce />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/employer/hiring" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Employer />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerTalent />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/employer/skills" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <ResumeAnalytics />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerSkills />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/employer/partnerships" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Institution />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerPartnerships />
+              </StakeholderProtectedRoute>
             } 
           />
           <Route 
             path="/employer/jobs" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <Employer />
-              </ProtectedRoute>
+              <StakeholderProtectedRoute stakeholderType="employer" requiredRole="user">
+                <EmployerJobs />
+              </StakeholderProtectedRoute>
             } 
           />
 
