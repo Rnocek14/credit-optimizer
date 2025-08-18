@@ -72,29 +72,52 @@ export const SkillTreeProgress: React.FC = () => {
     edges: graphEdges?.length
   });
 
-  // Transform and validate nodes
+  const isLoading = criLoading || graphLoading;
+
+  // Direct pass-through: let layout engine handle positioning
   const nodes = React.useMemo(() => {
-    if (!Array.isArray(graphNodes)) return [];
-    return graphNodes.map(node => ({
-      ...node,
-      name: node.title,
-      data: {
-        ...node.data,
-        name: node.title,
-        category: (node as any).category || 'general',
-        description: node.description || '',
-        xpValue: (node as any).estimated_time_hours || 0,
-        difficultyLevel: (node as any).difficulty_level || 1
-      },
-      position: { x: 0, y: 0 } // Will be calculated by layout algorithm
-    }));
+    return Array.isArray(graphNodes) ? graphNodes : [];
   }, [graphNodes]);
 
-  // Transform and validate edges
+  // Add canary node fallback when no data loads
+  const SHOW_CANARY = (nodes?.length ?? 0) === 0 && !isLoading;
+  const canaryNodes = SHOW_CANARY ? [{
+    id: 'canary-node',
+    type: 'skill' as const,
+    title: '👋 Canary Node - Data Loading Test',
+    description: 'This node proves the canvas is working',
+    data: {
+      title: '👋 Canary Node - Data Loading Test',
+      category: 'debug',
+      'data-testid': 'skill-node',
+      'data-node-type': 'skill',
+      'data-node-id': 'canary-node',
+    }
+  }] : [];
+
+  const renderNodes = SHOW_CANARY ? canaryNodes : nodes;
+
+  // Direct pass-through for edges
   const edges = React.useMemo(() => {
-    if (!Array.isArray(graphEdges)) return [];
-    return graphEdges;
+    return Array.isArray(graphEdges) ? graphEdges : [];
   }, [graphEdges]);
+
+  const renderEdges = SHOW_CANARY ? [] : edges;
+
+  // Debug global bridge for console inspection
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__skillTreeDiag = {
+        nodesCount: renderNodes?.length,
+        edgesCount: renderEdges?.length,
+        firstNode: renderNodes?.[0],
+        firstEdge: renderEdges?.[0],
+        isCanary: SHOW_CANARY,
+        originalNodes: graphNodes?.length,
+        originalEdges: graphEdges?.length,
+      };
+    }
+  }, [renderNodes, renderEdges, SHOW_CANARY, graphNodes, graphEdges]);
 
   // Listen for real-time progress updates
   useEffect(() => {
@@ -110,9 +133,9 @@ export const SkillTreeProgress: React.FC = () => {
           table: 'user_skill_progress'
         },
         (payload) => {
-          console.log('📈 Progress update received:', payload);
-          // Trigger re-fetch without full page reload
-          reload();
+           console.log('📈 Progress update received:', payload);
+           // Trigger re-fetch without full page reload - debounced
+           setTimeout(() => reload(), 500);
         }
       )
       .on(
@@ -192,9 +215,9 @@ export const SkillTreeProgress: React.FC = () => {
 
   // Enhanced nodes with CRI styling and progress data
   const enhancedNodes = React.useMemo(() => {
-    if (!nodes) return [];
+    if (!renderNodes) return [];
     
-    return nodes.map(node => ({
+    return renderNodes.map(node => ({
       ...node,
       data: {
         ...node.data,
@@ -203,12 +226,10 @@ export const SkillTreeProgress: React.FC = () => {
         userProgress: userProgress?.find(p => p.skillId === node.id || p.stepId === node.id)
       }
     }));
-  }, [nodes, criScore, userProgress, getReadinessLevel]);
-
-  const isLoading = criLoading || graphLoading;
+  }, [renderNodes, criScore, userProgress, getReadinessLevel]);
 
   // Render meaningful empty state (not a blank canvas)
-  if ((nodes?.length ?? 0) === 0 && !isLoading) {
+  if ((graphNodes?.length ?? 0) === 0 && !isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Card className="p-6 text-center max-w-md">
@@ -330,11 +351,11 @@ export const SkillTreeProgress: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="h-[600px] relative">
+              <div className="min-h-[800px] h-[800px] relative">
                 <ReactFlowProvider>
                   <UnifiedCareerCanvas
                     nodes={enhancedNodes}
-                    edges={edges || []}
+                    edges={renderEdges || []}
                     onNodeClick={handleNodeClick}
                     layoutAlgorithm="semantic-hierarchy"
                     showPivotPaths={false}

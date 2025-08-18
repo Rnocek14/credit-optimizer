@@ -6,6 +6,7 @@ import {
   Background,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   Node,
   Edge,
   ConnectionMode,
@@ -87,6 +88,13 @@ const calculateLayout = (
     safeEdgesCount: safeEdges.length,
     sampleNode: safeNodes?.[0],
     sampleEdge: safeEdges?.[0]
+  });
+
+  // Debug edge mapping for console
+  console.log('🧪 ST Edge Shape Check', {
+    haveSourceTarget: safeEdges.every(e => e.source && e.target),
+    sample: safeEdges.slice(0, 3),
+    totalEdges: safeEdges.length
   });
 
   if (safeNodes.length === 0) {
@@ -412,6 +420,8 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   layoutConfig
 }) => {
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
+  const reactFlowInstance = useReactFlow();
+  
   // PR-6: Memoized layout with graphHash for performance
   const flowNodes = useMemo(() => {
     console.log('🎨 Recalculating layout with enhanced system...');
@@ -491,6 +501,20 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     });
   }, [nodes, searchTerm]);
 
+  // Auto-fit view when nodes are loaded
+  React.useEffect(() => {
+    if (processedNodes?.length > 0 && reactFlowInstance) {
+      requestAnimationFrame(() => {
+        try {
+          reactFlowInstance.fitView({ padding: 0.1, includeHiddenNodes: false, duration: 400 });
+          console.log('🎯 Auto-fitted view for', processedNodes.length, 'nodes');
+        } catch (error) {
+          console.warn('Auto-fit failed:', error);
+        }
+      });
+    }
+  }, [processedNodes?.length, reactFlowInstance]);
+
   console.log('🎨 UnifiedCareerCanvas render:', {
     graphNodesCount: graphNodes.length,
     flowNodesCount: nodes.length,
@@ -498,6 +522,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     layoutAlgorithm,
     showPivotPaths,
     focusMode,
+    finalRFNodes: processedNodes.length,
     searchTerm
   });
 
