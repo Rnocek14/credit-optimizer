@@ -1,11 +1,12 @@
 
 import React, { useMemo, useState } from 'react';
-import { ChevronsUpDown, Plus, Archive, Pencil, RefreshCw } from 'lucide-react';
+import { ChevronsUpDown, Plus, Archive, Pencil, RefreshCw, Settings } from 'lucide-react';
 import { useTracks } from '@/hooks/useTracks';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import type { CareerTrack } from '@/types/tracks';
 import * as Dropdown from '@radix-ui/react-dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { TrackManagerModal } from './TrackManagerModal';
 
 interface TrackSelectorProps {
   className?: string;
@@ -88,8 +89,8 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
         </button>
       </Dropdown.Trigger>
 
-      <Dropdown.Content className="min-w-[280px] bg-popover border shadow-md rounded-md overflow-hidden">
-        <div className="p-2 border-b bg-popover">
+      <Dropdown.Content className="min-w-[280px] bg-background border shadow-lg rounded-md overflow-hidden z-50">
+        <div className="p-2 border-b bg-background">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -108,7 +109,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
           )}
         </div>
 
-        <div className="p-2 border-t bg-popover">
+        <div className="p-2 border-t bg-background">
           <div className="flex items-center gap-2">
             <button
               onClick={handleCreate}
@@ -129,6 +130,14 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             >
               <Archive className="w-4 h-4" /> {active?.archived ? 'Restore' : 'Archive'}
             </button>
+            <TrackManagerModal>
+              <button
+                className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
+                title="Advanced Track Management"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </TrackManagerModal>
             <button
               onClick={() => refetch()}
               className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
