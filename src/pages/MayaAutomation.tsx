@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { MayaAutonomousIntelligence } from "@/components/MayaAutonomousIntelligence";
 import { CRIRecommendationEngine } from "@/components/CRIRecommendationEngine";
 import { SmartGoalSetting } from "@/components/SmartGoalSetting";
+import { MayaWorkflowList } from "@/components/MayaWorkflowList";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import { LoadingState } from "@/components/LoadingState";
 import { AlertTriangle, BookOpen, Target, Brain, TrendingUp } from "lucide-react";
@@ -117,6 +118,7 @@ export default function MayaAutomation() {
 
                 <TabsContent value="intelligence" className="space-y-6">
                   <MayaAutonomousIntelligence />
+                  <MayaWorkflowList userId={userId} />
                 </TabsContent>
 
                 <TabsContent value="goals" className="space-y-6">

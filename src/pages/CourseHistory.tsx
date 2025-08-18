@@ -7,6 +7,11 @@ import { ExternalLink, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useCourseIntelligencePipeline } from "@/hooks/useCourseIntelligencePipeline";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Link, Star } from "lucide-react";
 
 interface Course {
   id: string;
@@ -76,7 +81,21 @@ export default function CourseHistory() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<'all' | 'active'>('all');
+  const [courseUrl, setCourseUrl] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
+  
+  // For demo purposes, using Aisha Khan's ID
+  const userId = '2b458624-d498-4cca-a63d-9341cc20e363';
+  
+  const {
+    courseHistory,
+    isLoadingHistory,
+    parseCourse,
+    isParsing,
+    analyzeQuality,
+    isAnalyzing
+  } = useCourseIntelligencePipeline(userId);
 
   useEffect(() => {
     fetchCourseHistory();
@@ -127,12 +146,47 @@ export default function CourseHistory() {
         created_at: saved.created_at
       }));
 
-      setCourses(transformedCourses.length > 0 ? transformedCourses : demoCoursesHistory);
+      // Merge with course intelligence pipeline data (simplified for now)
+      const intelligenceHistory: Course[] = [];
+      
+      const allCourses = [...transformedCourses, ...intelligenceHistory];
+      setCourses(allCourses.length > 0 ? allCourses : demoCoursesHistory);
     } catch (error) {
       console.error('Error fetching course history:', error);
       setCourses(demoCoursesHistory);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleParseCourse = async () => {
+    if (!courseUrl) return;
+    
+    try {
+      await parseCourse(courseUrl);
+      setCourseUrl('');
+      setIsDialogOpen(false);
+      fetchCourseHistory(); // Refresh the course list
+    } catch (error) {
+      console.error('Error parsing course:', error);
+    }
+  };
+
+  const getQualityGrade = (score?: number) => {
+    if (!score) return 'N/A';
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    return 'D';
+  };
+
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case 'A': return 'bg-green-100 text-green-800 border-green-200';
+      case 'B': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'C': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'D': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -191,9 +245,45 @@ export default function CourseHistory() {
             {activeTrackId && (
               <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">Track: {activeTrackId.slice(0,8)}</span>
             )}
-            <div className="flex items-center gap-1">
-              <Button variant={filterMode === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('all')}>All</Button>
-              <Button variant={filterMode === 'active' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('active')}>Active Track</Button>
+            <div className="flex items-center gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Parse Course
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Parse Course from URL</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Course URL</label>
+                      <Input
+                        placeholder="https://coursera.org/course-name"
+                        value={courseUrl}
+                        onChange={(e) => setCourseUrl(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleParseCourse}
+                        disabled={!courseUrl || isParsing}
+                      >
+                        {isParsing ? 'Parsing...' : 'Parse Course'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <div className="flex items-center gap-1">
+                <Button variant={filterMode === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('all')}>All</Button>
+                <Button variant={filterMode === 'active' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('active')}>Active Track</Button>
+              </div>
             </div>
             <TrackSelector />
           </div>
@@ -224,9 +314,16 @@ export default function CourseHistory() {
               <Card key={course.id} className="shadow-sm hover:shadow-md transition-shadow border rounded-md">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-2">
-                    <Badge variant="outline" className={getStatusColor(course.status)}>
-                      {course.status}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className={getStatusColor(course.status)}>
+                        {course.status}
+                      </Badge>
+                      {(course as any).quality_score && (
+                        <Badge variant="outline" className={getGradeColor(getQualityGrade((course as any).quality_score))}>
+                          Grade {getQualityGrade((course as any).quality_score)}
+                        </Badge>
+                      )}
+                    </div>
                     <Badge variant="secondary" className="text-xs">
                       {course.source}
                     </Badge>
@@ -268,14 +365,27 @@ export default function CourseHistory() {
                       <span className="text-xs text-muted-foreground">
                         Added {format(new Date(course.created_at), 'MMM dd, yyyy')}
                       </span>
-                      {course.url && (
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={course.url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            View
-                          </a>
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {(course as any).quality_factors && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => analyzeQuality(course as any)}
+                            disabled={isAnalyzing}
+                          >
+                            <Star className="h-3 w-3 mr-1" />
+                            Re-analyze
+                          </Button>
+                        )}
+                        {course.url && (
+                          <Button size="sm" variant="outline" asChild>
+                            <a href={course.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View
+                            </a>
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

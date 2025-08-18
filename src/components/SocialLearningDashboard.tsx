@@ -6,6 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Trophy, Star, TrendingUp, Calendar, Target } from 'lucide-react';
 import { useSocialLearning } from '@/hooks/useSocialLearning';
 import { useGamification } from '@/hooks/useGamification';
+import { useSocialChallengeProgress } from '@/hooks/useSocialChallengeProgress';
+import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
 
 interface SocialLearningDashboardProps {
   userId: string;
@@ -21,6 +24,12 @@ export function SocialLearningDashboard({ userId }: SocialLearningDashboardProps
     joinGroup,
     joinChallenge 
   } = useSocialLearning(userId);
+
+  const {
+    challengeProgress,
+    updateProgress,
+    isUpdating
+  } = useSocialChallengeProgress(userId);
 
   const { getCurrentStreak, getLongestStreak } = useGamification(userId);
 
@@ -223,13 +232,38 @@ export function SocialLearningDashboard({ userId }: SocialLearningDashboardProps
                               </div>
                             )}
                           </div>
-                          <Button
-                            onClick={() => joinChallenge.mutate(challenge.id)}
-                            disabled={challenge.user_is_participant || joinChallenge.isPending || challenge.status !== 'active'}
-                            size="sm"
-                          >
-                            {challenge.user_is_participant ? 'Joined' : 'Join Challenge'}
-                          </Button>
+                          <div className="space-y-2">
+                            {challenge.user_is_participant ? (
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">Progress</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {(challengeProgress.find(cp => cp.challenge_id === challenge.id)?.progress_data as any)?.progress || 0}%
+                                  </span>
+                                </div>
+                                <Progress 
+                                  value={(challengeProgress.find(cp => cp.challenge_id === challenge.id)?.progress_data as any)?.progress || 0} 
+                                  className="w-full"
+                                />
+                                <Slider
+                                  value={[(challengeProgress.find(cp => cp.challenge_id === challenge.id)?.progress_data as any)?.progress || 0]}
+                                  onValueChange={([value]) => updateProgress({ challengeId: challenge.id, progress: value })}
+                                  max={100}
+                                  step={5}
+                                  className="w-full"
+                                  disabled={isUpdating}
+                                />
+                              </div>
+                            ) : (
+                              <Button
+                                onClick={() => joinChallenge.mutate(challenge.id)}
+                                disabled={joinChallenge.isPending || challenge.status !== 'active'}
+                                size="sm"
+                              >
+                                Join Challenge
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
