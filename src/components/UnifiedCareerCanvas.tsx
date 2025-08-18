@@ -53,7 +53,7 @@ function gridFallback(nodes: GraphNode[]) {
       'data-node-type': n.type,
       'data-node-id': n.id
     },
-    type: 'default',
+    type: n.type || 'default',
   }));
 }
 
@@ -151,9 +151,12 @@ const calculateLayout = (
         .map(n => n.id) : undefined
     });
 
-    // Check for layout failure conditions
-    if (!result || result.length === 0) {
-      console.warn('🪜 Enhanced layout returned 0 nodes, using grid fallback');
+  // 🧪 FORCE_GRID debug mode  
+    const FORCE_GRID = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_GRID') === '1';
+    
+    // Check for layout failure conditions or debug override
+    if (FORCE_GRID || !result || result.length === 0) {
+      console.warn('🪜 Enhanced layout returned 0 nodes or FORCE_GRID enabled, using grid fallback');
       console.timeEnd('layout');
       return gridFallback(safeNodes);
     }
@@ -431,6 +434,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     
     const endTime = performance.now();
     console.log(`⚡ Layout calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
+    console.log('🎛️ Canvas will render', { nodeCount: result.length, sample: result[0] });
     
     return result;
   }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode]);

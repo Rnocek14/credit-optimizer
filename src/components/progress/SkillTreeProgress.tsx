@@ -354,7 +354,7 @@ export const SkillTreeProgress: React.FC = () => {
               <div className="min-h-[800px] h-[800px] relative">
                 <ReactFlowProvider>
                   <UnifiedCareerCanvas
-                    nodes={enhancedNodes}
+                    nodes={renderNodes}
                     edges={renderEdges || []}
                     onNodeClick={handleNodeClick}
                     layoutAlgorithm="semantic-hierarchy"
