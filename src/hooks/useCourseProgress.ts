@@ -38,7 +38,7 @@ export function useCourseProgress(trackId?: string) {
 
   // Get course progress for the current user, optionally filtered by track
   const { data: courseProgress, isLoading } = useQuery({
-    queryKey: ['course-progress', trackId],
+    queryKey: ['course-progress', trackId || 'all'],
     queryFn: async () => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
@@ -93,7 +93,7 @@ export function useCourseProgress(trackId?: string) {
 
   // Get learning milestones
   const { data: milestones } = useQuery({
-    queryKey: ['learning-milestones'],
+    queryKey: ['learning-milestones', trackId || 'all'],
     queryFn: async () => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
@@ -156,6 +156,7 @@ export function useCourseProgress(trackId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course-progress'] });
       queryClient.invalidateQueries({ queryKey: ['user-level'] });
+      queryClient.invalidateQueries({ queryKey: ['user-track-xp'] });
       toast({
         title: "Course Started!",
         description: "You've started learning this course and earned 5 XP!"
@@ -200,6 +201,7 @@ export function useCourseProgress(trackId?: string) {
       queryClient.invalidateQueries({ queryKey: ['course-progress'] });
       queryClient.invalidateQueries({ queryKey: ['learning-milestones'] });
       queryClient.invalidateQueries({ queryKey: ['user-level'] });
+      queryClient.invalidateQueries({ queryKey: ['user-track-xp'] });
       toast({
         title: "Course Completed! 🎉",
         description: "Congratulations! You've earned 50 XP for completing this course!"

@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { courseUrl, action } = await req.json();
+    const { courseUrl, action, trackId } = await req.json();
 
     switch (action) {
       case 'parse_course':
@@ -26,7 +26,9 @@ serve(async (req) => {
           title: extractTitleFromUrl(courseUrl),
           platform: extractPlatformFromUrl(courseUrl),
           skills: ['programming', 'web development'],
-          difficulty: 'intermediate'
+          difficulty: 'intermediate',
+          trackId: trackId || null,
+          trackContext: trackId ? `Recommended for your active track` : 'General recommendation'
         };
         
         return new Response(
