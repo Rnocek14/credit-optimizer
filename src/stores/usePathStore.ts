@@ -119,13 +119,17 @@ interface PathState {
   isLayingOut: boolean;
   layoutVersion: number;
   pendingLayout: boolean;
-  layoutDebounceId?: number;
+  layoutDebounceId?: number | null;
   dimensionSig: string;
+  layoutSuspended: number;
 
   // Layout helpers
   getNodeSize: (id: string) => { w: number; h: number };
   scheduleLayout: (reason?: string) => void;
   recomputeDimensionSig: () => string;
+  suspendLayout: () => void;
+  resumeLayout: () => void;
+  validateNoOverlap: () => void;
 
   // Database persistence
   currentPathId?: string;
@@ -198,7 +202,9 @@ export const usePathStore = create<PathState>()(
       isLayingOut: false,
       layoutVersion: 0,
       pendingLayout: false,
+      layoutDebounceId: null,
       dimensionSig: "",
+      layoutSuspended: 0,
 
       // Safely read measured size from React Flow (if present), else fallback
       getNodeSize: (id: string) => {
@@ -207,48 +213,72 @@ export const usePathStore = create<PathState>()(
         const measuredW = (n as any)?.measured?.width ?? (n as any)?.width;
         const measuredH = (n as any)?.measured?.height ?? (n as any)?.height;
         
-        // Skill nodes are smaller
+        // Skill nodes are smaller - guard against 0x0 dimensions
         if (n?.type === 'skill') {
-          const w = measuredW ?? 200;
-          const h = measuredH ?? 40;
-          return { w, h };
+          return { 
+            w: measuredW && measuredW > 0 ? measuredW : 200,
+            h: measuredH && measuredH > 0 ? measuredH : 40 
+          };
         }
         
-        const w = measuredW ?? get().NODE_W;
-        const h = measuredH ?? get().NODE_H;
-        return { w, h };
+        return { 
+          w: measuredW && measuredW > 0 ? measuredW : get().NODE_W,
+          h: measuredH && measuredH > 0 ? measuredH : get().NODE_H 
+        };
       },
 
       recomputeDimensionSig: () => {
-        // Build a compact signature of id|w|h for all nodes we know sizes for.
+        // Build a compact signature of id|w|h using measured dimensions first
         const parts = get().nodes.map(n => {
-          const w = (n as any)?.width ?? (n as any)?.measured?.width ?? get().NODE_W;
-          const h = (n as any)?.height ?? (n as any)?.measured?.height ?? get().NODE_H;
+          const w = (n as any)?.measured?.width ?? (n as any)?.width ?? get().NODE_W;
+          const h = (n as any)?.measured?.height ?? (n as any)?.height ?? get().NODE_H;
           return `${n.id}:${Math.round(w)}x${Math.round(h)}`;
         }).sort();
         return parts.join("|");
       },
 
+      // Suspend/Resume helpers for bulk mutations
+      suspendLayout: () => set(s => ({ layoutSuspended: s.layoutSuspended + 1 })),
+      resumeLayout: () => set(s => ({ layoutSuspended: Math.max(0, s.layoutSuspended - 1) })),
+
       scheduleLayout: (reason) => {
         const S = get();
-        // Coalesce calls—don't layout mid-mutation.
-        if (S.pendingLayout) return;
+        if (S.layoutSuspended > 0) return;     // don't layout mid-transaction
+        if (S.pendingLayout) return;            // coalesce
         set({ pendingLayout: true });
 
-        // Two rAFs: let DOM paint + RF measure propagate
-        const doLayout = () => {
+        // Two rAFs: let DOM paint & React Flow write measured sizes
+        const run = () => {
           const sig = get().recomputeDimensionSig();
-          const changed = sig !== get().dimensionSig;
-          // If sizes changed since last run, update sig and run layout.
           set({ dimensionSig: sig });
-          get().autoLayoutTree("LR");
+          get().autoLayoutTree('LR');
           set({ pendingLayout: false });
         };
 
-        // debounce to end-of-tick; avoid setTimeout jitter during heavy updates
         if (get().layoutDebounceId) cancelAnimationFrame(get().layoutDebounceId!);
-        const id = requestAnimationFrame(() => requestAnimationFrame(doLayout));
+        const id = requestAnimationFrame(() => requestAnimationFrame(run));
         set({ layoutDebounceId: id });
+      },
+
+      validateNoOverlap: () => {
+        const { nodes } = get();
+        const boxes = nodes.map(n => ({
+          id: n.id,
+          x: n.position?.x ?? 0,
+          y: n.position?.y ?? 0,
+          w: (n as any)?.measured?.width ?? (n as any)?.width ?? get().NODE_W,
+          h: (n as any)?.measured?.height ?? (n as any)?.height ?? get().NODE_H,
+        }));
+        const hits: Array<[string,string]> = [];
+        for (let i=0;i<boxes.length;i++){
+          for (let j=i+1;j<boxes.length;j++){
+            const A = boxes[i], B = boxes[j];
+            const overlap = !(A.x + A.w <= B.x || B.x + B.w <= A.x || A.y + A.h <= B.y || B.y + B.h <= A.y);
+            if (overlap) hits.push([A.id, B.id]);
+          }
+        }
+        if (hits.length) console.warn('🔴 Overlaps detected:', hits.slice(0,10));
+        else console.info('🟢 No overlaps');
       },
 
       // Database persistence state
@@ -562,7 +592,7 @@ export const usePathStore = create<PathState>()(
           isDirty: true,
         }));
         
-        get().scheduleLayout("node added");
+        if (get().layoutSuspended === 0) get().scheduleLayout("node added");
         
         return id;
       },
@@ -615,7 +645,7 @@ export const usePathStore = create<PathState>()(
           isDirty: true,
         }));
         
-        get().scheduleLayout("edge added");
+        if (get().layoutSuspended === 0) get().scheduleLayout("edge added");
         
         // If prerequisite edge, update target node status
         if (finalEdgeType === 'prerequisite') {
@@ -876,165 +906,140 @@ export const usePathStore = create<PathState>()(
         try {
           const S = get(); // constants + helpers
           const { nodes, edges } = get();
-          const prereqEdges = edges.filter(e => e.type === "prerequisite");
+          const prereq = edges.filter(e => e.type === "prerequisite");
 
           // Graph
-          const byId = new Map(nodes.map(n => [n.id, n]));
-          const parents = new Map<string, string[]>();
-          const children = new Map<string, string[]>();
-          const indeg = new Map<string, number>();
+          const byId      = new Map(nodes.map(n => [n.id, n]));
+          const parents   = new Map<string, string[]>();
+          const children  = new Map<string, string[]>();
+          const indeg     = new Map<string, number>();
           nodes.forEach(n => { parents.set(n.id, []); children.set(n.id, []); indeg.set(n.id, 0); });
-          prereqEdges.forEach(e => {
+          prereq.forEach(e => {
             children.get(e.source)!.push(e.target);
             parents.get(e.target)!.push(e.source);
             indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
           });
 
-          // Ranks via Kahn (longest-path)
+          // Ranks (longest path)
           const rank = new Map<string, number>();
           const q: string[] = [];
           nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); }});
           while (q.length) {
-            const u = q.shift()!;
-            const ru = rank.get(u) || 0;
+            const u = q.shift()!, ru = rank.get(u) || 0;
             for (const v of children.get(u)!) {
               rank.set(v, Math.max(ru + 1, rank.get(v) ?? 0));
               indeg.set(v, (indeg.get(v) || 0) - 1);
               if ((indeg.get(v) || 0) === 0) q.push(v);
             }
           }
-          if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0)); // cycle fallback
+          if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0));
 
-          // Layers
-          const layers: Record<number, string[]> = {};
-          nodes.forEach(n => { const r = rank.get(n.id) || 0; (layers[r] ||= []).push(n.id); });
-
-          // Utility functions for layout
-          const yCenter = new Map<string, number>();
-          const nodeH = (id: string) => S.getNodeSize(id).h;
-          const nodeW = (id: string) => S.getNodeSize(id).w;
-          const centerOf = (id: string) => (yCenter.get(id) ?? S.PADY) + nodeH(id) / 2;
-          const avgParentCenter = (id: string) => {
-            const ps = parents.get(id)!;
-            if (!ps.length) return 0;
-            const vals = ps.map(p => centerOf(p));
-            return vals.reduce((a,b)=>a+b,0) / vals.length;
-          };
-
-          // Compute desired center (barycenter of parents)
-          const desiredTop = (id: string) => {
-            const h = nodeH(id);
-            const parentCenters = parents.get(id)!.map(p => centerOf(p));
-            const desiredCenter = parentCenters.length ? parentCenters.reduce((a,b)=>a+b,0)/parentCenters.length : (S.PADY + h/2);
-            return Math.max(S.PADY, desiredCenter - h/2);
-          };
-
-          // Dynamic gap calculation
-          const dynGap = (siblings: string[]) => {
-            const maxH = Math.max(...siblings.map(nodeH));
-            return Math.max(S.V_GAP, Math.ceil(maxH * 0.25));
-          };
-
-          // Compute max width per rank to space columns
-          const orderedRanks = Object.keys(layers).map(Number).sort((a,b)=>a-b);
-          const maxW: number[] = [];
-          for (const r of orderedRanks) {
-            let w = 0;
-            for (const id of layers[r]) w = Math.max(w, nodeW(id));
-            maxW[r] = Math.max(w, S.NODE_W);
-          }
-          const xOffsets: number[] = [];
-          xOffsets[orderedRanks[0] ?? 0] = S.PADX;
-          for (let i = 1; i < orderedRanks.length; i++) {
-            const prev = orderedRanks[i-1], cur = orderedRanks[i];
-            xOffsets[cur] = (xOffsets[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
-          }
-
-          // Difficulty tie‑breaker
+          // Sort children for stability (barycenter of parents, diff, title)
           const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+          const getH = (id: string) => S.getNodeSize(id).h;
+          const getW = (id: string) => S.getNodeSize(id).w;
 
-          // Place rank by rank with two-pass layout
-          const pos = new Map<string, {x:number,y:number}>();
-          for (const r of orderedRanks) {
-            const layer = layers[r];
+          // We'll fill 'center' progressively as we place; parents' centers known before children
+          const centerY = new Map<string, number>();
+          const centerOf = (id: string) => centerY.get(id) ?? (S.PADY + getH(id) / 2);
+          const avgParentCenter = (id: string) => {
+            const ps = parents.get(id)!; if (!ps.length) return S.PADY + getH(id)/2;
+            const sum = ps.reduce((a,p) => a + centerOf(p), 0);
+            return sum / ps.length;
+          };
 
-            // Order by barycenter (median parent center), then difficulty, then title
-            const ordered = [...layer].sort((a, b) => {
+          // x by rank using measured max width
+          const ranks = Array.from(new Set(Array.from(rank.values()))).sort((a,b)=>a-b);
+          const maxW: Record<number, number> = {};
+          for (const r of ranks) {
+            maxW[r] = Math.max(S.NODE_W, ...nodes.filter(n => (rank.get(n.id)||0)===r).map(n => getW(n.id)));
+          }
+          const xOf: Record<number, number> = {};
+          xOf[ranks[0] ?? 0] = S.PADX;
+          for (let i=1;i<ranks.length;i++) {
+            xOf[ranks[i]] = xOf[ranks[i-1]] + (maxW[ranks[i-1]] ?? S.NODE_W) + S.H_GAP;
+          }
+
+          // Subtree height in pixels (includes V_GAP between children)
+          const subtreeH = new Map<string, number>();
+          const kidsOf = (id: string) => children.get(id)!;
+          const dynGap = S.V_GAP; // can make adaptive if desired
+
+          const post = (id: string): number => {
+            const ks = kidsOf(id);
+            if (!ks.length) { const h = getH(id); subtreeH.set(id, h); return h; }
+            // order children before measuring, for consistent blocks
+            ks.sort((a,b) => {
               const ba = avgParentCenter(a), bb = avgParentCenter(b);
               if (ba !== bb) return ba - bb;
-              const da = diffOrder[(byId.get(a)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
-              const db = diffOrder[(byId.get(b)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
+              const da = diffOrder[byId.get(a)?.data?.difficulty ?? 'intermediate'] ?? 1;
+              const db = diffOrder[byId.get(b)?.data?.difficulty ?? 'intermediate'] ?? 1;
               if (da !== db) return da - db;
-              const ta = (byId.get(a)?.data?.title || "");
-              const tb = (byId.get(b)?.data?.title || "");
+              const ta = (byId.get(a)?.data?.title || ''), tb = (byId.get(b)?.data?.title || '');
               return ta.localeCompare(tb);
             });
+            let sum = 0;
+            ks.forEach((k,i) => {
+              const sh = post(k);
+              sum += sh + (i>0 ? dynGap : 0);
+            });
+            sum = Math.max(sum, getH(id));   // ensure parent's own card fits its block
+            subtreeH.set(id, sum);
+            return sum;
+          };
 
-            const gap = dynGap(ordered);
+          // Kick off from all roots (rank 0)
+          const roots = nodes.filter(n => (rank.get(n.id)||0)===0).map(n => n.id);
+          roots.forEach(post);
 
-            // Forward pass: ensure no overlap
-            let y = S.PADY;
-            for (const id of ordered) {
-              const top = Math.max(desiredTop(id), y);
-              pos.set(id, { x: xOffsets[r] ?? S.PADX, y: top });
-              yCenter.set(id, top);
-              y = top + nodeH(id) + gap;
-            }
+          // Placement: each node gets a top Y = current blockTop; parent is centered in its block
+          const pos = new Map<string, {x:number;y:number}>();
 
-            // Reverse pass: pull up to balance around parent centers
-            for (let i = ordered.length - 2; i >= 0; i--) {
-              const id = ordered[i];
-              const next = ordered[i + 1];
-              const maxTop = pos.get(next)!.y - nodeH(id) - gap;
-              const balanced = Math.min(pos.get(id)!.y, maxTop);
-              const finalY = Math.max(S.PADY, balanced);
-              pos.set(id, { x: xOffsets[r] ?? S.PADX, y: finalY });
-              yCenter.set(id, finalY);
-            }
+          const place = (id: string, r: number, blockTop: number) => {
+            const x = xOf[r] ?? S.PADX;
+            const myH = getH(id);
+            const myBlock = subtreeH.get(id)!;
+            const y = blockTop + Math.max(0, (myBlock - myH)/2); // center parent in its block
+            pos.set(id, { x, y });
+            centerY.set(id, y + myH/2);
 
-            // Final forward pass to re-enforce non-overlap
-            let yCursor = S.PADY;
-            for (const id of ordered) {
-              const currentPos = pos.get(id)!;
-              if (currentPos.y < yCursor) {
-                pos.set(id, { x: currentPos.x, y: yCursor });
-                yCenter.set(id, yCursor);
-              }
-              yCursor = Math.max(yCursor, pos.get(id)!.y + nodeH(id) + gap);
-            }
-          }
+            // Place children in contiguous blocks directly under this parent
+            let childTop = blockTop;
+            const ks = kidsOf(id);
+            ks.forEach((k, i) => {
+              place(k, r+1, childTop);
+              childTop += subtreeH.get(k)! + (i < ks.length-1 ? dynGap : 0);
+            });
+          };
 
-          // Final per-rank collision sweep using measured dimensions
-          const ranks: Record<number, string[]> = {};
-          nodes.forEach(n => {
-            const r = rank.get(n.id) || 0;
-            (ranks[r] ||= []).push(n.id);
+          // Multi-root packing: stack root blocks with gaps
+          let rootTop = S.PADY;
+          roots.forEach((root, i) => {
+            place(root, 0, rootTop);
+            rootTop += subtreeH.get(root)! + (i < roots.length-1 ? S.V_GAP*1.5 : 0);
           });
 
-          Object.keys(ranks).map(Number).sort((a,b)=>a-b).forEach(r => {
-            const list = ranks[r].slice().sort((a,b) => (pos.get(a)!.y - pos.get(b)!.y));
-            for (let i = 1; i < list.length; i++) {
+          // Safety: per-rank collision sweep (should be no-ops now)
+          const byRank: Record<number,string[]> = {};
+          nodes.forEach(n => { const r = rank.get(n.id)||0; (byRank[r] ??= []).push(n.id); });
+          Object.keys(byRank).map(Number).sort((a,b)=>a-b).forEach(r => {
+            const list = byRank[r].slice().sort((a,b)=> (pos.get(a)!.y - pos.get(b)!.y));
+            for (let i=1;i<list.length;i++){
               const prev = list[i-1], cur = list[i];
-              const prevBox = { y: pos.get(prev)!.y, h: S.getNodeSize(prev).h };
-              const curBox  = { y: pos.get(cur)!.y,  h: S.getNodeSize(cur).h };
-              const minTop = prevBox.y + prevBox.h + S.V_GAP;
-              if (curBox.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
+              const minTop = pos.get(prev)!.y + getH(prev) + S.V_GAP;
+              if (pos.get(cur)!.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
             }
           });
 
-          // Orientation swap (TB)
+          // Orientation
           const finalNodes = nodes.map(n => {
             const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
-            return orientation === "LR"
-              ? { ...n, position: p }
-              : { ...n, position: { x: p.y, y: p.x } };
+            return orientation === 'LR' ? { ...n, position: p } : { ...n, position: { x: p.y, y: p.x }};
           });
-
           set({ nodes: finalNodes });
 
         } finally {
           set({ isLayingOut: false });
-          // Tell the in‑canvas controls to fitView
           setTimeout(() => window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*"), 50);
         }
       },
@@ -1059,132 +1064,121 @@ export const usePathStore = create<PathState>()(
       },
 
       ensurePrerequisiteClosure: async () => {
-        await get().refreshUserSkills();
+        const { suspendLayout, resumeLayout, scheduleLayout } = get();
+        suspendLayout();
+        try {
+          await get().refreshUserSkills();
 
-        // --- Targeted repair for "Advanced React Patterns" ---
-        const arNode = get().nodes.find(n => slug(n.data.title) === slug("Advanced React Patterns"));
-        if (arNode) {
-          const mustHave = [
-            "React Hooks & Advanced State",
-            "Patterns & Composition in React", 
-            "React Performance & Optimization",
-          ];
-          const current = new Set((arNode.data.prerequisites || []).map(slug));
-          const fixed = [...new Set([...Array.from(current), ...mustHave.map(slug)])];
-          if (fixed.length !== current.size) {
-            get().setPrerequisites(arNode.id, mustHave);
+          // --- Targeted repair for "Advanced React Patterns" ---
+          const arNode = get().nodes.find(n => slug(n.data.title) === slug("Advanced React Patterns"));
+          if (arNode) {
+            const mustHave = [
+              "React Hooks & Advanced State",
+              "Patterns & Composition in React", 
+              "React Performance & Optimization",
+            ];
+            const current = new Set((arNode.data.prerequisites || []).map(slug));
+            const fixed = [...new Set([...Array.from(current), ...mustHave.map(slug)])];
+            if (fixed.length !== current.size) {
+              get().setPrerequisites(arNode.id, mustHave);
+            }
           }
-        }
 
-        const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, addNode, userSkills } = get();
+          const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, addNode, userSkills } = get();
 
-        let changed = true;
-        let guard = 0;
+          let changed = true;
+          let guard = 0;
 
-        while (changed && guard++ < 20) {
-          changed = false;
+          while (changed && guard++ < 20) {
+            changed = false;
 
-          for (const target of get().nodes) {
-            const { ok, missing } = validatePrerequisites(target.id);
-            if (ok || missing.length === 0) continue;
+            for (const target of get().nodes) {
+              const { ok, missing } = validatePrerequisites(target.id);
+              if (ok || missing.length === 0) continue;
 
-            for (const raw of missing) {
-              const desired = canonicalTitle(raw);
-              const key = slug(desired);
+              for (const raw of missing) {
+                const desired = canonicalTitle(raw);
+                const key = slug(desired);
 
-              // Always create visual connections - even when user has the skill
-              if (get().userSkills.some(s => slug(s) === key)) {
-                let src = get().nodes.find(n => slug(n.data.title) === key);
-                
-                if (!src) {
-                  // Create a compact skill node for user-satisfied prerequisites
-                  const sid = addNode({
-                    type: 'skill',
-                    position: { x: 0, y: 0 }, // will be laid out later
-                    data: {
-                      title: desired,
-                      description: 'Satisfied via prior experience',
-                      skillTags: [raw],
-                      difficulty: 'beginner' as const,
-                      status: 'completed' as const,
-                      prerequisites: [],
-                      estimatedHours: 0,
-                    }
-                  });
-                  src = get().nodes.find(n => n.id === sid)!;
-                } else if (src.data.status !== 'completed') {
-                  setNodeStatus(src.id, 'completed');
+                // Always create visual connections - even when user has the skill
+                if (get().userSkills.some(s => slug(s) === key)) {
+                  let src = get().nodes.find(n => slug(n.data.title) === key);
+                  
+                  if (!src) {
+                    // Create a compact skill node for user-satisfied prerequisites
+                    const sid = addNode({
+                      type: 'skill',
+                      position: { x: 0, y: 0 }, // will be laid out later
+                      data: {
+                        title: desired,
+                        description: 'Satisfied via prior experience',
+                        skillTags: [raw],
+                        difficulty: 'beginner' as const,
+                        status: 'completed' as const,
+                        prerequisites: [],
+                        estimatedHours: 0,
+                      }
+                    });
+                    src = get().nodes.find(n => n.id === sid)!;
+                  } else if (src.data.status !== 'completed') {
+                    setNodeStatus(src.id, 'completed');
+                  }
+
+                  // Always create the visual connection
+                  const already = get().edges.some(e => e.type === 'prerequisite' && e.source === src!.id && e.target === target.id);
+                  if (!already) {
+                    connect(src.id, target.id, 'prerequisite');
+                    changed = true;
+                  }
+                  continue;
                 }
 
-                // Always create the visual connection
-                const already = get().edges.some(e => e.type === 'prerequisite' && e.source === src!.id && e.target === target.id);
-                if (!already) {
-                  connect(src.id, target.id, 'prerequisite');
+                // Otherwise create or get the course node
+                const srcId = getOrCreateCourseByTitle(desired);
+
+                // Connect as a prerequisite if not already connected
+                const exists = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
+                if (!exists) {
+                  connect(srcId, target.id, 'prerequisite');
                   changed = true;
                 }
-                continue;
-              }
 
-              // Otherwise create or get the course node
-              const srcId = getOrCreateCourseByTitle(desired);
-
-              // Connect as a prerequisite if not already connected
-              const exists = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
-              if (!exists) {
-                connect(srcId, target.id, 'prerequisite');
-                changed = true;
-              }
-
-              // Smart complete created node if user has overlapping skills (partial match)
-              const created = get().nodes.find(n => n.id === srcId);
-              const skills = created?.data?.skillTags || [];
-              const hasRelevant = skills.some(s => get().userSkills.some(u => slug(u) === slug(s)));
-              if (hasRelevant && created?.data.status !== 'completed') {
-                setNodeStatus(srcId, 'completed');
+                // Smart complete created node if user has overlapping skills (partial match)
+                const created = get().nodes.find(n => n.id === srcId);
+                const skills = created?.data?.skillTags || [];
+                const hasRelevant = skills.some(s => get().userSkills.some(u => slug(u) === slug(s)));
+                if (hasRelevant && created?.data.status !== 'completed') {
+                  setNodeStatus(srcId, 'completed');
+                }
               }
             }
           }
-        }
 
-        // Explicitly connect "Advanced React Patterns" to its prerequisites
-        const arp = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
-        if (arp) {
-          const prereqs = [
-            'React Hooks & Advanced State',
-            'Patterns & Composition in React',
-            'React Performance & Optimization',
-          ];
-          for (const p of prereqs) {
-            const pid = getOrCreateCourseByTitle(p);
-            const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arp.id);
-            if (!connected) {
-              connect(pid, arp.id, 'prerequisite');
+          // Order: merge duplicates first, then explicit connections
+          mergeDuplicateNodesByTitle();
+
+          // Explicitly connect "Advanced React Patterns" after merging to ensure correct IDs
+          const arpAfterMerge = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
+          if (arpAfterMerge) {
+            const prereqs = [
+              'React Hooks & Advanced State',
+              'Patterns & Composition in React',
+              'React Performance & Optimization',
+            ];
+            for (const p of prereqs) {
+              const pid = getOrCreateCourseByTitle(p);
+              const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arpAfterMerge.id);
+              if (!connected) {
+                connect(pid, arpAfterMerge.id, 'prerequisite');
+              }
             }
           }
+
+          revalidateAllStatuses();
+        } finally {
+          resumeLayout();
         }
-
-        // Order: merge duplicates first, then explicit connections, then schedule layout
-        mergeDuplicateNodesByTitle();
-
-        // Explicitly connect "Advanced React Patterns" after merging to ensure correct IDs
-        const arpAfterMerge = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
-        if (arpAfterMerge) {
-          const prereqs = [
-            'React Hooks & Advanced State',
-            'Patterns & Composition in React',
-            'React Performance & Optimization',
-          ];
-          for (const p of prereqs) {
-            const pid = getOrCreateCourseByTitle(p);
-            const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arpAfterMerge.id);
-            if (!connected) {
-              connect(pid, arpAfterMerge.id, 'prerequisite');
-            }
-          }
-        }
-
-        revalidateAllStatuses();
-        get().scheduleLayout("post auto-fill");
+        scheduleLayout('post auto-fill');
       },
 
       getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode['data']>) => {

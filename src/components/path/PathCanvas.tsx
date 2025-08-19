@@ -99,16 +99,20 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     }
   }, [userId]);
 
-  // Add layout change detection - trigger relayout when dimensions settle
+  // Add validation after layout complete
   useEffect(() => {
-    const tick = setInterval(() => {
-      const sig = recomputeDimensionSig();
-      if (sig !== dimensionSig) {
-        scheduleLayout("measure change");
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'TREE_LAYOUT_COMPLETE') {
+        // Add a small delay to ensure layout is fully applied
+        setTimeout(() => {
+          usePathStore.getState().validateNoOverlap();
+        }, 100);
       }
-    }, 150); // lightweight poll to detect dimension changes
-    return () => clearInterval(tick);
-  }, [scheduleLayout, recomputeDimensionSig, dimensionSig]);
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
 
   const onConnect = useCallback(
@@ -240,12 +244,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     }, 100);
   }, [addNode, connect]);
 
-  // Enhanced auto-fill function that refreshes skills and uses tree layout
+  // Enhanced auto-fill function that refreshes skills and uses transaction-safe approach
   const handleAutoFillPrerequisites = async () => {
     try {
-      await refreshUserSkills();
-      await ensurePrerequisiteClosure();
-      autoLayoutTree("LR");
+      await ensurePrerequisiteClosure(); // This now handles everything transaction-safe
       setAutoFillTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Auto-fill error:', error);
