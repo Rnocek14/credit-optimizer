@@ -5,12 +5,13 @@
 export const QUERY_KEYS = {
   // User data
   USER_PROFILE: (userId?: string) => ['user-profile', userId],
-  USER_XP: (userId?: string) => ['user-xp', userId],
-  USER_LEVEL: (userId?: string) => ['user-level', userId],
+  USER_XP: (userId?: string, trackId?: string) => ['user-xp', userId, trackId],
+  USER_LEVEL: (userId?: string, trackId?: string) => ['user-level', userId, trackId],
   
   // Track-aware data
   CAREER_TRACKS: (userId?: string) => ['career-tracks', userId],
   COURSE_PROGRESS: (userId?: string, trackId?: string) => ['course-progress', userId, trackId],
+  COURSE_HISTORY: (userId?: string, trackId?: string) => ['course-history', userId, trackId],
   LEARNING_MILESTONES: (userId?: string, trackId?: string) => ['learning-milestones', userId, trackId],
   USER_TRACK_XP: (userId?: string, trackId?: string) => ['user-track-xp', userId, trackId],
   USER_TRACK_XP_EVENTS: (userId?: string, trackId?: string) => ['user-track-xp-events', userId, trackId],

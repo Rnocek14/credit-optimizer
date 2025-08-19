@@ -11,6 +11,7 @@ import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { seedTodayDemoData } from '@/utils/seedTodayDemoData';
 import { useToast } from '@/hooks/use-toast';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -335,9 +336,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                       await seedTodayDemoData();
                       toast({ title: 'Demo data seeded', description: 'Refresh applied to your Today dashboard.' });
                       // Refresh gamification queries
-                      queryClient.invalidateQueries({ queryKey: ['learning-streaks'] });
-                      queryClient.invalidateQueries({ queryKey: ['celebration-moments'] });
-                      queryClient.invalidateQueries({ queryKey: ['gamification-metrics'] });
+                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_STREAKS(undefined, undefined) });
+                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(undefined, undefined) });
+                      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(undefined, undefined) });
                     } catch (e: any) {
                       toast({ title: 'Seeding failed', description: e.message || 'Please sign in first.', variant: 'destructive' });
                     }

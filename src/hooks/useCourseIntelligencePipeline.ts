@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 export interface CourseAnalysis {
   id: string;
@@ -37,7 +38,7 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
 
   // Fetch course history (simplified for now - using dummy data)
   const courseHistoryQuery = useQuery({
-    queryKey: ['course-history', userId, trackId],
+    queryKey: QUERY_KEYS.COURSE_HISTORY(userId, trackId),
     queryFn: async () => {
       // For now, return empty array since the table structure is not ready
       return [];
@@ -64,7 +65,7 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_HISTORY(userId, trackId) });
       toast({
         title: "Course Parsed Successfully",
         description: "Course has been analyzed and added to your history",
@@ -96,7 +97,7 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_HISTORY(userId, trackId) });
       toast({
         title: "Quality Analysis Complete",
         description: "Course quality factors have been analyzed",
@@ -128,7 +129,7 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-history', userId, trackId] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_HISTORY(userId, trackId) });
       toast({
         title: "Skills Extracted",
         description: "Skills have been identified and categorized",
@@ -183,7 +184,7 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(userId, trackId) });
       toast({
         title: "Added to Plan",
         description: "Course has been added to your learning plan",

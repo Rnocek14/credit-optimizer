@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 export interface CourseProgress {
   id: string;
@@ -38,7 +39,7 @@ export function useCourseProgress(trackId?: string) {
 
   // Get course progress for the current user, optionally filtered by track
   const { data: courseProgress, isLoading } = useQuery({
-    queryKey: ['course-progress', trackId || 'all'],
+    queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId),
     queryFn: async () => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
@@ -93,7 +94,7 @@ export function useCourseProgress(trackId?: string) {
 
   // Get learning milestones
   const { data: milestones } = useQuery({
-    queryKey: ['learning-milestones', trackId || 'all'],
+    queryKey: QUERY_KEYS.LEARNING_MILESTONES(undefined, trackId),
     queryFn: async () => {
       // Support both dev login and real auth
       const devUser = localStorage.getItem("devUser");
@@ -153,10 +154,11 @@ export function useCourseProgress(trackId?: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
-      queryClient.invalidateQueries({ queryKey: ['user-level'] });
-      queryClient.invalidateQueries({ queryKey: ['user-track-xp'] });
+    onSuccess: (_, variables) => {
+      const { trackId: courseTrackId } = variables;
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, courseTrackId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, courseTrackId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, courseTrackId) });
       toast({
         title: "Course Started!",
         description: "You've started learning this course and earned 5 XP!"
@@ -198,10 +200,10 @@ export function useCourseProgress(trackId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
-      queryClient.invalidateQueries({ queryKey: ['learning-milestones'] });
-      queryClient.invalidateQueries({ queryKey: ['user-level'] });
-      queryClient.invalidateQueries({ queryKey: ['user-track-xp'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_MILESTONES(undefined, trackId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, trackId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, trackId) });
       toast({
         title: "Course Completed! 🎉",
         description: "Congratulations! You've earned 50 XP for completing this course!"
@@ -262,7 +264,7 @@ export function useCourseProgress(trackId?: string) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-progress'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId) });
     },
     onError: (error) => {
       console.error('Error updating progress:', error);

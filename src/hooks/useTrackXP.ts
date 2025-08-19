@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 export interface UserTrackXP {
   id: string;
@@ -23,7 +24,7 @@ export interface TrackXPEvent {
 
 export function useTrackXP(trackId?: string | null) {
   const xpQuery = useQuery({
-    queryKey: ['user-track-xp', trackId],
+    queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, trackId),
     queryFn: async (): Promise<UserTrackXP | null> => {
       if (!trackId) return null;
       const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +45,7 @@ export function useTrackXP(trackId?: string | null) {
   });
 
   const eventsQuery = useQuery({
-    queryKey: ['user-track-xp-events', trackId],
+    queryKey: QUERY_KEYS.USER_TRACK_XP_EVENTS(undefined, trackId),
     queryFn: async (): Promise<TrackXPEvent[]> => {
       if (!trackId) return [];
       const { data: { user } } = await supabase.auth.getUser();

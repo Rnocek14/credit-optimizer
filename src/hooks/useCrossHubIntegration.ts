@@ -69,9 +69,9 @@ export const useCrossHubIntegration = (userId?: string) => {
       return { ...data, criBoost, criExplanation };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId, undefined) });
       
       let successMessage = `${data.title} saved to your Plan!`;
       if (data.criBoost && data.criBoost > 0) {
@@ -126,13 +126,13 @@ export const useCrossHubIntegration = (userId?: string) => {
   const refreshCrossHubData = useCallback(() => {
     if (!userId) return;
     
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId) });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SMART_DASHBOARD(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId, undefined) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SMART_DASHBOARD(userId, undefined) });
   }, [userId, queryClient]);
 
   // Enhanced milestone completion with cross-hub triggers
@@ -185,10 +185,10 @@ export const useCrossHubIntegration = (userId?: string) => {
       }
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SKILL_GAPS(userId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.UNIFIED_RECOMMENDATIONS(userId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(userId, undefined) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(userId, undefined) });
       
     } catch (error) {
       console.error('Error handling milestone completion:', error);
