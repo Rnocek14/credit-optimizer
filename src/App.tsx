@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { ThemeProvider } from "next-themes";
 import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
 import Index from "./pages/Index";
@@ -117,7 +118,8 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
-      <TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
         <UserJourneyProvider>
           <UnifiedDataProvider>
             <Toaster />
@@ -722,9 +724,10 @@ const App = () => (
         </Routes>
         <XPCelebrationOverlay />
       </BrowserRouter>
-          </UnifiedDataProvider>
-        </UserJourneyProvider>
-    </TooltipProvider>
+            </UnifiedDataProvider>
+          </UserJourneyProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </HelmetProvider>
   </QueryClientProvider>
 );

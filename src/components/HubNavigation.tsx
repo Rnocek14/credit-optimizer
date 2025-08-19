@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useJourneyStore } from "@/stores/journeyStore";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -150,6 +151,11 @@ export function HubNavigation() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          {/* Theme Toggle */}
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Mobile Navigation */}
