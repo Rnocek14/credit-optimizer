@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { CareerTrack, CreateTrackInput, UpdateTrackInput } from '@/types/tracks';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentUser } from '@/lib/authHelper';
 
 export function useTracks() {
   const { toast } = useToast();
@@ -11,7 +12,7 @@ export function useTracks() {
   const tracksQuery = useQuery({
     queryKey: ['career-tracks'],
     queryFn: async (): Promise<CareerTrack[]> => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from('career_tracks')
@@ -28,7 +29,7 @@ export function useTracks() {
 
   const createTrack = useMutation({
     mutationFn: async (input: CreateTrackInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
