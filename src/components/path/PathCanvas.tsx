@@ -55,6 +55,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     removeNode,
     removeEdge,
     autoLayoutPrereqOrder,
+    ensurePrerequisiteClosure,
   } = usePathStore();
   const { activeTrackId } = useActiveTrackStore();
 
@@ -306,6 +307,16 @@ export function PathCanvas({ userId }: PathCanvasProps) {
             >
               <RotateCcw className="w-3 h-3 mr-1" />
               Auto Layout (A)
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={ensurePrerequisiteClosure}
+              className="w-full text-xs"
+              title="Automatically add missing prerequisite courses"
+            >
+              <Zap className="w-3 h-3 mr-1" />
+              Auto-fill Prerequisites
             </Button>
             <Button
               variant="outline"

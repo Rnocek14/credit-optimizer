@@ -3,6 +3,25 @@ import { persist } from 'zustand/middleware';
 import type { Node, Edge } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
 
+// Canonical course catalog for auto-filling prerequisites
+const canonicalCatalog: Array<{
+  title: string;
+  skills: string[];
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  estimatedHours: number;
+}> = [
+  { title: 'JavaScript Basics', skills: ['javascript', 'programming'], difficulty: 'beginner', estimatedHours: 20 },
+  { title: 'HTML & CSS Foundations', skills: ['html', 'css', 'web development'], difficulty: 'beginner', estimatedHours: 15 },
+  { title: 'React Fundamentals', skills: ['react', 'javascript', 'frontend'], difficulty: 'intermediate', estimatedHours: 30 },
+  { title: 'Node.js Essentials', skills: ['node.js', 'javascript', 'backend'], difficulty: 'intermediate', estimatedHours: 25 },
+  { title: 'Python Programming', skills: ['python', 'programming'], difficulty: 'beginner', estimatedHours: 25 },
+  { title: 'Data Structures & Algorithms', skills: ['algorithms', 'data structures', 'programming'], difficulty: 'intermediate', estimatedHours: 40 },
+  { title: 'Database Fundamentals', skills: ['sql', 'databases'], difficulty: 'beginner', estimatedHours: 20 },
+  { title: 'Git Version Control', skills: ['git', 'version control'], difficulty: 'beginner', estimatedHours: 10 },
+  { title: 'TypeScript Basics', skills: ['typescript', 'javascript'], difficulty: 'intermediate', estimatedHours: 15 },
+  { title: 'API Development', skills: ['api', 'rest', 'backend'], difficulty: 'intermediate', estimatedHours: 30 },
+];
+
 export interface PathNode extends Node {
   type: 'track' | 'course' | 'project' | 'milestone';
   data: {
@@ -78,6 +97,7 @@ interface PathState {
   validatePrerequisites: (id: string) => { ok: boolean; missing: string[] };
   autoLayoutPrereqOrder: () => void;
   getSuggestedNextSteps: (nodeId: string) => string[];
+  ensurePrerequisiteClosure: () => void;
   
   // Bulk operations
   loadTrackNodes: (trackId: string) => void;
@@ -704,6 +724,91 @@ export const usePathStore = create<PathState>()(
         }
         
         return suggestions;
+      },
+
+      ensurePrerequisiteClosure: () => {
+        const { nodes, edges, addNode, connect, validatePrerequisites, userSkills, autoLayoutPrereqOrder } = get();
+
+        const normalize = (s?: string) => (s || '').trim().toLowerCase();
+
+        const indexByTitle = () => {
+          const map = new Map<string, string>();
+          get().nodes.forEach(n => map.set(normalize(n.data.title), n.id));
+          return map;
+        };
+
+        let titleIndex = indexByTitle();
+        let changed = false;
+        let iterations = 0;
+
+        // Iterate until stable (or safe cap)
+        while (iterations++ < 20) {
+          changed = false;
+
+          for (const target of get().nodes) {
+            const { ok, missing } = validatePrerequisites(target.id);
+            if (ok || missing.length === 0) continue;
+
+            for (const item of missing) {
+              const key = normalize(item);
+              
+              // 1) If a node with this exact title already exists but isn't wired, wire it
+              const existingId = titleIndex.get(key);
+
+              if (existingId) {
+                // Avoid duplicate prerequisite edge
+                const already = get().edges.some(e => 
+                  e.type === 'prerequisite' && e.source === existingId && e.target === target.id
+                );
+                if (!already) {
+                  connect(existingId, target.id, 'prerequisite');
+                  changed = true;
+                }
+                continue;
+              }
+
+              // 2) Try to find a catalog course that satisfies the required skill/title
+              const match = canonicalCatalog.find(c => normalize(c.title) === key) ||
+                canonicalCatalog.find(c => c.skills.some(s => key.includes(s) || s.includes(key)));
+
+              if (match) {
+                const newId = addNode({
+                  type: 'course',
+                  position: { 
+                    x: target.position.x - 300, 
+                    y: target.position.y + (Math.random() * 140 - 70) 
+                  },
+                  data: {
+                    title: match.title,
+                    description: `Covers: ${match.skills.join(', ')}`,
+                    skillTags: match.skills,
+                    difficulty: match.difficulty,
+                    status: 'available',
+                    estimatedHours: match.estimatedHours
+                  }
+                });
+                connect(newId, target.id, 'prerequisite');
+                titleIndex = indexByTitle();
+                changed = true;
+
+                // Smart completion: Mark as completed if user already has these skills
+                const hasSkills = match.skills.some(skill => 
+                  userSkills.some(userSkill => normalize(userSkill) === normalize(skill))
+                );
+                if (hasSkills) {
+                  setTimeout(() => get().setNodeStatus(newId, 'completed'), 100);
+                }
+              }
+            }
+          }
+
+          if (!changed) break; // stable
+        }
+
+        if (changed) {
+          // Auto-layout to organize the new nodes
+          setTimeout(() => autoLayoutPrereqOrder(), 200);
+        }
       },
 
       clearCanvas: () => {
