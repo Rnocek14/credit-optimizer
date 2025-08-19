@@ -37,7 +37,7 @@ interface PathState {
   selectedEdgeType: PathEdge['type'];
   
   // Actions
-  addNode: (node: Omit<PathNode, 'id'>) => void;
+  addNode: (node: Omit<PathNode, 'id'>) => string;
   updateNode: (id: string, updates: Partial<PathNode['data']>) => void;
   removeNode: (id: string) => void;
   
@@ -84,6 +84,8 @@ export const usePathStore = create<PathState>()(
         set((state) => ({
           nodes: [...state.nodes, newNode],
         }));
+        
+        return id;
       },
 
       updateNode: (id, updates) => {

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ProviderAlternates } from '@/components/providers/ProviderAlternates';
+import { NextStepsPanel } from './NextStepsPanel';
 import { usePathStore } from '@/stores/usePathStore';
 import { 
   Info, 
@@ -16,7 +17,8 @@ import {
   MessageSquare,
   Lock,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react';
 import type { PathNode } from '@/stores/usePathStore';
 
@@ -96,7 +98,7 @@ export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
 
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details" className="text-xs">
               <Info className="w-3 h-3 mr-1" />
               Details
@@ -104,6 +106,10 @@ export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
             <TabsTrigger value="prereqs" className="text-xs">
               <Lock className="w-3 h-3 mr-1" />
               Prereqs
+            </TabsTrigger>
+            <TabsTrigger value="next" className="text-xs">
+              <ArrowRight className="w-3 h-3 mr-1" />
+              Next
             </TabsTrigger>
             <TabsTrigger value="providers" className="text-xs">
               <Shuffle className="w-3 h-3 mr-1" />
@@ -290,6 +296,13 @@ export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
                 </div>
               );
             })()}
+          </TabsContent>
+
+          <TabsContent value="next" className="p-4">
+            <NextStepsPanel 
+              activeNode={activeNode}
+              userId={userId}
+            />
           </TabsContent>
 
           <TabsContent value="providers" className="p-4">

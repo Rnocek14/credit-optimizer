@@ -11,6 +11,7 @@ import '@xyflow/react/dist/style.css';
 
 import { PathNode } from './PathNode';
 import { PathRightRail } from './PathRightRail';
+import PathEdge from './PathEdge';
 import { usePathStore } from '@/stores/usePathStore';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,14 @@ const nodeTypes = {
   course: PathNode,
   project: PathNode,
   milestone: PathNode,
+};
+
+const edgeTypes = {
+  prerequisite: PathEdge,
+  sequence: PathEdge,
+  suggested: PathEdge,
+  alternative: PathEdge,
+  branch: PathEdge,
 };
 
 export function PathCanvas({ userId }: PathCanvasProps) {
@@ -339,6 +348,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           onEdgesDelete={(deleted) => deleted.forEach(e => removeEdge(e.id))}
           deleteKeyCode={['Backspace', 'Delete']}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           fitView
           className="bg-background"
         >
