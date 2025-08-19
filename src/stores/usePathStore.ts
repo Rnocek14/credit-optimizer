@@ -115,6 +115,9 @@ interface PathState {
   PADX: number;
   PADY: number;
 
+  // Layout helpers
+  getNodeSize: (id: string) => { w: number; h: number };
+
   // Database persistence
   currentPathId?: string;
   pathTitle: string;
@@ -783,36 +786,44 @@ export const usePathStore = create<PathState>()(
       },
 
       // Layout constants for tidy tree layout
-      NODE_W: 240,      // approximate node width in px
-      NODE_H: 100,      // approximate node height in px
-      H_GAP: 120,       // horizontal gap between ranks (increased for better spacing)
-      V_GAP: 48,        // vertical gap between siblings (increased for better spacing)
+      NODE_W: 280,      // approximate node width in px (updated for PathNode cards)
+      NODE_H: 132,      // approximate node height in px (updated for PathNode cards)
+      H_GAP: 160,       // horizontal gap between ranks (wider for better breathing room)
+      V_GAP: 80,        // vertical gap between siblings (increased for better spacing)
       PADX: 80,         // canvas left padding
       PADY: 80,         // canvas top padding
 
+      // Safely read measured size from React Flow (if present), else fallback
+      getNodeSize: (id: string) => {
+        const n = get().nodes.find(x => x.id === id);
+        const w = (n as any)?.width ?? get().NODE_W;   // RF populates width/height post-measure
+        const h = (n as any)?.height ?? get().NODE_H;
+        return { w, h };
+      },
+
       autoLayoutTree: (orientation: "LR" | "TB" = "LR") => {
-        const S = get(); // read constants: NODE_W, NODE_H, H_GAP, V_GAP, PADX, PADY
+        const S = get(); // constants + helpers
         const { nodes, edges } = get();
         const prereqEdges = edges.filter(e => e.type === "prerequisite");
 
-        // Build graph
+        // Graph
         const byId = new Map(nodes.map(n => [n.id, n]));
         const parents = new Map<string, string[]>();
         const children = new Map<string, string[]>();
         const indeg = new Map<string, number>();
         nodes.forEach(n => { parents.set(n.id, []); children.set(n.id, []); indeg.set(n.id, 0); });
-        prereqEdges.forEach(e => { 
-          children.get(e.source)!.push(e.target); 
-          parents.get(e.target)!.push(e.source); 
-          indeg.set(e.target, (indeg.get(e.target) || 0) + 1); 
+        prereqEdges.forEach(e => {
+          children.get(e.source)!.push(e.target);
+          parents.get(e.target)!.push(e.source);
+          indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
         });
 
-        // Longest-path ranks (stable for LR columns)
+        // Ranks via Kahn (longest-path)
         const rank = new Map<string, number>();
         const q: string[] = [];
-        nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); } });
+        nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); }});
         while (q.length) {
-          const u = q.shift()!; 
+          const u = q.shift()!;
           const ru = rank.get(u) || 0;
           for (const v of children.get(u)!) {
             rank.set(v, Math.max(ru + 1, rank.get(v) ?? 0));
@@ -822,75 +833,81 @@ export const usePathStore = create<PathState>()(
         }
         if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0)); // cycle fallback
 
-        // Group nodes by rank
-        const ranks: Record<number, string[]> = {};
-        nodes.forEach(n => { const r = rank.get(n.id) || 0; (ranks[r] ||= []).push(n.id); });
+        // Layers
+        const layers: Record<number, string[]> = {};
+        nodes.forEach(n => { const r = rank.get(n.id) || 0; (layers[r] ||= []).push(n.id); });
 
-        // Order siblings within rank
-        const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-        const avgParentY = (id: string) => {
-          const ps = parents.get(id)!; if (!ps.length) return 0;
-          const ys = ps.map(p => byId.get(p)?.position?.y ?? 0);
-          return ys.reduce((a,b)=>a+b,0) / ys.length;
+        // Utility: avg parent Y center (based on placed nodes)
+        const yCenter = new Map<string, number>(); // we'll store top-left y but compute center on the fly
+        const nodeH = (id: string) => S.getNodeSize(id).h;
+        const nodeW = (id: string) => S.getNodeSize(id).w;
+        const centerOf = (id: string) => (yCenter.get(id) ?? S.PADY) + nodeH(id) / 2;
+        const avgParentCenter = (id: string) => {
+          const ps = parents.get(id)!;
+          if (!ps.length) return 0;
+          const vals = ps.map(p => centerOf(p));
+          return vals.reduce((a,b)=>a+b,0) / vals.length;
         };
-        const ordered: Record<number,string[]> = {};
-        Object.keys(ranks).map(Number).sort((a,b)=>a-b).forEach(r => {
-          ordered[r] = [...ranks[r]].sort((a,b) => {
-            const ya = avgParentY(a), yb = avgParentY(b);
-            if (ya !== yb) return ya - yb;
-            const da = diffOrder[byId.get(a)?.data?.difficulty ?? "intermediate"] ?? 1;
-            const db = diffOrder[byId.get(b)?.data?.difficulty ?? "intermediate"] ?? 1;
+
+        // Compute max width per rank to space columns
+        const orderedRanks = Object.keys(layers).map(Number).sort((a,b)=>a-b);
+        const maxW: number[] = [];
+        for (const r of orderedRanks) {
+          let w = 0;
+          for (const id of layers[r]) w = Math.max(w, nodeW(id));
+          maxW[r] = Math.max(w, S.NODE_W);
+        }
+        const xOffsets: number[] = [];
+        xOffsets[orderedRanks[0] ?? 0] = S.PADX;
+        for (let i = 1; i < orderedRanks.length; i++) {
+          const prev = orderedRanks[i-1], cur = orderedRanks[i];
+          xOffsets[cur] = (xOffsets[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
+        }
+
+        // Difficulty tie‑breaker
+        const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+
+        // Place rank by rank
+        const pos = new Map<string, {x:number,y:number}>();
+        for (const r of orderedRanks) {
+          const layer = layers[r];
+
+          // Order by barycenter (median parent center), then difficulty, then title
+          const ordered = [...layer].sort((a, b) => {
+            const ba = avgParentCenter(a), bb = avgParentCenter(b);
+            if (ba !== bb) return ba - bb;
+            const da = diffOrder[(byId.get(a)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
+            const db = diffOrder[(byId.get(b)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
             if (da !== db) return da - db;
-            const ta = (byId.get(a)?.data?.title || ""); 
+            const ta = (byId.get(a)?.data?.title || "");
             const tb = (byId.get(b)?.data?.title || "");
             return ta.localeCompare(tb);
           });
-        });
 
-        // Subtree row heights (postorder)
-        const subtreeRows = new Map<string, number>();
-        const post = (id: string): number => {
-          const kids = children.get(id)!;
-          if (!kids.length) return subtreeRows.set(id, 1).get(id)!;
-          const sum = kids.map(k => post(k)).reduce((a,b)=>a+b, 0);
-          return subtreeRows.set(id, Math.max(1, sum)).get(id)!;
-        };
-        (ordered[0] || []).forEach(root => post(root));
+          // Pack with no‑overlap sweep
+          let yCursor = S.PADY;
+          for (const id of ordered) {
+            const desired = Math.max(S.PADY, avgParentCenter(id) - nodeH(id)/2);
+            const y = Math.max(desired, yCursor);
+            const x = xOffsets[r] ?? S.PADX;
 
-        // Positioning
-        const pos = new Map<string, {x:number,y:number}>();
-        const yCursor: Record<number, number> = {};
-        Object.keys(ordered).map(Number).forEach(r => yCursor[r] = S.PADY);
-
-        const place = (id: string) => {
-          const r = rank.get(id) || 0;
-          const x = S.PADX + r * (S.NODE_W + S.H_GAP);
-          const y = yCursor[r];
-          pos.set(id, { x, y });
-          yCursor[r] += (subtreeRows.get(id) ?? 1) * (S.NODE_H + S.V_GAP);
-          // place direct children that belong to the next rank, in current sort order
-          const kids = (ordered[r+1] || []).filter(k => parents.get(k)!.includes(id));
-          kids.forEach(k => place(k));
-        };
-        (ordered[0] || []).forEach(root => place(root));
-
-        // Unplaced (cycles / cross-rank edges)
-        nodes.forEach(n => { if (!pos.has(n.id)) {
-          const r = rank.get(n.id) || 0;
-          pos.set(n.id, { x: S.PADX + r*(S.NODE_W + S.H_GAP), y: (yCursor[r] += S.NODE_H + S.V_GAP) });
-        }});
-
-        // Orientation swap (TB)
-        if (orientation === "TB") {
-          const swapped = new Map<string, {x:number,y:number}>();
-          pos.forEach(({x,y}, id) => swapped.set(id, { x: y, y: x }));
-          pos.clear(); 
-          swapped.forEach((v,k)=>pos.set(k,v));
+            pos.set(id, { x, y });
+            yCenter.set(id, y);
+            yCursor = y + nodeH(id) + S.V_GAP;
+          }
         }
 
-        set({ nodes: nodes.map(n => ({ ...n, position: pos.get(n.id)! })) });
+        // Orientation swap (TB)
+        const finalNodes = nodes.map(n => {
+          const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
+          return orientation === "LR"
+            ? { ...n, position: p }
+            : { ...n, position: { x: p.y, y: p.x } };
+        });
 
-        // Post a message so TreeLayoutControls can call fitView()
+        set({ nodes: finalNodes });
+
+        // Tell the in‑canvas controls to fitView (already wired in your TreeLayoutControls)
         setTimeout(() => window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*"), 0);
       },
 
