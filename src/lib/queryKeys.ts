@@ -39,6 +39,13 @@ export const QUERY_KEYS = {
   
   // Analytics (track-aware)
   ANALYTICS_EVENTS: (userId?: string, trackId?: string) => ['analytics-events', userId, trackId],
+
+  // Multi-institution data
+  INSTITUTIONS: () => ['institutions'],
+  TEACHERS: (institutionId?: string) => ['teachers', institutionId],
+  TEACHERS_TOP: (limit = 10) => ['teachers', 'top', limit],
+  ENHANCED_TRANSCRIPTS: (userId?: string, trackId?: string) => ['enhanced-transcripts', userId, trackId],
+  USER_TEACHER_RATINGS: (userId?: string, teacherId?: string) => ['user-teacher-ratings', userId, teacherId],
 } as const;
 
 export type QueryKey = keyof typeof QUERY_KEYS;

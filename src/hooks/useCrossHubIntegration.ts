@@ -15,6 +15,7 @@ import { UnifiedRecommendation, RecoPriority } from '@/types/recommendations';
 import { SaveToPlanItem } from '@/types/plan';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useSkillGaps } from '@/hooks/useSkillGaps';
+import { getCurrentUser, ensureValidSession } from '@/lib/auth';
 import type { SkillGap } from '@/types/skill';
 
 // Re-export SkillGap type for components
@@ -56,11 +57,11 @@ export const useCrossHubIntegration = (userId?: string) => {
         throw new Error('Authentication required - please log in to save items');
       }
 
-      // Verify Supabase session exists
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('Save to plan failed: No active Supabase session');
-        throw new Error('Session expired - please log in again');
+      // Use centralized session validation
+      const sessionValid = await ensureValidSession(userId);
+      if (!sessionValid) {
+        console.error('Save to plan failed: Invalid session');
+        throw new Error('Authentication session invalid. Please log in again.');
       }
 
       // Check for CRI influence on this item

@@ -17,7 +17,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import TrackSelector from "@/components/tracks/TrackSelector";
-import { TrackFilteredTranscripts } from "@/components/tracks/TrackFilteredTranscripts";
+import { TrackFilteredTranscripts } from "@/components/transcripts/TrackFilteredTranscripts";
+import { TrackManager } from "@/components/multi-track/TrackManager";
 
 interface Transcript {
   id: string;
@@ -151,6 +152,7 @@ const Transcripts = () => {
                   Track: {activeTrackId.slice(0,8)}
                 </span>
               )}
+              <TrackManager />
               <TrackSelector />
             </div>
           </div>
@@ -174,9 +176,7 @@ const Transcripts = () => {
           </Card>
         ) : (
           <TrackFilteredTranscripts 
-            transcripts={transcripts}
-            filterMode={filterMode}
-            onFilterChange={setFilterMode}
+            selectedTrackId={activeTrackId || undefined}
           />
         )}
 

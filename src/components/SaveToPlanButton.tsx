@@ -21,9 +21,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUser } from '@/lib/authHelper';
 import { toast } from 'sonner';
 import { useAuthDebug } from '@/hooks/useAuthDebug';
+import { getCurrentUser, ensureValidSession } from '@/lib/auth';
 
 interface SaveToPlanButtonProps {
   item: SaveToPlanItem;
@@ -97,11 +97,11 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
     }
 
     try {
-      // Verify session before attempting save
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('Save failed: No active session');
-        toast.error('Session expired - please log in again');
+      // Use centralized session validation
+      const sessionValid = await ensureValidSession(currentUser.id);
+      if (!sessionValid) {
+        console.error('Save failed: Invalid session');
+        toast.error('Authentication session invalid. Please log in again.');
         window.location.href = '/auth';
         return;
       }

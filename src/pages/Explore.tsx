@@ -52,6 +52,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { TrackManager } from "@/components/multi-track/TrackManager";
+import { InstitutionSelector } from "@/components/multi-track/InstitutionSelector";
+import { QUERY_KEYS } from "@/lib/queryKeys";
+import { getCurrentUser, ensureValidSession } from "@/lib/auth";
 
 interface Course {
   id: string;
@@ -110,13 +114,15 @@ export default function Explore() {
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState("recommendations");
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [selectedInstitution, setSelectedInstitution] = useState<string>("all");
+  const [sortByTeacherRating, setSortByTeacherRating] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // Fetch user progress data
   const { data: userProgress } = useQuery({
-    queryKey: ['user-progress'],
+    queryKey: QUERY_KEYS.USER_PROFILE(),
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -399,14 +405,15 @@ export default function Explore() {
               AI-powered course and mentor recommendations tailored to your goals
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {useActiveTrackStore(s => s.activeTrackId) && (
-              <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
-                Track: {useActiveTrackStore.getState().activeTrackId?.slice(0,8)}
-              </span>
-            )}
-            <TrackSelector />
-          </div>
+            <div className="flex items-center gap-2">
+              {useActiveTrackStore(s => s.activeTrackId) && (
+                <span data-testid="track-chip" className="text-xs px-2 py-1 rounded bg-muted">
+                  Track: {useActiveTrackStore.getState().activeTrackId?.slice(0,8)}
+                </span>
+              )}
+              <TrackManager />
+              <TrackSelector />
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
