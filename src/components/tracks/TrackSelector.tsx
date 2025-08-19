@@ -130,14 +130,14 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
           <button
             className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all duration-300 shadow-sm min-w-[200px] justify-between hover:scale-105 ${
               active 
-                ? 'bg-gradient-to-r from-primary/10 to-primary/5 border-primary/40 hover:bg-primary/15 shadow-lg animate-pulse' 
+                ? 'bg-gradient-to-r from-primary/10 to-primary/5 border-primary/40 hover:bg-primary/15 shadow-lg ring-2 ring-primary/20' 
                 : 'bg-background hover:bg-muted/80 border-border'
             }`}
             data-testid="track-selector"
           >
             <div className="flex items-center gap-2">
               <span 
-                className={`inline-block w-4 h-4 rounded-full flex-shrink-0 border-2 border-background transition-all duration-300 ${active ? 'shadow-lg animate-bounce' : ''}`} 
+                className={`inline-block w-4 h-4 rounded-full flex-shrink-0 border-2 border-background transition-all duration-300 ${active ? 'shadow-lg shadow-primary/40' : ''}`} 
                 style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} 
               />
               <span className={`truncate font-semibold transition-all duration-300 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -150,7 +150,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
                   active?.track_name || active?.title || 'Select a track'
                 )}
               </span>
-              {active && <span className="text-success text-lg animate-pulse">✨</span>}
+              {active && <span className="text-success text-lg">✨</span>}
             </div>
             <ChevronsUpDown className={`w-4 h-4 opacity-70 flex-shrink-0 transition-transform duration-300 ${active ? 'text-primary' : ''}`} />
           </button>
