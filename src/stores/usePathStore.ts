@@ -731,6 +731,33 @@ export const usePathStore = create<PathState>()(
 
         const normalize = (s?: string) => (s || '').trim().toLowerCase();
 
+        // Synonym mapping for common prerequisites
+        const PREREQ_SYNONYMS: Record<string, string> = {
+          "react": "React Fundamentals",
+          "javascript": "JavaScript Basics", 
+          "js": "JavaScript Basics",
+          "html": "HTML & CSS Foundations",
+          "css": "HTML & CSS Foundations",
+          "python": "Python Programming",
+          "node": "Node.js Development",
+          "nodejs": "Node.js Development",
+          "express": "Express.js Framework",
+          "sql": "SQL Database Fundamentals",
+          "git": "Git Version Control",
+          "mongodb": "MongoDB Database",
+          "typescript": "TypeScript Fundamentals",
+          "vue": "Vue.js Framework",
+          "angular": "Angular Framework",
+          "docker": "Docker Containerization",
+          "aws": "AWS Cloud Fundamentals",
+          "api": "API Development",
+          "rest": "REST API Design",
+          "graphql": "GraphQL APIs",
+          "testing": "Software Testing",
+          "jest": "Jest Testing Framework",
+          "cypress": "Cypress E2E Testing",
+        };
+
         const indexByTitle = () => {
           const map = new Map<string, string>();
           get().nodes.forEach(n => map.set(normalize(n.data.title), n.id));
@@ -767,6 +794,7 @@ export const usePathStore = create<PathState>()(
                   e.type === 'prerequisite' && e.source === existingId && e.target === target.id
                 );
                 if (!already) {
+                  console.log(`🔗 Connecting existing node "${item}" to "${target.data.title}"`);
                   connect(existingId, target.id, 'prerequisite');
                   changed = true;
                 }
@@ -776,28 +804,45 @@ export const usePathStore = create<PathState>()(
               // 2) Try different matching strategies
               let match = null;
               
-              // Strategy A: Exact title match
-              match = canonicalCatalog.find(c => normalize(c.title) === key);
-              if (match) {
-                console.log(`✅ Found exact title match: "${match.title}" for "${item}"`);
-              } else {
-                // Strategy B: Fuzzy title matching (prerequisite contained in catalog title)
-                match = canonicalCatalog.find(c => normalize(c.title).includes(key) || key.includes(normalize(c.title)));
+              // Strategy 1: Synonym redirect first
+              const synonym = PREREQ_SYNONYMS[key];
+              if (synonym) {
+                match = canonicalCatalog.find(c => normalize(c.title) === normalize(synonym));
+                if (match) {
+                  console.log(`✅ Found synonym match: "${match.title}" for "${item}" via synonym "${synonym}"`);
+                }
+              }
+
+              // Strategy 2: Exact title match
+              if (!match) {
+                match = canonicalCatalog.find(c => normalize(c.title) === key);
+                if (match) {
+                  console.log(`✅ Found exact title match: "${match.title}" for "${item}"`);
+                }
+              }
+
+              // Strategy 3: Fuzzy title matching
+              if (!match) {
+                match = canonicalCatalog.find(c => 
+                  normalize(c.title).includes(key) || key.includes(normalize(c.title))
+                );
                 if (match) {
                   console.log(`✅ Found fuzzy title match: "${match.title}" for "${item}"`);
-                } else {
-                  // Strategy C: Skill-based matching
-                  match = canonicalCatalog.find(c => 
-                    c.skills.some(skill => {
-                      const normalizedSkill = normalize(skill);
-                      return normalizedSkill === key || 
-                             normalizedSkill.includes(key) || 
-                             key.includes(normalizedSkill);
-                    })
-                  );
-                  if (match) {
-                    console.log(`✅ Found skill-based match: "${match.title}" (${match.skills.join(', ')}) for "${item}"`);
-                  }
+                }
+              }
+
+              // Strategy 4: Skill-based matching
+              if (!match) {
+                match = canonicalCatalog.find(c => 
+                  c.skills.some(skill => {
+                    const normalizedSkill = normalize(skill);
+                    return normalizedSkill === key || 
+                           normalizedSkill.includes(key) || 
+                           key.includes(normalizedSkill);
+                  })
+                );
+                if (match) {
+                  console.log(`✅ Found skill-based match: "${match.title}" (${match.skills.join(', ')}) for "${item}"`);
                 }
               }
 
@@ -815,7 +860,8 @@ export const usePathStore = create<PathState>()(
                     skillTags: match.skills,
                     difficulty: match.difficulty,
                     status: 'available',
-                    estimatedHours: match.estimatedHours
+                    estimatedHours: match.estimatedHours,
+                    prerequisites: []
                   }
                 });
                 connect(newId, target.id, 'prerequisite');
@@ -831,7 +877,26 @@ export const usePathStore = create<PathState>()(
                   setTimeout(() => get().setNodeStatus(newId, 'completed'), 100);
                 }
               } else {
-                console.log(`❌ No match found for prerequisite: "${item}"`);
+                // Last resort: create a placeholder prerequisite
+                console.log(`🏗️ Creating placeholder prerequisite for "${item}"`);
+                const placeholderId = addNode({
+                  type: item.toLowerCase().includes('project') ? 'project' : 'course',
+                  position: { 
+                    x: target.position.x - 300, 
+                    y: target.position.y + (Math.random() * 140 - 70) 
+                  },
+                  data: {
+                    title: item, // Use the missing label itself
+                    description: 'Auto-generated prerequisite',
+                    skillTags: [item],
+                    difficulty: 'beginner',
+                    status: 'available',
+                    prerequisites: []
+                  },
+                });
+                connect(placeholderId, target.id, 'prerequisite');
+                titleIndex = indexByTitle();
+                changed = true;
               }
             }
           }
