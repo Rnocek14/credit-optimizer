@@ -957,10 +957,11 @@ export const usePathStore = create<PathState>()(
           }
           if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0));
 
-          // Helpers
+          // Helpers (include visual chrome padding to avoid shadow/border overlaps)
+          const CHROME_PAD = 6; 
           const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-          const getH = (id: string) => S.getNodeSize(id).h;
-          const getW = (id: string) => S.getNodeSize(id).w;
+          const getH = (id: string) => S.getNodeSize(id).h + CHROME_PAD;
+          const getW = (id: string) => S.getNodeSize(id).w + CHROME_PAD;
 
           // x per-rank (measured max width)
           const ranks = Array.from(new Set(Array.from(rank.values()))).sort((a,b)=>a-b);
@@ -975,9 +976,34 @@ export const usePathStore = create<PathState>()(
             xOf[cur] = (xOf[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
           }
 
+          // Primary parent assignment for DAG-aware placement
+          const primaryParent = new Map<string, string>();
+          nodes.forEach(n => {
+            const ps = parents.get(n.id) ?? [];
+            if (!ps.length) return; // root
+            
+            // rank heuristic: prefer parent with larger rank (closest to root)
+            const best = ps.slice().sort((a, b) => {
+              const ra = rank.get(a) ?? 0;
+              const rb = rank.get(b) ?? 0;
+              if (ra !== rb) return rb - ra; // larger rank wins
+              
+              // tie-break by difficulty
+              const da = diffOrder[byId.get(a)?.data?.difficulty ?? 'intermediate'] ?? 1;
+              const db = diffOrder[byId.get(b)?.data?.difficulty ?? 'intermediate'] ?? 1;
+              if (da !== db) return da - db;
+              
+              const ta = byId.get(a)?.data?.title || '';
+              const tb = byId.get(b)?.data?.title || '';
+              return ta.localeCompare(tb);
+            })[0];
+            primaryParent.set(n.id, best);
+          });
+
           // Subtree height (pixel) including V_GAP between kids; order kids stably
           const subtreeH = new Map<string, number>();
-          const kidsOf = (id: string) => (children.get(id) ?? []);
+          const kidsOf = (id: string) => 
+            (children.get(id) ?? []).filter(k => primaryParent.get(k) === id);
           const centerY = new Map<string, number>();
           const avgParentCenter = (id: string, centerY: Map<string, number>) => {
             const ps = parents.get(id) ?? [];
@@ -1056,25 +1082,22 @@ export const usePathStore = create<PathState>()(
           nodes.forEach(n => { const r = rank.get(n.id)||0; (byRank[r] ??= []).push(n.id); });
           const ensureRankSeparation = () => {
             const toInt = (y: number) => Math.round(y);
+            const gapFor = (a: string, b: string) =>
+              Math.max(S.V_GAP, Math.ceil(0.1 * Math.max(getH(a), getH(b))));
+
             for (const r of Object.keys(byRank).map(Number).sort((a,b)=>a-b)) {
               const list = byRank[r].slice().sort((a,b)=> (pos.get(a)!.y - pos.get(b)!.y));
               // forward
               for (let i = 1; i < list.length; i++) {
                 const prev = list[i-1], cur = list[i];
-                const prevBox = { y: toInt(pos.get(prev)!.y), h: getH(prev) };
-                const curBox  = { y: toInt(pos.get(cur)!.y),  h: getH(cur) };
-                const gap = dynGap(prevBox.h, curBox.h);
-                const minTop = prevBox.y + prevBox.h + gap;
-                if (curBox.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
+                const minTop = Math.round(pos.get(prev)!.y) + getH(prev) + gapFor(prev, cur);
+                if (pos.get(cur)!.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
               }
-              // backward tighten (optional, keeps balance)
+              // backward tighten (optional, keeps balance) 
               for (let i = list.length - 2; i >= 0; i--) {
                 const next = list[i+1], cur = list[i];
-                const nextBox = { y: toInt(pos.get(next)!.y), h: getH(next) };
-                const curBox  = { y: toInt(pos.get(cur)!.y),  h: getH(cur) };
-                const gap = dynGap(curBox.h, nextBox.h);
-                const maxTop = nextBox.y - curBox.h - gap;
-                if (curBox.y > maxTop) pos.set(cur, { x: pos.get(cur)!.x, y: maxTop });
+                const maxTop = pos.get(next)!.y - getH(cur) - gapFor(cur, next);
+                if (pos.get(cur)!.y > maxTop) pos.set(cur, { x: pos.get(cur)!.x, y: maxTop });
               }
             }
           };
@@ -1093,7 +1116,15 @@ export const usePathStore = create<PathState>()(
           set({ isLayingOut: false });
           setTimeout(() => {
             window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*");
-            setTimeout(() => get().validateNoOverlap(), 100);
+            setTimeout(() => {
+              const after = get().recomputeDimensionSig();
+              if (after !== get().dimensionSig) {
+                // one final settle if sizes changed due to images/font
+                get().scheduleLayout('post-complete settle');
+              } else {
+                get().validateNoOverlap();
+              }
+            }, 100);
           }, 50);
         }
       },
@@ -1123,9 +1154,9 @@ export const usePathStore = create<PathState>()(
         try {
           await get().refreshUserSkills();
 
-          const markChanged = () => { changed = true; };
-
+          // Fix TDZ bug: declare changed before markChanged closure
           let changed = true;
+          const markChanged = () => { changed = true; };
           let guard = 0;
 
           while (changed && guard++ < 50) {
@@ -1208,7 +1239,10 @@ export const usePathStore = create<PathState>()(
             for (const p of ['React Hooks & Advanced State','Patterns & Composition in React','React Performance & Optimization']) {
               const pid = get().getOrCreateCourseByTitle(p);
               const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arp.id);
-              if (!connected) { get().connect(pid, arp.id, 'prerequisite'); }
+              if (!connected) { 
+                get().connect(pid, arp.id, 'prerequisite');
+                markChanged();
+              }
             }
           }
         } finally {
