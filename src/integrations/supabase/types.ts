@@ -5274,6 +5274,153 @@ export type Database = {
         }
         Relationships: []
       }
+      proof_project_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          milestone_order: number
+          project_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          milestone_order: number
+          project_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          milestone_order?: number
+          project_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "proof_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proof_project_skills: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          project_id: string
+          skill_name: string
+          validation_level: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          project_id: string
+          skill_name: string
+          validation_level?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          project_id?: string
+          skill_name?: string
+          validation_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_project_skills_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "proof_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proof_projects: {
+        Row: {
+          completed_at: string | null
+          completion_percentage: number | null
+          created_at: string
+          demo_url: string | null
+          description: string | null
+          difficulty_level: number | null
+          estimated_hours: number | null
+          github_url: string | null
+          id: string
+          project_data: Json | null
+          project_type: string
+          skills_to_validate: string[] | null
+          status: string
+          title: string
+          track_id: string | null
+          updated_at: string
+          user_id: string
+          validation_criteria: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          demo_url?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_hours?: number | null
+          github_url?: string | null
+          id?: string
+          project_data?: Json | null
+          project_type?: string
+          skills_to_validate?: string[] | null
+          status?: string
+          title: string
+          track_id?: string | null
+          updated_at?: string
+          user_id: string
+          validation_criteria?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          completion_percentage?: number | null
+          created_at?: string
+          demo_url?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_hours?: number | null
+          github_url?: string | null
+          id?: string
+          project_data?: Json | null
+          project_type?: string
+          skills_to_validate?: string[] | null
+          status?: string
+          title?: string
+          track_id?: string | null
+          updated_at?: string
+          user_id?: string
+          validation_criteria?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proof_projects_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommended_courses: {
         Row: {
           active: boolean | null

@@ -12,6 +12,7 @@ import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
 import { EnhancedGoalDashboard } from "@/components/EnhancedGoalDashboard";
 import { GoalOrchestrator } from "@/components/GoalOrchestrator";
 import { RecommendationFeed } from "@/components/reco/RecommendationFeed";
+import { TrackProofProjectManager } from "@/components/proof-projects/TrackProofProjectManager";
 import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { useQuery } from "@tanstack/react-query";
@@ -187,65 +188,7 @@ export default function PlanHub() {
 
 
               <TabsContent value="proof" className="mt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {planFeatures.filter(f => f.tab === 'proof').map((feature) => {
-                    const Icon = feature.icon;
-                    return (
-                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${feature.color}`}>
-                              <Icon className="h-6 w-6" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-lg">{feature.title}</CardTitle>
-                              <CardDescription>{feature.description}</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Button className="w-full" variant="default" data-testid="cta-next-step">
-                            Plan Project
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  
-                  {/* Add example projects content */}
-                  <Card className="md:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Suggested Proof Projects</CardTitle>
-                      <CardDescription>Build projects that demonstrate your skills</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="p-4 border rounded-lg">
-                          <h4 className="font-medium mb-2">Customer Churn Prediction</h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Build a machine learning model to predict customer churn using historical data
-                          </p>
-                          <div className="flex gap-2">
-                            <Badge variant="secondary">Python</Badge>
-                            <Badge variant="secondary">Pandas</Badge>
-                            <Badge variant="secondary">Scikit-learn</Badge>
-                          </div>
-                        </div>
-                        <div className="p-4 border rounded-lg">
-                          <h4 className="font-medium mb-2">Sales Dashboard</h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Create an interactive dashboard to visualize sales trends and KPIs
-                          </p>
-                          <div className="flex gap-2">
-                            <Badge variant="secondary">Python</Badge>
-                            <Badge variant="secondary">Plotly</Badge>
-                            <Badge variant="secondary">Streamlit</Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <TrackProofProjectManager />
               </TabsContent>
             </Tabs>
           </div>
