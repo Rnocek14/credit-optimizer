@@ -38,14 +38,19 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId, templateDat
       setFormData({
         title: templateData.title,
         description: templateData.description,
-        project_type: 'personal',
+        project_type: templateData.project_type as 'personal' | 'course' | 'certification' | 'challenge' || 'personal',
         difficulty_level: templateData.difficulty_level as 1 | 2 | 3 | 4 | 5,
         estimated_hours: templateData.estimated_hours,
         skills_to_validate: [...templateData.skills_required],
         github_url: '',
         demo_url: '',
       });
+      console.log('Form data updated with template:', {
+        title: templateData.title,
+        skills: templateData.skills_required
+      });
     } else if (open && !templateData) {
+      console.log('Resetting form data');
       setFormData({
         title: '',
         description: '',

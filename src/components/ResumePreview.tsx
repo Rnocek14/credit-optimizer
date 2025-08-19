@@ -329,9 +329,25 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
         .select('*')
         .eq('user_id', userId);
 
+      // Fetch proof projects from database
+      const { data: dbProofProjects } = await supabase
+        .from('proof_projects')
+        .select('*')
+        .eq('user_id', userId);
+
+      // Get proof projects from localStorage (added via "Add to Resume" button)
+      const localStorageProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
+
+      // Combine database and localStorage proof projects
+      const allProofProjects = [
+        ...(dbProofProjects || []),
+        ...localStorageProofs
+      ];
+
       setProfile(profileData);
       setTracks(careerTracks || []);
       setSteps(roadmapSteps || []);
+      setProofProjects(allProofProjects);
       
       // Parse existing AI review if available
       if (profileData?.resume_review_summary) {
