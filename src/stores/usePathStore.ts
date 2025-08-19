@@ -741,6 +741,8 @@ export const usePathStore = create<PathState>()(
         let changed = false;
         let iterations = 0;
 
+        console.log('🔍 Starting auto-fill prerequisites...');
+
         // Iterate until stable (or safe cap)
         while (iterations++ < 20) {
           changed = false;
@@ -749,13 +751,17 @@ export const usePathStore = create<PathState>()(
             const { ok, missing } = validatePrerequisites(target.id);
             if (ok || missing.length === 0) continue;
 
+            console.log(`📋 Node "${target.data.title}" missing:`, missing);
+
             for (const item of missing) {
               const key = normalize(item);
+              console.log(`🔎 Looking for prerequisite: "${item}" (normalized: "${key}")`);
               
               // 1) If a node with this exact title already exists but isn't wired, wire it
               const existingId = titleIndex.get(key);
 
               if (existingId) {
+                console.log(`✅ Found existing node for "${item}"`);
                 // Avoid duplicate prerequisite edge
                 const already = get().edges.some(e => 
                   e.type === 'prerequisite' && e.source === existingId && e.target === target.id
@@ -767,11 +773,36 @@ export const usePathStore = create<PathState>()(
                 continue;
               }
 
-              // 2) Try to find a catalog course that satisfies the required skill/title
-              const match = canonicalCatalog.find(c => normalize(c.title) === key) ||
-                canonicalCatalog.find(c => c.skills.some(s => key.includes(s) || s.includes(key)));
+              // 2) Try different matching strategies
+              let match = null;
+              
+              // Strategy A: Exact title match
+              match = canonicalCatalog.find(c => normalize(c.title) === key);
+              if (match) {
+                console.log(`✅ Found exact title match: "${match.title}" for "${item}"`);
+              } else {
+                // Strategy B: Fuzzy title matching (prerequisite contained in catalog title)
+                match = canonicalCatalog.find(c => normalize(c.title).includes(key) || key.includes(normalize(c.title)));
+                if (match) {
+                  console.log(`✅ Found fuzzy title match: "${match.title}" for "${item}"`);
+                } else {
+                  // Strategy C: Skill-based matching
+                  match = canonicalCatalog.find(c => 
+                    c.skills.some(skill => {
+                      const normalizedSkill = normalize(skill);
+                      return normalizedSkill === key || 
+                             normalizedSkill.includes(key) || 
+                             key.includes(normalizedSkill);
+                    })
+                  );
+                  if (match) {
+                    console.log(`✅ Found skill-based match: "${match.title}" (${match.skills.join(', ')}) for "${item}"`);
+                  }
+                }
+              }
 
               if (match) {
+                console.log(`➕ Adding course: "${match.title}"`);
                 const newId = addNode({
                   type: 'course',
                   position: { 
@@ -796,8 +827,11 @@ export const usePathStore = create<PathState>()(
                   userSkills.some(userSkill => normalize(userSkill) === normalize(skill))
                 );
                 if (hasSkills) {
+                  console.log(`🎯 Auto-completing "${match.title}" because user has relevant skills`);
                   setTimeout(() => get().setNodeStatus(newId, 'completed'), 100);
                 }
+              } else {
+                console.log(`❌ No match found for prerequisite: "${item}"`);
               }
             }
           }
@@ -806,8 +840,11 @@ export const usePathStore = create<PathState>()(
         }
 
         if (changed) {
+          console.log('🎨 Auto-layouting new prerequisites...');
           // Auto-layout to organize the new nodes
           setTimeout(() => autoLayoutPrereqOrder(), 200);
+        } else {
+          console.log('ℹ️ No prerequisites were auto-filled');
         }
       },
 
