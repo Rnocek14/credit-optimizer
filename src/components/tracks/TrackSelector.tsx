@@ -34,6 +34,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
   const setActiveTrackId = useActiveTrackStore((s) => s.setActiveTrackId);
   const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
 
   // Debug logging
   React.useEffect(() => {
@@ -55,11 +56,19 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
 
   const active = tracks.find(t => t.id === activeTrackId) || null;
 
+  const handleTrackSelect = (id: string) => {
+    console.log('Track selected:', id);
+    setActiveTrackId(id);
+    setOpen(false);
+    setSearch('');
+  };
+
   const handleCreate = async () => {
     const name = window.prompt('Enter a name for the new track (e.g., "Frontend Engineer")');
     if (!name) return;
     const newTrack = await createTrack({ track_name: name });
     setActiveTrackId(newTrack.id);
+    setOpen(false);
   };
 
   const handleRename = async () => {
@@ -103,7 +112,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   return (
     <div className={`relative ${className || ''}`} style={{ outline: '2px solid red', padding: '4px' }}>
       <div className="text-xs text-red-500 absolute -top-5 left-0">TrackSelector Debug</div>
-      <Dropdown.Root>
+      <Dropdown.Root open={open} onOpenChange={setOpen}>
         <Dropdown.Trigger asChild>
           <button
             className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 bg-background hover:bg-muted transition-all shadow-sm min-w-[200px] justify-between"
@@ -139,7 +148,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             <div className="px-3 py-4 text-sm opacity-70">No tracks found</div>
           ) : (
             filtered.map((t) => (
-              <TrackItem key={t.id} track={t} activeId={activeTrackId} onSelect={(id) => setActiveTrackId(id)} />
+              <TrackItem key={t.id} track={t} activeId={activeTrackId} onSelect={handleTrackSelect} />
             ))
           )}
         </div>
