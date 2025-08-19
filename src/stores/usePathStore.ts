@@ -37,8 +37,14 @@ const TITLE_SYNONYMS: Record<string, string> = {
   git: "Git Version Control",
 };
 
-const canonicalTitle = (label: string) =>
-  TITLE_SYNONYMS[slug(label)] ?? label;
+const canonicalTitle = (label: string) => {
+  const s = slug(label);
+  // direct hit
+  if (TITLE_SYNONYMS[s]) return TITLE_SYNONYMS[s];
+  // compound synonym for "html css"
+  if (s.includes('html') && s.includes('css')) return 'HTML & CSS Foundations';
+  return label.trim();
+};
 
 // Canonical course catalog for auto-filling prerequisites
 const canonicalCatalog: Array<{
@@ -55,7 +61,7 @@ const canonicalCatalog: Array<{
   { title: 'Data Structures & Algorithms', skills: ['algorithms', 'data structures', 'programming'], difficulty: 'intermediate', estimatedHours: 40 },
   { title: 'SQL Database Fundamentals', skills: ['sql', 'databases'], difficulty: 'beginner', estimatedHours: 20 },
   { title: 'Git Version Control', skills: ['git', 'version control'], difficulty: 'beginner', estimatedHours: 10 },
-  { title: 'TypeScript Basics', skills: ['typescript', 'javascript'], difficulty: 'intermediate', estimatedHours: 15 },
+  { title: 'TypeScript Fundamentals', skills: ['typescript', 'javascript'], difficulty: 'intermediate', estimatedHours: 15 },
   { title: 'API Development', skills: ['api', 'rest', 'backend'], difficulty: 'intermediate', estimatedHours: 30 },
 ];
 
@@ -138,6 +144,7 @@ interface PathState {
   ensurePrerequisiteClosure: () => Promise<void>;
   getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => string;
   mergeDuplicateNodesByTitle: () => void;
+  revalidateAllStatuses: () => void;
   
   // Bulk operations
   loadTrackNodes: (trackId: string) => void;
@@ -492,16 +499,12 @@ export const usePathStore = create<PathState>()(
       connect: (sourceId, targetId, edgeType) => {
         const { selectedEdgeType } = get();
         const finalEdgeType = edgeType || selectedEdgeType;
-        
-        // Prevent self-connections and duplicates
+
         if (sourceId === targetId) return;
-        
-        // Enhanced duplicate prevention with edge key
-        const edgeKey = `${finalEdgeType}:${sourceId}->${targetId}`;
-        const existingEdge = get().edges.find(e => 
-          `${e.type}:${e.source}->${e.target}` === edgeKey
-        );
-        if (existingEdge) return;
+
+        const key = `${finalEdgeType}:${sourceId}->${targetId}`;
+        const dup = get().edges.some(e => `${e.type}:${e.source}->${e.target}` === key);
+        if (dup) return;
         
         const newEdge: PathEdge = {
           id: `edge-${sourceId}-${targetId}-${finalEdgeType}`,
@@ -674,18 +677,18 @@ export const usePathStore = create<PathState>()(
         const node = nodes.find(n => n.id === id);
         if (!node) return { ok: true, missing: [] };
 
-        const have = new Set<string>(
-          (userSkills || []).map(slug)
-        );
-        // Titles/skills from completed nodes count as "have"
-        nodes.filter(n => n.data.status === 'completed').forEach(n => {
-          if (n.data.title) have.add(slug(n.data.title));
-          (n.data.skillTags || []).forEach(s => have.add(slug(s)));
-        });
+        // 1) what the user "has"
+        const have = new Set((userSkills || []).map(slug));
+        nodes
+          .filter(n => n.data.status === 'completed')
+          .forEach(n => {
+            if (n.data.title) have.add(slug(n.data.title));
+            (n.data.skillTags || []).forEach(s => have.add(slug(s)));
+          });
 
         const missing: string[] = [];
 
-        // Node-based prerequisites: incoming edges must originate from COMPLETED nodes
+        // 2) node-based prerequisites (must be completed)
         const prereqEdges = edges.filter(e => e.type === 'prerequisite' && e.target === id);
         prereqEdges.forEach(e => {
           const src = nodes.find(n => n.id === e.source);
@@ -694,16 +697,20 @@ export const usePathStore = create<PathState>()(
           }
         });
 
-        // Skill/title-based prerequisites
-        for (const req of (node.data.prerequisites || [])) {
-          const wantSlug = slug(req);
-          // satisfied by user skill?
+        // 3) free-text skill/title prerequisites
+        const reqs = node.data.prerequisites || [];
+        for (const raw of reqs) {
+          const want = canonicalTitle(raw);
+          const wantSlug = slug(want);
+
           if (have.has(wantSlug)) continue;
-          // satisfied by a COMPLETED node's title?
           const completedNode = nodes.find(n => slug(n.data.title) === wantSlug && n.data.status === 'completed');
           if (completedNode) continue;
-          // still missing
-          missing.push(req);
+
+          // still missing (avoid dup strings)
+          if (!missing.some(m => slug(m) === wantSlug)) {
+            missing.push(want);
+          }
         }
 
         return { ok: missing.length === 0, missing };
@@ -857,19 +864,10 @@ export const usePathStore = create<PathState>()(
       },
 
       ensurePrerequisiteClosure: async () => {
-        // Fresh skills first
         await get().refreshUserSkills();
 
-        const { getOrCreateCourseByTitle, connect, validatePrerequisites, userSkills, autoLayoutTree, setNodeStatus } = get();
+        const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, autoLayoutTree, userSkills } = get();
 
-        const titleIndex = () => {
-          const m = new Map<string, string>();
-          get().nodes.forEach(n => m.set(slug(n.data.title), n.id));
-          return m;
-        };
-
-        let index = titleIndex();
-        let totalAdded = 0;
         let changed = true;
         let guard = 0;
 
@@ -881,53 +879,32 @@ export const usePathStore = create<PathState>()(
             if (ok || missing.length === 0) continue;
 
             for (const raw of missing) {
-              const desired = canonicalTitle(raw);
-              const key = slug(desired);
+              const want = canonicalTitle(raw);
+              const srcId = getOrCreateCourseByTitle(want);
 
-              // existing course with same canonical title?
-              let srcId = index.get(key);
-              if (!srcId) {
-                // create (prefer catalog match inside helper)
-                srcId = getOrCreateCourseByTitle(desired);
-                index = titleIndex();
-                totalAdded++;
-                changed = true;
-
-                // smart-complete if the user already has the skills
-                const created = get().nodes.find(n => n.id === srcId);
-                const skills = created?.data?.skillTags || [];
-                const hasRelevant = skills.some(s => userSkills.some(u => slug(u) === slug(s)));
-                if (hasRelevant) {
-                  setNodeStatus(srcId, 'completed');
-                }
-              }
-
-              // connect if not already connected
-              const exists = get().edges.some(e =>
-                e.type === 'prerequisite' && e.source === srcId && e.target === target.id
-              );
-              if (!exists) {
+              const already = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
+              if (!already) {
                 connect(srcId, target.id, 'prerequisite');
-
-                // revalidate target status immediately
                 const v2 = validatePrerequisites(target.id);
                 setNodeStatus(target.id, v2.ok ? 'available' : 'locked');
-
                 changed = true;
+              }
+
+              // Smart-complete if user already has matching skills
+              const created = get().nodes.find(n => n.id === srcId);
+              const skills = created?.data?.skillTags || [];
+              const hasRelevant = skills.some(s => userSkills.some(u => slug(u) === slug(s)));
+              if (hasRelevant && created?.data.status !== 'completed') {
+                setNodeStatus(srcId, 'completed');
+                const v3 = validatePrerequisites(target.id);
+                setNodeStatus(target.id, v3.ok ? 'available' : 'locked');
               }
             }
           }
         }
 
-        // Final pass: normalize statuses
-        get().nodes.forEach(n => {
-          if (n.data.status === 'completed') return;
-          const v = validatePrerequisites(n.id);
-          const next = v.ok ? 'available' : 'locked';
-          if (n.data.status !== next) setNodeStatus(n.id, next);
-        });
-
-        // Pretty layout
+        mergeDuplicateNodesByTitle();
+        revalidateAllStatuses();
         autoLayoutTree('LR');
       },
 
@@ -965,41 +942,48 @@ export const usePathStore = create<PathState>()(
       },
 
       mergeDuplicateNodesByTitle: () => {
-        const seen = new Map<string, string>(); // slug -> keepId
-        const toRemove: string[] = [];
         const { nodes, edges } = get();
-        
-        nodes.forEach(n => {
+        const seen = new Map<string, string>(); // slug -> keepId
+        const toDelete: string[] = [];
+
+        // Choose the "kept" node per canonical title
+        for (const n of nodes) {
           const key = slug(n.data.title);
-          const keepId = seen.get(key);
-          if (!keepId) { 
-            seen.set(key, n.id); 
-            return; 
+          if (!seen.has(key)) {
+            seen.set(key, n.id);
+          } else {
+            toDelete.push(n.id);
           }
-          
-          // rewire edges from n.id -> keepId
-          const newEdges = edges.map(e => ({
-            ...e,
-            source: e.source === n.id ? keepId : e.source,
-            target: e.target === n.id ? keepId : e.target,
-          }));
-          
-          // dedupe identical edges (same source+target+type)
-          const uniq = new Map<string, typeof newEdges[0]>();
-          newEdges.forEach(e => { 
-            uniq.set(`${e.type}:${e.source}->${e.target}`, e); 
-          });
-          
-          set({ edges: Array.from(uniq.values()) });
-          toRemove.push(n.id);
+        }
+
+        if (toDelete.length === 0) return;
+
+        // Rewire edges to the kept node
+        let rewired = edges.map(e => ({
+          ...e,
+          source: toDelete.includes(e.source) ? seen.get(slug(nodes.find(n => n.id === e.source)!.data.title))! : e.source,
+          target: toDelete.includes(e.target) ? seen.get(slug(nodes.find(n => n.id === e.target)!.data.title))! : e.target,
+        }));
+
+        // Deduplicate identical edges (type+source+target)
+        const uniq = new Map<string, typeof rewired[number]>();
+        for (const e of rewired) {
+          uniq.set(`${e.type}:${e.source}->${e.target}`, e);
+        }
+
+        set({
+          edges: Array.from(uniq.values()),
+          nodes: nodes.filter(n => !toDelete.includes(n.id)),
+          isDirty: true,
         });
-        
-        toRemove.forEach(id => get().removeNode(id));
-        
-        // Safe cleanup of activeNode if it was removed
-        const { activeNodeId } = get();
-        if (activeNodeId && toRemove.includes(activeNodeId)) {
-          set({ activeNodeId: undefined });
+      },
+
+      revalidateAllStatuses: () => {
+        const { nodes, validatePrerequisites, setNodeStatus } = get();
+        for (const n of nodes) {
+          if (n.data.status === 'completed') continue;
+          const v = validatePrerequisites(n.id);
+          setNodeStatus(n.id, v.ok ? 'available' : 'locked');
         }
       },
 
