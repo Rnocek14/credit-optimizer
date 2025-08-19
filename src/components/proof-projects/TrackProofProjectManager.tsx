@@ -90,17 +90,11 @@ export function TrackProofProjectManager() {
       {/* AI Recommendations */}
           <AIProjectRecommendations 
             trackId={activeTrackId}
-            onUseTemplate={(template) => {
-              console.log('Using template:', template);
-              // Close any existing wizard first
-              setShowCreateWizard(false);
-              // Set template data
-              setSelectedTemplate(template);
-              // Small delay to ensure state is updated before opening
-              setTimeout(() => {
-                setShowCreateWizard(true);
-              }, 100);
-            }}
+        onUseTemplate={(template) => {
+          console.log('🎯 Using template:', template);
+          setSelectedTemplate(template);
+          setShowCreateWizard(true);
+        }}
           />
 
       {/* Filter Controls */}

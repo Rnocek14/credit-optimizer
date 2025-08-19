@@ -117,18 +117,23 @@ const extractProofItems = (steps: any[], tracks: any[], proofProjects: any[] = [
   // Add localStorage proof projects (from "Add to Resume" button)
   try {
     const localStorageProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
+    console.log('💾 Found localStorage proofs:', localStorageProofs);
+    
     localStorageProofs.forEach((project: any) => {
       // Only add if not already included from database
-      if (!proofItems.find(item => item.id === project.id)) {
+      if (!proofItems.find(item => item.id === project.id || item.id === `project-${project.id}`)) {
         proofItems.push({
           id: project.id,
           title: project.title,
           type: project.type || 'portfolio',
-          description: project.description,
-          link: project.link,
+          description: project.description || '',
+          link: project.link || '',
           trackTitle: project.trackTitle || 'General',
-          criScore: project.criScore
+          criScore: project.criScore || 85
         });
+        console.log('✅ Added localStorage proof to list:', project.title);
+      } else {
+        console.log('⚠️ Skipped duplicate proof:', project.title);
       }
     });
   } catch (error) {

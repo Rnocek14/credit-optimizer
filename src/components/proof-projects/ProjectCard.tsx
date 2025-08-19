@@ -182,23 +182,35 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  // Add to resume functionality - use correct ProofItem format
+                  console.log('📝 Adding to resume:', project);
+                  
+                  // Create proof item with correct ProofItem format  
                   const proofItem = {
                     id: project.id,
                     title: project.title,
                     type: 'portfolio' as const,
                     description: project.description || `${project.project_type} project demonstrating ${project.skills_to_validate.join(', ')}`,
-                    link: project.github_url || project.demo_url,
+                    link: project.github_url || project.demo_url || '',
                     trackTitle: 'Proof Project',
                     trackId: project.track_id || '',
+                    transcriptId: '',
                     criScore: Math.min(85 + Math.random() * 15, 100)
                   };
                   
                   // Store in localStorage for resume access
                   const existingProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
-                  const updatedProofs = [...existingProofs.filter((p: any) => p.id !== project.id), proofItem];
+                  
+                  // Check if already exists to prevent duplicates
+                  const exists = existingProofs.some((p: any) => p.id === project.id);
+                  if (exists) {
+                    alert('Project already added to resume!');
+                    return;
+                  }
+                  
+                  const updatedProofs = [...existingProofs, proofItem];
                   localStorage.setItem('proof_projects_for_resume', JSON.stringify(updatedProofs));
                   
+                  console.log('✅ Project added to localStorage:', proofItem);
                   alert(`"${project.title}" has been added to your resume! Visit the Resume Builder to see it.`);
                 }}
               >
