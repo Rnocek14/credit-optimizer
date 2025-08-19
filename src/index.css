@@ -142,6 +142,16 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Status colors for dark mode */
+    --lp-green-50: 120 50% 15%;        /* Dark mode green background */
+    --lp-green-200: 159 60% 40%;       /* Dark mode green border */
+    
+    --lp-red-50: 0 50% 15%;           /* Dark mode red background */
+    --lp-red-300: 0 60% 50%;          /* Dark mode red border */
+    
+    --lp-blue-50: 214 50% 15%;        /* Dark mode blue background */
+    --lp-blue-200: 213 60% 40%;       /* Dark mode blue border */
   }
 }
 

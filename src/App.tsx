@@ -10,6 +10,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
+import { DevMenu } from "./components/dev/DevMenu";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import DevLogin from "./pages/DevLogin";
@@ -723,6 +724,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         <XPCelebrationOverlay />
+        {process.env.NODE_ENV !== 'production' && <DevMenu />}
       </BrowserRouter>
             </UnifiedDataProvider>
           </UserJourneyProvider>

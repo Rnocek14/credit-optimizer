@@ -698,16 +698,15 @@ export const usePathStore = create<PathState>()(
         
         // Demo fallback when no skills found
         if (skills.length === 0 && DEMO_MODE) {
-          const demoSkills = [
-            'JavaScript Fundamentals',
-            'ES6+ Syntax', 
-            'TypeScript Basics',
-            'React Fundamentals',
+          // First seed demo React basics
+          await get().seedDemoReactBasics();
+          
+          // Then complete the prerequisite nodes to unlock advanced skills
+          await get().completeByTitles([
             'React Hooks & Advanced State',
-            'Patterns & Composition in React',
-            'React Performance & Optimization'
-          ];
-          set({ userSkills: demoSkills });
+            'Patterns & Composition in React', 
+            'React Performance & Optimization',
+          ]);
         } else {
           set({ userSkills: skills });
         }
