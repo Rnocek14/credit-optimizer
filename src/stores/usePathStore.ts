@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Node, Edge } from '@xyflow/react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PathNode extends Node {
   type: 'track' | 'course' | 'project' | 'milestone';
@@ -35,6 +36,10 @@ interface PathState {
   edges: PathEdge[];
   activeNodeId?: string;
   selectedEdgeType: PathEdge['type'];
+
+  // User skills (aggregated from transcripts/completions)
+  userSkills: string[];
+  refreshUserSkills: (userId?: string) => Promise<void>;
   
   // Actions
   addNode: (node: Omit<PathNode, 'id'>) => string;
@@ -72,6 +77,42 @@ export const usePathStore = create<PathState>()(
       edges: [],
       activeNodeId: undefined,
       selectedEdgeType: 'sequence' as PathEdge['type'],
+      userSkills: [],
+
+      async refreshUserSkills(userIdParam?: string) {
+        // Resolve user id if not provided
+        let userId = userIdParam;
+        if (!userId) {
+          const { data } = await supabase.auth.getUser();
+          userId = data.user?.id;
+        }
+        if (!userId) return;
+
+        // Fetch transcripts and aggregate skill tags
+        const { data: rows, error } = await supabase
+          .from('transcripts')
+          .select('skill_tags')
+          .eq('user_id', userId);
+        if (error) {
+          console.warn('refreshUserSkills error', error);
+          return;
+        }
+        const setLower = new Set<string>();
+        rows?.forEach((r: any) => {
+          (r.skill_tags || []).forEach((s: string) => setLower.add(String(s).trim().toLowerCase()));
+        });
+
+        // Also include skills from completed nodes on canvas
+        const { nodes } = get();
+        nodes
+          .filter(n => n.data.status === 'completed')
+          .forEach(n => {
+            n.data.skillTags?.forEach(s => setLower.add(String(s).trim().toLowerCase()));
+            if (n.data.title) setLower.add(n.data.title.trim().toLowerCase());
+          });
+
+        set({ userSkills: Array.from(setLower) });
+      },
 
       addNode: (nodeData) => {
         const id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -142,9 +183,19 @@ export const usePathStore = create<PathState>()(
       },
 
       removeEdge: (id) => {
+        const edgeToRemove = get().edges.find(e => e.id === id);
         set((state) => ({
           edges: state.edges.filter((edge) => edge.id !== id),
         }));
+
+        if (edgeToRemove?.type === 'prerequisite') {
+          const { validatePrerequisites, setNodeStatus } = get();
+          const res = validatePrerequisites(edgeToRemove.target);
+          const targetNode = get().nodes.find(n => n.id === edgeToRemove.target);
+          if (targetNode && targetNode.data.status !== 'completed') {
+            setNodeStatus(edgeToRemove.target, res.ok ? 'available' : 'locked');
+          }
+        }
       },
 
       moveNode: (id, position) => {
@@ -237,6 +288,19 @@ export const usePathStore = create<PathState>()(
               : node
           ),
         }));
+
+        // Re-evaluate downstream targets for prerequisite edges
+        const { edges, validatePrerequisites, setNodeStatus, refreshUserSkills, nodes } = get();
+        // Update user skills cache when a node is completed or reverted
+        refreshUserSkills().catch(() => {});
+        const downstream = edges.filter(e => e.type === 'prerequisite' && e.source === id);
+        downstream.forEach(e => {
+          const target = nodes.find(n => n.id === e.target);
+          if (target && target.data.status !== 'completed') {
+            const res = validatePrerequisites(e.target);
+            setNodeStatus(e.target, res.ok ? 'available' : 'locked');
+          }
+        });
       },
 
       setPrerequisites: (id, prerequisites) => {
@@ -260,40 +324,42 @@ export const usePathStore = create<PathState>()(
       },
 
       validatePrerequisites: (id) => {
-        const { nodes, edges } = get();
+        const { nodes, edges, userSkills } = get();
         const node = nodes.find(n => n.id === id);
-        if (!node || !node.data.prerequisites) return { ok: true, missing: [] };
+        if (!node) return { ok: true, missing: [] };
+
+        const toKey = (s: string) => String(s).trim().toLowerCase();
+        const acquired = new Set<string>((userSkills || []).map(toKey));
+
+        // Include skills/titles from completed nodes
+        nodes.filter(n => n.data.status === 'completed').forEach(n => {
+          n.data.skillTags?.forEach(s => acquired.add(toKey(s)));
+          if (n.data.title) acquired.add(toKey(n.data.title));
+        });
 
         const missing: string[] = [];
-        
-        // Check node-based prerequisites
-        const prereqEdges = edges.filter(e => e.target === id && e.type === 'prerequisite');
-        const completedPrereqs = prereqEdges.filter(e => {
-          const sourceNode = nodes.find(n => n.id === e.source);
-          return sourceNode?.data.status === 'completed';
-        });
-        
-        if (prereqEdges.length > completedPrereqs.length) {
-          const missingNodes = prereqEdges
-            .filter(e => {
-              const sourceNode = nodes.find(n => n.id === e.source);
-              return sourceNode?.data.status !== 'completed';
-            })
-            .map(e => {
-              const sourceNode = nodes.find(n => n.id === e.source);
-              return sourceNode?.data.title || e.source;
-            });
-          missing.push(...missingNodes);
-        }
 
-        // Check skill-based prerequisites
-        const nodePrereqs = node.data.prerequisites || [];
-        for (const prereq of nodePrereqs) {
-          // Simple skill validation - in real app would check user's completed skills
-          if (!prereq.includes('basic')) { // Mock validation
-            missing.push(prereq);
+        // 1) Node-based prerequisites via edges
+        const prereqEdges = edges.filter(e => e.target === id && e.type === 'prerequisite');
+        prereqEdges.forEach(e => {
+          const src = nodes.find(n => n.id === e.source);
+          if (src?.data.status !== 'completed') {
+            missing.push(src?.data.title || e.source);
           }
-        }
+        });
+
+        // 2) Skill-based prerequisites (free-text list on node)
+        const nodePrereqs = node.data.prerequisites || [];
+        nodePrereqs.forEach(req => {
+          const key = toKey(req);
+          // already satisfied by skills cache?
+          if (acquired.has(key)) return;
+          // satisfied by a completed node title?
+          const matchedNode = nodes.find(n => n.data.title && toKey(n.data.title) === key && n.data.status === 'completed');
+          if (matchedNode) return;
+          // otherwise it's missing
+          missing.push(req);
+        });
 
         return { ok: missing.length === 0, missing };
       },

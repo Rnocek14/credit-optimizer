@@ -55,8 +55,13 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     removeEdge,
     autoLayoutPrereqOrder,
   } = usePathStore();
-  
   const { activeTrackId } = useActiveTrackStore();
+
+  useEffect(() => {
+    if (userId) {
+      usePathStore.getState().refreshUserSkills(userId);
+    }
+  }, [userId]);
 
 
   const onConnect = useCallback(
