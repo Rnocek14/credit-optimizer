@@ -4,7 +4,12 @@ import { ChevronsUpDown, Plus, Archive, Pencil, RefreshCw, Settings } from 'luci
 import { useTracks } from '@/hooks/useTracks';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import type { CareerTrack } from '@/types/tracks';
-import * as Dropdown from '@radix-ui/react-dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { TrackManagerModal } from './TrackManagerModal';
 
@@ -15,16 +20,16 @@ interface TrackSelectorProps {
 const TrackItem: React.FC<{ track: CareerTrack; activeId: string | null; onSelect: (id: string) => void; }> = ({ track, activeId, onSelect }) => {
   const isActive = activeId === track.id;
   return (
-    <Dropdown.Item
+    <DropdownMenuItem
       onSelect={() => onSelect(track.id)}
-      className={`px-3 py-2 cursor-pointer outline-none ${isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`}
+      className={`px-3 py-2 cursor-pointer ${isActive ? 'bg-primary/10 text-primary' : ''}`}
     >
       <div className="flex items-center gap-2">
         <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: track.color || 'hsl(var(--primary))' }} />
         <span className="truncate">{track.track_name || track.title || 'Untitled Track'}</span>
         {track.archived && <span className="ml-2 text-xs opacity-60">(Archived)</span>}
       </div>
-    </Dropdown.Item>
+    </DropdownMenuItem>
   );
 };
 
@@ -34,7 +39,6 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
   const setActiveTrackId = useActiveTrackStore((s) => s.setActiveTrackId);
   const [search, setSearch] = useState('');
-  const [open, setOpen] = useState(false);
 
   // Debug logging
   React.useEffect(() => {
@@ -59,7 +63,6 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   const handleTrackSelect = (id: string) => {
     console.log('Track selected:', id);
     setActiveTrackId(id);
-    setOpen(false);
     setSearch('');
   };
 
@@ -68,7 +71,6 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
     if (!name) return;
     const newTrack = await createTrack({ track_name: name });
     setActiveTrackId(newTrack.id);
-    setOpen(false);
   };
 
   const handleRename = async () => {
@@ -112,8 +114,8 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   return (
     <div className={`relative ${className || ''}`} style={{ outline: '2px solid red', padding: '4px' }}>
       <div className="text-xs text-red-500 absolute -top-5 left-0">TrackSelector Debug</div>
-      <Dropdown.Root open={open} onOpenChange={setOpen}>
-        <Dropdown.Trigger asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <button
             className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 bg-background hover:bg-muted transition-all shadow-sm min-w-[200px] justify-between"
             data-testid="track-selector"
@@ -127,10 +129,10 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             </div>
             <ChevronsUpDown className="w-4 h-4 opacity-70 flex-shrink-0" />
           </button>
-        </Dropdown.Trigger>
+        </DropdownMenuTrigger>
 
-        <Dropdown.Content 
-          className="min-w-[300px] bg-background border-2 shadow-xl rounded-lg overflow-hidden z-[9999]" 
+        <DropdownMenuContent 
+          className="min-w-[300px] shadow-xl z-[9999]" 
           sideOffset={4}
           align="end"
         >
@@ -191,8 +193,8 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             </button>
           </div>
         </div>
-        </Dropdown.Content>
-      </Dropdown.Root>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
