@@ -61,16 +61,21 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   const active = tracks.find(t => t.id === activeTrackId) || null;
 
   const handleTrackSelect = (id: string) => {
-    console.log('Track selected:', id);
+    console.log('🎯 Track selection initiated:', { id, currentActive: activeTrackId });
     const selectedTrack = tracks.find(t => t.id === id);
+    console.log('🎯 Selected track found:', selectedTrack);
+    
     setActiveTrackId(id);
     setSearch('');
     
     // Show success toast with track info
     toast({
-      title: "Track Selected",
+      title: "✅ Track Selected",
       description: `Switched to "${selectedTrack?.track_name || selectedTrack?.title || 'Untitled Track'}"`,
+      duration: 2000,
     });
+    
+    console.log('🎯 Track selection completed:', { newActive: id });
   };
 
   const handleCreate = async () => {
