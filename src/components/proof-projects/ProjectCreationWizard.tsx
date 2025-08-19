@@ -33,18 +33,19 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId, templateDat
 
   // Update form when template changes
   useEffect(() => {
-    if (templateData) {
+    if (templateData && open) {
+      console.log('Loading template data:', templateData);
       setFormData({
         title: templateData.title,
         description: templateData.description,
         project_type: 'personal',
         difficulty_level: templateData.difficulty_level as 1 | 2 | 3 | 4 | 5,
         estimated_hours: templateData.estimated_hours,
-        skills_to_validate: templateData.skills_required,
+        skills_to_validate: [...templateData.skills_required],
         github_url: '',
         demo_url: '',
       });
-    } else if (open) {
+    } else if (open && !templateData) {
       setFormData({
         title: '',
         description: '',

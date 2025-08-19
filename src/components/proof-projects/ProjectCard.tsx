@@ -182,9 +182,25 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  // This will be enhanced with actual resume integration
-                  console.log('Add to resume:', project.title);
-                  alert(`"${project.title}" has been marked for inclusion in your resume. Visit the Resume Builder to see it appear automatically.`);
+                  // Add to resume functionality
+                  const proofItem = {
+                    id: project.id,
+                    title: project.title,
+                    type: 'project',
+                    description: project.description || '',
+                    link: project.github_url || project.demo_url || '',
+                    trackTitle: 'Proof Project',
+                    trackId: project.track_id || '',
+                    transcriptId: '',
+                    criScore: 85
+                  };
+                  
+                  // Store in localStorage for resume access
+                  const existingProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
+                  const updatedProofs = [...existingProofs.filter((p: any) => p.id !== project.id), proofItem];
+                  localStorage.setItem('proof_projects_for_resume', JSON.stringify(updatedProofs));
+                  
+                  alert(`"${project.title}" has been added to your resume! Visit the Resume Builder to see it.`);
                 }}
               >
                 Add to Resume

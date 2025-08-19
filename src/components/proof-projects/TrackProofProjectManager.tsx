@@ -91,6 +91,7 @@ export function TrackProofProjectManager() {
           <AIProjectRecommendations 
             trackId={activeTrackId}
             onUseTemplate={(template) => {
+              console.log('Using template:', template);
               setSelectedTemplate(template);
               setShowCreateWizard(true);
             }}
