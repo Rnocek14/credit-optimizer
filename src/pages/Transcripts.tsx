@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import TrackSelector from "@/components/tracks/TrackSelector";
+import { TrackFilteredTranscripts } from "@/components/tracks/TrackFilteredTranscripts";
 
 interface Transcript {
   id: string;
@@ -32,6 +35,8 @@ const Transcripts = () => {
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [filterMode, setFilterMode] = useState<'all' | 'track-progress' | 'track-tagged'>('all');
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
 
   useEffect(() => {
     checkUser();
@@ -131,15 +136,27 @@ const Transcripts = () => {
       <div className="container mx-auto px-4 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-            📜 <span>Learning Transcripts</span>
-          </h1>
-          <p className="text-muted-foreground">
-            Track your learning journey and academic achievements
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                📜 <span>Learning Transcripts</span>
+              </h1>
+              <p className="text-muted-foreground">
+                Track your learning journey and academic achievements
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeTrackId && (
+                <span className="text-xs px-2 py-1 rounded bg-muted">
+                  Track: {activeTrackId.slice(0,8)}
+                </span>
+              )}
+              <TrackSelector />
+            </div>
+          </div>
         </div>
 
-        {/* Transcripts Grid */}
+        {/* Transcripts Content */}
         {transcripts.length === 0 ? (
           // Empty State
           <Card className="max-w-md mx-auto shadow-lg rounded-xl">
@@ -156,96 +173,11 @@ const Transcripts = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {transcripts.map((transcript) => (
-              <Card key={transcript.id} className="shadow-sm rounded-xl hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="text-lg leading-tight">
-                      {transcript.title}
-                    </CardTitle>
-                    {transcript.use_in_resume && (
-                      <Badge variant="secondary" className="shrink-0">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Resume
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {transcript.description}
-                  </p>
-
-                  <Separator />
-
-                  {/* Enhanced CRI & Metadata Row */}
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      {/* Enhanced CRI Score */}
-                      <div className={`px-3 py-1 rounded-full border font-medium ${getCRIScoreColor(transcript.cri_score)}`}>
-                        <Star className="h-3 w-3 inline mr-1" />
-                        CRI: {transcript.cri_score.toFixed(1)}
-                        <span className="ml-1 text-xs opacity-75">
-                          ({transcript.cri_score >= 8.5 ? 'Excellent' : 
-                            transcript.cri_score >= 7.5 ? 'High' : 
-                            transcript.cri_score >= 6.5 ? 'Good' : 'Fair'})
-                        </span>
-                      </div>
-
-                      {/* Difficulty */}
-                      {transcript.difficulty && (
-                        <Badge variant="outline" className={getDifficultyColor(transcript.difficulty)}>
-                          {transcript.difficulty}
-                        </Badge>
-                      )}
-
-                      {/* Grade */}
-                      {transcript.grade && (
-                        <Badge variant="outline" className="font-medium">
-                          Grade: {transcript.grade}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* CRI Contribution Indicator */}
-                    {transcript.cri_score >= 7.5 && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <Badge variant="default" className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          High CRI Impact
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          This course significantly boosted your career readiness
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Skill Tags */}
-                  {transcript.skill_tags && transcript.skill_tags.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-muted-foreground mb-2">Skills Learned:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {transcript.skill_tags.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Date */}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2">
-                    <Calendar className="h-3 w-3" />
-                    Completed: {formatDate(transcript.created_at)}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <TrackFilteredTranscripts 
+            transcripts={transcripts}
+            filterMode={filterMode}
+            onFilterChange={setFilterMode}
+          />
         )}
 
         {/* Floating Add Button */}

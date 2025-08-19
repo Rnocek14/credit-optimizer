@@ -17,8 +17,11 @@ import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { CourseProgressBadge } from './CourseProgressBadge';
 import { format } from 'date-fns';
 import { XP_REWARDS } from '@/lib/xpUtils';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
+import TrackSelector from '@/components/tracks/TrackSelector';
 
 export function LearningHistoryDashboard() {
+  const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
   const {
     courseProgress,
     milestones,
@@ -27,7 +30,7 @@ export function LearningHistoryDashboard() {
     getTotalXPFromCourses,
     getInProgressCourses,
     getCompletedCourses
-  } = useCourseProgress();
+  } = useCourseProgress(activeTrackId);
 
   if (isLoading) {
     return (
@@ -85,6 +88,17 @@ export function LearningHistoryDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Track Context Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Learning Progress</h2>
+          <p className="text-sm text-muted-foreground">
+            {activeTrackId ? 'Showing progress for your active track' : 'Overall learning progress across all tracks'}
+          </p>
+        </div>
+        <TrackSelector />
+      </div>
+
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {stats.map((stat) => {

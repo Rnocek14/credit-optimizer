@@ -8,10 +8,12 @@ import { format } from "date-fns";
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useCourseIntelligencePipeline } from "@/hooks/useCourseIntelligencePipeline";
+import { useTrackTranscript } from "@/hooks/useTrackTranscript";
+import { useCourseProgress } from "@/hooks/useCourseProgress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Link, Star } from "lucide-react";
+import { Plus, Link, Star, Target, Filter } from "lucide-react";
 
 interface Course {
   id: string;
@@ -80,10 +82,13 @@ const demoCoursesHistory: Course[] = [
 export default function CourseHistory() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<'all' | 'active'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'active' | 'track-tagged'>('all');
   const [courseUrl, setCourseUrl] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const activeTrackId = useActiveTrackStore(s => s.activeTrackId);
+  
+  const { usage: trackUsage, isLoading: isLoadingTrackUsage } = useTrackTranscript(activeTrackId);
+  const { courseProgress, getProgressForCourse } = useCourseProgress(activeTrackId);
   
   // For demo purposes, using Aisha Khan's ID
   const userId = '2b458624-d498-4cca-a63d-9341cc20e363';
@@ -281,8 +286,19 @@ export default function CourseHistory() {
                 </DialogContent>
               </Dialog>
               <div className="flex items-center gap-1">
-                <Button variant={filterMode === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('all')}>All</Button>
-                <Button variant={filterMode === 'active' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('active')}>Active Track</Button>
+                <Button variant={filterMode === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('all')}>
+                  <Filter className="h-3 w-3 mr-1" />All
+                </Button>
+                {activeTrackId && (
+                  <>
+                    <Button variant={filterMode === 'active' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('active')}>
+                      <Target className="h-3 w-3 mr-1" />Current Track
+                    </Button>
+                    <Button variant={filterMode === 'track-tagged' ? 'default' : 'outline'} size="sm" onClick={() => setFilterMode('track-tagged')}>
+                      Tagged ({trackUsage.length})
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             <TrackSelector />
@@ -291,19 +307,40 @@ export default function CourseHistory() {
       </div>
 
       {(() => {
-        const filtered = (filterMode === 'active' && activeTrackId) ? [] : courses;
+        let filtered = courses;
+        
+        if (filterMode === 'active' && activeTrackId) {
+          // Show courses with progress in current track
+          filtered = courses.filter(course => {
+            const progress = getProgressForCourse(course.id);
+            return progress && progress.track_id === activeTrackId;
+          });
+        } else if (filterMode === 'track-tagged' && activeTrackId) {
+          // Show courses tagged to current track
+          const taggedCourseIds = trackUsage.map(u => u.course_id);
+          filtered = courses.filter(course => taggedCourseIds.includes(course.id));
+        }
+        
         if (filtered.length === 0) {
+          const getEmptyMessage = () => {
+            if (filterMode === 'active' && activeTrackId) return 'No courses in progress for this track';
+            if (filterMode === 'track-tagged' && activeTrackId) return 'No courses tagged to this track yet';
+            return 'No courses yet';
+          };
+          
+          const getEmptyDescription = () => {
+            if (filterMode === 'active' && activeTrackId) return 'Start a course in this track to see progress here.';
+            if (filterMode === 'track-tagged' && activeTrackId) return 'Tag courses to this track to organize your learning path.';
+            return 'Start building your learning journey by exploring and saving courses!';
+          };
+          
           return (
             <Card className="p-8 text-center">
               <CardContent className="pt-6">
                 <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{filterMode === 'active' && activeTrackId ? 'No track-scoped entries yet' : 'No courses yet'}</h3>
-                <p className="text-muted-foreground mb-4">
-                  {filterMode === 'active' && activeTrackId
-                    ? 'Switch back to All to see your full history.'
-                    : 'Start building your learning journey by exploring and saving courses!'}
-                </p>
-                {!(filterMode === 'active' && activeTrackId) && <Button>Explore Courses</Button>}
+                <h3 className="text-xl font-semibold mb-2">{getEmptyMessage()}</h3>
+                <p className="text-muted-foreground mb-4">{getEmptyDescription()}</p>
+                {filterMode === 'all' && <Button>Explore Courses</Button>}
               </CardContent>
             </Card>
           );
@@ -318,6 +355,27 @@ export default function CourseHistory() {
                       <Badge variant="outline" className={getStatusColor(course.status)}>
                         {course.status}
                       </Badge>
+                      {(() => {
+                        const progress = getProgressForCourse(course.id);
+                        const isTagged = trackUsage.some(u => u.course_id === course.id);
+                        const isInActiveTrack = progress?.track_id === activeTrackId;
+                        
+                        return (
+                          <>
+                            {isTagged && (
+                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                <Target className="h-3 w-3 mr-1" />
+                                Track Tagged
+                              </Badge>
+                            )}
+                            {isInActiveTrack && (
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                {progress.progress_percentage}% Complete
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
                       {(course as any).quality_score && (
                         <Badge variant="outline" className={getGradeColor(getQualityGrade((course as any).quality_score))}>
                           Grade {getQualityGrade((course as any).quality_score)}
