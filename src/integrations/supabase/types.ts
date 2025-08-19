@@ -3042,6 +3042,57 @@ export type Database = {
           },
         ]
       }
+      institutions: {
+        Row: {
+          accreditation_level: string | null
+          created_at: string
+          description: string | null
+          established_year: number | null
+          id: string
+          location: string | null
+          logo_url: string | null
+          metadata: Json | null
+          name: string
+          reputation_score: number | null
+          type: string
+          updated_at: string
+          verification_status: string | null
+          website_url: string | null
+        }
+        Insert: {
+          accreditation_level?: string | null
+          created_at?: string
+          description?: string | null
+          established_year?: number | null
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name: string
+          reputation_score?: number | null
+          type: string
+          updated_at?: string
+          verification_status?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          accreditation_level?: string | null
+          created_at?: string
+          description?: string | null
+          established_year?: number | null
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          metadata?: Json | null
+          name?: string
+          reputation_score?: number | null
+          type?: string
+          updated_at?: string
+          verification_status?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       instructor_profiles: {
         Row: {
           average_rating: number | null
@@ -6397,6 +6448,74 @@ export type Database = {
         }
         Relationships: []
       }
+      teachers: {
+        Row: {
+          average_rating: number | null
+          bio: string | null
+          created_at: string
+          credentials: Json | null
+          experience_years: number | null
+          id: string
+          institution_id: string | null
+          name: string
+          outcome_score: number | null
+          profile_image_url: string | null
+          response_rate: number | null
+          social_links: Json | null
+          specializations: string[] | null
+          title: string | null
+          total_reviews: number | null
+          updated_at: string
+          verification_status: string | null
+        }
+        Insert: {
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string
+          credentials?: Json | null
+          experience_years?: number | null
+          id?: string
+          institution_id?: string | null
+          name: string
+          outcome_score?: number | null
+          profile_image_url?: string | null
+          response_rate?: number | null
+          social_links?: Json | null
+          specializations?: string[] | null
+          title?: string | null
+          total_reviews?: number | null
+          updated_at?: string
+          verification_status?: string | null
+        }
+        Update: {
+          average_rating?: number | null
+          bio?: string | null
+          created_at?: string
+          credentials?: Json | null
+          experience_years?: number | null
+          id?: string
+          institution_id?: string | null
+          name?: string
+          outcome_score?: number | null
+          profile_image_url?: string | null
+          response_rate?: number | null
+          social_links?: Json | null
+          specializations?: string[] | null
+          title?: string | null
+          total_reviews?: number | null
+          updated_at?: string
+          verification_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teaching_courses: {
         Row: {
           course_code: string | null
@@ -6630,51 +6749,87 @@ export type Database = {
       }
       transcripts: {
         Row: {
+          course_url: string | null
           created_at: string
           credits: number | null
+          credits_earned: number | null
           cri_score: number | null
           description: string | null
           difficulty: string | null
           grade: string | null
           id: string
+          institution_grade: string | null
+          institution_id: string | null
           skill_tags: string[] | null
+          teacher_id: string | null
           title: string
+          track_ids: string[] | null
           updated_at: string
           use_in_resume: boolean | null
           user_id: string
+          verification_status: string | null
           verified: boolean | null
         }
         Insert: {
+          course_url?: string | null
           created_at?: string
           credits?: number | null
+          credits_earned?: number | null
           cri_score?: number | null
           description?: string | null
           difficulty?: string | null
           grade?: string | null
           id?: string
+          institution_grade?: string | null
+          institution_id?: string | null
           skill_tags?: string[] | null
+          teacher_id?: string | null
           title: string
+          track_ids?: string[] | null
           updated_at?: string
           use_in_resume?: boolean | null
           user_id: string
+          verification_status?: string | null
           verified?: boolean | null
         }
         Update: {
+          course_url?: string | null
           created_at?: string
           credits?: number | null
+          credits_earned?: number | null
           cri_score?: number | null
           description?: string | null
           difficulty?: string | null
           grade?: string | null
           id?: string
+          institution_grade?: string | null
+          institution_id?: string | null
           skill_tags?: string[] | null
+          teacher_id?: string | null
           title?: string
+          track_ids?: string[] | null
           updated_at?: string
           use_in_resume?: boolean | null
           user_id?: string
+          verification_status?: string | null
           verified?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_institution_id_fkey"
+            columns: ["institution_id"]
+            isOneToOne: false
+            referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transcripts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trust_badge_shares: {
         Row: {
@@ -7345,6 +7500,59 @@ export type Database = {
             columns: ["step_id"]
             isOneToOne: false
             referencedRelation: "career_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_teacher_ratings: {
+        Row: {
+          completion_status: string | null
+          course_id: string | null
+          created_at: string
+          helpful_votes: number | null
+          id: string
+          rating: number
+          review: string | null
+          tags: string[] | null
+          teacher_id: string
+          updated_at: string
+          user_id: string
+          would_recommend: boolean | null
+        }
+        Insert: {
+          completion_status?: string | null
+          course_id?: string | null
+          created_at?: string
+          helpful_votes?: number | null
+          id?: string
+          rating: number
+          review?: string | null
+          tags?: string[] | null
+          teacher_id: string
+          updated_at?: string
+          user_id: string
+          would_recommend?: boolean | null
+        }
+        Update: {
+          completion_status?: string | null
+          course_id?: string | null
+          created_at?: string
+          helpful_votes?: number | null
+          id?: string
+          rating?: number
+          review?: string | null
+          tags?: string[] | null
+          teacher_id?: string
+          updated_at?: string
+          user_id?: string
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_teacher_ratings_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
             referencedColumns: ["id"]
           },
         ]

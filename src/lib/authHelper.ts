@@ -110,6 +110,31 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   return null;
 };
 
+// Ensure user session is valid for database operations
+export async function ensureValidSession(userId?: string): Promise<boolean> {
+  if (!userId) return false;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user?.id === userId) {
+      return true;
+    }
+
+    // Check if it's a dev user
+    if (isDevAuthEnabled() && !isProduction()) {
+      const { getCurrentDevUser } = await import("./devUserSetup");
+      const devUser = getCurrentDevUser();
+      return devUser?.id === userId;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error validating session:', error);
+    return false;
+  }
+}
+
 export const getUserProfile = async (userId: string, isDevUser: boolean = false): Promise<AuthProfile | null> => {
   console.log("getUserProfile called with:", { userId, isDevUser });
   
