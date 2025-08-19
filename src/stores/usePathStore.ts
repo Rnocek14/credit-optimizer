@@ -209,21 +209,40 @@ export const usePathStore = create<PathState>()(
       // Safely read measured size from React Flow (if present), else fallback
       getNodeSize: (id: string) => {
         const n = get().nodes.find(x => x.id === id);
-        // Use measured dimensions first, then fallbacks based on node type
-        const measuredW = (n as any)?.measured?.width ?? (n as any)?.width;
-        const measuredH = (n as any)?.measured?.height ?? (n as any)?.height;
+        if (!n) {
+          console.warn(`⚠️ getNodeSize: node ${id} not found, using fallback`);
+          return { w: get().NODE_W, h: get().NODE_H };
+        }
+
+        // Use measured dimensions first, then style dimensions, then fallbacks
+        const measuredW = (n as any)?.measured?.width ?? (n as any)?.width ?? (n as any)?.style?.width;
+        const measuredH = (n as any)?.measured?.height ?? (n as any)?.height ?? (n as any)?.style?.height;
         
-        // Skill nodes are smaller - guard against 0x0 dimensions
-        if (n?.type === 'skill') {
+        // Convert string dimensions to numbers if needed
+        const parseSize = (size: any): number | undefined => {
+          if (typeof size === 'number') return size > 0 ? size : undefined;
+          if (typeof size === 'string') {
+            const parsed = parseInt(size, 10);
+            return parsed > 0 ? parsed : undefined;
+          }
+          return undefined;
+        };
+
+        const finalW = parseSize(measuredW);
+        const finalH = parseSize(measuredH);
+        
+        // Skill nodes are smaller - strict 0x0 guards
+        if (n.type === 'skill') {
           return { 
-            w: measuredW && measuredW > 0 ? measuredW : 200,
-            h: measuredH && measuredH > 0 ? measuredH : 40 
+            w: finalW ?? 200,
+            h: finalH ?? 40 
           };
         }
         
+        // Course/track nodes are larger
         return { 
-          w: measuredW && measuredW > 0 ? measuredW : get().NODE_W,
-          h: measuredH && measuredH > 0 ? measuredH : get().NODE_H 
+          w: finalW ?? get().NODE_W,
+          h: finalH ?? get().NODE_H 
         };
       },
 
@@ -247,12 +266,30 @@ export const usePathStore = create<PathState>()(
         if (S.pendingLayout) return;            // coalesce
         set({ pendingLayout: true });
 
-        // Two rAFs: let DOM paint & React Flow write measured sizes
+        let attempts = 0;
+
         const run = () => {
-          const sig = get().recomputeDimensionSig();
-          set({ dimensionSig: sig });
+          const before = get().recomputeDimensionSig();
+          set({ dimensionSig: before });
           get().autoLayoutTree('LR');
-          set({ pendingLayout: false });
+
+          // Settlement loop: check if dimensions changed after layout
+          requestAnimationFrame(() => {
+            const after = get().recomputeDimensionSig();
+            const changed = after !== before;
+            console.log(`📐 Layout attempt ${attempts + 1}: dimensions ${changed ? 'changed' : 'stable'}${reason ? ` (${reason})` : ''}`);
+            
+            if (changed && attempts++ < 2) {
+              console.log('🔄 Re-running layout due to dimension changes');
+              // Once more to settle after measurement changes
+              requestAnimationFrame(run);
+            } else {
+              set({ pendingLayout: false });
+              if (attempts >= 2 && changed) {
+                console.warn('⚠️ Layout stopped after max attempts, some overlaps may remain');
+              }
+            }
+          });
         };
 
         if (get().layoutDebounceId) cancelAnimationFrame(get().layoutDebounceId!);
@@ -264,21 +301,41 @@ export const usePathStore = create<PathState>()(
         const { nodes } = get();
         const boxes = nodes.map(n => ({
           id: n.id,
+          title: n.data.title,
+          type: n.type,
           x: n.position?.x ?? 0,
           y: n.position?.y ?? 0,
           w: (n as any)?.measured?.width ?? (n as any)?.width ?? get().NODE_W,
           h: (n as any)?.measured?.height ?? (n as any)?.height ?? get().NODE_H,
         }));
-        const hits: Array<[string,string]> = [];
-        for (let i=0;i<boxes.length;i++){
-          for (let j=i+1;j<boxes.length;j++){
+
+        const hits: Array<[string, string]> = [];
+        for (let i = 0; i < boxes.length; i++) {
+          for (let j = i + 1; j < boxes.length; j++) {
             const A = boxes[i], B = boxes[j];
-            const overlap = !(A.x + A.w <= B.x || B.x + B.w <= A.x || A.y + A.h <= B.y || B.y + B.h <= A.y);
-            if (overlap) hits.push([A.id, B.id]);
+            // Proper AABB collision detection
+            const overlap =
+              A.x < B.x + B.w && A.x + A.w > B.x &&
+              A.y < B.y + B.h && A.y + A.h > B.y;
+            if (overlap) {
+              hits.push([A.id, B.id]);
+            }
           }
         }
-        if (hits.length) console.warn('🔴 Overlaps detected:', hits.slice(0,10));
-        else console.info('🟢 No overlaps');
+        
+        if (hits.length) {
+          console.warn(`🔴 ${hits.length} overlap(s) detected:`);
+          hits.slice(0, 5).forEach(([a, b]) => {
+            const boxA = boxes.find(box => box.id === a);
+            const boxB = boxes.find(box => box.id === b);
+            console.warn(`  • "${boxA?.title}" (${boxA?.type}) overlaps "${boxB?.title}" (${boxB?.type})`);
+          });
+          if (hits.length > 5) {
+            console.warn(`  • ... and ${hits.length - 5} more overlaps`);
+          }
+        } else {
+          console.info('🟢 No overlaps detected');
+        }
       },
 
       // Database persistence state
@@ -579,20 +636,19 @@ export const usePathStore = create<PathState>()(
         set({ userSkills: Array.from(setLower) });
       },
 
-      addNode: (nodeData) => {
-        const id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const newNode: PathNode = {
-          id,
-          position: { x: 100, y: 100 },
-          ...nodeData,
-        };
+      addNode: (node: Omit<PathNode, 'id'>) => {
+        const id = `node-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const newNode: PathNode = { ...node, id };
         
         set((state) => ({
           nodes: [...state.nodes, newNode],
           isDirty: true,
         }));
-        
-        if (get().layoutSuspended === 0) get().scheduleLayout("node added");
+
+        // Schedule layout only if not suspended  
+        if (get().layoutSuspended === 0) {
+          get().scheduleLayout('node added');
+        }
         
         return id;
       },
@@ -621,38 +677,30 @@ export const usePathStore = create<PathState>()(
         get().scheduleLayout("node removed");
       },
 
-      connect: (sourceId, targetId, edgeType) => {
-        const { selectedEdgeType } = get();
-        const finalEdgeType = edgeType || selectedEdgeType;
-
-        if (sourceId === targetId) return;
-
-        const key = `${finalEdgeType}:${sourceId}->${targetId}`;
-        const dup = get().edges.some(e => `${e.type}:${e.source}->${e.target}` === key);
-        if (dup) return;
+      connect: (sourceId, targetId, edgeType = 'sequence') => {
+        const edgeId = `${sourceId}-${targetId}-${edgeType}`;
+        
+        // Prevent duplicate edges
+        if (get().edges.some(e => e.id === edgeId)) {
+          return;
+        }
         
         const newEdge: PathEdge = {
-          id: `edge-${sourceId}-${targetId}-${finalEdgeType}`,
+          id: edgeId,
           source: sourceId,
           target: targetId,
-          type: finalEdgeType,
-          markerEnd: { type: 'arrowclosed' as any },
-          style: getEdgeStyle(finalEdgeType),
+          type: edgeType,
+          style: getEdgeStyle(edgeType),
         };
         
         set((state) => ({
           edges: [...state.edges, newEdge],
           isDirty: true,
         }));
-        
-        if (get().layoutSuspended === 0) get().scheduleLayout("edge added");
-        
-        // If prerequisite edge, update target node status
-        if (finalEdgeType === 'prerequisite') {
-          const { validatePrerequisites } = get();
-          const validation = validatePrerequisites(targetId);
-          const targetStatus = validation.ok ? 'available' : 'locked';
-          get().setNodeStatus(targetId, targetStatus);
+
+        // Schedule layout only if not suspended
+        if (get().layoutSuspended === 0) {
+          get().scheduleLayout('edge added');
         }
       },
 
@@ -956,13 +1004,15 @@ export const usePathStore = create<PathState>()(
           }
           const xOf: Record<number, number> = {};
           xOf[ranks[0] ?? 0] = S.PADX;
-          for (let i=1;i<ranks.length;i++) {
-            xOf[ranks[i]] = xOf[ranks[i-1]] + (maxW[ranks[i-1]] ?? S.NODE_W) + S.H_GAP;
+          for (let i = 1; i < ranks.length; i++) {
+            const prev = ranks[i - 1];
+            const cur = ranks[i];
+            xOf[cur] = (xOf[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
           }
 
           // Subtree height in pixels (includes V_GAP between children)
           const subtreeH = new Map<string, number>();
-          const kidsOf = (id: string) => children.get(id)!;
+          const kidsOf = (id: string) => children.get(id) ?? []; // safety guard
           const dynGap = S.V_GAP; // can make adaptive if desired
 
           const post = (id: string): number => {
@@ -1040,7 +1090,16 @@ export const usePathStore = create<PathState>()(
 
         } finally {
           set({ isLayingOut: false });
-          setTimeout(() => window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*"), 50);
+          // Debug: log layout completion with stats
+          const totalNodes = get().nodes.length;
+          const totalEdges = get().edges.filter(e => e.type === "prerequisite").length;
+          console.log(`🎯 Layout complete: ${totalNodes} nodes, ${totalEdges} prerequisite edges`);
+          
+          setTimeout(() => {
+            window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*");
+            // Validate layout after posting completion message
+            setTimeout(() => get().validateNoOverlap(), 100);
+          }, 50);
         }
       },
 
