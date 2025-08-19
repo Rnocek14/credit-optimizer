@@ -107,6 +107,14 @@ interface PathState {
   activeNodeId?: string;
   selectedEdgeType: PathEdge['type'];
 
+  // Layout constants for tidy tree layout
+  NODE_W: number;
+  NODE_H: number;
+  H_GAP: number;
+  V_GAP: number;
+  PADX: number;
+  PADY: number;
+
   // Database persistence
   currentPathId?: string;
   pathTitle: string;
@@ -774,92 +782,129 @@ export const usePathStore = create<PathState>()(
         set({ nodes: updatedNodes });
       },
 
+      // Layout constants for tidy tree layout
+      NODE_W: 240,      // approximate node width in px
+      NODE_H: 100,      // approximate node height in px
+      H_GAP: 80,        // horizontal gap between ranks
+      V_GAP: 40,        // vertical gap between siblings
+      PADX: 80,         // canvas left padding
+      PADY: 80,         // canvas top padding
+
       autoLayoutTree: (orientation: "LR" | "TB" = "LR") => {
         const { nodes, edges } = get();
-        const prereqEdges = edges.filter(e => e.type === 'prerequisite');
+        const prereqEdges = edges.filter(e => e.type === "prerequisite");
 
-        // Build DAG
-        const adj = new Map<string, Set<string>>();
+        // Build DAG structures
+        const byId = new Map(nodes.map(n => [n.id, n]));
+        const parentsOf = new Map<string, string[]>();
+        const childrenOf = new Map<string, string[]>();
         const indeg = new Map<string, number>();
-        nodes.forEach(n => { adj.set(n.id, new Set()); indeg.set(n.id, 0); });
+
+        nodes.forEach(n => { parentsOf.set(n.id, []); childrenOf.set(n.id, []); indeg.set(n.id, 0); });
         prereqEdges.forEach(e => {
-          adj.get(e.source)?.add(e.target);
+          childrenOf.get(e.source)!.push(e.target);
+          parentsOf.get(e.target)!.push(e.source);
           indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
         });
 
-        // Kahn levels
-        const levels: string[][] = [];
+        // Kahn ranks (longest-path-ish ranks for nice LR columns)
+        const rank = new Map<string, number>();
         const q: string[] = [];
-        const levelOf = new Map<string, number>();
+        nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { q.push(n.id); rank.set(n.id, 0); }});
+        while (q.length) {
+          const u = q.shift()!;
+          const ru = rank.get(u) || 0;
+          for (const v of childrenOf.get(u)!) {
+            const nv = Math.max(ru + 1, rank.get(v) ?? 0);
+            rank.set(v, nv);
+            indeg.set(v, (indeg.get(v) || 0) - 1);
+            if ((indeg.get(v) || 0) === 0) q.push(v);
+          }
+        }
+        // Fallback if cycle: put all in rank 0
+        if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0));
 
+        // Group by rank
+        const byRank = new Map<number, string[]>();
         nodes.forEach(n => {
-          if ((indeg.get(n.id) || 0) === 0) { q.push(n.id); levelOf.set(n.id, 0); }
+          const r = rank.get(n.id) || 0;
+          if (!byRank.has(r)) byRank.set(r, []);
+          byRank.get(r)!.push(n.id);
         });
 
-        while (q.length) {
-          const size = q.length;
-          const layer: string[] = [];
-          for (let i = 0; i < size; i++) {
-            const u = q.shift()!;
-            layer.push(u);
-            for (const v of (adj.get(u) || [])) {
-              indeg.set(v, (indeg.get(v) || 0) - 1);
-              if ((indeg.get(v) || 0) === 0) {
-                levelOf.set(v, (levelOf.get(u) || 0) + 1);
-                q.push(v);
-              }
-            }
-          }
-          if (layer.length) levels.push(layer);
+        // Stable sibling ordering: average parent y, then difficulty rank, then title
+        const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+        const getTitle = (id: string) => (byId.get(id)?.data?.title || "").toLowerCase();
+        const getDifficulty = (id: string) => (byId.get(id)?.data?.difficulty || "intermediate");
+        const avgParentY = (id: string) => {
+          const ps = parentsOf.get(id)!;
+          if (!ps.length) return 0;
+          const ys = ps.map(p => byId.get(p)?.position?.y ?? 0);
+          return ys.reduce((a, b) => a + b, 0) / ys.length;
+        };
+
+        // First, assign rough vertical order per rank
+        const ranks = Array.from(byRank.keys()).sort((a,b)=>a-b);
+        const ordered: Record<number, string[]> = {};
+        for (const r of ranks) {
+          ordered[r] = [...byRank.get(r)!].sort((a,b) => {
+            const ya = avgParentY(a), yb = avgParentY(b);
+            if (ya !== yb) return ya - yb;
+            const da = diffOrder[getDifficulty(a)] ?? 1;
+            const db = diffOrder[getDifficulty(b)] ?? 1;
+            if (da !== db) return da - db;
+            return getTitle(a).localeCompare(getTitle(b));
+          });
         }
 
-        // Fallback: if cycles -> keep everything on level 0 to avoid NaN
-        if (levels.length === 0) levels.push(nodes.map(n => n.id));
+        // Compute subtree heights (how much vertical space each node's subtree needs)
+        const subtreeRows = new Map<string, number>();
+        const postOrder = (id: string): number => {
+          const kids = childrenOf.get(id)!;
+          if (!kids.length) { subtreeRows.set(id, 1); return 1; }
+          const sum = kids.map(k => postOrder(k)).reduce((a,b)=>a+b, 0);
+          subtreeRows.set(id, Math.max(1, sum));
+          return subtreeRows.get(id)!;
+        };
+        // Run post-order from virtual roots (rank 0 nodes)
+        for (const r0 of (ordered[0] ?? [])) postOrder(r0);
 
-        // Layout constants
-        const XG = 300, YG = 160, PADX = 80, PADY = 80;
+        // Assign positions rank by rank, distributing siblings using subtree heights
+        let yCursorByRank: Record<number, number> = {};
+        ranks.forEach(r => yCursorByRank[r] = get().PADY);
 
-        // Order nodes within a level by (average parent y, then title)
-        const parentsOf = (id: string) => prereqEdges.filter(e => e.target === id).map(e => e.source);
+        const pos = new Map<string, {x:number,y:number}>();
+        const placeNode = (id: string) => {
+          const r = rank.get(id) || 0;
+          const x = get().PADX + r * (get().NODE_W + get().H_GAP);
+          const y = yCursorByRank[r];
+          pos.set(id, { x, y });
+          // Advance cursor by this node's subtree height block
+          const rows = subtreeRows.get(id) ?? 1;
+          yCursorByRank[r] += rows * (get().NODE_H + get().V_GAP);
+          // Place children directly under in next rank
+          const kids = ordered[r+1]?.filter(k => parentsOf.get(k)!.includes(id)) ?? [];
+          for (const kid of kids) placeNode(kid);
+        };
 
-        const orderedLevels = levels.map(layer => {
-          return [...layer].sort((a, b) => {
-            const pa = parentsOf(a).map(pid => nodes.find(n => n.id === pid)?.position.y ?? 0);
-            const pb = parentsOf(b).map(pid => nodes.find(n => n.id === pid)?.position.y ?? 0);
-            const ya = pa.length ? pa.reduce((s,v)=>s+v,0) / pa.length : 0;
-            const yb = pb.length ? pb.reduce((s,v)=>s+v,0) / pb.length : 0;
-            if (ya !== yb) return ya - yb;
-            const ta = (nodes.find(n => n.id === a)?.data.title || "");
-            const tb = (nodes.find(n => n.id === b)?.data.title || "");
-            return ta.localeCompare(tb);
-          });
-        });
+        // Place all rank-0 (multi-root) in order
+        for (const root of (ordered[0] ?? [])) placeNode(root);
 
-        const updated = nodes.map(n => {
-          const L = levelOf.get(n.id) ?? 0;
-          const layer = orderedLevels[L] || [];
-          const i = Math.max(orderedLevels[L]?.indexOf(n.id) ?? -1, 0);
-
-          if (orientation === "LR") {
-            return {
-              ...n,
-              position: {
-                x: PADX + L * XG,
-                y: PADY + i * YG,
-              },
-            };
-          } else {
-            return {
-              ...n,
-              position: {
-                x: PADX + i * XG,
-                y: PADY + L * YG,
-              },
-            };
+        // If any nodes didn't get placed (e.g., cycles), drop them compactly at the bottom
+        nodes.forEach(n => {
+          if (!pos.has(n.id)) {
+            const r = rank.get(n.id) || 0;
+            pos.set(n.id, { x: get().PADX + r*(get().NODE_W + get().H_GAP), y: yCursorByRank[r] });
+            yCursorByRank[r] += (get().NODE_H + get().V_GAP);
           }
         });
 
+        // Write back
+        const updated = nodes.map(n => ({ ...n, position: pos.get(n.id)! }));
         set({ nodes: updated });
+
+        // (Optional) console.info to remind UI to fitView
+        setTimeout(() => console.info("✅ Tree layout complete"), 0);
       },
 
       getSuggestedNextSteps: (nodeId) => {

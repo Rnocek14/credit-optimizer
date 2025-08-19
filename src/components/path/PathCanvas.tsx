@@ -6,6 +6,7 @@ import {
   Connection,
   MarkerType,
   Panel,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -218,12 +219,15 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     }, 100);
   }, [addNode, connect]);
 
-  // Enhanced auto-fill function that refreshes skills and uses tree layout
+  // Enhanced auto-fill function that refreshes skills and uses tree layout with fitView
+  const { fitView } = useReactFlow();
   const handleAutoFillPrerequisites = async () => {
     try {
       await refreshUserSkills();
       await ensurePrerequisiteClosure();
       autoLayoutTree("LR");
+      // Fit view after layout with animation
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
     } catch (error) {
       console.error('Auto-fill error:', error);
     }
@@ -247,12 +251,13 @@ export function PathCanvas({ userId }: PathCanvasProps) {
       } else if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         autoLayoutTree("LR");
+        setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [autoLayoutPrereqOrder, autoLayoutTree]);
+  }, [autoLayoutPrereqOrder, autoLayoutTree, fitView]);
 
   return (
     <div className="flex h-full bg-background">
@@ -366,7 +371,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => autoLayoutTree("LR")}
+              onClick={() => {
+                autoLayoutTree("LR");
+                setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+              }}
               className="w-full text-xs"
               title="Organize in tree layout (hotkey: T)"
             >
