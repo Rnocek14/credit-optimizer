@@ -108,6 +108,8 @@ import {
   EmployerJobs
 } from "./pages/employer";
 import AIAnalyzer from "./pages/AIAnalyzer";
+import Build from "./pages/Build";
+import TrackComparePage from "./components/compare/TrackComparePage";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -199,6 +201,24 @@ const App = () => (
           <Route path="/maya-roadmap" element={<Navigate to="/plan?tab=roadmap" replace />} />
           <Route path="/career-copilot" element={<Navigate to="/plan?tab=roadmap" replace />} />
           <Route path="/workflows" element={<Navigate to="/plan?tab=workflows" replace />} />
+
+          {/* Phase 6: Path Canvas & Compare */}
+          <Route 
+            path="/build" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <Build />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/compare" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <TrackComparePage />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* PROGRESS Hub Redirects */}
           <Route path="/progress-hub" element={<Navigate to="/progress" replace />} />
