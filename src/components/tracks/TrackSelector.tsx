@@ -112,14 +112,12 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   }
 
   return (
-    <div className={`relative ${className || ''}`} style={{ outline: '2px solid red', padding: '4px' }}>
-      <div className="text-xs text-red-500 absolute -top-5 left-0">TrackSelector Debug</div>
+    <div className={`relative ${className || ''}`}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 bg-background hover:bg-muted transition-all shadow-sm min-w-[200px] justify-between"
             data-testid="track-selector"
-            style={{ outline: '1px solid blue' }}
           >
             <div className="flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} />
@@ -136,24 +134,24 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
           sideOffset={4}
           align="end"
         >
-        <div className="p-2 border-b bg-background">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tracks..."
-            className="w-full px-2 py-2 rounded-md bg-background border"
-          />
-        </div>
+          <div className="p-2 border-b bg-background">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tracks..."
+              className="w-full px-2 py-2 rounded-md bg-background border"
+            />
+          </div>
 
-        <div className="max-h-64 overflow-auto">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-4 text-sm opacity-70">No tracks found</div>
-          ) : (
-            filtered.map((t) => (
-              <TrackItem key={t.id} track={t} activeId={activeTrackId} onSelect={handleTrackSelect} />
-            ))
-          )}
-        </div>
+          <div className="max-h-64 overflow-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-sm opacity-70">No tracks found</div>
+            ) : (
+              filtered.map((t) => (
+                <TrackItem key={t.id} track={t} activeId={activeTrackId} onSelect={handleTrackSelect} />
+              ))
+            )}
+          </div>
 
         <div className="p-2 border-t bg-background">
           <div className="flex items-center gap-2">
