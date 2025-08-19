@@ -27,6 +27,10 @@ const TITLE_SYNONYMS: Record<string, string> = {
   "node.js": "Node.js Essentials",
   express: "Express.js Framework",
   react: "React Fundamentals",
+  "react hooks": "React Hooks & Advanced State",
+  "react patterns": "Advanced React Patterns",
+  "advanced react": "Advanced React Patterns",
+  "advanced react patterns": "Advanced React Patterns",
   rest: "REST API Design",
   api: "API Development",
   sql: "SQL Database Fundamentals",
@@ -56,6 +60,10 @@ const canonicalCatalog: Array<{
   { title: 'JavaScript Basics', skills: ['javascript', 'programming'], difficulty: 'beginner', estimatedHours: 20 },
   { title: 'HTML & CSS Foundations', skills: ['html', 'css', 'web development'], difficulty: 'beginner', estimatedHours: 15 },
   { title: 'React Fundamentals', skills: ['react', 'javascript', 'frontend'], difficulty: 'intermediate', estimatedHours: 30 },
+  { title: 'React Hooks & Advanced State', skills: ['react', 'hooks', 'useReducer', 'useMemo', 'context'], difficulty: 'intermediate', estimatedHours: 16 },
+  { title: 'Patterns & Composition in React', skills: ['react', 'composition', 'render props', 'compound components', 'children as a function'], difficulty: 'intermediate', estimatedHours: 14 },
+  { title: 'React Performance & Optimization', skills: ['react', 'performance', 'memoization', 'profiling', 'concurrency'], difficulty: 'advanced', estimatedHours: 12 },
+  { title: 'Advanced React Patterns', skills: ['react', 'patterns', 'composition', 'performance'], difficulty: 'advanced', estimatedHours: 20 },
   { title: 'Node.js Essentials', skills: ['node.js', 'javascript', 'backend'], difficulty: 'intermediate', estimatedHours: 25 },
   { title: 'Python Programming', skills: ['python', 'programming'], difficulty: 'beginner', estimatedHours: 25 },
   { title: 'Data Structures & Algorithms', skills: ['algorithms', 'data structures', 'programming'], difficulty: 'intermediate', estimatedHours: 40 },
@@ -703,9 +711,19 @@ export const usePathStore = create<PathState>()(
           const want = canonicalTitle(raw);
           const wantSlug = slug(want);
 
+          // (A) satisfied by user skills?
           if (have.has(wantSlug)) continue;
+
+          // (B) satisfied by any COMPLETED node title?
           const completedNode = nodes.find(n => slug(n.data.title) === wantSlug && n.data.status === 'completed');
           if (completedNode) continue;
+
+          // (C) satisfied by any COMPLETED node skills?
+          const completedHasSkill = nodes.some(n =>
+            n.data.status === 'completed' &&
+            (n.data.skillTags || []).some(s => slug(s) === wantSlug)
+          );
+          if (completedHasSkill) continue;
 
           // still missing (avoid dup strings)
           if (!missing.some(m => slug(m) === wantSlug)) {
@@ -866,6 +884,21 @@ export const usePathStore = create<PathState>()(
       ensurePrerequisiteClosure: async () => {
         await get().refreshUserSkills();
 
+        // --- Targeted repair for "Advanced React Patterns" ---
+        const arNode = get().nodes.find(n => slug(n.data.title) === slug("Advanced React Patterns"));
+        if (arNode) {
+          const mustHave = [
+            "React Hooks & Advanced State",
+            "Patterns & Composition in React", 
+            "React Performance & Optimization",
+          ];
+          const current = new Set((arNode.data.prerequisites || []).map(slug));
+          const fixed = [...new Set([...Array.from(current), ...mustHave.map(slug)])];
+          if (fixed.length !== current.size) {
+            get().setPrerequisites(arNode.id, mustHave);
+          }
+        }
+
         const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, autoLayoutTree, userSkills } = get();
 
         let changed = true;
@@ -879,25 +912,35 @@ export const usePathStore = create<PathState>()(
             if (ok || missing.length === 0) continue;
 
             for (const raw of missing) {
-              const want = canonicalTitle(raw);
-              const srcId = getOrCreateCourseByTitle(want);
+              const desired = canonicalTitle(raw);
+              const key = slug(desired);
 
-              const already = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
-              if (!already) {
+              // If user already has the skill, we don't need to create a node
+              if (get().userSkills.some(s => slug(s) === key)) {
+                // But if a node already exists for the title, mark completed so downstream unlocks
+                const existing = get().nodes.find(n => slug(n.data.title) === key);
+                if (existing && existing.data.status !== 'completed') {
+                  setNodeStatus(existing.id, 'completed');
+                }
+                continue;
+              }
+
+              // Otherwise create or get the course node
+              const srcId = getOrCreateCourseByTitle(desired);
+
+              // Connect as a prerequisite if not already connected
+              const exists = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
+              if (!exists) {
                 connect(srcId, target.id, 'prerequisite');
-                const v2 = validatePrerequisites(target.id);
-                setNodeStatus(target.id, v2.ok ? 'available' : 'locked');
                 changed = true;
               }
 
-              // Smart-complete if user already has matching skills
+              // Smart complete created node if user has overlapping skills (partial match)
               const created = get().nodes.find(n => n.id === srcId);
               const skills = created?.data?.skillTags || [];
-              const hasRelevant = skills.some(s => userSkills.some(u => slug(u) === slug(s)));
+              const hasRelevant = skills.some(s => get().userSkills.some(u => slug(u) === slug(s)));
               if (hasRelevant && created?.data.status !== 'completed') {
                 setNodeStatus(srcId, 'completed');
-                const v3 = validatePrerequisites(target.id);
-                setNodeStatus(target.id, v3.ok ? 'available' : 'locked');
               }
             }
           }
