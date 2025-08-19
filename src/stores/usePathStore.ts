@@ -206,44 +206,27 @@ export const usePathStore = create<PathState>()(
       dimensionSig: "",
       layoutSuspended: 0,
 
-      // Safely read measured size from React Flow (if present), else fallback
+      // Safe size helper with clampSize to never return 0x0
       getNodeSize: (id: string) => {
         const n = get().nodes.find(x => x.id === id);
-        if (!n) {
-          console.warn(`⚠️ getNodeSize: node ${id} not found, using fallback`);
-          return { w: get().NODE_W, h: get().NODE_H };
-        }
+        if (!n) return { w: get().NODE_W, h: get().NODE_H };
 
-        // Use measured dimensions first, then style dimensions, then fallbacks
-        const measuredW = (n as any)?.measured?.width ?? (n as any)?.width ?? (n as any)?.style?.width;
-        const measuredH = (n as any)?.measured?.height ?? (n as any)?.height ?? (n as any)?.style?.height;
-        
-        // Convert string dimensions to numbers if needed
-        const parseSize = (size: any): number | undefined => {
-          if (typeof size === 'number') return size > 0 ? size : undefined;
-          if (typeof size === 'string') {
-            const parsed = parseInt(size, 10);
-            return parsed > 0 ? parsed : undefined;
+        const pick = (v: any) => {
+          if (typeof v === 'number') return v > 0 ? v : undefined;
+          if (typeof v === 'string') {
+            const p = parseInt(v, 10);
+            return p > 0 ? p : undefined;
           }
           return undefined;
         };
 
-        const finalW = parseSize(measuredW);
-        const finalH = parseSize(measuredH);
-        
-        // Skill nodes are smaller - strict 0x0 guards
+        const mw = pick((n as any)?.measured?.width) ?? pick((n as any)?.width) ?? pick((n as any)?.style?.width);
+        const mh = pick((n as any)?.measured?.height) ?? pick((n as any)?.height) ?? pick((n as any)?.style?.height);
+
         if (n.type === 'skill') {
-          return { 
-            w: finalW ?? 200,
-            h: finalH ?? 40 
-          };
+          return { w: mw ?? 200, h: mh ?? 40 };
         }
-        
-        // Course/track nodes are larger
-        return { 
-          w: finalW ?? get().NODE_W,
-          h: finalH ?? get().NODE_H 
-        };
+        return { w: mw ?? get().NODE_W, h: mh ?? get().NODE_H };
       },
 
       recomputeDimensionSig: () => {
@@ -262,38 +245,40 @@ export const usePathStore = create<PathState>()(
 
       scheduleLayout: (reason) => {
         const S = get();
-        if (S.layoutSuspended > 0) return;     // don't layout mid-transaction
-        if (S.pendingLayout) return;            // coalesce
+        if (S.layoutSuspended > 0) return; // never layout mid-transaction
+        if (S.pendingLayout) return;       // coalesce
         set({ pendingLayout: true });
 
+        let stableCount = 0;
         let attempts = 0;
 
-        const run = () => {
+        const runOnce = () => {
           const before = get().recomputeDimensionSig();
           set({ dimensionSig: before });
           get().autoLayoutTree('LR');
 
-          // Settlement loop: check if dimensions changed after layout
           requestAnimationFrame(() => {
             const after = get().recomputeDimensionSig();
             const changed = after !== before;
-            console.log(`📐 Layout attempt ${attempts + 1}: dimensions ${changed ? 'changed' : 'stable'}${reason ? ` (${reason})` : ''}`);
-            
-            if (changed && attempts++ < 2) {
-              console.log('🔄 Re-running layout due to dimension changes');
-              // Once more to settle after measurement changes
-              requestAnimationFrame(run);
+            attempts += 1;
+            if (changed) {
+              stableCount = 0;
+            } else {
+              stableCount += 1;
+            }
+
+            // Finish after two consecutive stable signatures or after 5 attempts max
+            if (stableCount < 2 && attempts < 5) {
+              requestAnimationFrame(() => requestAnimationFrame(runOnce));
             } else {
               set({ pendingLayout: false });
-              if (attempts >= 2 && changed) {
-                console.warn('⚠️ Layout stopped after max attempts, some overlaps may remain');
-              }
             }
           });
         };
 
+        // Double rAF so React Flow writes measured sizes before first pass
         if (get().layoutDebounceId) cancelAnimationFrame(get().layoutDebounceId!);
-        const id = requestAnimationFrame(() => requestAnimationFrame(run));
+        const id = requestAnimationFrame(() => requestAnimationFrame(runOnce));
         set({ layoutDebounceId: id });
       },
 
@@ -301,38 +286,29 @@ export const usePathStore = create<PathState>()(
         const { nodes } = get();
         const boxes = nodes.map(n => ({
           id: n.id,
-          title: n.data.title,
+          title: (n as any)?.data?.title,
           type: n.type,
           x: n.position?.x ?? 0,
           y: n.position?.y ?? 0,
           w: (n as any)?.measured?.width ?? (n as any)?.width ?? get().NODE_W,
           h: (n as any)?.measured?.height ?? (n as any)?.height ?? get().NODE_H,
         }));
-
-        const hits: Array<[string, string]> = [];
-        for (let i = 0; i < boxes.length; i++) {
-          for (let j = i + 1; j < boxes.length; j++) {
-            const A = boxes[i], B = boxes[j];
-            // Proper AABB collision detection
-            const overlap =
-              A.x < B.x + B.w && A.x + A.w > B.x &&
-              A.y < B.y + B.h && A.y + A.h > B.y;
-            if (overlap) {
-              hits.push([A.id, B.id]);
-            }
+        const hits: Array<[string,string]> = [];
+        for (let i=0;i<boxes.length;i++){
+          for (let j=i+1;j<boxes.length;j++){
+            const A=boxes[i], B=boxes[j];
+            const overlap = A.x < B.x + B.w && A.x + A.w > B.x &&
+                            A.y < B.y + B.h && A.y + A.h > B.y;
+            if (overlap) hits.push([A.id,B.id]);
           }
         }
-        
-        if (hits.length) {
+        if (hits.length){
           console.warn(`🔴 ${hits.length} overlap(s) detected:`);
-          hits.slice(0, 5).forEach(([a, b]) => {
-            const boxA = boxes.find(box => box.id === a);
-            const boxB = boxes.find(box => box.id === b);
-            console.warn(`  • "${boxA?.title}" (${boxA?.type}) overlaps "${boxB?.title}" (${boxB?.type})`);
+          hits.slice(0,6).forEach(([a,b])=>{
+            const A=boxes.find(x=>x.id===a), B=boxes.find(x=>x.id===b);
+            console.warn(` • "${A?.title}" (${A?.type}) ↔ "${B?.title}" (${B?.type})`);
           });
-          if (hits.length > 5) {
-            console.warn(`  • ... and ${hits.length - 5} more overlaps`);
-          }
+          if (hits.length>6) console.warn(` • ...and ${hits.length-6} more`);
         } else {
           console.info('🟢 No overlaps detected');
         }
@@ -947,24 +923,23 @@ export const usePathStore = create<PathState>()(
       // (moved to initial state above)
 
       autoLayoutTree: (orientation: "LR" | "TB" = "LR") => {
-        // Layout guard
         if (get().isLayingOut) return;
         set({ isLayingOut: true, layoutVersion: get().layoutVersion + 1 });
 
         try {
-          const S = get(); // constants + helpers
+          const S = get();
           const { nodes, edges } = get();
           const prereq = edges.filter(e => e.type === "prerequisite");
 
           // Graph
-          const byId      = new Map(nodes.map(n => [n.id, n]));
-          const parents   = new Map<string, string[]>();
-          const children  = new Map<string, string[]>();
-          const indeg     = new Map<string, number>();
+          const byId = new Map(nodes.map(n => [n.id, n]));
+          const parents = new Map<string, string[]>();
+          const children = new Map<string, string[]>();
+          const indeg = new Map<string, number>();
           nodes.forEach(n => { parents.set(n.id, []); children.set(n.id, []); indeg.set(n.id, 0); });
           prereq.forEach(e => {
-            children.get(e.source)!.push(e.target);
-            parents.get(e.target)!.push(e.source);
+            (children.get(e.source) ?? children.set(e.source, []).get(e.source)!)!.push(e.target);
+            (parents.get(e.target)  ?? parents.set(e.target,  []).get(e.target)!)!.push(e.source);
             indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
           });
 
@@ -974,7 +949,7 @@ export const usePathStore = create<PathState>()(
           nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); }});
           while (q.length) {
             const u = q.shift()!, ru = rank.get(u) || 0;
-            for (const v of children.get(u)!) {
+            for (const v of (children.get(u) ?? [])) {
               rank.set(v, Math.max(ru + 1, rank.get(v) ?? 0));
               indeg.set(v, (indeg.get(v) || 0) - 1);
               if ((indeg.get(v) || 0) === 0) q.push(v);
@@ -982,21 +957,12 @@ export const usePathStore = create<PathState>()(
           }
           if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0));
 
-          // Sort children for stability (barycenter of parents, diff, title)
+          // Helpers
           const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
           const getH = (id: string) => S.getNodeSize(id).h;
           const getW = (id: string) => S.getNodeSize(id).w;
 
-          // We'll fill 'center' progressively as we place; parents' centers known before children
-          const centerY = new Map<string, number>();
-          const centerOf = (id: string) => centerY.get(id) ?? (S.PADY + getH(id) / 2);
-          const avgParentCenter = (id: string) => {
-            const ps = parents.get(id)!; if (!ps.length) return S.PADY + getH(id)/2;
-            const sum = ps.reduce((a,p) => a + centerOf(p), 0);
-            return sum / ps.length;
-          };
-
-          // x by rank using measured max width
+          // x per-rank (measured max width)
           const ranks = Array.from(new Set(Array.from(rank.values()))).sort((a,b)=>a-b);
           const maxW: Record<number, number> = {};
           for (const r of ranks) {
@@ -1005,22 +971,24 @@ export const usePathStore = create<PathState>()(
           const xOf: Record<number, number> = {};
           xOf[ranks[0] ?? 0] = S.PADX;
           for (let i = 1; i < ranks.length; i++) {
-            const prev = ranks[i - 1];
-            const cur = ranks[i];
+            const prev = ranks[i-1], cur = ranks[i];
             xOf[cur] = (xOf[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
           }
 
-          // Subtree height in pixels (includes V_GAP between children)
+          // Subtree height (pixel) including V_GAP between kids; order kids stably
           const subtreeH = new Map<string, number>();
-          const kidsOf = (id: string) => children.get(id) ?? []; // safety guard
-          const dynGap = S.V_GAP; // can make adaptive if desired
+          const kidsOf = (id: string) => (children.get(id) ?? []);
+          const centerY = new Map<string, number>();
+          const avgParentCenter = (id: string, centerY: Map<string, number>) => {
+            const ps = parents.get(id) ?? [];
+            if (!ps.length) return S.PADY + getH(id)/2;
+            const sum = ps.reduce((a,p)=> a + (centerY.get(p) ?? (S.PADY + getH(p)/2)), 0);
+            return sum / ps.length;
+          };
 
-          const post = (id: string): number => {
-            const ks = kidsOf(id);
-            if (!ks.length) { const h = getH(id); subtreeH.set(id, h); return h; }
-            // order children before measuring, for consistent blocks
-            ks.sort((a,b) => {
-              const ba = avgParentCenter(a), bb = avgParentCenter(b);
+          const orderChildren = (ks: string[], centerY: Map<string, number>) => {
+            return ks.slice().sort((a,b) => {
+              const ba = avgParentCenter(a, centerY), bb = avgParentCenter(b, centerY);
               if (ba !== bb) return ba - bb;
               const da = diffOrder[byId.get(a)?.data?.difficulty ?? 'intermediate'] ?? 1;
               const db = diffOrder[byId.get(b)?.data?.difficulty ?? 'intermediate'] ?? 1;
@@ -1028,76 +996,103 @@ export const usePathStore = create<PathState>()(
               const ta = (byId.get(a)?.data?.title || ''), tb = (byId.get(b)?.data?.title || '');
               return ta.localeCompare(tb);
             });
+          };
+
+          const dynGap = (ha: number, hb: number) => Math.max(S.V_GAP, Math.ceil(0.1 * Math.max(ha, hb)));
+
+          const post = (id: string): number => {
+            const ksOrdered = orderChildren(kidsOf(id), centerY);
+            if (!ksOrdered.length) {
+              const h = getH(id); subtreeH.set(id, h); return h;
+            }
             let sum = 0;
-            ks.forEach((k,i) => {
-              const sh = post(k);
-              sum += sh + (i>0 ? dynGap : 0);
-            });
-            sum = Math.max(sum, getH(id));   // ensure parent's own card fits its block
+            for (let i = 0; i < ksOrdered.length; i++) {
+              const kid = ksOrdered[i];
+              const sh = post(kid);
+              sum += sh;
+              if (i < ksOrdered.length - 1) {
+                // add dynamic gap between sibling blocks
+                const next = ksOrdered[i+1];
+                sum += dynGap(getH(kid), getH(next));
+              }
+            }
+            sum = Math.max(sum, getH(id)); // parent must fit in own block
             subtreeH.set(id, sum);
             return sum;
           };
 
-          // Kick off from all roots (rank 0)
           const roots = nodes.filter(n => (rank.get(n.id)||0)===0).map(n => n.id);
           roots.forEach(post);
 
-          // Placement: each node gets a top Y = current blockTop; parent is centered in its block
-          const pos = new Map<string, {x:number;y:number}>();
-
+          // Placement (parents centered in their block)
+          const pos = new Map<string, {x:number,y:number}>();
           const place = (id: string, r: number, blockTop: number) => {
             const x = xOf[r] ?? S.PADX;
             const myH = getH(id);
             const myBlock = subtreeH.get(id)!;
-            const y = blockTop + Math.max(0, (myBlock - myH)/2); // center parent in its block
+            const y = Math.round(blockTop + Math.max(0, (myBlock - myH)/2));
             pos.set(id, { x, y });
             centerY.set(id, y + myH/2);
 
-            // Place children in contiguous blocks directly under this parent
             let childTop = blockTop;
-            const ks = kidsOf(id);
-            ks.forEach((k, i) => {
+            const ks = orderChildren(kidsOf(id), centerY);
+            for (let i = 0; i < ks.length; i++) {
+              const k = ks[i];
               place(k, r+1, childTop);
-              childTop += subtreeH.get(k)! + (i < ks.length-1 ? dynGap : 0);
-            });
+              const gap = i < ks.length-1 ? dynGap(getH(k), getH(ks[i+1])) : 0;
+              childTop += subtreeH.get(k)! + gap;
+            }
           };
 
-          // Multi-root packing: stack root blocks with gaps
           let rootTop = S.PADY;
-          roots.forEach((root, i) => {
-            place(root, 0, rootTop);
-            rootTop += subtreeH.get(root)! + (i < roots.length-1 ? S.V_GAP*1.5 : 0);
-          });
+          for (let i = 0; i < roots.length; i++) {
+            const rt = roots[i];
+            place(rt, 0, rootTop);
+            rootTop += subtreeH.get(rt)! + (i < roots.length-1 ? Math.ceil(S.V_GAP * 1.5) : 0);
+          }
 
-          // Safety: per-rank collision sweep (should be no-ops now)
-          const byRank: Record<number,string[]> = {};
+          // Final rank separation sweep (forward + backward, integerized Y)
+          const byRank: Record<number, string[]> = {};
           nodes.forEach(n => { const r = rank.get(n.id)||0; (byRank[r] ??= []).push(n.id); });
-          Object.keys(byRank).map(Number).sort((a,b)=>a-b).forEach(r => {
-            const list = byRank[r].slice().sort((a,b)=> (pos.get(a)!.y - pos.get(b)!.y));
-            for (let i=1;i<list.length;i++){
-              const prev = list[i-1], cur = list[i];
-              const minTop = pos.get(prev)!.y + getH(prev) + S.V_GAP;
-              if (pos.get(cur)!.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
+          const ensureRankSeparation = () => {
+            const toInt = (y: number) => Math.round(y);
+            for (const r of Object.keys(byRank).map(Number).sort((a,b)=>a-b)) {
+              const list = byRank[r].slice().sort((a,b)=> (pos.get(a)!.y - pos.get(b)!.y));
+              // forward
+              for (let i = 1; i < list.length; i++) {
+                const prev = list[i-1], cur = list[i];
+                const prevBox = { y: toInt(pos.get(prev)!.y), h: getH(prev) };
+                const curBox  = { y: toInt(pos.get(cur)!.y),  h: getH(cur) };
+                const gap = dynGap(prevBox.h, curBox.h);
+                const minTop = prevBox.y + prevBox.h + gap;
+                if (curBox.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
+              }
+              // backward tighten (optional, keeps balance)
+              for (let i = list.length - 2; i >= 0; i--) {
+                const next = list[i+1], cur = list[i];
+                const nextBox = { y: toInt(pos.get(next)!.y), h: getH(next) };
+                const curBox  = { y: toInt(pos.get(cur)!.y),  h: getH(cur) };
+                const gap = dynGap(curBox.h, nextBox.h);
+                const maxTop = nextBox.y - curBox.h - gap;
+                if (curBox.y > maxTop) pos.set(cur, { x: pos.get(cur)!.x, y: maxTop });
+              }
             }
-          });
+          };
+          ensureRankSeparation();
 
-          // Orientation
+          // Orientation and commit
           const finalNodes = nodes.map(n => {
             const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
-            return orientation === 'LR' ? { ...n, position: p } : { ...n, position: { x: p.y, y: p.x }};
+            return orientation === 'LR'
+              ? { ...n, position: p }
+              : { ...n, position: { x: p.y, y: p.x } };
           });
           set({ nodes: finalNodes });
 
         } finally {
           set({ isLayingOut: false });
-          // Debug: log layout completion with stats
-          const totalNodes = get().nodes.length;
-          const totalEdges = get().edges.filter(e => e.type === "prerequisite").length;
-          console.log(`🎯 Layout complete: ${totalNodes} nodes, ${totalEdges} prerequisite edges`);
-          
           setTimeout(() => {
             window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*");
-            // Validate layout after posting completion message
             setTimeout(() => get().validateNoOverlap(), 100);
           }, 50);
         }
@@ -1123,121 +1118,103 @@ export const usePathStore = create<PathState>()(
       },
 
       ensurePrerequisiteClosure: async () => {
-        const { suspendLayout, resumeLayout, scheduleLayout } = get();
+        const { suspendLayout, resumeLayout } = get();
         suspendLayout();
         try {
           await get().refreshUserSkills();
 
-          // --- Targeted repair for "Advanced React Patterns" ---
-          const arNode = get().nodes.find(n => slug(n.data.title) === slug("Advanced React Patterns"));
-          if (arNode) {
-            const mustHave = [
-              "React Hooks & Advanced State",
-              "Patterns & Composition in React", 
-              "React Performance & Optimization",
-            ];
-            const current = new Set((arNode.data.prerequisites || []).map(slug));
-            const fixed = [...new Set([...Array.from(current), ...mustHave.map(slug)])];
-            if (fixed.length !== current.size) {
-              get().setPrerequisites(arNode.id, mustHave);
-            }
-          }
-
-          const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, addNode, userSkills } = get();
+          const markChanged = () => { changed = true; };
 
           let changed = true;
           let guard = 0;
 
-          while (changed && guard++ < 20) {
+          while (changed && guard++ < 50) {
             changed = false;
 
-            for (const target of get().nodes) {
-              const { ok, missing } = validatePrerequisites(target.id);
+            // iterate fresh snapshot each pass
+            for (const target of [...get().nodes]) {
+              const { ok, missing } = get().validatePrerequisites(target.id);
               if (ok || missing.length === 0) continue;
 
               for (const raw of missing) {
                 const desired = canonicalTitle(raw);
                 const key = slug(desired);
 
-                // Always create visual connections - even when user has the skill
+                // If user already has the skill, ensure visual node+edge exists
                 if (get().userSkills.some(s => slug(s) === key)) {
                   let src = get().nodes.find(n => slug(n.data.title) === key);
-                  
                   if (!src) {
-                    // Create a compact skill node for user-satisfied prerequisites
-                    const sid = addNode({
+                    const sid = get().addNode({
                       type: 'skill',
-                      position: { x: 0, y: 0 }, // will be laid out later
+                      position: { x: 0, y: 0 },
                       data: {
                         title: desired,
                         description: 'Satisfied via prior experience',
                         skillTags: [raw],
-                        difficulty: 'beginner' as const,
-                        status: 'completed' as const,
+                        difficulty: 'beginner',
+                        status: 'completed',
                         prerequisites: [],
                         estimatedHours: 0,
-                      }
+                      },
                     });
                     src = get().nodes.find(n => n.id === sid)!;
+                    markChanged();
                   } else if (src.data.status !== 'completed') {
-                    setNodeStatus(src.id, 'completed');
+                    get().setNodeStatus(src.id, 'completed');
+                    markChanged();
                   }
-
-                  // Always create the visual connection
-                  const already = get().edges.some(e => e.type === 'prerequisite' && e.source === src!.id && e.target === target.id);
-                  if (!already) {
-                    connect(src.id, target.id, 'prerequisite');
-                    changed = true;
+                  const exists = get().edges.some(e => e.type === 'prerequisite' && e.source === src!.id && e.target === target.id);
+                  if (!exists) {
+                    get().connect(src!.id, target.id, 'prerequisite');
+                    markChanged();
                   }
                   continue;
                 }
 
-                // Otherwise create or get the course node
-                const srcId = getOrCreateCourseByTitle(desired);
-
-                // Connect as a prerequisite if not already connected
-                const exists = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
-                if (!exists) {
-                  connect(srcId, target.id, 'prerequisite');
-                  changed = true;
+                // Otherwise create/get course node
+                const srcId = get().getOrCreateCourseByTitle(desired);
+                const edgeExists = get().edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === target.id);
+                if (!edgeExists) {
+                  get().connect(srcId, target.id, 'prerequisite');
+                  markChanged();
                 }
 
-                // Smart complete created node if user has overlapping skills (partial match)
                 const created = get().nodes.find(n => n.id === srcId);
                 const skills = created?.data?.skillTags || [];
                 const hasRelevant = skills.some(s => get().userSkills.some(u => slug(u) === slug(s)));
                 if (hasRelevant && created?.data.status !== 'completed') {
-                  setNodeStatus(srcId, 'completed');
+                  get().setNodeStatus(srcId, 'completed');
+                  markChanged();
                 }
               }
             }
+
+            // Keep statuses fresh mid-loop so downstream nodes unlock in same pass
+            const before = JSON.stringify(get().nodes.map(n => ({ id:n.id, s:n.data.status })));
+            get().revalidateAllStatuses();
+            const after = JSON.stringify(get().nodes.map(n => ({ id:n.id, s:n.data.status })));
+            if (before !== after) markChanged();
+
+            // Merge duplicates might create new edges/ids; consider that a change
+            const mBefore = get().nodes.length + get().edges.length;
+            get().mergeDuplicateNodesByTitle();
+            const mAfter = get().nodes.length + get().edges.length;
+            if (mBefore !== mAfter) markChanged();
           }
 
-          // Order: merge duplicates first, then explicit connections
-          mergeDuplicateNodesByTitle();
-
-          // Explicitly connect "Advanced React Patterns" after merging to ensure correct IDs
-          const arpAfterMerge = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
-          if (arpAfterMerge) {
-            const prereqs = [
-              'React Hooks & Advanced State',
-              'Patterns & Composition in React',
-              'React Performance & Optimization',
-            ];
-            for (const p of prereqs) {
-              const pid = getOrCreateCourseByTitle(p);
-              const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arpAfterMerge.id);
-              if (!connected) {
-                connect(pid, arpAfterMerge.id, 'prerequisite');
-              }
+          // Ensure "Advanced React Patterns" prerequisites after merge
+          const arp = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
+          if (arp) {
+            for (const p of ['React Hooks & Advanced State','Patterns & Composition in React','React Performance & Optimization']) {
+              const pid = get().getOrCreateCourseByTitle(p);
+              const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arp.id);
+              if (!connected) { get().connect(pid, arp.id, 'prerequisite'); }
             }
           }
-
-          revalidateAllStatuses();
         } finally {
           resumeLayout();
         }
-        scheduleLayout('post auto-fill');
+        get().scheduleLayout('post auto-fill');
       },
 
       getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode['data']>) => {
