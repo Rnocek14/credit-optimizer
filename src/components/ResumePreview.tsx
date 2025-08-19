@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
 import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X, Plus, Target } from 'lucide-react';
 import { TrackResumeExportModal } from '@/components/TrackResumeExportModal';
+import { TrackFilterResumeView } from '@/components/resume/TrackFilterResumeView';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectsStore } from '@/state/projectsStore';
 
@@ -286,6 +287,7 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [projectTitle, setProjectTitle] = useState('');
   const [projectSkills, setProjectSkills] = useState('');
   const [projectLinks, setProjectLinks] = useState('');
+  const [trackFilterMode, setTrackFilterMode] = useState(false);
   const { items: projects, addProject } = useProjectsStore();
   const { toast } = useToast();
 

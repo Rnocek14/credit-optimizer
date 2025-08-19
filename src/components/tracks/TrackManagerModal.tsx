@@ -28,6 +28,7 @@ import { useTracks } from '@/hooks/useTracks';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useToast } from '@/hooks/use-toast';
 import { LiveTrackProgressAnalytics } from './LiveTrackProgressAnalytics';
+import { TrackComparisonView } from './TrackComparisonView';
 import type { CareerTrack, CreateTrackInput } from '@/types/tracks';
 
 interface TrackManagerModalProps {
@@ -486,85 +487,23 @@ export function TrackManagerModal({ children }: TrackManagerModalProps) {
             </TabsContent>
 
             <TabsContent value="compare" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Track Comparison
-                  </CardTitle>
-                  <CardDescription>
-                    Compare progress, courses, and outcomes across tracks. Select up to 3 tracks to compare.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {comparedTracks.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Select tracks from the Manage tab to compare them here.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {comparedTracks.map(trackId => {
-                        const track = tracks.find(t => t.id === trackId);
-                        const stats = trackStats.find(s => s.id === trackId);
-                        if (!track) return null;
-
-                        return (
-                          <Card key={trackId}>
-                            <CardHeader className="pb-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-2xl">{track.icon || '💻'}</span>
-                                  <div>
-                                    <CardTitle className="text-base">{track.track_name || track.title}</CardTitle>
-                                    <CardDescription>{track.goal || 'No goal set'}</CardDescription>
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toggleTrackComparison(trackId)}
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                              <div className="grid grid-cols-4 gap-4 text-sm">
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-primary">{stats?.courseCount || 0}</div>
-                                  <div className="text-muted-foreground">Courses</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-primary">{stats?.completedCourses || 0}</div>
-                                  <div className="text-muted-foreground">Completed</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-primary">{stats?.totalXP || 0}</div>
-                                  <div className="text-muted-foreground">Total XP</div>
-                                </div>
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-primary">{stats?.estimatedProgress || 0}%</div>
-                                  <div className="text-muted-foreground">Progress</div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                      
-                      {comparedTracks.length >= 2 && (
-                        <div className="text-center pt-4">
-                          <Button variant="outline">
-                            <ChevronRight className="h-4 w-4 mr-2" />
-                            View Detailed Comparison
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <TrackComparisonView 
+                tracks={tracks.filter(t => comparedTracks.includes(t.id))}
+                trackStats={trackStats.reduce((acc, stats) => {
+                  acc[stats.id] = {
+                    courseCount: stats.courseCount,
+                    completedCourses: stats.completedCourses,
+                    totalXP: stats.totalXP,
+                    estimatedProgress: stats.estimatedProgress,
+                    avgCRI: Math.floor(Math.random() * 40) + 60, // Mock CRI score 60-100
+                    skillsCount: Math.floor(Math.random() * 15) + 5, // Mock skills 5-20
+                    timeInvested: Math.floor(Math.random() * 200) + 50, // Mock hours 50-250
+                    difficultyLevel: Math.floor(Math.random() * 5) + 1, // Mock difficulty 1-5
+                  };
+                  return acc;
+                }, {} as Record<string, any>)}
+                onRemoveTrack={toggleTrackComparison}
+              />
             </TabsContent>
 
             <TabsContent value="progress" className="space-y-4">
