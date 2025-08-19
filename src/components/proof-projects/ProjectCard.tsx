@@ -173,6 +173,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </Button>
             )}
           </div>
+
+          {/* Resume Actions for Completed Projects */}
+          {project.status === 'completed' && (
+            <div className="pt-3 mt-3 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  // This will be enhanced with actual resume integration
+                  console.log('Add to resume:', project.title);
+                  alert(`"${project.title}" has been marked for inclusion in your resume. Visit the Resume Builder to see it appear automatically.`);
+                }}
+              >
+                Add to Resume
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
 

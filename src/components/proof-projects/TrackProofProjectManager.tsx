@@ -6,6 +6,7 @@ import { useProofProjects } from '@/hooks/useProofProjects';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { ProjectCard } from './ProjectCard';
 import { ProjectCreationWizard } from './ProjectCreationWizard';
+import { TrackPortfolioView } from './TrackPortfolioView';
 import { AIProjectRecommendations } from './AIProjectRecommendations';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +16,7 @@ export function TrackProofProjectManager() {
   const { projects, isLoading } = useProofProjects(activeTrackId || undefined);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
   const filteredProjects = projects.filter(project => 
     statusFilter === 'all' || project.status === statusFilter
@@ -86,7 +88,13 @@ export function TrackProofProjectManager() {
       </div>
 
       {/* AI Recommendations */}
-      <AIProjectRecommendations trackId={activeTrackId} />
+          <AIProjectRecommendations 
+            trackId={activeTrackId}
+            onUseTemplate={(template) => {
+              setSelectedTemplate(template);
+              setShowCreateWizard(true);
+            }}
+          />
 
       {/* Filter Controls */}
       <div className="flex items-center gap-4">
@@ -131,11 +139,22 @@ export function TrackProofProjectManager() {
         </div>
       )}
 
+      {/* Portfolio View */}
+      {projects.some(p => p.status === 'completed') && (
+        <div className="mt-8">
+          <TrackPortfolioView trackId={activeTrackId} />
+        </div>
+      )}
+
       {/* Creation Wizard */}
       <ProjectCreationWizard
         open={showCreateWizard}
-        onOpenChange={setShowCreateWizard}
+        onOpenChange={(open) => {
+          setShowCreateWizard(open);
+          if (!open) setSelectedTemplate(null);
+        }}
         trackId={activeTrackId}
+        templateData={selectedTemplate}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import { ProjectTemplate } from '@/types/proofProjects';
 
 interface AIProjectRecommendationsProps {
   trackId?: string | null;
+  onUseTemplate?: (template: ProjectTemplate) => void;
 }
 
 // Mock project templates - in a real app, these would come from an API
@@ -91,7 +92,7 @@ const mockProjectTemplates: ProjectTemplate[] = [
   },
 ];
 
-export function AIProjectRecommendations({ trackId }: AIProjectRecommendationsProps) {
+export function AIProjectRecommendations({ trackId, onUseTemplate }: AIProjectRecommendationsProps) {
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
 
   const getDifficultyColor = (level: number) => {
@@ -202,7 +203,10 @@ export function AIProjectRecommendations({ trackId }: AIProjectRecommendationsPr
                 >
                   {expandedProject === template.id ? 'Show Less' : 'Show Details'}
                 </Button>
-                <Button size="sm">
+                <Button 
+                  size="sm"
+                  onClick={() => onUseTemplate?.(template)}
+                >
                   Use Template
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>

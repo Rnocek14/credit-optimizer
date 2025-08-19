@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,15 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
 import { useProofProjects } from '@/hooks/useProofProjects';
-import { ProofProject } from '@/types/proofProjects';
+import { ProofProject, ProjectTemplate } from '@/types/proofProjects';
 
 interface ProjectCreationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trackId?: string | null;
+  templateData?: ProjectTemplate | null;
 }
 
-export function ProjectCreationWizard({ open, onOpenChange, trackId }: ProjectCreationWizardProps) {
+export function ProjectCreationWizard({ open, onOpenChange, trackId, templateData }: ProjectCreationWizardProps) {
   const { createProject } = useProofProjects();
   const [formData, setFormData] = useState({
     title: '',
@@ -29,6 +30,33 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId }: ProjectCr
     skills_to_validate: [] as string[],
   });
   const [newSkill, setNewSkill] = useState('');
+
+  // Update form when template changes
+  useEffect(() => {
+    if (templateData) {
+      setFormData({
+        title: templateData.title,
+        description: templateData.description,
+        project_type: 'personal',
+        difficulty_level: templateData.difficulty_level as 1 | 2 | 3 | 4 | 5,
+        estimated_hours: templateData.estimated_hours,
+        skills_to_validate: templateData.skills_required,
+        github_url: '',
+        demo_url: '',
+      });
+    } else if (open) {
+      setFormData({
+        title: '',
+        description: '',
+        project_type: 'personal',
+        difficulty_level: 1,
+        estimated_hours: 10,
+        github_url: '',
+        demo_url: '',
+        skills_to_validate: [],
+      });
+    }
+  }, [templateData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,9 +109,14 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId }: ProjectCr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Proof Project</DialogTitle>
+          <DialogTitle>
+            {templateData ? `Create Project: ${templateData.title}` : 'Create New Proof Project'}
+          </DialogTitle>
           <DialogDescription>
-            Create a project that validates your skills and builds your portfolio
+            {templateData 
+              ? 'Using template to create a project that validates your skills and builds your portfolio'
+              : 'Create a project that validates your skills and builds your portfolio'
+            }
           </DialogDescription>
         </DialogHeader>
 

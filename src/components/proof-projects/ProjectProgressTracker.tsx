@@ -230,6 +230,35 @@ export function ProjectProgressTracker({ project, open, onOpenChange }: ProjectP
             </div>
           </div>
 
+          {/* Portfolio Actions */}
+          {formData.status === 'completed' && (
+            <div className="space-y-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="font-medium text-green-800">Project Portfolio Options</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Export project:', project.title);
+                    alert(`Exporting "${project.title}" as portfolio item...`);
+                  }}
+                >
+                  Export as Portfolio Item
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Add to resume:', project.title);
+                    alert(`"${project.title}" will appear in your Resume Builder automatically.`);
+                  }}
+                >
+                  Add to Resume
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <Button

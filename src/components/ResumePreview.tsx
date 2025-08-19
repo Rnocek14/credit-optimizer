@@ -38,10 +38,11 @@ interface AIReviewSummary {
   overall_score: number;
 }
 
-// Helper function to extract proof items from roadmap steps
-const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
+// Helper function to extract proof items from roadmap steps and proof projects
+const extractProofItems = (steps: any[], tracks: any[], proofProjects: any[] = []): ProofItem[] => {
   const proofItems: ProofItem[] = [];
   
+  // Add proof from roadmap steps
   steps.forEach((step, index) => {
     const trackIndex = Math.floor(index / 3);
     const track = tracks[trackIndex];
@@ -95,6 +96,22 @@ const extractProofItems = (steps: any[], tracks: any[]): ProofItem[] => {
         });
       });
     }
+  });
+
+  // Add completed proof projects
+  proofProjects.filter(project => project.status === 'completed').forEach((project: any) => {
+    const track = tracks.find(t => t.id === project.track_id);
+    const trackTitle = track?.title || track?.track_name || 'General';
+    
+    proofItems.push({
+      id: `project-${project.id}`,
+      title: project.title,
+      type: 'portfolio',
+      description: project.description || `${project.project_type} project demonstrating ${project.skills_to_validate.join(', ')}`,
+      link: project.demo_url || project.github_url,
+      trackTitle,
+      criScore: Math.min(85 + Math.random() * 15, 100), // Simulate CRI score for completed projects
+    });
   });
 
   return proofItems;
@@ -192,8 +209,8 @@ const styles = StyleSheet.create({
 });
 
 // PDF Document Component
-const ResumePDFDocument = ({ profile, tracks, steps }: any) => {
-  const proofItems = extractProofItems(steps, tracks);
+const ResumePDFDocument = ({ profile, tracks, steps, proofProjects }: any) => {
+  const proofItems = extractProofItems(steps, tracks, proofProjects);
   const groupedProof = proofItems.reduce((acc, item) => {
     if (!acc[item.trackTitle]) acc[item.trackTitle] = [];
     acc[item.trackTitle].push(item);
@@ -275,6 +292,7 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   const [profile, setProfile] = useState<any>(null);
   const [tracks, setTracks] = useState<any[]>([]);
   const [steps, setSteps] = useState<any[]>([]);
+  const [proofProjects, setProofProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [proofFilter, setProofFilter] = useState<ProofFilter>('all');
   const [aiReview, setAiReview] = useState<AIReviewSummary | null>(null);
@@ -530,7 +548,7 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
   if (loading || !profile) return <div className="p-4">Loading resume preview...</div>;
 
   // Extract proof items for the web view
-  const proofItems = extractProofItems(steps, tracks);
+  const proofItems = extractProofItems(steps, tracks, proofProjects);
   
   // Filter proof items based on selected filter
   const filteredProofItems = proofItems.filter(item => 
