@@ -62,8 +62,15 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
 
   const handleTrackSelect = (id: string) => {
     console.log('Track selected:', id);
+    const selectedTrack = tracks.find(t => t.id === id);
     setActiveTrackId(id);
     setSearch('');
+    
+    // Show success toast with track info
+    toast({
+      title: "Track Selected",
+      description: `Switched to "${selectedTrack?.track_name || selectedTrack?.title || 'Untitled Track'}"`,
+    });
   };
 
   const handleCreate = async () => {
@@ -116,14 +123,17 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 bg-background hover:bg-muted transition-all shadow-sm min-w-[200px] justify-between"
+            className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all shadow-sm min-w-[200px] justify-between ${
+              active ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' : 'bg-background hover:bg-muted'
+            }`}
             data-testid="track-selector"
           >
             <div className="flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} />
-              <span className="truncate font-medium">
+              <span className={`truncate font-medium ${active ? 'text-primary' : ''}`}>
                 {isLoading ? 'Loading tracks...' : (active?.track_name || active?.title || 'Select a track')}
               </span>
+              {active && <span className="text-primary text-sm">✓</span>}
             </div>
             <ChevronsUpDown className="w-4 h-4 opacity-70 flex-shrink-0" />
           </button>

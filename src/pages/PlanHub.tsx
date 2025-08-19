@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
+import { TrackDisplay } from "@/components/tracks/TrackDisplay";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
 import { TodayDashboard } from "@/components/TodayDashboard";
 import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
@@ -91,6 +92,9 @@ export default function PlanHub() {
             <TrackSelector className="text-foreground" />
           </div>
         </div>
+
+        {/* Track Display - Shows active track information */}
+        <TrackDisplay className="mb-6" />
 
         {/* Today Dashboard - Now integrated in Overview tab */}
 
