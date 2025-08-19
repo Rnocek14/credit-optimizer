@@ -22,6 +22,21 @@ export function DevMenu() {
     }
   }, []);
 
+  // Sync demo mode across tabs
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === '__LP_DEMO_MODE__') {
+        (window as any).__LP_DEMO_MODE__ = e.newValue === 'true';
+        setIsDemoMode(e.newValue === 'true');
+        usePathStore.getState().revalidateAllStatuses();
+        // Force a light layout settle for visible correctness
+        usePathStore.getState().scheduleLayout('demo-mode-storage-sync');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const handleSeedBasics = async () => {
     setIsLoading('seed');
     try {
@@ -66,7 +81,8 @@ export function DevMenu() {
     
     // Show immediate visual feedback
     const store = usePathStore.getState();
-    store.revalidateAllStatuses();
+    const changed = store.revalidateAllStatuses();
+    if (changed) store.scheduleLayout('devmenu-toggle');
     
     window.location.reload();
   };

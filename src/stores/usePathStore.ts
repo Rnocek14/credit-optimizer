@@ -193,10 +193,20 @@ interface PathState {
   normalizeNodeStatuses: () => void;
 }
 
-// Demo mode detection - dynamic getter for runtime changes
+// Demo mode detection - SSR-safe with localStorage persistence
+const isBrowser = typeof window !== 'undefined';
+
+const readDemoFlag = () => {
+  if (!isBrowser) return false;
+  const ls = localStorage.getItem('__LP_DEMO_MODE__');
+  if (ls === 'true') return true;
+  if (ls === 'false') return false;
+  return (window as any).__LP_DEMO_MODE__ === true;
+};
+
 const isDemoMode = () =>
-  (typeof window !== 'undefined' && (window as any).__LP_DEMO_MODE__ === true) ||
-  (typeof window !== 'undefined' && import.meta.env.MODE !== 'production');
+  (isBrowser && readDemoFlag()) ||
+  (isBrowser && import.meta.env.MODE !== 'production');
 
 export const usePathStore = create<PathState>()(
   persist(
