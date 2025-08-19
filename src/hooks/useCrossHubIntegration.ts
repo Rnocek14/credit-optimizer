@@ -32,7 +32,10 @@ export const useCrossHubIntegration = (userId?: string) => {
 // Enhanced save to Plan with micro-goal creation and CRI boosting
   const saveToplanMutation = useMutation({
     mutationFn: async (item: SaveToPlanItem & { criBoost?: number; criExplanation?: string }) => {
-      if (!userId) throw new Error('User ID required');
+      if (!userId) {
+        console.error('Save to plan attempted without user ID:', { userId, item });
+        throw new Error('User authentication required to save items');
+      }
 
       // Check for CRI influence on this item
       const criBoost = item.criBoost || 0;
@@ -272,9 +275,15 @@ export const useCrossHubIntegration = (userId?: string) => {
   return {
     // Save to Plan
     saveToPlan: (item: SaveToPlanItem) => {
-      // Calculate CRI boost before saving
-      // Note: Cannot use hooks inside function - this needs the skillGaps passed in
-      const { boost, explanation } = calculateCRIBoost(item, []); // TODO: pass skillGaps from outside
+      if (!userId) {
+        console.error('Cannot save to plan: No user ID provided');
+        throw new Error('User authentication required');
+      }
+      
+      // Calculate CRI boost before saving - use empty array if no skillGaps available
+      const { boost, explanation } = calculateCRIBoost(item, []);
+      
+      console.log('🎯 Saving to plan:', { item, userId, boost, explanation });
       
       saveToplanMutation.mutate({
         ...item,

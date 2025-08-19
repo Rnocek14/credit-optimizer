@@ -15,9 +15,10 @@ interface ProjectCreationWizardProps {
   onOpenChange: (open: boolean) => void;
   trackId?: string | null;
   templateData?: ProjectTemplate | null;
+  template?: ProjectTemplate | null;
 }
 
-export function ProjectCreationWizard({ open, onOpenChange, trackId, templateData }: ProjectCreationWizardProps) {
+export function ProjectCreationWizard({ open, onOpenChange, trackId, templateData, template }: ProjectCreationWizardProps) {
   const { createProject } = useProofProjects();
   const [formData, setFormData] = useState({
     title: '',
@@ -33,24 +34,25 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId, templateDat
 
   // Update form when template changes
   useEffect(() => {
-    if (templateData && open) {
-      console.log('Loading template data:', templateData);
+    const activeTemplate = template || templateData;
+    if (activeTemplate && open) {
+      console.log('🎯 Loading template data:', activeTemplate);
       setFormData({
-        title: templateData.title,
-        description: templateData.description,
-        project_type: templateData.project_type as 'personal' | 'course' | 'certification' | 'challenge' || 'personal',
-        difficulty_level: templateData.difficulty_level as 1 | 2 | 3 | 4 | 5,
-        estimated_hours: templateData.estimated_hours,
-        skills_to_validate: [...templateData.skills_to_validate],
+        title: activeTemplate.title,
+        description: activeTemplate.description,
+        project_type: activeTemplate.project_type as 'personal' | 'course' | 'certification' | 'challenge' || 'personal',
+        difficulty_level: activeTemplate.difficulty_level as 1 | 2 | 3 | 4 | 5,
+        estimated_hours: activeTemplate.estimated_hours,
+        skills_to_validate: [...activeTemplate.skills_to_validate],
         github_url: '',
         demo_url: '',
       });
-      console.log('Form data updated with template:', {
-        title: templateData.title,
-        skills: templateData.skills_to_validate
+      console.log('✅ Form data updated with template:', {
+        title: activeTemplate.title,
+        skills: activeTemplate.skills_to_validate
       });
-    } else if (open && !templateData) {
-      console.log('Resetting form data');
+    } else if (open && !activeTemplate) {
+      console.log('🔄 Resetting form data');
       setFormData({
         title: '',
         description: '',
@@ -62,7 +64,7 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId, templateDat
         skills_to_validate: [],
       });
     }
-  }, [templateData, open]);
+  }, [template, templateData, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,10 +118,10 @@ export function ProjectCreationWizard({ open, onOpenChange, trackId, templateDat
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {templateData ? `Create Project: ${templateData.title}` : 'Create New Proof Project'}
+            {(template || templateData) ? `Create Project: ${(template || templateData)?.title}` : 'Create New Proof Project'}
           </DialogTitle>
           <DialogDescription>
-            {templateData 
+            {(template || templateData) 
               ? 'Using template to create a project that validates your skills and builds your portfolio'
               : 'Create a project that validates your skills and builds your portfolio'
             }

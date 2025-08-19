@@ -2,11 +2,12 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, DollarSign, MapPin, Info } from 'lucide-react';
+import { Plus, TrendingUp, DollarSign, MapPin, Info, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MarketBar } from './MarketBar';
 import { MarketTooltip } from './MarketTooltip';
 import { calculateOpportunityScore, getMarketBadges } from '@/lib/marketScoring';
+import { SaveToPlanButton } from '@/components/SaveToPlanButton';
 
 interface MarketData {
   career_path: string;
@@ -141,12 +142,30 @@ export const MarketEnhancedCareerCard: React.FC<MarketEnhancedCareerCardProps> =
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <Button asChild className="flex-1" data-testid="save-to-plan">
-            <Link to={`/explore?career=${careerPath.id}`}>
-              <Plus className="h-4 w-4 mr-2" />
-              Save to Plan
-            </Link>
-          </Button>
+          <SaveToPlanButton 
+            item={{
+              type: 'career_path',
+              id: careerPath.id,
+              title: careerPath.title,
+              description: careerPath.description,
+              timeEstimate: careerPath.timeToRole,
+              skillTags: careerPath.industry ? [careerPath.industry] : [],
+              metadata: {
+                industry: careerPath.industry,
+                timeToRole: careerPath.timeToRole,
+                marketData: marketData ? {
+                  averageSalary: marketData.average_salary,
+                  growthRate: marketData.growth_rate,
+                  location: marketData.location,
+                  demandScore: marketData.demand_score
+                } : undefined
+              }
+            }}
+            variant="default"
+            size="default"
+            showPrioritySelector={true}
+            className="flex-1"
+          />
           
           <Button 
             variant="outline" 
@@ -154,9 +173,10 @@ export const MarketEnhancedCareerCard: React.FC<MarketEnhancedCareerCardProps> =
             asChild
           >
             <Link 
-              to={`/discover?skills=${careerPath.title}&location=${marketData?.location || ''}`}
+              to={`/discover?tab=courses&search=${encodeURIComponent(careerPath.title)}`}
               title="Find related courses"
             >
+              <ExternalLink className="h-4 w-4 mr-2" />
               Explore
             </Link>
           </Button>

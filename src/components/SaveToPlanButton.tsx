@@ -22,6 +22,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
+import { toast } from 'sonner';
 
 interface SaveToPlanButtonProps {
   item: SaveToPlanItem;
@@ -29,6 +30,7 @@ interface SaveToPlanButtonProps {
   variant?: 'default' | 'outline' | 'secondary' | 'ghost';
   size?: 'sm' | 'default' | 'lg';
   showPrioritySelector?: boolean;
+  className?: string;
 }
 
 export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
@@ -36,21 +38,24 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   compact = false,
   variant = 'outline',
   size = 'default',
-  showPrioritySelector = false
+  showPrioritySelector = false,
+  className = ''
 }) => {
   const [selectedPriority, setSelectedPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const { saveToPlan, isSavingToPlan, calculateCRIBoost } = useCrossHubIntegration();
-  const { data: skillGaps = [] } = useSkillGaps();
+  
+  // Get current user for authentication
+  const { data: currentUser, isLoading: isLoadingUser, error: userError } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser
+  });
+  
+  const { saveToPlan, isSavingToPlan, calculateCRIBoost } = useCrossHubIntegration(currentUser?.id);
+  const { data: skillGaps = [] } = useSkillGaps(currentUser?.id);
   
   // Calculate CRI boost for this item
   const { boost: criBoost, explanation: criExplanation } = calculateCRIBoost(item, skillGaps);
   
   // Check if already saved
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user'],
-    queryFn: getCurrentUser
-  });
-
   const { data: isAlreadySaved } = useQuery({
     queryKey: ['is-saved', item.id, currentUser?.id],
     queryFn: async () => {
@@ -70,6 +75,11 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   });
 
   const handleSave = (priority: 'high' | 'medium' | 'low' = selectedPriority) => {
+    if (!currentUser?.id) {
+      toast.error('Please log in to save items to your plan');
+      return;
+    }
+    
     saveToPlan({
       ...item,
       priority,
@@ -106,6 +116,38 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Handle loading and authentication states
+  if (isLoadingUser) {
+    return (
+      <Button
+        variant="ghost"
+        size={size}
+        disabled
+        className="gap-2"
+      >
+        <Clock className="h-4 w-4 animate-spin" />
+        {!compact && "Loading..."}
+      </Button>
+    );
+  }
+
+  if (userError || !currentUser?.id) {
+    return (
+      <Button
+        variant="outline"
+        size={size}
+        className="gap-2"
+        onClick={() => {
+          toast.error('Please log in to save items to your plan');
+          window.location.href = '/auth';
+        }}
+      >
+        <Plus className="h-4 w-4" />
+        {!compact && "Login to Save"}
+      </Button>
+    );
+  }
 
   if (isAlreadySaved) {
     return (
@@ -180,7 +222,7 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center gap-2 ${className}`}>
       <Button
         variant={variant}
         size={size}
