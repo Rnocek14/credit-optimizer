@@ -27,6 +27,7 @@ import {
 import { useTracks } from '@/hooks/useTracks';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useToast } from '@/hooks/use-toast';
+import { TrackProgressAnalytics } from './TrackProgressAnalytics';
 import type { CareerTrack, CreateTrackInput } from '@/types/tracks';
 
 interface TrackManagerModalProps {
@@ -183,11 +184,12 @@ export function TrackManagerModal({ children }: TrackManagerModalProps) {
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-4 bg-muted">
+          <TabsList className="grid w-full grid-cols-5 bg-muted">
             <TabsTrigger value="manage">Manage</TabsTrigger>
             <TabsTrigger value="create">Create</TabsTrigger>
             <TabsTrigger value="clone">Clone</TabsTrigger>
             <TabsTrigger value="compare">Compare</TabsTrigger>
+            <TabsTrigger value="progress">Progress</TabsTrigger>
           </TabsList>
 
           <div className="mt-4 overflow-auto max-h-[calc(90vh-200px)]">
@@ -563,6 +565,10 @@ export function TrackManagerModal({ children }: TrackManagerModalProps) {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="progress" className="space-y-4">
+              <TrackProgressAnalytics tracks={tracks} activeTrackId={activeTrackId} />
             </TabsContent>
           </div>
         </Tabs>
