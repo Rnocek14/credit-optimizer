@@ -38,7 +38,8 @@ export function HubNavigation() {
              location.pathname === "/goals" || 
              location.pathname === "/planner" ||
              location.pathname === "/maya-roadmap" ||
-             location.pathname === "/workflows";
+             location.pathname === "/workflows" ||
+             location.pathname === "/build";
     }
     if (href === "/progress") {
       return location.pathname.startsWith("/progress") ||
