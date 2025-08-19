@@ -23,7 +23,6 @@ import TrackSelector from "@/components/tracks/TrackSelector";
 import { TrackManager } from "@/components/multi-track/TrackManager";
 import { getCurrentUser } from "@/lib/auth";
 import { QUERY_KEYS } from "@/lib/queryKeys";
-import { toast } from "sonner";
 
 interface PlanItem {
   id: string;
@@ -109,7 +108,7 @@ export default function Plan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PLAN_ITEMS(currentUser?.id, activeTrackId) });
-      toast('Item status updated!');
+      toast({ title: "Item status updated!" });
     }
   });
 
@@ -125,7 +124,7 @@ export default function Plan() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MICRO_GOALS(currentUser?.id, activeTrackId) });
-      toast('Micro-goal completed!');
+      toast({ title: "Micro-goal completed!" });
     }
   });
 
