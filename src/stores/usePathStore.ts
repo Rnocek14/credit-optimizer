@@ -141,6 +141,11 @@ interface PathState {
   // User skills (aggregated from transcripts/completions)
   userSkills: string[];
   refreshUserSkills: (userId?: string) => Promise<void>;
+  
+  // Demo/dev helpers
+  setUserSkills: (skills: string[]) => void;
+  seedDemoReactBasics: () => Promise<void>;
+  completeByTitles: (titles: string[]) => Promise<void>;
 
   // Database operations
   savePath: (userId: string) => Promise<string | null>;
@@ -187,6 +192,11 @@ interface PathState {
   clearCanvas: () => void;
   normalizeNodeStatuses: () => void;
 }
+
+// Demo mode detection
+const DEMO_MODE = 
+  (typeof window !== 'undefined' && (window as any).__LP_DEMO_MODE__) ||
+  (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production');
 
 export const usePathStore = create<PathState>()(
   persist(
@@ -684,7 +694,84 @@ export const usePathStore = create<PathState>()(
             if (n.data.title) setLower.add(n.data.title.trim().toLowerCase());
           });
 
-        set({ userSkills: Array.from(setLower) });
+        const skills = Array.from(setLower);
+        
+        // Demo fallback when no skills found
+        if (skills.length === 0 && DEMO_MODE) {
+          const demoSkills = [
+            'JavaScript Fundamentals',
+            'ES6+ Syntax', 
+            'TypeScript Basics',
+            'React Fundamentals',
+            'React Hooks & Advanced State',
+            'Patterns & Composition in React',
+            'React Performance & Optimization'
+          ];
+          set({ userSkills: demoSkills });
+        } else {
+          set({ userSkills: skills });
+        }
+        
+        // Trigger status revalidation and layout update
+        const changed = get().revalidateAllStatuses();
+        if (changed) get().scheduleLayout('refreshUserSkills');
+      },
+
+      setUserSkills: (skills) => {
+        set({ userSkills: skills });
+        // Immediately propagate status & layout for visual feedback
+        const changed = get().revalidateAllStatuses();
+        if (changed) get().scheduleLayout('userSkills changed');
+      },
+
+      // Seed a realistic set of React basics so Advanced nodes can unlock in demos
+      seedDemoReactBasics: async () => {
+        const base = [
+          'JavaScript Fundamentals',
+          'ES6+ Syntax',
+          'TypeScript Basics', 
+          'React Fundamentals',
+          'React Hooks & Advanced State',
+          'Patterns & Composition in React',
+          'React Performance & Optimization'
+        ];
+        get().setUserSkills(base);
+      },
+
+      // Mark listed nodes as completed (create compact skill nodes if missing)
+      completeByTitles: async (titles) => {
+        const S = get();
+        S.suspendLayout();
+        try {
+          for (const t of titles) {
+            const key = slug(canonicalTitle(t));
+            let node = S.nodes.find(n => slug(n.data?.title||'') === key);
+            if (!node) {
+              const id = S.addNode({
+                type: 'skill',
+                position: { x: 0, y: 0 },
+                data: {
+                  title: canonicalTitle(t),
+                  description: 'Completed (demo)',
+                  skillTags: [t],
+                  difficulty: 'beginner' as const,
+                  status: 'completed' as const,
+                  prerequisites: [],
+                  estimatedHours: 0,
+                }
+              });
+              node = get().nodes.find(n => n.id === id)!;
+            }
+            if (node.data?.status !== 'completed') {
+              S.setNodeStatus(node.id, 'completed');
+            }
+          }
+          // After completing prereqs, recompute statuses
+          get().revalidateAllStatuses();
+        } finally {
+          S.resumeLayout();
+        }
+        get().scheduleLayout('completeByTitles');
       },
 
       addNode: (node: Omit<PathNode, 'id'>) => {
