@@ -14,7 +14,10 @@ import {
   DollarSign,
   Shield,
   ShieldCheck,
-  User
+  User,
+  Lock,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import type { PathNode as PathNodeType } from '@/stores/usePathStore';
 
@@ -59,10 +62,19 @@ export const PathNode = memo(({ data, selected }: PathNodeProps) => {
   const VerificationIcon = getVerificationIcon(data.verification);
   const verificationColor = getVerificationColor(data.verification);
 
+  const getStatusBorderClass = (status?: string) => {
+    switch (status) {
+      case 'locked': return 'border-destructive border-2';
+      case 'in_progress': return 'border-primary border-2';
+      case 'completed': return 'border-green-500 border-2';
+      default: return '';
+    }
+  };
+
   return (
     <Card className={`min-w-[280px] max-w-[320px] transition-all duration-200 ${
       selected ? 'ring-2 ring-primary shadow-md' : 'shadow-sm hover:shadow-md'
-    }`}>
+    } ${getStatusBorderClass(data.status)}`}>
       <Handle 
         type="target" 
         position={Position.Top} 
@@ -75,11 +87,21 @@ export const PathNode = memo(({ data, selected }: PathNodeProps) => {
           <div className="flex items-center gap-2 flex-1">
             <Icon className="w-4 h-4 text-primary" />
             <h3 className="font-semibold text-sm leading-tight">{data.title}</h3>
+            {data.status === 'locked' && <Lock className="w-3 h-3 text-destructive" />}
+            {data.status === 'completed' && <CheckCircle className="w-3 h-3 text-green-500" />}
           </div>
           {VerificationIcon && (
             <VerificationIcon className={`w-4 h-4 ${verificationColor}`} />
           )}
         </div>
+
+        {/* Prerequisites Warning */}
+        {data.prerequisites && data.prerequisites.length > 0 && data.status === 'locked' && (
+          <div className="flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-1 rounded">
+            <AlertTriangle className="w-3 h-3" />
+            <span>{data.prerequisites.length} prerequisite(s) required</span>
+          </div>
+        )}
 
         {/* Description */}
         {data.description && (

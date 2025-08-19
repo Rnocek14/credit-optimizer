@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -15,7 +15,9 @@ import { usePathStore } from '@/stores/usePathStore';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, Palette, Download, Upload, RotateCcw } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Palette, Download, Upload, RotateCcw, ArrowRight, Lock, Zap, GitBranch, Shuffle } from 'lucide-react';
 
 interface PathCanvasProps {
   userId: string;
@@ -33,13 +35,16 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     nodes, 
     edges, 
     activeNodeId,
+    selectedEdgeType,
     addNode,
     connect,
     moveNode,
     setActiveNode,
+    setSelectedEdgeType,
     clearCanvas,
     removeNode,
     removeEdge,
+    autoLayoutPrereqOrder,
   } = usePathStore();
   
   const { activeTrackId } = useActiveTrackStore();
@@ -48,10 +53,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
-        connect(params.source, params.target);
+        connect(params.source, params.target, selectedEdgeType);
       }
     },
-    [connect]
+    [connect, selectedEdgeType]
   );
 
   const onNodeClick = useCallback((_: any, node: any) => {
@@ -74,59 +79,110 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     });
   }, [addNode, activeTrackId]);
 
-  // Demo nodes for first-time users
+  // Demo nodes with prerequisites for first-time users
   const initializeDemoNodes = useCallback(() => {
     const demoNodes = [
       {
-        type: 'track' as const,
-        position: { x: 100, y: 100 },
+        type: 'course' as const,
+        position: { x: 100, y: 200 },
         data: {
-          title: 'Full Stack Development',
-          description: 'Complete web development track',
-          progress: 65,
-          xp: 1250,
-          cri: 4.2,
+          title: 'JavaScript Basics',
+          description: 'Learn JavaScript fundamentals',
+          skillTags: ['JavaScript', 'Programming'],
+          difficulty: 'beginner' as const,
+          status: 'available' as const,
+          estimatedHours: 30,
+          cost: 49,
+          cri: 4.0,
         },
       },
       {
         type: 'course' as const,
-        position: { x: 400, y: 100 },
+        position: { x: 400, y: 200 },
         data: {
           title: 'React Fundamentals',
           description: 'Learn React from scratch',
           institutionId: 'demo-institution',
           teacherId: 'demo-teacher',
           verification: 'institution_verified' as const,
-          progress: 80,
+          progress: 0,
           estimatedHours: 40,
           cost: 99,
           skillTags: ['React', 'JavaScript', 'Frontend'],
           difficulty: 'intermediate' as const,
+          status: 'locked' as const,
+          prerequisites: ['JavaScript'],
           cri: 4.5,
         },
       },
       {
         type: 'project' as const,
-        position: { x: 700, y: 100 },
+        position: { x: 700, y: 200 },
         data: {
-          title: 'Portfolio Website',
-          description: 'Build your personal portfolio',
+          title: 'Todo App Project',
+          description: 'Build a todo application with React',
           verification: 'mentor_verified' as const,
-          progress: 45,
+          progress: 0,
           estimatedHours: 20,
-          skillTags: ['React', 'Design', 'Portfolio'],
-          difficulty: 'beginner' as const,
+          skillTags: ['React', 'State Management', 'Project'],
+          difficulty: 'intermediate' as const,
+          status: 'locked' as const,
+          prerequisites: ['React'],
+        },
+      },
+      {
+        type: 'milestone' as const,
+        position: { x: 1000, y: 200 },
+        data: {
+          title: 'Frontend Developer',
+          description: 'Ready for junior frontend developer role',
+          skillTags: ['React', 'JavaScript', 'Frontend', 'Projects'],
+          difficulty: 'intermediate' as const,
+          status: 'locked' as const,
+          prerequisites: ['Todo App Project'],
         },
       },
     ];
 
     demoNodes.forEach(addNode);
-  }, [addNode]);
+    
+    // Add prerequisite connections after a short delay to ensure nodes exist
+    setTimeout(() => {
+      const allNodes = usePathStore.getState().nodes;
+      const jsNode = allNodes.find(n => n.data.title === 'JavaScript Basics');
+      const reactNode = allNodes.find(n => n.data.title === 'React Fundamentals');
+      const todoNode = allNodes.find(n => n.data.title === 'Todo App Project');
+      const milestoneNode = allNodes.find(n => n.data.title === 'Frontend Developer');
+      
+      if (jsNode && reactNode) {
+        connect(jsNode.id, reactNode.id, 'prerequisite');
+      }
+      if (reactNode && todoNode) {
+        connect(reactNode.id, todoNode.id, 'prerequisite');
+      }
+      if (todoNode && milestoneNode) {
+        connect(todoNode.id, milestoneNode.id, 'prerequisite');
+      }
+    }, 100);
+  }, [addNode, connect]);
 
   const activeNode = useMemo(() => 
     nodes.find(n => n.id === activeNodeId),
     [nodes, activeNodeId]
   );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        autoLayoutPrereqOrder();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [autoLayoutPrereqOrder]);
 
   return (
     <div className="flex h-full bg-background">
@@ -185,9 +241,57 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           </div>
         </div>
 
+        <Separator />
+
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground">Edge Type</h4>
+          <p className="text-xs text-muted-foreground/70">
+            Select connection type for new edges
+          </p>
+          
+          <ToggleGroup
+            type="single"
+            value={selectedEdgeType}
+            onValueChange={(value) => value && setSelectedEdgeType(value as any)}
+            className="grid grid-cols-1 gap-1"
+          >
+            <ToggleGroupItem value="sequence" className="h-7 text-xs justify-start">
+              <ArrowRight className="w-3 h-3 mr-1" />
+              Sequence
+            </ToggleGroupItem>
+            <ToggleGroupItem value="prerequisite" className="h-7 text-xs justify-start">
+              <Lock className="w-3 h-3 mr-1" />
+              Prerequisite
+            </ToggleGroupItem>
+            <ToggleGroupItem value="suggested" className="h-7 text-xs justify-start">
+              <Zap className="w-3 h-3 mr-1" />
+              Suggested
+            </ToggleGroupItem>
+            <ToggleGroupItem value="alternative" className="h-7 text-xs justify-start">
+              <Shuffle className="w-3 h-3 mr-1" />
+              Alternative
+            </ToggleGroupItem>
+            <ToggleGroupItem value="branch" className="h-7 text-xs justify-start">
+              <GitBranch className="w-3 h-3 mr-1" />
+              Branch
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
+        <Separator />
+
         <div className="space-y-2">
           <h4 className="text-xs font-medium text-muted-foreground">Canvas Actions</h4>
           <div className="space-y-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={autoLayoutPrereqOrder}
+              className="w-full text-xs"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Auto Layout (A)
+            </Button>
             <Button
               variant="outline"
               size="sm"

@@ -13,7 +13,10 @@ import {
   Users, 
   Save,
   X,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import type { PathNode } from '@/stores/usePathStore';
 
@@ -23,7 +26,7 @@ interface PathRightRailProps {
 }
 
 export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
-  const { updateNode, removeNode, setActiveNode } = usePathStore();
+  const { updateNode, removeNode, setActiveNode, validatePrerequisites } = usePathStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<PathNode['data']>>(activeNode?.data || {});
 
@@ -93,10 +96,14 @@ export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
 
       <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details" className="text-xs">
               <Info className="w-3 h-3 mr-1" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="prereqs" className="text-xs">
+              <Lock className="w-3 h-3 mr-1" />
+              Prereqs
             </TabsTrigger>
             <TabsTrigger value="providers" className="text-xs">
               <Shuffle className="w-3 h-3 mr-1" />
@@ -239,6 +246,50 @@ export function PathRightRail({ activeNode, userId }: PathRightRailProps) {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="prereqs" className="p-4 space-y-4">
+            {activeNode && (() => {
+              const validation = validatePrerequisites(activeNode.id);
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    {validation.ok ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {validation.ok ? 'All prerequisites met' : 'Prerequisites missing'}
+                    </span>
+                  </div>
+                  
+                  {validation.missing.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium">Missing Requirements:</h4>
+                      <div className="space-y-1">
+                        {validation.missing.map((item, i) => (
+                          <Badge key={i} variant="destructive" className="text-xs block w-fit">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Current Status:</h4>
+                    <Badge variant={
+                      activeNode.data.status === 'completed' ? 'default' :
+                      activeNode.data.status === 'in_progress' ? 'secondary' :
+                      activeNode.data.status === 'locked' ? 'destructive' : 'outline'
+                    }>
+                      {activeNode.data.status || 'available'}
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="providers" className="p-4">
