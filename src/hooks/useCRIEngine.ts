@@ -41,12 +41,12 @@ export interface MayaExplanation {
   source: string;
 }
 
-export const useCRIEngine = (userId?: string) => {
+export const useCRIEngine = (userId?: string, trackId?: string) => {
   const queryClient = useQueryClient();
 
   // Fetch CRI breakdown
   const { data: criBreakdown, isLoading: criLoading, error: criError } = useQuery({
-    queryKey: ['cri-breakdown', userId],
+    queryKey: ['cri-breakdown', userId, trackId],
     queryFn: async (): Promise<CRIBreakdown> => {
       if (!userId) throw new Error('User ID required');
       
@@ -54,6 +54,7 @@ export const useCRIEngine = (userId?: string) => {
         body: {
           action: 'get_breakdown',
           userId,
+          trackId,
         }
       });
 
@@ -81,7 +82,7 @@ export const useCRIEngine = (userId?: string) => {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(['cri-breakdown', userId], data);
+      queryClient.setQueryData(['cri-breakdown', userId, trackId], data);
       toast.success('CRI recalculated successfully!');
     },
     onError: (error: any) => {

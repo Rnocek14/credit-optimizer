@@ -27,7 +27,7 @@ import {
 import { useTracks } from '@/hooks/useTracks';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useToast } from '@/hooks/use-toast';
-import { TrackProgressAnalytics } from './TrackProgressAnalytics';
+import { LiveTrackProgressAnalytics } from './LiveTrackProgressAnalytics';
 import type { CareerTrack, CreateTrackInput } from '@/types/tracks';
 
 interface TrackManagerModalProps {
@@ -568,7 +568,7 @@ export function TrackManagerModal({ children }: TrackManagerModalProps) {
             </TabsContent>
 
             <TabsContent value="progress" className="space-y-4">
-              <TrackProgressAnalytics tracks={tracks} activeTrackId={activeTrackId} />
+              <LiveTrackProgressAnalytics />
             </TabsContent>
           </div>
         </Tabs>
