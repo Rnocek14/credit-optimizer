@@ -727,11 +727,13 @@ export const usePathStore = create<PathState>()(
       },
 
       ensurePrerequisiteClosure: () => {
-        const { nodes, edges, addNode, connect, validatePrerequisites, userSkills, autoLayoutPrereqOrder } = get();
+        console.log('⚡ ensurePrerequisiteClosure clicked - starting...');
+        
+        const { nodes, edges, addNode, connect, validatePrerequisites, userSkills, autoLayoutPrereqOrder, setNodeStatus } = get();
 
         const normalize = (s?: string) => (s || '').trim().toLowerCase();
 
-        // Synonym mapping for common prerequisites
+        // Enhanced synonym mapping for common prerequisites
         const PREREQ_SYNONYMS: Record<string, string> = {
           "react": "React Fundamentals",
           "javascript": "JavaScript Basics", 
@@ -739,23 +741,18 @@ export const usePathStore = create<PathState>()(
           "html": "HTML & CSS Foundations",
           "css": "HTML & CSS Foundations",
           "python": "Python Programming",
-          "node": "Node.js Development",
-          "nodejs": "Node.js Development",
-          "express": "Express.js Framework",
-          "sql": "SQL Database Fundamentals",
+          "node": "Node.js Essentials",
+          "nodejs": "Node.js Essentials",
+          "node.js": "Node.js Essentials",
+          "typescript": "TypeScript Basics",
+          "ts": "TypeScript Basics",
           "git": "Git Version Control",
-          "mongodb": "MongoDB Database",
-          "typescript": "TypeScript Fundamentals",
-          "vue": "Vue.js Framework",
-          "angular": "Angular Framework",
-          "docker": "Docker Containerization",
-          "aws": "AWS Cloud Fundamentals",
           "api": "API Development",
-          "rest": "REST API Design",
-          "graphql": "GraphQL APIs",
-          "testing": "Software Testing",
-          "jest": "Jest Testing Framework",
-          "cypress": "Cypress E2E Testing",
+          "rest": "API Development",
+          "sql": "Database Fundamentals",
+          "database": "Database Fundamentals",
+          "algorithms": "Data Structures & Algorithms",
+          "data structures": "Data Structures & Algorithms",
         };
 
         const indexByTitle = () => {
@@ -767,44 +764,63 @@ export const usePathStore = create<PathState>()(
         let titleIndex = indexByTitle();
         let changed = false;
         let iterations = 0;
+        let totalAdded = 0;
 
         console.log('🔍 Starting auto-fill prerequisites...');
+        console.log(`📊 Current state: ${nodes.length} nodes, ${edges.length} edges`);
 
         // Iterate until stable (or safe cap)
         while (iterations++ < 20) {
           changed = false;
+          console.log(`🔄 Iteration ${iterations}`);
 
           for (const target of get().nodes) {
-            const { ok, missing } = validatePrerequisites(target.id);
-            if (ok || missing.length === 0) continue;
+            const validation = validatePrerequisites(target.id);
+            const { ok, missing } = validation;
+            
+            if (ok || missing.length === 0) {
+              console.log(`✅ Node "${target.data.title}" has all prerequisites satisfied`);
+              continue;
+            }
 
-            console.log(`📋 Node "${target.data.title}" missing:`, missing);
+            console.log(`📋 Node "${target.data.title}" missing ${missing.length} prerequisites:`, missing);
 
             for (const item of missing) {
               const key = normalize(item);
-              console.log(`🔎 Looking for prerequisite: "${item}" (normalized: "${key}")`);
+              console.log(`🔎 Processing prerequisite: "${item}" (normalized: "${key}")`);
               
-              // 1) If a node with this exact title already exists but isn't wired, wire it
+              // 1) Check if a node with this title already exists but isn't connected
               const existingId = titleIndex.get(key);
 
               if (existingId) {
-                console.log(`✅ Found existing node for "${item}"`);
-                // Avoid duplicate prerequisite edge
-                const already = get().edges.some(e => 
+                console.log(`✅ Found existing node "${item}" with ID: ${existingId}`);
+                // Check if already connected
+                const alreadyConnected = get().edges.some(e => 
                   e.type === 'prerequisite' && e.source === existingId && e.target === target.id
                 );
-                if (!already) {
+                
+                if (!alreadyConnected) {
                   console.log(`🔗 Connecting existing node "${item}" to "${target.data.title}"`);
                   connect(existingId, target.id, 'prerequisite');
                   changed = true;
+                  
+                  // Force status recalculation after connection
+                  setTimeout(() => {
+                    const newValidation = validatePrerequisites(target.id);
+                    const newStatus = newValidation.ok ? 'available' : 'locked';
+                    console.log(`🔄 Updating "${target.data.title}" status to: ${newStatus}`);
+                    setNodeStatus(target.id, newStatus);
+                  }, 50);
+                } else {
+                  console.log(`⚠️ Node "${item}" already connected to "${target.data.title}"`);
                 }
                 continue;
               }
 
-              // 2) Try different matching strategies
+              // 2) Try to find a match in the catalog
               let match = null;
               
-              // Strategy 1: Synonym redirect first
+              // Strategy 1: Direct synonym mapping
               const synonym = PREREQ_SYNONYMS[key];
               if (synonym) {
                 match = canonicalCatalog.find(c => normalize(c.title) === normalize(synonym));
@@ -823,9 +839,10 @@ export const usePathStore = create<PathState>()(
 
               // Strategy 3: Fuzzy title matching
               if (!match) {
-                match = canonicalCatalog.find(c => 
-                  normalize(c.title).includes(key) || key.includes(normalize(c.title))
-                );
+                match = canonicalCatalog.find(c => {
+                  const catalogTitle = normalize(c.title);
+                  return catalogTitle.includes(key) || key.includes(catalogTitle);
+                });
                 if (match) {
                   console.log(`✅ Found fuzzy title match: "${match.title}" for "${item}"`);
                 }
@@ -847,7 +864,7 @@ export const usePathStore = create<PathState>()(
               }
 
               if (match) {
-                console.log(`➕ Adding course: "${match.title}"`);
+                console.log(`➕ Creating new course: "${match.title}"`);
                 const newId = addNode({
                   type: 'course',
                   position: { 
@@ -864,17 +881,31 @@ export const usePathStore = create<PathState>()(
                     prerequisites: []
                   }
                 });
+                
+                console.log(`🔗 Connecting new course "${match.title}" to "${target.data.title}"`);
                 connect(newId, target.id, 'prerequisite');
+                
                 titleIndex = indexByTitle();
                 changed = true;
+                totalAdded++;
 
                 // Smart completion: Mark as completed if user already has these skills
-                const hasSkills = match.skills.some(skill => 
+                const hasRelevantSkills = match.skills.some(skill => 
                   userSkills.some(userSkill => normalize(userSkill) === normalize(skill))
                 );
-                if (hasSkills) {
+                
+                if (hasRelevantSkills) {
                   console.log(`🎯 Auto-completing "${match.title}" because user has relevant skills`);
-                  setTimeout(() => get().setNodeStatus(newId, 'completed'), 100);
+                  setTimeout(() => {
+                    setNodeStatus(newId, 'completed');
+                    // Also update target status after completion
+                    setTimeout(() => {
+                      const finalValidation = validatePrerequisites(target.id);
+                      const finalStatus = finalValidation.ok ? 'available' : 'locked';
+                      console.log(`🔄 Final update for "${target.data.title}" status to: ${finalStatus}`);
+                      setNodeStatus(target.id, finalStatus);
+                    }, 50);
+                  }, 100);
                 }
               } else {
                 // Last resort: create a placeholder prerequisite
@@ -886,30 +917,54 @@ export const usePathStore = create<PathState>()(
                     y: target.position.y + (Math.random() * 140 - 70) 
                   },
                   data: {
-                    title: item, // Use the missing label itself
-                    description: 'Auto-generated prerequisite',
+                    title: item,
+                    description: 'Auto-generated prerequisite - please customize',
                     skillTags: [item],
                     difficulty: 'beginner',
                     status: 'available',
                     prerequisites: []
                   },
                 });
+                
+                console.log(`🔗 Connecting placeholder "${item}" to "${target.data.title}"`);
                 connect(placeholderId, target.id, 'prerequisite');
                 titleIndex = indexByTitle();
                 changed = true;
+                totalAdded++;
               }
             }
           }
 
-          if (!changed) break; // stable
+          if (!changed) {
+            console.log(`🛑 No more changes needed after ${iterations} iterations`);
+            break;
+          }
         }
 
-        if (changed) {
+        console.log(`✨ Auto-fill complete! Added ${totalAdded} prerequisites`);
+        
+        if (totalAdded > 0) {
           console.log('🎨 Auto-layouting new prerequisites...');
-          // Auto-layout to organize the new nodes
-          setTimeout(() => autoLayoutPrereqOrder(), 200);
+          setTimeout(() => {
+            autoLayoutPrereqOrder();
+            
+            // Final status validation for all nodes
+            setTimeout(() => {
+              console.log('🔄 Final status validation for all nodes...');
+              get().nodes.forEach(node => {
+                if (node.data.status !== 'completed') {
+                  const validation = validatePrerequisites(node.id);
+                  const correctStatus = validation.ok ? 'available' : 'locked';
+                  if (node.data.status !== correctStatus) {
+                    console.log(`🔄 Correcting status for "${node.data.title}": ${node.data.status} → ${correctStatus}`);
+                    setNodeStatus(node.id, correctStatus);
+                  }
+                }
+              });
+            }, 100);
+          }, 200);
         } else {
-          console.log('ℹ️ No prerequisites were auto-filled');
+          console.log('ℹ️ No prerequisites needed auto-filling');
         }
       },
 
