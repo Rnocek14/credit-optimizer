@@ -4619,6 +4619,100 @@ export type Database = {
         }
         Relationships: []
       }
+      path_edges: {
+        Row: {
+          created_at: string | null
+          edge_data: Json | null
+          edge_id: string
+          edge_type: string
+          id: string
+          path_id: string
+          source_node_id: string
+          target_node_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          edge_data?: Json | null
+          edge_id: string
+          edge_type: string
+          id?: string
+          path_id: string
+          source_node_id: string
+          target_node_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          edge_data?: Json | null
+          edge_id?: string
+          edge_type?: string
+          id?: string
+          path_id?: string
+          source_node_id?: string
+          target_node_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "path_edges_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "user_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      path_nodes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          node_data: Json | null
+          node_id: string
+          node_type: string
+          path_id: string
+          position_x: number
+          position_y: number
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          node_data?: Json | null
+          node_id: string
+          node_type: string
+          path_id: string
+          position_x?: number
+          position_y?: number
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          node_data?: Json | null
+          node_id?: string
+          node_type?: string
+          path_id?: string
+          position_x?: number
+          position_y?: number
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "path_nodes_path_id_fkey"
+            columns: ["path_id"]
+            isOneToOne: false
+            referencedRelation: "user_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pattern_recognition_results: {
         Row: {
           anomaly_score: number | null
@@ -7335,6 +7429,45 @@ export type Database = {
           salary_range_max?: number | null
           salary_range_min?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_paths: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_shared: boolean | null
+          last_accessed_at: string | null
+          share_token: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_shared?: boolean | null
+          last_accessed_at?: string | null
+          share_token?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_shared?: boolean | null
+          last_accessed_at?: string | null
+          share_token?: string | null
+          title?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

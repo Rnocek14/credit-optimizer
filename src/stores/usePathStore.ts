@@ -37,9 +37,23 @@ interface PathState {
   activeNodeId?: string;
   selectedEdgeType: PathEdge['type'];
 
+  // Database persistence
+  currentPathId?: string;
+  pathTitle: string;
+  isShared: boolean;
+  isDirty: boolean;
+  lastSaved?: Date;
+
   // User skills (aggregated from transcripts/completions)
   userSkills: string[];
   refreshUserSkills: (userId?: string) => Promise<void>;
+
+  // Database operations
+  savePath: (userId: string) => Promise<string | null>;
+  loadPath: (pathId: string, userId?: string) => Promise<void>;
+  loadUserPaths: (userId: string) => Promise<Array<{ id: string; title: string; updated_at: string }>>;
+  createNewPath: (userId: string, title?: string) => Promise<string | null>;
+  shareOrUnsharePath: (toggle: boolean) => Promise<void>;
   
   // Actions
   addNode: (node: Omit<PathNode, 'id'>) => string;
@@ -78,6 +92,269 @@ export const usePathStore = create<PathState>()(
       activeNodeId: undefined,
       selectedEdgeType: 'sequence' as PathEdge['type'],
       userSkills: [],
+
+      // Database persistence state
+      currentPathId: undefined,
+      pathTitle: 'My Learning Path',
+      isShared: false,
+      isDirty: false,
+      lastSaved: undefined,
+
+      // Database operations
+      async savePath(userId: string) {
+        const { currentPathId, pathTitle, nodes, edges } = get();
+        
+        try {
+          let pathId = currentPathId;
+          
+          // Create or update path
+          if (!pathId) {
+            const { data, error } = await supabase
+              .from('user_paths')
+              .insert({
+                user_id: userId,
+                title: pathTitle,
+                is_active: true,
+              })
+              .select('id')
+              .single();
+            
+            if (error) throw error;
+            pathId = data.id;
+            set({ currentPathId: pathId });
+          } else {
+            const { error } = await supabase
+              .from('user_paths')
+              .update({
+                title: pathTitle,
+                updated_at: new Date().toISOString(),
+                last_accessed_at: new Date().toISOString(),
+              })
+              .eq('id', pathId);
+            
+            if (error) throw error;
+          }
+          
+          // Save nodes
+          if (nodes.length > 0) {
+            // Delete existing nodes for this path
+            await supabase
+              .from('path_nodes')
+              .delete()
+              .eq('path_id', pathId);
+            
+            // Insert new nodes
+            const nodeInserts = nodes.map(node => ({
+              path_id: pathId,
+              node_id: node.id,
+              node_type: node.type,
+              title: node.data.title,
+              description: node.data.description,
+              position_x: node.position.x,
+              position_y: node.position.y,
+              node_data: {
+                ...node.data,
+                // Extract position since it's stored separately
+                position: undefined
+              }
+            }));
+            
+            const { error: nodesError } = await supabase
+              .from('path_nodes')
+              .insert(nodeInserts);
+            
+            if (nodesError) throw nodesError;
+          }
+          
+          // Save edges
+          if (edges.length > 0) {
+            // Delete existing edges for this path
+            await supabase
+              .from('path_edges')
+              .delete()
+              .eq('path_id', pathId);
+            
+            // Insert new edges
+            const edgeInserts = edges.map(edge => ({
+              path_id: pathId,
+              edge_id: edge.id,
+              source_node_id: edge.source,
+              target_node_id: edge.target,
+              edge_type: edge.type,
+              edge_data: JSON.parse(JSON.stringify({
+                style: edge.style || {},
+                markerEnd: edge.markerEnd || null
+              }))
+            }));
+            
+            const { error: edgesError } = await supabase
+              .from('path_edges')
+              .insert(edgeInserts);
+            
+            if (edgesError) throw edgesError;
+          }
+          
+          set({ 
+            isDirty: false, 
+            lastSaved: new Date() 
+          });
+          
+          return pathId;
+        } catch (error) {
+          console.error('Error saving path:', error);
+          return null;
+        }
+      },
+
+      async loadPath(pathId: string, userId?: string) {
+        try {
+          // Load path metadata
+          const { data: pathData, error: pathError } = await supabase
+            .from('user_paths')
+            .select('*')
+            .eq('id', pathId)
+            .single();
+          
+          if (pathError) throw pathError;
+          
+          // Load nodes
+          const { data: nodesData, error: nodesError } = await supabase
+            .from('path_nodes')
+            .select('*')
+            .eq('path_id', pathId);
+          
+          if (nodesError) throw nodesError;
+          
+          // Load edges
+          const { data: edgesData, error: edgesError } = await supabase
+            .from('path_edges')
+            .select('*')
+            .eq('path_id', pathId);
+          
+          if (edgesError) throw edgesError;
+          
+          // Transform data back to frontend format
+          const nodes: PathNode[] = (nodesData || []).map(dbNode => ({
+            id: dbNode.node_id,
+            type: dbNode.node_type as PathNode['type'],
+            position: {
+              x: Number(dbNode.position_x),
+              y: Number(dbNode.position_y)
+            },
+            data: {
+              title: dbNode.title,
+              description: dbNode.description,
+              ...((dbNode.node_data as any) || {})
+            }
+          }));
+          
+          const edges: PathEdge[] = (edgesData || []).map(dbEdge => ({
+            id: dbEdge.edge_id,
+            source: dbEdge.source_node_id,
+            target: dbEdge.target_node_id,
+            type: dbEdge.edge_type as PathEdge['type'],
+            ...((dbEdge.edge_data as any) || {}),
+            style: getEdgeStyle(dbEdge.edge_type as PathEdge['type'])
+          }));
+          
+          set({
+            currentPathId: pathId,
+            pathTitle: pathData.title,
+            isShared: pathData.is_shared,
+            nodes,
+            edges,
+            isDirty: false,
+            lastSaved: new Date(pathData.updated_at),
+            activeNodeId: undefined
+          });
+          
+          // Update last accessed
+          await supabase
+            .from('user_paths')
+            .update({ last_accessed_at: new Date().toISOString() })
+            .eq('id', pathId);
+            
+        } catch (error) {
+          console.error('Error loading path:', error);
+        }
+      },
+
+      async loadUserPaths(userId: string) {
+        try {
+          const { data, error } = await supabase
+            .from('user_paths')
+            .select('id, title, updated_at')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false });
+          
+          if (error) throw error;
+          return data || [];
+        } catch (error) {
+          console.error('Error loading user paths:', error);
+          return [];
+        }
+      },
+
+      async createNewPath(userId: string, title = 'New Learning Path') {
+        try {
+          const { data, error } = await supabase
+            .from('user_paths')
+            .insert({
+              user_id: userId,
+              title,
+              is_active: true,
+            })
+            .select('id')
+            .single();
+          
+          if (error) throw error;
+          
+          // Reset canvas and set new path
+          set({
+            currentPathId: data.id,
+            pathTitle: title,
+            isShared: false,
+            nodes: [],
+            edges: [],
+            activeNodeId: undefined,
+            isDirty: false,
+            lastSaved: new Date()
+          });
+          
+          return data.id;
+        } catch (error) {
+          console.error('Error creating new path:', error);
+          return null;
+        }
+      },
+
+      async shareOrUnsharePath(toggle: boolean) {
+        const { currentPathId } = get();
+        if (!currentPathId) return;
+        
+        try {
+          const updates: any = { is_shared: toggle };
+          
+          // Generate share token if sharing
+          if (toggle) {
+            updates.share_token = `share-${currentPathId}-${Date.now()}`;
+          } else {
+            updates.share_token = null;
+          }
+          
+          const { error } = await supabase
+            .from('user_paths')
+            .update(updates)
+            .eq('id', currentPathId);
+          
+          if (error) throw error;
+          
+          set({ isShared: toggle });
+        } catch (error) {
+          console.error('Error updating path sharing:', error);
+        }
+      },
 
       async refreshUserSkills(userIdParam?: string) {
         // Resolve user id if not provided
@@ -124,6 +401,7 @@ export const usePathStore = create<PathState>()(
         
         set((state) => ({
           nodes: [...state.nodes, newNode],
+          isDirty: true,
         }));
         
         return id;
@@ -136,6 +414,7 @@ export const usePathStore = create<PathState>()(
               ? { ...node, data: { ...node.data, ...updates } }
               : node
           ),
+          isDirty: true,
         }));
       },
 
@@ -146,6 +425,7 @@ export const usePathStore = create<PathState>()(
             (edge) => edge.source !== id && edge.target !== id
           ),
           activeNodeId: state.activeNodeId === id ? undefined : state.activeNodeId,
+          isDirty: true,
         }));
       },
 
@@ -171,6 +451,7 @@ export const usePathStore = create<PathState>()(
         
         set((state) => ({
           edges: [...state.edges, newEdge],
+          isDirty: true,
         }));
         
         // If prerequisite edge, update target node status
@@ -186,6 +467,7 @@ export const usePathStore = create<PathState>()(
         const edgeToRemove = get().edges.find(e => e.id === id);
         set((state) => ({
           edges: state.edges.filter((edge) => edge.id !== id),
+          isDirty: true,
         }));
 
         if (edgeToRemove?.type === 'prerequisite') {
@@ -203,6 +485,7 @@ export const usePathStore = create<PathState>()(
           nodes: state.nodes.map((node) =>
             node.id === id ? { ...node, position } : node
           ),
+          isDirty: true,
         }));
       },
 

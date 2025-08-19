@@ -11,6 +11,7 @@ import '@xyflow/react/dist/style.css';
 
 import { PathNode } from './PathNode';
 import { PathRightRail } from './PathRightRail';
+import { PathManager } from './PathManager';
 import PathEdge from './PathEdge';
 import { usePathStore } from '@/stores/usePathStore';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
@@ -361,9 +362,12 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           <Controls />
           
           <Panel position="top-center">
-            <Badge variant="outline" className="bg-background">
-              Path Canvas - Click nodes to edit in right panel
-            </Badge>
+            <div className="flex items-center gap-4">
+              <PathManager userId={userId} />
+              <Badge variant="outline" className="bg-background">
+                Path Canvas - Click nodes to edit in right panel
+              </Badge>
+            </div>
           </Panel>
         </ReactFlow>
       </div>
