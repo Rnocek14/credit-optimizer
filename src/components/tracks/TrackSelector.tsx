@@ -68,11 +68,11 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
     setActiveTrackId(id);
     setSearch('');
     
-    // Show success toast with track info
+    // Enhanced success toast with track info and visual feedback
     toast({
-      title: "✅ Track Selected",
-      description: `Switched to "${selectedTrack?.track_name || selectedTrack?.title || 'Untitled Track'}"`,
-      duration: 2000,
+      title: "🎯 Track Selected!",
+      description: `Now focusing on: ${selectedTrack?.track_name || selectedTrack?.title || 'Untitled Track'}`,
+      duration: 3000,
     });
     
     console.log('🎯 Track selection completed:', { newActive: id });
@@ -128,19 +128,31 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all shadow-sm min-w-[200px] justify-between ${
-              active ? 'bg-primary/5 border-primary/20 hover:bg-primary/10' : 'bg-background hover:bg-muted'
+            className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all duration-300 shadow-sm min-w-[200px] justify-between hover:scale-105 ${
+              active 
+                ? 'bg-gradient-to-r from-primary/10 to-primary/5 border-primary/40 hover:bg-primary/15 shadow-lg animate-pulse' 
+                : 'bg-background hover:bg-muted/80 border-border'
             }`}
             data-testid="track-selector"
           >
             <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} />
-              <span className={`truncate font-medium ${active ? 'text-primary' : ''}`}>
-                {isLoading ? 'Loading tracks...' : (active?.track_name || active?.title || 'Select a track')}
+              <span 
+                className={`inline-block w-4 h-4 rounded-full flex-shrink-0 border-2 border-background transition-all duration-300 ${active ? 'shadow-lg animate-bounce' : ''}`} 
+                style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} 
+              />
+              <span className={`truncate font-semibold transition-all duration-300 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    Loading tracks...
+                  </span>
+                ) : (
+                  active?.track_name || active?.title || 'Select a track'
+                )}
               </span>
-              {active && <span className="text-primary text-sm">✓</span>}
+              {active && <span className="text-success text-lg animate-pulse">✨</span>}
             </div>
-            <ChevronsUpDown className="w-4 h-4 opacity-70 flex-shrink-0" />
+            <ChevronsUpDown className={`w-4 h-4 opacity-70 flex-shrink-0 transition-transform duration-300 ${active ? 'text-primary' : ''}`} />
           </button>
         </DropdownMenuTrigger>
 

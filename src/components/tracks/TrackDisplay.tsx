@@ -2,7 +2,7 @@ import React from 'react';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useTracks } from '@/hooks/useTracks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Target, TrendingUp } from 'lucide-react';
+import { Calendar, Target, TrendingUp, Sparkles } from 'lucide-react';
 
 interface TrackDisplayProps {
   className?: string;
@@ -11,8 +11,31 @@ interface TrackDisplayProps {
 export const TrackDisplay: React.FC<TrackDisplayProps> = ({ className }) => {
   const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
   const { tracks, isLoading } = useTracks();
+  const [isChanging, setIsChanging] = React.useState(false);
+  const [displayedTrack, setDisplayedTrack] = React.useState<any>(null);
   
   const activeTrack = tracks?.find(t => t.id === activeTrackId);
+
+  // Handle track changes with animation
+  React.useEffect(() => {
+    if (activeTrack && activeTrack.id !== displayedTrack?.id) {
+      setIsChanging(true);
+      const timer = setTimeout(() => {
+        setDisplayedTrack(activeTrack);
+        setIsChanging(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else if (!activeTrack && displayedTrack) {
+      setIsChanging(true);
+      const timer = setTimeout(() => {
+        setDisplayedTrack(null);
+        setIsChanging(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else if (activeTrack && !displayedTrack) {
+      setDisplayedTrack(activeTrack);
+    }
+  }, [activeTrack, displayedTrack]);
   
   // Debug logging
   React.useEffect(() => {
@@ -39,19 +62,21 @@ export const TrackDisplay: React.FC<TrackDisplayProps> = ({ className }) => {
     );
   }
 
-  if (!activeTrack) {
+  if (!displayedTrack) {
     return (
-      <Card className={`${className || ''} animate-fade-in border-dashed border-2`}>
+      <Card className={`${className || ''} animate-fade-in border-dashed border-2 transition-all duration-300 ${isChanging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}`}>
         <CardContent className="flex items-center justify-center py-12">
           <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4 transition-all duration-300">
               <Target className="w-6 h-6 text-muted-foreground" />
             </div>
             <h3 className="font-medium text-muted-foreground">No track selected</h3>
             <p className="text-sm text-muted-foreground">Choose a career track to see your progress and goals</p>
-            <div className="mt-4 px-4 py-2 bg-warning/10 rounded-lg">
-              <p className="text-xs text-warning">🐛 Debug: {tracks?.length || 0} tracks loaded, activeId: {activeTrackId || 'null'}</p>
-            </div>
+            {tracks && tracks.length > 0 && (
+              <div className="mt-4 px-3 py-2 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-xs text-primary font-medium">✨ {tracks.length} track{tracks.length !== 1 ? 's' : ''} available - select one above!</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -59,58 +84,85 @@ export const TrackDisplay: React.FC<TrackDisplayProps> = ({ className }) => {
   }
 
   return (
-    <Card className={`${className || ''} animate-scale-in border-primary/30 shadow-lg bg-gradient-to-r from-primary/5 to-transparent`}>
-      <CardHeader className="pb-4">
+    <Card className={`${className || ''} transition-all duration-300 ease-out ${isChanging ? 'opacity-50 scale-95' : 'opacity-100 scale-100 animate-scale-in'} border-2 border-primary/40 shadow-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative overflow-hidden`}>
+      {/* Animated background effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-pulse opacity-60" />
+      
+      <CardHeader className="pb-4 relative">
         <div className="flex items-center gap-3">
           <div className="relative">
             <span 
-              className="inline-block w-5 h-5 rounded-full animate-pulse shadow-sm" 
-              style={{ backgroundColor: activeTrack.color || 'hsl(var(--primary))' }} 
+              className="inline-block w-6 h-6 rounded-full shadow-lg border-2 border-background transition-all duration-300 hover:scale-110" 
+              style={{ backgroundColor: displayedTrack.color || 'hsl(var(--primary))' }} 
             />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-success rounded-full animate-ping" />
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full animate-bounce border-2 border-background">
+              <Sparkles className="w-2 h-2 text-white m-0.5" />
+            </div>
           </div>
           <div className="flex-1">
-            <CardTitle className="text-lg text-primary font-semibold">
-              ✨ {activeTrack.track_name || activeTrack.title || 'Untitled Track'}
-            </CardTitle>
-            <CardDescription className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
-                Active career track
+            <CardTitle className="text-xl text-primary font-bold tracking-tight flex items-center gap-2">
+              <span className="bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                {displayedTrack.track_name || displayedTrack.title || 'Untitled Track'}
               </span>
-              {activeTrack.archived && <span className="text-warning font-medium">(Archived)</span>}
+              <div className="w-2 h-2 bg-success rounded-full animate-ping" />
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-1">
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/20 text-primary text-xs rounded-full font-medium border border-primary/30">
+                🎯 Active Career Track
+              </span>
+              {displayedTrack.archived && <span className="text-warning font-medium">(Archived)</span>}
             </CardDescription>
           </div>
-          <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
-            🐛 ID: {activeTrack.id.slice(-8)}
+          <div className="text-xs text-muted-foreground bg-muted/80 px-2 py-1 rounded border">
+            ID: {displayedTrack.id.slice(-8)}
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Started:</span>
-            <span>{new Date(activeTrack.created_at).toLocaleDateString()}</span>
+      <CardContent className="relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
+            <Calendar className="w-5 h-5 text-primary" />
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs font-medium">Started</span>
+              <span className="font-semibold">{new Date(displayedTrack.created_at).toLocaleDateString()}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Status:</span>
-            <span className={activeTrack.archived ? 'text-warning' : 'text-success'}>
-              {activeTrack.archived ? 'Archived' : 'Active'}
-            </span>
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs font-medium">Status</span>
+              <span className={`font-semibold ${displayedTrack.archived ? 'text-warning' : 'text-success'}`}>
+                {displayedTrack.archived ? '📁 Archived' : '🚀 Active'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Target className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Focus:</span>
-            <span>Career Growth</span>
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
+            <Target className="w-5 h-5 text-primary" />
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-xs font-medium">Focus</span>
+              <span className="font-semibold">🎯 Career Growth</span>
+            </div>
           </div>
         </div>
         
-        {activeTrack.description && (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">{activeTrack.description}</p>
+        {displayedTrack.description && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+            <h4 className="font-medium text-primary mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Track Description
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">{displayedTrack.description}</p>
           </div>
         )}
+
+        {/* Track-specific visual indicator */}
+        <div className="mt-4 flex items-center justify-between p-3 bg-success/10 rounded-lg border border-success/20">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-success rounded-full animate-pulse" />
+            <span className="text-sm font-medium text-success">Track Successfully Selected!</span>
+          </div>
+          <span className="text-xs text-success/80">Ready for planning 🎉</span>
+        </div>
       </CardContent>
     </Card>
   );
