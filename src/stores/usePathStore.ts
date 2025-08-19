@@ -193,10 +193,10 @@ interface PathState {
   normalizeNodeStatuses: () => void;
 }
 
-// Demo mode detection
-const DEMO_MODE = 
-  (typeof window !== 'undefined' && (window as any).__LP_DEMO_MODE__) ||
-  (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production');
+// Demo mode detection - dynamic getter for runtime changes
+const isDemoMode = () =>
+  (typeof window !== 'undefined' && (window as any).__LP_DEMO_MODE__ === true) ||
+  (typeof window !== 'undefined' && import.meta.env.MODE !== 'production');
 
 export const usePathStore = create<PathState>()(
   persist(
@@ -697,7 +697,7 @@ export const usePathStore = create<PathState>()(
         const skills = Array.from(setLower);
         
         // Demo fallback when no skills found
-        if (skills.length === 0 && DEMO_MODE) {
+        if (skills.length === 0 && isDemoMode()) {
           // First seed demo React basics
           await get().seedDemoReactBasics();
           

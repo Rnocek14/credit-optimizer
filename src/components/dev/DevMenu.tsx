@@ -1,12 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathStore } from '@/stores/usePathStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Settings, Zap, CheckSquare, RotateCcw, Loader2 } from 'lucide-react';
+import { Settings, Zap, CheckSquare, RotateCcw, Loader2, Bug } from 'lucide-react';
 
 export function DevMenu() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(() => 
+    (window as any).__LP_DEMO_MODE__ || false
+  );
+
+  // Expose debug utilities on window in dev mode
+  useEffect(() => {
+    if (import.meta.env.MODE !== 'production') {
+      (window as any).lpDebug = {
+        prereq: (title: string) => usePathStore.getState().debugPrereqStatus?.(title),
+        revalidate: () => usePathStore.getState().revalidateAllStatuses(),
+        store: () => usePathStore.getState()
+      };
+    }
+  }, []);
 
   const handleSeedBasics = async () => {
     setIsLoading('seed');
@@ -41,8 +55,19 @@ export function DevMenu() {
 
   const handleToggleDemoMode = () => {
     const current = (window as any).__LP_DEMO_MODE__ || false;
-    (window as any).__LP_DEMO_MODE__ = !current;
-    console.log(`🔄 Demo mode ${!current ? 'enabled' : 'disabled'}`);
+    const newMode = !current;
+    
+    // Update window and localStorage
+    (window as any).__LP_DEMO_MODE__ = newMode;
+    localStorage.setItem('__LP_DEMO_MODE__', String(newMode));
+    
+    setIsDemoMode(newMode);
+    console.log(`🔄 Demo mode ${newMode ? 'enabled' : 'disabled'}`);
+    
+    // Show immediate visual feedback
+    const store = usePathStore.getState();
+    store.revalidateAllStatuses();
+    
     window.location.reload();
   };
 
@@ -50,10 +75,20 @@ export function DevMenu() {
     setIsLoading('revalidate');
     try {
       const store = usePathStore.getState();
-      store.revalidateAllStatuses();
+      const changed = store.revalidateAllStatuses();
+      if (changed) store.scheduleLayout('devmenu-revalidate');
       console.log('🔄 All statuses revalidated');
     } finally {
       setIsLoading(null);
+    }
+  };
+
+  const handleDebugPrereq = () => {
+    const title = prompt('Enter skill/course title to debug:');
+    if (title) {
+      const result = usePathStore.getState().debugPrereqStatus(title);
+      console.log('🐛 Prerequisite Debug:', result);
+      alert(`Debug result logged to console. Status: ${result.decision || result.error}`);
     }
   };
 
@@ -139,11 +174,24 @@ export function DevMenu() {
           )}
           Revalidate Statuses
         </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDebugPrereq}
+          className="w-full justify-start text-xs h-8"
+        >
+          <Bug className="mr-2 h-3 w-3" />
+          Debug Prerequisites
+        </Button>
       </div>
 
       <div className="mt-3 pt-3 border-t border-muted-foreground/10">
         <p className="text-xs text-muted-foreground">
-          Demo Mode: {(window as any).__LP_DEMO_MODE__ ? '🟢 ON' : '🔴 OFF'}
+          Demo Mode: {isDemoMode ? '🟢 ON' : '🔴 OFF'}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Console: <code className="text-xs">lpDebug.prereq('course title')</code>
         </p>
       </div>
     </Card>
