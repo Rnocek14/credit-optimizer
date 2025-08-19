@@ -110,48 +110,48 @@ All colors MUST be HSL.
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 50% 8%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 50% 8%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 22%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217.2 32.6% 22%;
+    --muted-foreground: 215 20.2% 75%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 25%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 25%;
+    --input: 217.2 32.6% 22%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
+    --sidebar-background: 240 5.9% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent: 240 3.7% 20%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-border: 240 3.7% 22%;
     --sidebar-ring: 217.2 91.2% 59.8%;
 
-    /* Status colors for dark mode */
-    --lp-green-50: 120 50% 15%;        /* Dark mode green background */
-    --lp-green-200: 159 60% 40%;       /* Dark mode green border */
+    /* Status colors for dark mode - improved contrast */
+    --lp-green-50: 120 40% 22%;        /* Brighter dark mode green background */
+    --lp-green-200: 159 50% 55%;       /* More vibrant green border */
     
-    --lp-red-50: 0 50% 15%;           /* Dark mode red background */
-    --lp-red-300: 0 60% 50%;          /* Dark mode red border */
+    --lp-red-50: 0 40% 22%;           /* Brighter dark mode red background */
+    --lp-red-300: 0 55% 65%;          /* More vibrant red border */
     
-    --lp-blue-50: 214 50% 15%;        /* Dark mode blue background */
-    --lp-blue-200: 213 60% 40%;       /* Dark mode blue border */
+    --lp-blue-50: 214 40% 22%;        /* Brighter dark mode blue background */
+    --lp-blue-200: 213 50% 55%;       /* More vibrant blue border */
   }
 }
 
