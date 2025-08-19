@@ -2,8 +2,10 @@ import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import confetti from 'canvas-confetti';
-import { Trophy, Star, Zap, Target } from 'lucide-react';
+import { Trophy, Star, Zap, Target, MapPin } from 'lucide-react';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 
 interface CelebrationModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface CelebrationModalProps {
 
 export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationModalProps) {
   const { celebration_data, celebration_type, trigger_data } = celebration;
+  const { activeTrackId } = useActiveTrackStore();
 
   useEffect(() => {
     if (isOpen && celebration_data.confetti) {
@@ -46,6 +49,8 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
         return <Trophy className="h-8 w-8 text-purple-500" />;
       case 'milestone':
         return <Target className="h-8 w-8 text-green-500" />;
+      case 'track_milestone':
+        return <MapPin className="h-8 w-8 text-blue-500" />;
       default:
         return <Trophy className="h-8 w-8 text-primary" />;
     }
@@ -76,6 +81,12 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
           subtitle: trigger_data?.milestone_name || "Milestone Reached",
           description: "You've hit an important learning milestone!",
           badge: "Milestone"
+        };
+      case 'track_milestone':
+        return {
+          subtitle: trigger_data?.milestone_name || "Track Progress",
+          description: "You've reached an important milestone in your track!",
+          badge: "Track Achievement"
         };
       default:
         return {
@@ -142,6 +153,25 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
               <div className="text-sm text-muted-foreground mt-1">
                 Your experience is growing!
               </div>
+            </div>
+          )}
+
+          {celebration_type === 'track_milestone' && (
+            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4">
+              <div className="text-2xl font-bold text-blue-600">
+                🗺️ {trigger_data?.milestone_name || 'Track Milestone'}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Great progress in your career track!
+              </div>
+              {trigger_data?.progress_percentage && (
+                <div className="mt-3 space-y-1">
+                  <Progress value={trigger_data.progress_percentage} className="h-2" />
+                  <div className="text-xs text-muted-foreground text-center">
+                    {trigger_data.progress_percentage}% track completion
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
