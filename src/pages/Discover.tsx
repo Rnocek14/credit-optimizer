@@ -125,10 +125,12 @@ export default function Discover() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      {/* Track Selector */}
+      {/* Track Selector - Enhanced Visibility */}
       <div className="container mx-auto px-4 pt-6">
         <div className="flex justify-end">
-          <TrackSelector />
+          <div className="bg-background/80 backdrop-blur-sm rounded-lg p-2 border shadow-lg">
+            <TrackSelector className="text-foreground" />
+          </div>
         </div>
       </div>
       

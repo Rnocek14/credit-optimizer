@@ -30,10 +30,20 @@ const TrackItem: React.FC<{ track: CareerTrack; activeId: string | null; onSelec
 
 export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
   const { toast } = useToast();
-  const { tracks, isLoading, createTrack, updateTrack, archiveTrack, refetch } = useTracks();
+  const { tracks, isLoading, createTrack, updateTrack, archiveTrack, refetch, error } = useTracks();
   const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
   const setActiveTrackId = useActiveTrackStore((s) => s.setActiveTrackId);
   const [search, setSearch] = useState('');
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('TrackSelector mounted', { 
+      tracks: tracks?.length, 
+      isLoading, 
+      error: error?.message, 
+      activeTrackId 
+    });
+  }, [tracks, isLoading, error, activeTrackId]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -74,22 +84,47 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
     }
   };
 
-  return (
-    <Dropdown.Root>
-      <Dropdown.Trigger asChild>
-        <button
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-background hover:bg-muted transition ${className || ''}`}
-          data-testid="track-selector"
+  // Show error state if there's an authentication or loading issue
+  if (error) {
+    return (
+      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-destructive/10 text-destructive ${className || ''}`}>
+        <span className="text-sm">Error loading tracks</span>
+        <button 
+          onClick={() => refetch()} 
+          className="text-xs underline hover:no-underline"
+          title={error.message}
         >
-          <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} />
-          <span className="truncate max-w-[14rem]">
-            {isLoading ? 'Loading tracks...' : (active?.track_name || active?.title || 'Select a track')}
-          </span>
-          <ChevronsUpDown className="w-4 h-4 opacity-70" />
+          Retry
         </button>
-      </Dropdown.Trigger>
+      </div>
+    );
+  }
 
-      <Dropdown.Content className="min-w-[280px] bg-background border shadow-lg rounded-md overflow-hidden z-50">
+  return (
+    <div className={`relative ${className || ''}`} style={{ outline: '2px solid red', padding: '4px' }}>
+      <div className="text-xs text-red-500 absolute -top-5 left-0">TrackSelector Debug</div>
+      <Dropdown.Root>
+        <Dropdown.Trigger asChild>
+          <button
+            className="inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 bg-background hover:bg-muted transition-all shadow-sm min-w-[200px] justify-between"
+            data-testid="track-selector"
+            style={{ outline: '1px solid blue' }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: active?.color || 'hsl(var(--primary))' }} />
+              <span className="truncate font-medium">
+                {isLoading ? 'Loading tracks...' : (active?.track_name || active?.title || 'Select a track')}
+              </span>
+            </div>
+            <ChevronsUpDown className="w-4 h-4 opacity-70 flex-shrink-0" />
+          </button>
+        </Dropdown.Trigger>
+
+        <Dropdown.Content 
+          className="min-w-[300px] bg-background border-2 shadow-xl rounded-lg overflow-hidden z-[9999]" 
+          sideOffset={4}
+          align="end"
+        >
         <div className="p-2 border-b bg-background">
           <input
             value={search}
@@ -147,8 +182,9 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             </button>
           </div>
         </div>
-      </Dropdown.Content>
-    </Dropdown.Root>
+        </Dropdown.Content>
+      </Dropdown.Root>
+    </div>
   );
 };
 
