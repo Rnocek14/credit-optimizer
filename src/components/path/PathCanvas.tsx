@@ -105,7 +105,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
       if (event.data?.type === 'TREE_LAYOUT_COMPLETE') {
         // Add a small delay to ensure layout is fully applied
         setTimeout(() => {
-          usePathStore.getState().validateNoOverlap();
+          // final sweep to clear any temporary "locked" flashes
+          setTimeout(() => {
+            usePathStore.getState().revalidateAllStatuses();
+          }, 80);
         }, 100);
       }
     };

@@ -170,17 +170,20 @@ interface PathState {
   setPrerequisites: (id: string, prerequisites: string[]) => void;
   setSuggestedNext: (id: string, suggestedNext: string[]) => void;
   validatePrerequisites: (id: string) => { ok: boolean; missing: string[] };
+  satisfiesByUserOrCompleted: (title: string) => boolean;
+  areAllPrereqsSatisfied: (nodeId: string) => boolean;
   autoLayoutPrereqOrder: () => void;
   autoLayoutTree: (orientation?: "LR" | "TB") => void;
   getSuggestedNextSteps: (nodeId: string) => string[];
   ensurePrerequisiteClosure: () => Promise<void>;
   getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => string;
   mergeDuplicateNodesByTitle: () => void;
-  revalidateAllStatuses: () => void;
+  revalidateAllStatuses: () => boolean;
   
   // Bulk operations
   loadTrackNodes: (trackId: string) => void;
   clearCanvas: () => void;
+  normalizeNodeStatuses: () => void;
 }
 
 export const usePathStore = create<PathState>()(
@@ -237,6 +240,38 @@ export const usePathStore = create<PathState>()(
           return `${n.id}:${Math.round(w)}x${Math.round(h)}`;
         }).sort();
         return parts.join("|");
+      },
+
+      // Returns true if a string title is satisfied by userSkills or a completed node with that title
+      satisfiesByUserOrCompleted: (title: string) => {
+        const S = get();
+        const key = slug(canonicalTitle(title));
+        // user skill
+        if (S.userSkills.some(s => slug(s) === key)) return true;
+        // completed node with same canonical title
+        const nodeMatch = S.nodes.find(n => slug(n.data?.title || '') === key);
+        return !!(nodeMatch && nodeMatch.data?.status === 'completed');
+      },
+
+      // Graph-aware check: all incoming prerequisite edges must come from completed nodes
+      // AND/OR any string titles listed in node.data.prerequisites must be satisfied.
+      areAllPrereqsSatisfied: (nodeId: string) => {
+        const S = get();
+        const node = S.nodes.find(n => n.id === nodeId);
+        if (!node) return true;
+
+        // Edge prereqs
+        const incoming = S.edges.filter(e => e.type === 'prerequisite' && e.target === nodeId);
+        const incomingOK = incoming.every(e => {
+          const src = S.nodes.find(n => n.id === e.source);
+          return src?.data?.status === 'completed';
+        });
+
+        // Title-based prereqs (if authoring still uses them)
+        const list = (node.data?.prerequisites || []).map(canonicalTitle);
+        const titlesOK = list.every(title => S.satisfiesByUserOrCompleted(title));
+
+        return incomingOK && titlesOK;
       },
 
       // Suspend/Resume helpers for bulk mutations
@@ -1122,6 +1157,8 @@ export const usePathStore = create<PathState>()(
                 // one final settle if sizes changed due to images/font
                 get().scheduleLayout('post-complete settle');
               } else {
+                // One more status pass post-measurement to clear spurious locks
+                get().revalidateAllStatuses();
                 get().validateNoOverlap();
               }
             }, 100);
@@ -1248,6 +1285,9 @@ export const usePathStore = create<PathState>()(
         } finally {
           resumeLayout();
         }
+        
+        // Final status pass ensures no false locks after all merges/connects
+        get().revalidateAllStatuses();
         get().scheduleLayout('post auto-fill');
       },
 
@@ -1322,12 +1362,25 @@ export const usePathStore = create<PathState>()(
       },
 
       revalidateAllStatuses: () => {
-        const { nodes, validatePrerequisites, setNodeStatus } = get();
-        for (const n of nodes) {
-          if (n.data.status === 'completed') continue;
-          const v = validatePrerequisites(n.id);
-          setNodeStatus(n.id, v.ok ? 'available' : 'locked');
-        }
+        const S = get();
+        let changed = false;
+
+        const next = S.nodes.map(n => {
+          // Completed stays completed
+          if (n.data?.status === 'completed') return n;
+
+          // If all prereqs are satisfied, it's available; otherwise locked
+          const ok = S.areAllPrereqsSatisfied(n.id);
+          const s: PathNode['data']['status'] = ok ? 'available' : 'locked';
+          if (n.data?.status !== s) {
+            changed = true;
+            return { ...n, data: { ...n.data, status: s } };
+          }
+          return n;
+        });
+
+        if (changed) set({ nodes: next });
+        return changed;
       },
 
       clearCanvas: () => {
@@ -1338,6 +1391,18 @@ export const usePathStore = create<PathState>()(
           selectedEdgeType: 'sequence',
           isDirty: true,
         });
+      },
+
+      // One-time boot migration: normalize undefined statuses
+      normalizeNodeStatuses: () => {
+        const S = get();
+        const next = S.nodes.map(n => {
+          if (n.data?.status) return n;
+          const hasNoIncoming = !S.edges.some(e => e.type === 'prerequisite' && e.target === n.id);
+          const status: PathNode['data']['status'] = hasNoIncoming ? 'available' : 'locked';
+          return { ...n, data: { ...n.data, status } };
+        });
+        set({ nodes: next });
       },
     }),
     {

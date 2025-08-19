@@ -71,10 +71,23 @@ export const PathNode = memo(({ data, selected }: PathNodeProps) => {
     }
   };
 
+  const getStatusBackgroundClass = (status?: string) => {
+    const normalizedStatus = status || 'available';
+    
+    if (normalizedStatus === 'completed') {
+      return 'bg-[hsl(var(--lp-green-50))] border-[hsl(var(--lp-green-200))]';
+    } else if (normalizedStatus === 'locked') {
+      return 'bg-[hsl(var(--lp-red-50))] border-[hsl(var(--lp-red-300))]';
+    } else {
+      // available / default
+      return 'bg-[hsl(var(--lp-blue-50))] border-[hsl(var(--lp-blue-200))]';
+    }
+  };
+
   return (
-    <Card className={`min-w-[280px] max-w-[320px] transition-all duration-200 ${
+    <Card className={`min-w-[280px] max-w-[320px] transition-all duration-200 rounded-xl border ${
       selected ? 'ring-2 ring-primary shadow-md' : 'shadow-sm hover:shadow-md'
-    } ${getStatusBorderClass(data.status)}`}>
+    } ${getStatusBackgroundClass(data.status)}`}>
       <Handle 
         type="target" 
         position={Position.Top} 

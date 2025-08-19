@@ -10,6 +10,19 @@ interface SkillNodeProps {
 }
 
 export const SkillNode = memo(({ data, selected }: SkillNodeProps) => {
+  const getSkillNodeBgClass = (status?: string) => {
+    const normalizedStatus = status || 'available';
+    
+    if (normalizedStatus === 'completed') {
+      return 'bg-[hsl(var(--lp-green-50))] border-[hsl(var(--lp-green-200))]';
+    } else if (normalizedStatus === 'locked') {
+      return 'bg-[hsl(var(--lp-red-50))] border-[hsl(var(--lp-red-300))]';
+    } else {
+      // available / default
+      return 'bg-[hsl(var(--lp-blue-50))] border-[hsl(var(--lp-blue-200))]';
+    }
+  };
+
   return (
     <div className={`relative min-w-[200px] ${selected ? 'ring-2 ring-primary' : ''}`}>
       {/* Handles for connections */}
@@ -27,7 +40,7 @@ export const SkillNode = memo(({ data, selected }: SkillNodeProps) => {
       {/* Compact skill pill */}
       <Badge 
         variant="secondary" 
-        className="px-3 py-2 bg-muted/80 border border-border/50 rounded-full text-xs font-medium shadow-sm"
+        className={`px-3 py-2 border border-border/50 rounded-full text-xs font-medium shadow-sm ${getSkillNodeBgClass(data.status)}`}
       >
         <div className="flex items-center gap-2">
           {data.status === 'completed' ? (

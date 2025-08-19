@@ -79,6 +79,16 @@ All colors MUST be HSL.
 
     --radius: 0.5rem;
 
+    /* Status colors for nodes */
+    --lp-green-50: 120 90% 96%;     /* Equivalent to #EBFEEF */
+    --lp-green-200: 159 75% 85%;    /* Equivalent to #A7F3D0 */
+    
+    --lp-red-50: 0 86% 97%;         /* Equivalent to #FEF2F2 */
+    --lp-red-300: 0 86% 82%;        /* Equivalent to #FCA5A5 */
+    
+    --lp-blue-50: 214 100% 97%;     /* Equivalent to #EFF6FF */
+    --lp-blue-200: 213 94% 88%;     /* Equivalent to #BFDBFE */
+
     --sidebar-background: 0 0% 98%;
 
     --sidebar-foreground: 240 5.3% 26.1%;
