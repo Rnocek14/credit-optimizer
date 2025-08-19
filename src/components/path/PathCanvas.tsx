@@ -3,9 +3,6 @@ import {
   ReactFlow,
   Controls,
   Background,
-  useNodesState,
-  useEdgesState,
-  addEdge,
   Connection,
   MarkerType,
   Panel,
@@ -33,32 +30,28 @@ const nodeTypes = {
 
 export function PathCanvas({ userId }: PathCanvasProps) {
   const { 
-    nodes: storeNodes, 
-    edges: storeEdges, 
+    nodes, 
+    edges, 
     activeNodeId,
     addNode,
     connect,
     moveNode,
     setActiveNode,
     clearCanvas,
+    removeNode,
+    removeEdge,
   } = usePathStore();
   
   const { activeTrackId } = useActiveTrackStore();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
 
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
         connect(params.source, params.target);
-        setEdges((eds) => addEdge({
-          ...params,
-          markerEnd: { type: MarkerType.ArrowClosed },
-        }, eds));
       }
     },
-    [connect, setEdges]
+    [connect]
   );
 
   const onNodeClick = useCallback((_: any, node: any) => {
@@ -235,11 +228,12 @@ export function PathCanvas({ userId }: PathCanvasProps) {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onNodeDragStop={onNodeDragStop}
+          onNodesDelete={(deleted) => deleted.forEach(n => removeNode(n.id))}
+          onEdgesDelete={(deleted) => deleted.forEach(e => removeEdge(e.id))}
+          deleteKeyCode={['Backspace', 'Delete']}
           nodeTypes={nodeTypes}
           fitView
           className="bg-background"
