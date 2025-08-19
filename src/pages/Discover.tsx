@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { Star, MapPin, Trophy, Eye, ArrowRight, Sparkles } from "lucide-react";
 
 interface FeaturedProfile {
@@ -124,6 +125,13 @@ export default function Discover() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      {/* Track Selector */}
+      <div className="container mx-auto px-4 pt-6">
+        <div className="flex justify-end">
+          <TrackSelector />
+        </div>
+      </div>
+      
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-50"></div>
