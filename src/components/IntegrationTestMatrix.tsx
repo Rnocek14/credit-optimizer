@@ -115,7 +115,7 @@ export function IntegrationTestMatrix() {
       case 'social-cert':
         try {
           const { data } = await supabase
-            .from('learning_challenges')
+            .from('challenge_participants')
             .select('*')
             .eq('user_id', aishaUserId)
             .limit(5);
@@ -130,8 +130,9 @@ export function IntegrationTestMatrix() {
       case 'maya-cert':
         try {
           const { data } = await supabase
-            .from('maya_workflows')
+            .from('autonomous_workflows')
             .select('*')
+            .eq('user_id', aishaUserId)
             .limit(5);
           return { 
             status: 'passed', 
@@ -180,7 +181,7 @@ export function IntegrationTestMatrix() {
       case 'persist-progress':
         try {
           const { data } = await supabase
-            .from('learning_challenges')
+            .from('course_progress')
             .select('*')
             .eq('user_id', aishaUserId)
             .limit(1);
@@ -196,7 +197,7 @@ export function IntegrationTestMatrix() {
         // Simulate concurrent update test
         try {
           const { data } = await supabase
-            .from('learning_challenges')
+            .from('course_progress')
             .select('id')
             .limit(1);
           return { status: 'passed', details: 'Concurrent updates simulation passed' };
