@@ -206,7 +206,7 @@ const readDemoFlag = () => {
 
 const isDemoMode = () =>
   (isBrowser && readDemoFlag()) ||
-  (isBrowser && import.meta.env.MODE !== 'production');
+  (typeof import.meta !== 'undefined' && import.meta.env?.MODE !== 'production');
 
 export const usePathStore = create<PathState>()(
   persist(
