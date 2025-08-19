@@ -27,14 +27,40 @@ export const useCrossHubIntegration = (userId?: string) => {
   const { generateCRIGuidance } = useMayaCRIIntegration(userId);
   const queryClient = useQueryClient();
 
+  // Add authentication check - if no userId, return disabled state
+  if (!userId) {
+    return {
+      saveToPlan: () => {
+        console.error('Cannot save to plan: No user authentication');
+        toast.error('Please log in to save items to your plan');
+      },
+      isSavingToPlan: false,
+      getContextualRecommendations: async () => [],
+      onMilestoneCompleted: async () => {},
+      checkContributeAccess: async () => false,
+      createUnifiedGoal: async () => {},
+      calculateCRIBoost: () => ({ boost: 0, explanation: '' }),
+      refreshCrossHubData: () => {}
+    };
+  }
+
   // Recommendations are now handled by dedicated useUnifiedRecommendations hook
 
 // Enhanced save to Plan with micro-goal creation and CRI boosting
   const saveToplanMutation = useMutation({
     mutationFn: async (item: SaveToPlanItem & { criBoost?: number; criExplanation?: string }) => {
+      console.log('🔐 Attempting save with userId:', userId);
+      
       if (!userId) {
-        console.error('Save to plan attempted without user ID:', { userId, item });
-        throw new Error('User authentication required to save items');
+        console.error('Save to plan failed: No user ID provided');
+        throw new Error('Authentication required - please log in to save items');
+      }
+
+      // Verify Supabase session exists
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('Save to plan failed: No active Supabase session');
+        throw new Error('Session expired - please log in again');
       }
 
       // Check for CRI influence on this item

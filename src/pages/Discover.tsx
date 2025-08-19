@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { Star, MapPin, Trophy, Eye, ArrowRight, Sparkles } from "lucide-react";
+import { Helmet } from 'react-helmet-async';
+import { AuthDebugPanel } from '@/components/debug/AuthDebugPanel';
+import { FunctionalityTester } from '@/components/debug/FunctionalityTester';
 
 interface FeaturedProfile {
   id: string;
@@ -125,6 +128,12 @@ export default function Discover() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <AuthDebugPanel />
+      <FunctionalityTester />
+      <Helmet>
+        <title>Discover Talent - PathfindAI</title>
+        <meta name="description" content="Browse verified AI-reviewed resumes from rising professionals and top mentors." />
+      </Helmet>
       {/* Track Selector - Enhanced Visibility */}
       <div className="container mx-auto px-4 pt-6">
         <div className="flex justify-end">

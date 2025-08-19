@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
 import { toast } from 'sonner';
+import { useAuthDebug } from '@/hooks/useAuthDebug';
 
 interface SaveToPlanButtonProps {
   item: SaveToPlanItem;
@@ -43,10 +44,22 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
 }) => {
   const [selectedPriority, setSelectedPriority] = useState<'high' | 'medium' | 'low'>('medium');
   
-  // Get current user for authentication
+  // Debug authentication state
+  useAuthDebug();
+  
+  // Get current user for authentication with better error handling
   const { data: currentUser, isLoading: isLoadingUser, error: userError } = useQuery({
     queryKey: ['current-user'],
-    queryFn: getCurrentUser
+    queryFn: getCurrentUser,
+    retry: 1,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
+  console.log('🔐 SaveToPlanButton auth state:', { 
+    currentUser: !!currentUser, 
+    userId: currentUser?.id, 
+    isLoading: isLoadingUser, 
+    error: userError?.message 
   });
   
   const { saveToPlan, isSavingToPlan, calculateCRIBoost } = useCrossHubIntegration(currentUser?.id);
@@ -74,17 +87,35 @@ export const SaveToPlanButton: React.FC<SaveToPlanButtonProps> = ({
     enabled: !!currentUser?.id
   });
 
-  const handleSave = (priority: 'high' | 'medium' | 'low' = selectedPriority) => {
+  const handleSave = async (priority: 'high' | 'medium' | 'low' = selectedPriority) => {
+    console.log('🎯 handleSave called:', { userId: currentUser?.id, item: item.title, priority });
+    
     if (!currentUser?.id) {
+      console.error('Save failed: No user ID');
       toast.error('Please log in to save items to your plan');
       return;
     }
-    
-    saveToPlan({
-      ...item,
-      priority,
-      timeEstimate: item.timeEstimate || getEstimatedTime(item.type)
-    });
+
+    try {
+      // Verify session before attempting save
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('Save failed: No active session');
+        toast.error('Session expired - please log in again');
+        window.location.href = '/auth';
+        return;
+      }
+
+      console.log('✅ Session verified, proceeding with save');
+      saveToPlan({
+        ...item,
+        priority,
+        timeEstimate: item.timeEstimate || getEstimatedTime(item.type)
+      });
+    } catch (error) {
+      console.error('Save to plan error:', error);
+      toast.error('Failed to save - please try again');
+    }
   };
 
   const getEstimatedTime = (type: string): string => {

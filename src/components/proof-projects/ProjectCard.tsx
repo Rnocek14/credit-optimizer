@@ -7,6 +7,7 @@ import { ProofProject } from '@/types/proofProjects';
 import { useProofProjects } from '@/hooks/useProofProjects';
 import { useState } from 'react';
 import { ProjectProgressTracker } from './ProjectProgressTracker';
+import { toast } from 'sonner';
 
 interface ProjectCardProps {
   project: ProofProject;
@@ -185,33 +186,50 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   console.log('📝 Adding to resume:', project);
                   
                   // Create proof item with correct ProofItem format  
-                  const proofItem = {
-                    id: project.id,
-                    title: project.title,
-                    type: 'portfolio' as const,
-                    description: project.description || `${project.project_type} project demonstrating ${project.skills_to_validate.join(', ')}`,
-                    link: project.github_url || project.demo_url || '',
-                    trackTitle: 'Proof Project',
-                    trackId: project.track_id || '',
-                    transcriptId: '',
-                    criScore: Math.min(85 + Math.random() * 15, 100)
-                  };
-                  
-                  // Store in localStorage for resume access
-                  const existingProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
-                  
-                  // Check if already exists to prevent duplicates
-                  const exists = existingProofs.some((p: any) => p.id === project.id);
-                  if (exists) {
-                    alert('Project already added to resume!');
-                    return;
+                  try {
+                    const proofItem = {
+                      id: project.id,
+                      title: project.title,
+                      type: 'portfolio' as const,
+                      description: project.description || `${project.project_type} project demonstrating ${(project.skills_to_validate || []).join(', ')}`,
+                      link: project.github_url || project.demo_url || '',
+                      trackTitle: 'Proof Project',
+                      trackId: project.track_id || '',
+                      transcriptId: '',
+                      criScore: Math.min(85 + Math.random() * 15, 100)
+                    };
+                    
+                    console.log('📝 Adding project to resume:', proofItem);
+                    
+                    // Store in localStorage for resume access
+                    const existingProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
+                    
+                    // Check if already exists to prevent duplicates
+                    const exists = existingProofs.some((p: any) => p.id === project.id);
+                    if (exists) {
+                      toast.error('Project already added to resume!');
+                      return;
+                    }
+                    
+                    const updatedProofs = [...existingProofs, proofItem];
+                    localStorage.setItem('proof_projects_for_resume', JSON.stringify(updatedProofs));
+                    
+                    console.log('✅ Project successfully saved to localStorage:', {
+                      savedItem: proofItem,
+                      totalProofs: updatedProofs.length
+                    });
+                    
+                    toast.success(`"${project.title}" has been added to your resume!`, {
+                      description: "Visit the Resume Builder to see it.",
+                      action: {
+                        label: "View Resume",
+                        onClick: () => window.location.href = '/progress?tab=resume'
+                      }
+                    });
+                  } catch (error) {
+                    console.error('❌ Failed to add project to resume:', error);
+                    toast.error('Failed to add project to resume. Please try again.');
                   }
-                  
-                  const updatedProofs = [...existingProofs, proofItem];
-                  localStorage.setItem('proof_projects_for_resume', JSON.stringify(updatedProofs));
-                  
-                  console.log('✅ Project added to localStorage:', proofItem);
-                  alert(`"${project.title}" has been added to your resume! Visit the Resume Builder to see it.`);
                 }}
               >
                 Add to Resume
