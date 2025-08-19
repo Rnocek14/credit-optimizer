@@ -9,7 +9,6 @@ export const QUERY_KEYS = {
   USER_LEVEL: (userId?: string, trackId?: string) => ['user-level', userId, trackId],
   
   // Track-aware data
-  CAREER_TRACKS: (userId?: string) => ['career-tracks', userId],
   COURSE_PROGRESS: (userId?: string, trackId?: string) => ['course-progress', userId, trackId],
   COURSE_HISTORY: (userId?: string, trackId?: string) => ['course-history', userId, trackId],
   LEARNING_MILESTONES: (userId?: string, trackId?: string) => ['learning-milestones', userId, trackId],
@@ -46,6 +45,11 @@ export const QUERY_KEYS = {
   TEACHERS_TOP: (limit = 10) => ['teachers', 'top', limit],
   ENHANCED_TRANSCRIPTS: (userId?: string, trackId?: string) => ['enhanced-transcripts', userId, trackId],
   USER_TEACHER_RATINGS: (userId?: string, teacherId?: string) => ['user-teacher-ratings', userId, teacherId],
+  
+  // Phase 6: Path Canvas & Provider system
+  PROVIDER_ALTERNATES: (skillTags?: string[], difficulty?: string, estimatedHours?: number) => 
+    ['provider-alternates', skillTags, difficulty, estimatedHours] as const,
+  CAREER_TRACKS: (userId?: string) => ['career-tracks', userId] as const,
 } as const;
 
 export type QueryKey = keyof typeof QUERY_KEYS;

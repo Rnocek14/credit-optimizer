@@ -59,10 +59,10 @@ export function useProviderAlternates({
       const alternatives: ProviderAlternative[] = [];
 
       // Institution-only alternatives
-      institutions?.forEach((institution) => {
+      institutions?.forEach((institution: any) => {
         alternatives.push({
           institutionId: institution.id,
-          institution,
+          institution: institution as Institution,
           totalScore: 0, // Will be calculated by ranking function
         });
       });
@@ -73,8 +73,8 @@ export function useProviderAlternates({
           alternatives.push({
             institutionId: teacher.institution.id,
             teacherId: teacher.id,
-            institution: teacher.institution as any,
-            teacher: teacher as any,
+            institution: teacher.institution as Institution,
+            teacher: teacher as Teacher,
             teacherRating: teacher.average_rating,
             outcomeScore: teacher.outcome_score,
             totalScore: 0, // Will be calculated by ranking function
