@@ -74,7 +74,7 @@ const canonicalCatalog: Array<{
 ];
 
 export interface PathNode extends Node {
-  type: 'track' | 'course' | 'project' | 'milestone';
+  type: 'track' | 'course' | 'project' | 'milestone' | 'skill';
   data: {
     title: string;
     description?: string;
@@ -114,6 +114,10 @@ interface PathState {
   V_GAP: number;
   PADX: number;
   PADY: number;
+
+  // Layout guards
+  isLayingOut: boolean;
+  layoutVersion: number;
 
   // Layout helpers
   getNodeSize: (id: string) => { w: number; h: number };
@@ -178,6 +182,35 @@ export const usePathStore = create<PathState>()(
       activeNodeId: undefined,
       selectedEdgeType: 'sequence' as PathEdge['type'],
       userSkills: [],
+
+      // Layout constants and guards
+      NODE_W: 280,
+      NODE_H: 132,
+      H_GAP: 160,
+      V_GAP: 80,
+      PADX: 80,
+      PADY: 80,
+      isLayingOut: false,
+      layoutVersion: 0,
+
+      // Safely read measured size from React Flow (if present), else fallback
+      getNodeSize: (id: string) => {
+        const n = get().nodes.find(x => x.id === id);
+        // Use measured dimensions first, then fallbacks based on node type
+        const measuredW = (n as any)?.measured?.width ?? (n as any)?.width;
+        const measuredH = (n as any)?.measured?.height ?? (n as any)?.height;
+        
+        // Skill nodes are smaller
+        if (n?.type === 'skill') {
+          const w = measuredW ?? 200;
+          const h = measuredH ?? 40;
+          return { w, h };
+        }
+        
+        const w = measuredW ?? get().NODE_W;
+        const h = measuredH ?? get().NODE_H;
+        return { w, h };
+      },
 
       // Database persistence state
       currentPathId: undefined,
@@ -786,129 +819,159 @@ export const usePathStore = create<PathState>()(
       },
 
       // Layout constants for tidy tree layout
-      NODE_W: 280,      // approximate node width in px (updated for PathNode cards)
-      NODE_H: 132,      // approximate node height in px (updated for PathNode cards)
-      H_GAP: 160,       // horizontal gap between ranks (wider for better breathing room)
-      V_GAP: 80,        // vertical gap between siblings (increased for better spacing)
-      PADX: 80,         // canvas left padding
-      PADY: 80,         // canvas top padding
-
-      // Safely read measured size from React Flow (if present), else fallback
-      getNodeSize: (id: string) => {
-        const n = get().nodes.find(x => x.id === id);
-        const w = (n as any)?.width ?? get().NODE_W;   // RF populates width/height post-measure
-        const h = (n as any)?.height ?? get().NODE_H;
-        return { w, h };
-      },
+      // (moved to initial state above)
 
       autoLayoutTree: (orientation: "LR" | "TB" = "LR") => {
-        const S = get(); // constants + helpers
-        const { nodes, edges } = get();
-        const prereqEdges = edges.filter(e => e.type === "prerequisite");
+        // Layout guard
+        if (get().isLayingOut) return;
+        set({ isLayingOut: true, layoutVersion: get().layoutVersion + 1 });
 
-        // Graph
-        const byId = new Map(nodes.map(n => [n.id, n]));
-        const parents = new Map<string, string[]>();
-        const children = new Map<string, string[]>();
-        const indeg = new Map<string, number>();
-        nodes.forEach(n => { parents.set(n.id, []); children.set(n.id, []); indeg.set(n.id, 0); });
-        prereqEdges.forEach(e => {
-          children.get(e.source)!.push(e.target);
-          parents.get(e.target)!.push(e.source);
-          indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
-        });
+        try {
+          const S = get(); // constants + helpers
+          const { nodes, edges } = get();
+          const prereqEdges = edges.filter(e => e.type === "prerequisite");
 
-        // Ranks via Kahn (longest-path)
-        const rank = new Map<string, number>();
-        const q: string[] = [];
-        nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); }});
-        while (q.length) {
-          const u = q.shift()!;
-          const ru = rank.get(u) || 0;
-          for (const v of children.get(u)!) {
-            rank.set(v, Math.max(ru + 1, rank.get(v) ?? 0));
-            indeg.set(v, (indeg.get(v) || 0) - 1);
-            if ((indeg.get(v) || 0) === 0) q.push(v);
-          }
-        }
-        if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0)); // cycle fallback
-
-        // Layers
-        const layers: Record<number, string[]> = {};
-        nodes.forEach(n => { const r = rank.get(n.id) || 0; (layers[r] ||= []).push(n.id); });
-
-        // Utility: avg parent Y center (based on placed nodes)
-        const yCenter = new Map<string, number>(); // we'll store top-left y but compute center on the fly
-        const nodeH = (id: string) => S.getNodeSize(id).h;
-        const nodeW = (id: string) => S.getNodeSize(id).w;
-        const centerOf = (id: string) => (yCenter.get(id) ?? S.PADY) + nodeH(id) / 2;
-        const avgParentCenter = (id: string) => {
-          const ps = parents.get(id)!;
-          if (!ps.length) return 0;
-          const vals = ps.map(p => centerOf(p));
-          return vals.reduce((a,b)=>a+b,0) / vals.length;
-        };
-
-        // Compute max width per rank to space columns
-        const orderedRanks = Object.keys(layers).map(Number).sort((a,b)=>a-b);
-        const maxW: number[] = [];
-        for (const r of orderedRanks) {
-          let w = 0;
-          for (const id of layers[r]) w = Math.max(w, nodeW(id));
-          maxW[r] = Math.max(w, S.NODE_W);
-        }
-        const xOffsets: number[] = [];
-        xOffsets[orderedRanks[0] ?? 0] = S.PADX;
-        for (let i = 1; i < orderedRanks.length; i++) {
-          const prev = orderedRanks[i-1], cur = orderedRanks[i];
-          xOffsets[cur] = (xOffsets[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
-        }
-
-        // Difficulty tie‑breaker
-        const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
-
-        // Place rank by rank
-        const pos = new Map<string, {x:number,y:number}>();
-        for (const r of orderedRanks) {
-          const layer = layers[r];
-
-          // Order by barycenter (median parent center), then difficulty, then title
-          const ordered = [...layer].sort((a, b) => {
-            const ba = avgParentCenter(a), bb = avgParentCenter(b);
-            if (ba !== bb) return ba - bb;
-            const da = diffOrder[(byId.get(a)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
-            const db = diffOrder[(byId.get(b)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
-            if (da !== db) return da - db;
-            const ta = (byId.get(a)?.data?.title || "");
-            const tb = (byId.get(b)?.data?.title || "");
-            return ta.localeCompare(tb);
+          // Graph
+          const byId = new Map(nodes.map(n => [n.id, n]));
+          const parents = new Map<string, string[]>();
+          const children = new Map<string, string[]>();
+          const indeg = new Map<string, number>();
+          nodes.forEach(n => { parents.set(n.id, []); children.set(n.id, []); indeg.set(n.id, 0); });
+          prereqEdges.forEach(e => {
+            children.get(e.source)!.push(e.target);
+            parents.get(e.target)!.push(e.source);
+            indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
           });
 
-          // Pack with no‑overlap sweep
-          let yCursor = S.PADY;
-          for (const id of ordered) {
-            const desired = Math.max(S.PADY, avgParentCenter(id) - nodeH(id)/2);
-            const y = Math.max(desired, yCursor);
-            const x = xOffsets[r] ?? S.PADX;
-
-            pos.set(id, { x, y });
-            yCenter.set(id, y);
-            yCursor = y + nodeH(id) + S.V_GAP;
+          // Ranks via Kahn (longest-path)
+          const rank = new Map<string, number>();
+          const q: string[] = [];
+          nodes.forEach(n => { if ((indeg.get(n.id) || 0) === 0) { rank.set(n.id, 0); q.push(n.id); }});
+          while (q.length) {
+            const u = q.shift()!;
+            const ru = rank.get(u) || 0;
+            for (const v of children.get(u)!) {
+              rank.set(v, Math.max(ru + 1, rank.get(v) ?? 0));
+              indeg.set(v, (indeg.get(v) || 0) - 1);
+              if ((indeg.get(v) || 0) === 0) q.push(v);
+            }
           }
+          if (rank.size === 0) nodes.forEach(n => rank.set(n.id, 0)); // cycle fallback
+
+          // Layers
+          const layers: Record<number, string[]> = {};
+          nodes.forEach(n => { const r = rank.get(n.id) || 0; (layers[r] ||= []).push(n.id); });
+
+          // Utility functions for layout
+          const yCenter = new Map<string, number>();
+          const nodeH = (id: string) => S.getNodeSize(id).h;
+          const nodeW = (id: string) => S.getNodeSize(id).w;
+          const centerOf = (id: string) => (yCenter.get(id) ?? S.PADY) + nodeH(id) / 2;
+          const avgParentCenter = (id: string) => {
+            const ps = parents.get(id)!;
+            if (!ps.length) return 0;
+            const vals = ps.map(p => centerOf(p));
+            return vals.reduce((a,b)=>a+b,0) / vals.length;
+          };
+
+          // Compute desired center (barycenter of parents)
+          const desiredTop = (id: string) => {
+            const h = nodeH(id);
+            const parentCenters = parents.get(id)!.map(p => centerOf(p));
+            const desiredCenter = parentCenters.length ? parentCenters.reduce((a,b)=>a+b,0)/parentCenters.length : (S.PADY + h/2);
+            return Math.max(S.PADY, desiredCenter - h/2);
+          };
+
+          // Dynamic gap calculation
+          const dynGap = (siblings: string[]) => {
+            const maxH = Math.max(...siblings.map(nodeH));
+            return Math.max(S.V_GAP, Math.ceil(maxH * 0.25));
+          };
+
+          // Compute max width per rank to space columns
+          const orderedRanks = Object.keys(layers).map(Number).sort((a,b)=>a-b);
+          const maxW: number[] = [];
+          for (const r of orderedRanks) {
+            let w = 0;
+            for (const id of layers[r]) w = Math.max(w, nodeW(id));
+            maxW[r] = Math.max(w, S.NODE_W);
+          }
+          const xOffsets: number[] = [];
+          xOffsets[orderedRanks[0] ?? 0] = S.PADX;
+          for (let i = 1; i < orderedRanks.length; i++) {
+            const prev = orderedRanks[i-1], cur = orderedRanks[i];
+            xOffsets[cur] = (xOffsets[prev] ?? S.PADX) + (maxW[prev] ?? S.NODE_W) + S.H_GAP;
+          }
+
+          // Difficulty tie‑breaker
+          const diffOrder: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
+
+          // Place rank by rank with two-pass layout
+          const pos = new Map<string, {x:number,y:number}>();
+          for (const r of orderedRanks) {
+            const layer = layers[r];
+
+            // Order by barycenter (median parent center), then difficulty, then title
+            const ordered = [...layer].sort((a, b) => {
+              const ba = avgParentCenter(a), bb = avgParentCenter(b);
+              if (ba !== bb) return ba - bb;
+              const da = diffOrder[(byId.get(a)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
+              const db = diffOrder[(byId.get(b)?.data?.difficulty as string) ?? "intermediate"] ?? 1;
+              if (da !== db) return da - db;
+              const ta = (byId.get(a)?.data?.title || "");
+              const tb = (byId.get(b)?.data?.title || "");
+              return ta.localeCompare(tb);
+            });
+
+            const gap = dynGap(ordered);
+
+            // Forward pass: ensure no overlap
+            let y = S.PADY;
+            for (const id of ordered) {
+              const top = Math.max(desiredTop(id), y);
+              pos.set(id, { x: xOffsets[r] ?? S.PADX, y: top });
+              yCenter.set(id, top);
+              y = top + nodeH(id) + gap;
+            }
+
+            // Reverse pass: pull up to balance around parent centers
+            for (let i = ordered.length - 2; i >= 0; i--) {
+              const id = ordered[i];
+              const next = ordered[i + 1];
+              const maxTop = pos.get(next)!.y - nodeH(id) - gap;
+              const balanced = Math.min(pos.get(id)!.y, maxTop);
+              const finalY = Math.max(S.PADY, balanced);
+              pos.set(id, { x: xOffsets[r] ?? S.PADX, y: finalY });
+              yCenter.set(id, finalY);
+            }
+
+            // Final forward pass to re-enforce non-overlap
+            let yCursor = S.PADY;
+            for (const id of ordered) {
+              const currentPos = pos.get(id)!;
+              if (currentPos.y < yCursor) {
+                pos.set(id, { x: currentPos.x, y: yCursor });
+                yCenter.set(id, yCursor);
+              }
+              yCursor = Math.max(yCursor, pos.get(id)!.y + nodeH(id) + gap);
+            }
+          }
+
+          // Orientation swap (TB)
+          const finalNodes = nodes.map(n => {
+            const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
+            return orientation === "LR"
+              ? { ...n, position: p }
+              : { ...n, position: { x: p.y, y: p.x } };
+          });
+
+          set({ nodes: finalNodes });
+
+        } finally {
+          set({ isLayingOut: false });
+          // Tell the in‑canvas controls to fitView
+          setTimeout(() => window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*"), 50);
         }
-
-        // Orientation swap (TB)
-        const finalNodes = nodes.map(n => {
-          const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
-          return orientation === "LR"
-            ? { ...n, position: p }
-            : { ...n, position: { x: p.y, y: p.x } };
-        });
-
-        set({ nodes: finalNodes });
-
-        // Tell the in‑canvas controls to fitView (already wired in your TreeLayoutControls)
-        setTimeout(() => window.postMessage({ type: "TREE_LAYOUT_COMPLETE" }, "*"), 0);
       },
 
       getSuggestedNextSteps: (nodeId) => {
@@ -948,7 +1011,7 @@ export const usePathStore = create<PathState>()(
           }
         }
 
-        const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, autoLayoutTree, userSkills } = get();
+        const { getOrCreateCourseByTitle, connect, validatePrerequisites, setNodeStatus, revalidateAllStatuses, mergeDuplicateNodesByTitle, addNode, userSkills } = get();
 
         let changed = true;
         let guard = 0;
@@ -964,12 +1027,35 @@ export const usePathStore = create<PathState>()(
               const desired = canonicalTitle(raw);
               const key = slug(desired);
 
-              // If user already has the skill, we don't need to create a node
+              // Always create visual connections - even when user has the skill
               if (get().userSkills.some(s => slug(s) === key)) {
-                // But if a node already exists for the title, mark completed so downstream unlocks
-                const existing = get().nodes.find(n => slug(n.data.title) === key);
-                if (existing && existing.data.status !== 'completed') {
-                  setNodeStatus(existing.id, 'completed');
+                let src = get().nodes.find(n => slug(n.data.title) === key);
+                
+                if (!src) {
+                  // Create a compact skill node for user-satisfied prerequisites
+                  const sid = addNode({
+                    type: 'skill',
+                    position: { x: 0, y: 0 }, // will be laid out later
+                    data: {
+                      title: desired,
+                      description: 'Satisfied via prior experience',
+                      skillTags: [raw],
+                      difficulty: 'beginner' as const,
+                      status: 'completed' as const,
+                      prerequisites: [],
+                      estimatedHours: 0,
+                    }
+                  });
+                  src = get().nodes.find(n => n.id === sid)!;
+                } else if (src.data.status !== 'completed') {
+                  setNodeStatus(src.id, 'completed');
+                }
+
+                // Always create the visual connection
+                const already = get().edges.some(e => e.type === 'prerequisite' && e.source === src!.id && e.target === target.id);
+                if (!already) {
+                  connect(src.id, target.id, 'prerequisite');
+                  changed = true;
                 }
                 continue;
               }
@@ -995,9 +1081,31 @@ export const usePathStore = create<PathState>()(
           }
         }
 
+        // Explicitly connect "Advanced React Patterns" to its prerequisites
+        const arp = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
+        if (arp) {
+          const prereqs = [
+            'React Hooks & Advanced State',
+            'Patterns & Composition in React',
+            'React Performance & Optimization',
+          ];
+          for (const p of prereqs) {
+            const pid = getOrCreateCourseByTitle(p);
+            const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arp.id);
+            if (!connected) {
+              connect(pid, arp.id, 'prerequisite');
+            }
+          }
+        }
+
         mergeDuplicateNodesByTitle();
         revalidateAllStatuses();
-        autoLayoutTree('LR');
+        
+        // Schedule layout with proper timing
+        await Promise.resolve(); // microtask
+        requestAnimationFrame(() => {
+          get().autoLayoutTree('LR');
+        });
       },
 
       getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode['data']>) => {

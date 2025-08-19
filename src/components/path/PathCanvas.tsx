@@ -47,9 +47,12 @@ interface PathCanvasProps {
   userId: string;
 }
 
+import { SkillNode } from './SkillNode';
+
 const nodeTypes = {
   track: PathNode,
   course: PathNode,
+  skill: SkillNode,
   project: PathNode,
   milestone: PathNode,
 };
