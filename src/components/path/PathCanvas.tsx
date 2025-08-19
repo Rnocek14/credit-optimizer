@@ -6,13 +6,13 @@ import {
   Connection,
   MarkerType,
   Panel,
-  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { PathNode } from './PathNode';
 import { PathRightRail } from './PathRightRail';
 import { PathManager } from './PathManager';
+import { TreeLayoutControls } from './TreeLayoutControls';
 import PathEdge from './PathEdge';
 import { usePathStore } from '@/stores/usePathStore';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
@@ -81,6 +81,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     ensurePrerequisiteClosure,
     refreshUserSkills,
   } = usePathStore();
+
+  // State for triggering fitView after layout operations
+  const [autoFillTrigger, setAutoFillTrigger] = React.useState(0);
+  const [treeLayoutTrigger, setTreeLayoutTrigger] = React.useState(0);
   const { activeTrackId } = useActiveTrackStore();
 
   useEffect(() => {
@@ -219,15 +223,13 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     }, 100);
   }, [addNode, connect]);
 
-  // Enhanced auto-fill function that refreshes skills and uses tree layout with fitView
-  const { fitView } = useReactFlow();
+  // Enhanced auto-fill function that refreshes skills and uses tree layout
   const handleAutoFillPrerequisites = async () => {
     try {
       await refreshUserSkills();
       await ensurePrerequisiteClosure();
       autoLayoutTree("LR");
-      // Fit view after layout with animation
-      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+      setAutoFillTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Auto-fill error:', error);
     }
@@ -251,13 +253,13 @@ export function PathCanvas({ userId }: PathCanvasProps) {
       } else if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         autoLayoutTree("LR");
-        setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+        setTreeLayoutTrigger(prev => prev + 1);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [autoLayoutPrereqOrder, autoLayoutTree, fitView]);
+  }, [autoLayoutPrereqOrder, autoLayoutTree]);
 
   return (
     <div className="flex h-full bg-background">
@@ -373,7 +375,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
               size="sm"
               onClick={() => {
                 autoLayoutTree("LR");
-                setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+                setTreeLayoutTrigger(prev => prev + 1);
               }}
               className="w-full text-xs"
               title="Organize in tree layout (hotkey: T)"
@@ -444,6 +446,10 @@ export function PathCanvas({ userId }: PathCanvasProps) {
         >
           <Background />
           <Controls />
+          <TreeLayoutControls 
+            onAutoFillComplete={autoFillTrigger > 0 ? () => {} : undefined}
+            onTreeLayoutComplete={treeLayoutTrigger > 0 ? () => {} : undefined}
+          />
           
           <Panel position="top-center">
             <div className="flex items-center gap-4">
