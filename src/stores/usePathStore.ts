@@ -14,29 +14,27 @@ const slug = (s?: string) =>
     .replace(/\s+/g, " ")               // collapse spaces
     .trim();
 
-// Enhanced synonym mapping
 const TITLE_SYNONYMS: Record<string, string> = {
-  "js": "JavaScript Basics",
-  "javascript": "JavaScript Basics",
-  "html": "HTML & CSS Foundations",
-  "css": "HTML & CSS Foundations",
-  "ts": "TypeScript Fundamentals",
-  "typescript": "TypeScript Fundamentals",
-  "node": "Node.js Essentials",
+  js: "JavaScript Basics",
+  javascript: "JavaScript Basics",
+  "html css": "HTML & CSS Foundations",
+  html: "HTML & CSS Foundations",
+  css: "HTML & CSS Foundations",
+  ts: "TypeScript Fundamentals",
+  typescript: "TypeScript Fundamentals",
+  node: "Node.js Essentials",
   "nodejs": "Node.js Essentials",
-  "express": "Express.js Framework",
-  "react": "React Fundamentals",
-  "rest": "REST API Design",
-  "api": "API Development",
-  "sql": "SQL Database Fundamentals",
-  "database": "SQL Database Fundamentals",
-  "python": "Python Programming",
-  "algorithms": "Data Structures & Algorithms",
-  "data structures": "Data Structures & Algorithms",
-  "git": "Git Version Control",
-  "typescript basics": "TypeScript Fundamentals",
-  "advanced javascript": "JavaScript Advanced Concepts",
   "node.js": "Node.js Essentials",
+  express: "Express.js Framework",
+  react: "React Fundamentals",
+  rest: "REST API Design",
+  api: "API Development",
+  sql: "SQL Database Fundamentals",
+  database: "SQL Database Fundamentals",
+  python: "Python Programming",
+  algorithms: "Data Structures & Algorithms",
+  "data structures": "Data Structures & Algorithms",
+  git: "Git Version Control",
 };
 
 const canonicalTitle = (label: string) =>
@@ -55,7 +53,7 @@ const canonicalCatalog: Array<{
   { title: 'Node.js Essentials', skills: ['node.js', 'javascript', 'backend'], difficulty: 'intermediate', estimatedHours: 25 },
   { title: 'Python Programming', skills: ['python', 'programming'], difficulty: 'beginner', estimatedHours: 25 },
   { title: 'Data Structures & Algorithms', skills: ['algorithms', 'data structures', 'programming'], difficulty: 'intermediate', estimatedHours: 40 },
-  { title: 'Database Fundamentals', skills: ['sql', 'databases'], difficulty: 'beginner', estimatedHours: 20 },
+  { title: 'SQL Database Fundamentals', skills: ['sql', 'databases'], difficulty: 'beginner', estimatedHours: 20 },
   { title: 'Git Version Control', skills: ['git', 'version control'], difficulty: 'beginner', estimatedHours: 10 },
   { title: 'TypeScript Basics', skills: ['typescript', 'javascript'], difficulty: 'intermediate', estimatedHours: 15 },
   { title: 'API Development', skills: ['api', 'rest', 'backend'], difficulty: 'intermediate', estimatedHours: 30 },
@@ -137,7 +135,7 @@ interface PathState {
   autoLayoutPrereqOrder: () => void;
   autoLayoutTree: (orientation?: "LR" | "TB") => void;
   getSuggestedNextSteps: (nodeId: string) => string[];
-  ensurePrerequisiteClosure: () => void;
+  ensurePrerequisiteClosure: () => Promise<void>;
   getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => string;
   mergeDuplicateNodesByTitle: () => void;
   
@@ -676,44 +674,37 @@ export const usePathStore = create<PathState>()(
         const node = nodes.find(n => n.id === id);
         if (!node) return { ok: true, missing: [] };
 
-        const toKey = (s: string) => String(s).trim().toLowerCase();
-        const acquired = new Set<string>((userSkills || []).map(toKey));
-
-        // Include skills/titles from completed nodes
+        const have = new Set<string>(
+          (userSkills || []).map(slug)
+        );
+        // Titles/skills from completed nodes count as "have"
         nodes.filter(n => n.data.status === 'completed').forEach(n => {
-          n.data.skillTags?.forEach(s => acquired.add(toKey(s)));
-          if (n.data.title) acquired.add(toKey(n.data.title));
+          if (n.data.title) have.add(slug(n.data.title));
+          (n.data.skillTags || []).forEach(s => have.add(slug(s)));
         });
 
         const missing: string[] = [];
 
-        // 1) Node-based prerequisites via edges
-        const prereqEdges = edges.filter(e => e.target === id && e.type === 'prerequisite');
+        // Node-based prerequisites: incoming edges must originate from COMPLETED nodes
+        const prereqEdges = edges.filter(e => e.type === 'prerequisite' && e.target === id);
         prereqEdges.forEach(e => {
           const src = nodes.find(n => n.id === e.source);
-          if (src?.data.status !== 'completed') {
+          if (!src || src.data.status !== 'completed') {
             missing.push(src?.data.title || e.source);
           }
         });
 
-        // 2) Skill-based prerequisites (free-text list on node)
-        const nodePrereqs = node.data.prerequisites || [];
-        nodePrereqs.forEach(req => {
-          const key = toKey(req);
-          // already satisfied by skills cache?
-          if (acquired.has(key)) return;
-          // satisfied by a completed node title (exact or fuzzy match)?
-          const matchedNode = nodes.find(n => {
-            if (!n.data.title || n.data.status !== 'completed') return false;
-            const titleKey = toKey(n.data.title);
-            return titleKey === key || titleKey.includes(key) || key.includes(titleKey);
-          });
-          if (matchedNode) return;
-          // otherwise it's missing (prevent duplicates)
-          if (!missing.includes(req)) {
-            missing.push(req);
-          }
-        });
+        // Skill/title-based prerequisites
+        for (const req of (node.data.prerequisites || [])) {
+          const wantSlug = slug(req);
+          // satisfied by user skill?
+          if (have.has(wantSlug)) continue;
+          // satisfied by a COMPLETED node's title?
+          const completedNode = nodes.find(n => slug(n.data.title) === wantSlug && n.data.status === 'completed');
+          if (completedNode) continue;
+          // still missing
+          missing.push(req);
+        }
 
         return { ok: missing.length === 0, missing };
       },
@@ -758,116 +749,92 @@ export const usePathStore = create<PathState>()(
         set({ nodes: updatedNodes });
       },
 
-      autoLayoutTree: (orientation = "LR") => {
+      autoLayoutTree: (orientation: "LR" | "TB" = "LR") => {
         const { nodes, edges } = get();
         const prereqEdges = edges.filter(e => e.type === 'prerequisite');
-        
-        // Build DAG using only prerequisite edges
-        const graph = new Map<string, Set<string>>();
-        const inDegree = new Map<string, number>();
-        
-        // Initialize all nodes
-        nodes.forEach(node => {
-          graph.set(node.id, new Set());
-          inDegree.set(node.id, 0);
+
+        // Build DAG
+        const adj = new Map<string, Set<string>>();
+        const indeg = new Map<string, number>();
+        nodes.forEach(n => { adj.set(n.id, new Set()); indeg.set(n.id, 0); });
+        prereqEdges.forEach(e => {
+          adj.get(e.source)?.add(e.target);
+          indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
         });
-        
-        // Build adjacency list and calculate in-degrees
-        prereqEdges.forEach(edge => {
-          graph.get(edge.source)?.add(edge.target);
-          inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
-        });
-        
-        // Topological sort via BFS (Kahn's algorithm)
+
+        // Kahn levels
         const levels: string[][] = [];
-        const queue: string[] = [];
-        const nodeLevel = new Map<string, number>();
-        
-        // Start with nodes having no prerequisites (in-degree 0)
-        nodes.forEach(node => {
-          if (inDegree.get(node.id) === 0) {
-            queue.push(node.id);
-            nodeLevel.set(node.id, 0);
-          }
+        const q: string[] = [];
+        const levelOf = new Map<string, number>();
+
+        nodes.forEach(n => {
+          if ((indeg.get(n.id) || 0) === 0) { q.push(n.id); levelOf.set(n.id, 0); }
         });
-        
-        while (queue.length > 0) {
-          const levelSize = queue.length;
-          const currentLevel: string[] = [];
-          
-          for (let i = 0; i < levelSize; i++) {
-            const nodeId = queue.shift()!;
-            currentLevel.push(nodeId);
-            
-            // Process neighbors
-            graph.get(nodeId)?.forEach(neighborId => {
-              const newInDegree = (inDegree.get(neighborId) || 0) - 1;
-              inDegree.set(neighborId, newInDegree);
-              
-              if (newInDegree === 0) {
-                const level = (nodeLevel.get(nodeId) || 0) + 1;
-                nodeLevel.set(neighborId, level);
-                queue.push(neighborId);
+
+        while (q.length) {
+          const size = q.length;
+          const layer: string[] = [];
+          for (let i = 0; i < size; i++) {
+            const u = q.shift()!;
+            layer.push(u);
+            for (const v of (adj.get(u) || [])) {
+              indeg.set(v, (indeg.get(v) || 0) - 1);
+              if ((indeg.get(v) || 0) === 0) {
+                levelOf.set(v, (levelOf.get(u) || 0) + 1);
+                q.push(v);
               }
-            });
+            }
           }
-          
-          if (currentLevel.length > 0) {
-            levels.push(currentLevel);
-          }
+          if (layer.length) levels.push(layer);
         }
-        
+
+        // Fallback: if cycles -> keep everything on level 0 to avoid NaN
+        if (levels.length === 0) levels.push(nodes.map(n => n.id));
+
         // Layout constants
-        const XG = 280, YG = 140, PADX = 80, PADY = 80;
-        
-        // Position nodes on grid with parent-child slot averaging
-        const updatedNodes = nodes.map(node => {
-          const level = nodeLevel.get(node.id) || 0;
-          const levelNodes = levels[level] || [];
-          const indexInLevel = levelNodes.indexOf(node.id);
-          
-          // Calculate average position from parents for better grouping
-          const parents = prereqEdges
-            .filter(e => e.target === node.id)
-            .map(e => e.source);
-            
-          let avgParentY = 0;
-          if (parents.length > 0) {
-            const parentPositions = parents.map(parentId => {
-              const parent = nodes.find(n => n.id === parentId);
-              return parent?.position.y || 0;
-            });
-            avgParentY = parentPositions.reduce((sum, y) => sum + y, 0) / parentPositions.length;
-          }
-          
-          const baseY = avgParentY || (PADY + indexInLevel * YG);
-          
+        const XG = 300, YG = 160, PADX = 80, PADY = 80;
+
+        // Order nodes within a level by (average parent y, then title)
+        const parentsOf = (id: string) => prereqEdges.filter(e => e.target === id).map(e => e.source);
+
+        const orderedLevels = levels.map(layer => {
+          return [...layer].sort((a, b) => {
+            const pa = parentsOf(a).map(pid => nodes.find(n => n.id === pid)?.position.y ?? 0);
+            const pb = parentsOf(b).map(pid => nodes.find(n => n.id === pid)?.position.y ?? 0);
+            const ya = pa.length ? pa.reduce((s,v)=>s+v,0) / pa.length : 0;
+            const yb = pb.length ? pb.reduce((s,v)=>s+v,0) / pb.length : 0;
+            if (ya !== yb) return ya - yb;
+            const ta = (nodes.find(n => n.id === a)?.data.title || "");
+            const tb = (nodes.find(n => n.id === b)?.data.title || "");
+            return ta.localeCompare(tb);
+          });
+        });
+
+        const updated = nodes.map(n => {
+          const L = levelOf.get(n.id) ?? 0;
+          const layer = orderedLevels[L] || [];
+          const i = Math.max(orderedLevels[L]?.indexOf(n.id) ?? -1, 0);
+
           if (orientation === "LR") {
             return {
-              ...node,
+              ...n,
               position: {
-                x: PADX + level * XG,
-                y: baseY,
+                x: PADX + L * XG,
+                y: PADY + i * YG,
               },
             };
-          } else { // TB
+          } else {
             return {
-              ...node,
+              ...n,
               position: {
-                x: PADX + indexInLevel * XG,
-                y: PADY + level * YG,
+                x: PADX + i * XG,
+                y: PADY + L * YG,
               },
             };
           }
         });
-        
-        set({ nodes: updatedNodes });
-        
-        // Optional: fit view after layout
-        setTimeout(() => {
-          // Trigger a fitView if React Flow instance is available
-          console.log('🎨 Tree layout complete, consider calling fitView()');
-        }, 100);
+
+        set({ nodes: updated });
       },
 
       getSuggestedNextSteps: (nodeId) => {
@@ -890,135 +857,110 @@ export const usePathStore = create<PathState>()(
       },
 
       ensurePrerequisiteClosure: async () => {
-        console.log('⚡ ensurePrerequisiteClosure clicked - starting...');
-        
-        // Show immediate feedback
-        toast.loading('Auto-filling prerequisites...', { id: 'auto-fill' });
-        
-        // Refresh user skills first
+        // Fresh skills first
         await get().refreshUserSkills();
-        
-        const { nodes, edges, getOrCreateCourseByTitle, connect, validatePrerequisites, userSkills, autoLayoutTree, setNodeStatus, mergeDuplicateNodesByTitle } = get();
 
+        const { getOrCreateCourseByTitle, connect, validatePrerequisites, userSkills, autoLayoutTree, setNodeStatus } = get();
 
-        const indexByTitle = () => {
-          const map = new Map<string, string>();
-          get().nodes.forEach(n => map.set(slug(n.data.title), n.id));
-          return map;
+        const titleIndex = () => {
+          const m = new Map<string, string>();
+          get().nodes.forEach(n => m.set(slug(n.data.title), n.id));
+          return m;
         };
 
-        let titleIndex = indexByTitle();
-        let changed = false;
-        let iterations = 0;
+        let index = titleIndex();
         let totalAdded = 0;
+        let changed = true;
+        let guard = 0;
 
-        console.log('🔍 Starting auto-fill prerequisites...');
-        console.log(`📊 Current state: ${nodes.length} nodes, ${edges.length} edges`);
-
-        // Iterate until stable (or safe cap)
-        while (iterations++ < 20) {
+        while (changed && guard++ < 20) {
           changed = false;
-          console.log(`🔄 Iteration ${iterations}`);
 
           for (const target of get().nodes) {
-            const validation = validatePrerequisites(target.id);
-            const { ok, missing } = validation;
-            
-            if (ok || missing.length === 0) {
-              console.log(`✅ Node "${target.data.title}" has all prerequisites satisfied`);
-              continue;
-            }
+            const { ok, missing } = validatePrerequisites(target.id);
+            if (ok || missing.length === 0) continue;
 
-            console.log(`📋 Node "${target.data.title}" missing ${missing.length} prerequisites:`, missing);
+            for (const raw of missing) {
+              const desired = canonicalTitle(raw);
+              const key = slug(desired);
 
-            for (const item of missing) {
-              console.log(`🔎 Processing prerequisite: "${item}"`);
-              
-              // Use robust canonicalization and deduplication
-              const want = canonicalTitle(item);
-              const prereqId = getOrCreateCourseByTitle(want, {
-                description: `Auto-generated prerequisite for ${item}`,
-                skillTags: [item],
-                difficulty: 'beginner',
-                estimatedHours: 10,
-              });
-
-              // Check if already connected
-              const alreadyConnected = get().edges.some(e => 
-                e.type === 'prerequisite' && e.source === prereqId && e.target === target.id
-              );
-              
-              if (!alreadyConnected) {
-                console.log(`🔗 Connecting "${want}" to "${target.data.title}"`);
-                connect(prereqId, target.id, 'prerequisite');
-                changed = true;
+              // existing course with same canonical title?
+              let srcId = index.get(key);
+              if (!srcId) {
+                // create (prefer catalog match inside helper)
+                srcId = getOrCreateCourseByTitle(desired);
+                index = titleIndex();
                 totalAdded++;
+                changed = true;
+
+                // smart-complete if the user already has the skills
+                const created = get().nodes.find(n => n.id === srcId);
+                const skills = created?.data?.skillTags || [];
+                const hasRelevant = skills.some(s => userSkills.some(u => slug(u) === slug(s)));
+                if (hasRelevant) {
+                  setNodeStatus(srcId, 'completed');
+                }
+              }
+
+              // connect if not already connected
+              const exists = get().edges.some(e =>
+                e.type === 'prerequisite' && e.source === srcId && e.target === target.id
+              );
+              if (!exists) {
+                connect(srcId, target.id, 'prerequisite');
+
+                // revalidate target status immediately
+                const v2 = validatePrerequisites(target.id);
+                setNodeStatus(target.id, v2.ok ? 'available' : 'locked');
+
+                changed = true;
               }
             }
           }
-
-          if (!changed) {
-            console.log(`🛑 No more changes needed after ${iterations} iterations`);
-            break;
-          }
         }
 
-        // Merge any duplicates created during the process
-        mergeDuplicateNodesByTitle();
-        
-        // Use tree layout instead of the old linear layout
-        autoLayoutTree("LR");
-
-        console.log(`✨ Auto-fill complete! Added ${totalAdded} prerequisites`);
-        
-        // Show completion toast
-        if (totalAdded > 0) {
-          toast.success(`Added ${totalAdded} prerequisite${totalAdded > 1 ? 's' : ''}!`, { id: 'auto-fill' });
-        } else {
-          toast.success('All prerequisites already satisfied!', { id: 'auto-fill' });
-        }
-
-        // Log any remaining unresolved prerequisites for debugging
-        const stillUnresolved: string[] = [];
-        get().nodes.forEach(node => {
-          const validation = validatePrerequisites(node.id);
-          if (!validation.ok) {
-            stillUnresolved.push(...validation.missing);
-          }
+        // Final pass: normalize statuses
+        get().nodes.forEach(n => {
+          if (n.data.status === 'completed') return;
+          const v = validatePrerequisites(n.id);
+          const next = v.ok ? 'available' : 'locked';
+          if (n.data.status !== next) setNodeStatus(n.id, next);
         });
-        
-        if (stillUnresolved.length > 0) {
-          console.table(stillUnresolved.map(item => ({
-            raw: item,
-            slug: slug(item),
-            canonical: canonicalTitle(item)
-          })));
-          console.log(`⚠️ Still ${stillUnresolved.length} unresolved prerequisites - consider adding synonyms`);
-        }
+
+        // Pretty layout
+        autoLayoutTree('LR');
       },
 
-      getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => {
+      getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode['data']>) => {
         const want = canonicalTitle(title);
-        const wantSlug = slug(want);
-        const existing = get().nodes.find(n => slug(n.data.title) === wantSlug);
+        const key = slug(want);
+
+        const existing = get().nodes.find(n => slug(n.data.title) === key);
         if (existing) return existing.id;
-        
-        // Try to find in catalog for better data
-        const catalogMatch = canonicalCatalog.find(c => slug(c.title) === slug(want));
-        
+
+        const catalog = (globalThis as any).canonicalCatalog as Array<{
+          title: string;
+          skills: string[];
+          difficulty: 'beginner' | 'intermediate' | 'advanced';
+          estimatedHours: number;
+        }> | undefined;
+
+        const match = catalog?.find(c => slug(c.title) === key);
+
         const id = get().addNode({
-          type: "course",
-          position: { x: 0, y: 0 }, // will be laid out later
+          type: 'course',
+          position: { x: 0, y: 0 }, // laid out later
           data: {
             title: want,
-            description: seed?.description ?? (catalogMatch ? `Covers: ${catalogMatch.skills.join(', ')}` : ''),
-            skillTags: seed?.skillTags ?? catalogMatch?.skills ?? [want],
-            difficulty: (seed?.difficulty as any) ?? catalogMatch?.difficulty ?? "beginner",
-            status: "available",
-            estimatedHours: seed?.estimatedHours ?? catalogMatch?.estimatedHours ?? 10,
+            description: seed?.description ?? (match ? `Covers: ${match.skills.join(', ')}` : ''),
+            skillTags: seed?.skillTags ?? match?.skills ?? [want],
+            difficulty: (seed?.difficulty as any) ?? match?.difficulty ?? 'beginner',
+            status: 'available',
+            estimatedHours: seed?.estimatedHours ?? match?.estimatedHours ?? 10,
             prerequisites: [],
           },
         });
+
         return id;
       },
 

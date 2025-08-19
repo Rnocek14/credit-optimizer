@@ -21,6 +21,23 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Palette, Download, Upload, RotateCcw, ArrowRight, Lock, Zap, GitBranch, Shuffle } from 'lucide-react';
 
+// Canonical catalog for prerequisite auto-fill
+const canonicalCatalog = [
+  { title: 'JavaScript Basics', skills: ['javascript', 'programming'], difficulty: 'beginner' as const, estimatedHours: 20 },
+  { title: 'HTML & CSS Foundations', skills: ['html', 'css', 'web development'], difficulty: 'beginner' as const, estimatedHours: 15 },
+  { title: 'React Fundamentals', skills: ['react', 'javascript', 'frontend'], difficulty: 'intermediate' as const, estimatedHours: 30 },
+  { title: 'Node.js Essentials', skills: ['node.js', 'javascript', 'backend'], difficulty: 'intermediate' as const, estimatedHours: 25 },
+  { title: 'Python Programming', skills: ['python', 'programming'], difficulty: 'beginner' as const, estimatedHours: 25 },
+  { title: 'Data Structures & Algorithms', skills: ['algorithms', 'data structures', 'programming'], difficulty: 'intermediate' as const, estimatedHours: 40 },
+  { title: 'SQL Database Fundamentals', skills: ['sql', 'databases'], difficulty: 'beginner' as const, estimatedHours: 20 },
+  { title: 'Git Version Control', skills: ['git', 'version control'], difficulty: 'beginner' as const, estimatedHours: 10 },
+  { title: 'TypeScript Fundamentals', skills: ['typescript', 'javascript'], difficulty: 'intermediate' as const, estimatedHours: 15 },
+  { title: 'API Development', skills: ['api', 'rest', 'backend'], difficulty: 'intermediate' as const, estimatedHours: 30 },
+];
+
+// Expose catalog to global for the store to access
+(globalThis as any).canonicalCatalog = canonicalCatalog;
+
 interface PathCanvasProps {
   userId: string;
 }
