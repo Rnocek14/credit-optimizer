@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Document, Page, Text, View, StyleSheet, PDFDownloadLink, Font } from '@react-pdf/renderer';
-import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X, Plus } from 'lucide-react';
+import { Download, Copy, Share, ExternalLink, Filter, Paperclip, Eye, Star, Send, X, Plus, Target } from 'lucide-react';
+import { TrackResumeExportModal } from '@/components/TrackResumeExportModal';
 import { useToast } from '@/hooks/use-toast';
 import { useProjectsStore } from '@/state/projectsStore';
 
@@ -935,29 +936,39 @@ export const ResumePreview = ({ userId }: ResumePreviewProps) => {
         </section>
       )}
 
-      <section className="flex gap-4 pt-4">
-        <PDFDownloadLink
-          document={<ResumePDFDocument profile={profile} tracks={tracks} steps={steps} />}
-          fileName={`${profile?.name?.replace(/\s+/g, '_')}_resume.pdf`}
-        >
-          {({ loading }) => (
-            <Button variant="default" disabled={loading}>
-              <Download className="w-4 h-4 mr-2" />
-              {loading ? 'Generating...' : 'Download PDF'}
+        {/* Enhanced Export Actions */}
+        <div className="flex flex-wrap items-center gap-3 mt-6">
+          {/* Track-Specific Export */}
+          <TrackResumeExportModal userId={userId}>
+            <Button className="flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Export by Track
             </Button>
-          )}
-        </PDFDownloadLink>
-        
-        <Button variant="outline" onClick={handleCopyJSON}>
-          <Copy className="w-4 h-4 mr-2" />
-          Copy JSON
-        </Button>
-        
-        <Button variant="ghost" onClick={handleShare}>
-          <Share className="w-4 h-4 mr-2" />
-          Share Resume Link
-        </Button>
-      </section>
+          </TrackResumeExportModal>
+
+          {/* Legacy PDF Export */}
+          <PDFDownloadLink
+            document={<ResumePDFDocument profile={profile} tracks={tracks} steps={steps} />}
+            fileName={`${profile?.name?.replace(/\s+/g, '_')}_resume.pdf`}
+          >
+            {({ loading }) => (
+              <Button variant="outline" disabled={loading}>
+                <Download className="w-4 h-4 mr-2" />
+                {loading ? 'Generating...' : 'Download PDF (Legacy)'}
+              </Button>
+            )}
+          </PDFDownloadLink>
+
+          <Button variant="outline" onClick={handleCopyJSON}>
+            <Copy className="w-4 h-4 mr-2" />
+            Copy JSON
+          </Button>
+
+          <Button variant="ghost" onClick={handleShare}>
+            <Share className="w-4 h-4 mr-2" />
+            Share Resume Link
+          </Button>
+        </div>
     </div>
   );
 };
