@@ -229,7 +229,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
         connect(todoNode.id, milestoneNode.id, 'prerequisite');
       }
       
-      // Add test scenario with missing prerequisites
+      // Add test scenario with missing prerequisites (no string prereqs - will be auto-filled via edges)
       const testNode = addNode({
         type: 'course',
         position: { x: 100, y: 400 },
@@ -239,7 +239,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           skillTags: ['React', 'Hooks', 'Performance'],
           difficulty: 'advanced',
           status: 'locked',
-          prerequisites: ['TypeScript', 'Node.js', 'Advanced JavaScript'],
+          prerequisites: [], // Let auto-fill create the proper edges
         },
       });
       

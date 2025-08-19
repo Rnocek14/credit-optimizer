@@ -178,6 +178,7 @@ interface PathState {
   ensurePrerequisiteClosure: () => Promise<void>;
   getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => string;
   mergeDuplicateNodesByTitle: () => void;
+  migrateStringPrereqsToEdges: () => boolean;
   revalidateAllStatuses: () => boolean;
   
   // Bulk operations
@@ -253,25 +254,63 @@ export const usePathStore = create<PathState>()(
         return !!(nodeMatch && nodeMatch.data?.status === 'completed');
       },
 
-      // Graph-aware check: all incoming prerequisite edges must come from completed nodes
-      // AND/OR any string titles listed in node.data.prerequisites must be satisfied.
+      // Graph-aware check: edges are source of truth, fallback to string titles only if no edges exist
       areAllPrereqsSatisfied: (nodeId: string) => {
         const S = get();
         const node = S.nodes.find(n => n.id === nodeId);
         if (!node) return true;
 
-        // Edge prereqs
+        // 1) Edge-based prereqs (source of truth)
         const incoming = S.edges.filter(e => e.type === 'prerequisite' && e.target === nodeId);
+        const hasIncoming = incoming.length > 0;
         const incomingOK = incoming.every(e => {
           const src = S.nodes.find(n => n.id === e.source);
           return src?.data?.status === 'completed';
         });
 
-        // Title-based prereqs (if authoring still uses them)
-        const list = (node.data?.prerequisites || []).map(canonicalTitle);
-        const titlesOK = list.every(title => S.satisfiesByUserOrCompleted(title));
+        // 2) Title-based prereqs (legacy authoring) — used only if NO edges exist
+        const titles = (node.data?.prerequisites || []).map(canonicalTitle);
+        const hasTitles = titles.length > 0;
+        const titlesOK = titles.every(title => S.satisfiesByUserOrCompleted(title));
 
-        return incomingOK && titlesOK;
+        // If there are any prerequisite edges, those take precedence.
+        // Only fall back to titles when there are no edges.
+        return hasIncoming ? incomingOK : (hasTitles ? titlesOK : true);
+      },
+
+      // One-time migration: convert leftover string prereqs → edges, then clear list
+      migrateStringPrereqsToEdges: () => {
+        const S = get();
+        let changed = false;
+
+        const nextNodes = S.nodes.map(n => {
+          const titles = (n.data?.prerequisites || []).map(canonicalTitle);
+          if (!titles.length) return n;
+
+          // If incoming edges exist, just clear the string list (edges are truth)
+          const hasIncoming = S.edges.some(e => e.type === 'prerequisite' && e.target === n.id);
+          if (hasIncoming) {
+            changed = true;
+            return { ...n, data: { ...n.data, prerequisites: [] } };
+          }
+
+          // No incoming edges, so create them from string titles
+          for (const t of titles) {
+            const srcId = S.getOrCreateCourseByTitle(t);
+            const exists = S.edges.some(e => e.type === 'prerequisite' && e.source === srcId && e.target === n.id);
+            if (!exists) {
+              S.connect(srcId, n.id, 'prerequisite');
+              changed = true;
+            }
+          }
+
+          // Clear legacy string list after migrating to edges
+          changed = true;
+          return { ...n, data: { ...n.data, prerequisites: [] } };
+        });
+
+        if (changed) set({ nodes: nextNodes });
+        return changed;
       },
 
       // Suspend/Resume helpers for bulk mutations
@@ -876,38 +915,29 @@ export const usePathStore = create<PathState>()(
 
         const missing: string[] = [];
 
-        // 2) node-based prerequisites (must be completed)
+        // Edge-first logic matching areAllPrereqsSatisfied
         const prereqEdges = edges.filter(e => e.type === 'prerequisite' && e.target === id);
-        prereqEdges.forEach(e => {
-          const src = nodes.find(n => n.id === e.source);
-          if (!src || src.data.status !== 'completed') {
-            missing.push(src?.data.title || e.source);
-          }
-        });
+        const hasIncoming = prereqEdges.length > 0;
 
-        // 3) free-text skill/title prerequisites
-        const reqs = node.data.prerequisites || [];
-        for (const raw of reqs) {
-          const want = canonicalTitle(raw);
-          const wantSlug = slug(want);
-
-          // (A) satisfied by user skills?
-          if (have.has(wantSlug)) continue;
-
-          // (B) satisfied by any COMPLETED node title?
-          const completedNode = nodes.find(n => slug(n.data.title) === wantSlug && n.data.status === 'completed');
-          if (completedNode) continue;
-
-          // (C) satisfied by any COMPLETED node skills?
-          const completedHasSkill = nodes.some(n =>
-            n.data.status === 'completed' &&
-            (n.data.skillTags || []).some(s => slug(s) === wantSlug)
-          );
-          if (completedHasSkill) continue;
-
-          // still missing (avoid dup strings)
-          if (!missing.some(m => slug(m) === wantSlug)) {
-            missing.push(want);
+        if (hasIncoming) {
+          // If incoming edges exist: compute missing only from those edges
+          prereqEdges.forEach(e => {
+            const src = nodes.find(n => n.id === e.source);
+            if (!src || src.data.status !== 'completed') {
+              missing.push(src?.data.title || e.source);
+            }
+          });
+        } else {
+          // No incoming edges: fall back to string titles using satisfiesByUserOrCompleted
+          const reqs = node.data.prerequisites || [];
+          for (const raw of reqs) {
+            const want = canonicalTitle(raw);
+            if (!get().satisfiesByUserOrCompleted(want)) {
+              const wantSlug = slug(want);
+              if (!missing.some(m => slug(m) === wantSlug)) {
+                missing.push(want);
+              }
+            }
           }
         }
 
@@ -1269,6 +1299,10 @@ export const usePathStore = create<PathState>()(
             const mAfter = get().nodes.length + get().edges.length;
             if (mBefore !== mAfter) markChanged();
           }
+
+          // Migrate any legacy string prerequisites into edges, then clear them
+          const migrated = get().migrateStringPrereqsToEdges();
+          if (migrated) markChanged();
 
           // Ensure "Advanced React Patterns" prerequisites after merge
           const arp = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
