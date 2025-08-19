@@ -20,6 +20,8 @@ import { useMayaCRIIntegration } from '@/hooks/useMayaCRIIntegration';
 import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { useTrackXP } from '@/hooks/useTrackXP';
+import { useRealtimeXP } from '@/hooks/useRealtimeXP';
+import { RealtimeXPTracker } from '@/components/RealtimeXPTracker';
 
 export function LiveTrackProgressAnalytics() {
   const { activeTrackId } = useActiveTrackStore();
@@ -36,7 +38,10 @@ export function LiveTrackProgressAnalytics() {
   // Track-specific course progress
   const { courseProgress } = useCourseProgress(user?.id);
   
-  // Track XP data
+  // Real-time XP tracking
+  const { currentXP: realtimeXP, currentLevel: realtimeLevel } = useRealtimeXP();
+  
+  // Track XP data (fallback)
   const { xp: trackXPData } = useTrackXP(activeTrackId);
   
   // Maya CRI insights
@@ -59,8 +64,8 @@ export function LiveTrackProgressAnalytics() {
       coursesCompleted,
       totalCourses,
       completionRate,
-      currentXP: trackXPData?.total_xp || 0,
-      currentLevel: Math.floor((trackXPData?.total_xp || 0) / 100) + 1,
+      currentXP: realtimeXP || trackXPData?.total_xp || 0,
+      currentLevel: realtimeLevel || Math.floor((trackXPData?.total_xp || 0) / 100) + 1,
       criScore: criBreakdown?.criScore || 0,
       criLevel: criBreakdown?.level || 'Beginner',
       weeklyVelocity: 0, // Will be calculated from actual data
@@ -68,7 +73,7 @@ export function LiveTrackProgressAnalytics() {
       skillsAcquired: criBreakdown?.components.skills || 0,
       certificationsEarned: 0 // From actual certifications data
     };
-  }, [courseProgress, trackXPData, criBreakdown, trajectory]);
+  }, [courseProgress, trackXPData, realtimeXP, realtimeLevel, criBreakdown, trajectory]);
 
   const completionPercentage = trackMetrics.completionRate;
   const xpProgress = trackMetrics.currentLevel > 1 ? 75 : 40; // Simplified for now
@@ -141,6 +146,9 @@ export function LiveTrackProgressAnalytics() {
               <span>{completionPercentage.toFixed(1)}% complete</span>
             </div>
           </div>
+
+          {/* Real-time XP Tracker */}
+          <RealtimeXPTracker showTestButton={true} />
 
           {/* XP & Level */}
           <div className="space-y-3">
