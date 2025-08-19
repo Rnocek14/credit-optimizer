@@ -127,7 +127,6 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           skillTags: ['React', 'JavaScript', 'Frontend'],
           difficulty: 'intermediate' as const,
           status: 'locked' as const,
-          prerequisites: ['JavaScript'],
           cri: 4.5,
         },
       },
@@ -143,7 +142,6 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           skillTags: ['React', 'State Management', 'Project'],
           difficulty: 'intermediate' as const,
           status: 'locked' as const,
-          prerequisites: ['React'],
         },
       },
       {
@@ -155,7 +153,6 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           skillTags: ['React', 'JavaScript', 'Frontend', 'Projects'],
           difficulty: 'intermediate' as const,
           status: 'locked' as const,
-          prerequisites: ['Todo App Project'],
         },
       },
     ];
@@ -179,6 +176,22 @@ export function PathCanvas({ userId }: PathCanvasProps) {
       if (todoNode && milestoneNode) {
         connect(todoNode.id, milestoneNode.id, 'prerequisite');
       }
+      
+      // Add test scenario with missing prerequisites
+      const testNode = addNode({
+        type: 'course',
+        position: { x: 100, y: 400 },
+        data: {
+          title: 'Advanced React Patterns',
+          description: 'Learn advanced React patterns and optimization',
+          skillTags: ['React', 'Hooks', 'Performance'],
+          difficulty: 'advanced',
+          status: 'locked',
+          prerequisites: ['TypeScript', 'Node.js', 'Advanced JavaScript'],
+        },
+      });
+      
+      console.log('✅ Demo data loaded with test scenario for auto-fill');
     }, 100);
   }, [addNode, connect]);
 

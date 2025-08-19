@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Node, Edge } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
+import toast from 'react-hot-toast';
 
 // Canonical course catalog for auto-filling prerequisites
 const canonicalCatalog: Array<{
@@ -657,11 +658,17 @@ export const usePathStore = create<PathState>()(
           const key = toKey(req);
           // already satisfied by skills cache?
           if (acquired.has(key)) return;
-          // satisfied by a completed node title?
-          const matchedNode = nodes.find(n => n.data.title && toKey(n.data.title) === key && n.data.status === 'completed');
+          // satisfied by a completed node title (exact or fuzzy match)?
+          const matchedNode = nodes.find(n => {
+            if (!n.data.title || n.data.status !== 'completed') return false;
+            const titleKey = toKey(n.data.title);
+            return titleKey === key || titleKey.includes(key) || key.includes(titleKey);
+          });
           if (matchedNode) return;
-          // otherwise it's missing
-          missing.push(req);
+          // otherwise it's missing (prevent duplicates)
+          if (!missing.includes(req)) {
+            missing.push(req);
+          }
         });
 
         return { ok: missing.length === 0, missing };
@@ -728,6 +735,9 @@ export const usePathStore = create<PathState>()(
 
       ensurePrerequisiteClosure: () => {
         console.log('⚡ ensurePrerequisiteClosure clicked - starting...');
+        
+        // Show immediate feedback
+        toast.loading('Auto-filling prerequisites...', { id: 'auto-fill' });
         
         const { nodes, edges, addNode, connect, validatePrerequisites, userSkills, autoLayoutPrereqOrder, setNodeStatus } = get();
 
@@ -943,7 +953,9 @@ export const usePathStore = create<PathState>()(
 
         console.log(`✨ Auto-fill complete! Added ${totalAdded} prerequisites`);
         
+        // Show completion toast
         if (totalAdded > 0) {
+          toast.success(`Added ${totalAdded} prerequisite${totalAdded > 1 ? 's' : ''}!`, { id: 'auto-fill' });
           console.log('🎨 Auto-layouting new prerequisites...');
           setTimeout(() => {
             autoLayoutPrereqOrder();
@@ -964,6 +976,7 @@ export const usePathStore = create<PathState>()(
             }, 100);
           }, 200);
         } else {
+          toast.success('All prerequisites already satisfied!', { id: 'auto-fill' });
           console.log('ℹ️ No prerequisites needed auto-filling');
         }
       },
