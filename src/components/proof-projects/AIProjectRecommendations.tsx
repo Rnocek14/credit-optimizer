@@ -18,8 +18,8 @@ const mockProjectTemplates: ProjectTemplate[] = [
     description: 'Build a machine learning model to predict customer churn using historical data and feature engineering',
     difficulty_level: 3,
     estimated_hours: 25,
-    skills_required: ['Python', 'Pandas', 'Scikit-learn', 'Data Visualization'],
-    project_type: 'Machine Learning',
+    skills_to_validate: ['Python', 'Pandas', 'Scikit-learn', 'Data Visualization'],
+    project_type: 'personal',
     template_data: {
       milestones: [
         { title: 'Data Collection & Exploration', description: 'Gather and explore customer data', milestone_order: 1, status: 'pending' },
@@ -44,8 +44,8 @@ const mockProjectTemplates: ProjectTemplate[] = [
     description: 'Create a dynamic dashboard to visualize sales trends, KPIs, and business metrics',
     difficulty_level: 2,
     estimated_hours: 18,
-    skills_required: ['Python', 'Streamlit', 'Plotly', 'Data Analysis'],
-    project_type: 'Data Visualization',
+    skills_to_validate: ['Python', 'Streamlit', 'Plotly', 'Data Analysis'],
+    project_type: 'personal',
     template_data: {
       milestones: [
         { title: 'Data Preparation', description: 'Clean and structure sales data', milestone_order: 1, status: 'pending' },
@@ -70,8 +70,8 @@ const mockProjectTemplates: ProjectTemplate[] = [
     description: 'Build a secure REST API with user authentication, CRUD operations, and proper documentation',
     difficulty_level: 4,
     estimated_hours: 35,
-    skills_required: ['Node.js', 'Express', 'JWT', 'Database Design', 'API Security'],
-    project_type: 'Backend Development',
+    skills_to_validate: ['Node.js', 'Express', 'JWT', 'Database Design', 'API Security'],
+    project_type: 'personal',
     template_data: {
       milestones: [
         { title: 'API Structure Setup', description: 'Set up Express server and routing', milestone_order: 1, status: 'pending' },
@@ -153,7 +153,7 @@ export function AIProjectRecommendations({ trackId, onUseTemplate }: AIProjectRe
               <div className="mb-4">
                 <div className="text-sm font-medium mb-2">Skills you'll practice:</div>
                 <div className="flex flex-wrap gap-1">
-                  {template.skills_required.map((skill) => (
+                  {template.skills_to_validate.map((skill) => (
                     <Badge key={skill} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>

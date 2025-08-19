@@ -98,7 +98,7 @@ const extractProofItems = (steps: any[], tracks: any[], proofProjects: any[] = [
     }
   });
 
-  // Add completed proof projects
+  // Add completed proof projects from database
   proofProjects.filter(project => project.status === 'completed').forEach((project: any) => {
     const track = tracks.find(t => t.id === project.track_id);
     const trackTitle = track?.title || track?.track_name || 'General';
@@ -107,12 +107,33 @@ const extractProofItems = (steps: any[], tracks: any[], proofProjects: any[] = [
       id: `project-${project.id}`,
       title: project.title,
       type: 'portfolio',
-      description: project.description || `${project.project_type} project demonstrating ${project.skills_to_validate.join(', ')}`,
+      description: project.description || `${project.project_type} project demonstrating ${(project.skills_to_validate || []).join(', ')}`,
       link: project.demo_url || project.github_url,
       trackTitle,
       criScore: Math.min(85 + Math.random() * 15, 100), // Simulate CRI score for completed projects
     });
   });
+
+  // Add localStorage proof projects (from "Add to Resume" button)
+  try {
+    const localStorageProofs = JSON.parse(localStorage.getItem('proof_projects_for_resume') || '[]');
+    localStorageProofs.forEach((project: any) => {
+      // Only add if not already included from database
+      if (!proofItems.find(item => item.id === project.id)) {
+        proofItems.push({
+          id: project.id,
+          title: project.title,
+          type: project.type || 'portfolio',
+          description: project.description,
+          link: project.link,
+          trackTitle: project.trackTitle || 'General',
+          criScore: project.criScore
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error parsing localStorage proofs:', error);
+  }
 
   return proofItems;
 };

@@ -53,8 +53,8 @@ export interface ProjectTemplate {
   description: string;
   difficulty_level: 1 | 2 | 3 | 4 | 5;
   estimated_hours: number;
-  skills_required: string[];
-  project_type: string;
+  skills_to_validate: string[];
+  project_type: 'personal' | 'course' | 'certification' | 'challenge';
   template_data: {
     milestones: Omit<ProjectMilestone, 'id' | 'project_id' | 'created_at'>[];
     validation_criteria: ValidationCriteria[];

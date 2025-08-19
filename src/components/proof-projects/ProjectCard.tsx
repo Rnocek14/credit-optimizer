@@ -182,17 +182,16 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  // Add to resume functionality
+                  // Add to resume functionality - use correct ProofItem format
                   const proofItem = {
                     id: project.id,
                     title: project.title,
-                    type: 'project',
-                    description: project.description || '',
-                    link: project.github_url || project.demo_url || '',
+                    type: 'portfolio' as const,
+                    description: project.description || `${project.project_type} project demonstrating ${project.skills_to_validate.join(', ')}`,
+                    link: project.github_url || project.demo_url,
                     trackTitle: 'Proof Project',
                     trackId: project.track_id || '',
-                    transcriptId: '',
-                    criScore: 85
+                    criScore: Math.min(85 + Math.random() * 15, 100)
                   };
                   
                   // Store in localStorage for resume access

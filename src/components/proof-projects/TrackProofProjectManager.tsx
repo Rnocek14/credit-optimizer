@@ -92,8 +92,14 @@ export function TrackProofProjectManager() {
             trackId={activeTrackId}
             onUseTemplate={(template) => {
               console.log('Using template:', template);
+              // Close any existing wizard first
+              setShowCreateWizard(false);
+              // Set template data
               setSelectedTemplate(template);
-              setShowCreateWizard(true);
+              // Small delay to ensure state is updated before opening
+              setTimeout(() => {
+                setShowCreateWizard(true);
+              }, 100);
             }}
           />
 
