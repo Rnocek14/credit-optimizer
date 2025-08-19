@@ -115,12 +115,17 @@ interface PathState {
   PADX: number;
   PADY: number;
 
-  // Layout guards
+  // Layout guards and scheduling
   isLayingOut: boolean;
   layoutVersion: number;
+  pendingLayout: boolean;
+  layoutDebounceId?: number;
+  dimensionSig: string;
 
   // Layout helpers
   getNodeSize: (id: string) => { w: number; h: number };
+  scheduleLayout: (reason?: string) => void;
+  recomputeDimensionSig: () => string;
 
   // Database persistence
   currentPathId?: string;
@@ -192,6 +197,8 @@ export const usePathStore = create<PathState>()(
       PADY: 80,
       isLayingOut: false,
       layoutVersion: 0,
+      pendingLayout: false,
+      dimensionSig: "",
 
       // Safely read measured size from React Flow (if present), else fallback
       getNodeSize: (id: string) => {
@@ -210,6 +217,38 @@ export const usePathStore = create<PathState>()(
         const w = measuredW ?? get().NODE_W;
         const h = measuredH ?? get().NODE_H;
         return { w, h };
+      },
+
+      recomputeDimensionSig: () => {
+        // Build a compact signature of id|w|h for all nodes we know sizes for.
+        const parts = get().nodes.map(n => {
+          const w = (n as any)?.width ?? (n as any)?.measured?.width ?? get().NODE_W;
+          const h = (n as any)?.height ?? (n as any)?.measured?.height ?? get().NODE_H;
+          return `${n.id}:${Math.round(w)}x${Math.round(h)}`;
+        }).sort();
+        return parts.join("|");
+      },
+
+      scheduleLayout: (reason) => {
+        const S = get();
+        // Coalesce calls—don't layout mid-mutation.
+        if (S.pendingLayout) return;
+        set({ pendingLayout: true });
+
+        // Two rAFs: let DOM paint + RF measure propagate
+        const doLayout = () => {
+          const sig = get().recomputeDimensionSig();
+          const changed = sig !== get().dimensionSig;
+          // If sizes changed since last run, update sig and run layout.
+          set({ dimensionSig: sig });
+          get().autoLayoutTree("LR");
+          set({ pendingLayout: false });
+        };
+
+        // debounce to end-of-tick; avoid setTimeout jitter during heavy updates
+        if (get().layoutDebounceId) cancelAnimationFrame(get().layoutDebounceId!);
+        const id = requestAnimationFrame(() => requestAnimationFrame(doLayout));
+        set({ layoutDebounceId: id });
       },
 
       // Database persistence state
@@ -523,6 +562,8 @@ export const usePathStore = create<PathState>()(
           isDirty: true,
         }));
         
+        get().scheduleLayout("node added");
+        
         return id;
       },
 
@@ -546,6 +587,8 @@ export const usePathStore = create<PathState>()(
           activeNodeId: state.activeNodeId === id ? undefined : state.activeNodeId,
           isDirty: true,
         }));
+        
+        get().scheduleLayout("node removed");
       },
 
       connect: (sourceId, targetId, edgeType) => {
@@ -572,6 +615,8 @@ export const usePathStore = create<PathState>()(
           isDirty: true,
         }));
         
+        get().scheduleLayout("edge added");
+        
         // If prerequisite edge, update target node status
         if (finalEdgeType === 'prerequisite') {
           const { validatePrerequisites } = get();
@@ -587,6 +632,8 @@ export const usePathStore = create<PathState>()(
           edges: state.edges.filter((edge) => edge.id !== id),
           isDirty: true,
         }));
+        
+        get().scheduleLayout("edge removed");
 
         if (edgeToRemove?.type === 'prerequisite') {
           const { validatePrerequisites, setNodeStatus } = get();
@@ -957,6 +1004,24 @@ export const usePathStore = create<PathState>()(
             }
           }
 
+          // Final per-rank collision sweep using measured dimensions
+          const ranks: Record<number, string[]> = {};
+          nodes.forEach(n => {
+            const r = rank.get(n.id) || 0;
+            (ranks[r] ||= []).push(n.id);
+          });
+
+          Object.keys(ranks).map(Number).sort((a,b)=>a-b).forEach(r => {
+            const list = ranks[r].slice().sort((a,b) => (pos.get(a)!.y - pos.get(b)!.y));
+            for (let i = 1; i < list.length; i++) {
+              const prev = list[i-1], cur = list[i];
+              const prevBox = { y: pos.get(prev)!.y, h: S.getNodeSize(prev).h };
+              const curBox  = { y: pos.get(cur)!.y,  h: S.getNodeSize(cur).h };
+              const minTop = prevBox.y + prevBox.h + S.V_GAP;
+              if (curBox.y < minTop) pos.set(cur, { x: pos.get(cur)!.x, y: minTop });
+            }
+          });
+
           // Orientation swap (TB)
           const finalNodes = nodes.map(n => {
             const p = pos.get(n.id) ?? { x: S.PADX, y: S.PADY };
@@ -1098,14 +1163,28 @@ export const usePathStore = create<PathState>()(
           }
         }
 
+        // Order: merge duplicates first, then explicit connections, then schedule layout
         mergeDuplicateNodesByTitle();
+
+        // Explicitly connect "Advanced React Patterns" after merging to ensure correct IDs
+        const arpAfterMerge = get().nodes.find(n => slug(n.data.title) === slug('Advanced React Patterns'));
+        if (arpAfterMerge) {
+          const prereqs = [
+            'React Hooks & Advanced State',
+            'Patterns & Composition in React',
+            'React Performance & Optimization',
+          ];
+          for (const p of prereqs) {
+            const pid = getOrCreateCourseByTitle(p);
+            const connected = get().edges.some(e => e.type === 'prerequisite' && e.source === pid && e.target === arpAfterMerge.id);
+            if (!connected) {
+              connect(pid, arpAfterMerge.id, 'prerequisite');
+            }
+          }
+        }
+
         revalidateAllStatuses();
-        
-        // Schedule layout with proper timing
-        await Promise.resolve(); // microtask
-        requestAnimationFrame(() => {
-          get().autoLayoutTree('LR');
-        });
+        get().scheduleLayout("post auto-fill");
       },
 
       getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode['data']>) => {

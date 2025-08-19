@@ -83,6 +83,9 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     autoLayoutTree,
     ensurePrerequisiteClosure,
     refreshUserSkills,
+    scheduleLayout,
+    recomputeDimensionSig,
+    dimensionSig,
   } = usePathStore();
 
   // State for triggering fitView after layout operations
@@ -95,6 +98,17 @@ export function PathCanvas({ userId }: PathCanvasProps) {
       usePathStore.getState().refreshUserSkills(userId);
     }
   }, [userId]);
+
+  // Add layout change detection - trigger relayout when dimensions settle
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const sig = recomputeDimensionSig();
+      if (sig !== dimensionSig) {
+        scheduleLayout("measure change");
+      }
+    }, 150); // lightweight poll to detect dimension changes
+    return () => clearInterval(tick);
+  }, [scheduleLayout, recomputeDimensionSig, dimensionSig]);
 
 
   const onConnect = useCallback(
@@ -377,7 +391,7 @@ export function PathCanvas({ userId }: PathCanvasProps) {
               variant="outline"
               size="sm"
               onClick={() => {
-                autoLayoutTree("LR");
+                scheduleLayout("tree layout button");
                 setTreeLayoutTrigger(prev => prev + 1);
               }}
               className="w-full text-xs"
