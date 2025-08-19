@@ -180,6 +180,7 @@ interface PathState {
   mergeDuplicateNodesByTitle: () => void;
   migrateStringPrereqsToEdges: () => boolean;
   revalidateAllStatuses: () => boolean;
+  debugPrereqStatus: (needle: string) => any;
   
   // Bulk operations
   loadTrackNodes: (trackId: string) => void;
@@ -728,7 +729,7 @@ export const usePathStore = create<PathState>()(
       },
 
       connect: (sourceId, targetId, edgeType = 'sequence') => {
-        const edgeId = `${sourceId}-${targetId}-${edgeType}`;
+        const edgeId = `${edgeType}:${sourceId}->${targetId}`;
         
         // Prevent duplicate edges
         if (get().edges.some(e => e.id === edgeId)) {
@@ -1415,6 +1416,48 @@ export const usePathStore = create<PathState>()(
 
         if (changed) set({ nodes: next });
         return changed;
+      },
+
+      debugPrereqStatus: (needle: string) => {
+        const S = get();
+        const byId = new Map(S.nodes.map(n => [n.id, n]));
+        const byTitle = new Map(S.nodes.map(n => [slug(canonicalTitle(n.data?.title||'')), n]));
+        const pick = () => byId.get(needle) || byTitle.get(slug(canonicalTitle(needle)));
+        const node = pick();
+        if (!node) return { error: `Node not found for "${needle}"` };
+
+        const incoming = S.edges.filter(e => e.type === 'prerequisite' && e.target === node.id);
+        const edgeReport = incoming.map(e => {
+          const src = byId.get(e.source);
+          return {
+            sourceId: e.source,
+            sourceTitle: src?.data?.title,
+            sourceStatus: src?.data?.status || 'unknown',
+            completed: src?.data?.status === 'completed'
+          };
+        });
+        const titles = (node.data?.prerequisites || []).map(canonicalTitle);
+        const titlesReport = titles.map(t => ({
+          title: t,
+          satisfied: S.satisfiesByUserOrCompleted(t)
+        }));
+
+        const hasIncoming = incoming.length > 0;
+        const incomingOK = edgeReport.every(r => r.completed);
+        const titlesOK = titles.length ? titlesReport.every(r => r.satisfied) : true;
+        const ok = hasIncoming ? incomingOK : titlesOK;
+
+        return {
+          nodeId: node.id,
+          nodeTitle: node.data?.title,
+          status: node.data?.status,
+          hasIncoming,
+          incomingOK,
+          titlesOK,
+          decision: ok ? 'available' : 'locked',
+          edgeReport,
+          titlesReport
+        };
       },
 
       clearCanvas: () => {
