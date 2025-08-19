@@ -4,6 +4,44 @@ import type { Node, Edge } from '@xyflow/react';
 import { supabase } from '@/integrations/supabase/client';
 import toast from 'react-hot-toast';
 
+// Robust normalizer for deduplication
+const slug = (s?: string) =>
+  (s || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")     // strip accents
+    .replace(/[\.\-_/]/g, " ")          // unify punctuation
+    .replace(/\s+/g, " ")               // collapse spaces
+    .trim();
+
+// Enhanced synonym mapping
+const TITLE_SYNONYMS: Record<string, string> = {
+  "js": "JavaScript Basics",
+  "javascript": "JavaScript Basics",
+  "html": "HTML & CSS Foundations",
+  "css": "HTML & CSS Foundations",
+  "ts": "TypeScript Fundamentals",
+  "typescript": "TypeScript Fundamentals",
+  "node": "Node.js Essentials",
+  "nodejs": "Node.js Essentials",
+  "express": "Express.js Framework",
+  "react": "React Fundamentals",
+  "rest": "REST API Design",
+  "api": "API Development",
+  "sql": "SQL Database Fundamentals",
+  "database": "SQL Database Fundamentals",
+  "python": "Python Programming",
+  "algorithms": "Data Structures & Algorithms",
+  "data structures": "Data Structures & Algorithms",
+  "git": "Git Version Control",
+  "typescript basics": "TypeScript Fundamentals",
+  "advanced javascript": "JavaScript Advanced Concepts",
+  "node.js": "Node.js Essentials",
+};
+
+const canonicalTitle = (label: string) =>
+  TITLE_SYNONYMS[slug(label)] ?? label;
+
 // Canonical course catalog for auto-filling prerequisites
 const canonicalCatalog: Array<{
   title: string;
@@ -97,8 +135,11 @@ interface PathState {
   setSuggestedNext: (id: string, suggestedNext: string[]) => void;
   validatePrerequisites: (id: string) => { ok: boolean; missing: string[] };
   autoLayoutPrereqOrder: () => void;
+  autoLayoutTree: (orientation?: "LR" | "TB") => void;
   getSuggestedNextSteps: (nodeId: string) => string[];
   ensurePrerequisiteClosure: () => void;
+  getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => string;
+  mergeDuplicateNodesByTitle: () => void;
   
   // Bulk operations
   loadTrackNodes: (trackId: string) => void;
@@ -457,12 +498,15 @@ export const usePathStore = create<PathState>()(
         // Prevent self-connections and duplicates
         if (sourceId === targetId) return;
         
-        const edgeId = `edge-${sourceId}-${targetId}`;
-        const existingEdge = get().edges.find(e => e.id === edgeId);
+        // Enhanced duplicate prevention with edge key
+        const edgeKey = `${finalEdgeType}:${sourceId}->${targetId}`;
+        const existingEdge = get().edges.find(e => 
+          `${e.type}:${e.source}->${e.target}` === edgeKey
+        );
         if (existingEdge) return;
         
         const newEdge: PathEdge = {
-          id: edgeId,
+          id: `edge-${sourceId}-${targetId}-${finalEdgeType}`,
           source: sourceId,
           target: targetId,
           type: finalEdgeType,
@@ -714,6 +758,118 @@ export const usePathStore = create<PathState>()(
         set({ nodes: updatedNodes });
       },
 
+      autoLayoutTree: (orientation = "LR") => {
+        const { nodes, edges } = get();
+        const prereqEdges = edges.filter(e => e.type === 'prerequisite');
+        
+        // Build DAG using only prerequisite edges
+        const graph = new Map<string, Set<string>>();
+        const inDegree = new Map<string, number>();
+        
+        // Initialize all nodes
+        nodes.forEach(node => {
+          graph.set(node.id, new Set());
+          inDegree.set(node.id, 0);
+        });
+        
+        // Build adjacency list and calculate in-degrees
+        prereqEdges.forEach(edge => {
+          graph.get(edge.source)?.add(edge.target);
+          inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+        });
+        
+        // Topological sort via BFS (Kahn's algorithm)
+        const levels: string[][] = [];
+        const queue: string[] = [];
+        const nodeLevel = new Map<string, number>();
+        
+        // Start with nodes having no prerequisites (in-degree 0)
+        nodes.forEach(node => {
+          if (inDegree.get(node.id) === 0) {
+            queue.push(node.id);
+            nodeLevel.set(node.id, 0);
+          }
+        });
+        
+        while (queue.length > 0) {
+          const levelSize = queue.length;
+          const currentLevel: string[] = [];
+          
+          for (let i = 0; i < levelSize; i++) {
+            const nodeId = queue.shift()!;
+            currentLevel.push(nodeId);
+            
+            // Process neighbors
+            graph.get(nodeId)?.forEach(neighborId => {
+              const newInDegree = (inDegree.get(neighborId) || 0) - 1;
+              inDegree.set(neighborId, newInDegree);
+              
+              if (newInDegree === 0) {
+                const level = (nodeLevel.get(nodeId) || 0) + 1;
+                nodeLevel.set(neighborId, level);
+                queue.push(neighborId);
+              }
+            });
+          }
+          
+          if (currentLevel.length > 0) {
+            levels.push(currentLevel);
+          }
+        }
+        
+        // Layout constants
+        const XG = 280, YG = 140, PADX = 80, PADY = 80;
+        
+        // Position nodes on grid with parent-child slot averaging
+        const updatedNodes = nodes.map(node => {
+          const level = nodeLevel.get(node.id) || 0;
+          const levelNodes = levels[level] || [];
+          const indexInLevel = levelNodes.indexOf(node.id);
+          
+          // Calculate average position from parents for better grouping
+          const parents = prereqEdges
+            .filter(e => e.target === node.id)
+            .map(e => e.source);
+            
+          let avgParentY = 0;
+          if (parents.length > 0) {
+            const parentPositions = parents.map(parentId => {
+              const parent = nodes.find(n => n.id === parentId);
+              return parent?.position.y || 0;
+            });
+            avgParentY = parentPositions.reduce((sum, y) => sum + y, 0) / parentPositions.length;
+          }
+          
+          const baseY = avgParentY || (PADY + indexInLevel * YG);
+          
+          if (orientation === "LR") {
+            return {
+              ...node,
+              position: {
+                x: PADX + level * XG,
+                y: baseY,
+              },
+            };
+          } else { // TB
+            return {
+              ...node,
+              position: {
+                x: PADX + indexInLevel * XG,
+                y: PADY + level * YG,
+              },
+            };
+          }
+        });
+        
+        set({ nodes: updatedNodes });
+        
+        // Optional: fit view after layout
+        setTimeout(() => {
+          // Trigger a fitView if React Flow instance is available
+          console.log('🎨 Tree layout complete, consider calling fitView()');
+        }, 100);
+      },
+
       getSuggestedNextSteps: (nodeId) => {
         const { nodes } = get();
         const node = nodes.find(n => n.id === nodeId);
@@ -733,41 +889,21 @@ export const usePathStore = create<PathState>()(
         return suggestions;
       },
 
-      ensurePrerequisiteClosure: () => {
+      ensurePrerequisiteClosure: async () => {
         console.log('⚡ ensurePrerequisiteClosure clicked - starting...');
         
         // Show immediate feedback
         toast.loading('Auto-filling prerequisites...', { id: 'auto-fill' });
         
-        const { nodes, edges, addNode, connect, validatePrerequisites, userSkills, autoLayoutPrereqOrder, setNodeStatus } = get();
+        // Refresh user skills first
+        await get().refreshUserSkills();
+        
+        const { nodes, edges, getOrCreateCourseByTitle, connect, validatePrerequisites, userSkills, autoLayoutTree, setNodeStatus, mergeDuplicateNodesByTitle } = get();
 
-        const normalize = (s?: string) => (s || '').trim().toLowerCase();
-
-        // Enhanced synonym mapping for common prerequisites
-        const PREREQ_SYNONYMS: Record<string, string> = {
-          "react": "React Fundamentals",
-          "javascript": "JavaScript Basics", 
-          "js": "JavaScript Basics",
-          "html": "HTML & CSS Foundations",
-          "css": "HTML & CSS Foundations",
-          "python": "Python Programming",
-          "node": "Node.js Essentials",
-          "nodejs": "Node.js Essentials",
-          "node.js": "Node.js Essentials",
-          "typescript": "TypeScript Basics",
-          "ts": "TypeScript Basics",
-          "git": "Git Version Control",
-          "api": "API Development",
-          "rest": "API Development",
-          "sql": "Database Fundamentals",
-          "database": "Database Fundamentals",
-          "algorithms": "Data Structures & Algorithms",
-          "data structures": "Data Structures & Algorithms",
-        };
 
         const indexByTitle = () => {
           const map = new Map<string, string>();
-          get().nodes.forEach(n => map.set(normalize(n.data.title), n.id));
+          get().nodes.forEach(n => map.set(slug(n.data.title), n.id));
           return map;
         };
 
@@ -796,149 +932,25 @@ export const usePathStore = create<PathState>()(
             console.log(`📋 Node "${target.data.title}" missing ${missing.length} prerequisites:`, missing);
 
             for (const item of missing) {
-              const key = normalize(item);
-              console.log(`🔎 Processing prerequisite: "${item}" (normalized: "${key}")`);
+              console.log(`🔎 Processing prerequisite: "${item}"`);
               
-              // 1) Check if a node with this title already exists but isn't connected
-              const existingId = titleIndex.get(key);
+              // Use robust canonicalization and deduplication
+              const want = canonicalTitle(item);
+              const prereqId = getOrCreateCourseByTitle(want, {
+                description: `Auto-generated prerequisite for ${item}`,
+                skillTags: [item],
+                difficulty: 'beginner',
+                estimatedHours: 10,
+              });
 
-              if (existingId) {
-                console.log(`✅ Found existing node "${item}" with ID: ${existingId}`);
-                // Check if already connected
-                const alreadyConnected = get().edges.some(e => 
-                  e.type === 'prerequisite' && e.source === existingId && e.target === target.id
-                );
-                
-                if (!alreadyConnected) {
-                  console.log(`🔗 Connecting existing node "${item}" to "${target.data.title}"`);
-                  connect(existingId, target.id, 'prerequisite');
-                  changed = true;
-                  
-                  // Force status recalculation after connection
-                  setTimeout(() => {
-                    const newValidation = validatePrerequisites(target.id);
-                    const newStatus = newValidation.ok ? 'available' : 'locked';
-                    console.log(`🔄 Updating "${target.data.title}" status to: ${newStatus}`);
-                    setNodeStatus(target.id, newStatus);
-                  }, 50);
-                } else {
-                  console.log(`⚠️ Node "${item}" already connected to "${target.data.title}"`);
-                }
-                continue;
-              }
-
-              // 2) Try to find a match in the catalog
-              let match = null;
+              // Check if already connected
+              const alreadyConnected = get().edges.some(e => 
+                e.type === 'prerequisite' && e.source === prereqId && e.target === target.id
+              );
               
-              // Strategy 1: Direct synonym mapping
-              const synonym = PREREQ_SYNONYMS[key];
-              if (synonym) {
-                match = canonicalCatalog.find(c => normalize(c.title) === normalize(synonym));
-                if (match) {
-                  console.log(`✅ Found synonym match: "${match.title}" for "${item}" via synonym "${synonym}"`);
-                }
-              }
-
-              // Strategy 2: Exact title match
-              if (!match) {
-                match = canonicalCatalog.find(c => normalize(c.title) === key);
-                if (match) {
-                  console.log(`✅ Found exact title match: "${match.title}" for "${item}"`);
-                }
-              }
-
-              // Strategy 3: Fuzzy title matching
-              if (!match) {
-                match = canonicalCatalog.find(c => {
-                  const catalogTitle = normalize(c.title);
-                  return catalogTitle.includes(key) || key.includes(catalogTitle);
-                });
-                if (match) {
-                  console.log(`✅ Found fuzzy title match: "${match.title}" for "${item}"`);
-                }
-              }
-
-              // Strategy 4: Skill-based matching
-              if (!match) {
-                match = canonicalCatalog.find(c => 
-                  c.skills.some(skill => {
-                    const normalizedSkill = normalize(skill);
-                    return normalizedSkill === key || 
-                           normalizedSkill.includes(key) || 
-                           key.includes(normalizedSkill);
-                  })
-                );
-                if (match) {
-                  console.log(`✅ Found skill-based match: "${match.title}" (${match.skills.join(', ')}) for "${item}"`);
-                }
-              }
-
-              if (match) {
-                console.log(`➕ Creating new course: "${match.title}"`);
-                const newId = addNode({
-                  type: 'course',
-                  position: { 
-                    x: target.position.x - 300, 
-                    y: target.position.y + (Math.random() * 140 - 70) 
-                  },
-                  data: {
-                    title: match.title,
-                    description: `Covers: ${match.skills.join(', ')}`,
-                    skillTags: match.skills,
-                    difficulty: match.difficulty,
-                    status: 'available',
-                    estimatedHours: match.estimatedHours,
-                    prerequisites: []
-                  }
-                });
-                
-                console.log(`🔗 Connecting new course "${match.title}" to "${target.data.title}"`);
-                connect(newId, target.id, 'prerequisite');
-                
-                titleIndex = indexByTitle();
-                changed = true;
-                totalAdded++;
-
-                // Smart completion: Mark as completed if user already has these skills
-                const hasRelevantSkills = match.skills.some(skill => 
-                  userSkills.some(userSkill => normalize(userSkill) === normalize(skill))
-                );
-                
-                if (hasRelevantSkills) {
-                  console.log(`🎯 Auto-completing "${match.title}" because user has relevant skills`);
-                  setTimeout(() => {
-                    setNodeStatus(newId, 'completed');
-                    // Also update target status after completion
-                    setTimeout(() => {
-                      const finalValidation = validatePrerequisites(target.id);
-                      const finalStatus = finalValidation.ok ? 'available' : 'locked';
-                      console.log(`🔄 Final update for "${target.data.title}" status to: ${finalStatus}`);
-                      setNodeStatus(target.id, finalStatus);
-                    }, 50);
-                  }, 100);
-                }
-              } else {
-                // Last resort: create a placeholder prerequisite
-                console.log(`🏗️ Creating placeholder prerequisite for "${item}"`);
-                const placeholderId = addNode({
-                  type: item.toLowerCase().includes('project') ? 'project' : 'course',
-                  position: { 
-                    x: target.position.x - 300, 
-                    y: target.position.y + (Math.random() * 140 - 70) 
-                  },
-                  data: {
-                    title: item,
-                    description: 'Auto-generated prerequisite - please customize',
-                    skillTags: [item],
-                    difficulty: 'beginner',
-                    status: 'available',
-                    prerequisites: []
-                  },
-                });
-                
-                console.log(`🔗 Connecting placeholder "${item}" to "${target.data.title}"`);
-                connect(placeholderId, target.id, 'prerequisite');
-                titleIndex = indexByTitle();
+              if (!alreadyConnected) {
+                console.log(`🔗 Connecting "${want}" to "${target.data.title}"`);
+                connect(prereqId, target.id, 'prerequisite');
                 changed = true;
                 totalAdded++;
               }
@@ -951,33 +963,101 @@ export const usePathStore = create<PathState>()(
           }
         }
 
+        // Merge any duplicates created during the process
+        mergeDuplicateNodesByTitle();
+        
+        // Use tree layout instead of the old linear layout
+        autoLayoutTree("LR");
+
         console.log(`✨ Auto-fill complete! Added ${totalAdded} prerequisites`);
         
         // Show completion toast
         if (totalAdded > 0) {
           toast.success(`Added ${totalAdded} prerequisite${totalAdded > 1 ? 's' : ''}!`, { id: 'auto-fill' });
-          console.log('🎨 Auto-layouting new prerequisites...');
-          setTimeout(() => {
-            autoLayoutPrereqOrder();
-            
-            // Final status validation for all nodes
-            setTimeout(() => {
-              console.log('🔄 Final status validation for all nodes...');
-              get().nodes.forEach(node => {
-                if (node.data.status !== 'completed') {
-                  const validation = validatePrerequisites(node.id);
-                  const correctStatus = validation.ok ? 'available' : 'locked';
-                  if (node.data.status !== correctStatus) {
-                    console.log(`🔄 Correcting status for "${node.data.title}": ${node.data.status} → ${correctStatus}`);
-                    setNodeStatus(node.id, correctStatus);
-                  }
-                }
-              });
-            }, 100);
-          }, 200);
         } else {
           toast.success('All prerequisites already satisfied!', { id: 'auto-fill' });
-          console.log('ℹ️ No prerequisites needed auto-filling');
+        }
+
+        // Log any remaining unresolved prerequisites for debugging
+        const stillUnresolved: string[] = [];
+        get().nodes.forEach(node => {
+          const validation = validatePrerequisites(node.id);
+          if (!validation.ok) {
+            stillUnresolved.push(...validation.missing);
+          }
+        });
+        
+        if (stillUnresolved.length > 0) {
+          console.table(stillUnresolved.map(item => ({
+            raw: item,
+            slug: slug(item),
+            canonical: canonicalTitle(item)
+          })));
+          console.log(`⚠️ Still ${stillUnresolved.length} unresolved prerequisites - consider adding synonyms`);
+        }
+      },
+
+      getOrCreateCourseByTitle: (title: string, seed?: Partial<PathNode["data"]>) => {
+        const want = canonicalTitle(title);
+        const wantSlug = slug(want);
+        const existing = get().nodes.find(n => slug(n.data.title) === wantSlug);
+        if (existing) return existing.id;
+        
+        // Try to find in catalog for better data
+        const catalogMatch = canonicalCatalog.find(c => slug(c.title) === slug(want));
+        
+        const id = get().addNode({
+          type: "course",
+          position: { x: 0, y: 0 }, // will be laid out later
+          data: {
+            title: want,
+            description: seed?.description ?? (catalogMatch ? `Covers: ${catalogMatch.skills.join(', ')}` : ''),
+            skillTags: seed?.skillTags ?? catalogMatch?.skills ?? [want],
+            difficulty: (seed?.difficulty as any) ?? catalogMatch?.difficulty ?? "beginner",
+            status: "available",
+            estimatedHours: seed?.estimatedHours ?? catalogMatch?.estimatedHours ?? 10,
+            prerequisites: [],
+          },
+        });
+        return id;
+      },
+
+      mergeDuplicateNodesByTitle: () => {
+        const seen = new Map<string, string>(); // slug -> keepId
+        const toRemove: string[] = [];
+        const { nodes, edges } = get();
+        
+        nodes.forEach(n => {
+          const key = slug(n.data.title);
+          const keepId = seen.get(key);
+          if (!keepId) { 
+            seen.set(key, n.id); 
+            return; 
+          }
+          
+          // rewire edges from n.id -> keepId
+          const newEdges = edges.map(e => ({
+            ...e,
+            source: e.source === n.id ? keepId : e.source,
+            target: e.target === n.id ? keepId : e.target,
+          }));
+          
+          // dedupe identical edges (same source+target+type)
+          const uniq = new Map<string, typeof newEdges[0]>();
+          newEdges.forEach(e => { 
+            uniq.set(`${e.type}:${e.source}->${e.target}`, e); 
+          });
+          
+          set({ edges: Array.from(uniq.values()) });
+          toRemove.push(n.id);
+        });
+        
+        toRemove.forEach(id => get().removeNode(id));
+        
+        // Safe cleanup of activeNode if it was removed
+        const { activeNodeId } = get();
+        if (activeNodeId && toRemove.includes(activeNodeId)) {
+          set({ activeNodeId: undefined });
         }
       },
 
@@ -987,6 +1067,7 @@ export const usePathStore = create<PathState>()(
           edges: [],
           activeNodeId: undefined,
           selectedEdgeType: 'sequence',
+          isDirty: true,
         });
       },
     }),

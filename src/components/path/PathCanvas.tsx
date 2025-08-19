@@ -55,7 +55,9 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     removeNode,
     removeEdge,
     autoLayoutPrereqOrder,
+    autoLayoutTree,
     ensurePrerequisiteClosure,
+    refreshUserSkills,
   } = usePathStore();
   const { activeTrackId } = useActiveTrackStore();
 
@@ -195,6 +197,17 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     }, 100);
   }, [addNode, connect]);
 
+  // Enhanced auto-fill function that refreshes skills and uses tree layout
+  const handleAutoFillPrerequisites = async () => {
+    try {
+      await refreshUserSkills();
+      await ensurePrerequisiteClosure();
+      autoLayoutTree("LR");
+    } catch (error) {
+      console.error('Auto-fill error:', error);
+    }
+  };
+
   const activeNode = useMemo(() => 
     nodes.find(n => n.id === activeNodeId),
     [nodes, activeNodeId]
@@ -203,15 +216,22 @@ export function PathCanvas({ userId }: PathCanvasProps) {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return; // Don't trigger shortcuts when typing in inputs
+      }
+      
       if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         autoLayoutPrereqOrder();
+      } else if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        autoLayoutTree("LR");
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [autoLayoutPrereqOrder]);
+  }, [autoLayoutPrereqOrder, autoLayoutTree]);
 
   return (
     <div className="flex h-full bg-background">
@@ -317,14 +337,25 @@ export function PathCanvas({ userId }: PathCanvasProps) {
               size="sm"
               onClick={autoLayoutPrereqOrder}
               className="w-full text-xs"
+              title="Auto-layout nodes in prerequisite order (hotkey: A)"
             >
               <RotateCcw className="w-3 h-3 mr-1" />
               Auto Layout (A)
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => autoLayoutTree("LR")}
+              className="w-full text-xs"
+              title="Organize in tree layout (hotkey: T)"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Tree Layout (T)
+            </Button>
+            <Button
               variant="default"
               size="sm"
-              onClick={ensurePrerequisiteClosure}
+              onClick={handleAutoFillPrerequisites}
               className="w-full text-xs"
               title="Automatically add missing prerequisite courses"
             >
