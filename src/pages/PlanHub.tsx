@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
+import { TrackSelector } from "@/components/tracks/TrackSelector";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
 import { TodayDashboard } from "@/components/TodayDashboard";
 import { SkillGapRecommendations } from "@/components/SkillGapRecommendations";
@@ -87,7 +88,7 @@ export default function PlanHub() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Track selector will be added later when the component exists */}
+            <TrackSelector className="text-foreground" />
           </div>
         </div>
 
