@@ -68,16 +68,16 @@ export function HubNavigation() {
   ];
 
   return (
-    <nav data-testid="hub-nav" data-stage={stage} className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-      <div className="container mx-auto px-4">
+    <nav data-testid="hub-nav" data-stage={stage} className="bg-glass border-b sticky top-0 z-50">
+      <div className="container-xl">
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-2 py-3">
+        <div className="hidden md:flex items-center gap-2 py-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity mr-6">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
+          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity mr-8">
+            <div className="w-9 h-9 bg-gradient-primary rounded-lg flex items-center justify-center shadow-colored">
               <Target className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <span className="text-h4 font-bold bg-gradient-primary bg-clip-text text-transparent">
               Life Path
             </span>
           </Link>
@@ -91,8 +91,8 @@ export function HubNavigation() {
                 size="sm"
                 asChild
                 className={cn(
-                  "gap-2 font-medium",
-                  isActive(hub.href) && "bg-primary text-primary-foreground"
+                  "gap-2 font-medium interactive",
+                  isActive(hub.href) && "bg-primary text-primary-foreground shadow-elevation"
                 )}
               data-testid={`nav-${hub.id}`}
             >
@@ -110,7 +110,7 @@ export function HubNavigation() {
                 <Button
                   variant={location.pathname.startsWith("/contribute") ? "default" : "ghost"}
                   size="sm"
-                  className="gap-2 font-medium"
+                  className="gap-2 font-medium interactive"
                   data-testid="nav-contribute"
                 >
                   <Settings className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function HubNavigation() {
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuContent align="start" className="w-56 bg-popover shadow-floating border">
                   <DropdownMenuItem asChild>
                     <Link to="/contribute?tab=teach" className="flex items-center gap-2">
                       <Settings className="h-4 w-4" />
@@ -160,8 +160,8 @@ export function HubNavigation() {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
-          <div className="flex items-center justify-around py-2">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-glass border-t z-50 shadow-floating">
+          <div className="flex items-center justify-around py-3">
             {visibleHubs.map((hub) => {
               const Icon = hub.icon;
               return (
@@ -169,10 +169,10 @@ export function HubNavigation() {
                   key={hub.id}
                   to={hub.href}
                   className={cn(
-                    "flex flex-col items-center gap-1 px-3 py-2 text-xs",
+                    "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium interactive rounded-lg",
                     isActive(hub.href) 
-                      ? "text-primary font-medium" 
-                      : "text-muted-foreground"
+                      ? "text-primary bg-primary-light" 
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                   data-testid={`nav-${hub.id}`}
                 >
@@ -186,10 +186,10 @@ export function HubNavigation() {
               <Link
                 to="/contribute"
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 text-xs",
+                  "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium interactive rounded-lg",
                   location.pathname.startsWith("/contribute")
-                    ? "text-primary font-medium"
-                    : "text-muted-foreground"
+                    ? "text-primary bg-primary-light"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
                 data-testid="nav-contribute"
               >
