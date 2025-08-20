@@ -8611,6 +8611,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_age_penalty: {
+        Args: { p_age: number }
+        Returns: number
+      }
       get_badge_for_user: {
         Args: { badge_slug: string; user_uuid?: string }
         Returns: {
