@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, TrendingUp, AlertTriangle, Clock, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { analyzeCareerSwitch, getUserCareerTracks, type CareerSwitchAnalysis } from '@/lib/switching';
 import { CareerSwitchResults } from '@/components/CareerSwitchResults';
@@ -11,10 +13,23 @@ import { useToast } from '@/hooks/use-toast';
 export const CareerSwitchSimulator = () => {
   const [fromTrackId, setFromTrackId] = useState<string>('');
   const [toTrackId, setToTrackId] = useState<string>('');
+  const [userAge, setUserAge] = useState<string>('30');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<CareerSwitchAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedScenarios, setSavedScenarios] = useState<any[]>([]);
   const { toast } = useToast();
+
+  // Sample locations (in a real app, this would come from a database)
+  const locations = [
+    { id: 'sf', name: 'San Francisco, CA', salary: '+40%', col: '+60%' },
+    { id: 'ny', name: 'New York, NY', salary: '+30%', col: '+50%' },
+    { id: 'austin', name: 'Austin, TX', salary: '+10%', col: '+10%' },
+    { id: 'toronto', name: 'Toronto, ON', salary: '-10%', col: '+20%' },
+    { id: 'london', name: 'London, UK', salary: 'Base', col: '+30%' },
+    { id: 'berlin', name: 'Berlin, Germany', salary: '-20%', col: 'Base' }
+  ];
 
   const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
     queryKey: ['career-tracks'],
@@ -46,7 +61,12 @@ export const CareerSwitchSimulator = () => {
     setError(null);
     
     try {
-      const result = await analyzeCareerSwitch(fromTrackId, toTrackId);
+      const result = await analyzeCareerSwitch(
+        fromTrackId, 
+        toTrackId, 
+        selectedLocation || undefined,
+        parseInt(userAge) || 30
+      );
       setAnalysis(result);
       toast({
         title: "Analysis Complete",
@@ -93,7 +113,7 @@ export const CareerSwitchSimulator = () => {
       <CardContent className="space-y-6">
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Current Track</label>
+            <Label htmlFor="current-track">Current Track</Label>
             <Select value={fromTrackId} onValueChange={setFromTrackId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select current track" />
@@ -109,7 +129,7 @@ export const CareerSwitchSimulator = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Target Track</label>
+            <Label htmlFor="target-track">Target Track</Label>
             <Select value={toTrackId} onValueChange={setToTrackId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select target track" />
@@ -118,6 +138,48 @@ export const CareerSwitchSimulator = () => {
                 {tracks?.map((track) => (
                   <SelectItem key={track.id} value={track.id}>
                     {track.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Additional Parameters */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="user-age">Your Age</Label>
+            <div className="relative">
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="user-age"
+                type="number"
+                value={userAge}
+                onChange={(e) => setUserAge(e.target.value)}
+                placeholder="30"
+                min="18"
+                max="100"
+                className="pl-9"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Used for age penalty calculation</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Target Location (Optional)</Label>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select target location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{location.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {location.salary} salary, {location.col} COL
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

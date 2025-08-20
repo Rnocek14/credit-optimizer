@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.career-risk-analyzer]
 verify_jwt = false
 
+[functions.location-switch-optimizer]
+verify_jwt = false
+
 [functions.coursera-api]
 verify_jwt = false
 

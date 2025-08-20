@@ -93,26 +93,42 @@ serve(async (req) => {
 
     const skillIds = trackSkills?.map(s => s.skill_node_id) || [];
 
-    // Get automation risk for skills - query nodes directly by automation_risk_pct
-    const { data: skillNodes, error: skillNodesError } = await supabase
-      .from('career_graph_nodes')
+    // Get automation risk from seeded data - query skill_automation_risk table
+    const { data: skillAutomationData, error: automationError } = await supabase
+      .from('skill_automation_risk')
       .select('automation_risk_pct')
-      .in('id', skillIds)
-      .not('automation_risk_pct', 'is', null);
+      .in('skill_id', skillIds);
 
-    if (skillNodesError) {
-      console.error('Skill nodes query error:', skillNodesError);
+    if (automationError) {
+      console.error('Skill automation risk query error:', automationError);
     }
 
-    // Calculate AI job risk from skill nodes
-    const avgAutomationRisk = skillNodes && skillNodes.length > 0 
-      ? skillNodes.reduce((sum, node) => sum + (node.automation_risk_pct || 0), 0) / skillNodes.length
-      : 25; // Default moderate risk
+    // Calculate AI job risk from seeded data, fallback to nodes if needed
+    let avgAutomationRisk = 25; // Default moderate risk
+    
+    if (skillAutomationData && skillAutomationData.length > 0) {
+      avgAutomationRisk = skillAutomationData.reduce((sum, skill) => sum + (skill.automation_risk_pct || 0), 0) / skillAutomationData.length;
+    } else {
+      // Fallback to nodes if no seeded data
+      const { data: skillNodes, error: skillNodesError } = await supabase
+        .from('career_graph_nodes')
+        .select('automation_risk_pct')
+        .in('id', skillIds)
+        .not('automation_risk_pct', 'is', null);
+
+      if (skillNodes && skillNodes.length > 0) {
+        avgAutomationRisk = skillNodes.reduce((sum, node) => sum + (node.automation_risk_pct || 0), 0) / skillNodes.length;
+      }
+    }
 
     // Get age penalty factor using the correct SQL function
     const age = userAge || 30; // Default age
     const { data: agePenaltyResult, error: ageError } = await supabase
-      .rpc('get_age_penalty', { p_age: age });
+      .rpc('get_age_penalty', { age_int: age });
+
+    if (ageError) {
+      console.error('Age penalty query error:', ageError);
+    }
 
     const agePenaltyFactor = agePenaltyResult || 1.0;
 
