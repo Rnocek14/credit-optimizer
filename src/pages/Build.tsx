@@ -93,11 +93,15 @@ export default function Build() {
           onOpenTrackManager={() => setShowTrackManager(true)}
           onCreateTrack={() => setShowTrackManager(true)}
         />
-        {showTrackManager && (
-          <TrackManager 
-            onTrackSelect={() => setShowTrackManager(false)}
-          />
-        )}
+        <TrackManager 
+          open={showTrackManager}
+          onOpenChange={setShowTrackManager}
+          onTrackSelect={(trackId) => {
+            setActiveTrackId(trackId);
+            setShowTrackManager(false);
+            navigate(`/build?track=${encodeURIComponent(trackId)}`);
+          }}
+        />
       </>
     );
   }
@@ -111,11 +115,15 @@ export default function Build() {
           reason="not-found"
           onOpenTrackManager={() => setShowTrackManager(true)}
         />
-        {showTrackManager && (
-          <TrackManager 
-            onTrackSelect={() => setShowTrackManager(false)}
-          />
-        )}
+        <TrackManager 
+          open={showTrackManager}
+          onOpenChange={setShowTrackManager}
+          onTrackSelect={(trackId) => {
+            setActiveTrackId(trackId);
+            setShowTrackManager(false);
+            navigate(`/build?track=${encodeURIComponent(trackId)}`);
+          }}
+        />
       </>
     );
   }
@@ -128,11 +136,15 @@ export default function Build() {
           reason="archived"
           onOpenTrackManager={() => setShowTrackManager(true)}
         />
-        {showTrackManager && (
-          <TrackManager 
-            onTrackSelect={() => setShowTrackManager(false)}
-          />
-        )}
+        <TrackManager 
+          open={showTrackManager}
+          onOpenChange={setShowTrackManager}
+          onTrackSelect={(trackId) => {
+            setActiveTrackId(trackId);
+            setShowTrackManager(false);
+            navigate(`/build?track=${encodeURIComponent(trackId)}`);
+          }}
+        />
       </>
     );
   }

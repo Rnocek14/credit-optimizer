@@ -16,10 +16,14 @@ import { usePathStore } from '@/stores/usePathStore';
 interface TrackManagerProps {
   currentTrackId?: string;
   onTrackSelect?: (trackId: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange }: TrackManagerProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = open !== undefined ? open : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
   const [newTrackName, setNewTrackName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
