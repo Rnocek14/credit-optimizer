@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,8 @@ import confetti from "canvas-confetti";
 import { useNavigate } from "react-router-dom";
 import { CareerProfileCard } from "@/components/CareerProfileCard";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useTracks } from "@/hooks/useTracks";
+import { TrackSelector } from "@/components/tracks/TrackSelector";
 
 interface MilestonePlan {
   id: string;
@@ -36,7 +39,18 @@ export default function Plans() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { activeTrackId } = useActiveTrackStore();
+  const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
+  const { tracks, isLoading: tracksLoading } = useTracks();
+
+  // Auto-select first available track if none is selected
+  React.useEffect(() => {
+    if (!activeTrackId && tracks.length > 0 && !tracksLoading) {
+      const firstActiveTrack = tracks.find(track => !track.archived);
+      if (firstActiveTrack) {
+        setActiveTrackId(firstActiveTrack.id);
+      }
+    }
+  }, [activeTrackId, tracks, tracksLoading, setActiveTrackId]);
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['milestone-plans'],
@@ -150,16 +164,25 @@ export default function Plans() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">📘 Milestone Plans</h1>
-        <p className="text-muted-foreground">
-          Track and manage your personalized learning roadmaps
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">📘 Milestone Plans</h1>
+            <p className="text-muted-foreground">
+              Track and manage your personalized learning roadmaps
+            </p>
+          </div>
+          {tracks.length > 0 && (
+            <div className="flex items-center gap-4">
+              <TrackSelector />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Career Profile Card */}
-      {activeTrackId && (
+      {(activeTrackId || tracks.length > 0) && (
         <div className="mb-8">
-          <CareerProfileCard trackId={activeTrackId} />
+          <CareerProfileCard trackId={activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id} />
         </div>
       )}
 
