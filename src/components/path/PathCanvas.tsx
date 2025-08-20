@@ -45,6 +45,7 @@ const canonicalCatalog = [
 
 interface PathCanvasProps {
   userId: string;
+  trackId?: string;
 }
 
 import { SkillNode } from './SkillNode';
@@ -65,7 +66,7 @@ const edgeTypes = {
   branch: PathEdge,
 };
 
-export function PathCanvas({ userId }: PathCanvasProps) {
+export function PathCanvas({ userId, trackId }: PathCanvasProps) {
   const { 
     nodes, 
     edges, 
@@ -139,11 +140,11 @@ export function PathCanvas({ userId }: PathCanvasProps) {
     addNode({
       type,
       position: { x: 200 + Math.random() * 200, y: 200 + Math.random() * 200 },
-      data: {
-        title: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-        description: `A new ${type} node`,
-        trackId: activeTrackId || undefined,
-      },
+        data: {
+          title: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+          description: `A new ${type} node`,
+          trackId: trackId || activeTrackId || undefined,
+        },
     });
   }, [addNode, activeTrackId]);
 
@@ -292,9 +293,9 @@ export function PathCanvas({ userId }: PathCanvasProps) {
           <h3 className="font-semibold text-sm">Track Palette</h3>
         </div>
         
-        {activeTrackId && (
+        {(trackId || activeTrackId) && (
           <Badge variant="secondary" className="text-xs">
-            Active Track: {activeTrackId.slice(0, 8)}...
+            Active Track: {(trackId || activeTrackId)?.slice(0, 8)}...
           </Badge>
         )}
 

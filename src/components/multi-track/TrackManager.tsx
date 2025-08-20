@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Settings, Archive, Copy, Trash2 } from 'lucide-react';
+import { Plus, Settings, Archive, Copy, Trash2, Hammer } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
   const [newTrackName, setNewTrackName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['career-tracks'],
@@ -62,9 +64,12 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
       queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
       toast.success(`Created track: ${newTrack.track_name}`);
       setNewTrackName('');
+      setIsOpen(false);
       if (onTrackSelect) {
         onTrackSelect(newTrack.id);
       }
+      // Navigate to build with the new track context
+      navigate(`/build?track=${encodeURIComponent(newTrack.id)}`);
     },
     onError: (error) => {
       console.error('Error creating track:', error);
@@ -118,6 +123,11 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleEditInBuilder = (trackId: string) => {
+    navigate(`/build?track=${encodeURIComponent(trackId)}`);
+    setIsOpen(false);
   };
 
   const activeTrackCount = tracks.filter(track => !track.archived).length;
@@ -209,6 +219,15 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
                           Select
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditInBuilder(track.id)}
+                        disabled={track.archived}
+                        title="Edit in Builder"
+                      >
+                        <Hammer className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

@@ -142,6 +142,13 @@ interface PathState {
   userSkills: string[];
   refreshUserSkills: (userId?: string) => Promise<void>;
   
+  // Track persistence
+  lastOpenedTrackId?: string;
+  activeTrackId?: string;
+  setLastOpenedTrackId: (id?: string) => void;
+  getLastOpenedTrackId: () => string | undefined;
+  setActiveTrackId: (id?: string) => void;
+  
   // Demo/dev helpers
   setUserSkills: (skills: string[]) => void;
   seedDemoReactBasics: () => Promise<void>;
@@ -216,6 +223,10 @@ export const usePathStore = create<PathState>()(
       activeNodeId: undefined,
       selectedEdgeType: 'sequence' as PathEdge['type'],
       userSkills: [],
+      
+      // Track persistence
+      lastOpenedTrackId: undefined,
+      activeTrackId: undefined,
 
       // Layout constants and guards
       NODE_W: 280,
@@ -732,6 +743,11 @@ export const usePathStore = create<PathState>()(
         const changed = get().revalidateAllStatuses();
         if (changed) get().scheduleLayout('userSkills changed');
       },
+
+      // Track persistence methods
+      setLastOpenedTrackId: (id?: string) => set({ lastOpenedTrackId: id }),
+      getLastOpenedTrackId: () => get().lastOpenedTrackId,
+      setActiveTrackId: (id?: string) => set({ activeTrackId: id }),
 
       // Seed a realistic set of React basics so Advanced nodes can unlock in demos
       seedDemoReactBasics: async () => {
