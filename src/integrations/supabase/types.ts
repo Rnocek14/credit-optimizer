@@ -641,6 +641,33 @@ export type Database = {
         }
         Relationships: []
       }
+      app_config: {
+        Row: {
+          config_key: string
+          config_value: Json
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assignment_submissions: {
         Row: {
           assignment_id: string
@@ -1861,6 +1888,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      col_index: {
+        Row: {
+          city: string
+          col_index: number
+          country: string
+          created_at: string
+          groceries_index: number
+          housing_index: number
+          id: string
+          region: string
+          transport_index: number
+          updated_at: string
+          visa_required: boolean
+        }
+        Insert: {
+          city: string
+          col_index?: number
+          country: string
+          created_at?: string
+          groceries_index?: number
+          housing_index?: number
+          id?: string
+          region: string
+          transport_index?: number
+          updated_at?: string
+          visa_required?: boolean
+        }
+        Update: {
+          city?: string
+          col_index?: number
+          country?: string
+          created_at?: string
+          groceries_index?: number
+          housing_index?: number
+          id?: string
+          region?: string
+          transport_index?: number
+          updated_at?: string
+          visa_required?: boolean
+        }
+        Relationships: []
       }
       completion_triggers: {
         Row: {
@@ -6040,6 +6109,45 @@ export type Database = {
           old_role?: Database["public"]["Enums"]["app_role"] | null
           reason?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      salary_benchmarks: {
+        Row: {
+          created_at: string
+          currency: string
+          demand_multiplier: number
+          id: string
+          region: string
+          role: string
+          salary_max: number
+          salary_mid: number
+          salary_min: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          demand_multiplier?: number
+          id?: string
+          region: string
+          role: string
+          salary_max?: number
+          salary_mid?: number
+          salary_min?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          demand_multiplier?: number
+          id?: string
+          region?: string
+          role?: string
+          salary_max?: number
+          salary_mid?: number
+          salary_min?: number
+          updated_at?: string
         }
         Relationships: []
       }
