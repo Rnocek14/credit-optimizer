@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator } from "lucide-react";
+import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator, Wrench } from "lucide-react";
+import { Link } from "react-router-dom";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { TrackDisplay } from "@/components/tracks/TrackDisplay";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
@@ -91,6 +92,15 @@ export default function PlanHub() {
           </div>
           <div className="flex items-center gap-4">
             <TrackSelector className="text-foreground" />
+            {/* Build Tracks CTA (desktop/tablet) */}
+            <div className="hidden sm:flex">
+              <Button asChild variant="default" className="gap-2">
+                <Link to="/build" aria-label="Open Track Builder">
+                  <Wrench className="h-4 w-4" />
+                  Build Tracks
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -201,6 +211,22 @@ export default function PlanHub() {
           </div>
         </div>
       </div>
+      
+      {/* Mobile FAB to open Builder */}
+      <Link
+        to="/build"
+        aria-label="Open Track Builder"
+        className="
+          sm:hidden fixed right-4 bottom-4 z-40
+          inline-flex items-center justify-center
+          h-12 w-12 rounded-full shadow-lg
+          bg-primary text-primary-foreground
+          hover:opacity-90 focus-visible:outline-none
+          focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary
+        "
+      >
+        <Wrench className="h-5 w-5" />
+      </Link>
     </div>
   );
 }
