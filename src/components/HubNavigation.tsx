@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useJourneyStore } from "@/stores/journeyStore";
+import { usePathStore } from "@/stores/usePathStore";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TrackManager } from "@/components/multi-track/TrackManager";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +25,28 @@ const primaryHubs = [
 
 export function HubNavigation() {
   const location = useLocation();
-  const { hasPermission } = useSecureAuth();
+  const { hasPermission, user } = useSecureAuth();
   const { stage, permissions } = useJourneyStore();
+  const { activeTrackId } = usePathStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [showTrackManager, setShowTrackManager] = useState(false);
+
+  // Fetch current track details for display
+  const { data: currentTrack } = useQuery({
+    queryKey: ['current-track', activeTrackId],
+    queryFn: async () => {
+      if (!activeTrackId || !user) return null;
+      const { data, error } = await supabase
+        .from('career_tracks')
+        .select('id, title')
+        .eq('id', activeTrackId)
+        .eq('user_id', user.id)
+        .single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!activeTrackId && !!user,
+  });
 
   const isActive = (href: string) => {
     if (href === "/discover") {
@@ -59,6 +82,8 @@ export function HubNavigation() {
   // Progressive disclosure based on journey stage
   const showProgress = stage !== 'new';
   const showContribute = permissions.admin || permissions.institution || permissions.employer || permissions.teach || hasPermission("admin") || hasPermission("user");
+  const isBuildPage = location.pathname === '/build';
+  const displayTrackTitle = currentTrack?.title || (activeTrackId ? `Track ${activeTrackId.slice(0, 8)}...` : null);
 
   // Visible hubs based on progressive disclosure
   const visibleHubs = [
@@ -103,6 +128,25 @@ export function HubNavigation() {
             </Button>
             );
           })}
+
+          {/* Active Track Display for Build Page */}
+          {isBuildPage && currentTrack && (
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-accent/50 rounded-md border border-border/50">
+              <span className="text-sm text-muted-foreground">Active:</span>
+              <span className="text-sm font-medium text-foreground max-w-[200px] truncate">
+                {displayTrackTitle}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTrackManager(true)}
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="w-3 h-3 mr-1" />
+                Change
+              </Button>
+            </div>
+          )}
 
           {showContribute && (
             <DropdownMenu open={isMoreOpen} onOpenChange={setIsMoreOpen}>
@@ -200,6 +244,19 @@ export function HubNavigation() {
           </div>
         </div>
       </div>
+
+      {/* Track Manager Dialog */}
+      {showTrackManager && (
+        <TrackManager 
+          open={showTrackManager}
+          onOpenChange={setShowTrackManager}
+          currentTrackId={activeTrackId || undefined}
+          onTrackSelect={(trackId) => {
+            setShowTrackManager(false);
+            // Navigation will be handled by the hook
+          }}
+        />
+      )}
     </nav>
   );
 }
