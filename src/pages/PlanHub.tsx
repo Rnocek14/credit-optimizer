@@ -17,6 +17,7 @@ import { TrackProofProjectManager } from "@/components/proof-projects/TrackProof
 import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
 import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
+import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
@@ -63,13 +64,35 @@ export default function PlanHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
 
+  console.log('PlanHub render start:', { activeTab });
+
   const { data: currentUser } = useQuery({
     queryKey: ['current-user'],
-    queryFn: getCurrentUser
+    queryFn: async () => {
+      console.log('PlanHub: Fetching user data');
+      const user = await getCurrentUser();
+      console.log('PlanHub: User fetched:', user?.id);
+      return user;
+    }
   });
 
   const { data: skillGaps = [] } = useSkillGaps(currentUser?.id);
+  console.log('PlanHub: Skill gaps state:', { 
+    hasSkillGaps: !!skillGaps, 
+    skillGapsCount: skillGaps?.length
+  });
+
   const { data: recommendations = [] } = useUnifiedRecommendations(currentUser?.id);
+  console.log('PlanHub: Recommendations state:', { 
+    recCount: recommendations?.length
+  });
+
+  console.log('PlanHub render complete:', { 
+    user: currentUser?.id, 
+    activeTab, 
+    hasSkillGaps: !!skillGaps, 
+    hasRecommendations: !!recommendations
+  });
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab });
@@ -133,12 +156,16 @@ export default function PlanHub() {
 
               <TabsContent value="overview" className="mt-6">
                 {/* Today Dashboard */}
-                <TodayDashboard 
-                  onNextStepClick={handleNextStepClick} 
-                />
+                <EnhancedErrorBoundary>
+                  <TodayDashboard 
+                    onNextStepClick={handleNextStepClick} 
+                  />
+                </EnhancedErrorBoundary>
                 
                 {/* Unified Recommendation Feed */}
-                <RecommendationFeed userId={currentUser?.id} className="mt-6" />
+                <EnhancedErrorBoundary>
+                  <RecommendationFeed userId={currentUser?.id} className="mt-6" />
+                </EnhancedErrorBoundary>
               </TabsContent>
 
               <TabsContent value="goals" className="mt-6">

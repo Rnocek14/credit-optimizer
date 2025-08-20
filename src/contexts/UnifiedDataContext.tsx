@@ -145,6 +145,7 @@ const UnifiedDataContext = createContext<{
 // Provider component
 export function UnifiedDataProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(unifiedDataReducer, initialState);
+  console.log('UnifiedDataProvider render:', { hasUser: !!state.user, isLoading: Object.values(state.loading).some(Boolean) });
   
   // Initialize user auth state
   useEffect(() => {

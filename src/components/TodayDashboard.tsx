@@ -70,6 +70,8 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     { name: 'Node.js', progress: 45, level: 'Beginner' }
   ];
 
+  console.log('TodayDashboard render:', { user: user?.id, isLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

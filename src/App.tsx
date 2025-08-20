@@ -113,6 +113,7 @@ import AIAnalyzer from "./pages/AIAnalyzer";
 import Build from "./pages/Build";
 import TrackComparePage from "./components/compare/TrackComparePage";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
+import { EnhancedErrorBoundary } from "./components/enhanced/EnhancedErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -123,10 +124,15 @@ const App = () => (
         <TooltipProvider>
         <UserJourneyProvider>
           <UnifiedDataProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-        <Routes>
+            <EnhancedErrorBoundary
+              onError={(error) => {
+                console.error('App-level error:', error);
+              }}
+            >
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
           {/* Core Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
@@ -161,7 +167,9 @@ const App = () => (
             path="/plan" 
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <PlanHub />
+                <EnhancedErrorBoundary>
+                  <PlanHub />
+                </EnhancedErrorBoundary>
               </ProtectedRoute>
             } 
           />
@@ -722,11 +730,12 @@ const App = () => (
            <Route path="/500" element={<InternalError />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-        <XPCelebrationOverlay />
-        {process.env.NODE_ENV !== 'production' && <DevMenu />}
-      </BrowserRouter>
-            </UnifiedDataProvider>
+                </Routes>
+                <XPCelebrationOverlay />
+                {process.env.NODE_ENV !== 'production' && <DevMenu />}
+              </BrowserRouter>
+            </EnhancedErrorBoundary>
+          </UnifiedDataProvider>
           </UserJourneyProvider>
         </TooltipProvider>
       </ThemeProvider>
