@@ -24,17 +24,33 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Calculate career switch function called');
+    
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
-      throw new Error('No authorization header');
+      console.error('Missing authorization header');
+      throw new Error('Authentication required - missing authorization header');
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabase.auth.getUser(token);
+    console.log('Token extracted, length:', token.length);
+    
+    // Get user with better error handling
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError) {
+      console.error('Auth error:', userError);
+      throw new Error(`Authentication failed: ${userError.message}`);
+    }
     
     if (!user?.id) {
-      throw new Error('Invalid user');
+      console.error('No user found in token');
+      throw new Error('Invalid or expired authentication token');
     }
+    
+    console.log('User authenticated:', user.id);
 
     const { fromTrackId, toTrackId, locationId } = await req.json();
 
@@ -44,34 +60,56 @@ serve(async (req) => {
 
     console.log(`Calculating career switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
 
-    // Get track details
+    // Get track details with better error handling
+    console.log('Fetching tracks:', { fromTrackId, toTrackId, userId: user.id });
+    
     const { data: tracks, error: tracksError } = await supabase
       .from('career_tracks')
       .select('*')
       .in('id', [fromTrackId, toTrackId])
       .eq('user_id', user.id);
 
-    if (tracksError || !tracks || tracks.length !== 2) {
-      throw new Error('Failed to fetch tracks or tracks not found');
+    console.log('Tracks query result:', { tracks: tracks?.length, error: tracksError });
+
+    if (tracksError) {
+      console.error('Database error fetching tracks:', tracksError);
+      throw new Error(`Failed to fetch career tracks: ${tracksError.message}`);
+    }
+
+    if (!tracks || tracks.length === 0) {
+      throw new Error('No career tracks found. Please ensure the tracks belong to your account.');
+    }
+
+    if (tracks.length !== 2) {
+      const foundIds = tracks.map(t => t.id);
+      throw new Error(`Missing tracks. Found: ${foundIds.join(', ')}. Expected: ${fromTrackId}, ${toTrackId}`);
     }
 
     const fromTrack = tracks.find(t => t.id === fromTrackId);
     const toTrack = tracks.find(t => t.id === toTrackId);
 
     // Get skills for both tracks
-    const { data: fromSkills, error: fromSkillsError } = await supabase
-      .from('track_skills')
-      .select('skill_node_id')
-      .eq('track_id', fromTrackId);
+    console.log('Fetching skills for tracks');
+    
+    const [fromSkillsResult, toSkillsResult] = await Promise.all([
+      supabase.from('track_skills').select('skill_node_id').eq('track_id', fromTrackId),
+      supabase.from('track_skills').select('skill_node_id').eq('track_id', toTrackId)
+    ]);
 
-    const { data: toSkills, error: toSkillsError } = await supabase
-      .from('track_skills')
-      .select('skill_node_id')
-      .eq('track_id', toTrackId);
+    const { data: fromSkills, error: fromSkillsError } = fromSkillsResult;
+    const { data: toSkills, error: toSkillsError } = toSkillsResult;
 
-    if (fromSkillsError || toSkillsError) {
-      throw new Error('Failed to fetch track skills');
+    if (fromSkillsError) {
+      console.error('Error fetching from-track skills:', fromSkillsError);
+      throw new Error(`Failed to fetch skills for source track: ${fromSkillsError.message}`);
     }
+
+    if (toSkillsError) {
+      console.error('Error fetching to-track skills:', toSkillsError);
+      throw new Error(`Failed to fetch skills for target track: ${toSkillsError.message}`);
+    }
+
+    console.log('Skills fetched:', { fromSkills: fromSkills?.length, toSkills: toSkills?.length });
 
     const fromSkillIds = new Set(fromSkills?.map(s => s.skill_node_id) || []);
     const toSkillIds = new Set(toSkills?.map(s => s.skill_node_id) || []);

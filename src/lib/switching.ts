@@ -47,6 +47,25 @@ export const analyzeCareerSwitch = async (
   userAge?: number
 ): Promise<CareerSwitchAnalysis> => {
   try {
+    console.log('Starting career switch analysis:', { fromTrackId, toTrackId });
+
+    // Validate input parameters
+    if (!fromTrackId || !toTrackId) {
+      throw new Error('Both source and target track IDs are required');
+    }
+
+    if (fromTrackId === toTrackId) {
+      throw new Error('Source and target tracks must be different');
+    }
+
+    // Ensure user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('Authentication required. Please log in and try again.');
+    }
+
+    console.log('User authenticated, calling edge function');
+
     // Calculate career switch metrics
     const { data: switchData, error: switchError } = await supabase.functions.invoke(
       'calculate-career-switch',
@@ -60,7 +79,12 @@ export const analyzeCareerSwitch = async (
     );
 
     if (switchError) {
+      console.error('Edge function error:', switchError);
       throw new Error(`Switch calculation failed: ${switchError.message}`);
+    }
+
+    if (!switchData) {
+      throw new Error('No data returned from switch calculation');
     }
 
     // Analyze career risk for the target track
