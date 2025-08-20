@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
 import { toast } from 'sonner';
 import type { CareerTrack } from '@/types/tracks';
+import { usePathStore } from '@/stores/usePathStore';
 
 interface TrackManagerProps {
   currentTrackId?: string;
@@ -85,10 +86,25 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
         .eq('id', trackId);
 
       if (error) throw error;
+      return trackId;
     },
-    onSuccess: () => {
+    onSuccess: (archivedId) => {
       queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
       toast.success('Track archived');
+      
+      // Archive safety guard - clear stale references
+      const { getLastOpenedTrackId, setLastOpenedTrackId, setActiveTrackId, activeTrackId } = usePathStore.getState();
+      if (getLastOpenedTrackId() === archivedId) {
+        setLastOpenedTrackId(undefined);
+      }
+      if (activeTrackId === archivedId) {
+        setActiveTrackId(undefined);
+      }
+      
+      // Navigate away from build if user is on the archived track
+      if (window.location.pathname === '/build' && new URLSearchParams(window.location.search).get('track') === archivedId) {
+        navigate('/build');
+      }
     },
     onError: () => {
       toast.error('Failed to archive track');
@@ -128,6 +144,7 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
   const handleEditInBuilder = (trackId: string) => {
     navigate(`/build?track=${encodeURIComponent(trackId)}`);
     setIsOpen(false);
+    toast.success('Opened in Builder');
   };
 
   const activeTrackCount = tracks.filter(track => !track.archived).length;
@@ -225,6 +242,7 @@ export function TrackManager({ currentTrackId, onTrackSelect }: TrackManagerProp
                         onClick={() => handleEditInBuilder(track.id)}
                         disabled={track.archived}
                         title="Edit in Builder"
+                        aria-label="Edit in Builder"
                       >
                         <Hammer className="h-4 w-4" />
                       </Button>

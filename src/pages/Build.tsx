@@ -1,35 +1,82 @@
-import React, { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { HubNavigation } from '@/components/HubNavigation';
 import { PathCanvas } from '@/components/path/PathCanvas';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyBuildState } from '@/components/EmptyBuildState';
+import { TrackNotFoundState } from '@/components/TrackNotFoundState';
 import { usePathStore } from '@/stores/usePathStore';
 import { TrackManager } from '@/components/multi-track/TrackManager';
-import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/authHelper';
 
 export default function Build() {
   const { user, isLoading } = useSecureAuth();
   const [searchParams] = useSearchParams();
   const [showTrackManager, setShowTrackManager] = useState(false);
-  const { setLastOpenedTrackId, getLastOpenedTrackId, setActiveTrackId } = usePathStore();
+  const navigate = useNavigate();
+  const { setLastOpenedTrackId, getLastOpenedTrackId, setActiveTrackId, activeTrackId } = usePathStore();
 
   // Get track ID from URL query params or fallback to last opened
   const fromQuery = searchParams.get("track") ?? undefined;
   const trackId = fromQuery || getLastOpenedTrackId();
 
+  // Track validation - check if track exists and belongs to user
+  const { data: trackExists, isLoading: trackValidationLoading } = useQuery({
+    queryKey: ['track-validation', trackId],
+    queryFn: async () => {
+      if (!trackId || !user) return null;
+      
+      const { data, error } = await supabase
+        .from('career_tracks')
+        .select('id, archived')
+        .eq('id', trackId)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error) return null;
+      return data;
+    },
+    enabled: !!trackId && !!user,
+  });
+
+  // URL sync effect - keep URL in sync with active track changes
+  useEffect(() => {
+    if (activeTrackId && activeTrackId !== fromQuery) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('track', activeTrackId);
+      navigate(`/build?${params.toString()}`, { replace: true });
+    }
+  }, [activeTrackId, fromQuery, navigate]);
+
   useEffect(() => {
     if (!trackId) return;
+
+    // Validate track ownership and existence
+    if (user && trackExists === null && !trackValidationLoading) {
+      // Track not found or doesn't belong to user - clear stale references
+      setActiveTrackId(undefined);
+      setLastOpenedTrackId(undefined);
+      return;
+    }
+
+    // Track is archived - clear references and show empty state
+    if (trackExists?.archived) {
+      setActiveTrackId(undefined);
+      setLastOpenedTrackId(undefined);
+      return;
+    }
 
     // Set active track in store
     setActiveTrackId(trackId);
     
     // Remember it for future direct visits
     setLastOpenedTrackId(trackId);
-  }, [trackId, setActiveTrackId, setLastOpenedTrackId]);
+  }, [trackId, trackExists, trackValidationLoading, user, setActiveTrackId, setLastOpenedTrackId]);
 
-  if (isLoading) {
+  if (isLoading || trackValidationLoading) {
     return <LoadingState />;
   }
 
@@ -45,6 +92,41 @@ export default function Build() {
         <EmptyBuildState
           onOpenTrackManager={() => setShowTrackManager(true)}
           onCreateTrack={() => setShowTrackManager(true)}
+        />
+        {showTrackManager && (
+          <TrackManager 
+            onTrackSelect={() => setShowTrackManager(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // Show track not found state if track doesn't exist or is archived
+  if (trackExists === null) {
+    return (
+      <>
+        <HubNavigation />
+        <TrackNotFoundState
+          reason="not-found"
+          onOpenTrackManager={() => setShowTrackManager(true)}
+        />
+        {showTrackManager && (
+          <TrackManager 
+            onTrackSelect={() => setShowTrackManager(false)}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (trackExists?.archived) {
+    return (
+      <>
+        <HubNavigation />
+        <TrackNotFoundState
+          reason="archived"
+          onOpenTrackManager={() => setShowTrackManager(true)}
         />
         {showTrackManager && (
           <TrackManager 
