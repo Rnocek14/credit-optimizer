@@ -364,6 +364,7 @@ export default function Plans() {
         isOpen={isLocationOptimizerOpen}
         onClose={() => setIsLocationOptimizerOpen(false)}
         fromTrackId={simulatorFromTrackId}
+        toTrackId={tracks.find(t => t.id !== simulatorFromTrackId)?.id}
         onLocationSelect={handleLocationSelect}
       />
     </div>

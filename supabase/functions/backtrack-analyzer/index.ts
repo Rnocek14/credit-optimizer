@@ -41,7 +41,13 @@ serve(async (req) => {
 
   try {
     const { user } = await authenticateUser(req);
-    const { fromTrackId, toTrackId } = await req.json(); // B -> A
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      console.warn('No JSON body provided or failed to parse');
+    }
+    const { fromTrackId, toTrackId } = body; // B -> A
 
     if (!fromTrackId || !toTrackId) throw new Error('Both track IDs are required');
 

@@ -61,7 +61,13 @@ serve(async (req) => {
     const { user, isDevUser } = await authenticateUser(req);
     console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
-    const { trackId, userAge } = await req.json();
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      console.warn('No JSON body provided or failed to parse');
+    }
+    const { trackId, userAge } = body;
 
     if (!trackId) {
       throw new Error('Missing required track ID');
