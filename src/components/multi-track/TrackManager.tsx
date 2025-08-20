@@ -18,9 +18,10 @@ export interface TrackManagerProps {
   onTrackSelect?: (trackId: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  modal?: boolean;
 }
 
-export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange }: TrackManagerProps) {
+export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange, modal = true }: TrackManagerProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = open !== undefined ? open : internalOpen;
   const setIsOpen = onOpenChange || setInternalOpen;
@@ -44,6 +45,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       if (error) throw error;
       return data as CareerTrack[];
     },
+    enabled: isOpen, // Only fetch when dialog is open
   });
 
   const createTrackMutation = useMutation({
@@ -154,7 +156,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
   const activeTrackCount = tracks.filter(track => !track.archived).length;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen} modal={modal}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Settings className="h-4 w-4 mr-2" />

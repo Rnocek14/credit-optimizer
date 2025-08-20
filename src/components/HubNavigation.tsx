@@ -5,9 +5,8 @@ import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useJourneyStore } from "@/stores/journeyStore";
 import { usePathStore } from "@/stores/usePathStore";
-import { useState } from "react";
+import { useState, Suspense, lazy } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { TrackManager } from "@/components/multi-track/TrackManager";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -16,6 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Lazy load TrackManager to keep bundle size trim
+const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").then(module => ({ 
+  default: module.TrackManager 
+})));
 
 const primaryHubs = [
   { id: "discover", label: "DISCOVER", icon: Search, href: "/discover" },
@@ -246,15 +250,18 @@ export function HubNavigation() {
       </div>
 
       {/* Track Manager Dialog */}
-      <TrackManager 
-        open={showTrackManager}
-        onOpenChange={setShowTrackManager}
-        currentTrackId={activeTrackId || undefined}
-        onTrackSelect={(trackId) => {
-          setShowTrackManager(false);
-          // Navigation will be handled by the hook
-        }}
-      />
+      <Suspense fallback={null}>
+        <TrackManager 
+          open={showTrackManager}
+          onOpenChange={setShowTrackManager}
+          currentTrackId={activeTrackId || undefined}
+          modal={true}
+          onTrackSelect={(trackId) => {
+            setShowTrackManager(false);
+            // Navigation will be handled by the hook
+          }}
+        />
+      </Suspense>
     </nav>
   );
 }

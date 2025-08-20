@@ -31,6 +31,7 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
     if (!safeTrackId) return;
     const expected = `/build?track=${encodeURIComponent(safeTrackId)}`;
     const current = `${location.pathname}${location.search}`;
+    // Strict equality check to prevent navigation thrash
     if (current !== expected) {
       navigate(expected, { replace: true });
     }
@@ -39,12 +40,13 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
   // Validate & set store; clean bad params
   useEffect(() => {
     if (!safeTrackId) {
-      // Clean invalid track params from URL
+      // Clean invalid track params from URL - handle both explicit param and any track= query
       if (fromQuery || location.search.includes('track=')) {
         navigate('/build', { replace: true });
       }
       setActiveTrackId(undefined);
       setLastOpenedTrackId(undefined);
+      didToastRef.current = false; // Reset toast flag when clearing track
       return;
     }
 
@@ -52,7 +54,7 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
     setActiveTrackId(safeTrackId);
     setLastOpenedTrackId(safeTrackId);
 
-    // Show success toast (deduplicated)
+    // Show success toast (deduplicated) - only once per track load
     if (!didToastRef.current && currentTrack?.title) {
       toast({
         title: 'Builder Opened',
@@ -67,6 +69,7 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
     if (!user) {
       setActiveTrackId(undefined);
       setLastOpenedTrackId(undefined);
+      didToastRef.current = false; // Reset toast flag on sign-out
       if (location.search.includes('track=')) {
         navigate('/build', { replace: true });
       }
