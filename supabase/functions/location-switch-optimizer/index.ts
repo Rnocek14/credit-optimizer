@@ -51,82 +51,24 @@ async function authenticateUser(req: Request) {
   throw new Error('Authentication required - invalid or missing credentials');
 }
 
-// Sample location data for demonstration
-const LOCATION_DATA = [
-  {
-    city: 'San Francisco, CA',
-    country: 'USA',
-    salaryMultiplier: 1.4,
-    colIndex: 1.6,
-    demandMultiplier: 1.3,
-    visaRequired: false
-  },
-  {
-    city: 'New York, NY',
-    country: 'USA',
-    salaryMultiplier: 1.3,
-    colIndex: 1.5,
-    demandMultiplier: 1.2,
-    visaRequired: false
-  },
-  {
-    city: 'Austin, TX',
-    country: 'USA',
-    salaryMultiplier: 1.1,
-    colIndex: 1.1,
-    demandMultiplier: 1.1,
-    visaRequired: false
-  },
-  {
-    city: 'Toronto, ON',
-    country: 'Canada',
-    salaryMultiplier: 0.9,
-    colIndex: 1.2,
-    demandMultiplier: 1.0,
-    visaRequired: true
-  },
-  {
-    city: 'London, UK',
-    country: 'United Kingdom',
-    salaryMultiplier: 1.0,
-    colIndex: 1.3,
-    demandMultiplier: 0.9,
-    visaRequired: true
-  },
-  {
-    city: 'Berlin, Germany',
-    country: 'Germany',
-    salaryMultiplier: 0.8,
-    colIndex: 1.0,
-    demandMultiplier: 0.8,
-    visaRequired: true
-  }
-];
+// Fetch and compute locations from DB, optionally filtered by locationIds
+// Removed inline LOCATION_DATA; use salary_benchmarks + col_index deterministically
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    console.log('Location switch optimizer function called');
-    
-    // Authenticate user
-    const { user, isDevUser } = await authenticateUser(req);
-    console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
-
-    const { fromTrackId, toTrackId, topN = 5 } = await req.json();
+    const { fromTrackId, toTrackId, locationIds, topN = 5 } = await req.json();
 
     if (!fromTrackId || !toTrackId) {
       throw new Error('Missing required track IDs');
     }
 
-    console.log(`Optimizing location switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
+    // Default regions if none provided
+    const regions: string[] = Array.isArray(locationIds) && locationIds.length > 0
+      ? locationIds
+      : ['US-CHI','US-AUS','UK-LON'];
 
-    // Get tracks to determine salary ranges
+    // Fetch tracks to derive roles for salary lookups
     const { data: tracks, error: tracksError } = await supabase
       .from('career_tracks')
-      .select('*')
+      .select('id, title, track_name')
       .in('id', [fromTrackId, toTrackId])
       .eq('user_id', user.id);
 
@@ -134,64 +76,101 @@ serve(async (req) => {
       throw new Error('Failed to fetch career tracks');
     }
 
-    const fromTrack = tracks.find(t => t.id === fromTrackId);
-    const toTrack = tracks.find(t => t.id === toTrackId);
+    const fromTrack = tracks.find(t => t.id === fromTrackId)!;
+    const toTrack = tracks.find(t => t.id === toTrackId)!;
+    const fromRole = fromTrack.title || fromTrack.track_name || 'Software Engineer';
+    const toRole = toTrack.title || toTrack.track_name || 'Software Engineer';
 
-    // Base salary assumptions (could be made configurable)
-    const currentBaseSalary = 75000;
-    const targetBaseSalary = 90000;
-    const baselineCost = 50000; // Annual cost of living baseline
-    const switchCost = 20000; // Default switch cost
+    // Load config defaults
+    let DEFAULT_CURRENT_SALARY = 75000;
+    let DEFAULT_TARGET_SALARY = 90000;
+    let BASELINE_COST = 50000;
+    let SWITCH_COST = 20000;
 
-    // Calculate location metrics
-    const locationAnalysis = LOCATION_DATA.map(location => {
-      // Calculate adjusted salaries
-      const currentSalary = currentBaseSalary * location.salaryMultiplier;
-      const targetSalary = targetBaseSalary * location.salaryMultiplier;
-      
-      // Calculate cost of living
-      const annualCOL = baselineCost * location.colIndex;
-      
-      // Net income calculation
+    const { data: cfg } = await supabase
+      .from('app_config')
+      .select('config_value')
+      .eq('config_key','switching')
+      .maybeSingle();
+    if (cfg?.config_value) {
+      DEFAULT_CURRENT_SALARY = Number(cfg.config_value.DEFAULT_CURRENT_SALARY) || DEFAULT_CURRENT_SALARY;
+      DEFAULT_TARGET_SALARY = Number(cfg.config_value.DEFAULT_TARGET_SALARY) || DEFAULT_TARGET_SALARY;
+      BASELINE_COST = Number(cfg.config_value.OPPORTUNITY_COST) ? Number(cfg.config_value.OPPORTUNITY_COST) : BASELINE_COST;
+      // keep switch cost from config if defined
+      SWITCH_COST = Number(cfg.config_value.FRICTION_BASE) ? Number(cfg.config_value.FRICTION_BASE) : SWITCH_COST;
+    }
+
+    // Fetch COL and salaries for regions
+    const { data: colRows, error: colErr } = await supabase
+      .from('col_index')
+      .select('region, city, country, col_index, visa_required')
+      .in('region', regions);
+    if (colErr) throw new Error('Failed to fetch COL data');
+
+    const { data: salFrom, error: salFromErr } = await supabase
+      .from('salary_benchmarks')
+      .select('region, salary_mid')
+      .eq('role', fromRole)
+      .in('region', regions);
+    if (salFromErr) throw new Error('Failed to fetch salary for current role');
+
+    const { data: salTo, error: salToErr } = await supabase
+      .from('salary_benchmarks')
+      .select('region, salary_mid, demand_multiplier')
+      .eq('role', toRole)
+      .in('region', regions);
+    if (salToErr) throw new Error('Failed to fetch salary for target role');
+
+    const salFromMap = new Map(salFrom?.map(r => [r.region, r.salary_mid]) || []);
+    const salToMap = new Map(salTo?.map(r => [r.region, { mid: r.salary_mid, demand: Number(r.demand_multiplier || 1) }]) || []);
+
+    const baselineRegion = 'US-AUS';
+
+    const locationAnalysis = (colRows || []).map(loc => {
+      const currentSalary = salFromMap.get(loc.region) || DEFAULT_CURRENT_SALARY;
+      const toData = salToMap.get(loc.region) || { mid: DEFAULT_TARGET_SALARY, demand: 1 };
+      const targetSalary = toData.mid;
+      const demandMultiplier = toData.demand;
+
+      const colMultiplier = Number(loc.col_index) / 100; // normalize
+      const annualCOL = BASELINE_COST * colMultiplier;
+
       const currentNetIncome = currentSalary - annualCOL;
       const targetNetIncome = targetSalary - annualCOL;
       const netIncomeGain = targetNetIncome - currentNetIncome;
-      
-      // Break-even calculation
+
       const monthlyGain = netIncomeGain / 12;
-      const breakEvenMonths = monthlyGain > 0 ? Math.ceil(switchCost / monthlyGain) : Infinity;
-      
-      // LQI (Location Quality Index) = adjusted income * demand / (COL + 1)
-      const lqi = (targetNetIncome * location.demandMultiplier) / (location.colIndex + 1);
-      
-      // ROI delta compared to baseline location (Austin as reference)
-      const baselineLocation = LOCATION_DATA.find(l => l.city === 'Austin, TX')!;
-      const baselineTargetSalary = targetBaseSalary * baselineLocation.salaryMultiplier;
-      const baselineCOL = baselineCost * baselineLocation.colIndex;
-      const baselineNetIncome = baselineTargetSalary - baselineCOL;
+      const breakEvenMonths = monthlyGain > 0 ? Math.ceil(SWITCH_COST / monthlyGain) : null;
+
+      const lqi = (targetNetIncome * demandMultiplier) / (colMultiplier + 1);
+
+      const baselineTo = salToMap.get(baselineRegion) || { mid: DEFAULT_TARGET_SALARY, demand: 1 };
+      const baselineCol = (colRows || []).find(r => r.region === baselineRegion)?.col_index || 100;
+      const baselineCOL = BASELINE_COST * (Number(baselineCol) / 100);
+      const baselineNetIncome = (baselineTo.mid - baselineCOL);
       const deltaROI = targetNetIncome - baselineNetIncome;
 
       return {
-        city: location.city,
-        country: location.country,
+        city: loc.city,
+        country: loc.country,
         currentSalary: Math.round(currentSalary),
         targetSalary: Math.round(targetSalary),
         costOfLiving: Math.round(annualCOL),
         netIncome: Math.round(targetNetIncome),
-        breakEvenMonths: breakEvenMonths === Infinity ? null : breakEvenMonths,
+        breakEvenMonths,
         lqi: Math.round(lqi),
         deltaROI: Math.round(deltaROI),
-        demandScore: Math.round(location.demandMultiplier * 100),
-        visaRequired: location.visaRequired,
-        salaryMultiplier: location.salaryMultiplier,
-        colIndex: location.colIndex
+        demandScore: Math.round(demandMultiplier * 100),
+        visaRequired: !!loc.visa_required,
+        salaryMultiplier: 1, // legacy field
+        colIndex: Number(loc.col_index)
       };
     });
 
-    // Sort by LQI score (descending) and take top N
     const rankedLocations = locationAnalysis
       .sort((a, b) => b.lqi - a.lqi)
       .slice(0, topN);
+
 
     console.log('Location optimization completed successfully');
 

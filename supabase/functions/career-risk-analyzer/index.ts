@@ -130,7 +130,19 @@ serve(async (req) => {
       console.error('Age penalty query error:', ageError);
     }
 
-    const agePenaltyFactor = agePenaltyResult || 1.0;
+    // Load AGE_PENALTY_CAP from app_config (fallback 1.5)
+    let agePenaltyCap = 1.5;
+    const { data: cfg } = await supabase
+      .from('app_config')
+      .select('config_value')
+      .eq('config_key', 'switching')
+      .maybeSingle();
+    if (cfg?.config_value?.AGE_PENALTY_CAP) {
+      agePenaltyCap = Number(cfg.config_value.AGE_PENALTY_CAP) || 1.5;
+    }
+
+    const rawAgePenaltyFactor = agePenaltyResult || 1.0;
+    const agePenaltyFactor = Math.min(rawAgePenaltyFactor, agePenaltyCap);
 
     // Calculate switch risk (simplified)
     const switchRiskScore = Math.min(100, 

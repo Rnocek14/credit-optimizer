@@ -133,26 +133,62 @@ serve(async (req) => {
     // Log skill analysis for debugging
     console.log(`Skill analysis: From=${fromSkillIds.size}, To=${toSkillIds.size}, Shared=${sharedSkills.length}, Overlap=${Math.round(skillOverlap * 100)}%`);
 
-    // Calculate time and cost estimates
-    const baseTimeHours = 2000; // Base time for career transition
+    // Load tunable constants from app_config with safe defaults
+    let BASE_TRANSITION_HOURS = 2000;
+    let BASE_DIRECT_COST = 15000;
+    let FRICTION_BASE = 5000;
+    let OPPORTUNITY_COST = 50000;
+    let DEFAULT_CURRENT_SALARY = 75000;
+    let DEFAULT_TARGET_SALARY = 90000;
+
+    const { data: cfg } = await supabase
+      .from('app_config')
+      .select('config_value')
+      .eq('config_key', 'switching')
+      .maybeSingle();
+
+    if (cfg?.config_value) {
+      const c = cfg.config_value;
+      BASE_TRANSITION_HOURS = Number(c.BASE_TRANSITION_HOURS) || BASE_TRANSITION_HOURS;
+      BASE_DIRECT_COST = Number(c.BASE_DIRECT_COST) || BASE_DIRECT_COST;
+      FRICTION_BASE = Number(c.FRICTION_BASE) || FRICTION_BASE;
+      OPPORTUNITY_COST = Number(c.OPPORTUNITY_COST) || OPPORTUNITY_COST;
+      DEFAULT_CURRENT_SALARY = Number(c.DEFAULT_CURRENT_SALARY) || DEFAULT_CURRENT_SALARY;
+      DEFAULT_TARGET_SALARY = Number(c.DEFAULT_TARGET_SALARY) || DEFAULT_TARGET_SALARY;
+    }
+
+    // Resolve roles and region to look up salaries
+    const region = locationId || 'US-CHI';
+    const fromRole = fromTrack?.title || fromTrack?.track_name || 'Software Engineer';
+    const toRole = toTrack?.title || toTrack?.track_name || 'Software Engineer';
+
+    // Fetch salaries (midpoints) for roles in region
+    const [{ data: salFrom }, { data: salTo }] = await Promise.all([
+      supabase.from('salary_benchmarks').select('salary_mid').eq('role', fromRole).eq('region', region).maybeSingle(),
+      supabase.from('salary_benchmarks').select('salary_mid').eq('role', toRole).eq('region', region).maybeSingle(),
+    ]);
+
+    const currentSalary = salFrom?.salary_mid || DEFAULT_CURRENT_SALARY;
+    const targetSalary = salTo?.salary_mid || DEFAULT_TARGET_SALARY;
+
+    // Time calculations based on overlap
+    const baseTimeHours = BASE_TRANSITION_HOURS;
     const timeSaved = Math.floor(baseTimeHours * skillOverlap);
     const timeGainedHours = timeSaved;
     const lostTimeHours = Math.max(0, baseTimeHours - timeSaved);
 
-    // Cost calculations
-    const baseCost = 15000; // Base transition cost
-    const directCost = baseCost * (1 - skillOverlap * 0.5);
-    const opportunityCost = 50000; // Average opportunity cost
-    const frictionCost = 5000 * (1 - skillOverlap);
+    // Cost calculations (deterministic, no randomness)
+    const directCost = BASE_DIRECT_COST * (1 - skillOverlap * 0.5);
+    const frictionCost = FRICTION_BASE * (1 - skillOverlap);
+    const opportunityCost = OPPORTUNITY_COST;
     const switchCost = directCost + frictionCost;
 
     // ROI calculations
-    const currentSalary = 75000; // Default current salary
-    const targetSalary = 90000; // Default target salary
     const salaryDiff = targetSalary - currentSalary;
     const salaryUplift3yr = salaryDiff * 3;
     const roi3yr = salaryUplift3yr - switchCost - opportunityCost;
-    const breakEvenMonths = switchCost > 0 ? Math.ceil(switchCost / (salaryDiff / 12)) : 0;
+    const breakEvenMonths = salaryDiff > 0 ? Math.ceil(switchCost / (salaryDiff / 12)) : 0;
+
 
     // CRI delta (simplified)
     const criDelta = (toTrack?.roi_score || 0) - (fromTrack?.roi_score || 0);
@@ -176,7 +212,7 @@ serve(async (req) => {
       cri_delta: criDelta,
       assumptions: {
         base_transition_time_hours: baseTimeHours,
-        base_cost: baseCost,
+        base_cost: BASE_DIRECT_COST,
         current_salary: currentSalary,
         target_salary: targetSalary,
         opportunity_cost: opportunityCost
