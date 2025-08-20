@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser } from "@/lib/authHelper";
 
 export interface CareerSwitchMetrics {
   skillOverlap: number;
@@ -46,76 +47,113 @@ export const analyzeCareerSwitch = async (
   locationId?: string,
   userAge?: number
 ): Promise<CareerSwitchAnalysis> => {
+  console.log('Starting career switch analysis:', { fromTrackId, toTrackId, locationId, userAge });
+
+  if (!fromTrackId || !toTrackId) {
+    throw new Error('Both source and target track IDs are required');
+  }
+
+  if (fromTrackId === toTrackId) {
+    throw new Error('Source and target tracks cannot be the same');
+  }
+
+  // Get current user (supports both real users and dev users)
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('You must be logged in to analyze career switches');
+  }
+
+  console.log(`User authenticated: ${user.id} (dev: ${user.isDevUser})`);
+
   try {
-    console.log('Starting career switch analysis:', { fromTrackId, toTrackId });
-
-    // Validate input parameters
-    if (!fromTrackId || !toTrackId) {
-      throw new Error('Both source and target track IDs are required');
+    // Prepare headers for function calls
+    const headers: Record<string, string> = {};
+    if (user.isDevUser) {
+      headers['x-dev-user-id'] = user.id;
     }
 
-    if (fromTrackId === toTrackId) {
-      throw new Error('Source and target tracks must be different');
-    }
-
-    // Ensure user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('Authentication required. Please log in and try again.');
-    }
-
-    console.log('User authenticated, calling edge function');
-
-    // Calculate career switch metrics
-    const { data: switchData, error: switchError } = await supabase.functions.invoke(
-      'calculate-career-switch',
-      {
-        body: {
-          fromTrackId,
-          toTrackId,
-          locationId
-        }
-      }
-    );
+    // Call the calculate-career-switch edge function
+    console.log('Calling calculate-career-switch function');
+    const { data: switchData, error: switchError } = await supabase.functions.invoke('calculate-career-switch', {
+      body: { 
+        fromTrackId, 
+        toTrackId, 
+        locationId: locationId || null 
+      },
+      headers: user.isDevUser ? headers : undefined
+    });
 
     if (switchError) {
-      console.error('Edge function error:', switchError);
-      throw new Error(`Switch calculation failed: ${switchError.message}`);
+      console.error('Switch calculation error:', switchError);
+      throw new Error(switchError.message || 'Failed to calculate career switch metrics');
     }
 
-    if (!switchData) {
-      throw new Error('No data returned from switch calculation');
-    }
-
-    // Analyze career risk for the target track
-    const { data: riskData, error: riskError } = await supabase.functions.invoke(
-      'career-risk-analyzer',
-      {
-        body: {
-          trackId: toTrackId,
-          userAge
-        }
+    if (!switchData || switchData.error) {
+      console.error('Switch calculation returned error:', switchData?.error);
+      
+      // Provide more specific error messages
+      if (switchData?.error?.includes('No career tracks found')) {
+        throw new Error('The selected career tracks were not found. Please ensure you have created both source and target tracks.');
       }
-    );
+      if (switchData?.error?.includes('belong to your account')) {
+        throw new Error('You can only analyze switches between your own career tracks.');
+      }
+      
+      throw new Error(switchData?.error || 'Failed to calculate career switch');
+    }
+
+    console.log('Switch calculation completed:', switchData);
+
+    // Call the career-risk-analyzer edge function  
+    console.log('Calling career-risk-analyzer function');
+    const { data: riskData, error: riskError } = await supabase.functions.invoke('career-risk-analyzer', {
+      body: { 
+        trackId: toTrackId,
+        userAge: userAge || 30
+      },
+      headers: user.isDevUser ? headers : undefined
+    });
 
     if (riskError) {
-      throw new Error(`Risk analysis failed: ${riskError.message}`);
+      console.error('Risk analysis error:', riskError);
+      // Don't fail the entire analysis if risk calculation fails
+      console.warn('Risk analysis failed, continuing with switch metrics only');
     }
+
+    console.log('Risk analysis completed:', riskData);
 
     return {
       switchId: switchData.switchId,
       metrics: switchData.metrics,
-      riskAnalysis: {
-        overallRisk: riskData.overallRisk,
-        riskLevel: riskData.riskLevel,
-        breakdown: riskData.breakdown,
-        factors: riskData.factors
+      riskAnalysis: riskData && !riskData.error ? {
+        overallRisk: riskData.overallRisk || 0,
+        riskLevel: riskData.riskLevel || 'Unknown',
+        breakdown: riskData.breakdown || {},
+        factors: riskData.factors || {}
+      } : {
+        overallRisk: 0,
+        riskLevel: 'Unknown',
+        breakdown: {},
+        factors: {}
       },
       tracks: switchData.tracks
     };
+
   } catch (error) {
-    console.error('Career switch analysis error:', error);
-    throw error;
+    console.error('Career switch analysis failed:', error);
+    
+    if (error instanceof Error) {
+      // Re-throw known errors with better context
+      if (error.message.includes('tracks not found') || error.message.includes('No career tracks found')) {
+        throw new Error('The selected career tracks were not found. Please ensure you have access to both tracks.');
+      }
+      if (error.message.includes('belong to your account')) {
+        throw new Error('You can only analyze switches between your own career tracks.');
+      }
+      throw error;
+    }
+    
+    throw new Error('An unexpected error occurred during career switch analysis');
   }
 };
 

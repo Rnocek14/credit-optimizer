@@ -4,12 +4,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id',
 };
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   {
     auth: {
       autoRefreshToken: false,
@@ -18,23 +18,47 @@ const supabase = createClient(
   }
 );
 
+// Known dev users for safe authentication bypass
+const KNOWN_DEV_USERS = [
+  '2b458624-d498-4cca-a63d-9341cc20e363', // Aisha Khan
+  '3c459625-e499-5ddb-b64d-a442dd21f474', // Mateo Silva
+  '4d56a736-f5aa-6eec-c75e-b553ee32e585'  // Jade Chen
+];
+
+async function authenticateUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  const devUserId = req.headers.get('x-dev-user-id');
+  
+  // Try normal JWT authentication first
+  if (authHeader) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (!error && user?.id) {
+      return { user, isDevUser: false };
+    }
+  }
+  
+  // Allow dev user override for whitelisted users
+  if (devUserId && KNOWN_DEV_USERS.includes(devUserId)) {
+    return { 
+      user: { id: devUserId, email: `dev-${devUserId}@demo.com` }, 
+      isDevUser: true 
+    };
+  }
+  
+  throw new Error('Authentication required - invalid or missing credentials');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabase.auth.getUser(token);
-    
-    if (!user?.id) {
-      throw new Error('Invalid user');
-    }
+    // Authenticate user (supports both JWT and dev user override)
+    const { user, isDevUser } = await authenticateUser(req);
+    console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
     const { trackId, userAge } = await req.json();
 
