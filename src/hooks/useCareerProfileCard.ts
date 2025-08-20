@@ -26,12 +26,23 @@ export const useCareerProfileCard = (trackId?: string) => {
   return useQuery({
     queryKey: ['career-profile-card', trackId],
     queryFn: async (): Promise<CareerProfileData | null> => {
-      if (!trackId) return null;
+      console.log('useCareerProfileCard: Starting query with trackId:', trackId);
+      
+      if (!trackId) {
+        console.log('useCareerProfileCard: No trackId provided, returning null');
+        return null;
+      }
 
       const user = await getCurrentUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        console.error('useCareerProfileCard: User not authenticated');
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('useCareerProfileCard: User authenticated:', user.id);
 
       // Get track details
+      console.log('useCareerProfileCard: Fetching track details for:', trackId);
       const { data: track, error: trackError } = await supabase
         .from('career_tracks')
         .select('*')
@@ -39,9 +50,17 @@ export const useCareerProfileCard = (trackId?: string) => {
         .eq('user_id', user.id)
         .single();
 
-      if (trackError || !track) {
+      if (trackError) {
+        console.error('useCareerProfileCard: Track fetch error:', trackError);
+        throw new Error(`Track fetch failed: ${trackError.message}`);
+      }
+      
+      if (!track) {
+        console.error('useCareerProfileCard: Track not found for id:', trackId);
         throw new Error('Track not found');
       }
+      
+      console.log('useCareerProfileCard: Track found:', { id: track.id, title: track.title || track.track_name });
 
       // Get latest career risk data
       const { data: riskData } = await supabase
@@ -99,7 +118,7 @@ export const useCareerProfileCard = (trackId?: string) => {
         .limit(1)
         .maybeSingle();
 
-      return {
+      const profileData = {
         trackId,
         trackTitle: track.title || track.track_name || 'Untitled Track',
         trackIcon: track.icon,
@@ -118,6 +137,9 @@ export const useCareerProfileCard = (trackId?: string) => {
           eta: '2 weeks'
         } // Mock milestone
       };
+      
+      console.log('useCareerProfileCard: Returning profile data:', profileData);
+      return profileData;
     },
     enabled: !!trackId,
     staleTime: 5 * 60 * 1000, // 5 minutes
