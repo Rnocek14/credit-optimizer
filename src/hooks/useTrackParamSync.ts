@@ -25,10 +25,20 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
   const safeTrackId = isValid(candidateTrackId) ? candidateTrackId : undefined;
   const currentTrack = userTracks?.find(t => t.id === safeTrackId);
   const didToastRef = useRef(false);
+  const lastIdRef = useRef<string | undefined>(undefined);
+
+  // Reset toast flag when switching between two valid tracks
+  useEffect(() => {
+    if (safeTrackId && lastIdRef.current && lastIdRef.current !== safeTrackId) {
+      didToastRef.current = false;
+    }
+    lastIdRef.current = safeTrackId;
+  }, [safeTrackId]);
 
   // Sync URL from active track changes (one-way: store → URL)
   useEffect(() => {
     if (!safeTrackId) return;
+    if (location.pathname !== '/build') return; // Guard: only sync on /build route
     const expected = `/build?track=${encodeURIComponent(safeTrackId)}`;
     const current = `${location.pathname}${location.search}`;
     // Strict equality check to prevent navigation thrash

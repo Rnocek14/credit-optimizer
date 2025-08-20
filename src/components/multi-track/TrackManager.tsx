@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
+import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { toast } from 'sonner';
 import type { CareerTrack } from '@/types/tracks';
 import { usePathStore } from '@/stores/usePathStore';
@@ -29,6 +30,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
   const [isCreating, setIsCreating] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useSecureAuth();
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['career-tracks'],
@@ -45,7 +47,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       if (error) throw error;
       return data as CareerTrack[];
     },
-    enabled: isOpen, // Only fetch when dialog is open
+    enabled: !!user && isOpen, // Only fetch when dialog is open and user exists
   });
 
   const createTrackMutation = useMutation({
