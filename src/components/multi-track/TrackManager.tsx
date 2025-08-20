@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import type { CareerTrack } from '@/types/tracks';
 import { usePathStore } from '@/stores/usePathStore';
 
-interface TrackManagerProps {
+export interface TrackManagerProps {
   currentTrackId?: string;
   onTrackSelect?: (trackId: string) => void;
   open?: boolean;
