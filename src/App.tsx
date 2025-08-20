@@ -46,7 +46,7 @@ import BadgeDetail from "./pages/BadgeDetail";
 import Demos from "./pages/Demos";
 import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
-import CompareTracks from "./pages/CompareTracks";
+import { CompareTracks } from "./pages/CompareTracks";
 import SalaryInsights from "./pages/SalaryInsights";
 import ResumeAnalytics from "./pages/ResumeAnalytics";
 import MarketIntelligence from "./pages/MarketIntelligence";
@@ -228,6 +228,14 @@ const App = () => (
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <TrackComparePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/plan/compare" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <CompareTracks />
               </ProtectedRoute>
             } 
           />
