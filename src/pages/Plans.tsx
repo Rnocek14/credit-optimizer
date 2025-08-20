@@ -14,6 +14,8 @@ import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
 import { useNavigate } from "react-router-dom";
+import { CareerProfileCard } from "@/components/CareerProfileCard";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 
 interface MilestonePlan {
   id: string;
@@ -34,6 +36,7 @@ export default function Plans() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { activeTrackId } = useActiveTrackStore();
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['milestone-plans'],
@@ -152,6 +155,13 @@ export default function Plans() {
           Track and manage your personalized learning roadmaps
         </p>
       </div>
+
+      {/* Career Profile Card */}
+      {activeTrackId && (
+        <div className="mb-8">
+          <CareerProfileCard trackId={activeTrackId} />
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-6">
