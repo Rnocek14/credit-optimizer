@@ -1376,7 +1376,15 @@ export const usePathStore = create<PathState>()(
 
                 const created = get().nodes.find(n => n.id === srcId);
                 const skills = created?.data?.skillTags || [];
-                const hasRelevant = skills.some(s => get().userSkills.some(u => slug(u) === slug(s)));
+                // Enhanced skill matching: check exact matches and partial matches
+                const hasRelevant = skills.some(s => 
+                  get().userSkills.some(u => {
+                    const skillSlug = slug(s);
+                    const userSlug = slug(u);
+                    // Exact match or user skill contains the required skill
+                    return skillSlug === userSlug || userSlug.includes(skillSlug) || skillSlug.includes(userSlug);
+                  })
+                );
                 if (hasRelevant && created?.data.status !== 'completed') {
                   get().setNodeStatus(srcId, 'completed');
                   markChanged();
@@ -1384,11 +1392,8 @@ export const usePathStore = create<PathState>()(
               }
             }
 
-            // Keep statuses fresh mid-loop so downstream nodes unlock in same pass
-            const before = JSON.stringify(get().nodes.map(n => ({ id:n.id, s:n.data.status })));
-            get().revalidateAllStatuses();
-            const after = JSON.stringify(get().nodes.map(n => ({ id:n.id, s:n.data.status })));
-            if (before !== after) markChanged();
+            // Removed mid-loop revalidation to prevent cascade locking of prerequisite nodes
+            // Final revalidation happens at end after all relationships are established
 
             // Merge duplicates might create new edges/ids; consider that a change
             const mBefore = get().nodes.length + get().edges.length;
@@ -1417,7 +1422,31 @@ export const usePathStore = create<PathState>()(
           resumeLayout();
         }
         
-        // Final status pass ensures no false locks after all merges/connects
+        // Final comprehensive status pass: 
+        // 1. Apply user skills to all nodes
+        // 2. Revalidate all statuses to ensure proper prerequisite chains
+        // 3. Schedule layout refresh
+        const { nodes, userSkills } = get();
+        let finalChanges = false;
+        
+        // First pass: mark nodes as completed if user has relevant skills
+        for (const node of nodes) {
+          if (node.data.status !== 'completed' && node.data.skillTags?.length) {
+            const hasRelevantSkills = node.data.skillTags.some(skillTag =>
+              userSkills.some(userSkill => {
+                const skillSlug = slug(skillTag);
+                const userSlug = slug(userSkill);
+                return skillSlug === userSlug || userSlug.includes(skillSlug) || skillSlug.includes(userSlug);
+              })
+            );
+            if (hasRelevantSkills) {
+              get().setNodeStatus(node.id, 'completed');
+              finalChanges = true;
+            }
+          }
+        }
+        
+        // Second pass: revalidate all statuses to unlock prerequisite chains
         get().revalidateAllStatuses();
         get().scheduleLayout('post auto-fill');
       },
