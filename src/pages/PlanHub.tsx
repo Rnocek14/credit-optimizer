@@ -3,8 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator, Wrench } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { TrackDisplay } from "@/components/tracks/TrackDisplay";
 import MayaInlinePanel from "@/components/maya/MayaInlinePanel";
@@ -15,12 +16,16 @@ import { GoalOrchestrator } from "@/components/GoalOrchestrator";
 import { RecommendationFeed } from "@/components/reco/RecommendationFeed";
 import { TrackProofProjectManager } from "@/components/proof-projects/TrackProofProjectManager";
 import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
+import { CareerProfileCard } from "@/components/CareerProfileCard";
+import { LocationOptimizerDrawer } from "@/components/LocationOptimizerDrawer";
 import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 
 const planFeatures = [
   {
@@ -63,8 +68,14 @@ const planFeatures = [
 export default function PlanHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
+  const navigate = useNavigate();
+  
+  // Career profile card state
+  const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  const [isLocationOptimizerOpen, setIsLocationOptimizerOpen] = useState(false);
 
-  console.log('PlanHub render start:', { activeTab });
+  console.log('PlanHub render start:', { activeTab, activeTrackId });
 
   const { data: currentUser } = useQuery({
     queryKey: ['current-user'],
@@ -106,6 +117,28 @@ export default function PlanHub() {
     } else {
       setSearchParams({ tab: 'roadmap' });
     }
+  };
+
+  // Career profile card handlers
+  const handleSimulateSwitch = () => {
+    setIsSimulatorOpen(true);
+  };
+
+  const handleExportResume = () => {
+    navigate('/resume');
+  };
+
+  const handleCompareTracks = () => {
+    navigate('/plan/compare');
+  };
+
+  const handleOptimizeLocation = () => {
+    setIsLocationOptimizerOpen(true);
+  };
+
+  const handleLocationSelect = (locationId: string, location: any) => {
+    setIsLocationOptimizerOpen(false);
+    // Location selection logic here
   };
 
   return (
@@ -155,6 +188,19 @@ export default function PlanHub() {
               </TabsList>
 
               <TabsContent value="overview" className="mt-6">
+                {/* Career Profile Card */}
+                {activeTrackId && (
+                  <EnhancedErrorBoundary>
+                    <CareerProfileCard
+                      trackId={activeTrackId}
+                      onSimulateSwitch={handleSimulateSwitch}
+                      onExportResume={handleExportResume}
+                      onCompareTracks={handleCompareTracks}
+                      onOptimizeLocation={handleOptimizeLocation}
+                    />
+                  </EnhancedErrorBoundary>
+                )}
+                
                 {/* Today Dashboard */}
                 <EnhancedErrorBoundary>
                   <TodayDashboard 
@@ -275,6 +321,28 @@ export default function PlanHub() {
       >
         <Wrench className="h-5 w-5" />
       </Link>
+
+      {/* Career Switch Simulator Modal */}
+      <Dialog open={isSimulatorOpen} onOpenChange={setIsSimulatorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Career Switch Simulator</DialogTitle>
+          </DialogHeader>
+          <CareerSwitchSimulator 
+            defaultFromTrackId={activeTrackId || undefined}
+            onClose={() => setIsSimulatorOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Optimizer Drawer */}
+      <LocationOptimizerDrawer
+        isOpen={isLocationOptimizerOpen}
+        onClose={() => setIsLocationOptimizerOpen(false)}
+        fromTrackId={activeTrackId || undefined}
+        toTrackId={undefined} // Will be set by the optimizer logic
+        onLocationSelect={handleLocationSelect}
+      />
     </div>
   );
 }
