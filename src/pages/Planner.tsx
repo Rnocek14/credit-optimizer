@@ -5,6 +5,7 @@ import { HubNavigation } from "@/components/HubNavigation";
 import { PlannerJobInput } from "@/components/PlannerJobInput";
 import { PlannerPathDisplay } from "@/components/PlannerPathDisplay";
 import { PlannerUnlockPreview } from "@/components/PlannerUnlockPreview";
+import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
 import { useAIPlanningEngine, type LearningPath } from "@/hooks/useAIPlanningEngine";
 import { useAnalytics } from "@/lib/analytics";
 import TrackSelector from "@/components/tracks/TrackSelector";
@@ -80,6 +81,11 @@ const Planner = () => {
             {/* Unlock Analysis Preview */}
             <div className="mt-6">
               <PlannerUnlockPreview userId={user?.id} />
+            </div>
+            
+            {/* Career Switch Simulator */}
+            <div className="mt-6">
+              <CareerSwitchSimulator />
             </div>
           </div>
 

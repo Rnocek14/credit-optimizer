@@ -1,5 +1,11 @@
 project_id = "vzpissitddpunkpythsb"
 
+[functions.calculate-career-switch]
+verify_jwt = true
+
+[functions.career-risk-analyzer]
+verify_jwt = true
+
 [functions.coursera-api]
 verify_jwt = false
 
