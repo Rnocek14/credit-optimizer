@@ -6760,11 +6760,15 @@ export type Database = {
       }
       switching_scenarios: {
         Row: {
+          assumptions: Json
           config: Json
           created_at: string
           from_track_id: string | null
           id: string
           last_run_at: string | null
+          locations: Json
+          metrics: Json
+          name: string
           results: Json
           status: string
           to_track_id: string | null
@@ -6772,11 +6776,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assumptions?: Json
           config?: Json
           created_at?: string
           from_track_id?: string | null
           id?: string
           last_run_at?: string | null
+          locations?: Json
+          metrics?: Json
+          name?: string
           results?: Json
           status?: string
           to_track_id?: string | null
@@ -6784,11 +6792,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assumptions?: Json
           config?: Json
           created_at?: string
           from_track_id?: string | null
           id?: string
           last_run_at?: string | null
+          locations?: Json
+          metrics?: Json
+          name?: string
           results?: Json
           status?: string
           to_track_id?: string | null
@@ -8612,7 +8624,7 @@ export type Database = {
         Returns: string
       }
       get_age_penalty: {
-        Args: { p_age: number }
+        Args: { age_int: number }
         Returns: number
       }
       get_badge_for_user: {
