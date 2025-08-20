@@ -59,6 +59,36 @@ export type Database = {
         }
         Relationships: []
       }
+      age_penalty_curves: {
+        Row: {
+          age_max: number
+          age_min: number
+          created_at: string
+          id: string
+          notes: string | null
+          penalty_factor: number
+          updated_at: string
+        }
+        Insert: {
+          age_max: number
+          age_min: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          penalty_factor?: number
+          updated_at?: string
+        }
+        Update: {
+          age_max?: number
+          age_min?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          penalty_factor?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_analyzer_audits: {
         Row: {
           architecture_recs: Json | null
@@ -975,8 +1005,10 @@ export type Database = {
       career_graph_nodes: {
         Row: {
           active: boolean | null
+          age_sensitivity_score: number | null
           ai_confidence_score: number | null
           ai_generated_description: string | null
+          automation_risk_pct: number | null
           category: string | null
           certification_body: string | null
           completion_rate: number | null
@@ -1010,8 +1042,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          age_sensitivity_score?: number | null
           ai_confidence_score?: number | null
           ai_generated_description?: string | null
+          automation_risk_pct?: number | null
           category?: string | null
           certification_body?: string | null
           completion_rate?: number | null
@@ -1045,8 +1079,10 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          age_sensitivity_score?: number | null
           ai_confidence_score?: number | null
           ai_generated_description?: string | null
+          automation_risk_pct?: number | null
           category?: string | null
           certification_body?: string | null
           completion_rate?: number | null
@@ -1304,6 +1340,51 @@ export type Database = {
           },
         ]
       }
+      career_risks: {
+        Row: {
+          age_penalty_factor: number
+          ai_job_risk_pct: number
+          calculated_at: string
+          created_at: string
+          cri_mismatch: number
+          id: string
+          risk_breakdown: Json
+          roi_volatility: number
+          switch_risk_score: number
+          track_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_penalty_factor?: number
+          ai_job_risk_pct?: number
+          calculated_at?: string
+          created_at?: string
+          cri_mismatch?: number
+          id?: string
+          risk_breakdown?: Json
+          roi_volatility?: number
+          switch_risk_score?: number
+          track_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_penalty_factor?: number
+          ai_job_risk_pct?: number
+          calculated_at?: string
+          created_at?: string
+          cri_mismatch?: number
+          id?: string
+          risk_breakdown?: Json
+          roi_volatility?: number
+          switch_risk_score?: number
+          track_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       career_step_skills: {
         Row: {
           created_at: string | null
@@ -1408,8 +1489,82 @@ export type Database = {
           },
         ]
       }
+      career_switches: {
+        Row: {
+          assumptions: Json
+          break_even_months: number
+          created_at: string
+          cri_delta: number
+          direct_cost: number
+          friction_cost: number
+          from_track_id: string | null
+          id: string
+          location_id: string | null
+          lost_time_hours: number
+          opportunity_cost: number
+          roi_3yr: number
+          salary_uplift_3yr: number
+          skill_overlap: number
+          status: string
+          switch_cost: number
+          time_gained_hours: number
+          to_track_id: string | null
+          transfer_credit_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assumptions?: Json
+          break_even_months?: number
+          created_at?: string
+          cri_delta?: number
+          direct_cost?: number
+          friction_cost?: number
+          from_track_id?: string | null
+          id?: string
+          location_id?: string | null
+          lost_time_hours?: number
+          opportunity_cost?: number
+          roi_3yr?: number
+          salary_uplift_3yr?: number
+          skill_overlap?: number
+          status?: string
+          switch_cost?: number
+          time_gained_hours?: number
+          to_track_id?: string | null
+          transfer_credit_pct?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assumptions?: Json
+          break_even_months?: number
+          created_at?: string
+          cri_delta?: number
+          direct_cost?: number
+          friction_cost?: number
+          from_track_id?: string | null
+          id?: string
+          location_id?: string | null
+          lost_time_hours?: number
+          opportunity_cost?: number
+          roi_3yr?: number
+          salary_uplift_3yr?: number
+          skill_overlap?: number
+          status?: string
+          switch_cost?: number
+          time_gained_hours?: number
+          to_track_id?: string | null
+          transfer_credit_pct?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       career_tracks: {
         Row: {
+          age_penalty_factor: number | null
+          ai_job_risk_pct: number | null
           archived: boolean
           color: string | null
           created_at: string
@@ -1418,8 +1573,12 @@ export type Database = {
           growth_potential: string | null
           icon: string | null
           id: string
+          lqi_score: number | null
           order_index: number
           reasoning: string | null
+          risk_score: number | null
+          roi_score: number | null
+          switch_readiness_score: number | null
           time_to_proficiency: string | null
           title: string
           track_name: string | null
@@ -1427,6 +1586,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          age_penalty_factor?: number | null
+          ai_job_risk_pct?: number | null
           archived?: boolean
           color?: string | null
           created_at?: string
@@ -1435,8 +1596,12 @@ export type Database = {
           growth_potential?: string | null
           icon?: string | null
           id?: string
+          lqi_score?: number | null
           order_index?: number
           reasoning?: string | null
+          risk_score?: number | null
+          roi_score?: number | null
+          switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title: string
           track_name?: string | null
@@ -1444,6 +1609,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          age_penalty_factor?: number | null
+          ai_job_risk_pct?: number | null
           archived?: boolean
           color?: string | null
           created_at?: string
@@ -1452,8 +1619,12 @@ export type Database = {
           growth_potential?: string | null
           icon?: string | null
           id?: string
+          lqi_score?: number | null
           order_index?: number
           reasoning?: string | null
+          risk_score?: number | null
+          roi_score?: number | null
+          switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title?: string
           track_name?: string | null
@@ -6092,6 +6263,36 @@ export type Database = {
           },
         ]
       }
+      skill_automation_risk: {
+        Row: {
+          automation_risk_pct: number
+          created_at: string
+          horizon_years: number
+          id: string
+          skill_id: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          automation_risk_pct?: number
+          created_at?: string
+          horizon_years?: number
+          id?: string
+          skill_id: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          automation_risk_pct?: number
+          created_at?: string
+          horizon_years?: number
+          id?: string
+          skill_id?: string
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       skill_branches: {
         Row: {
           created_at: string
@@ -6505,6 +6706,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      switching_scenarios: {
+        Row: {
+          config: Json
+          created_at: string
+          from_track_id: string | null
+          id: string
+          last_run_at: string | null
+          results: Json
+          status: string
+          to_track_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          from_track_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          results?: Json
+          status?: string
+          to_track_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          from_track_id?: string | null
+          id?: string
+          last_run_at?: string | null
+          results?: Json
+          status?: string
+          to_track_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       system_performance_metrics: {
         Row: {
