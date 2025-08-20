@@ -246,17 +246,15 @@ export function HubNavigation() {
       </div>
 
       {/* Track Manager Dialog */}
-      {showTrackManager && (
-        <TrackManager 
-          open={showTrackManager}
-          onOpenChange={setShowTrackManager}
-          currentTrackId={activeTrackId || undefined}
-          onTrackSelect={(trackId) => {
-            setShowTrackManager(false);
-            // Navigation will be handled by the hook
-          }}
-        />
-      )}
+      <TrackManager 
+        open={showTrackManager}
+        onOpenChange={setShowTrackManager}
+        currentTrackId={activeTrackId || undefined}
+        onTrackSelect={(trackId) => {
+          setShowTrackManager(false);
+          // Navigation will be handled by the hook
+        }}
+      />
     </nav>
   );
 }
