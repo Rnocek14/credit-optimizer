@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, ChevronDown, ChevronRight, MessageCircle, CheckCircle2, Clock } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, MessageCircle, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import confetti from "canvas-confetti";
@@ -57,8 +57,31 @@ export default function Plans() {
   });
 
   // Calculate the trackId to use for CareerProfileCard
-  const trackIdToUse = activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id;
+  const trackIdToUse = activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id || null;
   console.log('trackIdToUse:', trackIdToUse);
+
+  // Show empty state if no tracks
+  if (!tracksLoading && tracks.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Career Tracks Yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Create your first career track to start planning your professional journey.
+              </p>
+              <Button onClick={() => navigate('/mentor')} className="gap-2">
+                <MessageCircle className="w-4 h-4" />
+                Chat with Maya
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Auto-select first available track if none is selected
   React.useEffect(() => {
@@ -215,8 +238,8 @@ export default function Plans() {
         </div>
       </div>
 
-      {/* Career Profile Card */}
-      {trackIdToUse && (
+      {/* Career Profile Card - Only render if trackIdToUse exists */}
+      {trackIdToUse ? (
         <div className="mb-8">
           <CareerProfileCard 
             trackId={trackIdToUse}
@@ -224,6 +247,17 @@ export default function Plans() {
             onCompareTracks={() => navigate(`/plan/compare?a=${trackIdToUse}`)}
             onOptimizeLocation={() => openLocationOptimizerFor(trackIdToUse)}
           />
+        </div>
+      ) : !tracksLoading && (
+        <div className="mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center text-muted-foreground">
+                <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+                <p>No active career track found. Please create a track first.</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 

@@ -28,13 +28,6 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   const [isLocationOptimizerOpen, setIsLocationOptimizerOpen] = useState(false);
   const { toast } = useToast();
 
-  // Set default fromTrackId when prop changes
-  useEffect(() => {
-    if (defaultFromTrackId && !fromTrackId) {
-      setFromTrackId(defaultFromTrackId);
-    }
-  }, [defaultFromTrackId, fromTrackId]);
-
   // Sample locations (in a real app, this would come from a database)
   const locations = [
     { id: 'sf', name: 'San Francisco, CA', salary: '+40%', col: '+60%' },
@@ -52,6 +45,26 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  const canAnalyze = fromTrackId && toTrackId && fromTrackId !== toTrackId;
+
+  // Set default fromTrackId when prop changes
+  useEffect(() => {
+    if (defaultFromTrackId && !fromTrackId) {
+      setFromTrackId(defaultFromTrackId);
+    }
+  }, [defaultFromTrackId, fromTrackId]);
+
+  // Auto-select toTrackId when tracks are loaded and fromTrackId is set
+  useEffect(() => {
+    if (fromTrackId && !toTrackId && tracks && tracks.length > 1) {
+      const firstOther = tracks.find(t => t.id !== fromTrackId);
+      if (firstOther) {
+        console.log('Auto-selecting toTrackId:', firstOther.id, firstOther.title);
+        setToTrackId(firstOther.id);
+      }
+    }
+  }, [fromTrackId, toTrackId, tracks]);
+
   // Use the new switching engine hook
   const { 
     data: switchingData, 
@@ -64,6 +77,17 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
     userAge: parseInt(userAge) || 30
   });
 
+  console.log('CareerSwitchSimulator state:', {
+    fromTrackId,
+    toTrackId,
+    selectedLocation,
+    userAge,
+    canAnalyze,
+    isAnalyzing,
+    hasData: !!switchingData,
+    error: switchingError?.message
+  });
+
   const handleLocationSelect = (locationId: string, location: any) => {
     setSelectedLocation(locationId);
     setIsLocationOptimizerOpen(false);
@@ -72,8 +96,6 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
       description: `Updated analysis for ${location.city}, ${location.country}`,
     });
   };
-
-  const canAnalyze = fromTrackId && toTrackId && fromTrackId !== toTrackId;
 
   if (tracksError) {
     return (
@@ -224,7 +246,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">
-                      {switchingData.switchData.metrics.skillOverlap}%
+                      {switchingData.switchData?.metrics?.skillOverlap ?? 0}%
                     </div>
                     <p className="text-sm text-muted-foreground">Skill Overlap</p>
                   </div>
@@ -235,7 +257,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      ${Math.round(switchingData.switchData.metrics.roi3yr / 1000)}k
+                      ${Math.round((switchingData.switchData?.metrics?.roi3yr ?? 0) / 1000)}k
                     </div>
                     <p className="text-sm text-muted-foreground">3-Year ROI</p>
                   </div>
@@ -246,7 +268,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 <CardContent className="p-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-orange-600">
-                      {switchingData.switchData.metrics.breakEvenMonths}mo
+                      {switchingData.switchData?.metrics?.breakEvenMonths ?? 0}mo
                     </div>
                     <p className="text-sm text-muted-foreground">Break-even</p>
                   </div>
@@ -263,19 +285,31 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <span>Overall Risk Level</span>
                   <span className={`px-2 py-1 rounded text-sm font-medium ${
-                    switchingData.riskData.riskLevel === 'High' ? 'bg-red-100 text-red-800' :
-                    switchingData.riskData.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                    switchingData.riskData?.riskLevel === 'High' ? 'bg-red-100 text-red-800' :
+                    switchingData.riskData?.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {switchingData.riskData.riskLevel}
+                    {switchingData.riskData?.riskLevel ?? 'Low'}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Risk Score: {Math.round(switchingData.riskData.overallRisk)}%
+                  Risk Score: {Math.round(switchingData.riskData?.overallRisk ?? 0)}%
                 </div>
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Show message when tracks aren't selected */}
+        {!canAnalyze && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center text-muted-foreground">
+                <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+                <p>Please select both current and target tracks to run analysis</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
         </CardContent>
       </Card>
