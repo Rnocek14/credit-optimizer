@@ -42,11 +42,24 @@ export default function Plans() {
   const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
   const { tracks, isLoading: tracksLoading } = useTracks();
 
+  // Debug logging
+  console.log('Plans.tsx Debug:', { 
+    activeTrackId, 
+    tracksCount: tracks.length, 
+    tracksLoading, 
+    tracks: tracks.map(t => ({ id: t.id, name: t.track_name, archived: t.archived }))
+  });
+
+  // Calculate the trackId to use for CareerProfileCard
+  const trackIdToUse = activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id;
+  console.log('trackIdToUse:', trackIdToUse);
+
   // Auto-select first available track if none is selected
   React.useEffect(() => {
     if (!activeTrackId && tracks.length > 0 && !tracksLoading) {
       const firstActiveTrack = tracks.find(track => !track.archived);
       if (firstActiveTrack) {
+        console.log('Auto-selecting track:', firstActiveTrack.id, firstActiveTrack.track_name);
         setActiveTrackId(firstActiveTrack.id);
       }
     }
@@ -180,9 +193,9 @@ export default function Plans() {
       </div>
 
       {/* Career Profile Card */}
-      {(activeTrackId || tracks.length > 0) && (
+      {trackIdToUse && (
         <div className="mb-8">
-          <CareerProfileCard trackId={activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id} />
+          <CareerProfileCard trackId={trackIdToUse} />
         </div>
       )}
 
