@@ -14,6 +14,7 @@ import { EnhancedGoalDashboard } from "@/components/EnhancedGoalDashboard";
 import { GoalOrchestrator } from "@/components/GoalOrchestrator";
 import { RecommendationFeed } from "@/components/reco/RecommendationFeed";
 import { TrackProofProjectManager } from "@/components/proof-projects/TrackProofProjectManager";
+import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
 import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { useQuery } from "@tanstack/react-query";
@@ -48,6 +49,13 @@ const planFeatures = [
     tab: "proof",
     icon: CheckSquare,
     color: "bg-orange-500/10 text-orange-600"
+  },
+  {
+    title: "Career Switch Analyzer",
+    description: "Analyze career transitions and calculate ROI",
+    tab: "switch",
+    icon: Calculator,
+    color: "bg-teal-500/10 text-teal-600"
   }
 ];
 
@@ -113,13 +121,14 @@ export default function PlanHub() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
                 <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
                 <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
                 <TabsTrigger value="gaps" data-testid="tab-gaps">Skill Gaps</TabsTrigger>
                 <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
                 <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
+                <TabsTrigger value="switch" data-testid="tab-switch">Career Switch</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-6">
@@ -199,6 +208,18 @@ export default function PlanHub() {
 
               <TabsContent value="proof" className="mt-6">
                 <TrackProofProjectManager />
+              </TabsContent>
+
+              <TabsContent value="switch" className="mt-6">
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold mb-2">Career Switch Analyzer</h2>
+                    <p className="text-muted-foreground mb-6">
+                      Analyze potential career transitions, calculate ROI, and understand switching costs and risks.
+                    </p>
+                  </div>
+                  <CareerSwitchSimulator />
+                </div>
               </TabsContent>
             </Tabs>
           </div>

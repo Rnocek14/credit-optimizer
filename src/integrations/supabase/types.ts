@@ -1489,6 +1489,57 @@ export type Database = {
           },
         ]
       }
+      career_switch_scenarios: {
+        Row: {
+          additional_learning_hours: number
+          break_even_months: number
+          created_at: string
+          direct_cost: number
+          friction_cost: number
+          from_track: string
+          id: string
+          notes: string | null
+          opportunity_cost: number
+          roi_3yr_pct: number
+          skill_overlap_pct: number
+          time_saved_hours: number
+          to_track: string
+          updated_at: string
+        }
+        Insert: {
+          additional_learning_hours?: number
+          break_even_months?: number
+          created_at?: string
+          direct_cost?: number
+          friction_cost?: number
+          from_track: string
+          id?: string
+          notes?: string | null
+          opportunity_cost?: number
+          roi_3yr_pct?: number
+          skill_overlap_pct?: number
+          time_saved_hours?: number
+          to_track: string
+          updated_at?: string
+        }
+        Update: {
+          additional_learning_hours?: number
+          break_even_months?: number
+          created_at?: string
+          direct_cost?: number
+          friction_cost?: number
+          from_track?: string
+          id?: string
+          notes?: string | null
+          opportunity_cost?: number
+          roi_3yr_pct?: number
+          skill_overlap_pct?: number
+          time_saved_hours?: number
+          to_track?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       career_switches: {
         Row: {
           assumptions: Json
