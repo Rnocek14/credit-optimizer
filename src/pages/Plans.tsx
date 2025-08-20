@@ -19,6 +19,9 @@ import { CareerProfileCard } from "@/components/CareerProfileCard";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useTracks } from "@/hooks/useTracks";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
+import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
+import { LocationOptimizerDrawer } from "@/components/LocationOptimizerDrawer";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface MilestonePlan {
   id: string;
@@ -36,6 +39,9 @@ interface MilestonePlan {
 export default function Plans() {
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
+  const [isSwitchSimulatorOpen, setIsSwitchSimulatorOpen] = useState(false);
+  const [isLocationOptimizerOpen, setIsLocationOptimizerOpen] = useState(false);
+  const [simulatorFromTrackId, setSimulatorFromTrackId] = useState<string>('');
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -64,6 +70,23 @@ export default function Plans() {
       }
     }
   }, [activeTrackId, tracks, tracksLoading, setActiveTrackId]);
+
+  // Action handlers for CareerProfileCard
+  const openSwitchSimulatorWith = (trackId: string) => {
+    setSimulatorFromTrackId(trackId);
+    setIsSwitchSimulatorOpen(true);
+  };
+
+  const openLocationOptimizerFor = (trackId: string) => {
+    setSimulatorFromTrackId(trackId);
+    setIsLocationOptimizerOpen(true);
+  };
+
+  const handleLocationSelect = (locationId: string, location: any) => {
+    console.log('Location selected:', locationId, location);
+    // Location selection is handled by the LocationOptimizerDrawer
+    setIsLocationOptimizerOpen(false);
+  };
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['milestone-plans'],
@@ -195,7 +218,12 @@ export default function Plans() {
       {/* Career Profile Card */}
       {trackIdToUse && (
         <div className="mb-8">
-          <CareerProfileCard trackId={trackIdToUse} />
+          <CareerProfileCard 
+            trackId={trackIdToUse}
+            onSimulateSwitch={() => openSwitchSimulatorWith(trackIdToUse)}
+            onCompareTracks={() => navigate(`/plan/compare?a=${trackIdToUse}`)}
+            onOptimizeLocation={() => openLocationOptimizerFor(trackIdToUse)}
+          />
         </div>
       )}
 
@@ -286,6 +314,24 @@ export default function Plans() {
           </Button>
         </div>
       )}
+
+      {/* Career Switch Simulator Modal */}
+      <Dialog open={isSwitchSimulatorOpen} onOpenChange={setIsSwitchSimulatorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <CareerSwitchSimulator 
+            defaultFromTrackId={simulatorFromTrackId}
+            onClose={() => setIsSwitchSimulatorOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Optimizer Drawer */}
+      <LocationOptimizerDrawer
+        isOpen={isLocationOptimizerOpen}
+        onClose={() => setIsLocationOptimizerOpen(false)}
+        fromTrackId={simulatorFromTrackId}
+        onLocationSelect={handleLocationSelect}
+      />
     </div>
   );
 }

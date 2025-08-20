@@ -1,25 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, TrendingUp, AlertTriangle, Clock, Users } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, Clock, Users, MapPin } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { analyzeCareerSwitch, getUserCareerTracks, type CareerSwitchAnalysis } from '@/lib/switching';
-import { CareerSwitchResults } from '@/components/CareerSwitchResults';
+import { getUserCareerTracks } from '@/lib/switching';
+import { useSwitchingEngine } from '@/hooks/useSwitchingEngine';
+import { useLocationSwitchOptimizer } from '@/hooks/useLocationSwitchOptimizer';
+import { LocationOptimizerDrawer } from '@/components/LocationOptimizerDrawer';
 import { useToast } from '@/hooks/use-toast';
 
-export const CareerSwitchSimulator = () => {
-  const [fromTrackId, setFromTrackId] = useState<string>('');
+interface CareerSwitchSimulatorProps {
+  defaultFromTrackId?: string;
+  onClose?: () => void;
+}
+
+export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({ 
+  defaultFromTrackId,
+  onClose 
+}) => {
+  const [fromTrackId, setFromTrackId] = useState<string>(defaultFromTrackId || '');
   const [toTrackId, setToTrackId] = useState<string>('');
   const [userAge, setUserAge] = useState<string>('30');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<CareerSwitchAnalysis | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [savedScenarios, setSavedScenarios] = useState<any[]>([]);
+  const [isLocationOptimizerOpen, setIsLocationOptimizerOpen] = useState(false);
   const { toast } = useToast();
+
+  // Set default fromTrackId when prop changes
+  useEffect(() => {
+    if (defaultFromTrackId && !fromTrackId) {
+      setFromTrackId(defaultFromTrackId);
+    }
+  }, [defaultFromTrackId, fromTrackId]);
 
   // Sample locations (in a real app, this would come from a database)
   const locations = [
@@ -38,53 +52,28 @@ export const CareerSwitchSimulator = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const handleAnalyze = async () => {
-    if (!fromTrackId || !toTrackId) {
-      toast({
-        title: "Missing Selection",
-        description: "Please select both current and target career tracks.",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Use the new switching engine hook
+  const { 
+    data: switchingData, 
+    isLoading: isAnalyzing, 
+    error: switchingError 
+  } = useSwitchingEngine({
+    fromTrackId: fromTrackId || undefined,
+    toTrackId: toTrackId || undefined,
+    locationId: selectedLocation || undefined,
+    userAge: parseInt(userAge) || 30
+  });
 
-    if (fromTrackId === toTrackId) {
-      toast({
-        title: "Invalid Selection",
-        description: "Please select different tracks for comparison.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setError(null);
-    
-    try {
-      const result = await analyzeCareerSwitch(
-        fromTrackId, 
-        toTrackId, 
-        selectedLocation || undefined,
-        parseInt(userAge) || 30
-      );
-      setAnalysis(result);
-      toast({
-        title: "Analysis Complete",
-        description: "Career switch analysis has been calculated successfully.",
-      });
-    } catch (error) {
-      console.error('Analysis error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      setError(errorMessage);
-      toast({
-        title: "Analysis Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
+  const handleLocationSelect = (locationId: string, location: any) => {
+    setSelectedLocation(locationId);
+    setIsLocationOptimizerOpen(false);
+    toast({
+      title: "Location Selected",
+      description: `Updated analysis for ${location.city}, ${location.country}`,
+    });
   };
+
+  const canAnalyze = fromTrackId && toTrackId && fromTrackId !== toTrackId;
 
   if (tracksError) {
     return (
@@ -100,17 +89,25 @@ export const CareerSwitchSimulator = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          Career Switch Simulator
-        </CardTitle>
-        <CardDescription>
-          Analyze the costs, benefits, and risks of switching between career tracks
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            Career Switch Simulator
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Analyze the costs, benefits, and risks of switching between career tracks
+          </p>
+        </div>
+        {onClose && (
+          <Button variant="outline" onClick={onClose} size="sm">
+            Close
+          </Button>
+        )}
+      </div>
+      <Card>
+        <CardContent className="space-y-6 pt-6">
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="current-track">Current Track</Label>
@@ -146,7 +143,7 @@ export const CareerSwitchSimulator = () => {
         </div>
 
         {/* Additional Parameters */}
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="user-age">Your Age</Label>
             <div className="relative">
@@ -166,57 +163,131 @@ export const CareerSwitchSimulator = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Target Location (Optional)</Label>
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select target location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{location.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {location.salary} salary, {location.col} COL
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="location">Target Location</Label>
+            <div className="flex gap-2">
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setIsLocationOptimizerOpen(true)}
+                disabled={!canAnalyze}
+              >
+                <MapPin className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-end">
+            <Button 
+              onClick={() => toast({ title: "Analysis Complete", description: "Switch analysis updated with current parameters." })}
+              disabled={!canAnalyze || isAnalyzing || tracksLoading}
+              className="w-full"
+              size="default"
+            >
+              {isAnalyzing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isAnalyzing ? 'Analyzing...' : 'Update Analysis'}
+            </Button>
           </div>
         </div>
 
-        <Button 
-          onClick={handleAnalyze}
-          disabled={!fromTrackId || !toTrackId || isAnalyzing || tracksLoading}
-          className="w-full"
-          size="lg"
-        >
-          {isAnalyzing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {isAnalyzing ? 'Analyzing...' : 'Simulate Career Switch'}
-        </Button>
-
-        {error && (
+        {(switchingError || tracksError) && (
           <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
             <div className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-4 w-4" />
               <span className="font-medium">Analysis Error</span>
             </div>
-            <p className="text-sm text-destructive/80 mt-1">{error}</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setError(null)}
-              className="mt-2"
-            >
-              Dismiss
-            </Button>
+            <p className="text-sm text-destructive/80 mt-1">
+              {switchingError?.message || tracksError?.message || 'Failed to load data'}
+            </p>
           </div>
         )}
 
-        {analysis && <CareerSwitchResults analysis={analysis} />}
-      </CardContent>
-    </Card>
+        {/* Results */}
+        {switchingData && canAnalyze && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Analysis Results</h3>
+            
+            {/* Switch Metrics */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {switchingData.switchData.metrics.skillOverlap}%
+                    </div>
+                    <p className="text-sm text-muted-foreground">Skill Overlap</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      ${Math.round(switchingData.switchData.metrics.roi3yr / 1000)}k
+                    </div>
+                    <p className="text-sm text-muted-foreground">3-Year ROI</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {switchingData.switchData.metrics.breakEvenMonths}mo
+                    </div>
+                    <p className="text-sm text-muted-foreground">Break-even</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Risk Analysis */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Risk Assessment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-2">
+                  <span>Overall Risk Level</span>
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${
+                    switchingData.riskData.riskLevel === 'High' ? 'bg-red-100 text-red-800' :
+                    switchingData.riskData.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {switchingData.riskData.riskLevel}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Risk Score: {Math.round(switchingData.riskData.overallRisk)}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        </CardContent>
+      </Card>
+
+      {/* Location Optimizer Drawer */}
+      <LocationOptimizerDrawer
+        isOpen={isLocationOptimizerOpen}
+        onClose={() => setIsLocationOptimizerOpen(false)}
+        fromTrackId={fromTrackId}
+        toTrackId={toTrackId}
+        onLocationSelect={handleLocationSelect}
+      />
+    </div>
   );
 };
