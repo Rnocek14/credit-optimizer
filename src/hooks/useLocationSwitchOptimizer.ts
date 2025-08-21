@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUser } from '@/lib/authHelper';
+import { callEdgeFunction } from '@/lib/edgeFunctionClient';
 
 export interface LocationAnalysis {
   city: string;
@@ -46,11 +45,6 @@ export const useLocationSwitchOptimizer = ({
         throw new Error('Both track IDs are required');
       }
 
-      const user = await getCurrentUser();
-      if (!user) {
-        throw new Error('Authentication required');
-      }
-
       const requestBody = {
         fromTrackId,
         toTrackId,
@@ -59,30 +53,7 @@ export const useLocationSwitchOptimizer = ({
       
       console.log('[LocationOptimizer] params:', { requestBody, enabled: !!(fromTrackId && toTrackId) });
 
-      // Prepare headers for all users
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (user.isDevUser) {
-        headers['x-dev-user-id'] = user.id;
-      }
-
-      const { data, error } = await supabase.functions.invoke('location-switch-optimizer', {
-        body: JSON.stringify(requestBody),
-        headers
-      });
-
-      if (error) {
-        console.error('Location optimizer error:', error);
-        throw new Error(error.message || 'Failed to optimize locations');
-      }
-
-      if (!data) {
-        throw new Error('No data returned from location optimizer');
-      }
-
-      return data;
+      return await callEdgeFunction<LocationOptimizationResult>('location-switch-optimizer', requestBody);
     },
     enabled: !!(fromTrackId && toTrackId && fromTrackId !== '' && toTrackId !== ''),
     staleTime: 10 * 60 * 1000, // 10 minutes

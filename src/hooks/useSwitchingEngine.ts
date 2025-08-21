@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUser } from '@/lib/authHelper';
 import { SwitchResultSchema, RiskAnalysisSchema } from '@/types/switching';
+import { callEdgeFunction } from '@/lib/edgeFunctionClient';
 
 interface Params {
   fromTrackId?: string;
@@ -21,42 +20,21 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
         throw new Error('Both track IDs are required');
       }
 
-      const user = await getCurrentUser();
-      if (!user) throw new Error('Authentication required');
-
-      const headers: Record<string,string> = { 'Content-Type': 'application/json' };
-      if (user.isDevUser) headers['x-dev-user-id'] = user.id;
-
       const switchBody = { fromTrackId, toTrackId, locationId };
       const riskBody = { trackId: toTrackId, userAge };
       
-      console.log('[useSwitchingEngine] invoking functions with:', {
-        switchBody, riskBody, headers
-      });
+      console.log('[useSwitchingEngine] invoking functions with:', { switchBody, riskBody });
 
-      const [switchRes, riskRes] = await Promise.all([
-        supabase.functions.invoke('calculate-career-switch', {
-          body: JSON.stringify(switchBody),
-          headers: { ...headers, 'Content-Type': 'application/json' }
-        }),
-        supabase.functions.invoke('career-risk-analyzer', {
-          body: JSON.stringify(riskBody),
-          headers: { ...headers, 'Content-Type': 'application/json' }
-        })
+      const [switchData, riskData] = await Promise.all([
+        callEdgeFunction('calculate-career-switch', switchBody),
+        callEdgeFunction('career-risk-analyzer', riskBody)
       ]);
 
-      console.log('useSwitchingEngine: API responses:', {
-        switchRes: { error: switchRes.error, hasData: !!switchRes.data },
-        riskRes: { error: riskRes.error, hasData: !!riskRes.data }
-      });
+      return {
+        switchData: SwitchResultSchema.parse(switchData),
+        riskData: RiskAnalysisSchema.parse(riskData)
+      };
 
-      if (switchRes.error) throw new Error(switchRes.error.message || 'Switch calc failed');
-      if (riskRes.error) throw new Error(riskRes.error.message || 'Risk calc failed');
-
-      const switchData = SwitchResultSchema.parse(switchRes.data);
-      const riskData = RiskAnalysisSchema.parse(riskRes.data);
-
-      return { switchData, riskData };
     }
   });
 };

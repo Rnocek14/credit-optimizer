@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
+import { badRequest, unauthorized, notFound, forbidden, serverError, success } from '../_shared/responseHelpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,61 +54,53 @@ async function authenticateUser(req: Request) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
   }
 
   try {
     console.log('Calculate career switch function called');
     
     // Authenticate user (supports both JWT and dev user override)
-    const { user, isDevUser } = await authenticateUser(req);
+    let user, isDevUser;
+    try {
+      const auth = await authenticateUser(req);
+      user = auth.user;
+      isDevUser = auth.isDevUser;
+    } catch (e) {
+      return unauthorized('Authentication required - invalid or missing credentials');
+    }
+    
     console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
+    // Parse and validate request body
     let body: any = {};
     try {
       const rawBody = await req.text();
       console.log('Raw request body:', rawBody);
-      if (rawBody) {
-        body = JSON.parse(rawBody);
-        console.log('Parsed request body:', body);
-      } else {
-        console.error('No JSON body provided');
-      }
+      if (!rawBody) return badRequest('No JSON body provided');
+      body = JSON.parse(rawBody);
+      console.log('Parsed request body:', body);
     } catch (e) {
-      console.error('Failed to parse request body:', e);
+      return badRequest('Invalid JSON body');
     }
-    const { fromTrackId, toTrackId, locationId } = body;
 
-    if (!fromTrackId || !toTrackId) {
-      throw new Error('Missing required track IDs');
-    }
+    const { fromTrackId, toTrackId, locationId } = body;
+    const missing = ['fromTrackId', 'toTrackId'].filter(k => !body?.[k]);
+    if (missing.length) return badRequest('Both track IDs are required', missing);
 
     console.log(`Calculating career switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
 
-    // Get track details with better error handling
-    console.log('Fetching tracks:', { fromTrackId, toTrackId, userId: user.id });
-    
+    // Verify track ownership
     const { data: tracks, error: tracksError } = await supabase
       .from('career_tracks')
       .select('*')
-      .in('id', [fromTrackId, toTrackId])
-      .eq('user_id', user.id);
+      .in('id', [fromTrackId, toTrackId]);
 
-    console.log('Tracks query result:', { tracks: tracks?.length, error: tracksError });
+    if (tracksError) throw tracksError;
+    if (!tracks || tracks.length !== 2) return notFound('One or both tracks not found');
 
-    if (tracksError) {
-      console.error('Database error fetching tracks:', tracksError);
-      throw new Error(`Failed to fetch career tracks: ${tracksError.message}`);
-    }
-
-    if (!tracks || tracks.length === 0) {
-      throw new Error('No career tracks found. Please ensure the tracks belong to your account.');
-    }
-
-    if (tracks.length !== 2) {
-      const foundIds = tracks.map(t => t.id);
-      throw new Error(`Missing tracks. Found: ${foundIds.join(', ')}. Expected: ${fromTrackId}, ${toTrackId}`);
-    }
+    const unauthorizedTrack = tracks.find(t => t.user_id !== user.id);
+    if (unauthorizedTrack) return forbidden('Track does not belong to current user');
 
     const fromTrack = tracks.find(t => t.id === fromTrackId);
     const toTrack = tracks.find(t => t.id === toTrackId);
@@ -247,7 +240,7 @@ serve(async (req) => {
 
     console.log('Career switch calculated successfully:', insertedSwitch.id);
 
-    return new Response(JSON.stringify({
+    return success({
       switchId: insertedSwitch.id,
       metrics: {
         skillOverlap: Math.round(skillOverlap * 100),
@@ -263,28 +256,10 @@ serve(async (req) => {
         from: fromTrack?.title,
         to: toTrack?.title
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in calculate-career-switch:', error);
-    
-    // Enhanced error logging for debugging
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
-    
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return serverError(error);
   }
 });

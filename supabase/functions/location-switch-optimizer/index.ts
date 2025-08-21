@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
+import { badRequest, unauthorized, notFound, forbidden, serverError, success } from '../_shared/responseHelpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,54 +37,56 @@ async function authenticateUser(req: Request) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
   }
 
   try {
     console.log('Location switch optimizer function called');
-    const { user, isDevUser } = await authenticateUser(req);
+    
+    // Authenticate user
+    let user, isDevUser;
+    try {
+      const auth = await authenticateUser(req);
+      user = auth.user;
+      isDevUser = auth.isDevUser;
+    } catch (e) {
+      return unauthorized('Authentication required');
+    }
+    
     console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
-    // Parse body safely
+    // Parse and validate request body
     let body: any = {};
     try {
       const rawBody = await req.text();
       console.log('Raw request body:', rawBody);
-      if (rawBody) {
-        body = JSON.parse(rawBody);
-        console.log('Parsed request body:', body);
-      } else {
-        console.error('No JSON body provided');
-      }
+      if (!rawBody) return badRequest('No JSON body provided');
+      body = JSON.parse(rawBody);
+      console.log('Parsed request body:', body);
     } catch (e) {
-      console.error('Failed to parse request body:', e);
+      return badRequest('Invalid JSON body');
     }
 
     const { fromTrackId, toTrackId, locationIds, topN = 5 } = body;
-    
-    console.log('Parsed parameters:', { fromTrackId, toTrackId, locationIds, topN });
-    if (!fromTrackId || !toTrackId) {
-      return new Response(JSON.stringify({ error: 'Missing required track IDs' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const missing = ['fromTrackId', 'toTrackId'].filter(k => !body?.[k]);
+    if (missing.length) return badRequest('Both track IDs are required', missing);
 
     // Default regions if none provided
     const regions: string[] = Array.isArray(locationIds) && locationIds.length > 0
       ? locationIds
       : ['US-CHI', 'US-AUS', 'UK-LON'];
 
-    // Fetch tracks to derive roles for salary lookups
+    // Verify track ownership  
     const { data: tracks, error: tracksError } = await supabase
       .from('career_tracks')
-      .select('id, title, track_name')
-      .in('id', [fromTrackId, toTrackId])
-      .eq('user_id', user.id);
+      .select('id, title, track_name, user_id')
+      .in('id', [fromTrackId, toTrackId]);
 
-    if (tracksError || !tracks || tracks.length !== 2) {
-      throw new Error('Failed to fetch career tracks');
-    }
+    if (tracksError) throw tracksError;
+    if (!tracks || tracks.length !== 2) return notFound('One or both tracks not found');
+
+    const unauthorizedTrack = tracks.find(t => t.user_id !== user.id);
+    if (unauthorizedTrack) return forbidden('Track does not belong to current user');
 
     const fromTrack = tracks.find(t => t.id === fromTrackId)!;
     const toTrack = tracks.find(t => t.id === toTrackId)!;
@@ -181,7 +184,7 @@ serve(async (req) => {
 
     console.log('Location optimization completed successfully');
 
-    return new Response(JSON.stringify({
+    return success({
       fromTrack: fromTrack?.title,
       toTrack: toTrack?.title,
       rankedLocations,
@@ -191,17 +194,10 @@ serve(async (req) => {
         baselineCost,
         switchCost
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in location-switch-optimizer:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Internal server error'
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return serverError(error);
   }
 });
