@@ -47,9 +47,16 @@ serve(async (req) => {
     // Parse body safely
     let body: any = {};
     try {
-      body = await req.json();
-    } catch {
-      console.warn('No JSON body provided or failed to parse');
+      const rawBody = await req.text();
+      console.log('Raw request body:', rawBody);
+      if (rawBody) {
+        body = JSON.parse(rawBody);
+        console.log('Parsed request body:', body);
+      } else {
+        console.error('No JSON body provided');
+      }
+    } catch (e) {
+      console.error('Failed to parse request body:', e);
     }
 
     const { fromTrackId, toTrackId, locationIds, topN = 5 } = body;

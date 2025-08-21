@@ -42,9 +42,9 @@ export const CompareTracks: React.FC = () => {
     staleTime: 5 * 60 * 1000
   });
 
-  // Fetch profile data for both tracks
-  const { data: profileA, isLoading: loadingA, error: errorA } = useCareerProfileCard(trackAId);
-  const { data: profileB, isLoading: loadingB, error: errorB } = useCareerProfileCard(trackBId);
+  // Fetch profile data for both tracks (only when track IDs exist)
+  const { data: profileA, isLoading: loadingA, error: errorA } = useCareerProfileCard(trackAId || '');
+  const { data: profileB, isLoading: loadingB, error: errorB } = useCareerProfileCard(trackBId || '');
 
   console.log('CompareTracks: Profile data state:', {
     trackAId, trackBId, 

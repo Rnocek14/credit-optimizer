@@ -51,7 +51,13 @@ export const useLocationSwitchOptimizer = ({
         throw new Error('Authentication required');
       }
 
-      console.log('[LocationOptimizer] params:', { fromTrackId, toTrackId, enabled: !!(fromTrackId && toTrackId) });
+      const requestBody = {
+        fromTrackId,
+        toTrackId,
+        topN
+      };
+      
+      console.log('[LocationOptimizer] params:', { requestBody, enabled: !!(fromTrackId && toTrackId) });
 
       // Prepare headers for all users
       const headers: Record<string, string> = {
@@ -63,11 +69,7 @@ export const useLocationSwitchOptimizer = ({
       }
 
       const { data, error } = await supabase.functions.invoke('location-switch-optimizer', {
-        body: {
-          fromTrackId,
-          toTrackId,
-          topN
-        },
+        body: JSON.stringify(requestBody),
         headers
       });
 

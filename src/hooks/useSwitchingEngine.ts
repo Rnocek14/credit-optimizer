@@ -27,18 +27,21 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
       const headers: Record<string,string> = { 'Content-Type': 'application/json' };
       if (user.isDevUser) headers['x-dev-user-id'] = user.id;
 
+      const switchBody = { fromTrackId, toTrackId, locationId };
+      const riskBody = { trackId: toTrackId, userAge };
+      
       console.log('[useSwitchingEngine] invoking functions with:', {
-        fromTrackId, toTrackId, locationId, userAge, headers
+        switchBody, riskBody, headers
       });
 
       const [switchRes, riskRes] = await Promise.all([
         supabase.functions.invoke('calculate-career-switch', {
-          body: { fromTrackId, toTrackId, locationId },
-          headers
+          body: JSON.stringify(switchBody),
+          headers: { ...headers, 'Content-Type': 'application/json' }
         }),
         supabase.functions.invoke('career-risk-analyzer', {
-          body: { trackId: toTrackId, userAge },
-          headers
+          body: JSON.stringify(riskBody),
+          headers: { ...headers, 'Content-Type': 'application/json' }
         })
       ]);
 
