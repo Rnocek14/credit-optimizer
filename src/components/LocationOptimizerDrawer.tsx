@@ -18,7 +18,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { parseError } from '@/lib/errorUtils';
+import { parseAnyError } from '@/lib/errorUtils';
 
 interface LocationOptimizerDrawerProps {
   isOpen: boolean;
@@ -66,7 +66,7 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
   });
 
   // Parse error for user-friendly display
-  const parsedError = error ? parseError(error) : null;
+  const parsedError = error ? parseAnyError(error) : null;
 
   const handleLocationSelect = (location: LocationAnalysis) => {
     const locationId = `${location.country}-${location.city}`;
@@ -228,6 +228,16 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
                   <p className="text-xs text-destructive/60 mt-1">
                     Missing: {parsedError.missing.join(', ')}
                   </p>
+                )}
+                {process.env.NODE_ENV === 'development' && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-destructive/60 cursor-pointer">Debug Details</summary>
+                    <pre className="text-xs text-destructive/60 mt-1 overflow-auto">{JSON.stringify({
+                      code: parsedError.code,
+                      message: parsedError.message,
+                      missing: parsedError.missing
+                    }, null, 2)}</pre>
+                  </details>
                 )}
               </CardContent>
             </Card>

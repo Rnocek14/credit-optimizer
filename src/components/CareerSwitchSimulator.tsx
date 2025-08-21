@@ -11,7 +11,7 @@ import { useSwitchingEngine } from '@/hooks/useSwitchingEngine';
 import { useLocationSwitchOptimizer } from '@/hooks/useLocationSwitchOptimizer';
 import { LocationOptimizerDrawer } from '@/components/LocationOptimizerDrawer';
 import { useToast } from '@/hooks/use-toast';
-import { parseError } from '@/lib/errorUtils';
+import { parseAnyError } from '@/lib/errorUtils';
 
 interface CareerSwitchSimulatorProps {
   defaultFromTrackId?: string;
@@ -111,7 +111,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   });
 
   // Parse error for user-friendly display
-  const parsedError = switchingError ? parseError(switchingError) : null;
+  const parsedError = switchingError ? parseAnyError(switchingError) : null;
 
   const handleLocationSelect = (locationId: string, location: any) => {
     setSelectedLocation(locationId);
@@ -277,6 +277,16 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
               <p className="text-xs text-destructive/60 mt-1">
                 Missing: {parsedError.missing.join(', ')}
               </p>
+            )}
+            {process.env.NODE_ENV === 'development' && parsedError && (
+              <details className="mt-2">
+                <summary className="text-xs text-destructive/60 cursor-pointer">Debug Details</summary>
+                <pre className="text-xs text-destructive/60 mt-1 overflow-auto">{JSON.stringify({
+                  code: parsedError.code,
+                  message: parsedError.message,
+                  missing: parsedError.missing
+                }, null, 2)}</pre>
+              </details>
             )}
           </div>
         )}

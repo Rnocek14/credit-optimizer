@@ -53,17 +53,27 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
           riskDataKeys: riskData ? Object.keys(riskData) : []
         });
 
+        // Log response keys for debugging schema mismatches
+        console.log('[Switch] keys:', Object.keys(switchData || {}));
+        console.log('[Risk] keys:', Object.keys(riskData || {}));
+
         // Use safeParse for better error handling
         const switchResult = SwitchResultSchema.safeParse(switchData);
         if (!switchResult.success) {
-          console.error('[useSwitchingEngine] Switch data schema mismatch:', switchResult.error.format(), switchData);
-          throw new Error('server_error: Unexpected response shape from switch calculator');
+          console.error('[useSwitchingEngine] Switch data schema mismatch:', {
+            keys: Object.keys(switchData || {}),
+            issues: switchResult.error.issues
+          });
+          throw new Error('schema_error: The server response shape changed. Please retry.');
         }
 
         const riskResult = RiskAnalysisSchema.safeParse(riskData);
         if (!riskResult.success) {
-          console.error('[useSwitchingEngine] Risk data schema mismatch:', riskResult.error.format(), riskData);
-          throw new Error('server_error: Unexpected response shape from risk analyzer');
+          console.error('[useSwitchingEngine] Risk data schema mismatch:', {
+            keys: Object.keys(riskData || {}),
+            issues: riskResult.error.issues
+          });
+          throw new Error('schema_error: The server response shape changed. Please retry.');
         }
 
         return {

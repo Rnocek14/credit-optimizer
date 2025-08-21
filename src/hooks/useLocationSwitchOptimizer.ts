@@ -109,11 +109,14 @@ export const useLocationSwitchOptimizer = ({
         });
 
         // Log keys and validate response schema with Zod
-        console.log('[LocationOptimizer] keys:', Object.keys(result || {}));
+        console.log('[LocationOptimizer] response keys:', Object.keys(result || {}));
         const parsed = LocationOptimizationResultSchema.safeParse(result);
         if (!parsed.success) {
-          console.error('[LocationOptimizer] Result schema mismatch:', parsed.error.format(), result);
-          throw new Error('server_error: Unexpected response shape from location optimizer');
+          console.error('[LocationOptimizer] Result schema mismatch:', {
+            keys: Object.keys(result || {}),
+            issues: parsed.error.issues
+          });
+          throw new Error('schema_error: The server response shape changed. Please retry.');
         }
 
         return parsed.data as LocationOptimizationResult;
