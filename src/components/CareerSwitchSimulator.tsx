@@ -46,7 +46,20 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const canAnalyze = fromTrackId && toTrackId && fromTrackId !== toTrackId;
+  // Validate track ownership and existence
+  const validateTrackId = (id?: string) => !!id && tracks?.some(t => t.id === id);
+  const hasValidTracks = validateTrackId(fromTrackId) && validateTrackId(toTrackId);
+  const canAnalyze = hasValidTracks && fromTrackId !== toTrackId;
+
+  console.log('[CareerSwitchSimulator] Track validation:', {
+    fromTrackId,
+    toTrackId,
+    hasValidFromTrack: validateTrackId(fromTrackId),
+    hasValidToTrack: validateTrackId(toTrackId),
+    tracksAreDifferent: fromTrackId !== toTrackId,
+    canAnalyze,
+    availableTracks: tracks?.length || 0
+  });
 
   // Set default fromTrackId when prop changes or tracks load
   useEffect(() => {
@@ -333,13 +346,29 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
           </div>
         )}
 
-        {/* Show message when tracks aren't selected */}
+        {/* Show message when tracks aren't selected or invalid */}
         {!canAnalyze && (
-          <Card>
+          <Card className="border-dashed">
             <CardContent className="p-6">
               <div className="text-center text-muted-foreground">
-                <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p>Please select both current and target tracks to run analysis</p>
+                <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Ready to Analyze</h3>
+                <p className="mb-2">
+                  {!fromTrackId || !toTrackId 
+                    ? "Select your current track and target track to see detailed switching analysis"
+                    : !validateTrackId(fromTrackId) || !validateTrackId(toTrackId)
+                    ? "Please select tracks from your account - both track IDs are required"
+                    : fromTrackId === toTrackId
+                    ? "Please select different tracks to compare"
+                    : "Select your current track, target track, and preferences to see detailed switching analysis"
+                  }
+                </p>
+                {!validateTrackId(fromTrackId) && fromTrackId && (
+                  <p className="text-xs text-destructive">Current track ID is invalid</p>
+                )}
+                {!validateTrackId(toTrackId) && toTrackId && (
+                  <p className="text-xs text-destructive">Target track ID is invalid</p>
+                )}
               </div>
             </CardContent>
           </Card>

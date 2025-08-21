@@ -40,14 +40,28 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
   const [sortBy, setSortBy] = useState<SortOption>('lqi');
   const { toast } = useToast();
 
+  // Validate track IDs before calling optimizer
+  const validateTrackId = (id?: string) => !!id && id.trim() !== '';
+  const hasValidIds = validateTrackId(fromTrackId) && validateTrackId(toTrackId) && fromTrackId !== toTrackId;
+  
+  console.log('[LocationOptimizerDrawer] Track validation:', {
+    fromTrackId,
+    toTrackId,
+    hasValidFromTrack: validateTrackId(fromTrackId),
+    hasValidToTrack: validateTrackId(toTrackId),
+    tracksAreDifferent: fromTrackId !== toTrackId,
+    hasValidIds,
+    isOpen
+  });
+
   const { 
     data: optimizationData, 
     isLoading, 
     error,
     refetch: refetchOptimization
   } = useLocationSwitchOptimizer({
-    fromTrackId,
-    toTrackId,
+    fromTrackId: hasValidIds ? fromTrackId : undefined,
+    toTrackId: hasValidIds ? toTrackId : undefined,
     topN: 10
   });
 
@@ -284,14 +298,33 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
             </>
           )}
 
-          {/* Empty State */}
-          {!isLoading && !error && (!optimizationData || sortedLocations.length === 0) && (
+          {/* Empty State with Better Messaging */}
+          {!hasValidIds && (
             <Card>
               <CardContent className="py-8">
                 <div className="text-center text-muted-foreground">
                   <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No location data available</p>
-                  <p className="text-sm">Select both tracks to see location recommendations</p>
+                  <h3 className="font-semibold mb-2">Select Career Tracks</h3>
+                  <p className="text-sm">
+                    {!fromTrackId || !toTrackId 
+                      ? "Please select both current and target career tracks to optimize locations"
+                      : fromTrackId === toTrackId
+                      ? "Please select different tracks to compare"
+                      : "Please ensure both track selections are valid"
+                    }
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {hasValidIds && !optimizationData?.rankedLocations?.length && !isLoading && !error && (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center text-muted-foreground">
+                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No location data available for optimization</p>
+                  <p className="text-sm">Try different track selections</p>
                 </div>
               </CardContent>
             </Card>
