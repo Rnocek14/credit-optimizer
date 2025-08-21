@@ -1656,7 +1656,7 @@ export type Database = {
           reasoning: string | null
           risk_score: number | null
           roi_score: number | null
-          slug: string | null
+          slug: string
           switch_readiness_score: number | null
           time_to_proficiency: string | null
           title: string
@@ -1680,7 +1680,7 @@ export type Database = {
           reasoning?: string | null
           risk_score?: number | null
           roi_score?: number | null
-          slug?: string | null
+          slug: string
           switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title: string
@@ -1704,7 +1704,7 @@ export type Database = {
           reasoning?: string | null
           risk_score?: number | null
           roi_score?: number | null
-          slug?: string | null
+          slug?: string
           switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title?: string
@@ -8940,6 +8940,10 @@ export type Database = {
       refresh_career_steps_with_levels: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      slugify: {
+        Args: { input: string }
+        Returns: string
       }
       sparsevec_out: {
         Args: { "": unknown }
