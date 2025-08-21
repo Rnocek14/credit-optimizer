@@ -13,6 +13,7 @@ import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { toast } from 'sonner';
 import type { CareerTrack } from '@/types/tracks';
 import { usePathStore } from '@/stores/usePathStore';
+import { slugify, generateUniqueSlug } from '@/lib/slugify';
 
 export interface TrackManagerProps {
   currentTrackId?: string;
@@ -55,12 +56,20 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       const user = await getCurrentUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Generate slug from track name
+      const baseSlug = slugify(trackName);
+      
+      // Get existing slugs to ensure uniqueness
+      const existingSlugs = tracks.map(t => t.slug).filter(Boolean);
+      const uniqueSlug = generateUniqueSlug(baseSlug, existingSlugs);
+
       const { data, error } = await supabase
         .from('career_tracks')
         .insert({
           user_id: user.id,
           track_name: trackName,
           title: trackName,
+          slug: uniqueSlug,
           order_index: tracks.length,
         })
         .select()

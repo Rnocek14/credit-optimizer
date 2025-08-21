@@ -9,6 +9,7 @@ export interface CareerTrack {
   color?: string | null;
   archived: boolean;
   order_index: number;
+  slug?: string | null;
   description?: string | null;
   growth_potential?: string | null;
   time_to_proficiency?: string | null;

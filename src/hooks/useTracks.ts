@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { CareerTrack, CreateTrackInput, UpdateTrackInput } from '@/types/tracks';
 import { useToast } from '@/hooks/use-toast';
 import { getCurrentUser } from '@/lib/authHelper';
+import { slugify, generateUniqueSlug } from '@/lib/slugify';
 
 export function useTracks() {
   const { toast } = useToast();
@@ -32,12 +33,26 @@ export function useTracks() {
       const user = await getCurrentUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Generate slug from track name
+      const baseSlug = slugify(input.track_name);
+      
+      // Get existing slugs to ensure uniqueness
+      const { data: existingTracks } = await supabase
+        .from('career_tracks')
+        .select('slug')
+        .eq('user_id', user.id)
+        .not('slug', 'is', null);
+      
+      const existingSlugs = existingTracks?.map(t => t.slug).filter(Boolean) || [];
+      const uniqueSlug = generateUniqueSlug(baseSlug, existingSlugs);
+
       const { data, error } = await supabase
         .from('career_tracks')
         .insert({
           user_id: user.id,
           track_name: input.track_name,
           title: input.track_name,
+          slug: uniqueSlug,
           goal: input.goal || null,
           icon: input.icon || null,
           color: input.color || null,
