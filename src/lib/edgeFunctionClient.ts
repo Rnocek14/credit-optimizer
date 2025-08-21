@@ -48,25 +48,3 @@ export async function callEdgeFunction<T>(name: string, payload: any): Promise<T
 
   return data as T;
 }
-
-export function parseAnyError(err: unknown) {
-  // 1) Supabase Edge Function error (has context.json or code:message format)
-  const e = err as any;
-  if (e?.context?.json || /^(\w+):/.test(e?.message)) {
-    return parseError(e?.message || e);
-  }
-
-  // 2) Zod errors or other runtime throws
-  const name = e?.name ?? 'Error';
-  const message = e?.message ?? 'Unknown error';
-  const isZod = name === 'ZodError' || /Zod/.test(message) || /safeParse/.test(message);
-
-  return {
-    code: isZod ? 'schema_error' : 'unknown_error',
-    message,
-    userFriendlyMessage: isZod
-      ? 'We received data in an unexpected format. Please retry; if this persists, we\'ll fix the response shape.'
-      : 'An unexpected error occurred. Please try again.',
-    missing: undefined
-  };
-}
