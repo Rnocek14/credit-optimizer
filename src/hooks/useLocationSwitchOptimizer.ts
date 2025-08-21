@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { callEdgeFunction } from '@/lib/edgeFunctionClient';
-
+import { z } from 'zod';
 export interface LocationAnalysis {
   city: string;
   country: string;
@@ -28,6 +28,35 @@ export interface LocationOptimizationResult {
     switchCost: number;
   };
 }
+
+// Zod Schemas for validation
+const LocationAnalysisSchema = z.object({
+  city: z.string(),
+  country: z.string(),
+  currentSalary: z.number(),
+  targetSalary: z.number(),
+  costOfLiving: z.number(),
+  netIncome: z.number(),
+  breakEvenMonths: z.number().nullable(),
+  lqi: z.number(),
+  deltaROI: z.number(),
+  demandScore: z.number(),
+  visaRequired: z.boolean(),
+  salaryMultiplier: z.number(),
+  colIndex: z.number()
+});
+
+const LocationOptimizationResultSchema = z.object({
+  fromTrack: z.string(),
+  toTrack: z.string(),
+  rankedLocations: z.array(LocationAnalysisSchema),
+  assumptions: z.object({
+    currentBaseSalary: z.number(),
+    targetBaseSalary: z.number(),
+    baselineCost: z.number(),
+    switchCost: z.number()
+  })
+});
 
 export const useLocationSwitchOptimizer = ({
   fromTrackId,
@@ -79,13 +108,15 @@ export const useLocationSwitchOptimizer = ({
           hasAssumptions: !!result?.assumptions
         });
 
-        // Validate response schema
-        if (!result || typeof result !== 'object') {
-          console.error('[LocationOptimizer] Invalid response format:', result);
-          throw new Error('server_error: Unexpected response format from location optimizer');
+        // Log keys and validate response schema with Zod
+        console.log('[LocationOptimizer] keys:', Object.keys(result || {}));
+        const parsed = LocationOptimizationResultSchema.safeParse(result);
+        if (!parsed.success) {
+          console.error('[LocationOptimizer] Result schema mismatch:', parsed.error.format(), result);
+          throw new Error('server_error: Unexpected response shape from location optimizer');
         }
 
-        return result;
+        return parsed.data as LocationOptimizationResult;
       } catch (error) {
         console.error('[LocationOptimizer] Edge function call failed:', {
           error: error instanceof Error ? error.message : String(error),

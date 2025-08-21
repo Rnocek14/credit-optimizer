@@ -20,7 +20,7 @@ export async function callEdgeFunction<T>(name: string, payload: any): Promise<T
   }
   
   const { data, error } = await supabase.functions.invoke(name, {
-    body: JSON.stringify(payload),
+    body: payload,
     headers
   });
 
