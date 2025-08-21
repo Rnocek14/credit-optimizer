@@ -60,6 +60,8 @@ serve(async (req) => {
     }
 
     const { fromTrackId, toTrackId, locationIds, topN = 5 } = body;
+    
+    console.log('Parsed parameters:', { fromTrackId, toTrackId, locationIds, topN });
     if (!fromTrackId || !toTrackId) {
       return new Response(JSON.stringify({ error: 'Missing required track IDs' }), {
         status: 400,
