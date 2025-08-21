@@ -22,10 +22,11 @@ import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useTracks } from "@/hooks/useTracks";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const planFeatures = [
   {
@@ -71,9 +72,22 @@ export default function PlanHub() {
   const navigate = useNavigate();
   
   // Career profile card state
-  const activeTrackId = useActiveTrackStore((s) => s.activeTrackId);
+  const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
   const [isLocationOptimizerOpen, setIsLocationOptimizerOpen] = useState(false);
+  
+  // Auto-select first track if none is active
+  const { tracks, isLoading: tracksLoading } = useTracks();
+  
+  useEffect(() => {
+    if (!activeTrackId && !tracksLoading && tracks?.length > 0) {
+      const firstNonArchivedTrack = tracks.find(track => !track.archived);
+      if (firstNonArchivedTrack) {
+        console.log('PlanHub: Auto-selecting first track:', firstNonArchivedTrack.id);
+        setActiveTrackId(firstNonArchivedTrack.id);
+      }
+    }
+  }, [activeTrackId, tracks, tracksLoading, setActiveTrackId]);
 
   console.log('PlanHub render start:', { activeTab, activeTrackId });
 
