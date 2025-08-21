@@ -79,6 +79,12 @@ export const useLocationSwitchOptimizer = ({
           hasAssumptions: !!result?.assumptions
         });
 
+        // Validate response schema
+        if (!result || typeof result !== 'object') {
+          console.error('[LocationOptimizer] Invalid response format:', result);
+          throw new Error('server_error: Unexpected response format from location optimizer');
+        }
+
         return result;
       } catch (error) {
         console.error('[LocationOptimizer] Edge function call failed:', {

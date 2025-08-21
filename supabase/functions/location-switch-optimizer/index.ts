@@ -83,10 +83,21 @@ serve(async (req) => {
       .in('id', [fromTrackId, toTrackId]);
 
     if (tracksError) throw tracksError;
-    if (!tracks || tracks.length !== 2) return notFound('One or both tracks not found');
+    if (!tracks || tracks.length !== 2) {
+      return notFound('One or both tracks not found', { 
+        fromTrackId, 
+        toTrackId, 
+        foundIds: tracks?.map(t => t.id) || [] 
+      });
+    }
 
     const unauthorizedTrack = tracks.find(t => t.user_id !== user.id);
-    if (unauthorizedTrack) return forbidden('Track does not belong to current user');
+    if (unauthorizedTrack) {
+      return forbidden('Track does not belong to current user', { 
+        offendingId: unauthorizedTrack.id,
+        offendingTitle: unauthorizedTrack.title 
+      });
+    }
 
     const fromTrack = tracks.find(t => t.id === fromTrackId)!;
     const toTrack = tracks.find(t => t.id === toTrackId)!;
