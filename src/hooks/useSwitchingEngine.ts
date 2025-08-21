@@ -56,13 +56,13 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
         // Use safeParse for better error handling
         const switchResult = SwitchResultSchema.safeParse(switchData);
         if (!switchResult.success) {
-          console.error('[useSwitchingEngine] Switch data schema mismatch:', switchResult.error.format());
+          console.error('[useSwitchingEngine] Switch data schema mismatch:', switchResult.error.format(), switchData);
           throw new Error('server_error: Unexpected response shape from switch calculator');
         }
 
         const riskResult = RiskAnalysisSchema.safeParse(riskData);
         if (!riskResult.success) {
-          console.error('[useSwitchingEngine] Risk data schema mismatch:', riskResult.error.format());
+          console.error('[useSwitchingEngine] Risk data schema mismatch:', riskResult.error.format(), riskData);
           throw new Error('server_error: Unexpected response shape from risk analyzer');
         }
 

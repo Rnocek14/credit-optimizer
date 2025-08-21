@@ -54,7 +54,12 @@ async function authenticateUser(req: Request) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id', 'Access-Control-Allow-Methods': 'POST, OPTIONS' } });
+    return new Response(null, { status: 204, headers: {
+      'Access-Control-Allow-Origin': req.headers.get('origin') ?? '*',
+      'Vary': 'Origin',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-supabase-auth, x-dev-user-id',
+    }});
   }
 
   try {
@@ -72,16 +77,26 @@ serve(async (req) => {
     
     console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
-    // Parse and validate request body
-    let body: any = {};
+    // Parse and validate request body with robust handling
+    let body: any;
     try {
+      body = await req.json(); // preferred method for proper JSON
+    } catch {
       const rawBody = await req.text();
       console.log('Raw request body:', rawBody);
       if (!rawBody) return badRequest('No JSON body provided');
-      body = JSON.parse(rawBody);
-      console.log('Parsed request body:', body);
-    } catch (e) {
-      return badRequest('Invalid JSON body');
+      try { 
+        body = JSON.parse(rawBody); 
+      } catch { 
+        return badRequest('Invalid JSON body'); 
+      }
+    }
+
+    console.log('Parsed request body:', body);
+
+    // Handle ping requests for debugging
+    if (body?.action === 'ping') {
+      return success({ ok: true, userId: user.id, ts: Date.now() });
     }
 
     const { fromTrackId, toTrackId, locationId } = body;
@@ -90,13 +105,17 @@ serve(async (req) => {
 
     console.log(`Calculating career switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
 
-    // Verify track ownership
+    // Verify track ownership with better error handling
     const { data: tracks, error: tracksError } = await supabase
       .from('career_tracks')
       .select('*')
       .in('id', [fromTrackId, toTrackId]);
 
-    if (tracksError) throw tracksError;
+    if (tracksError) {
+      console.error('Database error fetching tracks:', tracksError);
+      return serverError(tracksError);
+    }
+    
     if (!tracks || tracks.length !== 2) {
       return notFound('One or both tracks not found', { 
         fromTrackId, 
