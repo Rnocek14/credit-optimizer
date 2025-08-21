@@ -73,7 +73,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   } = useSwitchingEngine({
     fromTrackId: fromTrackId || undefined,
     toTrackId: toTrackId || undefined,
-    locationId: selectedLocation || undefined,
+    locationId: selectedLocation || 'US-NYC',
     userAge: parseInt(userAge) || 30
   });
 
@@ -84,8 +84,8 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
     userAge,
     canAnalyze,
     isAnalyzing,
-    hasData: !!switchingData,
-    error: switchingError?.message
+    switchingError,
+    hasData: !!switchingData
   });
 
   const handleLocationSelect = (locationId: string, location: any) => {

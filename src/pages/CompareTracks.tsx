@@ -43,8 +43,15 @@ export const CompareTracks: React.FC = () => {
   });
 
   // Fetch profile data for both tracks
-  const { data: profileA, isLoading: loadingA } = useCareerProfileCard(trackAId);
-  const { data: profileB, isLoading: loadingB } = useCareerProfileCard(trackBId);
+  const { data: profileA, isLoading: loadingA, error: errorA } = useCareerProfileCard(trackAId);
+  const { data: profileB, isLoading: loadingB, error: errorB } = useCareerProfileCard(trackBId);
+
+  console.log('CompareTracks: Profile data state:', {
+    trackAId, trackBId, 
+    profileA: profileA ? 'loaded' : 'null',
+    profileB: profileB ? 'loaded' : 'null',
+    loadingA, loadingB, errorA, errorB
+  });
 
   // Backtrack analysis (B→A scenario)
   const { 
@@ -121,6 +128,11 @@ export const CompareTracks: React.FC = () => {
   };
 
   const canCompare = trackAId && trackBId && profileA && profileB;
+  
+  console.log('CompareTracks: Comparison state:', {
+    canCompare, trackAId: !!trackAId, trackBId: !!trackBId,
+    profileA: !!profileA, profileB: !!profileB
+  });
 
   const MetricComparison: React.FC<{
     label: string;

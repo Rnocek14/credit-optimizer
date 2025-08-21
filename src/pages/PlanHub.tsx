@@ -27,6 +27,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/lib/authHelper";
 import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const planFeatures = [
   {
@@ -70,6 +72,8 @@ export default function PlanHub() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Career profile card state
   const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
@@ -138,8 +142,51 @@ export default function PlanHub() {
     setIsSimulatorOpen(true);
   };
 
-  const handleExportResume = () => {
-    navigate('/resume');
+  const handleExportResume = async () => {
+    if (!activeTrackId) {
+      toast({ title: 'No track selected', description: 'Please select a career track first.' });
+      return;
+    }
+
+    try {
+      // Get the career profile data from the query cache (same data the card shows)
+      const profile = queryClient.getQueryData(['career-profile-card', activeTrackId]) as any;
+      
+      if (!profile) {
+        toast({ title: 'Profile data loading', description: 'Please wait for the career profile to load completely.' });
+        return;
+      }
+
+      const resumeData = {
+        exportedAt: new Date().toISOString(),
+        trackId: profile.trackId,
+        trackTitle: profile.trackTitle || 'Career Track',
+        criScore: profile.criScore || 0,
+        criLevel: profile.criLevel || 'Beginner',
+        switchReadiness: profile.switchReadiness || 0,
+        riskLevel: profile.riskLevel || 'Unknown',
+        overallRisk: profile.overallRisk || 0,
+        lqi: profile.lqi || 0,
+        roi3yr: profile.roi3yr || 0,
+        breakEvenMonths: profile.breakEvenMonths || 0,
+        ranking: profile.ranking || 0
+      };
+
+      const blob = new Blob([JSON.stringify(resumeData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `career-profile-${resumeData.trackTitle.replace(/\s+/g, '-').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Resume exported', description: 'Career profile data has been downloaded as JSON.' });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({ title: 'Export failed', description: 'Unable to export resume data. Please try again.' });
+    }
   };
 
   const handleCompareTracks = () => {
@@ -354,7 +401,7 @@ export default function PlanHub() {
         isOpen={isLocationOptimizerOpen}
         onClose={() => setIsLocationOptimizerOpen(false)}
         fromTrackId={activeTrackId || undefined}
-        toTrackId={undefined} // Will be set by the optimizer logic
+        toTrackId={tracks?.find(t => t.id !== activeTrackId && !t.archived)?.id}
         onLocationSelect={handleLocationSelect}
       />
     </div>
