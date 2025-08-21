@@ -41,7 +41,18 @@ export const useLocationSwitchOptimizer = ({
   return useQuery({
     queryKey: ['location-switch-optimizer', fromTrackId, toTrackId, topN],
     queryFn: async (): Promise<LocationOptimizationResult> => {
+      console.log('[LocationOptimizer] Starting optimization with params:', { 
+        fromTrackId, 
+        toTrackId, 
+        topN,
+        hasFromTrack: !!fromTrackId,
+        hasToTrack: !!toTrackId,
+        trackIdsValid: fromTrackId !== '' && toTrackId !== '',
+        timestamp: new Date().toISOString()
+      });
+
       if (!fromTrackId || !toTrackId || fromTrackId === '' || toTrackId === '') {
+        console.error('[LocationOptimizer] Missing required track IDs:', { fromTrackId, toTrackId });
         throw new Error('Both track IDs are required');
       }
 
@@ -51,9 +62,32 @@ export const useLocationSwitchOptimizer = ({
         topN
       };
       
-      console.log('[LocationOptimizer] params:', { requestBody, enabled: !!(fromTrackId && toTrackId) });
+      console.log('[LocationOptimizer] Calling edge function with validated params:', { 
+        requestBody, 
+        enabled: !!(fromTrackId && toTrackId),
+        functionName: 'location-switch-optimizer'
+      });
 
-      return await callEdgeFunction<LocationOptimizationResult>('location-switch-optimizer', requestBody);
+      try {
+        const result = await callEdgeFunction<LocationOptimizationResult>('location-switch-optimizer', requestBody);
+        
+        console.log('[LocationOptimizer] Successfully received response:', {
+          hasResult: !!result,
+          locationCount: result?.rankedLocations?.length || 0,
+          fromTrack: result?.fromTrack,
+          toTrack: result?.toTrack,
+          hasAssumptions: !!result?.assumptions
+        });
+
+        return result;
+      } catch (error) {
+        console.error('[LocationOptimizer] Edge function call failed:', {
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error?.constructor?.name,
+          params: { fromTrackId, toTrackId, topN }
+        });
+        throw error;
+      }
     },
     enabled: !!(fromTrackId && toTrackId && fromTrackId !== '' && toTrackId !== ''),
     staleTime: 10 * 60 * 1000, // 10 minutes

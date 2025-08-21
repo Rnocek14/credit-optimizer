@@ -16,25 +16,55 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
     staleTime: 5 * 60 * 1000,
     retry: 1,
     queryFn: async () => {
+      console.log('[useSwitchingEngine] Starting analysis with params:', { 
+        fromTrackId, 
+        toTrackId, 
+        locationId, 
+        userAge,
+        hasFromTrack: !!fromTrackId,
+        hasToTrack: !!toTrackId,
+        trackIdsValid: fromTrackId !== '' && toTrackId !== ''
+      });
+
       if (!fromTrackId || !toTrackId || fromTrackId === '' || toTrackId === '') {
+        console.error('[useSwitchingEngine] Missing required track IDs:', { fromTrackId, toTrackId });
         throw new Error('Both track IDs are required');
       }
 
       const switchBody = { fromTrackId, toTrackId, locationId };
       const riskBody = { trackId: toTrackId, userAge };
       
-      console.log('[useSwitchingEngine] invoking functions with:', { switchBody, riskBody });
+      console.log('[useSwitchingEngine] Calling edge functions with validated params:', { 
+        switchBody, 
+        riskBody,
+        timestamp: new Date().toISOString()
+      });
 
-      const [switchData, riskData] = await Promise.all([
-        callEdgeFunction('calculate-career-switch', switchBody),
-        callEdgeFunction('career-risk-analyzer', riskBody)
-      ]);
+      try {
+        const [switchData, riskData] = await Promise.all([
+          callEdgeFunction('calculate-career-switch', switchBody),
+          callEdgeFunction('career-risk-analyzer', riskBody)
+        ]);
 
-      return {
-        switchData: SwitchResultSchema.parse(switchData),
-        riskData: RiskAnalysisSchema.parse(riskData)
-      };
+        console.log('[useSwitchingEngine] Successfully received responses:', {
+          hasSwitchData: !!switchData,
+          hasRiskData: !!riskData,
+          switchDataKeys: switchData ? Object.keys(switchData) : [],
+          riskDataKeys: riskData ? Object.keys(riskData) : []
+        });
 
+        return {
+          switchData: SwitchResultSchema.parse(switchData),
+          riskData: RiskAnalysisSchema.parse(riskData)
+        };
+      } catch (error) {
+        console.error('[useSwitchingEngine] Edge function call failed:', {
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error?.constructor?.name,
+          params: { fromTrackId, toTrackId, locationId, userAge }
+        });
+        throw error;
+      }
     }
   });
 };

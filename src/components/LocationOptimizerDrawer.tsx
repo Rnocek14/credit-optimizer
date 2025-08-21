@@ -13,9 +13,12 @@ import {
   Clock, 
   ArrowUpDown,
   Check,
-  Loader2
+  Loader2,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { parseError } from '@/lib/errorUtils';
 
 interface LocationOptimizerDrawerProps {
   isOpen: boolean;
@@ -40,12 +43,16 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
   const { 
     data: optimizationData, 
     isLoading, 
-    error 
+    error,
+    refetch: refetchOptimization
   } = useLocationSwitchOptimizer({
     fromTrackId,
     toTrackId,
     topN: 10
   });
+
+  // Parse error for user-friendly display
+  const parsedError = error ? parseError(error) : null;
 
   const handleLocationSelect = (location: LocationAnalysis) => {
     const locationId = `${location.country}-${location.city}`;
@@ -182,12 +189,32 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
           </div>
 
           {/* Error State */}
-          {error && (
-            <Card className="border-red-200 bg-red-50">
+          {parsedError && (
+            <Card className="border-destructive/20 bg-destructive/10">
               <CardContent className="p-4">
-                <p className="text-red-800 text-sm">
-                  Failed to load location data: {error.message}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-medium">Optimization Failed</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refetchOptimization()}
+                    className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Retry
+                  </Button>
+                </div>
+                <p className="text-destructive/80 text-sm">
+                  {parsedError.userFriendlyMessage}
                 </p>
+                {parsedError.missing && (
+                  <p className="text-xs text-destructive/60 mt-1">
+                    Missing: {parsedError.missing.join(', ')}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

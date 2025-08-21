@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, TrendingUp, AlertTriangle, Clock, Users, MapPin } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, Clock, Users, MapPin, RefreshCw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getUserCareerTracks } from '@/lib/switching';
 import { useSwitchingEngine } from '@/hooks/useSwitchingEngine';
 import { useLocationSwitchOptimizer } from '@/hooks/useLocationSwitchOptimizer';
 import { LocationOptimizerDrawer } from '@/components/LocationOptimizerDrawer';
 import { useToast } from '@/hooks/use-toast';
+import { parseError } from '@/lib/errorUtils';
 
 interface CareerSwitchSimulatorProps {
   defaultFromTrackId?: string;
@@ -74,7 +75,8 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   const { 
     data: switchingData, 
     isLoading: isAnalyzing, 
-    error: switchingError 
+    error: switchingError,
+    refetch: refetchAnalysis
   } = useSwitchingEngine({
     fromTrackId: fromTrackId || undefined,
     toTrackId: toTrackId || undefined,
@@ -82,16 +84,21 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
     userAge: parseInt(userAge) || 30
   });
 
-  console.log('CareerSwitchSimulator state:', {
+  console.log('[CareerSwitchSimulator] Component state:', {
     fromTrackId,
     toTrackId,
     selectedLocation,
     userAge,
     canAnalyze,
     isAnalyzing,
-    switchingError,
-    hasData: !!switchingData
+    switchingError: switchingError?.message,
+    hasData: !!switchingData,
+    tracksAvailable: tracks?.length || 0,
+    timestamp: new Date().toISOString()
   });
+
+  // Parse error for user-friendly display
+  const parsedError = switchingError ? parseError(switchingError) : null;
 
   const handleLocationSelect = (locationId: string, location: any) => {
     setSelectedLocation(locationId);
@@ -229,15 +236,35 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
           </div>
         </div>
 
-        {(switchingError || tracksError) && (
+        {(parsedError || tracksError) && (
           <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="font-medium">Analysis Error</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">
+                  {parsedError ? 'Analysis Failed' : 'Loading Error'}
+                </span>
+              </div>
+              {parsedError && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchAnalysis()}
+                  className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Retry
+                </Button>
+              )}
             </div>
             <p className="text-sm text-destructive/80 mt-1">
-              {switchingError?.message || tracksError?.message || 'Failed to load data'}
+              {parsedError?.userFriendlyMessage || tracksError?.message || 'Failed to load data'}
             </p>
+            {parsedError?.missing && (
+              <p className="text-xs text-destructive/60 mt-1">
+                Missing: {parsedError.missing.join(', ')}
+              </p>
+            )}
           </div>
         )}
 
