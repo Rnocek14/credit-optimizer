@@ -1656,6 +1656,7 @@ export type Database = {
           reasoning: string | null
           risk_score: number | null
           roi_score: number | null
+          slug: string | null
           switch_readiness_score: number | null
           time_to_proficiency: string | null
           title: string
@@ -1679,6 +1680,7 @@ export type Database = {
           reasoning?: string | null
           risk_score?: number | null
           roi_score?: number | null
+          slug?: string | null
           switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title: string
@@ -1702,6 +1704,7 @@ export type Database = {
           reasoning?: string | null
           risk_score?: number | null
           roi_score?: number | null
+          slug?: string | null
           switch_readiness_score?: number | null
           time_to_proficiency?: string | null
           title?: string
@@ -1718,6 +1721,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      career_tracks_backup_20250821: {
+        Row: {
+          age_penalty_factor: number | null
+          ai_job_risk_pct: number | null
+          archived: boolean | null
+          color: string | null
+          created_at: string | null
+          description: string | null
+          goal: string | null
+          growth_potential: string | null
+          icon: string | null
+          id: string | null
+          lqi_score: number | null
+          order_index: number | null
+          reasoning: string | null
+          risk_score: number | null
+          roi_score: number | null
+          switch_readiness_score: number | null
+          time_to_proficiency: string | null
+          title: string | null
+          track_name: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          age_penalty_factor?: number | null
+          ai_job_risk_pct?: number | null
+          archived?: boolean | null
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal?: string | null
+          growth_potential?: string | null
+          icon?: string | null
+          id?: string | null
+          lqi_score?: number | null
+          order_index?: number | null
+          reasoning?: string | null
+          risk_score?: number | null
+          roi_score?: number | null
+          switch_readiness_score?: number | null
+          time_to_proficiency?: string | null
+          title?: string | null
+          track_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          age_penalty_factor?: number | null
+          ai_job_risk_pct?: number | null
+          archived?: boolean | null
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal?: string | null
+          growth_potential?: string | null
+          icon?: string | null
+          id?: string | null
+          lqi_score?: number | null
+          order_index?: number | null
+          reasoning?: string | null
+          risk_score?: number | null
+          roi_score?: number | null
+          switch_readiness_score?: number | null
+          time_to_proficiency?: string | null
+          title?: string | null
+          track_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       celebration_moments: {
         Row: {
@@ -8891,6 +8966,14 @@ export type Database = {
           reason: string
           slug: string
         }[]
+      }
+      unaccent: {
+        Args: { "": string }
+        Returns: string
+      }
+      unaccent_init: {
+        Args: { "": unknown }
+        Returns: unknown
       }
       update_learning_streak: {
         Args: { activity_date?: string; user_id_param: string }
