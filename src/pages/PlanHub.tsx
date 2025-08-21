@@ -190,7 +190,8 @@ export default function PlanHub() {
   };
 
   const handleCompareTracks = () => {
-    navigate('/plan/compare');
+    if (!activeTrackId) return;
+    navigate(`/plan/compare?a=${activeTrackId}`);
   };
 
   const handleOptimizeLocation = () => {

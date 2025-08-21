@@ -51,7 +51,9 @@ export const useLocationSwitchOptimizer = ({
         throw new Error('Authentication required');
       }
 
-      // Prepare headers for dev users
+      console.log('[LocationOptimizer] params:', { fromTrackId, toTrackId, enabled: !!(fromTrackId && toTrackId) });
+
+      // Prepare headers for all users
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
@@ -66,7 +68,7 @@ export const useLocationSwitchOptimizer = ({
           toTrackId,
           topN
         },
-        headers: user.isDevUser ? headers : undefined
+        headers
       });
 
       if (error) {
