@@ -13,11 +13,13 @@ interface Params {
 export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge }: Params) => {
   return useQuery({
     queryKey: ['switching-engine', fromTrackId, toTrackId, locationId, userAge],
-    enabled: !!(fromTrackId && toTrackId),
+    enabled: !!(fromTrackId && toTrackId && fromTrackId !== '' && toTrackId !== ''),
     staleTime: 5 * 60 * 1000,
     retry: 1,
     queryFn: async () => {
-      if (!fromTrackId || !toTrackId) throw new Error('Missing tracks');
+      if (!fromTrackId || !toTrackId || fromTrackId === '' || toTrackId === '') {
+        throw new Error('Both track IDs are required');
+      }
 
       const user = await getCurrentUser();
       if (!user) throw new Error('Authentication required');

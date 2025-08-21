@@ -63,6 +63,27 @@ export const CompareTracks: React.FC = () => {
     enabled: showBacktrack && !!trackAId && !!trackBId
   });
 
+  // Auto-populate missing track IDs when tracks are loaded
+  useEffect(() => {
+    if (tracks && tracks.length > 0) {
+      // If no trackA selected, use first track
+      if (!trackAId) {
+        const firstTrack = tracks[0];
+        console.log('Auto-selecting Track A:', firstTrack.id, firstTrack.title);
+        setTrackAId(firstTrack.id);
+      }
+      
+      // If trackA is selected but no trackB, use the next available track
+      if (trackAId && !trackBId) {
+        const otherTrack = tracks.find(t => t.id !== trackAId);
+        if (otherTrack) {
+          console.log('Auto-selecting Track B:', otherTrack.id, otherTrack.title);
+          setTrackBId(otherTrack.id);
+        }
+      }
+    }
+  }, [tracks, trackAId, trackBId]);
+
   // Update URL when selections change
   useEffect(() => {
     const params = new URLSearchParams();
@@ -403,7 +424,24 @@ export const CompareTracks: React.FC = () => {
           <CardContent className="py-8">
             <div className="text-center text-muted-foreground">
               <ArrowRightLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select both tracks to see the comparison</p>
+              <div className="space-y-2">
+                <p>Select both tracks to see the comparison</p>
+                {tracksLoading && (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading tracks...</span>
+                  </div>
+                )}
+                {!tracksLoading && tracks.length === 0 && (
+                  <p className="text-sm">No tracks available. Please create some tracks first.</p>
+                )}
+                {errorA && (
+                  <p className="text-sm text-red-600">Error loading Track A data: {errorA.message}</p>
+                )}
+                {errorB && (
+                  <p className="text-sm text-red-600">Error loading Track B data: {errorB.message}</p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

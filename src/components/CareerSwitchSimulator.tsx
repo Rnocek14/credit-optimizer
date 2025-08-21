@@ -39,7 +39,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
   ];
 
   const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
-    queryKey: ['career-tracks'],
+    queryKey: ['user-career-tracks'], // Match the key used in CompareTracks
     queryFn: getUserCareerTracks,
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -47,12 +47,17 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
 
   const canAnalyze = fromTrackId && toTrackId && fromTrackId !== toTrackId;
 
-  // Set default fromTrackId when prop changes
+  // Set default fromTrackId when prop changes or tracks load
   useEffect(() => {
     if (defaultFromTrackId && !fromTrackId) {
+      console.log('Setting fromTrackId from prop:', defaultFromTrackId);
       setFromTrackId(defaultFromTrackId);
+    } else if (!fromTrackId && tracks && tracks.length > 0) {
+      // Auto-select first track if no default provided
+      console.log('Auto-selecting first track as fromTrackId:', tracks[0].id);
+      setFromTrackId(tracks[0].id);
     }
-  }, [defaultFromTrackId, fromTrackId]);
+  }, [defaultFromTrackId, fromTrackId, tracks]);
 
   // Auto-select toTrackId when tracks are loaded and fromTrackId is set
   useEffect(() => {
@@ -203,7 +208,8 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 variant="outline" 
                 size="icon"
                 onClick={() => setIsLocationOptimizerOpen(true)}
-                disabled={!canAnalyze}
+                disabled={!fromTrackId || (!toTrackId && tracks?.length < 2)}
+                title="Optimize Location"
               >
                 <MapPin className="h-4 w-4" />
               </Button>
@@ -319,7 +325,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
         isOpen={isLocationOptimizerOpen}
         onClose={() => setIsLocationOptimizerOpen(false)}
         fromTrackId={fromTrackId}
-        toTrackId={toTrackId}
+        toTrackId={toTrackId || (tracks?.find(t => t.id !== fromTrackId)?.id)}
         onLocationSelect={handleLocationSelect}
       />
     </div>

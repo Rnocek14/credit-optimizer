@@ -42,7 +42,7 @@ export const useLocationSwitchOptimizer = ({
   return useQuery({
     queryKey: ['location-switch-optimizer', fromTrackId, toTrackId, topN],
     queryFn: async (): Promise<LocationOptimizationResult> => {
-      if (!fromTrackId || !toTrackId) {
+      if (!fromTrackId || !toTrackId || fromTrackId === '' || toTrackId === '') {
         throw new Error('Both track IDs are required');
       }
 
@@ -82,7 +82,7 @@ export const useLocationSwitchOptimizer = ({
 
       return data;
     },
-    enabled: !!(fromTrackId && toTrackId),
+    enabled: !!(fromTrackId && toTrackId && fromTrackId !== '' && toTrackId !== ''),
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 1
   });
