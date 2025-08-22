@@ -5,8 +5,9 @@ import { badRequest, unauthorized, notFound, forbidden, serverError, success } f
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id',
+  'Vary': 'Origin',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-supabase-auth, x-dev-user-id',
 };
 
 const supabase = createClient(
@@ -55,10 +56,8 @@ async function authenticateUser(req: Request) {
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: {
+      ...corsHeaders,
       'Access-Control-Allow-Origin': req.headers.get('origin') ?? '*',
-      'Vary': 'Origin',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-supabase-auth, x-dev-user-id',
     }});
   }
 

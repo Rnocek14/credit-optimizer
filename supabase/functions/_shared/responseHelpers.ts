@@ -1,7 +1,8 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id',
+  'Vary': 'Origin',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-supabase-auth, x-dev-user-id',
 };
 
 export function json(status: number, body: Record<string, any>) {
@@ -19,11 +20,11 @@ export function unauthorized(msg = 'Unauthorized') {
   return json(401, { error: 'unauthorized', message: msg });
 }
 
-export function notFound(msg = 'Not found', details?: any) {
+export function notFound(msg = 'Not found', details?: Record<string, unknown>) {
   return json(404, { error: 'not_found', message: msg, details });
 }
 
-export function forbidden(msg = 'Access denied', details?: any) {
+export function forbidden(msg = 'Access denied', details?: Record<string, unknown>) {
   return json(403, { error: 'forbidden', message: msg, details });
 }
 

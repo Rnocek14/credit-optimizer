@@ -5,7 +5,13 @@ import App from './App.tsx'
 import './index.css'
 
 // Import edge diagnostics to make available globally
-import './debug/edgeDiagnostics'
+import diagnostics from './debug/edgeDiagnostics'
+
+// Make diagnostics globally accessible in browser
+if (typeof window !== 'undefined') {
+  (window as any).edgeDiagnostics = diagnostics;
+  (window as any).runEdgeDiagnostics = () => diagnostics.runFullDiagnostics();
+}
 
 // Persist demo mode across reloads
 if (typeof window !== 'undefined') {
