@@ -7,11 +7,18 @@ import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
+import { useCRIEngine } from '@/hooks/useCRIEngine';
+import { useGamification } from '@/hooks/useGamification';
 import { CRIBoostChip } from '@/components/ui/cri-boost-chip';
+import { MayaInsightsCard } from '@/components/dashboard/MayaInsightsCard';
+import { CRIScoreDisplay } from '@/components/dashboard/CRIScoreDisplay';
+import { DailyChallengeCard } from '@/components/dashboard/DailyChallengeCard';
+import { EnhancedStreakCard } from '@/components/dashboard/EnhancedStreakCard';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { seedTodayDemoData } from '@/utils/seedTodayDemoData';
 import { useToast } from '@/hooks/use-toast';
 import { QUERY_KEYS } from '@/lib/queryKeys';
+import { awardXP } from '@/lib/xpUtils';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -33,6 +40,17 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     isLoading,
     actions
   } = useSmartTodayDashboard(user?.id);
+
+  const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user?.id);
+  const { data: userLevel } = useQuery({
+    queryKey: ['user-level', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
+      return data?.[0] || null;
+    },
+    enabled: !!user?.id
+  });
 
   // Feature flag fallback
   if (!unifiedTodayDashboard) {
@@ -60,6 +78,23 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     
     if (onNextStepClick) {
       onNextStepClick();
+    }
+  };
+
+  const handleChallengeComplete = async (challengeId: string, xpAwarded: number) => {
+    if (!user?.id) return;
+    
+    try {
+      await awardXP(user.id, xpAwarded, 'LEARNING_SESSION', 'Completed daily challenge');
+      toast({
+        title: "Challenge Complete! 🎉",
+        description: `You earned ${xpAwarded} XP!`,
+      });
+      
+      // Refresh user level data
+      queryClient.invalidateQueries({ queryKey: ['user-level', user.id] });
+    } catch (error) {
+      console.error('Error awarding challenge XP:', error);
     }
   };
 
@@ -102,8 +137,40 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-         {/* Smart Next Step Card */}
+    <div className="space-y-6">
+      {/* Maya Insights Card - Full Width */}
+      <MayaInsightsCard 
+        userName={user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'}
+        currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
+        nextStep={nextStep}
+        recommendations={quickWins}
+      />
+
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* CRI Score Display */}
+        <CRIScoreDisplay 
+          userId={user?.id}
+          onImproveClick={() => window.location.href = '/cri'}
+        />
+
+        {/* Daily Challenge */}
+        <DailyChallengeCard 
+          currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
+          userId={user?.id}
+          onChallengeComplete={handleChallengeComplete}
+        />
+
+        {/* Enhanced Streak Card */}
+        <EnhancedStreakCard 
+          currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
+          longestStreak={getLongestStreak ? getLongestStreak() : 0}
+          totalXP={userLevel?.total_xp || 0}
+          currentLevel={userLevel?.current_level || 1}
+          weeklyGoalProgress={75}
+        />
+
+        {/* Smart Next Step Card */}
          <Card className="md:col-span-2 lg:col-span-1 border-l-4 border-l-primary" data-testid="next-step-card">
            <CardHeader>
              <CardTitle className="flex items-center gap-2">
@@ -352,6 +419,61 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Unstick Prompt - Standalone if needed */}
+        {unstickData && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardContent className="pt-6">
+              <div className="p-4 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30" data-testid="unstick-prompt">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                  <h3 className="font-medium text-orange-800 dark:text-orange-200">
+                    Welcome back! Ready to get unstuck?
+                  </h3>
+                </div>
+                <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                  It's been {unstickData.daysSinceActivity} days since your last activity. Let's get you back on track with a quick win.
+                </p>
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  onClick={actions.handleUnstickAction}
+                  data-testid="unstick-button"
+                  aria-label="Get me unstuck"
+                >
+                  Get me unstuck
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Demo Data Seeding */}
+        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
+          <Card className="md:col-span-2 lg:col-span-3">
+            <CardContent className="pt-6 text-center">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    await seedTodayDemoData();
+                    toast({ title: 'Demo data seeded', description: 'Refresh applied to your Today dashboard.' });
+                    // Refresh gamification queries
+                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_STREAKS(undefined, undefined) });
+                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CELEBRATION_MOMENTS(undefined, undefined) });
+                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GAMIFICATION_DATA(undefined, undefined) });
+                  } catch (e: any) {
+                    toast({ title: 'Seeding failed', description: e.message || 'Please sign in first.', variant: 'destructive' });
+                  }
+                }}
+              >
+                Seed demo data for Today
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+    </div>
   );
 }
