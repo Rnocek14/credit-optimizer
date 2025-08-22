@@ -26,6 +26,7 @@ import AchievementGallery from '@/components/gamification/AchievementGallery';
 import StreakTimeline from '@/components/gamification/StreakTimeline';
 import { useCelebrations } from '@/hooks/useCelebrations';
 import { useGamificationData } from '@/hooks/useGamificationData';
+import DiagnosticsRunner from '@/components/DiagnosticsRunner';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -505,6 +506,13 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         {gamificationGallery && (
           <div className="md:col-span-2 lg:col-span-3">
             <AchievementGallery badges={badges} />
+          </div>
+        )}
+
+        {/* System Diagnostics - Only show in development */}
+        {import.meta.env.DEV && (
+          <div className="md:col-span-2 lg:col-span-3">
+            <DiagnosticsRunner />
           </div>
         )}
       </div>
