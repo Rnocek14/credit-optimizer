@@ -29,6 +29,13 @@ async function loadAndRunDiagnostics() {
     };
     document.head.appendChild(debugScript);
     
+    // Also initialize edge diagnostics
+    setTimeout(() => {
+      if (window.runEdgeDiagnostics) {
+        console.log('🚀 Edge diagnostics available - run with: runEdgeDiagnostics()');
+      }
+    }, 1000);
+    
   } catch (error) {
     console.error('❌ Error loading diagnostic scripts:', error);
     runInlineDiagnostics();
@@ -107,20 +114,23 @@ function addDiagnosticUI() {
       <button onclick="document.getElementById('diagnostic-panel').style.display='none'" style="background: none; border: none; cursor: pointer; font-size: 16px;">×</button>
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
-      <button onclick="window.diagnostics?.runFullDiagnostics()" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        Run Full Diagnostics
+      <button onclick="window.runEdgeDiagnostics?.()" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🔍 Run Edge Diagnostics
+      </button>
+      <button onclick="window.diagnostics?.runFullDiagnostics()" style="padding: 8px; background: #059669; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        🚀 Full Test Suite
       </button>
       <button onclick="window.debugHooks?.testSuccessScenarios()" style="padding: 8px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        Test Success Cases
+        ✅ Test Success Cases
       </button>
       <button onclick="window.debugHooks?.testErrorScenarios()" style="padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        Test Error Cases
+        ❌ Test Error Cases
       </button>
       <button onclick="window.debugUtils?.monitorNetwork()" style="padding: 8px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        Monitor Network
+        📊 Monitor Network
       </button>
       <button onclick="console.table(window.debugUtils?.getQueryLogs())" style="padding: 8px; background: #f59e0b; color: white; border: none; border-radius: 4px; cursor: pointer;">
-        Show Query Logs
+        📝 Show Query Logs
       </button>
     </div>
     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #6b7280;">

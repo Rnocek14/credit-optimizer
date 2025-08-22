@@ -4,6 +4,9 @@ import { UnifiedDataProvider } from "./contexts/UnifiedDataContext"
 import App from './App.tsx'
 import './index.css'
 
+// Import edge diagnostics to make available globally
+import './debug/edgeDiagnostics'
+
 // Persist demo mode across reloads
 if (typeof window !== 'undefined') {
   const key = '__LP_DEMO_MODE__';
