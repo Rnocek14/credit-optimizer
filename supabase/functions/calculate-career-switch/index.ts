@@ -79,26 +79,20 @@ serve(async (req) => {
       return unauthorized('Authentication required - invalid or missing credentials');
     }
 
-    // Parse and validate request body with robust handling
+    // Parse and validate request body with single text read
     let body: any;
     try {
-      body = await req.json(); // preferred method for proper JSON
-      console.log(`[${requestId}] Body parsed via req.json():`, body);
-    } catch (jsonError) {
-      console.log(`[${requestId}] req.json() failed, trying text parsing:`, jsonError.message);
-      try {
-        const rawBody = await req.text();
-        console.log(`[${requestId}] Raw request body:`, rawBody);
-        if (!rawBody) {
-          console.error(`[${requestId}] No body provided`);
-          return badRequest('No JSON body provided');
-        }
-        body = JSON.parse(rawBody); 
-        console.log(`[${requestId}] Body parsed via JSON.parse():`, body);
-      } catch (parseError) { 
-        console.error(`[${requestId}] JSON parsing failed:`, parseError.message);
-        return badRequest('Invalid JSON body'); 
+      const rawBody = await req.text();
+      console.log(`[${requestId}] Raw request body:`, rawBody);
+      if (!rawBody) {
+        console.error(`[${requestId}] No body provided`);
+        return badRequest('No JSON body provided');
       }
+      body = JSON.parse(rawBody); 
+      console.log(`[${requestId}] Body parsed successfully:`, body);
+    } catch (parseError) { 
+      console.error(`[${requestId}] JSON parsing failed:`, parseError.message);
+      return badRequest('Invalid JSON body');
     }
 
     // Handle ping requests for debugging
