@@ -6,6 +6,7 @@ import './index.css'
 
 // Import edge diagnostics to make available globally
 import diagnostics from './debug/edgeDiagnostics'
+import './debug/directEdgeTest'
 
 // Make diagnostics globally accessible in browser
 if (typeof window !== 'undefined') {

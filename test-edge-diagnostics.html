@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edge Function Diagnostics Test</title>
+</head>
+<body>
+    <h1>Edge Function Diagnostics Test</h1>
+    <p>Open browser console and run: <code>runEdgeDiagnostics()</code></p>
+    
+    <script>
+        // Test direct supabase call to see if body is transmitted
+        async function testDirectCall() {
+            console.log('🧪 Testing direct Supabase call...');
+            
+            const payload = { 
+                fromTrackId: 'e728ea1b-aeac-431a-b223-4315a7044fa5',
+                toTrackId: '11487b59-02ea-4a26-ae30-f6ac586d54e0',
+                action: 'ping'
+            };
+            
+            console.log('Payload before call:', payload);
+            console.log('Payload serialized:', JSON.stringify(payload));
+            
+            try {
+                // Import Supabase client
+                const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+                const supabase = createClient(
+                    'https://vzpissitddpunkpythsb.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6cGlzc2l0ZGRwdW5rcHl0aHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3ODUxMDUsImV4cCI6MjA2ODM2MTEwNX0.qm92R4H0_rQpNipa2u1PjJqjnKrlRz_RJe6h6J9G-RI'
+                );
+                
+                const { data, error } = await supabase.functions.invoke('calculate-career-switch', {
+                    body: payload,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-dev-user-id': '2b458624-d498-4cca-a63d-9341cc20e363'
+                    }
+                });
+                
+                console.log('Response:', { data, error });
+                
+            } catch (err) {
+                console.error('Test failed:', err);
+            }
+        }
+        
+        window.testDirectCall = testDirectCall;
+        console.log('🚀 Test available - run with: testDirectCall()');
+    </script>
+</body>
+</html>

@@ -78,19 +78,40 @@ serve(async (req) => {
       return unauthorized('Authentication required - invalid or missing credentials');
     }
 
-    // Parse and validate request body with single text read
+    // Enhanced body parsing with multiple safety checks
     let body: any;
     try {
       const rawBody = await req.text();
-      console.log(`[${requestId}] Raw request body:`, rawBody);
-      if (!rawBody) {
-        console.error(`[${requestId}] No body provided`);
-        return badRequest('No JSON body provided');
+      console.log(`[${requestId}] Raw request body: "${rawBody}" (length: ${rawBody?.length || 0})`);
+      
+      // Multiple checks for empty body conditions
+      if (!rawBody || rawBody.trim() === '' || rawBody === 'null' || rawBody === 'undefined') {
+        console.error(`[${requestId}] Empty/null body detected - rawBody: "${rawBody}"`);
+        return badRequest('No JSON body provided', ['fromTrackId', 'toTrackId']);
       }
+      
+      // Check for minimum viable JSON
+      if (rawBody.length < 2) {
+        console.error(`[${requestId}] Body too short: ${rawBody.length} characters`);
+        return badRequest('Request body too short', ['fromTrackId', 'toTrackId']);
+      }
+      
       body = JSON.parse(rawBody); 
-      console.log(`[${requestId}] Body parsed successfully:`, body);
+      console.log(`[${requestId}] Body parsed successfully:`, { 
+        keys: Object.keys(body || {}),
+        type: typeof body,
+        hasFromTrack: !!body?.fromTrackId,
+        hasToTrack: !!body?.toTrackId
+      });
+      
+      // Validate parsed body is an object
+      if (!body || typeof body !== 'object') {
+        console.error(`[${requestId}] Body is not an object: ${typeof body}`);
+        return badRequest('Request body must be a JSON object', ['fromTrackId', 'toTrackId']);
+      }
+      
     } catch (parseError) { 
-      console.error(`[${requestId}] JSON parsing failed:`, parseError.message);
+      console.error(`[${requestId}] JSON parsing failed:`, parseError.message, `Raw: "${rawBody}"`);
       return badRequest('Invalid JSON body');
     }
 
