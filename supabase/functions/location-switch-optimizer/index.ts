@@ -46,7 +46,9 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Location switch optimizer function called');
+    const requestId = crypto.randomUUID();
+    console.log(`[${requestId}] Location switch optimizer function called`);
+    console.log(`[${requestId}] Request headers:`, Object.fromEntries(req.headers.entries()));
     
     // Authenticate user
     let user, isDevUser;
@@ -54,37 +56,48 @@ serve(async (req) => {
       const auth = await authenticateUser(req);
       user = auth.user;
       isDevUser = auth.isDevUser;
+      console.log(`[${requestId}] User authenticated: ${user.id} (dev: ${isDevUser})`);
     } catch (e) {
+      console.error(`[${requestId}] Authentication failed:`, e.message);
       return unauthorized('Authentication required');
     }
-    
-    console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
     // Parse and validate request body with robust handling
     let body: any;
     try {
       body = await req.json(); // preferred method for proper JSON
-    } catch {
-      const rawBody = await req.text();
-      console.log('Raw request body:', rawBody);
-      if (!rawBody) return badRequest('No JSON body provided');
-      try { 
+      console.log(`[${requestId}] Body parsed via req.json():`, body);
+    } catch (jsonError) {
+      console.log(`[${requestId}] req.json() failed, trying text parsing:`, jsonError.message);
+      try {
+        const rawBody = await req.text();
+        console.log(`[${requestId}] Raw request body:`, rawBody);
+        if (!rawBody) {
+          console.error(`[${requestId}] No body provided`);
+          return badRequest('No JSON body provided');
+        }
         body = JSON.parse(rawBody); 
-      } catch { 
+        console.log(`[${requestId}] Body parsed via JSON.parse():`, body);
+      } catch (parseError) { 
+        console.error(`[${requestId}] JSON parsing failed:`, parseError.message);
         return badRequest('Invalid JSON body'); 
       }
     }
 
-    console.log('Parsed request body:', body);
-
     // Handle ping requests for debugging
     if (body?.action === 'ping') {
-      return success({ ok: true, userId: user.id, ts: Date.now() });
+      console.log(`[${requestId}] Ping request received`);
+      return success({ ok: true, userId: user.id, ts: Date.now(), requestId });
     }
 
     const { fromTrackId, toTrackId, locationIds, topN = 5 } = body;
+    console.log(`[${requestId}] Extracted parameters:`, { fromTrackId, toTrackId, locationIds, topN });
+    
     const missing = ['fromTrackId', 'toTrackId'].filter(k => !body?.[k]);
-    if (missing.length) return badRequest('Both track IDs are required', missing);
+    if (missing.length) {
+      console.error(`[${requestId}] Missing required fields:`, missing);
+      return badRequest('Both track IDs are required', missing);
+    }
 
     // Default regions if none provided
     const regions: string[] = Array.isArray(locationIds) && locationIds.length > 0
@@ -212,9 +225,9 @@ serve(async (req) => {
       .sort((a, b) => b.lqi - a.lqi)
       .slice(0, topN);
 
-    console.log('Location optimization completed successfully');
+    console.log(`[${requestId}] Location optimization completed successfully`);
 
-    return success({
+    const responseData = {
       fromTrack: fromTrack?.title,
       toTrack: toTrack?.title,
       rankedLocations,
@@ -223,11 +236,26 @@ serve(async (req) => {
         targetBaseSalary,
         baselineCost,
         switchCost
-      }
+      },
+      requestId
+    };
+    
+    console.log(`[${requestId}] Response data:`, { 
+      fromTrack: responseData.fromTrack,
+      toTrack: responseData.toTrack,
+      locationCount: rankedLocations.length,
+      assumptions: responseData.assumptions
     });
+    
+    return success(responseData);
 
   } catch (error) {
-    console.error('Error in location-switch-optimizer:', error);
-    return serverError(error);
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}] Error in location-switch-optimizer:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    return serverError({ message: error.message, errorId });
   }
 });

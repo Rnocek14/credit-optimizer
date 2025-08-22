@@ -63,7 +63,9 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Calculate career switch function called');
+    const requestId = crypto.randomUUID();
+    console.log(`[${requestId}] Calculate career switch function called`);
+    console.log(`[${requestId}] Request headers:`, Object.fromEntries(req.headers.entries()));
     
     // Authenticate user (supports both JWT and dev user override)
     let user, isDevUser;
@@ -71,39 +73,50 @@ serve(async (req) => {
       const auth = await authenticateUser(req);
       user = auth.user;
       isDevUser = auth.isDevUser;
+      console.log(`[${requestId}] User authenticated: ${user.id} (dev: ${isDevUser})`);
     } catch (e) {
+      console.error(`[${requestId}] Authentication failed:`, e.message);
       return unauthorized('Authentication required - invalid or missing credentials');
     }
-    
-    console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
 
     // Parse and validate request body with robust handling
     let body: any;
     try {
       body = await req.json(); // preferred method for proper JSON
-    } catch {
-      const rawBody = await req.text();
-      console.log('Raw request body:', rawBody);
-      if (!rawBody) return badRequest('No JSON body provided');
-      try { 
+      console.log(`[${requestId}] Body parsed via req.json():`, body);
+    } catch (jsonError) {
+      console.log(`[${requestId}] req.json() failed, trying text parsing:`, jsonError.message);
+      try {
+        const rawBody = await req.text();
+        console.log(`[${requestId}] Raw request body:`, rawBody);
+        if (!rawBody) {
+          console.error(`[${requestId}] No body provided`);
+          return badRequest('No JSON body provided');
+        }
         body = JSON.parse(rawBody); 
-      } catch { 
+        console.log(`[${requestId}] Body parsed via JSON.parse():`, body);
+      } catch (parseError) { 
+        console.error(`[${requestId}] JSON parsing failed:`, parseError.message);
         return badRequest('Invalid JSON body'); 
       }
     }
 
-    console.log('Parsed request body:', body);
-
     // Handle ping requests for debugging
     if (body?.action === 'ping') {
-      return success({ ok: true, userId: user.id, ts: Date.now() });
+      console.log(`[${requestId}] Ping request received`);
+      return success({ ok: true, userId: user.id, ts: Date.now(), requestId });
     }
 
     const { fromTrackId, toTrackId, locationId } = body;
+    console.log(`[${requestId}] Extracted parameters:`, { fromTrackId, toTrackId, locationId });
+    
     const missing = ['fromTrackId', 'toTrackId'].filter(k => !body?.[k]);
-    if (missing.length) return badRequest('Both track IDs are required', missing);
+    if (missing.length) {
+      console.error(`[${requestId}] Missing required fields:`, missing);
+      return badRequest('Both track IDs are required', missing);
+    }
 
-    console.log(`Calculating career switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
+    console.log(`[${requestId}] Calculating career switch for user ${user.id}: ${fromTrackId} -> ${toTrackId}`);
 
     // Verify track ownership with better error handling
     const { data: tracks, error: tracksError } = await supabase
@@ -268,9 +281,9 @@ serve(async (req) => {
       throw new Error('Failed to save switch calculation');
     }
 
-    console.log('Career switch calculated successfully:', insertedSwitch.id);
+    console.log(`[${requestId}] Career switch calculated successfully:`, insertedSwitch.id);
 
-    return success({
+    const responseData = {
       switchId: insertedSwitch.id,
       metrics: {
         skillOverlap: Math.round(skillOverlap * 100),
@@ -285,11 +298,20 @@ serve(async (req) => {
       tracks: {
         from: fromTrack?.title,
         to: toTrack?.title
-      }
-    });
+      },
+      requestId
+    };
+    
+    console.log(`[${requestId}] Response data:`, responseData);
+    return success(responseData);
 
   } catch (error) {
-    console.error('Error in calculate-career-switch:', error);
-    return serverError(error);
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}] Error in calculate-career-switch:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    return serverError({ message: error.message, errorId });
   }
 });
