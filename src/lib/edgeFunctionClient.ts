@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/lib/authHelper';
-import { parseError } from '@/lib/errorUtils';
+
 
 interface EdgeFunctionError {
   error: string;

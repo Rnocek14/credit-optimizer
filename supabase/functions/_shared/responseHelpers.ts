@@ -23,8 +23,8 @@ export function notFound(msg = 'Not found', details?: any) {
   return json(404, { error: 'not_found', message: msg, details });
 }
 
-export function forbidden(msg = 'Access denied') {
-  return json(403, { error: 'forbidden', message: msg });
+export function forbidden(msg = 'Access denied', details?: any) {
+  return json(403, { error: 'forbidden', message: msg, details });
 }
 
 export function serverError(e: unknown) {
