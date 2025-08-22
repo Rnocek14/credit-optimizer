@@ -112,6 +112,12 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
 
   // Parse error for user-friendly display
   const parsedError = switchingError ? parseAnyError(switchingError) : null;
+  
+  // Log error details for debugging
+  if (switchingError) {
+    console.error('[CareerSwitchSimulator] Raw switching error:', switchingError);
+    console.error('[CareerSwitchSimulator] Parsed error:', parsedError);
+  }
 
   const handleLocationSelect = (locationId: string, location: any) => {
     setSelectedLocation(locationId);
