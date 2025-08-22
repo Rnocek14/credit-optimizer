@@ -19,13 +19,20 @@ import { seedTodayDemoData } from '@/utils/seedTodayDemoData';
 import { useToast } from '@/hooks/use-toast';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { awardXP } from '@/lib/xpUtils';
+import { logEvent } from '@/lib/analytics';
+import CelebrationOverlay from '@/components/gamification/CelebrationOverlay';
+import { XPToast } from '@/components/gamification/XPToast';
+import AchievementGallery from '@/components/gamification/AchievementGallery';
+import StreakTimeline from '@/components/gamification/StreakTimeline';
+import { useCelebrations } from '@/hooks/useCelebrations';
+import { useGamificationData } from '@/hooks/useGamificationData';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
 }
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
-  const { unifiedTodayDashboard } = useFeatureFlags();
+  const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline } = useFeatureFlags();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: user } = useQuery({
@@ -50,6 +57,15 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       return data?.[0] || null;
     },
     enabled: !!user?.id
+  });
+
+  // Gamification state
+  const [xpToasts, setXpToasts] = React.useState<{ id: string; text: string }[]>([]);
+  const { badges, days } = useGamificationData(user?.id);
+  const { open, setOpen, title, subtitle, kind } = useCelebrations({
+    currentLevel: userLevel?.current_level,
+    previousLevel: undefined, // We don't track previous level yet
+    currentStreak: getCurrentStreak ? getCurrentStreak() : currentStreak,
   });
 
   // Feature flag fallback
@@ -81,11 +97,17 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     }
   };
 
+  const pushXPToast = (xp: number) => {
+    setXpToasts((q) => [...q, { id: crypto.randomUUID(), text: `+${xp} XP` }]);
+  };
+
   const handleChallengeComplete = async (challengeId: string, xpAwarded: number) => {
     if (!user?.id) return;
     
     try {
       await awardXP(user.id, xpAwarded, 'LEARNING_SESSION', 'Completed daily challenge');
+      pushXPToast(xpAwarded);
+      logEvent('xp_awarded', { source: 'daily_challenge', xp: xpAwarded, challengeId });
       toast({
         title: "Challenge Complete! 🎉",
         description: `You earned ${xpAwarded} XP!`,
@@ -473,7 +495,32 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
             </CardContent>
           </Card>
         )}
+        {/* Gamification Features */}
+        {gamificationTimeline && (
+          <div className="md:col-span-2 lg:col-span-3">
+            <StreakTimeline days={days} />
+          </div>
+        )}
+
+        {gamificationGallery && (
+          <div className="md:col-span-2 lg:col-span-3">
+            <AchievementGallery badges={badges} />
+          </div>
+        )}
       </div>
+
+      {/* Gamification Overlays */}
+      {gamificationCelebrations && (
+        <CelebrationOverlay
+          open={open}
+          onClose={() => setOpen(false)}
+          title={title}
+          subtitle={subtitle}
+          kind={kind}
+        />
+      )}
+
+      <XPToast queue={xpToasts} />
     </div>
   );
 }

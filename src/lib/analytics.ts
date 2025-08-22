@@ -1,94 +1,27 @@
-import { supabase } from '@/integrations/supabase/client'
+type EventPayload = Record<string, unknown> & { ts?: number };
 
-export type AnalyticsEvent = 
-  | 'resume_view'
-  | 'resume_click' 
-  | 'gallery_impression'
-  | 'embed_interaction'
-  | 'mentor_feedback_submitted'
-  | 'cta_click'
-  | 'share_resume'
-  | 'planner_generate_plan'
-  | 'planner_set_goal'
-  | 'planner_viewed_unlock_analysis'
-  | 'planner_accessed'
+export function logEvent(name: string, payload: EventPayload = {}) {
+  const enriched = { ...payload, ts: Date.now() };
+  // Console sink
+  // eslint-disable-next-line no-console
+  console.log(`[analytics] ${name}`, enriched);
 
-export interface AnalyticsMetadata {
-  device?: string
-  location?: string
-  referrer?: string
-  resume_id?: string
-  embed_size?: string
-  embed_theme?: string
-  button_type?: string
-  target_job?: string
-  path_type?: string
-  paths_generated?: number
-  [key: string]: any
+  // OPTIONAL: send to Supabase if you have a table
+  // void supabase.from('events').insert({ name, payload: enriched, created_at: new Date().toISOString() });
 }
 
-export async function trackEvent(
-  userId: string,
-  eventType: AnalyticsEvent,
-  source?: string,
-  metadata?: AnalyticsMetadata
-) {
-  try {
-    const { error } = await supabase
-      .from('resume_events')
-      .insert({
-        user_id: userId,
-        event_type: eventType,
-        source: source || 'unknown',
-        metadata: {
-          timestamp: Date.now(),
-          user_agent: navigator.userAgent,
-          url: window.location.href,
-          ...metadata
-        }
-      })
-
-    if (error) {
-      console.error('Analytics tracking error:', error)
-    }
-  } catch (err) {
-    console.error('Failed to track event:', err)
-  }
+// Legacy compatibility exports
+export function trackEvent(userId: string, event: any, source?: string, payload?: any) {
+  logEvent(`${event}`, { userId, source, ...payload });
 }
 
 export function useAnalytics() {
   return {
-    trackResumeView: (userId: string, source: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'resume_view', source, metadata),
-    
-    trackResumeClick: (userId: string, source: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'resume_click', source, metadata),
-    
-    trackGalleryImpression: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'gallery_impression', 'gallery', metadata),
-    
-    trackEmbedInteraction: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'embed_interaction', 'embed', metadata),
-    
-    trackMentorFeedback: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'mentor_feedback_submitted', 'mentor_inbox', metadata),
-    
-    trackCTAClick: (userId: string, source: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'cta_click', source, metadata),
-    
-    trackShareResume: (userId: string, source: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'share_resume', source, metadata),
-    
-    trackPlannerGeneratePlan: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'planner_generate_plan', 'planner', metadata),
-    
-    trackPlannerSetGoal: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'planner_set_goal', 'planner', metadata),
-    
-    trackPlannerViewedUnlockAnalysis: (userId: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'planner_viewed_unlock_analysis', 'planner', metadata),
-      
-    trackPlannerAccessed: (userId: string, source: string, metadata?: AnalyticsMetadata) => 
-      trackEvent(userId, 'planner_accessed', source, metadata)
-  }
+    trackPlannerGeneratePlan: (payload?: any, metadata?: any) => logEvent('planner_generate_plan', { ...payload, ...metadata }),
+    trackPlannerSetGoal: (payload?: any, metadata?: any) => logEvent('planner_set_goal', { ...payload, ...metadata }),
+    trackPlannerViewedUnlockAnalysis: (payload?: any, metadata?: any) => logEvent('planner_viewed_unlock_analysis', { ...payload, ...metadata }),
+    trackPlannerAccessed: (payload?: any, metadata?: any) => logEvent('planner_accessed', { ...payload, ...metadata }),
+    trackEmbedInteraction: (userId?: string, payload?: any) => logEvent('embed_interaction', { userId, ...payload }),
+    trackCTAClick: (userId?: string, action?: string, payload?: any) => logEvent('cta_click', { userId, action, ...payload }),
+  };
 }

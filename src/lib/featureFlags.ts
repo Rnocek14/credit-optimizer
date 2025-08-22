@@ -7,6 +7,10 @@ interface FeatureFlags {
   crossHubTriggers: boolean;
   criBoostDisplay: boolean;
   advancedTelemetry: boolean;
+  gamificationCelebrations: boolean;
+  gamificationGallery: boolean;
+  gamificationTimeline: boolean;
+  gamificationSound: boolean;
 }
 
 /**
@@ -28,6 +32,12 @@ export function getFeatureFlags(): FeatureFlags {
     
     // Advanced telemetry - enabled in all environments
     advancedTelemetry: true,
+    
+    // Gamification features - enabled in dev, controllable in prod
+    gamificationCelebrations: searchParams.get('gamification_celebrations') !== 'false',
+    gamificationGallery: searchParams.get('gamification_gallery') !== 'false',
+    gamificationTimeline: searchParams.get('gamification_timeline') !== 'false',
+    gamificationSound: searchParams.get('gamification_sound') === 'true',
   };
 }
 
