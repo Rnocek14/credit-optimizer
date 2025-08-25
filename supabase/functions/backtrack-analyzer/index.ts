@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id',
-}
+import { corsHeaders, badRequest, unauthorized, notFound, success, serverError } from "../_shared/responseHelpers.ts";
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -53,8 +49,14 @@ serve(async (req) => {
 
   try {
     // Authenticate user
-    const user = await authenticateUser(req);
-
+    let user: { id: string; isDevUser: boolean };
+    try {
+      user = await authenticateUser(req);
+    } catch (e) {
+      return unauthorized((e as Error)?.message || 'Unauthorized');
+    }
+    
+    // Parse body safely
     // Parse body safely
     let body: any = {};
     try {
@@ -68,20 +70,14 @@ serve(async (req) => {
       }
     } catch (e) {
       console.error('Failed to parse request body:', e);
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return badRequest('Invalid JSON body');
     }
 
     const { fromTrackId, toTrackId } = body;
 
     if (!fromTrackId || !toTrackId) {
       console.error('Missing required track IDs');
-      return new Response(
-        JSON.stringify({ error: 'Both track IDs are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return badRequest('Both track IDs are required', ['fromTrackId', 'toTrackId']);
     }
 
     console.log('Processing backtrack analysis:', { fromTrackId, toTrackId, userId: user.id });
@@ -103,10 +99,7 @@ serve(async (req) => {
 
     if (fromError || toError || !fromTrack || !toTrack) {
       console.error('Track fetch error:', { fromError, toError });
-      return new Response(
-        JSON.stringify({ error: 'One or both tracks not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return notFound('One or both tracks not found', { fromError, toError });
     }
 
     // Calculate backtrack scenario
@@ -133,32 +126,15 @@ serve(async (req) => {
 
     console.log('Backtrack analysis completed:', backtrackResult);
 
-    return new Response(
-      JSON.stringify(backtrackResult),
-      { 
-        status: 200, 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+    return success(backtrackResult);
+    
 
   } catch (error) {
     console.error('Error in backtrack analyzer:', error);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        details: error.toString()
-      }),
-      { 
-        status: 500, 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+    const msg = (error as Error)?.message || '';
+    if (msg.includes('authorization') || msg.toLowerCase().includes('invalid token')) {
+      return unauthorized(msg || 'Unauthorized');
+    }
+    return serverError(error);
   }
 });

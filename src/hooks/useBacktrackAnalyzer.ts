@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUser } from '@/lib/authHelper';
+import { callEdgeFunction } from '@/lib/edgeFunctionClient';
+
 
 export const useBacktrackAnalyzer = ({ fromTrackId, toTrackId, enabled }: { fromTrackId?: string; toTrackId?: string; enabled?: boolean; }) => {
   return useQuery({
@@ -9,24 +9,17 @@ export const useBacktrackAnalyzer = ({ fromTrackId, toTrackId, enabled }: { from
     staleTime: 5 * 60 * 1000,
     retry: 1,
     queryFn: async () => {
-      const user = await getCurrentUser();
-      if (!user) throw new Error('Authentication required');
-
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (user.isDevUser) headers['x-dev-user-id'] = user.id;
-
-      const { data, error } = await supabase.functions.invoke('backtrack-analyzer', {
-        body: { fromTrackId, toTrackId },
-        headers: user.isDevUser ? headers : undefined
-      });
-
-      if (error) throw new Error(error.message || 'Backtrack analysis failed');
-      return data as {
+      type BacktrackResult = {
         sunkTimeMonths: number;
         transferCreditReclaimed: number;
         newBreakEvenMonths: number;
         netTimeImpactMonths: number;
+        fromTrack?: string;
+        toTrack?: string;
       };
+
+      const data = await callEdgeFunction<BacktrackResult>('backtrack-analyzer', { fromTrackId, toTrackId });
+      return data;
     }
   });
 };

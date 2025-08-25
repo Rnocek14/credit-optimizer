@@ -1,4 +1,4 @@
-const corsHeaders = {
+export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Vary': 'Origin',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
