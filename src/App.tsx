@@ -115,21 +115,34 @@ import Build from "./pages/Build";
 import TrackComparePage from "./components/compare/TrackComparePage";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 import { EnhancedErrorBoundary } from "./components/enhanced/EnhancedErrorBoundary";
+import { ProductionErrorBoundary } from "./components/enhanced/ProductionErrorBoundary";
+import { useCircuitBreakerClient } from "./hooks/useCircuitBreakerClient";
+import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <HelmetProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-        <UserJourneyProvider>
-          <UnifiedDataProvider>
-            <EnhancedErrorBoundary
-              onError={(error) => {
-                console.error('App-level error:', error);
-              }}
-            >
+const App = () => {
+  const circuitBreaker = useCircuitBreakerClient();
+
+  useEffect(() => {
+    // Initialize circuit breaker for edge function client
+    initializeCircuitBreaker(circuitBreaker);
+  }, [circuitBreaker]);
+
+  return (
+    <ProductionErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <HelmetProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <TooltipProvider>
+            <UserJourneyProvider>
+              <UnifiedDataProvider>
+                <EnhancedErrorBoundary
+                  onError={(error) => {
+                    console.error('App-level error:', error);
+                  }}
+                >
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -750,6 +763,8 @@ const App = () => (
       </ThemeProvider>
     </HelmetProvider>
   </QueryClientProvider>
-);
+</ProductionErrorBoundary>
+  );
+};
 
 export default App;

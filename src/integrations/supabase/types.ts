@@ -1964,6 +1964,42 @@ export type Database = {
           },
         ]
       }
+      circuit_breaker_state: {
+        Row: {
+          created_at: string
+          failure_count: number
+          id: string
+          last_failure_time: string | null
+          next_retry_time: string | null
+          service_name: string
+          state: string
+          success_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          failure_count?: number
+          id?: string
+          last_failure_time?: string | null
+          next_retry_time?: string | null
+          service_name: string
+          state?: string
+          success_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          failure_count?: number
+          id?: string
+          last_failure_time?: string | null
+          next_retry_time?: string | null
+          service_name?: string
+          state?: string
+          success_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       col_index: {
         Row: {
           city: string
@@ -2979,6 +3015,39 @@ export type Database = {
           skill_assessments?: Json | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      error_taxonomy: {
+        Row: {
+          created_at: string
+          error_category: string
+          error_code: string
+          id: string
+          retry_strategy: string | null
+          severity: string
+          technical_message: string | null
+          user_message: string
+        }
+        Insert: {
+          created_at?: string
+          error_category: string
+          error_code: string
+          id?: string
+          retry_strategy?: string | null
+          severity: string
+          technical_message?: string | null
+          user_message: string
+        }
+        Update: {
+          created_at?: string
+          error_category?: string
+          error_code?: string
+          id?: string
+          retry_strategy?: string | null
+          severity?: string
+          technical_message?: string | null
+          user_message?: string
         }
         Relationships: []
       }
@@ -8970,6 +9039,10 @@ export type Database = {
           reason: string
           slug: string
         }[]
+      }
+      system_health_check: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       unaccent: {
         Args: { "": string }
