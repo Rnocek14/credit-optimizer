@@ -35,6 +35,14 @@ export function MayaInsightsCard({
   const { insights, loading, generateInsights, dismissInsight, markAsActedUpon } = useMayaProactiveInsights(user?.id);
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
 
+  // Auto-generate insights on mount if user has none
+  React.useEffect(() => {
+    if (user?.id && insights.length === 0 && !loading) {
+      console.log('🤖 Auto-generating Maya insights for user:', user.id);
+      generateInsights();
+    }
+  }, [user?.id, insights.length, loading, generateInsights]);
+
   // Use proactive insights if available, fallback to static logic
   const hasProactiveInsights = insights.length > 0;
   const currentInsight = hasProactiveInsights ? insights[currentInsightIndex] : null;
@@ -239,7 +247,12 @@ export function MayaInsightsCard({
                 Refresh
               </Button>
             )}
-            <Button variant="ghost" size="sm" className="text-xs h-7">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-xs h-7"
+              onClick={() => window.location.href = '/maya'}
+            >
               <MessageCircle className="h-3 w-3 mr-1" />
               Ask Maya
             </Button>

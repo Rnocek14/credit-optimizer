@@ -69,15 +69,15 @@ export function useEnhancedMaya() {
         ...context
       };
 
-      // Call the enhanced Maya response function
+      // Call the Maya intelligence engine
       // Use proper demo user UUID if no authenticated user
       const actualUserId = state.user?.id || '2b458624-d498-4cca-a63d-9341cc20e363'; // Aisha Khan demo user
       
-      const { data, error: functionError } = await supabase.functions.invoke('enhanced-maya-response', {
+      const { data, error: functionError } = await supabase.functions.invoke('maya-intelligence-engine', {
         body: {
-          request,
           userId: actualUserId,
-          context: enhancedContext
+          contextData: enhancedContext,
+          requestType: 'career_guidance'
         }
       });
 

@@ -48,6 +48,7 @@ import Timeline from "./pages/Timeline";
 import Plans from "./pages/Plans";
 import { CompareTracks } from "./pages/CompareTracks";
 import SalaryInsights from "./pages/SalaryInsights";
+import MayaPage from "./pages/MayaPage";
 import ResumeAnalytics from "./pages/ResumeAnalytics";
 import MarketIntelligence from "./pages/MarketIntelligence";
 import Workflows from "./pages/Workflows";
@@ -671,7 +672,7 @@ const App = () => {
           path="/maya" 
           element={
             <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-              <MentorChat />
+              <MayaPage />
             </ProtectedRoute>
           } 
         />

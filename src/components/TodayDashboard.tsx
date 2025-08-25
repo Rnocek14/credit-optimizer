@@ -28,6 +28,7 @@ import { useCelebrations } from '@/hooks/useCelebrations';
 import { useGamificationData } from '@/hooks/useGamificationData';
 import DiagnosticsRunner from '@/components/DiagnosticsRunner';
 import { OnboardingTutorial, useOnboarding } from '@/components/onboarding/OnboardingTutorial';
+import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -71,6 +72,25 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     currentStreak: getCurrentStreak ? getCurrentStreak() : currentStreak,
   });
 
+  // Activate Maya context tracking
+  const {
+    trackPageVisit,
+    trackTimeSpent,
+    trackCourseInteraction,
+    trackGoalProgress,
+    trackMilestone,
+    trackEngagement
+  } = useMayaContextTracking();
+
+  // Track page visit when component mounts
+  React.useEffect(() => {
+    trackPageVisit('/today', { 
+      user_level: userLevel?.current_level,
+      current_streak: getCurrentStreak ? getCurrentStreak() : currentStreak,
+      total_xp: userLevel?.total_xp
+    });
+  }, [trackPageVisit, userLevel, getCurrentStreak, currentStreak]);
+
   // Feature flag fallback
   if (!unifiedTodayDashboard) {
     return (
@@ -111,6 +131,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       await awardXP(user.id, xpAwarded, 'LEARNING_SESSION', 'Completed daily challenge');
       pushXPToast(xpAwarded);
       logEvent('xp_awarded', { source: 'daily_challenge', xp: xpAwarded, challengeId });
+      
+      // Track milestone with Maya
+      trackMilestone('daily_challenge_complete', { 
+        challenge_id: challengeId, 
+        xp_awarded: xpAwarded,
+        current_streak: getCurrentStreak ? getCurrentStreak() : currentStreak
+      });
+      
       toast({
         title: "Challenge Complete! 🎉",
         description: `You earned ${xpAwarded} XP!`,
