@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,13 +17,24 @@ import {
   DollarSign, 
   Target,
   AlertTriangle,
-  GitCompare
+  GitCompare,
+  Loader2
 } from 'lucide-react';
 
 export const CompareTracks = () => {
-  const [trackAId, setTrackAId] = useState<string>('');
-  const [trackBId, setTrackBId] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  const [trackAId, setTrackAId] = useState<string>(searchParams.get('a') || '');
+  const [trackBId, setTrackBId] = useState<string>(searchParams.get('b') || '');
   const [showBacktrack, setShowBacktrack] = useState(false);
+  
+  // Auto-populate missing track selections when tracks are loaded
+  useEffect(() => {
+    const urlTrackA = searchParams.get('a');
+    const urlTrackB = searchParams.get('b');
+    
+    if (urlTrackA && !trackAId) setTrackAId(urlTrackA);
+    if (urlTrackB && !trackBId) setTrackBId(urlTrackB);
+  }, [searchParams, trackAId, trackBId]);
 
   const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
     queryKey: ['career-tracks'],
@@ -30,10 +42,22 @@ export const CompareTracks = () => {
     retry: 1,
   });
 
-  const { data: profileA } = useCareerProfileCard(trackAId);
-  const { data: profileB } = useCareerProfileCard(trackBId);
+  const { data: profileA, isLoading: loadingA } = useCareerProfileCard(trackAId);
+  const { data: profileB, isLoading: loadingB } = useCareerProfileCard(trackBId);
+
+  // Auto-fallback track selection when tracks are loaded
+  useEffect(() => {
+    if (!tracksLoading && tracks && tracks.length >= 2) {
+      if (!trackAId) setTrackAId(tracks[0].id);
+      if (!trackBId && trackAId) {
+        const otherTrack = tracks.find(t => t.id !== trackAId);
+        if (otherTrack) setTrackBId(otherTrack.id);
+      }
+    }
+  }, [tracks, tracksLoading, trackAId, trackBId]);
 
   const canCompare = profileA && profileB;
+  const isLoadingProfiles = loadingA || loadingB;
 
   const calculateBacktrackScenario = () => {
     if (!profileA || !profileB) return null;
@@ -150,6 +174,14 @@ export const CompareTracks = () => {
                 Reverting
               </Badge>
             )}
+          </div>
+        )}
+
+        {/* Loading State */}
+        {isLoadingProfiles && !canCompare && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Loading track data...</span>
           </div>
         )}
 

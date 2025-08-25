@@ -14,7 +14,13 @@ export const useSwitchingEngine = ({ fromTrackId, toTrackId, locationId, userAge
     queryKey: ['switching-engine', fromTrackId, toTrackId, locationId, userAge],
     enabled: !!(fromTrackId && toTrackId && fromTrackId !== '' && toTrackId !== ''),
     staleTime: 5 * 60 * 1000,
-    retry: 1,
+    retry: (failureCount, error) => {
+      // Retry network errors but not validation errors
+      if (error?.message?.includes('schema_error') || error?.message?.includes('validation')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     queryFn: async () => {
       console.log('[useSwitchingEngine] Starting analysis with params:', { 
         fromTrackId, 
