@@ -341,6 +341,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_usage_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          function_name: string
+          id: string
+          latency_ms: number | null
+          model: string | null
+          success: boolean | null
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          success?: boolean | null
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          success?: boolean | null
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_operation_cache: {
         Row: {
           confidence_score: number | null
@@ -4547,6 +4586,33 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      maya_rate_limits: {
+        Row: {
+          created_at: string | null
+          function_name: string
+          id: string
+          request_count: number | null
+          user_id: string
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          function_name: string
+          id?: string
+          request_count?: number | null
+          user_id: string
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          function_name?: string
+          id?: string
+          request_count?: number | null
+          user_id?: string
+          window_start?: string | null
         }
         Relationships: []
       }
