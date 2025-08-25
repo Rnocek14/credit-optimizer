@@ -1,12 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-dev-user-id',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { badRequest, unauthorized, notFound, forbidden, serverError, success, corsHeaders } from '../_shared/responseHelpers.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -53,45 +48,99 @@ async function authenticateUser(req: Request) {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: {
+      ...corsHeaders,
+      'Access-Control-Allow-Origin': req.headers.get('origin') ?? '*',
+    }});
   }
 
   try {
-    // Authenticate user (supports both JWT and dev user override)
-    const { user, isDevUser } = await authenticateUser(req);
-    console.log(`User authenticated: ${user.id} (dev: ${isDevUser})`);
+    const requestId = crypto.randomUUID();
+    console.log(`[${requestId}] Career risk analyzer function called`);
+    console.log(`[${requestId}] Request headers:`, Object.fromEntries(req.headers.entries()));
+    
+    // Authenticate user
+    let user, isDevUser;
+    try {
+      const auth = await authenticateUser(req);
+      user = auth.user;
+      isDevUser = auth.isDevUser;
+      console.log(`[${requestId}] User authenticated: ${user.id} (dev: ${isDevUser})`);
+    } catch (e) {
+      console.error(`[${requestId}] Authentication failed:`, e.message);
+      return unauthorized('Authentication required');
+    }
 
-    let body: any = {};
+    // Enhanced body parsing with multiple safety checks
+    let body: any;
     try {
       const rawBody = await req.text();
-      console.log('Raw request body:', rawBody);
-      if (rawBody) {
-        body = JSON.parse(rawBody);
-        console.log('Parsed request body:', body);
-      } else {
-        console.error('No JSON body provided');
+      console.log(`[${requestId}] Raw request body: "${rawBody}" (length: ${rawBody?.length || 0})`);
+      
+      // Multiple checks for empty body conditions
+      if (!rawBody || rawBody.trim() === '' || rawBody === 'null' || rawBody === 'undefined') {
+        console.error(`[${requestId}] Empty/null body detected - rawBody: "${rawBody}"`);
+        return badRequest('No JSON body provided', ['trackId']);
       }
-    } catch (e) {
-      console.error('Failed to parse request body:', e);
+      
+      // Check for minimum viable JSON
+      if (rawBody.length < 2) {
+        console.error(`[${requestId}] Body too short: ${rawBody.length} characters`);
+        return badRequest('Request body too short', ['trackId']);
+      }
+      
+      body = JSON.parse(rawBody); 
+      console.log(`[${requestId}] Body parsed successfully:`, { 
+        keys: Object.keys(body || {}),
+        type: typeof body,
+        hasTrackId: !!body?.trackId
+      });
+      
+      // Validate parsed body is an object
+      if (!body || typeof body !== 'object') {
+        console.error(`[${requestId}] Body is not an object: ${typeof body}`);
+        return badRequest('Request body must be a JSON object', ['trackId']);
+      }
+      
+    } catch (parseError) { 
+      console.error(`[${requestId}] JSON parsing failed:`, parseError.message, `Raw: "${rawBody}"`);
+      return badRequest('Invalid JSON body');
     }
+
+    // Handle ping requests for debugging
+    if (body?.action === 'ping') {
+      console.log(`[${requestId}] Ping request received`);
+      return success({ ok: true, userId: user.id, ts: Date.now(), requestId });
+    }
+
     const { trackId, userAge } = body;
-
+    console.log(`[${requestId}] Extracted parameters:`, { trackId, userAge });
+    
     if (!trackId) {
-      throw new Error('Missing required track ID');
+      console.error(`[${requestId}] Missing required trackId`);
+      return badRequest('Track ID is required', ['trackId']);
     }
 
-    console.log(`Analyzing career risk for user ${user.id}, track ${trackId}`);
+    console.log(`[${requestId}] Analyzing career risk for user ${user.id}, track ${trackId}`);
 
-    // Get track details
+    // Get track details with better error handling
     const { data: track, error: trackError } = await supabase
       .from('career_tracks')
       .select('*')
-      .eq('id', trackId)
-      .eq('user_id', user.id)
-      .single();
+      .eq('id', trackId);
 
-    if (trackError || !track) {
-      throw new Error('Track not found');
+    if (trackError) {
+      console.error('Database error fetching track:', trackError);
+      return serverError(trackError);
+    }
+    
+    if (!track) {
+      return notFound('Track not found', { trackId });
+    }
+
+    // Verify track ownership
+    if (track.user_id !== user.id) {
+      return forbidden('Track does not belong to current user', { trackId });
     }
 
     // Get track skills
@@ -218,9 +267,9 @@ serve(async (req) => {
       (criMismatch * 0.2)
     );
 
-    console.log('Career risk analyzed successfully:', insertedRisk.id);
+    console.log(`[${requestId}] Career risk analyzed successfully:`, insertedRisk.id);
 
-    return new Response(JSON.stringify({
+    const responseData = {
       riskId: insertedRisk.id,
       overallRisk,
       riskLevel: overallRisk > 70 ? 'High' : overallRisk > 40 ? 'Medium' : 'Low',
@@ -232,29 +281,20 @@ serve(async (req) => {
         roiVolatility: Math.round(roiVolatility),
         criMismatch: Math.round(criMismatch)
       },
-      trackTitle: track.title
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+      trackTitle: track.title,
+      requestId
+    };
+    
+    console.log(`[${requestId}] Response data:`, responseData);
+    return success(responseData);
 
   } catch (error) {
-    console.error('Error in career-risk-analyzer:', error);
-    
-    // Enhanced error logging for debugging
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
-    
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}] Error in career-risk-analyzer:`, {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
     });
+    return serverError({ message: error.message, errorId });
   }
 });

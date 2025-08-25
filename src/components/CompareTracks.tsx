@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
 import { getUserCareerTracks } from '@/lib/switching';
 import { useCareerProfileCard } from '@/hooks/useCareerProfileCard';
+import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -26,6 +27,7 @@ export const CompareTracks = () => {
   const [trackAId, setTrackAId] = useState<string>(searchParams.get('a') || '');
   const [trackBId, setTrackBId] = useState<string>(searchParams.get('b') || '');
   const [showBacktrack, setShowBacktrack] = useState(false);
+  const { toast } = useToast();
   
   // Auto-populate missing track selections when tracks are loaded
   useEffect(() => {
@@ -295,10 +297,49 @@ export const CompareTracks = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-4">
-              <Button variant="outline" className="flex-1">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  const exportData = {
+                    comparison: {
+                      trackA: profileA,
+                      trackB: profileB,
+                      backtrackMode: showBacktrack,
+                      backtrackData: showBacktrack ? backtrackData : null,
+                      timestamp: new Date().toISOString()
+                    }
+                  };
+                  
+                  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `track-comparison-${new Date().toISOString().split('T')[0]}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  
+                  toast({
+                    title: "📊 Export Complete",
+                    description: "Track comparison data downloaded successfully.",
+                  });
+                }}
+              >
                 Export Comparison
               </Button>
-              <Button className="flex-1">
+              <Button 
+                className="flex-1"
+                onClick={() => {
+                  toast({
+                    title: showBacktrack ? "🔄 Planning Backtrack" : "🚀 Planning Switch",
+                    description: showBacktrack 
+                      ? `Initiating backtrack from ${profileB?.trackTitle || 'Track B'} to ${profileA?.trackTitle || 'Track A'}`
+                      : `Initiating switch from ${profileA?.trackTitle || 'Track A'} to ${profileB?.trackTitle || 'Track B'}`,
+                  });
+                }}
+              >
                 {showBacktrack ? 'Plan Backtrack' : 'Plan Switch'}
               </Button>
             </div>

@@ -244,7 +244,13 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
 
           <div className="flex items-end">
             <Button 
-              onClick={() => toast({ title: "Analysis Complete", description: "Switch analysis updated with current parameters." })}
+              onClick={() => {
+                if (isAnalyzing || !switchingData) return;
+                toast({ 
+                  title: "✓ Analysis Complete", 
+                  description: `Updated analysis for switching from ${switchingData.switchData?.tracks?.from || 'your current track'} to ${switchingData.switchData?.tracks?.to || 'target track'}.`
+                });
+              }}
               disabled={!canAnalyze || isAnalyzing || tracksLoading}
               className="w-full"
               size="default"
@@ -277,7 +283,10 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
               )}
             </div>
             <p className="text-sm text-destructive/80 mt-1">
-              {parsedError?.userFriendlyMessage || tracksError?.message || 'Failed to load data'}
+              {parsedError?.userFriendlyMessage || 
+               (parsedError?.code === 'FunctionsHttpError' ? 'The analysis service is temporarily unavailable. Please try again in a moment.' : null) ||
+               tracksError?.message || 
+               'Unable to load switch analysis. Please check your connection and try again.'}
             </p>
             {parsedError?.missing && (
               <p className="text-xs text-destructive/60 mt-1">

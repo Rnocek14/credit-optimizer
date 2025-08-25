@@ -73,8 +73,8 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
     onLocationSelect?.(locationId, location);
     
     toast({
-      title: "Location Selected",
-      description: `Selected ${location.city}, ${location.country} for analysis`,
+      title: "📍 Location Updated",
+      description: `Selected ${location.city}, ${location.country}. Net income: $${location.netIncome.toLocaleString()}/year.`,
     });
     
     onClose();
@@ -222,7 +222,9 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
                   </Button>
                 </div>
                 <p className="text-destructive/80 text-sm">
-                  {parsedError.userFriendlyMessage}
+                  {parsedError?.userFriendlyMessage || 
+                   (parsedError?.code === 'FunctionsHttpError' ? 'The location optimizer service is temporarily unavailable. Please try again in a moment.' : null) ||
+                   'Unable to optimize locations. Please check your connection and try again.'}
                 </p>
                 {parsedError.missing && (
                   <p className="text-xs text-destructive/60 mt-1">
