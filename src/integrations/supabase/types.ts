@@ -4301,6 +4301,36 @@ export type Database = {
         }
         Relationships: []
       }
+      maya_context_tracking: {
+        Row: {
+          context_data: Json
+          context_type: string
+          created_at: string
+          id: string
+          session_id: string | null
+          tracked_at: string
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json
+          context_type: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          tracked_at?: string
+          user_id: string
+        }
+        Update: {
+          context_data?: Json
+          context_type?: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          tracked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       maya_decisions: {
         Row: {
           confidence_score: number
@@ -4463,6 +4493,60 @@ export type Database = {
           skill_level?: string
           target_career?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      maya_proactive_insights: {
+        Row: {
+          acted_upon_at: string | null
+          category: string
+          confidence_score: number
+          content: string
+          context_data: Json
+          created_at: string
+          dismissed_at: string | null
+          expires_at: string | null
+          feedback_rating: number | null
+          id: string
+          insight_type: string
+          priority: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acted_upon_at?: string | null
+          category?: string
+          confidence_score?: number
+          content: string
+          context_data?: Json
+          created_at?: string
+          dismissed_at?: string | null
+          expires_at?: string | null
+          feedback_rating?: number | null
+          id?: string
+          insight_type?: string
+          priority?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acted_upon_at?: string | null
+          category?: string
+          confidence_score?: number
+          content?: string
+          context_data?: Json
+          created_at?: string
+          dismissed_at?: string | null
+          expires_at?: string | null
+          feedback_rating?: number | null
+          id?: string
+          insight_type?: string
+          priority?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
