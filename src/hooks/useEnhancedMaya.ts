@@ -12,6 +12,17 @@ interface EnhancedMayaResponse {
     kind: string;
   };
   success: boolean;
+  // Legacy compatibility properties
+  realTimeData?: any;
+  autonomousActions?: any[];
+  requestAnalysis?: any;
+  decisionReasoning?: {
+    primaryFactors: string[];
+    confidenceScore: number;
+    gamificationContext: any;
+    riskAssessment: string;
+    expectedOutcome: string;
+  };
 }
 
 interface MayaContext {
@@ -166,34 +177,36 @@ export function useEnhancedMaya() {
   const getResponseInsights = useCallback(() => {
     if (!lastResponse) return null;
 
-    const { insights } = lastResponse;
+    const { insights, realTimeData, autonomousActions, requestAnalysis, decisionReasoning } = lastResponse;
 
     return {
       // Core insights from Maya's response
-      decisionConfidence: insights?.decisionConfidence || 0,
-      primaryFactors: insights?.primaryFactors || [],
+      decisionConfidence: insights?.decisionConfidence || decisionReasoning?.confidenceScore || 0,
+      primaryFactors: insights?.primaryFactors || decisionReasoning?.primaryFactors || [],
       responseKind: insights?.kind || 'general',
       
       // Legacy compatibility - provide defaults for existing UI
-      hasMarketData: false,
-      hasSkillAnalysis: false,
-      hasPredictions: false,
-      hasPersonalizedInsights: true,
+      hasMarketData: !!realTimeData?.marketData,
+      hasSkillAnalysis: !!realTimeData?.skillGaps,
+      hasPredictions: !!realTimeData?.predictions,
+      hasPersonalizedInsights: !!realTimeData?.personalized || true,
       
-      autonomousActionsCount: 0,
-      workflowCreated: false,
-      alertsCreated: false,
+      autonomousActionsCount: autonomousActions?.length || 0,
+      workflowCreated: autonomousActions?.some(action => action.type === 'workflow_created') || false,
+      alertsCreated: autonomousActions?.some(action => action.type === 'alert_created') || false,
       
-      requestComplexity: 0.5,
-      requestType: 'general',
-      shouldFollowUp: false,
+      requestComplexity: requestAnalysis?.complexityScore || 0.5,
+      requestType: requestAnalysis?.requestType || 'general',
+      shouldFollowUp: requestAnalysis?.shouldCreateWorkflow || false,
       
-      marketHealthScore: 0,
-      skillAlignment: 0,
-      careerReadiness: 0,
+      marketHealthScore: realTimeData?.marketData?.currentDemand || 0,
+      skillAlignment: realTimeData?.skillGaps?.skillAlignment || 0,
+      careerReadiness: realTimeData?.personalized?.readinessScore || 0,
       
-      riskLevel: 'medium',
-      expectedSuccess: 'positive'
+      // Decision transparency features
+      gamificationInfluence: decisionReasoning?.gamificationContext || null,
+      riskLevel: decisionReasoning?.riskAssessment || 'medium',
+      expectedSuccess: decisionReasoning?.expectedOutcome || 'positive'
     };
   }, [lastResponse]);
 
