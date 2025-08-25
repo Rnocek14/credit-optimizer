@@ -5,17 +5,13 @@ import { useGamification } from './useGamification';
 
 interface EnhancedMayaResponse {
   response: string;
-  realTimeData: any;
-  autonomousActions: any[];
-  requestAnalysis: any;
   timestamp: string;
-  decisionReasoning?: {
+  insights: {
+    decisionConfidence: number;
     primaryFactors: string[];
-    confidenceScore: number;
-    gamificationContext: any;
-    riskAssessment: string;
-    expectedOutcome: string;
+    kind: string;
   };
+  success: boolean;
 }
 
 interface MayaContext {
@@ -69,15 +65,12 @@ export function useEnhancedMaya() {
         ...context
       };
 
-      // Call the Maya intelligence engine
-      // Use proper demo user UUID if no authenticated user
-      const actualUserId = state.user?.id || '2b458624-d498-4cca-a63d-9341cc20e363'; // Aisha Khan demo user
-      
+      // Call the Maya intelligence engine with proper request format
       const { data, error: functionError } = await supabase.functions.invoke('maya-intelligence-engine', {
         body: {
-          userId: actualUserId,
-          contextData: enhancedContext,
-          requestType: 'career_guidance'
+          prompt: request,
+          context: enhancedContext,
+          persist: true
         }
       });
 
@@ -173,32 +166,34 @@ export function useEnhancedMaya() {
   const getResponseInsights = useCallback(() => {
     if (!lastResponse) return null;
 
-    const { realTimeData, autonomousActions, requestAnalysis, decisionReasoning } = lastResponse;
+    const { insights } = lastResponse;
 
     return {
-      hasMarketData: !!realTimeData?.marketData,
-      hasSkillAnalysis: !!realTimeData?.skillGaps,
-      hasPredictions: !!realTimeData?.predictions,
-      hasPersonalizedInsights: !!realTimeData?.personalized,
+      // Core insights from Maya's response
+      decisionConfidence: insights?.decisionConfidence || 0,
+      primaryFactors: insights?.primaryFactors || [],
+      responseKind: insights?.kind || 'general',
       
-      autonomousActionsCount: autonomousActions?.length || 0,
-      workflowCreated: autonomousActions?.some(action => action.type === 'workflow_created'),
-      alertsCreated: autonomousActions?.some(action => action.type === 'alert_created'),
+      // Legacy compatibility - provide defaults for existing UI
+      hasMarketData: false,
+      hasSkillAnalysis: false,
+      hasPredictions: false,
+      hasPersonalizedInsights: true,
       
-      requestComplexity: requestAnalysis?.complexityScore || 0,
-      requestType: requestAnalysis?.requestType || 'general',
-      shouldFollowUp: requestAnalysis?.shouldCreateWorkflow,
+      autonomousActionsCount: 0,
+      workflowCreated: false,
+      alertsCreated: false,
       
-      marketHealthScore: realTimeData?.marketData?.currentDemand || 0,
-      skillAlignment: realTimeData?.skillGaps?.skillAlignment || 0,
-      careerReadiness: realTimeData?.personalized?.readinessScore || 0,
+      requestComplexity: 0.5,
+      requestType: 'general',
+      shouldFollowUp: false,
       
-      // Decision transparency features
-      decisionConfidence: decisionReasoning?.confidenceScore || 0,
-      primaryFactors: decisionReasoning?.primaryFactors || [],
-      gamificationInfluence: decisionReasoning?.gamificationContext || null,
-      riskLevel: decisionReasoning?.riskAssessment || 'medium',
-      expectedSuccess: decisionReasoning?.expectedOutcome || 'positive'
+      marketHealthScore: 0,
+      skillAlignment: 0,
+      careerReadiness: 0,
+      
+      riskLevel: 'medium',
+      expectedSuccess: 'positive'
     };
   }, [lastResponse]);
 

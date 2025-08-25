@@ -29,6 +29,7 @@ import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useMayaContextTracking } from "@/hooks/useMayaContextTracking";
 
 const planFeatures = [
   {
@@ -74,6 +75,7 @@ export default function PlanHub() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { trackPageVisit, trackTimeSpent } = useMayaContextTracking();
   
   // Career profile card state
   const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
@@ -94,6 +96,20 @@ export default function PlanHub() {
   }, [activeTrackId, tracks, tracksLoading, setActiveTrackId]);
 
   console.log('PlanHub render start:', { activeTab, activeTrackId });
+
+  // Track Maya context for plan page visits
+  useEffect(() => {
+    trackPageVisit('/plan', { 
+      tab: activeTab, 
+      trackId: activeTrackId,
+      timestamp: new Date().toISOString() 
+    });
+
+    // Track time spent when component unmounts or tab changes
+    return () => {
+      trackTimeSpent('/plan');
+    };
+  }, [activeTab, activeTrackId, trackPageVisit, trackTimeSpent]);
 
   const { data: currentUser } = useQuery({
     queryKey: ['current-user'],

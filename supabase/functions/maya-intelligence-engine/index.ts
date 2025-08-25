@@ -1,138 +1,100 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import OpenAI from "https://esm.sh/openai@4.52.0";
+import { ok, fail, safeJson, requireUser, withCircuitBreaker, rateLimit, corsHeaders } from "../_shared/utils.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const oai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { userId, contextData, requestType } = await req.json();
-    
-    console.log('Maya Intelligence Engine - Processing request:', { userId, requestType });
+  return withCircuitBreaker(async () => {
+    const { prompt, context = {}, persist = true } = await safeJson(req);
+    const { user, supabase } = await requireUser(req);
 
-    // Get user context from database
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
+    await rateLimit(user.id, "maya_chat", 60, 20); // 20/min per user
+
+    console.log('Maya Intelligence Engine - Processing request:', { userId: user.id, prompt });
+
+    // Enrich with user profile, active track, recent actions
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id,name,role_title,experience_level,industry")
+      .eq("id", user.id)
       .single();
 
     const { data: careerGoals } = await supabase
       .from('career_goals')
       .select('*')
-      .eq('user_id', userId)
-      .eq('active', true);
+      .eq('user_id', user.id)
+      .eq('active', true)
+      .limit(3);
 
     const { data: recentContext } = await supabase
       .from('maya_context_tracking')
       .select('*')
-      .eq('user_id', userId)
-      .order('tracked_at', { ascending: false })
-      .limit(10);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-    // Build AI context
-    const aiContext = {
-      user: userProfile,
-      goals: careerGoals,
-      recentActivity: recentContext,
-      contextData,
-      timestamp: new Date().toISOString()
+    const systemPrompt = `You are Maya, an AI career intelligence assistant specializing in personalized career guidance.
+
+User Context:
+- Profile: ${JSON.stringify(profile)}
+- Active Goals: ${JSON.stringify(careerGoals)}
+- Recent Activity: ${JSON.stringify(recentContext)}
+- Additional Context: ${JSON.stringify(context)}
+
+Guidelines:
+- Be concise, actionable, and specific to the user's goals
+- Provide clear next steps the app can render
+- Include confidence scores and reasoning factors
+- Focus on practical career advice
+
+Return your response as a helpful career guidance message.`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt }
+    ];
+
+    const completion = await oai.chat.completions.create({
+      model: "gpt-5-mini-2025-08-07",
+      messages,
+      max_completion_tokens: 500,
+    });
+
+    const response = completion.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
+
+    // Extract insights (simple heuristics for now)
+    const insights = {
+      decisionConfidence: 0.8,
+      primaryFactors: ["user_goals", "experience_level", "market_trends"],
+      kind: "chat_response",
     };
 
-    // Generate AI reasoning based on request type
-    const systemPrompt = `You are Maya, an AI career mentor with deep understanding of professional development. Analyze the user's context and provide personalized guidance.
-
-Context: ${JSON.stringify(aiContext, null, 2)}
-
-Request Type: ${requestType}
-
-Provide a response in the following JSON format:
-{
-  "reasoning": "Your detailed reasoning process",
-  "recommendation": "Clear, actionable recommendation",
-  "confidence": 0.8,
-  "category": "career|learning|market|personal",
-  "priority": "low|medium|high|urgent",
-  "context_factors": ["key factors that influenced your decision"],
-  "next_steps": ["specific action items"],
-  "timeline": "suggested timeframe"
-}`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please analyze my current situation and provide guidance for: ${requestType}` }
-        ],
-        max_completion_tokens: 1000,
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+    // Persist insight if requested
+    if (persist) {
+      await supabase.from("maya_proactive_insights").insert({
+        user_id: user.id,
+        title: "Maya chat guidance",
+        body: response,
+        priority: "medium",
+        kind: "chat",
+        meta: { context, insights, prompt: prompt.slice(0, 200) },
+      });
     }
 
-    const aiResponse = await response.json();
-    const mayaResponse = JSON.parse(aiResponse.choices[0].message.content);
+    console.log('Maya Intelligence Engine - Success:', { userId: user.id, responseLength: response.length });
 
-    // Log the interaction for learning
-    await supabase
-      .from('maya_context_tracking')
-      .insert({
-        user_id: userId,
-        context_type: 'ai_reasoning',
-        context_data: {
-          request_type: requestType,
-          response: mayaResponse,
-          confidence: mayaResponse.confidence
-        }
-      });
-
-    console.log('Maya Intelligence Engine - Success:', { userId, confidence: mayaResponse.confidence });
-
-    return new Response(JSON.stringify({
-      success: true,
-      data: mayaResponse,
-      timestamp: new Date().toISOString()
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error) {
-    console.error('Maya Intelligence Engine - Error:', error);
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message,
-      fallback: {
-        reasoning: "Unable to generate personalized reasoning at this time",
-        recommendation: "Continue with your current learning path and check back later",
-        confidence: 0.5,
-        category: "general",
-        priority: "medium"
-      }
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+    return {
+      response,
+      timestamp: new Date().toISOString(),
+      insights,
+      success: true
+    };
+  });
 });

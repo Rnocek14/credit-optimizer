@@ -1,196 +1,110 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import OpenAI from "https://esm.sh/openai@4.52.0";
+import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const oai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { userId, insightType = 'daily' } = await req.json();
-    
-    console.log('Maya Insight Generator - Generating insights:', { userId, insightType });
+  return withCircuitBreaker(async () => {
+    console.log('Maya Insight Generator - Starting batch generation');
 
-    // Fetch comprehensive user data
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    // Get demo users and active users (limit to prevent overload)
+    const { data: users } = await supabase
+      .from("profiles")
+      .select("user_id, name, role_title, experience_level")
+      .limit(10);
 
-    const { data: careerGoals } = await supabase
-      .from('career_goals')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('active', true);
+    let generatedCount = 0;
 
-    const { data: careerTracks } = await supabase
-      .from('career_tracks')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('archived', false);
+    for (const profile of users || []) {
+      try {
+        // Get user context
+        const { data: goals } = await supabase
+          .from('career_goals')
+          .select('*')
+          .eq('user_id', profile.user_id)
+          .eq('active', true)
+          .limit(3);
 
-    const { data: recentActivity } = await supabase
-      .from('maya_context_tracking')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('tracked_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .order('tracked_at', { ascending: false });
+        const { data: recentActivity } = await supabase
+          .from('maya_context_tracking')
+          .select('event_type, created_at')
+          .eq('user_id', profile.user_id)
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(10);
 
-    const { data: gamificationData } = await supabase
-      .from('user_xp')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    // Clear expired insights
-    await supabase
-      .from('maya_proactive_insights')
-      .delete()
-      .eq('user_id', userId)
-      .lt('expires_at', new Date().toISOString());
-
-    // Build comprehensive context for AI
-    const userContext = {
-      profile: userProfile,
-      goals: careerGoals,
-      tracks: careerTracks,
-      recentActivity: recentActivity,
-      gamification: gamificationData,
-      currentTime: new Date().toISOString(),
-      dayOfWeek: new Date().getDay()
-    };
-
-    const systemPrompt = `You are Maya, an AI career mentor. Generate personalized daily insights for this user.
-
-User Context: ${JSON.stringify(userContext, null, 2)}
-
-Generate 3-5 insights in the following JSON array format:
-[
-  {
-    "title": "Engaging, personal insight title",
-    "content": "Detailed, actionable insight content",
-    "insight_type": "recommendation|alert|nudge|prediction",
-    "category": "career|learning|market|personal",
-    "priority": "low|medium|high|urgent",
-    "confidence_score": 0.8,
-    "context_data": {
-      "triggers": ["what triggered this insight"],
-      "next_actions": ["specific actions user can take"],
-      "timeline": "when to act"
-    },
-    "expires_hours": 24
-  }
-]
-
-Focus on:
-- Personalized recommendations based on their career goals
-- Learning momentum and streak maintenance
-- Market opportunities relevant to their track
-- Time-sensitive opportunities or deadlines
-- Skill gap analysis and next steps`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate daily insights for my career development. Consider my current progress, goals, and recent activity patterns.` }
-        ],
-        max_completion_tokens: 1500,
-        response_format: { type: "json_object" }
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-
-    const aiResponse = await response.json();
-    const insights = JSON.parse(aiResponse.choices[0].message.content);
-
-    // Store insights in database
-    const insightsToStore = Array.isArray(insights) ? insights : insights.insights || [];
-    const storedInsights = [];
-
-    for (const insight of insightsToStore) {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + (insight.expires_hours || 24));
-
-      const { data: storedInsight } = await supabase
-        .from('maya_proactive_insights')
-        .insert({
-          user_id: userId,
-          title: insight.title,
-          content: insight.content,
-          insight_type: insight.insight_type,
-          category: insight.category,
-          priority: insight.priority,
-          confidence_score: insight.confidence_score,
-          context_data: insight.context_data,
-          expires_at: expiresAt.toISOString()
-        })
-        .select()
-        .single();
-
-      if (storedInsight) {
-        storedInsights.push(storedInsight);
-      }
-    }
-
-    // Track insight generation
-    await supabase
-      .from('maya_context_tracking')
-      .insert({
-        user_id: userId,
-        context_type: 'insight_generation',
-        context_data: {
-          insights_generated: storedInsights.length,
-          insight_type: insightType,
-          categories: storedInsights.map(i => i.category)
+        // Skip if no recent activity
+        if (!recentActivity || recentActivity.length === 0) {
+          continue;
         }
-      });
 
-    console.log('Maya Insight Generator - Success:', { 
-      userId, 
-      insightsGenerated: storedInsights.length 
-    });
+        const contextSummary = {
+          profile: profile,
+          goals: goals || [],
+          recentActivity: recentActivity.length,
+          lastActivity: recentActivity[0]?.created_at
+        };
 
-    return new Response(JSON.stringify({
-      success: true,
-      data: {
-        insights: storedInsights,
-        generated_count: storedInsights.length
+        // Generate insights
+        const completion = await oai.chat.completions.create({
+          model: "gpt-5-mini-2025-08-07",
+          messages: [
+            {
+              role: "system",
+              content: "You generate short, high-signal proactive career insights. Return 1-3 actionable insights separated by newlines."
+            },
+            {
+              role: "user",
+              content: `Generate proactive career insights for this user: ${JSON.stringify(contextSummary)}`
+            },
+          ],
+          max_completion_tokens: 300,
+        });
+
+        const ideas = (completion.choices?.[0]?.message?.content ?? "")
+          .split("\n")
+          .filter(line => line.trim().length > 20)
+          .slice(0, 3);
+
+        // Persist insights
+        for (const idea of ideas) {
+          await supabase.from("maya_proactive_insights").upsert({
+            user_id: profile.user_id,
+            title: idea.slice(0, 120),
+            body: idea,
+            priority: "medium",
+            kind: "proactive",
+            meta: { 
+              source: "generator", 
+              generated_at: new Date().toISOString(),
+              context_summary: contextSummary 
+            },
+          }, { 
+            onConflict: "user_id,title",
+            ignoreDuplicates: true 
+          });
+        }
+
+        generatedCount++;
+        console.log(`Generated insights for user ${profile.user_id}: ${ideas.length} insights`);
+
+      } catch (error) {
+        console.error(`Failed to generate insights for user ${profile.user_id}:`, error);
+        continue;
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }
 
-  } catch (error) {
-    console.error('Maya Insight Generator - Error:', error);
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+    console.log('Maya Insight Generator - Completed:', { generatedFor: generatedCount });
+
+    return { 
+      success: true,
+      generatedFor: generatedCount,
+      timestamp: new Date().toISOString()
+    };
+  });
 });
