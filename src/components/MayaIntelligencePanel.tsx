@@ -145,6 +145,11 @@ export const MayaIntelligencePanel: React.FC<MayaIntelligencePanelProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{insights.length} insights</Badge>
+            {lastGenerated && (
+              <div className="text-xs text-muted-foreground">
+                Last updated: {new Date(lastGenerated).toLocaleTimeString()}
+              </div>
+            )}
             {responseInsights && (
               <Badge variant="secondary" className="gap-1">
                 <TrendingUp className="h-3 w-3" />

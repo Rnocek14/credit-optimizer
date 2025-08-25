@@ -29,6 +29,7 @@ import { useGamificationData } from '@/hooks/useGamificationData';
 import DiagnosticsRunner from '@/components/DiagnosticsRunner';
 import { OnboardingTutorial, useOnboarding } from '@/components/onboarding/OnboardingTutorial';
 import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
+import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -191,13 +192,25 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Maya Insights Card - Full Width */}
-      <MayaInsightsCard 
-        userName={user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'}
-        currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
-        nextStep={nextStep}
-        recommendations={quickWins}
-      />
+      {/* Maya Intelligence Overview - Full Width */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MayaInsightsCard 
+          userName={user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'}
+          currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
+          nextStep={nextStep}
+          recommendations={quickWins}
+        />
+        <MayaIntelligencePanel 
+          currentPath="/today"
+          contextData={{ 
+            user_level: userLevel?.current_level,
+            current_streak: getCurrentStreak ? getCurrentStreak() : currentStreak,
+            total_xp: userLevel?.total_xp,
+            daily_context: true
+          }}
+          compact={true}
+        />
+      </div>
 
       {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -135,19 +135,41 @@ export function useMayaProactiveInsights(userId?: string) {
     }
   }, [userId]);
 
-  const provideFeedback = useCallback(async (insightId: string, rating: number) => {
+  const provideFeedback = useCallback(async (insightId: string, rating: number, feedback?: string) => {
     try {
       const { error } = await supabase
         .from('maya_proactive_insights')
-        .update({ feedback_rating: rating })
+        .update({ 
+          feedback_rating: rating,
+          feedback_text: feedback,
+          feedback_at: new Date().toISOString()
+        })
         .eq('id', insightId)
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      // Update local state
+      setInsights(prev => prev.map(insight =>
+        insight.id === insightId
+          ? { 
+              ...insight, 
+              feedback_rating: rating,
+              feedback_text: feedback,
+              feedback_at: new Date().toISOString()
+            }
+          : insight
+      ));
+
+      toast({
+        title: "Feedback recorded",
+        description: "Thanks for helping Maya improve!",
+        duration: 3000,
+      });
     } catch (err) {
       console.error('Error providing feedback:', err);
     }
-  }, [userId]);
+  }, [userId, toast]);
 
   // Auto-refresh insights periodically
   useEffect(() => {
@@ -191,6 +213,7 @@ export function useMayaProactiveInsights(userId?: string) {
     generateInsights,
     dismissInsight,
     markAsActedUpon,
-    provideFeedback
+    provideFeedback,
+    lastGenerated: insights.length > 0 ? insights[0].created_at : null
   };
 }
