@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.52.0";
 import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
@@ -8,6 +9,16 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret) or Bearer token
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const headerSecret = req.headers.get('x-cron-secret') ?? '';
+  const authHeader = req.headers.get('authorization') ?? '';
+  const providedBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+  if (!cronSecret || !(headerSecret === cronSecret || providedBearer === cronSecret)) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
   return withCircuitBreaker(async () => {
@@ -71,12 +82,12 @@ serve(async (req) => {
           .filter(line => line.trim().length > 20)
           .slice(0, 3);
 
-        // Persist insights
+        // Persist insights (use 'content' column per schema)
         for (const idea of ideas) {
           await supabase.from("maya_proactive_insights").upsert({
             user_id: profile.user_id,
             title: idea.slice(0, 120),
-            body: idea,
+            content: idea,
             priority: "medium",
             kind: "proactive",
             meta: { 
