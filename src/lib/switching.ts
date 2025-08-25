@@ -158,9 +158,17 @@ export const analyzeCareerSwitch = async (
 };
 
 export const getUserCareerTracks = async () => {
+  // Get current user with auth check
+  const user = await getCurrentUser();
+  if (!user) {
+    console.warn('No authenticated user found for getUserCareerTracks');
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('career_tracks')
     .select('id, title, description, roi_score, switch_readiness_score')
+    .eq('user_id', user.id)
     .eq('archived', false)
     .order('order_index');
 

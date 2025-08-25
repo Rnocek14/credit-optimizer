@@ -24,9 +24,10 @@ export const CompareTracks = () => {
   const [trackBId, setTrackBId] = useState<string>('');
   const [showBacktrack, setShowBacktrack] = useState(false);
 
-  const { data: tracks } = useQuery({
+  const { data: tracks, isLoading: tracksLoading, error: tracksError } = useQuery({
     queryKey: ['career-tracks'],
     queryFn: getUserCareerTracks,
+    retry: 1,
   });
 
   const { data: profileA } = useCareerProfileCard(trackAId);
@@ -272,12 +273,31 @@ export const CompareTracks = () => {
           </div>
         )}
 
-        {!canCompare && trackAId && trackBId && (
+        {/* No tracks available */}
+        {!tracks || tracks.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+            {tracksLoading ? (
+              <p>Loading your career tracks...</p>
+            ) : tracksError ? (
+              <div>
+                <p className="mb-2">Unable to load your career tracks</p>
+                <p className="text-sm">Please ensure you're logged in and have created some tracks</p>
+              </div>
+            ) : (
+              <div>
+                <p className="mb-2">No career tracks found</p>
+                <p className="text-sm">Create some career tracks first to compare them</p>
+              </div>
+            )}
+          </div>
+        ) : !canCompare && trackAId && trackBId ? (
           <div className="text-center text-muted-foreground py-8">
             <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
             <p>Unable to load track data for comparison</p>
+            <p className="text-sm mt-1">Track data may be loading or unavailable</p>
           </div>
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );
