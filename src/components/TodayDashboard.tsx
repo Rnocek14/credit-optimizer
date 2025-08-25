@@ -27,6 +27,7 @@ import StreakTimeline from '@/components/gamification/StreakTimeline';
 import { useCelebrations } from '@/hooks/useCelebrations';
 import { useGamificationData } from '@/hooks/useGamificationData';
 import DiagnosticsRunner from '@/components/DiagnosticsRunner';
+import { OnboardingTutorial, useOnboarding } from '@/components/onboarding/OnboardingTutorial';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -34,6 +35,7 @@ interface TodayDashboardProps {
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline } = useFeatureFlags();
+  const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: user } = useQuery({
@@ -529,6 +531,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       )}
 
       <XPToast queue={xpToasts} />
+      
+      {/* Onboarding Tutorial */}
+      {showOnboarding && (
+        <OnboardingTutorial
+          onComplete={completeOnboarding}
+          onSkip={skipOnboarding}
+        />
+      )}
     </div>
   );
 }
