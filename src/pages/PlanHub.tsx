@@ -18,6 +18,8 @@ import { TrackProofProjectManager } from "@/components/proof-projects/TrackProof
 import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
 import { CareerProfileCard } from "@/components/CareerProfileCard";
 import { LocationOptimizerDrawer } from "@/components/LocationOptimizerDrawer";
+import { MayaIntelligencePanel } from "@/components/MayaIntelligencePanel";
+import { MayaTransparencyOverlay } from "@/components/MayaTransparencyOverlay";
 import { useSkillGaps } from "@/hooks/useSkillGaps";
 import { useUnifiedRecommendations } from "@/hooks/useUnifiedRecommendations";
 import { EnhancedErrorBoundary } from "@/components/enhanced/EnhancedErrorBoundary";
@@ -377,7 +379,12 @@ export default function PlanHub() {
 
           {/* Maya Guidance Panel */}
           <div className="lg:col-span-1">
-            <div className="sticky top-6">
+            <div className="sticky top-6 space-y-4">
+              <MayaIntelligencePanel 
+                currentPath="/plan" 
+                contextData={{ activeTab: activeTab, tracksCount: tracks?.length || 0 }}
+                compact={true}
+              />
               <MayaInlinePanel context="plan" />
             </div>
           </div>

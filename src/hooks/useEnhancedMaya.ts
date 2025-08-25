@@ -25,7 +25,7 @@ interface EnhancedMayaResponse {
   };
 }
 
-interface MayaContext {
+export interface MayaContext {
   careerPath?: string;
   location?: string;
   goals?: any[];
