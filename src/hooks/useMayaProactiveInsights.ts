@@ -64,11 +64,11 @@ export function useMayaProactiveInsights(userId?: string) {
     }
   }, [userId, toast]);
 
-  const generateInsights = useCallback(async (insightType: string = 'daily') => {
+  const generateInsights = useCallback(async (insightType: string = 'daily', silent: boolean = false) => {
     if (!userId) return;
 
     try {
-      const { data, error } = await supabase.functions.invoke('maya-insight-generator', {
+      const { data, error } = await supabase.functions.invoke('maya-manual-insights', {
         body: { userId, insightType }
       });
 
@@ -76,20 +76,24 @@ export function useMayaProactiveInsights(userId?: string) {
 
       if (data?.success) {
         await fetchInsights(); // Refresh insights after generation
-        toast({
-          title: "Maya insights updated!",
-          description: `Generated ${data.data.generated_count} new personalized insights`,
-          duration: 5000,
-        });
+        if (!silent) {
+          toast({
+            title: "Maya insights updated!",
+            description: `Generated ${data.insights?.length || 1} new personalized insights`,
+            duration: 5000,
+          });
+        }
       }
     } catch (err) {
       console.error('Error generating insights:', err);
-      toast({
-        title: "Insight generation failed",
-        description: "Using previous insights for now",
-        variant: "destructive",
-        duration: 3000,
-      });
+      if (!silent) {
+        toast({
+          title: "Insight generation failed",
+          description: "Using previous insights for now",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
     }
   }, [userId, fetchInsights, toast]);
 

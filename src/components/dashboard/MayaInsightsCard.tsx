@@ -35,13 +35,16 @@ export function MayaInsightsCard({
   const { insights, loading, generateInsights, dismissInsight, markAsActedUpon } = useMayaProactiveInsights(user?.id);
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
 
-  // Auto-generate insights on mount if user has none
+  const [hasTriedAutoGeneration, setHasTriedAutoGeneration] = React.useState(false);
+
+  // Auto-generate insights on mount if user has none (only once)
   React.useEffect(() => {
-    if (user?.id && insights.length === 0 && !loading) {
+    if (user?.id && insights.length === 0 && !loading && !hasTriedAutoGeneration) {
       console.log('🤖 Auto-generating Maya insights for user:', user.id);
-      generateInsights();
+      setHasTriedAutoGeneration(true);
+      generateInsights('daily', true); // Silent mode for auto-generation
     }
-  }, [user?.id, insights.length, loading, generateInsights]);
+  }, [user?.id, insights.length, loading, hasTriedAutoGeneration, generateInsights]);
 
   // Use proactive insights if available, fallback to static logic
   const hasProactiveInsights = insights.length > 0;
