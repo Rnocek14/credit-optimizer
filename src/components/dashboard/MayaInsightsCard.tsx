@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Sparkles, TrendingUp, Lightbulb } from 'lucide-react';
+import { Bot, Sparkles, TrendingUp, Lightbulb, X, ThumbsUp, MessageCircle, Zap } from 'lucide-react';
+import { useMayaProactiveInsights } from '@/hooks/useMayaProactiveInsights';
+import { getCurrentUser } from '@/lib/auth';
+import { useQuery } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 interface MayaInsightsCardProps {
   userName?: string;
@@ -23,6 +27,17 @@ export function MayaInsightsCard({
   nextStep,
   recommendations = []
 }: MayaInsightsCardProps) {
+  const { data: user } = useQuery({
+    queryKey: ['current-user'],
+    queryFn: getCurrentUser,
+    staleTime: 1000 * 60 * 5,
+  });
+  const { insights, loading, generateInsights, dismissInsight, markAsActedUpon } = useMayaProactiveInsights(user?.id);
+  const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
+
+  // Use proactive insights if available, fallback to static logic
+  const hasProactiveInsights = insights.length > 0;
+  const currentInsight = hasProactiveInsights ? insights[currentInsightIndex] : null;
   const getPersonalizedGreeting = () => {
     const hour = new Date().getHours();
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -39,6 +54,10 @@ export function MayaInsightsCard({
   };
 
   const getPersonalizedInsight = () => {
+    if (currentInsight) {
+      return currentInsight.content;
+    }
+    
     const highPriorityRecs = recommendations.filter(r => r.priority === 'critical' || r.priority === 'high').length;
     
     if (nextStep?.type === 'skill_gap') {
@@ -52,45 +71,179 @@ export function MayaInsightsCard({
     return `I'm analyzing market trends and your profile to surface the most impactful next steps. Your personalized roadmap is designed for sustainable growth.`;
   };
 
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return <Zap className="h-3 w-3 text-red-500" />;
+      case 'high': return <TrendingUp className="h-3 w-3 text-orange-500" />;
+      case 'medium': return <Lightbulb className="h-3 w-3 text-primary" />;
+      default: return <Lightbulb className="h-3 w-3 text-muted-foreground" />;
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'border-red-500 bg-red-50';
+      case 'high': return 'border-orange-500 bg-orange-50';
+      case 'medium': return 'border-primary bg-primary/5';
+      default: return 'border-border bg-muted/20';
+    }
+  };
+
+  const handleNextInsight = () => {
+    if (insights.length > 1) {
+      setCurrentInsightIndex((prev) => (prev + 1) % insights.length);
+    }
+  };
+
+  const handleDismissInsight = () => {
+    if (currentInsight) {
+      dismissInsight(currentInsight.id);
+      if (insights.length > 1) {
+        setCurrentInsightIndex((prev) => prev === insights.length - 1 ? 0 : prev);
+      }
+    }
+  };
+
+  const handleActOnInsight = () => {
+    if (currentInsight) {
+      markAsActedUpon(currentInsight.id);
+    }
+  };
+
   return (
-    <Card className="border-l-4 border-l-primary bg-gradient-to-br from-background to-muted/20">
+    <Card className={cn(
+      "border-l-4 bg-gradient-to-br from-background to-muted/20",
+      currentInsight ? getPriorityColor(currentInsight.priority) : "border-l-primary"
+    )}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <div className="p-1.5 rounded-full bg-primary/10">
             <Bot className="h-4 w-4 text-primary" />
           </div>
-          Maya's Daily Insights
-          <Badge variant="secondary" className="ml-auto">
-            <Sparkles className="h-3 w-3 mr-1" />
-            AI Powered
-          </Badge>
+          Maya's {hasProactiveInsights ? 'Live' : 'Daily'} Insights
+          <div className="flex items-center gap-2 ml-auto">
+            {currentInsight && (
+              <Badge variant="outline" className="text-xs">
+                {getPriorityIcon(currentInsight.priority)}
+                <span className="ml-1 capitalize">{currentInsight.priority}</span>
+              </Badge>
+            )}
+            <Badge variant="secondary">
+              <Sparkles className="h-3 w-3 mr-1" />
+              {hasProactiveInsights ? 'Live AI' : 'AI Powered'}
+            </Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          <p className="text-sm leading-relaxed">
-            {getPersonalizedGreeting()}
-          </p>
-          
-          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-            <div className="flex items-start gap-2">
-              <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {getPersonalizedInsight()}
+          {hasProactiveInsights && currentInsight ? (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-medium text-sm leading-relaxed">
+                  {currentInsight.title}
+                </h3>
+                {insights.length > 1 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">
+                      {currentInsightIndex + 1}/{insights.length}
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0" 
+                      onClick={handleNextInsight}
+                    >
+                      <TrendingUp className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className={cn(
+                "p-3 rounded-lg border",
+                getPriorityColor(currentInsight.priority)
+              )}>
+                <div className="flex items-start gap-2">
+                  {getPriorityIcon(currentInsight.priority)}
+                  <p className="text-sm text-muted-foreground leading-relaxed flex-1">
+                    {currentInsight.content}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                    onClick={handleDismissInsight}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                {currentInsight.context_data?.next_actions && (
+                  <div className="mt-2 pt-2 border-t border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={handleActOnInsight}
+                      >
+                        <ThumbsUp className="h-3 w-3 mr-1" />
+                        Take Action
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        {currentInsight.context_data.timeline || 'When ready'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm leading-relaxed">
+                {getPersonalizedGreeting()}
               </p>
-            </div>
-          </div>
+              
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {getPersonalizedInsight()}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingUp className="h-3 w-3" />
-            <span>Analyzing {recommendations.length} opportunities</span>
+            <span>
+              {hasProactiveInsights 
+                ? `${insights.length} active insight${insights.length !== 1 ? 's' : ''}`
+                : `Analyzing ${recommendations.length} opportunities`
+              }
+            </span>
           </div>
           
-          <Button variant="ghost" size="sm" className="text-xs h-8">
-            Ask Maya
-          </Button>
+          <div className="flex items-center gap-2">
+            {hasProactiveInsights && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-7"
+                onClick={() => generateInsights()}
+                disabled={loading}
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                Refresh
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-xs h-7">
+              <MessageCircle className="h-3 w-3 mr-1" />
+              Ask Maya
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

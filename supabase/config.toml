@@ -135,3 +135,12 @@ verify_jwt = true
 
 [functions.certificate-generation]
 verify_jwt = true
+
+[functions.maya-intelligence-engine]
+verify_jwt = true
+
+[functions.maya-insight-generator]
+verify_jwt = true
+
+[functions.maya-context-processor]
+verify_jwt = true
