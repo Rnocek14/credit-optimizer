@@ -11,13 +11,25 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret) or Bearer token
-  const cronSecret = Deno.env.get('CRON_SECRET');
+  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret) or allow Bearer anon key
+  const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
   const headerSecret = req.headers.get('x-cron-secret') ?? '';
   const authHeader = req.headers.get('authorization') ?? '';
-  const providedBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const providedBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-  if (!cronSecret || !(headerSecret === cronSecret || providedBearer === cronSecret)) {
+  const authorized = (
+    (!!cronSecret && (headerSecret === cronSecret || providedBearer === cronSecret)) ||
+    (!!anonKey && providedBearer === anonKey)
+  );
+
+  if (!authorized) {
+    console.warn('Unauthorized request to maya-insight-generator', {
+      hasCronSecretConfigured: !!cronSecret,
+      providedHeaderSecret: headerSecret ? '***' : '',
+      providedBearerLen: providedBearer?.length || 0,
+      allowsAnonKey: !!anonKey
+    });
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
