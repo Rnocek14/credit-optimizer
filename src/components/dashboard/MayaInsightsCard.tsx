@@ -238,18 +238,16 @@ export function MayaInsightsCard({
           </div>
           
           <div className="flex items-center gap-2">
-            {hasProactiveInsights && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs h-7"
-                onClick={() => generateInsights()}
-                disabled={loading}
-              >
-                <Sparkles className="h-3 w-3 mr-1" />
-                Refresh
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-xs h-7"
+              onClick={() => generateInsights()}
+              disabled={loading}
+            >
+              <Sparkles className="h-3 w-3 mr-1" />
+              {insights.length > 0 ? 'Refresh' : 'Generate Insights'}
+            </Button>
             <Button 
               variant="ghost" 
               size="sm" 

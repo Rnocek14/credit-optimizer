@@ -30,6 +30,18 @@ export function useMayaProactiveInsights(userId?: string) {
     setError(null);
     
     try {
+      // Debug logging for development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Maya] fetchInsights query params', {
+          userId,
+          filters: {
+            dismissed_at: 'IS NULL',
+            expires_at: 'IS NULL OR > now()',
+            insight_types: ['manual_generation', 'proactive'],
+          },
+        });
+      }
+
       const { data, error: fetchError } = await supabase
         .from('maya_proactive_insights')
         .select('*')
@@ -43,6 +55,11 @@ export function useMayaProactiveInsights(userId?: string) {
       if (fetchError) throw fetchError;
 
       setInsights(data || []);
+
+      // Debug logging for development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Maya] fetchInsights result', data?.length, data?.slice(0, 3));
+      }
 
       // Show urgent insights as toast notifications
       const urgentInsights = data?.filter(
@@ -143,11 +160,24 @@ export function useMayaProactiveInsights(userId?: string) {
 
   const provideFeedback = useCallback(async (insightId: string, rating: number, feedback?: string) => {
     try {
+      // First get the current context_data
+      const { data: existing } = await supabase
+        .from('maya_proactive_insights')
+        .select('id, context_data')
+        .eq('id', insightId)
+        .single();
+
+      // Merge feedback into context_data
+      const nextContextData = {
+        ...(existing?.context_data && typeof existing.context_data === 'object' ? existing.context_data : {}),
+        feedback_text: feedback,
+      };
+
       const { error } = await supabase
         .from('maya_proactive_insights')
         .update({ 
           feedback_rating: rating,
-          feedback_text: feedback,
+          context_data: nextContextData,
           feedback_at: new Date().toISOString()
         })
         .eq('id', insightId)
@@ -161,7 +191,7 @@ export function useMayaProactiveInsights(userId?: string) {
           ? { 
               ...insight, 
               feedback_rating: rating,
-              feedback_text: feedback,
+              context_data: nextContextData,
               feedback_at: new Date().toISOString()
             }
           : insight
@@ -174,6 +204,12 @@ export function useMayaProactiveInsights(userId?: string) {
       });
     } catch (err) {
       console.error('Error providing feedback:', err);
+      toast({
+        title: "Feedback failed",
+        description: "Could not save your feedback. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   }, [userId, toast]);
 
