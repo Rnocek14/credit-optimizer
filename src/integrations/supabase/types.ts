@@ -7481,6 +7481,47 @@ export type Database = {
           },
         ]
       }
+      track_cri_cache: {
+        Row: {
+          breakdown: Json
+          cri: number
+          gaps: Json | null
+          recommendations: Json | null
+          skill_levels: Json | null
+          track_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          breakdown?: Json
+          cri?: number
+          gaps?: Json | null
+          recommendations?: Json | null
+          skill_levels?: Json | null
+          track_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          breakdown?: Json
+          cri?: number
+          gaps?: Json | null
+          recommendations?: Json | null
+          skill_levels?: Json | null
+          track_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_cri_cache_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       track_mentor_verifications: {
         Row: {
           created_at: string
@@ -7631,6 +7672,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tracks: {
+        Row: {
+          active: boolean | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          difficulty_level: string | null
+          estimated_duration_weeks: number | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          estimated_duration_weeks?: number | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: string | null
+          estimated_duration_weeks?: number | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       transcripts: {
         Row: {
@@ -7958,6 +8038,62 @@ export type Database = {
             columns: ["career_path_id"]
             isOneToOne: false
             referencedRelation: "career_paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_course_events: {
+        Row: {
+          completion_date: string | null
+          course_id: string | null
+          created_at: string | null
+          event_type: string
+          evidence: Json | null
+          grade: string | null
+          id: string
+          notes: string | null
+          progress_percent: number | null
+          score: number | null
+          source: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completion_date?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          event_type: string
+          evidence?: Json | null
+          grade?: string | null
+          id?: string
+          notes?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          source?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completion_date?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          event_type?: string
+          evidence?: Json | null
+          grade?: string | null
+          id?: string
+          notes?: string | null
+          progress_percent?: number | null
+          score?: number | null
+          source?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_course_events_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
@@ -8589,6 +8725,47 @@ export type Database = {
             columns: ["track_id"]
             isOneToOne: false
             referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_tracks: {
+        Row: {
+          created_at: string | null
+          is_primary: boolean | null
+          started_at: string | null
+          status: string | null
+          target_completion_date: string | null
+          track_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          is_primary?: boolean | null
+          started_at?: string | null
+          status?: string | null
+          target_completion_date?: string | null
+          track_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          is_primary?: boolean | null
+          started_at?: string | null
+          status?: string | null
+          target_completion_date?: string | null
+          track_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
             referencedColumns: ["id"]
           },
         ]
