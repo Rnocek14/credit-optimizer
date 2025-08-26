@@ -35,7 +35,7 @@ export function useMayaProactiveInsights(userId?: string) {
         .select('*')
         .eq('user_id', userId)
         .is('dismissed_at', null)
-        .gt('expires_at', new Date().toISOString())
+        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -77,9 +77,11 @@ export function useMayaProactiveInsights(userId?: string) {
       if (data?.success) {
         await fetchInsights(); // Refresh insights after generation
         if (!silent) {
+          const inserted = data.insightsInserted || 0;
+          const parsed = data.parsedCount || 0;
           toast({
             title: "Maya insights updated!",
-            description: `Generated ${data.insights?.length || 1} new personalized insights`,
+            description: `Inserted ${inserted} insights (parsed ${parsed})`,
             duration: 5000,
           });
         }
