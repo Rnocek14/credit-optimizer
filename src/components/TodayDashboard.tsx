@@ -30,6 +30,7 @@ import DiagnosticsRunner from '@/components/DiagnosticsRunner';
 import { OnboardingTutorial, useOnboarding } from '@/components/onboarding/OnboardingTutorial';
 import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
 import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
+import { MayaInsightDebugPanel } from '@/components/debug/MayaInsightDebugPanel';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -193,7 +194,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   return (
     <div className="space-y-6">
       {/* Maya Intelligence Overview - Full Width */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <MayaInsightsCard 
           userName={user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'}
           currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
@@ -210,6 +211,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           }}
           compact={true}
         />
+        <MayaInsightDebugPanel />
       </div>
 
       {/* Main Dashboard Grid */}
