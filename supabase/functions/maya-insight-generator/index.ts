@@ -14,6 +14,42 @@ if (!openaiApiKey) {
 const oai = new OpenAI({ apiKey: openaiApiKey });
 console.log('Maya Insight Generator - OpenAI client initialized');
 
+// Parse insights from AI output with robust fallbacks
+function parseInsights(rawText: string, maxCount: number): string[] {
+  if (!rawText?.trim()) return [];
+  
+  try {
+    // Try JSON parsing first
+    const parsed = JSON.parse(rawText.trim());
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed.slice(0, maxCount);
+    }
+  } catch (e) {
+    // JSON parsing failed, continue to fallbacks
+  }
+  
+  // Fallback: try various delimiters
+  const delimiters = [
+    /\n/g,                           // newlines
+    /^\s*\d+[.)]\s+/gm,             // numbered lists
+    /^\s*[-*•]\s+/gm,               // bullet points
+  ];
+  
+  for (const delimiter of delimiters) {
+    const lines = rawText.split(delimiter)
+      .map(line => line.trim().replace(/^\d+[.)]\s*|^[-*•]\s*/, '').trim())
+      .filter(line => line.length >= 8)
+      .slice(0, maxCount);
+    
+    if (lines.length > 0) {
+      return [...new Set(lines)]; // deduplicate
+    }
+  }
+  
+  // Last resort: return the whole text if it's reasonable length
+  return rawText.trim().length >= 8 && rawText.trim().length <= 300 ? [rawText.trim()] : [];
+}
+
 serve(async (req) => {
   console.log('Maya Insight Generator - Request received:', req.method, req.url);
   
@@ -61,8 +97,9 @@ serve(async (req) => {
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .limit(10);
 
-        // Skip if no recent activity
-        if (!recentActivity || recentActivity.length === 0) {
+        // Skip if no recent activity (unless in dev mode)
+        const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
+        if (!isDevMode && (!recentActivity || recentActivity.length === 0)) {
           continue;
         }
 
@@ -85,7 +122,7 @@ serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: "You generate short, high-signal proactive career insights. Return 1-3 actionable insights separated by newlines."
+                content: "You generate short, high-signal proactive career insights. Return strictly a JSON array of 2-3 strings. No extra text."
               },
               {
                 role: "user",
@@ -95,19 +132,26 @@ serve(async (req) => {
             max_completion_tokens: 300,
           });
 
-          ideas = (completion.choices?.[0]?.message?.content ?? "")
-            .split("\n")
-            .filter(line => line.trim().length > 20)
-            .slice(0, 3);
-
-          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}`);
+          const rawOutput = completion.choices?.[0]?.message?.content ?? "";
+          console.log(`OpenAI raw output (${rawOutput.length} chars):`, rawOutput.slice(0, 300));
+          
+          ideas = parseInsights(rawOutput, 3);
+          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, ideas.map(i => i.slice(0, 60)));
         } catch (aiError) {
           console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
           
           // In dev mode, insert a synthetic insight for testing
-          if (devUserId || knownDevUsers.includes(profile.user_id)) {
+          const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
+          if (isDevMode) {
             ideas = ["Debug: OpenAI failed, synthetic insight for testing pipeline"];
           }
+        }
+
+        // Dev mode fallback: ensure at least one insight for testing
+        const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
+        if (isDevMode && ideas.length === 0) {
+          ideas = ["Debug: Parser found no insights; pipeline working"];
+          console.log(`Dev fallback applied for user ${profile.user_id}`);
         }
 
         // Persist insights (use 'content' column per schema)

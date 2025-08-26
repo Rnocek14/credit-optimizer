@@ -14,6 +14,42 @@ if (!openaiApiKey) {
 const oai = new OpenAI({ apiKey: openaiApiKey });
 console.log('Maya Manual Insights - OpenAI client initialized');
 
+// Parse insights from AI output with robust fallbacks
+function parseInsights(rawText: string, maxCount: number): string[] {
+  if (!rawText?.trim()) return [];
+  
+  try {
+    // Try JSON parsing first
+    const parsed = JSON.parse(rawText.trim());
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed.slice(0, maxCount);
+    }
+  } catch (e) {
+    // JSON parsing failed, continue to fallbacks
+  }
+  
+  // Fallback: try various delimiters
+  const delimiters = [
+    /\n/g,                           // newlines
+    /^\s*\d+[.)]\s+/gm,             // numbered lists
+    /^\s*[-*•]\s+/gm,               // bullet points
+  ];
+  
+  for (const delimiter of delimiters) {
+    const lines = rawText.split(delimiter)
+      .map(line => line.trim().replace(/^\d+[.)]\s*|^[-*•]\s*/, '').trim())
+      .filter(line => line.length >= 8)
+      .slice(0, maxCount);
+    
+    if (lines.length > 0) {
+      return [...new Set(lines)]; // deduplicate
+    }
+  }
+  
+  // Last resort: return the whole text if it's reasonable length
+  return rawText.trim().length >= 8 && rawText.trim().length <= 300 ? [rawText.trim()] : [];
+}
+
 // Rate limiting helper
 async function checkRateLimit(userId: string, functionName: string): Promise<boolean> {
   const windowStart = new Date(Date.now() - 3600000); // 1 hour window
@@ -139,7 +175,7 @@ serve(async (req) => {
             - Encouraging but realistic
             - Tied to market trends when relevant
             
-            Format: One insight per line, max 120 characters each.`
+            Return strictly a JSON array of 2-4 strings. No extra text.`
           },
           {
             role: "user",
@@ -205,12 +241,16 @@ serve(async (req) => {
       };
     }
     
-    const ideas = completionText
-      .split("\n")
-      .filter(line => line.trim().length > 20)
-      .slice(0, 4);
-
-    console.log('Generated insights:', ideas);
+    console.log(`OpenAI raw output (${completionText.length} chars):`, completionText.slice(0, 300));
+    
+    let ideas = parseInsights(completionText, 4);
+    console.log(`Parsed ${ideas.length} insights:`, ideas.map(i => i.slice(0, 60)));
+    
+    // Dev mode fallback: ensure at least one insight for testing
+    if (userIsDevMode && ideas.length === 0) {
+      ideas = ["Debug: Parser found no insights; pipeline working"];
+      console.log('Dev fallback applied - empty parse');
+    }
 
     // Persist insights to database
     const insertedInsights = [];
