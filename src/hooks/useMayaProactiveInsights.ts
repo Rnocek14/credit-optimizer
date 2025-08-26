@@ -76,10 +76,13 @@ export function useMayaProactiveInsights(userId?: string) {
       if (error) throw error;
 
       if (data?.success) {
+        // Avoid potential read-after-write lag
+        await new Promise((r) => setTimeout(r, 150));
         await fetchInsights(); // Refresh insights after generation
         if (!silent) {
-          const inserted = data.insightsInserted || 0;
-          const parsed = data.parsedCount || 0;
+          const inserted =
+            data?.performance?.inserted_count ?? data?.insightsInserted ?? data?.generatedCount ?? 0;
+          const parsed = data?.performance?.parsed_count ?? data?.parsedCount ?? 0;
           toast({
             title: "Maya insights updated!",
             description: `Inserted ${inserted} insights (parsed ${parsed})`,
