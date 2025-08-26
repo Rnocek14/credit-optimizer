@@ -115,6 +115,25 @@ serve(async (req) => {
           lastActivity: recentActivity[0]?.created_at
         };
 
+        // Get course intelligence recommendations
+        let courseRecommendations: any[] = [];
+        try {
+          const { data: courseData, error: courseError } = await supabase.functions.invoke('course-intelligence-recommendations', {
+            body: {
+              userId: profile.user_id,
+              skillGaps: ['product_strategy', 'data_analysis', 'javascript'], // Default skill gaps
+              limit: 3
+            }
+          });
+          
+          if (!courseError && courseData?.success) {
+            courseRecommendations = courseData.recommendations || [];
+            console.log(`Found ${courseRecommendations.length} course recommendations for user ${profile.user_id}`);
+          }
+        } catch (courseError) {
+          console.error('Course intelligence error:', courseError);
+        }
+
         // Generate insights
         console.log(`Generating insights for user ${profile.user_id} with context:`, contextSummary);
         
@@ -123,17 +142,23 @@ serve(async (req) => {
         let tokensIn = 0;
         let tokensOut = 0;
         
+        // Include course recommendations in the context
+        const enhancedContext = {
+          ...contextSummary,
+          courseRecommendations: courseRecommendations.slice(0, 2)
+        };
+        
         try {
           const completion = await oai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",
-                content: "You are Maya, a proactive career AI coach. Generate 2-3 specific, actionable career insights. Return ONLY a JSON array of strings, no additional text or formatting."
+                content: "You are Maya, a proactive career AI coach. Generate 2-3 specific, actionable career insights. If course recommendations are provided, include at least one course-related insight. Return ONLY a JSON array of strings, no additional text or formatting."
               },
               {
                 role: "user",
-                content: `Generate proactive career insights for: ${JSON.stringify(contextSummary)}`
+                content: `Generate proactive career insights for: ${JSON.stringify(enhancedContext)}`
               },
             ],
             max_tokens: 300,
