@@ -117,7 +117,7 @@ serve(async (req) => {
     // Generate personalized insights
     const aiStartTime = Date.now();
     const completion = await oai.chat.completions.create({
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -134,7 +134,7 @@ serve(async (req) => {
           content: `Generate insights for: ${JSON.stringify(contextSummary)}`
         },
       ],
-      max_completion_tokens: 400,
+      max_tokens: 400,
     });
     
     const aiLatency = Date.now() - aiStartTime;
@@ -181,7 +181,7 @@ serve(async (req) => {
     console.log(`Maya Manual Insights - Generated ${insertedInsights.length} insights for user ${user.id}`);
     
     // Log successful AI usage
-    await logAIUsage(user.id, 'maya-manual-insights', 'gpt-5-mini-2025-08-07', tokensIn, tokensOut, Date.now() - startTime, true);
+    await logAIUsage(user.id, 'maya-manual-insights', 'gpt-4o-mini', tokensIn, tokensOut, Date.now() - startTime, true);
 
     return { 
       success: true,
