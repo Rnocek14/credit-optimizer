@@ -118,9 +118,9 @@ export const MayaInsightDebugPanel: React.FC = () => {
   };
 
   return (
-    <Card className="border-amber-200 bg-amber-50/50">
+    <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-amber-800">
+        <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
           <Database className="h-4 w-4" />
           Maya Insights Debug Panel
         </CardTitle>
@@ -128,11 +128,11 @@ export const MayaInsightDebugPanel: React.FC = () => {
       <CardContent className="space-y-4">
         {/* Insight Counts */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 rounded-md bg-white">
+          <div className="text-center p-3 rounded-md bg-white dark:bg-gray-800">
             <div className="text-2xl font-bold text-green-600">{insightCounts?.last5m || 0}</div>
             <div className="text-sm text-muted-foreground">Last 5 minutes</div>
           </div>
-          <div className="text-center p-3 rounded-md bg-white">
+          <div className="text-center p-3 rounded-md bg-white dark:bg-gray-800">
             <div className="text-2xl font-bold text-blue-600">{insightCounts?.last24h || 0}</div>
             <div className="text-sm text-muted-foreground">Last 24 hours</div>
           </div>
@@ -140,11 +140,11 @@ export const MayaInsightDebugPanel: React.FC = () => {
 
         {/* Recent Activity */}
         <div className="space-y-2">
-          <h4 className="font-medium text-amber-800">Recent Context Activity</h4>
+          <h4 className="font-medium text-amber-800 dark:text-amber-200">Recent Context Activity</h4>
           {contextData && contextData.length > 0 ? (
             <div className="space-y-1">
               {contextData.map(item => (
-                <div key={item.id} className="flex items-center justify-between text-xs p-2 bg-white rounded">
+                <div key={item.id} className="flex items-center justify-between text-xs p-2 bg-white dark:bg-gray-800 rounded">
                   <span>{item.context_type} - {item.event_type}</span>
                   <span className="text-muted-foreground">
                     {new Date(item.created_at).toLocaleTimeString()}
@@ -153,7 +153,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground p-2 bg-white rounded">
+            <div className="text-sm text-muted-foreground p-2 bg-white dark:bg-gray-800 rounded">
               No recent activity found
             </div>
           )}
@@ -161,11 +161,11 @@ export const MayaInsightDebugPanel: React.FC = () => {
 
         {/* Recent Insights */}
         <div className="space-y-2">
-          <h4 className="font-medium text-amber-800">Recent Insights</h4>
+          <h4 className="font-medium text-amber-800 dark:text-amber-200">Recent Insights</h4>
           {insightCounts?.recent && insightCounts.recent.length > 0 ? (
             <div className="space-y-1">
               {insightCounts.recent.map(insight => (
-                <div key={insight.id} className="flex items-center justify-between text-xs p-2 bg-white rounded">
+                <div key={insight.id} className="flex items-center justify-between text-xs p-2 bg-white dark:bg-gray-800 rounded">
                   <div className="flex items-center gap-2">
                     <Badge variant={insight.priority === 'urgent' ? 'destructive' : 'secondary'} className="text-xs">
                       {insight.priority}
@@ -179,7 +179,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground p-2 bg-white rounded">
+            <div className="text-sm text-muted-foreground p-2 bg-white dark:bg-gray-800 rounded">
               No insights generated yet
             </div>
           )}
