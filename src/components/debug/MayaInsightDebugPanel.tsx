@@ -74,9 +74,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
       // Test both functions
       const [genResult, manualResult] = await Promise.allSettled([
         supabase.functions.invoke('maya-insight-generator', {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers
         }),
         supabase.functions.invoke('maya-manual-insights', {
           headers
