@@ -32,13 +32,16 @@ export const MayaIntelligencePanel: React.FC<MayaIntelligencePanelProps> = ({
   const handleGenerateInsights = async () => {
     setGenerating(true);
     try {
+      console.log('Manual insight generation triggered from Maya Intelligence Panel');
       const { data, error } = await supabase.functions.invoke('maya-manual-insights');
       
       if (error) {
         console.error('Error generating insights:', error);
-        toast.error('Failed to generate insights. Please try again.');
+        toast.error(`Failed to generate insights: ${error.message}`);
         return;
       }
+
+      console.log('Generation response:', data);
 
       if (data?.success) {
         setLastGenerated(new Date());

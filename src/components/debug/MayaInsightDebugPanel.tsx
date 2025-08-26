@@ -57,23 +57,53 @@ export const MayaInsightDebugPanel: React.FC = () => {
   const handleTestFunction = async () => {
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('maya-insight-generator', {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      console.log('Testing Maya insight generator...');
+      
+      // Test both functions
+      const [genResult, manualResult] = await Promise.allSettled([
+        supabase.functions.invoke('maya-insight-generator', {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }),
+        supabase.functions.invoke('maya-manual-insights', {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
 
-      if (error) {
-        console.error('Function error:', error);
-        toast.error(`Function failed: ${error.message}`);
+      console.log('Generator result:', genResult);
+      console.log('Manual result:', manualResult);
+
+      let successCount = 0;
+      let messages = [];
+
+      if (genResult.status === 'fulfilled' && !genResult.value.error) {
+        successCount++;
+        messages.push(`Generator: ${JSON.stringify(genResult.value.data)}`);
       } else {
-        console.log('Function response:', data);
-        toast.success(`Function executed successfully: ${JSON.stringify(data)}`);
-        refetchCounts();
+        messages.push(`Generator failed: ${genResult.status === 'fulfilled' ? genResult.value.error.message : 'Request failed'}`);
       }
+
+      if (manualResult.status === 'fulfilled' && !manualResult.value.error) {
+        successCount++;
+        messages.push(`Manual: ${JSON.stringify(manualResult.value.data)}`);
+      } else {
+        messages.push(`Manual failed: ${manualResult.status === 'fulfilled' ? manualResult.value.error.message : 'Request failed'}`);
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount}/2 functions succeeded. Check console for details.`);
+        refetchCounts();
+      } else {
+        toast.error('Both functions failed. Check console for details.');
+      }
+
+      console.log('Test results:', messages);
     } catch (error) {
-      console.error('Request error:', error);
-      toast.error(`Request failed: ${error}`);
+      console.error('Test error:', error);
+      toast.error(`Test failed: ${error}`);
     } finally {
       setTesting(false);
     }
@@ -148,13 +178,12 @@ export const MayaInsightDebugPanel: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button 
             onClick={handleTestFunction}
             disabled={testing}
             variant="outline"
             size="sm"
-            className="flex-1"
           >
             {testing ? (
               <>
@@ -164,7 +193,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
             ) : (
               <>
                 <RefreshCw className="h-3 w-3 mr-1" />
-                Test Generator
+                Test Both
               </>
             )}
           </Button>
@@ -176,7 +205,8 @@ export const MayaInsightDebugPanel: React.FC = () => {
             variant="outline"
             size="sm"
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Refresh
           </Button>
         </div>
 
