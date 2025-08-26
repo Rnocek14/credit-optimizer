@@ -122,47 +122,43 @@ serve(async (req) => {
 
     // Generate personalized insights
     const aiStartTime = Date.now();
+    let aiLatency = 0;
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let completionText = "";
     try {
-        const completion = await oai.chat.completions.create({
-          model: "o4-mini-2025-04-16",
-      messages: [
-        {
-          role: "system",
-          content: `You are Maya, a proactive career AI coach. Generate 2-4 specific, actionable career insights based on the user's profile and recent activity. Each insight should be:
-          - Specific to their career goals and current situation
-          - Actionable with clear next steps
-          - Encouraging but realistic
-          - Tied to market trends when relevant
-          
-          Format: One insight per line, max 120 characters each.`
-        },
-        {
-          role: "user",
-          content: `Generate insights for: ${JSON.stringify(contextSummary)}`
-        },
-      ],
-      max_completion_tokens: 400,
-    });
-    
-    const aiLatency = Date.now() - aiStartTime;
-    const tokensUsed = completion.usage?.total_tokens || 0;
-    const tokensIn = completion.usage?.prompt_tokens || 0;
-    const tokensOut = completion.usage?.completion_tokens || 0;
-
-    const ideas = (completion.choices?.[0]?.message?.content ?? "")
-      .split("\n")
-      .filter(line => line.trim().length > 20)
-      .slice(0, 4);
-
-    console.log('Generated insights:', ideas);
-    
+      const completion = await oai.chat.completions.create({
+        model: "o4-mini-2025-04-16",
+        messages: [
+          {
+            role: "system",
+            content: `You are Maya, a proactive career AI coach. Generate 2-4 specific, actionable career insights based on the user's profile and recent activity. Each insight should be:
+            - Specific to their career goals and current situation
+            - Actionable with clear next steps
+            - Encouraging but realistic
+            - Tied to market trends when relevant
+            
+            Format: One insight per line, max 120 characters each.`
+          },
+          {
+            role: "user",
+            content: `Generate insights for: ${JSON.stringify(contextSummary)}`
+          },
+        ],
+        max_completion_tokens: 400,
+      });
+      
+      aiLatency = Date.now() - aiStartTime;
+      tokensIn = completion.usage?.prompt_tokens || 0;
+      tokensOut = completion.usage?.completion_tokens || 0;
+      completionText = completion.choices?.[0]?.message?.content ?? "";
     } catch (aiError) {
       console.error('OpenAI call failed:', aiError);
-      const aiLatency = Date.now() - aiStartTime;
+      aiLatency = Date.now() - aiStartTime;
       
       // Log failed AI usage
       try {
-        await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', 0, 0, aiLatency, false, aiError.message);
+        await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', 0, 0, aiLatency, false, (aiError as Error).message);
       } catch (logError) {
         console.warn('Failed to log AI usage:', logError);
       }
@@ -181,7 +177,7 @@ serve(async (req) => {
             context_data: { 
               source: "debug_fallback", 
               generated_at: new Date().toISOString(),
-              error_message: aiError.message,
+              error_message: (aiError as Error).message,
               dev_mode: true
             },
           }, { 
@@ -208,7 +204,7 @@ serve(async (req) => {
       };
     }
     
-    const ideas = (completion.choices?.[0]?.message?.content ?? "")
+    const ideas = completionText
       .split("\n")
       .filter(line => line.trim().length > 20)
       .slice(0, 4);
