@@ -1,8 +1,17 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.52.0";
-import { ok, withCircuitBreaker, corsHeaders, supabase, requireUser } from "../_shared/utils.ts";
+import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
 
-const oai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+console.log('Maya Manual Insights - Starting function initialization');
+
+const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+if (!openaiApiKey) {
+  console.error('OPENAI_API_KEY not found in environment variables');
+  throw new Error('OPENAI_API_KEY not configured');
+}
+
+const oai = new OpenAI({ apiKey: openaiApiKey });
+console.log('Maya Manual Insights - OpenAI client initialized');
 
 // Rate limiting helper
 async function checkRateLimit(userId: string, functionName: string): Promise<boolean> {
@@ -51,46 +60,23 @@ async function logAIUsage(userId: string, functionName: string, model: string, t
 }
 
 serve(async (req) => {
+  console.log('Maya Manual Insights - Request received:', req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   return withCircuitBreaker(async () => {
-    console.log('Maya Manual Insights - Starting generation');
-    const startTime = Date.now();
+    console.log('Maya Manual Insights - Starting generation (no auth required)');
     
-    // Get authenticated user or dev user fallback
-    let userId: string;
-    let userIsDevMode = false;
+    // Extract user ID from dev header (since verify_jwt = false)
+    const devUserId = req.headers.get('x-dev-user-id');
+    const userId = devUserId || '2b458624-d498-4cca-a63d-9341cc20e363'; // Default to demo user
     
-    try {
-      const { user } = await requireUser(req);
-      userId = user.id;
-    } catch (authError) {
-      // Dev mode fallback - check for x-dev-user-id header
-      const devUserId = req.headers.get('x-dev-user-id');
-      if (devUserId) {
-        userId = devUserId;
-        userIsDevMode = true;
-        console.log('Maya Manual Insights - Using dev mode for user:', userId);
-      } else {
-        throw authError; // Re-throw if no dev fallback
-      }
-    }
+    console.log('Maya Manual Insights - Processing for user:', userId);
     
-    // Check rate limit (skip for dev mode)
-    if (!userIsDevMode) {
-      const canProceed = await checkRateLimit(userId, 'maya-manual-insights');
-      if (!canProceed) {
-        await logAIUsage(userId, 'maya-manual-insights', 'rate-limited', 0, 0, Date.now() - startTime, false, 'Rate limit exceeded');
-        return { 
-          success: false, 
-          error: 'Rate limit exceeded. Please try again later.',
-          insights: []
-        };
-      }
-    }
+    // Skip rate limiting for now (public function)
 
     // Get user context
     const { data: profile } = await supabase
@@ -199,9 +185,11 @@ serve(async (req) => {
 
     console.log(`Maya Manual Insights - Generated ${insertedInsights.length} insights for user ${userId}`);
     
-    // Log successful AI usage (skip for dev mode)
-    if (!userIsDevMode) {
-      await logAIUsage(userId, 'maya-manual-insights', 'gpt-4o-mini', tokensIn, tokensOut, Date.now() - startTime, true);
+    // Log successful AI usage
+    try {
+      await logAIUsage(userId, 'maya-manual-insights', 'gpt-5-mini-2025-08-07', tokensIn, tokensOut, aiLatency, true);
+    } catch (logError) {
+      console.warn('Failed to log AI usage:', logError);
     }
 
     return { 

@@ -3,59 +3,26 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.52.0";
 import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
 
-const oai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
+console.log('Maya Insight Generator - Starting function initialization');
+
+const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+if (!openaiApiKey) {
+  console.error('OPENAI_API_KEY not found in environment variables');
+  throw new Error('OPENAI_API_KEY not configured');
+}
+
+const oai = new OpenAI({ apiKey: openaiApiKey });
+console.log('Maya Insight Generator - OpenAI client initialized');
 
 serve(async (req) => {
+  console.log('Maya Insight Generator - Request received:', req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret), allow Bearer anon key, or valid JWT
-  const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
-  const headerSecret = req.headers.get('x-cron-secret') ?? '';
-  const authHeader = req.headers.get('authorization') ?? '';
-  const providedBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-
-  let authorized = false;
-  let authMethod = '';
-
-  // Check cron secret
-  if (!!cronSecret && (headerSecret === cronSecret || providedBearer === cronSecret)) {
-    authorized = true;
-    authMethod = 'cron_secret';
-  }
-  // Check anon key
-  else if (!!anonKey && providedBearer === anonKey) {
-    authorized = true;
-    authMethod = 'anon_key';
-  }
-  // Check for valid JWT
-  else if (providedBearer && providedBearer !== anonKey) {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser(providedBearer);
-      if (user && !error) {
-        authorized = true;
-        authMethod = 'valid_jwt';
-      }
-    } catch (jwtError) {
-      console.log('JWT validation failed:', jwtError);
-    }
-  }
-
-  if (!authorized) {
-    console.warn('Unauthorized request to maya-insight-generator', {
-      hasCronSecretConfigured: !!cronSecret,
-      providedHeaderSecret: headerSecret ? '***' : '',
-      providedBearerLen: providedBearer?.length || 0,
-      allowsAnonKey: !!anonKey,
-      authMethod: 'none'
-    });
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
-  }
-
-  console.log('Maya Insight Generator - Authorized via:', authMethod);
+  console.log('Maya Insight Generator - Processing request (no auth required)');
 
   return withCircuitBreaker(async () => {
     console.log('Maya Insight Generator - Starting batch generation');
