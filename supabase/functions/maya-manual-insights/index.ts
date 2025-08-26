@@ -134,8 +134,8 @@ serve(async (req) => {
 
     // Generate personalized insights
     const aiStartTime = Date.now();
-    const completion = await oai.chat.completions.create({
-      model: "gpt-4o-mini",
+        const completion = await oai.chat.completions.create({
+          model: "gpt-5-mini-2025-08-07",
       messages: [
         {
           role: "system",
@@ -152,7 +152,7 @@ serve(async (req) => {
           content: `Generate insights for: ${JSON.stringify(contextSummary)}`
         },
       ],
-      max_tokens: 400,
+      max_completion_tokens: 400,
     });
     
     const aiLatency = Date.now() - aiStartTime;
@@ -175,10 +175,10 @@ serve(async (req) => {
         .upsert({
           user_id: userId,
           title: idea.slice(0, 120),
-          body: idea,
+          content: idea,
           priority: "medium",
-          kind: "manual_generation",
-          meta: { 
+          insight_type: "manual_generation",
+          context_data: { 
             source: "manual_generation", 
             generated_at: new Date().toISOString(),
             context_summary: contextSummary,

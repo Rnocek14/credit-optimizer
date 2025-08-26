@@ -100,7 +100,7 @@ serve(async (req) => {
         // Generate insights
         console.log(`Generating insights for user ${profile.user_id} with context:`, contextSummary);
         const completion = await oai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: "gpt-5-mini-2025-08-07",
           messages: [
             {
               role: "system",
@@ -111,7 +111,7 @@ serve(async (req) => {
               content: `Generate proactive career insights for this user: ${JSON.stringify(contextSummary)}`
             },
           ],
-          max_tokens: 300,
+          max_completion_tokens: 300,
         });
 
         const ideas = (completion.choices?.[0]?.message?.content ?? "")
@@ -126,8 +126,8 @@ serve(async (req) => {
             title: idea.slice(0, 120),
             content: idea,
             priority: "medium",
-            kind: "proactive",
-            meta: { 
+            insight_type: "proactive",
+            context_data: { 
               source: "generator", 
               generated_at: new Date().toISOString(),
               context_summary: contextSummary 
