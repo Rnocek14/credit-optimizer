@@ -73,6 +73,8 @@ serve(async (req) => {
     // Extract user ID from dev header (since verify_jwt = false)
     const devUserId = req.headers.get('x-dev-user-id');
     const userId = devUserId || '2b458624-d498-4cca-a63d-9341cc20e363'; // Default to demo user
+    const knownDevUsers = ['2b458624-d498-4cca-a63d-9341cc20e363', '3c459625-e499-5ddb-b64d-a442dd21f474', '4d56a736-f5aa-6eec-c75e-b553ee32e585'];
+    const userIsDevMode = Boolean(devUserId) || knownDevUsers.includes(userId);
     
     console.log('Maya Manual Insights - Processing for user:', userId);
     
@@ -120,8 +122,9 @@ serve(async (req) => {
 
     // Generate personalized insights
     const aiStartTime = Date.now();
+    try {
         const completion = await oai.chat.completions.create({
-          model: "gpt-5-mini-2025-08-07",
+          model: "o4-mini-2025-04-16",
       messages: [
         {
           role: "system",
@@ -146,6 +149,65 @@ serve(async (req) => {
     const tokensIn = completion.usage?.prompt_tokens || 0;
     const tokensOut = completion.usage?.completion_tokens || 0;
 
+    const ideas = (completion.choices?.[0]?.message?.content ?? "")
+      .split("\n")
+      .filter(line => line.trim().length > 20)
+      .slice(0, 4);
+
+    console.log('Generated insights:', ideas);
+    
+    } catch (aiError) {
+      console.error('OpenAI call failed:', aiError);
+      const aiLatency = Date.now() - aiStartTime;
+      
+      // Log failed AI usage
+      try {
+        await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', 0, 0, aiLatency, false, aiError.message);
+      } catch (logError) {
+        console.warn('Failed to log AI usage:', logError);
+      }
+      
+      // In dev mode, insert a synthetic insight for testing
+      if (userIsDevMode) {
+        const syntheticInsight = "Debug: OpenAI call failed, but pipeline is active for testing";
+        const { data: insight } = await supabase
+          .from("maya_proactive_insights")
+          .upsert({
+            user_id: userId,
+            title: syntheticInsight.slice(0, 120),
+            content: syntheticInsight,
+            priority: "low",
+            insight_type: "debug_fallback",
+            context_data: { 
+              source: "debug_fallback", 
+              generated_at: new Date().toISOString(),
+              error_message: aiError.message,
+              dev_mode: true
+            },
+          }, { 
+            onConflict: "user_id,title",
+            ignoreDuplicates: false 
+          })
+          .select()
+          .single();
+          
+        return { 
+          success: true,
+          insights: insight ? [insight] : [],
+          generatedCount: insight ? 1 : 0,
+          timestamp: new Date().toISOString(),
+          fallbackUsed: true
+        };
+      }
+      
+      return { 
+        success: false,
+        error: 'OpenAI generation failed',
+        insights: [],
+        generatedCount: 0
+      };
+    }
+    
     const ideas = (completion.choices?.[0]?.message?.content ?? "")
       .split("\n")
       .filter(line => line.trim().length > 20)
@@ -187,7 +249,7 @@ serve(async (req) => {
     
     // Log successful AI usage
     try {
-      await logAIUsage(userId, 'maya-manual-insights', 'gpt-5-mini-2025-08-07', tokensIn, tokensOut, aiLatency, true);
+      await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', tokensIn, tokensOut, aiLatency, true);
     } catch (logError) {
       console.warn('Failed to log AI usage:', logError);
     }

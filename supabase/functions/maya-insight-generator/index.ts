@@ -27,11 +27,20 @@ serve(async (req) => {
   return withCircuitBreaker(async () => {
     console.log('Maya Insight Generator - Starting batch generation');
 
-    // Get demo users and active users (limit to prevent overload)
-    const { data: users } = await supabase
-      .from("profiles")
-      .select("user_id, name, role_title, experience_level")
-      .limit(10);
+    // Check for dev user filter
+    const devUserId = req.headers.get('x-dev-user-id');
+    const knownDevUsers = ['2b458624-d498-4cca-a63d-9341cc20e363', '3c459625-e499-5ddb-b64d-a442dd21f474', '4d56a736-f5aa-6eec-c75e-b553ee32e585'];
+
+    // Get users to process (filter to dev user if specified, or known dev users only)
+    let userQuery = supabase.from("profiles").select("user_id, name, role_title, experience_level");
+    
+    if (devUserId) {
+      userQuery = userQuery.eq('user_id', devUserId);
+    } else {
+      userQuery = userQuery.in('user_id', knownDevUsers);
+    }
+    
+    const { data: users } = await userQuery.limit(10);
 
     let generatedCount = 0;
 
@@ -66,47 +75,71 @@ serve(async (req) => {
 
         // Generate insights
         console.log(`Generating insights for user ${profile.user_id} with context:`, contextSummary);
-        const completion = await oai.chat.completions.create({
-          model: "gpt-5-mini-2025-08-07",
-          messages: [
-            {
-              role: "system",
-              content: "You generate short, high-signal proactive career insights. Return 1-3 actionable insights separated by newlines."
-            },
-            {
-              role: "user",
-              content: `Generate proactive career insights for this user: ${JSON.stringify(contextSummary)}`
-            },
-          ],
-          max_completion_tokens: 300,
-        });
+        
+        let ideas = [];
+        let insightsGenerated = 0;
+        
+        try {
+          const completion = await oai.chat.completions.create({
+            model: "o4-mini-2025-04-16",
+            messages: [
+              {
+                role: "system",
+                content: "You generate short, high-signal proactive career insights. Return 1-3 actionable insights separated by newlines."
+              },
+              {
+                role: "user",
+                content: `Generate proactive career insights for this user: ${JSON.stringify(contextSummary)}`
+              },
+            ],
+            max_completion_tokens: 300,
+          });
 
-        const ideas = (completion.choices?.[0]?.message?.content ?? "")
-          .split("\n")
-          .filter(line => line.trim().length > 20)
-          .slice(0, 3);
+          ideas = (completion.choices?.[0]?.message?.content ?? "")
+            .split("\n")
+            .filter(line => line.trim().length > 20)
+            .slice(0, 3);
+
+          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}`);
+        } catch (aiError) {
+          console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
+          
+          // In dev mode, insert a synthetic insight for testing
+          if (devUserId || knownDevUsers.includes(profile.user_id)) {
+            ideas = ["Debug: OpenAI failed, synthetic insight for testing pipeline"];
+          }
+        }
 
         // Persist insights (use 'content' column per schema)
         for (const idea of ideas) {
-          await supabase.from("maya_proactive_insights").upsert({
-            user_id: profile.user_id,
-            title: idea.slice(0, 120),
-            content: idea,
-            priority: "medium",
-            insight_type: "proactive",
-            context_data: { 
-              source: "generator", 
-              generated_at: new Date().toISOString(),
-              context_summary: contextSummary 
-            },
-          }, { 
-            onConflict: "user_id,title",
-            ignoreDuplicates: true 
-          });
+          try {
+            await supabase.from("maya_proactive_insights").upsert({
+              user_id: profile.user_id,
+              title: idea.slice(0, 120),
+              content: idea,
+              priority: "medium",
+              insight_type: "proactive",
+              context_data: { 
+                source: "generator", 
+                generated_at: new Date().toISOString(),
+                context_summary: contextSummary 
+              },
+            }, { 
+              onConflict: "user_id,title",
+              ignoreDuplicates: true 
+            });
+            insightsGenerated++;
+          } catch (insertError) {
+            console.error(`Failed to insert insight for user ${profile.user_id}:`, insertError);
+          }
         }
 
-        generatedCount++;
-        console.log(`Generated insights for user ${profile.user_id}: ${ideas.length} insights`);
+        // Only increment count if we actually generated insights
+        if (insightsGenerated > 0) {
+          generatedCount++;
+        }
+        
+        console.log(`Generated insights for user ${profile.user_id}: ${insightsGenerated} insights inserted`);
 
       } catch (error) {
         console.error(`Failed to generate insights for user ${profile.user_id}:`, error);

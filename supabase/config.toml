@@ -1,1 +1,7 @@
 project_id = "vzpissitddpunkpythsb"
+
+[functions.maya-insight-generator]
+verify_jwt = false
+
+[functions.maya-manual-insights]
+verify_jwt = false
