@@ -154,6 +154,21 @@ export function useMayaProactiveInsights(userId?: string) {
     }
   }, [userId]);
 
+  const undismissInsight = useCallback(async (insightId: string) => {
+    try {
+      const { error } = await supabase
+        .from('maya_proactive_insights')
+        .update({ dismissed_at: null })
+        .eq('id', insightId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error undismissing insight:', err);
+      throw err;
+    }
+  }, [userId]);
+
   const provideFeedback = useCallback(async (insightId: string, rating: number, feedback?: string) => {
     try {
       // First get the current context_data
@@ -250,6 +265,7 @@ export function useMayaProactiveInsights(userId?: string) {
     fetchInsights,
     generateInsights,
     dismissInsight,
+    undismissInsight,
     markAsActedUpon,
     provideFeedback,
     lastGenerated: insights.length > 0 ? insights[0].created_at : null,

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ToastAction } from '@/components/ui/toast';
 import { Bot, Sparkles, TrendingUp, Lightbulb, X, ThumbsUp, MessageCircle, Zap } from 'lucide-react';
 import { useMayaProactiveInsights } from '@/hooks/useMayaProactiveInsights';
 import { getCurrentUser } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
 
 interface MayaInsightsCardProps {
   userName?: string;
@@ -32,8 +35,19 @@ export function MayaInsightsCard({
     queryFn: getCurrentUser,
     staleTime: 1000 * 60 * 5,
   });
-  const { insights, loading, generateInsights, dismissInsight, markAsActedUpon } = useMayaProactiveInsights(user?.id);
+  const { 
+    insights, 
+    loading, 
+    generateInsights, 
+    dismissInsight, 
+    undismissInsight, 
+    markAsActedUpon, 
+    fetchInsights,
+    lastFetchedAt 
+  } = useMayaProactiveInsights(user?.id);
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
+  const { toast } = useToast();
+  const pendingUndos = useRef<Record<string, NodeJS.Timeout>>({});
 
   const [hasTriedAutoGeneration, setHasTriedAutoGeneration] = React.useState(false);
 
@@ -107,12 +121,53 @@ export function MayaInsightsCard({
   };
 
   const handleDismissInsight = () => {
-    if (currentInsight) {
-      dismissInsight(currentInsight.id);
-      if (insights.length > 1) {
-        setCurrentInsightIndex((prev) => prev === insights.length - 1 ? 0 : prev);
-      }
+    if (!currentInsight || !user?.id) return;
+    
+    const insight = currentInsight;
+    
+    // Optimistically remove from UI
+    dismissInsight(insight.id);
+    if (insights.length > 1) {
+      setCurrentInsightIndex((prev) => prev === insights.length - 1 ? 0 : prev);
     }
+
+    // Show undo toast
+    const undoWindowMs = 8000;
+    
+    const timeout = setTimeout(() => {
+      delete pendingUndos.current[insight.id];
+    }, undoWindowMs);
+    
+    pendingUndos.current[insight.id] = timeout;
+
+    toast({
+      title: 'Insight dismissed',
+      description: 'You can undo this for a few seconds.',
+      action: (
+        <ToastAction 
+          altText="Undo dismiss" 
+          onClick={async () => {
+            clearTimeout(pendingUndos.current[insight.id]);
+            delete pendingUndos.current[insight.id];
+            try {
+              await undismissInsight(insight.id);
+              await fetchInsights();
+            } catch (err) {
+              console.error('Undo failed', err);
+              toast({
+                title: 'Undo failed',
+                description: 'Please try refreshing insights.',
+                variant: 'destructive',
+                duration: 3000,
+              });
+            }
+          }}
+        >
+          Undo
+        </ToastAction>
+      ),
+      duration: undoWindowMs,
+    });
   };
 
   const handleActOnInsight = () => {
@@ -131,7 +186,14 @@ export function MayaInsightsCard({
           <div className="p-1.5 rounded-full bg-primary/10">
             <Bot className="h-4 w-4 text-primary" />
           </div>
-          Maya's {hasProactiveInsights ? 'Live' : 'Daily'} Insights
+          <div className="flex flex-col">
+            <span>Maya's {hasProactiveInsights ? 'Live' : 'Daily'} Insights</span>
+            {lastFetchedAt && (
+              <span className="text-xs font-normal text-muted-foreground">
+                Last updated {formatDistanceToNow(new Date(lastFetchedAt), { addSuffix: true })}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 ml-auto">
             {currentInsight && (
               <Badge variant="outline" className="text-xs">
