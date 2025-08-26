@@ -54,13 +54,21 @@ interface CRIBreakdown {
   completedCoursesCount: number;
 }
 
-// Export types for other components
+// Export types for other components (updated to match existing usage)
 export interface DiscoveredCourse {
   id: string;
   title: string;
   platform: string;
   url?: string;
   analysis?: any;
+  // Additional properties expected by existing code
+  queueId?: string;
+  difficulty?: number;
+  duration_hours?: number;
+  description?: string;
+  skill_tags?: string[];
+  priorityScore?: number;
+  has_projects?: boolean;
 }
 
 export interface LearningPath {
@@ -68,6 +76,17 @@ export interface LearningPath {
   name: string;
   description?: string;
   courses: CourseRecommendation[];
+  // Additional properties expected by existing code
+  path_name?: string;
+  path_description?: string;
+  average_outcome_score?: number;
+  target_career?: string;
+  skill_level?: string;
+  estimated_duration_weeks?: number;
+  course_sequence?: any[];
+  completion_rate?: number;
+  market_demand_score?: number;
+  ai_confidence?: number;
 }
 
 export interface CurationQueueItem {
@@ -76,6 +95,13 @@ export interface CurationQueueItem {
   title: string;
   platform: string;
   status: string;
+  // Additional properties expected by existing code
+  course_id?: string;
+  course_discovery_queue?: any;
+  ai_analysis?: any;
+  confidence_score?: number;
+  mentor_validation_status?: string;
+  pipeline_stage?: string;
 }
 
 export const useCourseIntelligence = () => {
@@ -268,24 +294,39 @@ export const useCourseIntelligence = () => {
     }
   }, [calculateCRI]);
 
-  // Placeholder functions for backward compatibility
-  const discoverCourses = useCallback(async (): Promise<DiscoveredCourse[]> => {
-    console.log('discoverCourses: Feature not yet implemented');
+  // Placeholder functions for backward compatibility (updated signatures)
+  const discoverCourses = useCallback(async (
+    keywords?: string,
+    skillGaps?: string[],
+    career?: string,
+    platform?: string
+  ): Promise<DiscoveredCourse[]> => {
+    console.log('discoverCourses: Feature not yet implemented', { keywords, skillGaps, career, platform });
     return [];
   }, []);
 
-  const getLearningPaths = useCallback(async (): Promise<LearningPath[]> => {
-    console.log('getLearningPaths: Feature not yet implemented');
+  const getLearningPaths = useCallback(async (
+    userId?: string,
+    trackId?: string
+  ): Promise<LearningPath[]> => {
+    console.log('getLearningPaths: Feature not yet implemented', { userId, trackId });
     return [];
   }, []);
 
-  const getMentorCurationQueue = useCallback(async (): Promise<CurationQueueItem[]> => {
-    console.log('getMentorCurationQueue: Feature not yet implemented');
+  const getMentorCurationQueue = useCallback(async (
+    mentorId?: string,
+    limit?: number
+  ): Promise<CurationQueueItem[]> => {
+    console.log('getMentorCurationQueue: Feature not yet implemented', { mentorId, limit });
     return [];
   }, []);
 
-  const submitMentorCuration = useCallback(async () => {
-    console.log('submitMentorCuration: Feature not yet implemented');
+  const submitMentorCuration = useCallback(async (
+    userId?: string,
+    courseId?: string,
+    curationData?: any
+  ) => {
+    console.log('submitMentorCuration: Feature not yet implemented', { userId, courseId, curationData });
     return null;
   }, []);
 
