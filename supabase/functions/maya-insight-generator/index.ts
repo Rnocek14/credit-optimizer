@@ -114,8 +114,10 @@ serve(async (req) => {
         // Generate insights
         console.log(`Generating insights for user ${profile.user_id} with context:`, contextSummary);
         
-        let ideas = [];
+        let ideas: string[] = [];
         let insightsGenerated = 0;
+        let tokensIn = 0;
+        let tokensOut = 0;
         
         try {
           const completion = await oai.chat.completions.create({
@@ -136,6 +138,9 @@ serve(async (req) => {
 
           const rawOutput = completion.choices?.[0]?.message?.content ?? "";
           console.log(`OpenAI raw output (${rawOutput.length} chars):`, rawOutput.slice(0, 300));
+          
+          tokensIn = completion.usage?.prompt_tokens || 0;
+          tokensOut = completion.usage?.completion_tokens || 0;
           
           ideas = parseInsights(rawOutput, 3);
           console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, ideas.map(i => i.slice(0, 60)));
@@ -175,8 +180,8 @@ serve(async (req) => {
                 source: "generator", 
                 generated_at: new Date().toISOString(),
                 context_summary: contextSummary,
-                tokens_in: completion.usage?.prompt_tokens || 0,
-                tokens_out: completion.usage?.completion_tokens || 0
+                tokens_in: tokensIn,
+                tokens_out: tokensOut
               },
             }).select();
             
