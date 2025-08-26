@@ -202,7 +202,8 @@ serve(async (req) => {
       
       // In dev mode, insert a synthetic insight for testing
       if (userIsDevMode) {
-        const syntheticInsight = "Debug: OpenAI call failed, but pipeline is active for testing";
+        const ts = new Date().toISOString();
+        const syntheticInsight = `Debug: OpenAI call failed, pipeline active (${ts})`;
         const { data: insight } = await supabase
           .from("maya_proactive_insights")
           .upsert({
@@ -248,7 +249,8 @@ serve(async (req) => {
     
     // Dev mode fallback: ensure at least one insight for testing
     if (userIsDevMode && ideas.length === 0) {
-      ideas = ["Debug: Parser found no insights; pipeline working"];
+      const ts = new Date().toISOString();
+      ideas = [`Debug: Parser found no insights; pipeline working (${ts})`];
       console.log('Dev fallback applied - empty parse');
     }
 

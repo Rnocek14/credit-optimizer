@@ -141,18 +141,18 @@ serve(async (req) => {
           console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
           
           // In dev mode, insert a synthetic insight for testing
-          const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
           if (isDevMode) {
-            ideas = ["Debug: OpenAI failed, synthetic insight for testing pipeline"];
+            const ts = new Date().toISOString();
+            ideas = [`Debug: OpenAI failed, synthetic insight for testing pipeline (${ts})`];
           }
         }
 
         // Dev mode fallback: ensure at least one insight for testing
-        const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
-        if (isDevMode && ideas.length === 0) {
-          ideas = ["Debug: Parser found no insights; pipeline working"];
-          console.log(`Dev fallback applied for user ${profile.user_id}`);
-        }
+          if (isDevMode && ideas.length === 0) {
+            const ts = new Date().toISOString();
+            ideas = [`Debug: Parser found no insights; pipeline working (${ts})`];
+            console.log(`Dev fallback applied for user ${profile.user_id}`);
+          }
 
         // Persist insights (use 'content' column per schema)
         for (const idea of ideas) {
