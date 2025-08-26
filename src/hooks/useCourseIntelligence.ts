@@ -1,7 +1,16 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { 
+  CRIRequest, 
+  CRIResponse, 
+  RecoRequest, 
+  RecoResponse,
+  CIRecommendation,
+  UUID 
+} from '@/types/course-intelligence';
 
+// Legacy interface for backward compatibility
 interface CourseRecommendation {
   courseId: string;
   title: string;
@@ -74,75 +83,126 @@ export const useCourseIntelligence = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // New spec-compliant methods
+  const getCRI = useCallback(async (
+    userId: UUID, 
+    trackId: UUID, 
+    forceRecompute: boolean = false
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('course-cri-calculator', {
+        body: { userId, trackId, forceRecompute }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'CRI calculation failed');
+      
+      return data;
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to calculate CRI';
+      setError(errorMsg);
+      console.error('CRI calculation error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const getRecommendations = useCallback(async (
+    userId: UUID,
+    trackId: UUID,
+    limit: number = 6,
+    strategy: "gap_fill" | "foundations" | "accelerate" = "gap_fill",
+    excludeCourseIds: UUID[] = []
+  ) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('course-intelligence-recommendations', {
+        body: { userId, trackId, limit, strategy, excludeCourseIds }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Recommendations failed');
+      
+      return data;
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to get recommendations';
+      setError(errorMsg);
+      console.error('Course recommendations error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Legacy methods for backward compatibility
   const getCourseRecommendations = useCallback(async (
     userId: string,
     trackId?: string,
     skillGaps: string[] = [],
     limit: number = 5
   ): Promise<CourseRecommendation[]> => {
-    setLoading(true);
-    setError(null);
+    if (!trackId) return [];
 
     try {
-      const { data, error } = await supabase.functions.invoke('course-intelligence-recommendations', {
-        body: {
-          userId,
-          trackId,
-          skillGaps,
-          limit
-        }
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to get recommendations');
-      }
-
-      return data.recommendations || [];
-    } catch (err: any) {
-      const errorMsg = err.message || 'Failed to get course recommendations';
-      setError(errorMsg);
-      console.error('Course recommendations error:', err);
+      const result = await getRecommendations(userId, trackId, limit, 'gap_fill', []);
+      
+      // Transform spec format to legacy format
+      return result.recommendations.map((rec: CIRecommendation) => ({
+        courseId: rec.course.id,
+        title: rec.course.title,
+        description: '',
+        url: rec.course.url,
+        platform: rec.course.platform.name,
+        instructor: rec.course.instructor?.name,
+        estimatedHours: rec.course.durationHours,
+        difficulty: rec.course.difficulty.toString(),
+        score: rec.score,
+        scoreBreakdown: {
+          difficulty: 0.8,
+          instructor: rec.course.instructor ? 0.8 : 0.5,
+          platform: 0.7,
+          skillCoverage: 0.6
+        },
+        reasons: [rec.reason],
+        skillsCovered: rec.covers.map(c => c.skillId)
+      }));
+    } catch (err) {
       return [];
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [getRecommendations]);
 
   const calculateCRI = useCallback(async (
     userId: string,
     trackId?: string,
     targetCRI: number = 80
   ): Promise<CRIBreakdown | null> => {
-    setLoading(true);
-    setError(null);
+    if (!trackId) return null;
 
     try {
-      const { data, error } = await supabase.functions.invoke('course-cri-calculator', {
-        body: {
-          userId,
-          trackId,
-          targetCRI
-        }
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to calculate CRI');
-      }
-
-      return data.criBreakdown;
-    } catch (err: any) {
-      const errorMsg = err.message || 'Failed to calculate CRI';
-      setError(errorMsg);
-      console.error('CRI calculation error:', err);
+      const result = await getCRI(userId, trackId, false);
+      
+      // Transform spec format to legacy format
+      return {
+        currentCRI: result.cri,
+        targetCRI,
+        criGap: targetCRI - result.cri,
+        skillContributions: {},
+        skillGaps: [],
+        recommendations: [],
+        courseContributions: [],
+        lastCalculated: result.computedAt,
+        completedCoursesCount: 0
+      };
+    } catch (err) {
       return null;
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [getCRI]);
 
   const recordCourseEvent = useCallback(async (
     userId: string,
@@ -230,6 +290,11 @@ export const useCourseIntelligence = () => {
   }, []);
 
   return {
+    // New spec-compliant methods
+    getCRI,
+    getRecommendations,
+    
+    // Legacy methods for backward compatibility
     loading,
     error,
     getCourseRecommendations,
