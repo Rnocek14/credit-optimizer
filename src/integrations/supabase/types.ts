@@ -8859,6 +8859,60 @@ export type Database = {
       }
     }
     Views: {
+      maya_visible_insights: {
+        Row: {
+          acted_upon_at: string | null
+          category: string | null
+          confidence_score: number | null
+          content: string | null
+          context_data: Json | null
+          created_at: string | null
+          dismissed_at: string | null
+          expires_at: string | null
+          feedback_rating: number | null
+          id: string | null
+          insight_type: string | null
+          priority: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acted_upon_at?: string | null
+          category?: string | null
+          confidence_score?: number | null
+          content?: string | null
+          context_data?: Json | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          expires_at?: string | null
+          feedback_rating?: number | null
+          id?: string | null
+          insight_type?: string | null
+          priority?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acted_upon_at?: string | null
+          category?: string | null
+          confidence_score?: number | null
+          content?: string | null
+          context_data?: Json | null
+          created_at?: string | null
+          dismissed_at?: string | null
+          expires_at?: string | null
+          feedback_rating?: number | null
+          id?: string | null
+          insight_type?: string | null
+          priority?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_validation_metrics: {
         Row: {
           avg_confidence_score: number | null

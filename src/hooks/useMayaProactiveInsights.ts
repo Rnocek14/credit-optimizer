@@ -21,6 +21,7 @@ export function useMayaProactiveInsights(userId?: string) {
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchInsights = useCallback(async () => {
@@ -32,33 +33,28 @@ export function useMayaProactiveInsights(userId?: string) {
     try {
       // Debug logging for development
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[Maya] fetchInsights query params', {
+        console.log('[Maya] fetchInsights (view) query params', {
           userId,
-          filters: {
-            dismissed_at: 'IS NULL',
-            expires_at: 'IS NULL OR > now()',
-            insight_types: ['manual_generation', 'proactive'],
-          },
+          source: 'maya_visible_insights', // canonical view
         });
       }
 
+      // Use the canonical view to keep filter logic in one place (DB)
       const { data, error: fetchError } = await supabase
-        .from('maya_proactive_insights')
+        .from('maya_visible_insights')
         .select('*')
         .eq('user_id', userId)
-        .is('dismissed_at', null)
-        .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
-        .in('insight_type', ['manual_generation', 'proactive'])
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
       setInsights(data || []);
+      setLastFetchedAt(new Date().toISOString());
 
       // Debug logging for development
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[Maya] fetchInsights result', data?.length, data?.slice(0, 3));
+        console.log('[Maya] fetchInsights (view) result', data?.length, data?.slice(0, 3));
       }
 
       // Show urgent insights as toast notifications
@@ -256,6 +252,7 @@ export function useMayaProactiveInsights(userId?: string) {
     dismissInsight,
     markAsActedUpon,
     provideFeedback,
-    lastGenerated: insights.length > 0 ? insights[0].created_at : null
+    lastGenerated: insights.length > 0 ? insights[0].created_at : null,
+    lastFetchedAt,
   };
 }
