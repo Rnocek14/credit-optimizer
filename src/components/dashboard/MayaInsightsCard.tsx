@@ -46,10 +46,28 @@ export function MayaInsightsCard({
     lastFetchedAt 
   } = useMayaProactiveInsights(user?.id);
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
+  const [timeTick, setTimeTick] = useState(0);
   const { toast } = useToast();
-  const pendingUndos = useRef<Record<string, NodeJS.Timeout>>({});
+  const pendingUndos = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const [hasTriedAutoGeneration, setHasTriedAutoGeneration] = React.useState(false);
+
+  // Helper to check if an insight is in the undo window
+  const isUndoPending = (id: string) => Boolean(pendingUndos.current[id]);
+
+  // Cleanup pending undo timers on unmount
+  React.useEffect(() => {
+    return () => {
+      Object.values(pendingUndos.current).forEach(clearTimeout);
+      pendingUndos.current = {};
+    };
+  }, []);
+
+  // Auto-refresh timestamp display every 30 seconds
+  React.useEffect(() => {
+    const interval = setInterval(() => setTimeTick(t => t + 1), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-generate insights on mount if user has none (only once)
   React.useEffect(() => {
@@ -120,10 +138,17 @@ export function MayaInsightsCard({
     }
   };
 
-  const handleDismissInsight = () => {
+  const handleDismissInsight = async () => {
     if (!currentInsight || !user?.id) return;
     
     const insight = currentInsight;
+    
+    // Guard: prevent repeated clicks during undo window
+    if (isUndoPending(insight.id)) return;
+    
+    // Capture previous state for potential rollback
+    const previousInsights = insights;
+    const previousIndex = currentInsightIndex;
     
     // Optimistically remove from UI
     dismissInsight(insight.id);
@@ -145,7 +170,7 @@ export function MayaInsightsCard({
       description: 'You can undo this for a few seconds.',
       action: (
         <ToastAction 
-          altText="Undo dismiss" 
+          altText="Undo" 
           onClick={async () => {
             clearTimeout(pendingUndos.current[insight.id]);
             delete pendingUndos.current[insight.id];
@@ -153,6 +178,8 @@ export function MayaInsightsCard({
               await undismissInsight(insight.id);
               await fetchInsights();
             } catch (err) {
+              // Rollback UI state if undo fails
+              setCurrentInsightIndex(previousIndex);
               console.error('Undo failed', err);
               toast({
                 title: 'Undo failed',
@@ -189,7 +216,10 @@ export function MayaInsightsCard({
           <div className="flex flex-col">
             <span>Maya's {hasProactiveInsights ? 'Live' : 'Daily'} Insights</span>
             {lastFetchedAt && (
-              <span className="text-xs font-normal text-muted-foreground">
+              <span 
+                className="text-xs font-normal text-muted-foreground"
+                aria-live="polite"
+              >
                 Last updated {formatDistanceToNow(new Date(lastFetchedAt), { addSuffix: true })}
               </span>
             )}
