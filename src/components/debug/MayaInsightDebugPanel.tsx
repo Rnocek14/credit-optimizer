@@ -100,6 +100,35 @@ export const MayaInsightDebugPanel: React.FC = () => {
   const handleTestGenerator = async () => {
     setTestingGenerator(true);
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // No x-dev-user-id header - processes all dev users
+      const result = await supabase.functions.invoke('maya-insight-generator', { headers });
+      
+      if (!result.error) {
+        const data = result.data;
+        toast.success(
+          `Generator: ${data.generatedFor}/${data.totalUsers || '?'} users • insights ${data.insightsInserted || 0} (parsed ${data.parsedCount || 0}) • tok ${data.tokensIn || 0}/${data.tokensOut || 0}`
+        );
+        console.log('Generator result:', data);
+        refetchCounts();
+      } else {
+        toast.error(`Generator failed: ${result.error.message}`);
+        console.error('Generator error:', result.error);
+      }
+    } catch (error) {
+      console.error('Generator test error:', error);
+      toast.error(`Generator test failed: ${error}`);
+    } finally {
+      setTestingGenerator(false);
+    }
+  };
+
+  const handleTestGeneratorSingle = async () => {
+    setTestingGenerator(true);
+    try {
       const currentUser = await getCurrentUser();
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
@@ -191,8 +220,8 @@ export const MayaInsightDebugPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Separate Test Buttons */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Test Buttons */}
+        <div className="grid grid-cols-3 gap-2">
           <Button 
             onClick={handleTestManual}
             disabled={testingManual}
@@ -206,6 +235,21 @@ export const MayaInsightDebugPanel: React.FC = () => {
               <User className="h-3 w-3" />
             )}
             {testingManual ? 'Testing...' : 'Manual (Current User)'}
+          </Button>
+          
+          <Button 
+            onClick={handleTestGeneratorSingle}
+            disabled={testingGenerator}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            {testingGenerator ? (
+              <Clock className="h-3 w-3 animate-spin" />
+            ) : (
+              <User className="h-3 w-3" />
+            )}
+            {testingGenerator ? 'Testing...' : 'Generator (Current Dev)'}
           </Button>
           
           <Button 
