@@ -6,6 +6,7 @@ import { RefreshCw, AlertCircle, CheckCircle, Clock, Database } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getCurrentUser } from '@/lib/authHelper';
 
 export const MayaInsightDebugPanel: React.FC = () => {
   const [testing, setTesting] = React.useState(false);
@@ -59,6 +60,17 @@ export const MayaInsightDebugPanel: React.FC = () => {
     try {
       console.log('Testing Maya insight generator...');
       
+      // Get current user for dev mode support
+      const currentUser = await getCurrentUser();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add dev user ID header if in dev mode
+      if (currentUser?.isDevUser) {
+        headers['x-dev-user-id'] = currentUser.id;
+      }
+      
       // Test both functions
       const [genResult, manualResult] = await Promise.allSettled([
         supabase.functions.invoke('maya-insight-generator', {
@@ -67,9 +79,7 @@ export const MayaInsightDebugPanel: React.FC = () => {
           }
         }),
         supabase.functions.invoke('maya-manual-insights', {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers
         })
       ]);
 

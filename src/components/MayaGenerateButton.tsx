@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Clock, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getCurrentUser } from '@/lib/authHelper';
 
 interface MayaGenerateButtonProps {
   onSuccess?: () => void;
@@ -25,10 +26,19 @@ export const MayaGenerateButton: React.FC<MayaGenerateButtonProps> = ({
     try {
       console.log('Generating Maya insights manually...');
       
+      // Get current user for dev mode support
+      const currentUser = await getCurrentUser();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add dev user ID header if in dev mode
+      if (currentUser?.isDevUser) {
+        headers['x-dev-user-id'] = currentUser.id;
+      }
+      
       const { data, error } = await supabase.functions.invoke('maya-manual-insights', {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
 
       if (error) {

@@ -11,27 +11,51 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret) or allow Bearer anon key
+  // Enforce cron/auth protection: require CRON_SECRET via header (x-cron-secret), allow Bearer anon key, or valid JWT
   const cronSecret = Deno.env.get('CRON_SECRET') ?? '';
   const headerSecret = req.headers.get('x-cron-secret') ?? '';
   const authHeader = req.headers.get('authorization') ?? '';
   const providedBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
-  const authorized = (
-    (!!cronSecret && (headerSecret === cronSecret || providedBearer === cronSecret)) ||
-    (!!anonKey && providedBearer === anonKey)
-  );
+  let authorized = false;
+  let authMethod = '';
+
+  // Check cron secret
+  if (!!cronSecret && (headerSecret === cronSecret || providedBearer === cronSecret)) {
+    authorized = true;
+    authMethod = 'cron_secret';
+  }
+  // Check anon key
+  else if (!!anonKey && providedBearer === anonKey) {
+    authorized = true;
+    authMethod = 'anon_key';
+  }
+  // Check for valid JWT
+  else if (providedBearer && providedBearer !== anonKey) {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser(providedBearer);
+      if (user && !error) {
+        authorized = true;
+        authMethod = 'valid_jwt';
+      }
+    } catch (jwtError) {
+      console.log('JWT validation failed:', jwtError);
+    }
+  }
 
   if (!authorized) {
     console.warn('Unauthorized request to maya-insight-generator', {
       hasCronSecretConfigured: !!cronSecret,
       providedHeaderSecret: headerSecret ? '***' : '',
       providedBearerLen: providedBearer?.length || 0,
-      allowsAnonKey: !!anonKey
+      allowsAnonKey: !!anonKey,
+      authMethod: 'none'
     });
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
+
+  console.log('Maya Insight Generator - Authorized via:', authMethod);
 
   return withCircuitBreaker(async () => {
     console.log('Maya Insight Generator - Starting batch generation');

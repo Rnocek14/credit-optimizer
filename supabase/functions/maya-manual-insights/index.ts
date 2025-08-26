@@ -60,29 +60,47 @@ serve(async (req) => {
     console.log('Maya Manual Insights - Starting generation');
     const startTime = Date.now();
     
-    // Get authenticated user
-    const { user } = await requireUser(req);
+    // Get authenticated user or dev user fallback
+    let userId: string;
+    let userIsDevMode = false;
     
-    // Check rate limit
-    const canProceed = await checkRateLimit(user.id, 'maya-manual-insights');
-    if (!canProceed) {
-      await logAIUsage(user.id, 'maya-manual-insights', 'rate-limited', 0, 0, Date.now() - startTime, false, 'Rate limit exceeded');
-      return { 
-        success: false, 
-        error: 'Rate limit exceeded. Please try again later.',
-        insights: []
-      };
+    try {
+      const { user } = await requireUser(req);
+      userId = user.id;
+    } catch (authError) {
+      // Dev mode fallback - check for x-dev-user-id header
+      const devUserId = req.headers.get('x-dev-user-id');
+      if (devUserId) {
+        userId = devUserId;
+        userIsDevMode = true;
+        console.log('Maya Manual Insights - Using dev mode for user:', userId);
+      } else {
+        throw authError; // Re-throw if no dev fallback
+      }
+    }
+    
+    // Check rate limit (skip for dev mode)
+    if (!userIsDevMode) {
+      const canProceed = await checkRateLimit(userId, 'maya-manual-insights');
+      if (!canProceed) {
+        await logAIUsage(userId, 'maya-manual-insights', 'rate-limited', 0, 0, Date.now() - startTime, false, 'Rate limit exceeded');
+        return { 
+          success: false, 
+          error: 'Rate limit exceeded. Please try again later.',
+          insights: []
+        };
+      }
     }
 
     // Get user context
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_id, name, role_title, experience_level, career_goals, skills")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single();
 
     if (!profile) {
-      console.log('No profile found for user:', user.id);
+      console.log('No profile found for user:', userId);
       return { 
         success: false, 
         error: 'Profile not found',
@@ -93,14 +111,14 @@ serve(async (req) => {
     const { data: goals } = await supabase
       .from('career_goals')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('active', true)
       .limit(3);
 
     const { data: recentActivity } = await supabase
       .from('maya_context_tracking')
       .select('event_type, created_at, context_data')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .limit(10);
 
@@ -155,7 +173,7 @@ serve(async (req) => {
       const { data: insight } = await supabase
         .from("maya_proactive_insights")
         .upsert({
-          user_id: user.id,
+          user_id: userId,
           title: idea.slice(0, 120),
           body: idea,
           priority: "medium",
@@ -164,7 +182,8 @@ serve(async (req) => {
             source: "manual_generation", 
             generated_at: new Date().toISOString(),
             context_summary: contextSummary,
-            user_trigger: true
+            user_trigger: true,
+            dev_mode: userIsDevMode
           },
         }, { 
           onConflict: "user_id,title",
@@ -178,10 +197,12 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Maya Manual Insights - Generated ${insertedInsights.length} insights for user ${user.id}`);
+    console.log(`Maya Manual Insights - Generated ${insertedInsights.length} insights for user ${userId}`);
     
-    // Log successful AI usage
-    await logAIUsage(user.id, 'maya-manual-insights', 'gpt-4o-mini', tokensIn, tokensOut, Date.now() - startTime, true);
+    // Log successful AI usage (skip for dev mode)
+    if (!userIsDevMode) {
+      await logAIUsage(userId, 'maya-manual-insights', 'gpt-4o-mini', tokensIn, tokensOut, Date.now() - startTime, true);
+    }
 
     return { 
       success: true,
