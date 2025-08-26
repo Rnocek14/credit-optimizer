@@ -36,6 +36,7 @@ export function useMayaProactiveInsights(userId?: string) {
         .eq('user_id', userId)
         .is('dismissed_at', null)
         .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+        .in('insight_type', ['manual_generation', 'proactive'])
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
 
