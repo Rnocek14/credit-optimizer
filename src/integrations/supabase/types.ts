@@ -4345,6 +4345,7 @@ export type Database = {
           context_data: Json
           context_type: string
           created_at: string
+          event_type: string
           id: string
           session_id: string | null
           tracked_at: string
@@ -4354,6 +4355,7 @@ export type Database = {
           context_data?: Json
           context_type: string
           created_at?: string
+          event_type: string
           id?: string
           session_id?: string | null
           tracked_at?: string
@@ -4363,6 +4365,7 @@ export type Database = {
           context_data?: Json
           context_type?: string
           created_at?: string
+          event_type?: string
           id?: string
           session_id?: string | null
           tracked_at?: string
