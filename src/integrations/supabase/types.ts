@@ -2589,6 +2589,36 @@ export type Database = {
           },
         ]
       }
+      course_platforms: {
+        Row: {
+          api_enabled: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          api_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          api_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       course_progress: {
         Row: {
           completed_at: string | null
@@ -3695,6 +3725,59 @@ export type Database = {
             columns: ["instructor_id"]
             isOneToOne: false
             referencedRelation: "instructor_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instructors: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          id: string
+          meta: Json | null
+          name: string
+          platform_id: string | null
+          prestige_score: number | null
+          profile_url: string | null
+          rating_avg: number | null
+          total_courses: number | null
+          total_students: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          name: string
+          platform_id?: string | null
+          prestige_score?: number | null
+          profile_url?: string | null
+          rating_avg?: number | null
+          total_courses?: number | null
+          total_students?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          meta?: Json | null
+          name?: string
+          platform_id?: string | null
+          prestige_score?: number | null
+          profile_url?: string | null
+          rating_avg?: number | null
+          total_courses?: number | null
+          total_students?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instructors_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "course_platforms"
             referencedColumns: ["id"]
           },
         ]
