@@ -263,7 +263,7 @@ serve(async (req) => {
         const randomSuffix = Math.random().toString(36).substring(2, 8);
         const uniqueTitle = `${idea.slice(0, 90)} - ${timestamp}-${randomSuffix}`;
         
-        const { data: insight } = await supabase
+        const { data: insight, error: insertError } = await supabase
           .from("maya_proactive_insights")
           .insert({
             user_id: userId,
@@ -285,7 +285,9 @@ serve(async (req) => {
           .select()
           .single();
         
-        if (insight) {
+        if (insertError) {
+          console.error(`Insert failed for user ${userId}:`, insertError);
+        } else if (insight) {
           insertedInsights.push(insight);
         }
       } catch (insertError) {

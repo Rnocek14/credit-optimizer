@@ -78,7 +78,11 @@ export const MayaInsightDebugPanel: React.FC = () => {
       
       if (!result.error) {
         const data = result.data;
-        toast.success(`Manual insights: ${data.generatedCount} created`);
+        const perf = data?.performance;
+        toast.success(
+          `Manual: ${data.generatedCount} created` +
+          (perf ? ` • parsed ${perf.parsed_count}, inserted ${perf.inserted_count}, tok ${perf.tokens_in}/${perf.tokens_out}` : '')
+        );
         console.log('Manual insights result:', data);
         refetchCounts();
       } else {
@@ -109,7 +113,9 @@ export const MayaInsightDebugPanel: React.FC = () => {
       
       if (!result.error) {
         const data = result.data;
-        toast.success(`Generator: ${data.generatedFor}/${data.totalUsers || '?'} users processed`);
+        toast.success(
+          `Generator: ${data.generatedFor}/${data.totalUsers || '?'} users • insights ${data.insightsInserted || 0} (parsed ${data.parsedCount || 0}) • tok ${data.tokensIn || 0}/${data.tokensOut || 0}`
+        );
         console.log('Generator result:', data);
         refetchCounts();
       } else {

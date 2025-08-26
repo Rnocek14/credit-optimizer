@@ -80,6 +80,10 @@ serve(async (req) => {
     const { data: users } = await userQuery.limit(10);
 
     let generatedCount = 0;
+    let insightsInsertedTotal = 0;
+    let parsedCountTotal = 0;
+    let tokensInTotal = 0;
+    let tokensOutTotal = 0;
 
     for (const profile of users || []) {
       try {
@@ -141,8 +145,11 @@ serve(async (req) => {
           
           tokensIn = completion.usage?.prompt_tokens || 0;
           tokensOut = completion.usage?.completion_tokens || 0;
+          tokensInTotal += tokensIn;
+          tokensOutTotal += tokensOut;
           
           ideas = parseInsights(rawOutput, 3);
+          parsedCountTotal += ideas.length;
           console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, ideas.map(i => i.slice(0, 60)));
         } catch (aiError) {
           console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
@@ -170,7 +177,7 @@ serve(async (req) => {
             const randomSuffix = Math.random().toString(36).substring(2, 8);
             const uniqueTitle = `${idea.slice(0, 90)} - ${timestamp}-${randomSuffix}`;
             
-            const { data: insertedInsight } = await supabase.from("maya_proactive_insights").insert({
+            const { data: insertedInsight, error: insertError } = await supabase.from("maya_proactive_insights").insert({
               user_id: profile.user_id,
               title: uniqueTitle,
               content: idea,
@@ -185,13 +192,17 @@ serve(async (req) => {
               },
             }).select();
             
-            if (insertedInsight && insertedInsight.length > 0) {
+            if (insertError) {
+              console.error(`Insert failed for user ${profile.user_id}:`, insertError);
+            } else if (insertedInsight && insertedInsight.length > 0) {
               insightsGenerated++;
             }
           } catch (insertError) {
             console.error(`Failed to insert insight for user ${profile.user_id}:`, insertError);
           }
         }
+
+        insightsInsertedTotal += insightsGenerated;
 
         // Only increment count if we actually generated insights
         if (insightsGenerated > 0) {
@@ -212,6 +223,10 @@ serve(async (req) => {
       success: true,
       generatedFor: generatedCount,
       totalUsers: (users || []).length,
+      insightsInserted: insightsInsertedTotal,
+      parsedCount: parsedCountTotal,
+      tokensIn: tokensInTotal,
+      tokensOut: tokensOutTotal,
       timestamp: new Date().toISOString(),
       scope: devUserId ? 'single_user' : 'dev_users'
     };
