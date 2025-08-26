@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import OpenAI from "https://esm.sh/openai@4.52.0";
+import OpenAI from "https://esm.sh/openai@4.52.0?target=deno";
 import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
 
 console.log('Maya Insight Generator - Starting function initialization');

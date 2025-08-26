@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import OpenAI from "https://esm.sh/openai@4.67.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.0?target=deno";
+import OpenAI from "https://esm.sh/openai@4.67.3?target=deno";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
