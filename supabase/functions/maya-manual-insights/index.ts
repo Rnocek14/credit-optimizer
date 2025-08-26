@@ -1,4 +1,5 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.52.0?target=deno";
 import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
@@ -258,7 +259,10 @@ serve(async (req) => {
     const insertedInsights = [];
     for (const idea of ideas) {
       try {
-        const uniqueTitle = `${idea.slice(0, 100)} - ${new Date().toISOString().split('.')[0]}`;
+        const timestamp = new Date().toISOString().split('.')[0];
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const uniqueTitle = `${idea.slice(0, 90)} - ${timestamp}-${randomSuffix}`;
+        
         const { data: insight } = await supabase
           .from("maya_proactive_insights")
           .insert({
@@ -272,7 +276,10 @@ serve(async (req) => {
               generated_at: new Date().toISOString(),
               context_summary: contextSummary,
               user_trigger: true,
-              dev_mode: userIsDevMode
+              dev_mode: userIsDevMode,
+              tokens_in: tokensIn,
+              tokens_out: tokensOut,
+              ai_latency_ms: aiLatency
             },
           })
           .select()
@@ -299,7 +306,14 @@ serve(async (req) => {
       success: true,
       insights: insertedInsights,
       generatedCount: insertedInsights.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      performance: {
+        tokens_in: tokensIn,
+        tokens_out: tokensOut,
+        ai_latency_ms: aiLatency,
+        parsed_count: ideas.length,
+        inserted_count: insertedInsights.length
+      }
     };
   });
 });

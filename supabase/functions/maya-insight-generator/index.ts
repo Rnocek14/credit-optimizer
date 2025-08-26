@@ -1,4 +1,5 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.52.0?target=deno";
 import { ok, withCircuitBreaker, corsHeaders, supabase } from "../_shared/utils.ts";
@@ -160,7 +161,10 @@ serve(async (req) => {
         // Persist insights (use 'content' column per schema)
         for (const idea of ideas) {
           try {
-            const uniqueTitle = `${idea.slice(0, 100)} - ${new Date().toISOString().split('.')[0]}`;
+            const timestamp = new Date().toISOString().split('.')[0];
+            const randomSuffix = Math.random().toString(36).substring(2, 8);
+            const uniqueTitle = `${idea.slice(0, 90)} - ${timestamp}-${randomSuffix}`;
+            
             const { data: insertedInsight } = await supabase.from("maya_proactive_insights").insert({
               user_id: profile.user_id,
               title: uniqueTitle,
@@ -170,7 +174,9 @@ serve(async (req) => {
               context_data: { 
                 source: "generator", 
                 generated_at: new Date().toISOString(),
-                context_summary: contextSummary 
+                context_summary: contextSummary,
+                tokens_in: completion.usage?.prompt_tokens || 0,
+                tokens_out: completion.usage?.completion_tokens || 0
               },
             }).select();
             
@@ -200,7 +206,9 @@ serve(async (req) => {
     return { 
       success: true,
       generatedFor: generatedCount,
-      timestamp: new Date().toISOString()
+      totalUsers: (users || []).length,
+      timestamp: new Date().toISOString(),
+      scope: devUserId ? 'single_user' : 'dev_users'
     };
   });
 });
