@@ -118,18 +118,19 @@ serve(async (req) => {
         
         try {
           const completion = await oai.chat.completions.create({
-            model: "o4-mini-2025-04-16",
+            model: "gpt-4o-mini",
             messages: [
               {
                 role: "system",
-                content: "You generate short, high-signal proactive career insights. Return strictly a JSON array of 2-3 strings. No extra text."
+                content: "You are Maya, a proactive career AI coach. Generate 2-3 specific, actionable career insights. Return ONLY a JSON array of strings, no additional text or formatting."
               },
               {
                 role: "user",
-                content: `Generate proactive career insights for this user: ${JSON.stringify(contextSummary)}`
+                content: `Generate proactive career insights for: ${JSON.stringify(contextSummary)}`
               },
             ],
-            max_completion_tokens: 300,
+            max_tokens: 300,
+            temperature: 0.7,
           });
 
           const rawOutput = completion.choices?.[0]?.message?.content ?? "";
@@ -143,23 +144,26 @@ serve(async (req) => {
           // In dev mode, insert a synthetic insight for testing
           if (isDevMode) {
             const ts = new Date().toISOString();
-            ideas = [`Debug: OpenAI failed, synthetic insight for testing pipeline (${ts})`];
+            const randomSuffix = Math.random().toString(36).substring(7);
+            ideas = [`Debug: OpenAI failed, synthetic insight (${ts}-${randomSuffix})`];
           }
         }
 
         // Dev mode fallback: ensure at least one insight for testing
-          if (isDevMode && ideas.length === 0) {
-            const ts = new Date().toISOString();
-            ideas = [`Debug: Parser found no insights; pipeline working (${ts})`];
-            console.log(`Dev fallback applied for user ${profile.user_id}`);
-          }
+        if (isDevMode && ideas.length === 0) {
+          const ts = new Date().toISOString();
+          const randomSuffix = Math.random().toString(36).substring(7);
+          ideas = [`Debug: Parser found no insights; pipeline working (${ts}-${randomSuffix})`];
+          console.log(`Dev fallback applied for user ${profile.user_id}`);
+        }
 
         // Persist insights (use 'content' column per schema)
         for (const idea of ideas) {
           try {
-            await supabase.from("maya_proactive_insights").upsert({
+            const uniqueTitle = `${idea.slice(0, 100)} - ${new Date().toISOString().split('.')[0]}`;
+            const { data: insertedInsight } = await supabase.from("maya_proactive_insights").insert({
               user_id: profile.user_id,
-              title: idea.slice(0, 120),
+              title: uniqueTitle,
               content: idea,
               priority: "medium",
               insight_type: "proactive",
@@ -168,11 +172,11 @@ serve(async (req) => {
                 generated_at: new Date().toISOString(),
                 context_summary: contextSummary 
               },
-            }, { 
-              onConflict: "user_id,title",
-              ignoreDuplicates: true 
-            });
-            insightsGenerated++;
+            }).select();
+            
+            if (insertedInsight && insertedInsight.length > 0) {
+              insightsGenerated++;
+            }
           } catch (insertError) {
             console.error(`Failed to insert insight for user ${profile.user_id}:`, insertError);
           }

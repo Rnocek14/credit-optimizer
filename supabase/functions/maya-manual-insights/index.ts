@@ -165,7 +165,7 @@ serve(async (req) => {
     let completionText = "";
     try {
       const completion = await oai.chat.completions.create({
-        model: "o4-mini-2025-04-16",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -175,14 +175,15 @@ serve(async (req) => {
             - Encouraging but realistic
             - Tied to market trends when relevant
             
-            Return strictly a JSON array of 2-4 strings. No extra text.`
+            Return ONLY a JSON array of 2-4 strings. No additional text or formatting.`
           },
           {
             role: "user",
             content: `Generate insights for: ${JSON.stringify(contextSummary)}`
           },
         ],
-        max_completion_tokens: 400,
+        max_tokens: 400,
+        temperature: 0.7,
       });
       
       aiLatency = Date.now() - aiStartTime;
@@ -195,7 +196,7 @@ serve(async (req) => {
       
       // Log failed AI usage
       try {
-        await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', 0, 0, aiLatency, false, (aiError as Error).message);
+        await logAIUsage(userId, 'maya-manual-insights', 'gpt-4o-mini', 0, 0, aiLatency, false, (aiError as Error).message);
       } catch (logError) {
         console.warn('Failed to log AI usage:', logError);
       }
@@ -203,10 +204,11 @@ serve(async (req) => {
       // In dev mode, insert a synthetic insight for testing
       if (userIsDevMode) {
         const ts = new Date().toISOString();
-        const syntheticInsight = `Debug: OpenAI call failed, pipeline active (${ts})`;
+        const randomSuffix = Math.random().toString(36).substring(7);
+        const syntheticInsight = `Debug: OpenAI call failed, pipeline active (${ts}-${randomSuffix})`;
         const { data: insight } = await supabase
           .from("maya_proactive_insights")
-          .upsert({
+          .insert({
             user_id: userId,
             title: syntheticInsight.slice(0, 120),
             content: syntheticInsight,
@@ -218,9 +220,6 @@ serve(async (req) => {
               error_message: (aiError as Error).message,
               dev_mode: true
             },
-          }, { 
-            onConflict: "user_id,title",
-            ignoreDuplicates: false 
           })
           .select()
           .single();
@@ -250,37 +249,40 @@ serve(async (req) => {
     // Dev mode fallback: ensure at least one insight for testing
     if (userIsDevMode && ideas.length === 0) {
       const ts = new Date().toISOString();
-      ideas = [`Debug: Parser found no insights; pipeline working (${ts})`];
+      const randomSuffix = Math.random().toString(36).substring(7);
+      ideas = [`Debug: Parser found no insights; pipeline working (${ts}-${randomSuffix})`];
       console.log('Dev fallback applied - empty parse');
     }
 
     // Persist insights to database
     const insertedInsights = [];
     for (const idea of ideas) {
-      const { data: insight } = await supabase
-        .from("maya_proactive_insights")
-        .upsert({
-          user_id: userId,
-          title: idea.slice(0, 120),
-          content: idea,
-          priority: "medium",
-          insight_type: "manual_generation",
-          context_data: { 
-            source: "manual_generation", 
-            generated_at: new Date().toISOString(),
-            context_summary: contextSummary,
-            user_trigger: true,
-            dev_mode: userIsDevMode
-          },
-        }, { 
-          onConflict: "user_id,title",
-          ignoreDuplicates: false 
-        })
-        .select()
-        .single();
-      
-      if (insight) {
-        insertedInsights.push(insight);
+      try {
+        const uniqueTitle = `${idea.slice(0, 100)} - ${new Date().toISOString().split('.')[0]}`;
+        const { data: insight } = await supabase
+          .from("maya_proactive_insights")
+          .insert({
+            user_id: userId,
+            title: uniqueTitle,
+            content: idea,
+            priority: "medium",
+            insight_type: "manual_generation",
+            context_data: { 
+              source: "manual_generation", 
+              generated_at: new Date().toISOString(),
+              context_summary: contextSummary,
+              user_trigger: true,
+              dev_mode: userIsDevMode
+            },
+          })
+          .select()
+          .single();
+        
+        if (insight) {
+          insertedInsights.push(insight);
+        }
+      } catch (insertError) {
+        console.error(`Failed to insert insight for user ${userId}:`, insertError);
       }
     }
 
@@ -288,7 +290,7 @@ serve(async (req) => {
     
     // Log successful AI usage
     try {
-      await logAIUsage(userId, 'maya-manual-insights', 'o4-mini-2025-04-16', tokensIn, tokensOut, aiLatency, true);
+      await logAIUsage(userId, 'maya-manual-insights', 'gpt-4o-mini', tokensIn, tokensOut, aiLatency, true);
     } catch (logError) {
       console.warn('Failed to log AI usage:', logError);
     }
