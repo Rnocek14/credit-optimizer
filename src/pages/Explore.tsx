@@ -61,6 +61,8 @@ import { CRIGauge } from "@/components/course/CRIGauge";
 import { SkillBreakdownBars } from "@/components/course/SkillBreakdownBars";
 import { RecommendationsRail } from "@/components/course/RecommendationsRail";
 import { trackTelemetryEvent } from "@/utils/telemetry";
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { CRIGaugeSkeleton, SkillBreakdownSkeleton } from '@/components/LoadingStates';
 
 interface Course {
   id: string;

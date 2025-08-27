@@ -25,6 +25,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SavedCoursesList } from "@/components/plan/SavedCoursesList";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
 import { trackTelemetryEvent } from "@/utils/telemetry";
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface MilestonePlan {
   id: string;
@@ -286,9 +287,11 @@ export default function Plans() {
       )}
 
       {/* Saved Courses List Integration */}
-      <div className="mb-8">
-        <SavedCoursesList currentCRI={criData?.cri || 0} />
-      </div>
+      <ErrorBoundary>
+        <div className="mb-8">
+          <SavedCoursesList currentCRI={criData?.cri || 0} />
+        </div>
+      </ErrorBoundary>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-6">
