@@ -377,11 +377,11 @@ All colors MUST be HSL for consistent theming.
 
   /* Enhanced Spacing Utilities */
   .space-section {
-    @apply py-16 md:py-24;
+    @apply py-6 md:py-8;
   }
 
   .space-section-lg {
-    @apply py-20 md:py-32;
+    @apply py-12 md:py-16;
   }
 
   .space-content {
@@ -389,7 +389,7 @@ All colors MUST be HSL for consistent theming.
   }
 
   .space-content-lg {
-    @apply py-12 md:py-16;
+    @apply py-8 md:py-12;
   }
 
   .space-component {

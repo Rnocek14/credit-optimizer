@@ -93,7 +93,7 @@ export default function Plans() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card>
-          <CardContent className="py-12">
+          <CardContent className="py-8">
             <div className="text-center">
               <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Career Tracks Yet</h3>
@@ -248,7 +248,7 @@ export default function Plans() {
   }
 
   return (
-    <PolishedPageLayout containerSize="lg" spacing="lg" className="space-section-lg">
+    <PolishedPageLayout containerSize="md" spacing="md">
       <PageHeader 
         title="📘 Milestone Plans"
         description="Track and manage your personalized learning roadmaps"
@@ -263,7 +263,7 @@ export default function Plans() {
         )}
       </PageHeader>
 
-      <Section spacing="lg">
+      <Section spacing="sm">
         {trackIdToUse ? (
           <CareerProfileCard 
             trackId={trackIdToUse}
@@ -285,8 +285,8 @@ export default function Plans() {
 
       <Section 
         title="Saved Courses" 
-        spacing="lg"
-        className="space-y-8"
+        spacing="sm"
+        className="space-y-6"
       >
         <div className="flex items-center gap-2 mb-6">
           <TutorialTip 
@@ -299,7 +299,7 @@ export default function Plans() {
         </ErrorBoundary>
       </Section>
 
-      <Section spacing="lg">
+      <Section spacing="sm">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="space-y-8">
           <div className="flex items-center gap-4 mb-8">
             <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -318,7 +318,7 @@ export default function Plans() {
           <TabsContent value="active" className="mt-8">
             {filteredPlans.length === 0 ? (
               <Card>
-                <CardContent className="py-12 px-6">
+                <CardContent className="py-8 px-6">
                   <div className="text-center">
                     <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-3">No Active Plans Yet</h3>
@@ -350,7 +350,7 @@ export default function Plans() {
           <TabsContent value="completed" className="mt-8">
             {filteredPlans.length === 0 ? (
               <Card>
-                <CardContent className="py-12 px-6">
+                <CardContent className="py-8 px-6">
                   <div className="text-center">
                     <CheckCircle2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-3">No Completed Plans Yet</h3>
@@ -428,7 +428,7 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
     <Card className="transition-all duration-200 hover:shadow-md">
       <Collapsible open={isExpanded} onOpenChange={onToggleExpansion}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-6">
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="flex items-center gap-3 mb-3">
@@ -478,7 +478,7 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="px-6 pb-6">
+          <CardContent className="px-4 pb-4">
             <Separator className="mb-8" />
             <div className="space-y-3">
               <div className="flex items-center gap-2">
