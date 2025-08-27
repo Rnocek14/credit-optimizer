@@ -248,7 +248,7 @@ export default function Plans() {
   }
 
   return (
-    <PolishedPageLayout containerSize="lg" spacing="md">
+    <PolishedPageLayout containerSize="md" spacing="md">
       <PageHeader 
         title="📘 Milestone Plans"
         description="Track and manage your personalized learning roadmaps"
@@ -493,26 +493,26 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
                 </span>
               </div>
               
-              <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
                 {plan.steps.map((step, index) => (
-                  <div key={index} className="flex items-start gap-3 p-4 rounded-md border bg-card hover:bg-muted/30 transition-colors min-w-72 w-72 flex-shrink-0">
+                  <div key={index} className="flex items-start gap-2 p-3 rounded-md border bg-card hover:bg-muted/30 transition-colors max-h-24">
                     <Checkbox
                       checked={step.completed || false}
                       onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
-                      className="mt-1 flex-shrink-0"
+                      className="mt-0.5 flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-tight font-medium mb-2 ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
+                      <p className={`text-sm leading-tight font-medium truncate ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
                         {step.title || step.text || `Step ${index + 1}`}
                       </p>
                       {step.description && (
-                        <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                        <p className="text-xs text-muted-foreground leading-tight line-clamp-2 mt-1">
                           {step.description}
                         </p>
                       )}
                       {step.completed && step.completed_at && (
-                        <p className="text-sm text-green-600 font-medium">
-                          ✅ Completed {format(parseISO(step.completed_at), 'MMM d')}
+                        <p className="text-xs text-green-600 mt-1 truncate">
+                          ✅ {format(parseISO(step.completed_at), 'MMM d')}
                         </p>
                       )}
                     </div>
