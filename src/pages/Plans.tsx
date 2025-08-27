@@ -479,37 +479,46 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
 
         <CollapsibleContent>
           <CardContent className="px-4 pb-4">
-            <Separator className="mb-8" />
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h4 className="font-medium text-muted-foreground uppercase tracking-wide text-sm">
-                  Steps to Complete
-                </h4>
-                <TutorialTip id="planSteps" label={TIPS.planSteps} />
+            <Separator className="mb-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-muted-foreground uppercase tracking-wide text-sm">
+                    Steps to Complete
+                  </h4>
+                  <TutorialTip id="planSteps" label={TIPS.planSteps} />
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {plan.steps.filter(step => step.completed).length} of {plan.steps.length} completed
+                </span>
               </div>
               
-              {plan.steps.map((step, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                  <Checkbox
-                    checked={step.completed || false}
-                    onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-relaxed ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
-                      {step.title || step.text || `Step ${index + 1}`}
-                    </p>
-                    {step.description && (
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{step.description}</p>
-                    )}
-                    {step.completed && step.completed_at && (
-                      <p className="text-xs text-green-600 mt-1">
-                        ✅ Completed {format(parseISO(step.completed_at), 'MMM d, h:mm a')}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+                {plan.steps.map((step, index) => (
+                  <div key={index} className="flex items-start gap-2 p-2 rounded-md border bg-card hover:bg-muted/30 transition-colors">
+                    <Checkbox
+                      checked={step.completed || false}
+                      onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
+                      className="mt-0.5 flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs leading-relaxed font-medium ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
+                        {step.title || step.text || `Step ${index + 1}`}
                       </p>
-                    )}
+                      {step.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-tight line-clamp-2">
+                          {step.description}
+                        </p>
+                      )}
+                      {step.completed && step.completed_at && (
+                        <p className="text-xs text-green-600 mt-0.5 truncate">
+                          ✅ {format(parseISO(step.completed_at), 'MMM d')}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </CardContent>
         </CollapsibleContent>
