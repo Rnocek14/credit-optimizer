@@ -2003,6 +2003,191 @@ export type Database = {
           },
         ]
       }
+      ci_course_cri_scores: {
+        Row: {
+          course_id: string | null
+          created_at: string | null
+          difficulty_score: number | null
+          id: string
+          outcome_score: number | null
+          rigor_score: number | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string | null
+          difficulty_score?: number | null
+          id?: string
+          outcome_score?: number | null
+          rigor_score?: number | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string | null
+          difficulty_score?: number | null
+          id?: string
+          outcome_score?: number | null
+          rigor_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ci_course_cri_scores_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "ci_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ci_courses: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          difficulty: number | null
+          duration_hours: number | null
+          id: string
+          instructor_id: string | null
+          platform_id: string | null
+          slug: string
+          title: string
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          difficulty?: number | null
+          duration_hours?: number | null
+          id?: string
+          instructor_id?: string | null
+          platform_id?: string | null
+          slug: string
+          title: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          difficulty?: number | null
+          duration_hours?: number | null
+          id?: string
+          instructor_id?: string | null
+          platform_id?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ci_courses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "ci_instructors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ci_courses_platform_id_fkey"
+            columns: ["platform_id"]
+            isOneToOne: false
+            referencedRelation: "ci_platforms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ci_instructors: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          org: string | null
+          reputation: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          org?: string | null
+          reputation?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          org?: string | null
+          reputation?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ci_platforms: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      ci_track_cri_cache: {
+        Row: {
+          calculated_at: string
+          components: Json
+          created_at: string | null
+          cri_breakdown: Json
+          cri_score: number
+          expires_at: string
+          id: string
+          model_version: string
+          track_id: string | null
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          components?: Json
+          created_at?: string | null
+          cri_breakdown?: Json
+          cri_score: number
+          expires_at?: string
+          id?: string
+          model_version?: string
+          track_id?: string | null
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          components?: Json
+          created_at?: string | null
+          cri_breakdown?: Json
+          cri_score?: number
+          expires_at?: string
+          id?: string
+          model_version?: string
+          track_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       circuit_breaker_state: {
         Row: {
           created_at: string
