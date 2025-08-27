@@ -102,6 +102,17 @@ serve(async (req) => {
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .limit(10);
 
+        // Get user's latest active track
+        const { data: latestTrack } = await supabase
+          .from('career_tracks')
+          .select('id')
+          .eq('user_id', profile.user_id)
+          .eq('archived', false)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const latestTrackId = latestTrack?.[0]?.id;
+
         // Skip if no recent activity (unless in dev mode)
         const isDevMode = devUserId || knownDevUsers.includes(profile.user_id);
         if (!isDevMode && (!recentActivity || recentActivity.length === 0)) {
@@ -115,23 +126,37 @@ serve(async (req) => {
           lastActivity: recentActivity[0]?.created_at
         };
 
-        // Get course intelligence recommendations
-        let courseRecommendations: any[] = [];
-        try {
-          const { data: courseData, error: courseError } = await supabase.functions.invoke('course-intelligence-recommendations', {
-            body: {
-              userId: profile.user_id,
-              skillGaps: ['product_strategy', 'data_analysis', 'javascript'], // Default skill gaps
-              limit: 3
+        // Build course recommendation bundle for career/skill_gap/learning insights
+        let recoBundle = null;
+        if (latestTrackId) {
+          try {
+            // Get CRI score
+            const { data: criData } = await supabase.functions.invoke('course-cri-calculator', {
+              body: { userId: profile.user_id, trackId: latestTrackId, forceRecompute: false }
+            });
+
+            // Get course recommendations  
+            const { data: recoData } = await supabase.functions.invoke('course-intelligence-recommendations', {
+              body: { userId: profile.user_id, trackId: latestTrackId, limit: 3, strategy: 'gap_fill' }
+            });
+
+            if (criData?.success && recoData?.success) {
+              recoBundle = {
+                trackId: latestTrackId,
+                cri: criData.cri ?? 0,
+                topCourses: (recoData.recommendations || []).slice(0, 3).map((r: any) => ({
+                  courseId: r.course.id,
+                  score: r.score,
+                  expectedCRIChange: r.expectedCRIChange
+                })),
+                model: { cri: "cri:v1", reco: "reco:v1" }
+              };
+              console.log(`Built reco bundle for user ${profile.user_id}:`, { cri: criData.cri, courses: recoBundle.topCourses.length });
             }
-          });
-          
-          if (!courseError && courseData?.success) {
-            courseRecommendations = courseData.recommendations || [];
-            console.log(`Found ${courseRecommendations.length} course recommendations for user ${profile.user_id}`);
+          } catch (error) {
+            console.error('Course intelligence bundle error:', error);
+            // Continue without bundle - no hard failure
           }
-        } catch (courseError) {
-          console.error('Course intelligence error:', courseError);
         }
 
         // Generate insights
@@ -142,10 +167,11 @@ serve(async (req) => {
         let tokensIn = 0;
         let tokensOut = 0;
         
-        // Include course recommendations in the context
+        // Include course bundle info in the context
         const enhancedContext = {
           ...contextSummary,
-          courseRecommendations: courseRecommendations.slice(0, 2)
+          hasRecoBundle: !!recoBundle,
+          courseCount: recoBundle?.topCourses?.length || 0
         };
         
         try {
@@ -154,7 +180,7 @@ serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content: "You are Maya, a proactive career AI coach. Generate 2-3 specific, actionable career insights. If course recommendations are provided, include at least one course-related insight. Return ONLY a JSON array of strings, no additional text or formatting."
+                content: "You are Maya, a proactive career AI coach. Generate 2-3 specific, actionable career insights focusing on career, skill_gap, or learning categories. Return ONLY a JSON array of objects with 'content' and 'category' fields. Categories should be: 'career', 'skill_gap', or 'learning'."
               },
               {
                 role: "user",
@@ -173,9 +199,26 @@ serve(async (req) => {
           tokensInTotal += tokensIn;
           tokensOutTotal += tokensOut;
           
-          ideas = parseInsights(rawOutput, 3);
+          // Try to parse as JSON array of objects first, fallback to strings
+          let parsedIdeas: Array<{content: string, category: string}> = [];
+          try {
+            const parsed = JSON.parse(rawOutput.trim());
+            if (Array.isArray(parsed)) {
+              parsedIdeas = parsed.map(item => 
+                typeof item === 'object' && item.content 
+                  ? { content: item.content, category: item.category || 'career' }
+                  : { content: String(item), category: 'career' }
+              );
+            }
+          } catch {
+            // Fallback to string parsing
+            const stringIdeas = parseInsights(rawOutput, 3);
+            parsedIdeas = stringIdeas.map(content => ({ content, category: 'career' }));
+          }
+          
+          ideas = parsedIdeas.map(idea => idea.content);
           parsedCountTotal += ideas.length;
-          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, ideas.map(i => i.slice(0, 60)));
+          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, parsedIdeas.map(i => i.content.slice(0, 60)));
         } catch (aiError) {
           console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
           
@@ -195,26 +238,35 @@ serve(async (req) => {
           console.log(`Dev fallback applied for user ${profile.user_id}`);
         }
 
-        // Persist insights (use 'content' column per schema)
-        for (const idea of ideas) {
+        // Persist insights with reco bundle for career/skill_gap/learning categories
+        for (let i = 0; i < ideas.length; i++) {
           try {
+            const idea = ideas[i];
+            const ideaCategory = parsedIdeas[i]?.category || 'career';
             const timestamp = new Date().toISOString().split('.')[0];
             const randomSuffix = Math.random().toString(36).substring(2, 8);
             const uniqueTitle = `${idea.slice(0, 90)} - ${timestamp}-${randomSuffix}`;
+            
+            // Attach reco bundle for relevant categories
+            const shouldAttachBundle = ['career', 'skill_gap', 'learning'].includes(ideaCategory) && recoBundle;
+            
+            const contextData = { 
+              source: "generator", 
+              generated_at: new Date().toISOString(),
+              context_summary: contextSummary,
+              tokens_in: tokensIn,
+              tokens_out: tokensOut,
+              ...(shouldAttachBundle && { reco_bundle: recoBundle })
+            };
             
             const { data: insertedInsight, error: insertError } = await supabase.from("maya_proactive_insights").insert({
               user_id: profile.user_id,
               title: uniqueTitle,
               content: idea,
+              category: ideaCategory,
               priority: "medium",
               insight_type: "proactive",
-              context_data: { 
-                source: "generator", 
-                generated_at: new Date().toISOString(),
-                context_summary: contextSummary,
-                tokens_in: tokensIn,
-                tokens_out: tokensOut
-              },
+              context_data: contextData,
             }).select();
             
             if (insertError) {

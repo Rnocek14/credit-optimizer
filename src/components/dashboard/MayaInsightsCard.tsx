@@ -1,15 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToastAction } from '@/components/ui/toast';
-import { Bot, Sparkles, TrendingUp, Lightbulb, X, ThumbsUp, MessageCircle, Zap } from 'lucide-react';
+import { Bot, Sparkles, TrendingUp, Lightbulb, X, ThumbsUp, MessageCircle, Zap, BookOpen } from 'lucide-react';
 import { useMayaProactiveInsights } from '@/hooks/useMayaProactiveInsights';
+import { useCourseRecommendationUtils } from '@/hooks/useCourseRecommendationUtils';
+import { CourseRecoRow } from '@/components/CourseRecoRow';
 import { getCurrentUser } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { RecoBundle } from '@/types/course-intelligence';
 
 interface MayaInsightsCardProps {
   userName?: string;
@@ -45,8 +48,18 @@ export function MayaInsightsCard({
     fetchInsights,
     lastFetchedAt 
   } = useMayaProactiveInsights(user?.id);
+  
+  const {
+    fetchCourseSummaries,
+    saveCourseToRecommendations,
+    logRecommendationView,
+    isCourseLoading
+  } = useCourseRecommendationUtils();
+  
   const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
   const [timeTick, setTimeTick] = useState(0);
+  const [courseDetails, setCourseDetails] = useState<Record<string, any[]>>({});
+  const [hasLoggedView, setHasLoggedView] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const pendingUndos = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -81,6 +94,47 @@ export function MayaInsightsCard({
   // Use proactive insights if available, fallback to static logic
   const hasProactiveInsights = insights.length > 0;
   const currentInsight = hasProactiveInsights ? insights[currentInsightIndex] : null;
+  const recoBundle: RecoBundle | null = currentInsight?.context_data?.reco_bundle || null;
+  const hasRecommendations = recoBundle?.topCourses?.length > 0;
+
+  // Hydrate course details when insight changes
+  useEffect(() => {
+    if (!currentInsight || !recoBundle || !user?.id) return;
+    
+    const courseIds = recoBundle.topCourses.map(c => c.courseId);
+    const cacheKey = `${currentInsight.id}-${courseIds.join(',')}`;
+    
+    if (courseDetails[cacheKey] || isCourseLoading(courseIds)) return;
+
+    const loadCourseDetails = async () => {
+      try {
+        const courses = await fetchCourseSummaries(courseIds);
+        setCourseDetails(prev => ({ ...prev, [cacheKey]: courses }));
+        
+        // Log view telemetry (once per insight)
+        if (!hasLoggedView[currentInsight.id]) {
+          setHasLoggedView(prev => ({ ...prev, [currentInsight.id]: true }));
+          await logRecommendationView(user.id, currentInsight.id, courseIds, recoBundle.trackId);
+        }
+      } catch (error) {
+        console.error('Failed to load course details:', error);
+      }
+    };
+
+    loadCourseDetails();
+  }, [currentInsight?.id, recoBundle, user?.id, fetchCourseSummaries, logRecommendationView, courseDetails, hasLoggedView, isCourseLoading]);
+
+  const getCurrentCourseDetails = () => {
+    if (!currentInsight || !recoBundle) return [];
+    const courseIds = recoBundle.topCourses.map(c => c.courseId);
+    const cacheKey = `${currentInsight.id}-${courseIds.join(',')}`;
+    return courseDetails[cacheKey] || [];
+  };
+
+  const handleSaveCourse = async (courseId: string, courseTitle: string) => {
+    if (!user?.id) return;
+    await saveCourseToRecommendations(user.id, courseId, courseTitle);
+  };
   const getPersonalizedGreeting = () => {
     const hour = new Date().getHours();
     const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
@@ -299,6 +353,45 @@ export function MayaInsightsCard({
                   </div>
                 )}
               </div>
+
+              {/* Course Recommendations Section */}
+              {hasRecommendations && (
+                <div className="mt-4 pt-4 border-t border-border/30" role="region" aria-labelledby="reco-heading">
+                  <h3 id="reco-heading" className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    Recommended next courses
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {getCurrentCourseDetails().length > 0 ? (
+                      getCurrentCourseDetails().map((course, index) => {
+                        const recoItem = recoBundle?.topCourses.find(tc => tc.courseId === course.id);
+                        return (
+                          <CourseRecoRow
+                            key={course.id}
+                            title={course.title}
+                            platform={course.platform?.name || 'Unknown Platform'}
+                            difficulty={course.difficulty}
+                            durationHours={course.duration_hours}
+                            url={course.url}
+                            expectedCRIChange={recoItem?.expectedCRIChange}
+                            onSave={() => handleSaveCourse(course.id, course.title)}
+                            className="text-xs"
+                          />
+                        );
+                      })
+                    ) : isCourseLoading(recoBundle?.topCourses.map(c => c.courseId) || []) ? (
+                      <div className="text-xs text-muted-foreground p-3 text-center">
+                        Loading course recommendations...
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground p-3 text-center">
+                        No recommended courses right now
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>

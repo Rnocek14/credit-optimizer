@@ -133,6 +133,32 @@ export interface RecoBundle {
   };
 }
 
+// Additional UI Types for Course Recommendations
+export interface RecoCoursePlatform {
+  id: string;
+  slug: string;
+  name: string;
+  url?: string;
+}
+
+export interface RecoCourseInstructor {
+  id: string;
+  name: string;
+  org?: string | null;
+  reputation?: number;
+}
+
+export interface RecoCourse {
+  id: UUID;
+  platform: RecoCoursePlatform;
+  instructor?: RecoCourseInstructor;
+  title: string;
+  slug: string;
+  url?: string;
+  difficulty: number;
+  durationHours: number;
+}
+
 // Error Response Type
 export interface CIErrorResponse {
   success: false;
