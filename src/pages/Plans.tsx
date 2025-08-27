@@ -259,7 +259,10 @@ export default function Plans() {
           </div>
           {tracks.length > 0 && (
             <div className="flex items-center gap-4">
-              <TrackSelector />
+              <div className="flex items-center gap-2">
+                <TrackSelector />
+                <TutorialTip id="trackSelector" label={TIPS.trackSelector} />
+              </div>
             </div>
           )}
         </div>
@@ -304,16 +307,19 @@ export default function Plans() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
-          <TabsTrigger value="active" className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            Active ({plans.filter(p => p.status === 'active').length})
-          </TabsTrigger>
-          <TabsTrigger value="completed" className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Completed ({plans.filter(p => p.status === 'completed').length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center gap-4 mb-4">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Active ({plans.filter(p => p.status === 'active').length})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              Completed ({plans.filter(p => p.status === 'completed').length})
+            </TabsTrigger>
+          </TabsList>
+          <TutorialTip id="activePlansTab" label={TIPS.activePlansTab} />
+        </div>
 
         <TabsContent value="active" className="mt-6">
           {filteredPlans.length === 0 ? (
@@ -437,6 +443,7 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
                   <Badge variant={plan.status === 'completed' ? 'default' : 'secondary'}>
                     {plan.status}
                   </Badge>
+                  <TutorialTip id="planStatus" label={TIPS.planStatus} />
                 </CardTitle>
                 {plan.description && (
                   <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
@@ -449,6 +456,7 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
                       {completedSteps} of {totalSteps} steps completed
                     </span>
                     <span className="font-medium">{progressPercentage}%</span>
+                    <TutorialTip id="planProgress" label={TIPS.planProgress} />
                   </div>
                   <Progress value={progressPercentage} className="h-2" />
                 </div>
@@ -464,6 +472,7 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
               </div>
               
               <div className="flex items-center gap-2 ml-4">
+                <TutorialTip id="planExpansion" label={TIPS.planExpansion} />
                 {isExpanded ? (
                   <ChevronDown className="w-5 h-5 text-muted-foreground" />
                 ) : (
@@ -478,9 +487,12 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
           <CardContent className="pt-0">
             <Separator className="mb-4" />
             <div className="space-y-3">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                Steps to Complete
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                  Steps to Complete
+                </h4>
+                <TutorialTip id="planSteps" label={TIPS.planSteps} />
+              </div>
               
               {plan.steps.map((step, index) => (
                 <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">

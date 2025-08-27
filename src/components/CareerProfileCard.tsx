@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useCareerProfileCard } from '@/hooks/useCareerProfileCard';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 import { 
   TrendingUp, 
   Target, 
@@ -106,29 +108,38 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
         {/* Key Metrics Row */}
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getCRIColor(profile.criLevel)}`}>
-              {profile.criScore}
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getCRIColor(profile.criLevel)}`}>
+                {profile.criScore}
+              </div>
+              <TutorialTip id="criScore" label={TIPS.criScore} />
             </div>
             <p className="text-xs text-muted-foreground mt-1">CRI Score</p>
           </div>
 
           <div className="text-center">
-            <div className="relative w-12 h-12 mx-auto">
-              <Progress 
-                value={profile.switchReadiness} 
-                className="w-full h-full [&>div]:rounded-full"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-medium">{profile.switchReadiness}%</span>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="relative w-12 h-12">
+                <Progress 
+                  value={profile.switchReadiness} 
+                  className="w-full h-full [&>div]:rounded-full"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-medium">{profile.switchReadiness}%</span>
+                </div>
               </div>
+              <TutorialTip id="switchReadiness" label={TIPS.switchReadiness} />
             </div>
             <p className="text-xs text-muted-foreground mt-1">Readiness</p>
           </div>
 
           <div className="text-center">
-            <Badge className={getRiskColor(profile.riskLevel)}>
-              {profile.riskLevel} Risk
-            </Badge>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Badge className={getRiskColor(profile.riskLevel)}>
+                {profile.riskLevel} Risk
+              </Badge>
+              <TutorialTip id="riskLevel" label={TIPS.riskLevel} />
+            </div>
             <p className="text-xs text-muted-foreground mt-1">{profile.overallRisk}% Score</p>
           </div>
         </div>
@@ -136,29 +147,38 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
         {/* Financial Metrics Row */}
         <div className="grid grid-cols-3 gap-4 pt-4 border-t">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <span className="font-semibold text-green-600">
-                ${(profile.roi3yr / 1000).toFixed(0)}k
-              </span>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <span className="font-semibold text-green-600">
+                  ${(profile.roi3yr / 1000).toFixed(0)}k
+                </span>
+              </div>
+              <TutorialTip id="roi3Year" label={TIPS.roi3Year} />
             </div>
             <p className="text-xs text-muted-foreground mt-1">3-Year ROI</p>
           </div>
 
           {profile.breakEvenMonths && (
             <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Clock className="h-4 w-4 text-primary" />
-                <span className="font-semibold">{profile.breakEvenMonths}mo</span>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="font-semibold">{profile.breakEvenMonths}mo</span>
+                </div>
+                <TutorialTip id="breakEvenTime" label={TIPS.breakEvenTime} />
               </div>
               <p className="text-xs text-muted-foreground mt-1">Break-even</p>
             </div>
           )}
 
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <MapPin className="h-4 w-4 text-blue-600" />
-              <span className="font-semibold text-blue-600">{profile.lqi}</span>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="flex items-center gap-1">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <span className="font-semibold text-blue-600">{profile.lqi}</span>
+              </div>
+              <TutorialTip id="lqi" label={TIPS.lqi} />
             </div>
             <p className="text-xs text-muted-foreground mt-1">LQI</p>
           </div>
@@ -170,6 +190,7 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Next Milestone</span>
+              <TutorialTip id="nextMilestone" label={TIPS.nextMilestone} />
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {profile.nextMilestone.title} • ETA: {profile.nextMilestone.eta}
@@ -180,31 +201,43 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2">
           {onSimulateSwitch && (
-            <Button variant="outline" onClick={onSimulateSwitch} className="text-xs">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              Simulate Switch
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" onClick={onSimulateSwitch} className="text-xs flex-1">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Simulate Switch
+              </Button>
+              <TutorialTip id="simulateSwitch" label={TIPS.simulateSwitch} />
+            </div>
           )}
           
           {onExportResume && (
-            <Button variant="outline" onClick={onExportResume} className="text-xs">
-              <FileText className="h-3 w-3 mr-1" />
-              Export Resume
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" onClick={onExportResume} className="text-xs flex-1">
+                <FileText className="h-3 w-3 mr-1" />
+                Export Resume
+              </Button>
+              <TutorialTip id="exportResume" label={TIPS.exportResume} />
+            </div>
           )}
 
           {onCompareTracks && (
-            <Button variant="outline" onClick={onCompareTracks} className="text-xs">
-              <GitCompare className="h-3 w-3 mr-1" />
-              Compare Tracks
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" onClick={onCompareTracks} className="text-xs flex-1">
+                <GitCompare className="h-3 w-3 mr-1" />
+                Compare Tracks
+              </Button>
+              <TutorialTip id="compareTracks" label={TIPS.compareTracks} />
+            </div>
           )}
 
           {onOptimizeLocation && (
-            <Button variant="outline" onClick={onOptimizeLocation} className="text-xs">
-              <MapPin className="h-3 w-3 mr-1" />
-              Optimize Location
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" onClick={onOptimizeLocation} className="text-xs flex-1">
+                <MapPin className="h-3 w-3 mr-1" />
+                Optimize Location
+              </Button>
+              <TutorialTip id="optimizeLocation" label={TIPS.optimizeLocation} />
+            </div>
           )}
         </div>
       </CardContent>
