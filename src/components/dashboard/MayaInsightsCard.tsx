@@ -261,13 +261,12 @@ export function MayaInsightsCard({
   const hasContent = hasProactiveInsights || loading;
   const cardClasses = cn(
     "border-l-4 bg-gradient-to-br from-background to-muted/20 transition-all duration-200",
-    currentInsight ? getPriorityColor(currentInsight.priority) : "border-l-primary",
-    !hasContent && !loading ? "min-h-fit" : ""
+    currentInsight ? getPriorityColor(currentInsight.priority) : "border-l-primary"
   );
 
   return (
     <Card className={cardClasses}>
-      <CardHeader className={cn("pb-3", !hasContent && !loading ? "pb-2" : "")}>
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2">
           <div className="p-1.5 rounded-full bg-primary/10">
             <Bot className="h-4 w-4 text-primary" />
@@ -297,11 +296,11 @@ export function MayaInsightsCard({
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className={cn("space-y-4", !hasContent && !loading ? "py-3" : "")}>
+      <CardContent className="space-y-3 pt-0">
         {loading ? (
-          <div className="space-y-3">
-            <div className="h-4 bg-muted animate-pulse rounded" />
-            <div className="h-12 bg-muted animate-pulse rounded" />
+          <div className="space-y-2">
+            <div className="h-3 bg-muted animate-pulse rounded" />
+            <div className="h-8 bg-muted animate-pulse rounded" />
           </div>
         ) : (
           <div className="space-y-3">
@@ -412,7 +411,7 @@ export function MayaInsightsCard({
                 </p>
                 {insights.length === 0 && !loading && (
                   <Badge variant="outline" className="text-xs">
-                    {Math.max(0, 517 - insights.length)} insights in system
+                    453 insights in system
                   </Badge>
                 )}
               </div>
@@ -430,10 +429,7 @@ export function MayaInsightsCard({
           </div>
         )}
 
-        <div className={cn(
-          "flex items-center justify-between pt-2 border-t border-border/50",
-          !hasContent && !loading ? "mt-2" : ""
-        )}>
+        <div className="flex items-center justify-between pt-2 border-t border-border/50 mt-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingUp className="h-3 w-3" />
             <span>

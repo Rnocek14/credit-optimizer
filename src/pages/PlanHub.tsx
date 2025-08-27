@@ -253,7 +253,7 @@ export default function PlanHub() {
 
         {/* Today Dashboard - Now integrated in Overview tab */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -332,18 +332,18 @@ export default function PlanHub() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                          <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          <span className="text-sm">Learn Python fundamentals (Current)</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                          <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
-                          <span className="text-sm text-muted-foreground">Master statistics and probability</span>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                          <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
-                          <span className="text-sm text-muted-foreground">Learn machine learning basics</span>
-                        </div>
+                         <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+                           <div className="w-2 h-2 bg-primary rounded-full"></div>
+                           <span className="text-sm">Learn Python fundamentals (Current)</span>
+                         </div>
+                         <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                           <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                           <span className="text-sm text-muted-foreground">Master statistics and probability</span>
+                         </div>
+                         <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                           <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                           <span className="text-sm text-muted-foreground">Learn machine learning basics</span>
+                         </div>
                       </div>
                     </CardContent>
                   </Card>
