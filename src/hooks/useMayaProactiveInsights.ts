@@ -39,11 +39,12 @@ export function useMayaProactiveInsights(userId?: string) {
         });
       }
 
-      // Use the canonical view to keep filter logic in one place (DB)
+      // Use direct table query first as fallback, then try view
       const { data, error: fetchError } = await supabase
-        .from('maya_visible_insights')
+        .from('maya_proactive_insights')
         .select('*')
         .eq('user_id', userId)
+        .is('dismissed_at', null)
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
 
