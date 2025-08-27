@@ -28,6 +28,7 @@ import { trackTelemetryEvent } from "@/utils/telemetry";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import TutorialTip from '@/tutorial/TutorialTip';
 import { TIPS } from '@/tutorial/tutorial-map';
+import { PolishedPageLayout, PageHeader, Section } from "@/components/PolishedPageLayout";
 
 interface MilestonePlan {
   id: string;
@@ -247,144 +248,137 @@ export default function Plans() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-12 max-w-6xl space-content-lg">
-      {/* Header */}
-      <div className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">📘 Milestone Plans</h1>
-            <p className="text-muted-foreground">
-              Track and manage your personalized learning roadmaps
-            </p>
-          </div>
-          {tracks.length > 0 && (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <TrackSelector />
-                <TutorialTip id="trackSelector" label={TIPS.trackSelector} />
-              </div>
+    <PolishedPageLayout containerSize="xl" spacing="lg" className="space-section-lg">
+      <PageHeader 
+        title="📘 Milestone Plans"
+        description="Track and manage your personalized learning roadmaps"
+      >
+        {tracks.length > 0 && (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <TrackSelector />
+              <TutorialTip id="trackSelector" label={TIPS.trackSelector} />
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </PageHeader>
 
-        {/* Career Profile Card - Only render if trackIdToUse exists */}
-      {trackIdToUse ? (
-        <div className="mb-12">
+      <Section spacing="lg">
+        {trackIdToUse ? (
           <CareerProfileCard 
             trackId={trackIdToUse}
             onSimulateSwitch={() => openSwitchSimulatorWith(trackIdToUse)}
             onCompareTracks={() => navigate(`/plan/compare?a=${trackIdToUse}`)}
             onOptimizeLocation={() => openLocationOptimizerFor(trackIdToUse)}
           />
-        </div>
-      ) : !tracksLoading && (
-        <div className="mb-12">
+        ) : !tracksLoading && (
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="py-16 px-10">
               <div className="text-center text-muted-foreground">
-                <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
-                <p>No active career track found. Please create a track first.</p>
+                <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
+                <p className="text-lg">No active career track found. Please create a track first.</p>
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+        )}
+      </Section>
 
-      {/* Saved Courses List Integration */}
-      <ErrorBoundary>
-        <div className="mb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-semibold">Saved Courses</h2>
-            <TutorialTip 
-              id="plansSavedCourses" 
-              label={TIPS.plansSavedCourses} 
-            />
-          </div>
+      <Section 
+        title="Saved Courses" 
+        spacing="lg"
+        className="space-y-8"
+      >
+        <div className="flex items-center gap-2 mb-6">
+          <TutorialTip 
+            id="plansSavedCourses" 
+            label={TIPS.plansSavedCourses} 
+          />
+        </div>
+        <ErrorBoundary>
           <SavedCoursesList currentCRI={criData?.cri || 0} />
-        </div>
-      </ErrorBoundary>
+        </ErrorBoundary>
+      </Section>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="active" className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Active ({plans.filter(p => p.status === 'active').length})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" />
-              Completed ({plans.filter(p => p.status === 'completed').length})
-            </TabsTrigger>
-          </TabsList>
-          <TutorialTip id="activePlansTab" label={TIPS.activePlansTab} />
-        </div>
+      <Section spacing="lg">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="space-y-8">
+          <div className="flex items-center gap-4 mb-8">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="active" className="flex items-center gap-2 py-3 px-6">
+                <Clock className="w-4 h-4" />
+                Active ({plans.filter(p => p.status === 'active').length})
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="flex items-center gap-2 py-3 px-6">
+                <CheckCircle2 className="w-4 h-4" />
+                Completed ({plans.filter(p => p.status === 'completed').length})
+              </TabsTrigger>
+            </TabsList>
+            <TutorialTip id="activePlansTab" label={TIPS.activePlansTab} />
+          </div>
 
-        <TabsContent value="active" className="mt-6">
-          {filteredPlans.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Active Plans Yet</h3>
-                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                    Ready to level up? Ask Maya to create your first milestone plan!
-                  </p>
-                  <Button onClick={() => navigate('/mentor')} className="gap-2">
-                    <MessageCircle className="w-4 h-4" />
-                    Chat with Maya
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {filteredPlans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  isExpanded={expandedPlans.has(plan.id)}
-                  onToggleExpansion={() => togglePlanExpansion(plan.id)}
-                  onStepToggle={(stepIndex, completed) => handleStepToggle(plan, stepIndex, completed)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
+          <TabsContent value="active" className="mt-8">
+            {filteredPlans.length === 0 ? (
+              <Card>
+                <CardContent className="py-20 px-10">
+                  <div className="text-center">
+                    <BookOpen className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+                    <h3 className="text-xl font-semibold mb-4">No Active Plans Yet</h3>
+                    <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg">
+                      Ready to level up? Ask Maya to create your first milestone plan!
+                    </p>
+                    <Button onClick={() => navigate('/mentor')} className="gap-2 px-6 py-3">
+                      <MessageCircle className="w-4 h-4" />
+                      Chat with Maya
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                {filteredPlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isExpanded={expandedPlans.has(plan.id)}
+                    onToggleExpansion={() => togglePlanExpansion(plan.id)}
+                    onStepToggle={(stepIndex, completed) => handleStepToggle(plan, stepIndex, completed)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
-        <TabsContent value="completed" className="mt-6">
-          {filteredPlans.length === 0 ? (
-            <Card>
-              <CardContent className="py-12">
-                <div className="text-center">
-                  <CheckCircle2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Completed Plans Yet</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Complete your first milestone plan to see it here!
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {filteredPlans.map((plan) => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  isExpanded={expandedPlans.has(plan.id)}
-                  onToggleExpansion={() => togglePlanExpansion(plan.id)}
-                  onStepToggle={(stepIndex, completed) => handleStepToggle(plan, stepIndex, completed)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="completed" className="mt-8">
+            {filteredPlans.length === 0 ? (
+              <Card>
+                <CardContent className="py-20 px-10">
+                  <div className="text-center">
+                    <CheckCircle2 className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+                    <h3 className="text-xl font-semibold mb-4">No Completed Plans Yet</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto text-lg">
+                      Complete your first milestone plan to see it here!
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                {filteredPlans.map((plan) => (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isExpanded={expandedPlans.has(plan.id)}
+                    onToggleExpansion={() => togglePlanExpansion(plan.id)}
+                    onStepToggle={(stepIndex, completed) => handleStepToggle(plan, stepIndex, completed)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </Section>
 
-      {/* Test celebration button */}
       {plans.length > 0 && (
-        <div className="mt-8 text-center">
+        <Section className="text-center pt-8">
           <Button 
             variant="outline" 
             size="sm"
@@ -393,7 +387,7 @@ export default function Plans() {
           >
             🎉 Test Celebration
           </Button>
-        </div>
+        </Section>
       )}
 
       {/* Career Switch Simulator Modal */}
@@ -414,7 +408,7 @@ export default function Plans() {
         toTrackId={tracks.find(t => t.id !== simulatorFromTrackId && !t.archived)?.id || tracks.filter(t => !t.archived && t.id !== simulatorFromTrackId)[0]?.id}
         onLocationSelect={handleLocationSelect}
       />
-    </div>
+    </PolishedPageLayout>
   );
 }
 
@@ -434,31 +428,31 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
     <Card className="transition-all duration-200 hover:shadow-md">
       <Collapsible open={isExpanded} onOpenChange={onToggleExpansion}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-10">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <CardTitle className="flex items-center gap-3 mb-2">
-                  <span className="text-lg">📘</span>
-                  <span className="text-lg">{plan.title}</span>
-                  <Badge variant={plan.status === 'completed' ? 'default' : 'secondary'}>
+                <CardTitle className="flex items-center gap-4 mb-4">
+                  <span className="text-xl">📘</span>
+                  <span className="text-xl">{plan.title}</span>
+                  <Badge variant={plan.status === 'completed' ? 'default' : 'secondary'} className="px-3 py-1">
                     {plan.status}
                   </Badge>
                   <TutorialTip id="planStatus" label={TIPS.planStatus} />
                 </CardTitle>
                 {plan.description && (
-                  <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                  <p className="text-muted-foreground mb-6 text-base leading-relaxed">{plan.description}</p>
                 )}
                 
                 {/* Progress */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">
                       {completedSteps} of {totalSteps} steps completed
                     </span>
-                    <span className="font-medium">{progressPercentage}%</span>
+                    <span className="font-medium text-lg">{progressPercentage}%</span>
                     <TutorialTip id="planProgress" label={TIPS.planProgress} />
                   </div>
-                  <Progress value={progressPercentage} className="h-2" />
+                  <Progress value={progressPercentage} className="h-3" />
                 </div>
                 
                 <div className="flex items-center justify-between mt-3">
@@ -484,32 +478,32 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="pt-0">
-            <Separator className="mb-4" />
-            <div className="space-y-3">
+          <CardContent className="pt-0 px-10 pb-10">
+            <Separator className="mb-8" />
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
-                <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                <h4 className="font-medium text-muted-foreground uppercase tracking-wide">
                   Steps to Complete
                 </h4>
                 <TutorialTip id="planSteps" label={TIPS.planSteps} />
               </div>
               
               {plan.steps.map((step, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                <div key={index} className="flex items-start gap-4 p-5 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
                   <Checkbox
                     checked={step.completed || false}
                     onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
-                    className="mt-0.5"
+                    className="mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
+                    <p className={`text-base leading-relaxed ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
                       {step.title || step.text || `Step ${index + 1}`}
                     </p>
                     {step.description && (
-                      <p className="text-xs text-muted-foreground mt-1">{step.description}</p>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{step.description}</p>
                     )}
                     {step.completed && step.completed_at && (
-                      <p className="text-xs text-green-600 mt-1">
+                      <p className="text-sm text-green-600 mt-2">
                         ✅ Completed {format(parseISO(step.completed_at), 'MMM d, h:mm a')}
                       </p>
                     )}
