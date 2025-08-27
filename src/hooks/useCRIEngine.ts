@@ -44,31 +44,81 @@ export interface MayaExplanation {
 export const useCRIEngine = (userId?: string, trackId?: string) => {
   const queryClient = useQueryClient();
 
-  // Fetch CRI breakdown
+  // Fetch CRI breakdown from actual database tables
   const { data: criBreakdown, isLoading: criLoading, error: criError } = useQuery({
     queryKey: ['cri-breakdown', userId, trackId],
-    queryFn: async (): Promise<CRIBreakdown> => {
+    queryFn: async (): Promise<CRIBreakdown | null> => {
       if (!userId) throw new Error('User ID required');
       
-      const { data, error } = await supabase.functions.invoke('cri-calculation-engine', {
-        body: {
-          action: 'get_breakdown',
-          userId,
-          trackId,
-        }
-      });
+      try {
+        // First try to get existing CRI data from user_cri_scores
+        const { data: criData, error: criError } = await supabase
+          .from('user_cri_scores')
+          .select('*')
+          .eq('user_id', userId)
+          .order('last_calculated', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (error) throw error;
-      return data;
+        if (criError) {
+          console.error('Error fetching CRI data:', criError);
+          throw criError;
+        }
+
+        if (!criData) {
+          // No CRI data exists, trigger calculation via edge function
+          console.log('No CRI data found, triggering calculation...');
+          const { data, error } = await supabase.functions.invoke('cri-calculation-engine', {
+            body: {
+              action: 'calculate_cri',
+              userId,
+              trackId,
+            }
+          });
+
+          if (error) throw error;
+          return data;
+        }
+
+        // Map existing data to expected format
+        return {
+          criScore: criData.current_cri_score || 0,
+          level: (criData.readiness_level as 'Beginner' | 'Developing' | 'Intermediate' | 'Advanced' | 'Expert') || 'Beginner',
+          components: {
+            skills: criData.skill_completion_percentage || 0,
+            experience: criData.experience_score || 0,
+            education: 0, // Calculate from other data
+            portfolio: 0, // Calculate from other data
+            marketReadiness: 0, // Calculate from other data
+          },
+          insights: criData.next_priority_items || [],
+          trend: { 
+            direction: 'stable' as const, 
+            change: 0 
+          },
+          lastCalculated: criData.last_calculated || criData.created_at,
+          recommendations: (criData.blocking_factors || []).map((factor: string) => ({
+            area: 'General',
+            action: factor,
+            priority: 'medium' as const
+          })),
+        };
+      } catch (error) {
+        console.error('Error in CRI breakdown fetch:', error);
+        throw error;
+      }
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Only retry once
   });
 
   // Recalculate CRI mutation
   const recalculateCRIMutation = useMutation({
     mutationFn: async (trackId?: string): Promise<CRIBreakdown> => {
       if (!userId) throw new Error('User ID required');
+      
+      console.log('Triggering CRI recalculation for user:', userId);
       
       const { data, error } = await supabase.functions.invoke('cri-calculation-engine', {
         body: {
@@ -78,16 +128,25 @@ export const useCRIEngine = (userId?: string, trackId?: string) => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('CRI calculation error:', error);
+        throw new Error(error.message || 'Failed to calculate CRI');
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from CRI calculation');
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['cri-breakdown', userId, trackId], data);
+      queryClient.invalidateQueries({ queryKey: ['cri-breakdown', userId] });
       toast.success('CRI recalculated successfully!');
     },
     onError: (error: any) => {
       console.error('Error recalculating CRI:', error);
-      toast.error('Failed to recalculate CRI');
+      toast.error(`Failed to recalculate CRI: ${error.message || 'Unknown error'}`);
     }
   });
 

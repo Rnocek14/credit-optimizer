@@ -117,25 +117,37 @@ async function calculateCRI(supabase: any, userId: string, trackId?: string) {
     marketReadiness: marketReadinessScore
   });
 
-  // Store CRI calculation
-  const { data: criRecord } = await supabase
-    .from('cri_calculations')
-    .insert({
+  // Store CRI calculation in user_cri_scores table
+  const { data: criRecord, error: insertError } = await supabase
+    .from('user_cri_scores')
+    .upsert({
       user_id: userId,
-      track_id: trackId,
-      cri_score: criScore,
-      component_scores: {
-        skills: skillsScore,
-        experience: experienceScore,
-        education: educationScore,
-        portfolio: portfolioScore,
-        marketReadiness: marketReadinessScore
-      },
-      insights,
-      calculated_at: new Date().toISOString()
+      target_job_id: null, // Will be set when user selects target job
+      current_cri_score: criScore,
+      required_cri_score: criScore + 20, // Target 20 points higher
+      skill_completion_percentage: skillsScore,
+      step_completion_percentage: 0, // Placeholder
+      project_completion_percentage: portfolioScore,
+      certification_completion_percentage: educationScore,
+      experience_score: experienceScore,
+      experience_years: 0, // Extract from profile if available
+      readiness_level: getCRILevel(criScore),
+      estimated_time_to_ready: '3-6 months', // Based on gap
+      next_priority_items: insights,
+      blocking_factors: [],
+      last_calculated: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id',
+      ignoreDuplicates: false
     })
     .select()
     .single();
+
+  if (insertError) {
+    console.error('Error storing CRI calculation:', insertError);
+    // Continue execution even if storage fails
+  }
 
   return new Response(
     JSON.stringify({
@@ -211,39 +223,55 @@ async function updateProgress(supabase: any, userId: string, progressData: any) 
 }
 
 async function getCRIBreakdown(supabase: any, userId: string, trackId?: string) {
-  // Get latest CRI calculation
-  const { data: latestCRI } = await supabase
-    .from('cri_calculations')
+  console.log(`Getting CRI breakdown for user: ${userId}`);
+  
+  // Get latest CRI calculation from user_cri_scores
+  const { data: latestCRI, error: fetchError } = await supabase
+    .from('user_cri_scores')
     .select('*')
     .eq('user_id', userId)
-    .order('calculated_at', { ascending: false })
+    .order('last_calculated', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Error fetching CRI data:', fetchError);
+    throw fetchError;
+  }
 
   if (!latestCRI) {
+    console.log('No CRI data found, calculating fresh CRI...');
     // Calculate fresh CRI if none exists
     return await calculateCRI(supabase, userId, trackId);
   }
 
-  // Get historical CRI data for trending
+  console.log('Found existing CRI data:', latestCRI);
+
+  // Get historical CRI data for trending (from same table)
   const { data: historicalCRI } = await supabase
-    .from('cri_calculations')
-    .select('cri_score, calculated_at')
+    .from('user_cri_scores')
+    .select('current_cri_score as cri_score, last_calculated as calculated_at')
     .eq('user_id', userId)
-    .order('calculated_at', { ascending: false })
+    .order('last_calculated', { ascending: false })
     .limit(10);
 
-  const trend = calculateCRITrend(historicalCRI);
+  const trend = calculateCRITrend(historicalCRI || []);
 
   return new Response(
     JSON.stringify({
-      criScore: latestCRI.cri_score,
-      level: getCRILevel(latestCRI.cri_score),
-      components: latestCRI.component_scores,
-      insights: latestCRI.insights,
+      criScore: latestCRI.current_cri_score,
+      level: latestCRI.readiness_level || getCRILevel(latestCRI.current_cri_score),
+      components: {
+        skills: latestCRI.skill_completion_percentage || 0,
+        experience: latestCRI.experience_score || 0,
+        education: latestCRI.certification_completion_percentage || 0,
+        portfolio: latestCRI.project_completion_percentage || 0,
+        marketReadiness: 50 // Default value
+      },
+      insights: latestCRI.next_priority_items || [],
       trend,
-      lastCalculated: latestCRI.calculated_at,
-      recommendations: generateDetailedRecommendations(latestCRI)
+      lastCalculated: latestCRI.last_calculated,
+      recommendations: generateDetailedRecommendationsFromCRI(latestCRI)
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
@@ -432,6 +460,56 @@ function generateDetailedRecommendations(criData: any) {
       }
     }
   });
+  
+  return recommendations;
+}
+
+function generateDetailedRecommendationsFromCRI(criData: any) {
+  // Generate recommendations from user_cri_scores format
+  const recommendations = [];
+  
+  if (criData.skill_completion_percentage < 70) {
+    recommendations.push({
+      area: 'Skills Development',
+      action: 'Complete skill assessments and identify gaps',
+      priority: 'high'
+    });
+  }
+  
+  if (criData.experience_score < 70) {
+    recommendations.push({
+      area: 'Experience Building',
+      action: 'Seek internships, projects, or volunteer opportunities',
+      priority: 'medium'
+    });
+  }
+  
+  if (criData.certification_completion_percentage < 70) {
+    recommendations.push({
+      area: 'Continuous Learning',
+      action: 'Enroll in relevant courses and certifications',
+      priority: 'medium'
+    });
+  }
+  
+  if (criData.project_completion_percentage < 70) {
+    recommendations.push({
+      area: 'Portfolio Development',
+      action: 'Create and publish professional portfolio',
+      priority: 'high'
+    });
+  }
+  
+  // Add blocking factors as recommendations
+  if (criData.blocking_factors) {
+    criData.blocking_factors.forEach((factor: string) => {
+      recommendations.push({
+        area: 'Blockers',
+        action: factor,
+        priority: 'high'
+      });
+    });
+  }
   
   return recommendations;
 }

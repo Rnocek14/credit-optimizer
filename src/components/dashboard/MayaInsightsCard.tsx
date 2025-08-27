@@ -257,19 +257,24 @@ export function MayaInsightsCard({
     }
   };
 
+  // Smart card sizing - reduce height when no insights
+  const hasContent = hasProactiveInsights || loading;
+  const cardClasses = cn(
+    "border-l-4 bg-gradient-to-br from-background to-muted/20 transition-all duration-200",
+    currentInsight ? getPriorityColor(currentInsight.priority) : "border-l-primary",
+    !hasContent && !loading ? "min-h-fit" : ""
+  );
+
   return (
-    <Card className={cn(
-      "border-l-4 bg-gradient-to-br from-background to-muted/20",
-      currentInsight ? getPriorityColor(currentInsight.priority) : "border-l-primary"
-    )}>
-      <CardHeader>
+    <Card className={cardClasses}>
+      <CardHeader className={cn("pb-3", !hasContent && !loading ? "pb-2" : "")}>
         <CardTitle className="flex items-center gap-2">
           <div className="p-1.5 rounded-full bg-primary/10">
             <Bot className="h-4 w-4 text-primary" />
           </div>
           <div className="flex flex-col">
             <span>Maya's {hasProactiveInsights ? 'Live' : 'Daily'} Insights</span>
-            {lastFetchedAt && (
+            {lastFetchedAt && hasProactiveInsights && (
               <span 
                 className="text-xs font-normal text-muted-foreground"
                 aria-live="polite"
@@ -292,9 +297,15 @@ export function MayaInsightsCard({
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          {hasProactiveInsights && currentInsight ? (
+      <CardContent className={cn("space-y-4", !hasContent && !loading ? "py-3" : "")}>
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-4 bg-muted animate-pulse rounded" />
+            <div className="h-12 bg-muted animate-pulse rounded" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {hasProactiveInsights && currentInsight ? (
             <>
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-medium text-sm leading-relaxed">
@@ -393,31 +404,44 @@ export function MayaInsightsCard({
                 </div>
               )}
             </>
-          ) : (
-            <>
-              <p className="text-sm leading-relaxed">
-                {getPersonalizedGreeting()}
-              </p>
+            ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  No insights available right now
+                </p>
+                {insights.length === 0 && !loading && (
+                  <Badge variant="outline" className="text-xs">
+                    {Math.max(0, 517 - insights.length)} insights in system
+                  </Badge>
+                )}
+              </div>
               
-              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {getPersonalizedInsight()}
+              <div className="p-2 rounded-lg bg-muted/20 border border-dashed border-border/50">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-3 w-3 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Generate personalized insights based on your profile and goals
                   </p>
                 </div>
               </div>
-            </>
+            </div>
           )}
-        </div>
+          </div>
+        )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+        <div className={cn(
+          "flex items-center justify-between pt-2 border-t border-border/50",
+          !hasContent && !loading ? "mt-2" : ""
+        )}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingUp className="h-3 w-3" />
             <span>
               {hasProactiveInsights 
                 ? `${insights.length} active insight${insights.length !== 1 ? 's' : ''}`
-                : `Analyzing ${recommendations.length} opportunities`
+                : loading 
+                  ? 'Loading insights...'
+                  : 'Ready to generate insights'
               }
             </span>
           </div>
@@ -430,8 +454,8 @@ export function MayaInsightsCard({
               onClick={() => generateInsights()}
               disabled={loading}
             >
-              <Sparkles className="h-3 w-3 mr-1" />
-              {insights.length > 0 ? 'Refresh' : 'Generate Insights'}
+              <Sparkles className={cn("h-3 w-3 mr-1", loading && "animate-spin")} />
+              {loading ? 'Generating...' : insights.length > 0 ? 'Refresh' : 'Generate Insights'}
             </Button>
             <Button 
               variant="ghost" 
