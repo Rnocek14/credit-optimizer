@@ -585,26 +585,42 @@ export function MarketIntelligenceDashboard() {
 
               {/* Row 2: Intelligence Insights & Smart Suggestions */}
               <div className="grid gap-6 lg:grid-cols-2">
-                <IntelligenceInsightsCard
-                  selectedCareerPath={selectedCareerPath}
-                  selectedLocation={selectedLocation}
-                  analysis={analysis}
-                  marketData={marketData}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
-                />
+                <Card id="mi-compare" className="relative">
+                  <div className="absolute top-4 right-4">
+                    <TutorialTip
+                      id="mi_trend_compare"
+                      label="Compare 2–4 careers side-by-side. The highlight shows the best performer on your chosen metric with real-time data."
+                    />
+                  </div>
+                  <IntelligenceInsightsCard
+                    selectedCareerPath={selectedCareerPath}
+                    selectedLocation={selectedLocation}
+                    analysis={analysis}
+                    marketData={marketData}
+                    onNavigateToTab={(tab) => setActiveTab(tab)}
+                  />
+                </Card>
                 
-                <SmartSuggestionsWidget
-                  marketData={marketData}
-                  selectedCareerPath={selectedCareerPath?.title}
-                  selectedLocation={selectedLocation?.value}
-                  onSuggestionSelect={(careerPath, location) => {
-                    const careerPathObj = { id: careerPath, title: careerPath };
-                    const locationObj = { id: location, label: location, value: location, emoji: '🌍' };
-                    setSelectedCareerPath(careerPathObj);
-                    setSelectedLocation(locationObj);
-                  }}
-                  onActionClick={handleUnifiedAction}
-                />
+                <Card id="mi-alerts" className="relative">
+                  <div className="absolute top-4 right-4">
+                    <TutorialTip
+                      id="mi_alerts_tip"
+                      label="Turn on alerts for demand spikes, salary moves, or new credentials. Stay ahead of market changes in your field."
+                    />
+                  </div>
+                  <SmartSuggestionsWidget
+                    marketData={marketData}
+                    selectedCareerPath={selectedCareerPath?.title}
+                    selectedLocation={selectedLocation?.value}
+                    onSuggestionSelect={(careerPath, location) => {
+                      const careerPathObj = { id: careerPath, title: careerPath };
+                      const locationObj = { id: location, label: location, value: location, emoji: '🌍' };
+                      setSelectedCareerPath(careerPathObj);
+                      setSelectedLocation(locationObj);
+                    }}
+                    onActionClick={handleUnifiedAction}
+                  />
+                </Card>
               </div>
 
               {/* Row 3: Real-time Market Data & Action Bridge */}
@@ -879,7 +895,15 @@ export function MarketIntelligenceDashboard() {
 
               {/* Compare Market Trends Panel */}
               {selectedCareerPath && selectedLocation && marketData.length > 0 && (
-                <CompareMarketTrendsPanel />
+                <Card id="mi-heatmap" className="relative">
+                  <div className="absolute top-4 right-4">
+                    <TutorialTip
+                      id="mi_roi_heatmap"
+                      label="Heatmap shows where your path pays off most after cost of living. Hover for detailed ROI breakdown by location."
+                    />
+                  </div>
+                  <CompareMarketTrendsPanel />
+                </Card>
               )}
 
               {/* Salary Analysis Display */}
@@ -969,12 +993,20 @@ export function MarketIntelligenceDashboard() {
               )}
 
               {/* Market Intelligence Export Panel */}
-              <MarketIntelligenceExportPanel 
-                selectedCareerPath={selectedCareerPath?.title}
-                selectedLocation={selectedLocation?.value}
-                marketData={marketData}
-                analysisData={analysis}
-              />
+              <Card id="mi-export" className="relative">
+                <div className="absolute top-4 right-4">
+                  <TutorialTip
+                    id="mi_export_csv"
+                    label="Export the current view to CSV for deeper analysis or sharing with colleagues and mentors."
+                  />
+                </div>
+                <MarketIntelligenceExportPanel 
+                  selectedCareerPath={selectedCareerPath?.title}
+                  selectedLocation={selectedLocation?.value}
+                  marketData={marketData}
+                  analysisData={analysis}
+                />
+              </Card>
 
               {/* Alert History */}
               <Card>

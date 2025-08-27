@@ -404,7 +404,13 @@ export default function ResumeAnalyticsDashboard() {
             </h2>
             <p className="text-muted-foreground">Your learning journey insights</p>
           </div>
-          <div className="flex gap-2">
+          <div id="ra-actions" className="flex gap-2 relative">
+            <div className="absolute -top-8 -right-4">
+              <TutorialTip
+                id="ra_reco_action"
+                label="Add a course, set a goal, or export a recruiter-ready summary. Take immediate action on your career development."
+              />
+            </div>
             <Button onClick={handleTestEdgeFunctions} variant="outline" className="gap-2">
               🧪 Test Functions
             </Button>
@@ -525,7 +531,13 @@ export default function ResumeAnalyticsDashboard() {
 
         {/* ROI Insights */}
         {roiInsight && (
-          <Card>
+          <Card id="ra-roi-lqi" className="relative">
+            <div className="absolute top-4 right-4">
+              <TutorialTip
+                id="ra_roi_lqi_explain"
+                label="ROI & LQI factors show where your growth could accelerate most. Focus on high-impact opportunities first."
+              />
+            </div>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 📈 Career ROI Insights
@@ -580,7 +592,13 @@ export default function ResumeAnalyticsDashboard() {
         {/* Timeline and Learning Snapshot */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Timeline Chart */}
-          <Card>
+          <Card id="ra-timeline" className="relative">
+            <div className="absolute top-4 right-4">
+              <TutorialTip
+                id="ra_timeline"
+                label="Scroll the timeline to see pace and impact of your learning. Identify patterns and optimize your growth velocity."
+              />
+            </div>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 📆 Recent Activity
@@ -623,7 +641,13 @@ export default function ResumeAnalyticsDashboard() {
           </Card>
 
           {/* Learning Snapshot */}
-          <Card>
+          <Card id="ra-top-skills" className="relative">
+            <div className="absolute top-4 right-4">
+              <TutorialTip
+                id="ra_skills_top"
+                label="Top skills are inferred from transcripts and projects—click to open gaps analysis and improvement recommendations."
+              />
+            </div>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 🧠 Learning Snapshot

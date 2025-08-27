@@ -10,6 +10,7 @@ import { MayaDecisionFeedback } from './MayaDecisionFeedback';
 import MayaDecisionExplainer from './MayaDecisionExplainer';
 import { WorkflowCertificateManager } from './WorkflowCertificateManager';
 import { useWorkflowCertificates } from '@/hooks/useWorkflowCertificates';
+import TutorialTip from '@/tutorial/TutorialTip';
 import { 
   Brain, 
   TrendingUp, 
@@ -273,9 +274,17 @@ export function MayaIntelligenceDashboard() {
                         <div className="flex items-center gap-2">
                           <Sparkles className="w-4 h-4 text-purple-500" />
                           <span className="font-medium text-sm">{decision.decision_type.replace('_', ' ').toUpperCase()}</span>
-                          <Badge className={`text-xs ${getConfidenceColor(decision.confidence_score)}`}>
-                            {(decision.confidence_score * 100).toFixed(1)}% confident
-                          </Badge>
+                          <div id="maya-confidence" className="relative">
+                            <div className="absolute -top-2 -right-2">
+                              <TutorialTip
+                                id="maya_confidence"
+                                label="Confidence reflects data quality and past success in similar contexts. Higher confidence means better predictions."
+                              />
+                            </div>
+                            <Badge className={`text-xs ${getConfidenceColor(decision.confidence_score)}`}>
+                              {(decision.confidence_score * 100).toFixed(1)}% confident
+                            </Badge>
+                          </div>
                         </div>
                         <span className="text-xs text-gray-500">{formatTimestamp(decision.created_at)}</span>
                       </div>
@@ -297,15 +306,23 @@ export function MayaIntelligenceDashboard() {
                         onFeedbackUpdate={fetchMayaDecisions}
                       />
                       
-                      <MayaDecisionExplainer
-                        decisionId={decision.id}
-                        decisionType={decision.decision_type}
-                        rationale={decision.decision_rationale}
-                        context={decision.decision_context}
-                        executionResult={decision.execution_result}
-                        confidence={decision.confidence_score}
-                        existingExplanation={decision.decision_context?.explanation}
-                      />
+                      <div id="maya-why" className="relative">
+                        <div className="absolute top-2 right-2">
+                          <TutorialTip
+                            id="maya_why_this_step"
+                            label="See why Maya picked this step—logic, alternatives, and fit analysis. Understand the AI reasoning behind recommendations."
+                          />
+                        </div>
+                        <MayaDecisionExplainer
+                          decisionId={decision.id}
+                          decisionType={decision.decision_type}
+                          rationale={decision.decision_rationale}
+                          context={decision.decision_context}
+                          executionResult={decision.execution_result}
+                          confidence={decision.confidence_score}
+                          existingExplanation={decision.decision_context?.explanation}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -416,14 +433,22 @@ export function MayaIntelligenceDashboard() {
                               </div>
                             )}
                             
-                            <WorkflowCertificateManager
-                             workflowId={workflow.id}
-                             workflowTitle={workflow.title}
-                             workflowStatus={workflow.status}
-                             completedAt={workflow.completed_at}
-                             mayaDecisions={workflowDecisions}
-                             workflowSteps={workflow.workflow_steps || []}
-                           />
+                            <div id="maya-certificates" className="relative">
+                              <div className="absolute top-2 right-2">
+                                <TutorialTip
+                                  id="maya_certificates"
+                                  label="Earn 'Trusted by Maya' certificates after high-confidence completions. Validate your achievements with AI backing."
+                                />
+                              </div>
+                              <WorkflowCertificateManager
+                                workflowId={workflow.id}
+                                workflowTitle={workflow.title}
+                                workflowStatus={workflow.status}
+                                completedAt={workflow.completed_at}
+                                mayaDecisions={workflowDecisions}
+                                workflowSteps={workflow.workflow_steps || []}
+                              />
+                            </div>
                          </CardContent>
                        </Card>
                      );

@@ -19,6 +19,7 @@ import {
   Users,
   Share2
 } from 'lucide-react';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface WorkflowCertificate {
   id: string;
@@ -281,7 +282,13 @@ export function WorkflowCertificateManager({
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div id="maya-share-linkedin" className="flex gap-2 relative">
+              <div className="absolute -top-8 -right-4">
+                <TutorialTip
+                  id="maya_share_linkedin"
+                  label="Share your verified step or certificate on LinkedIn. Showcase your AI-validated career progress professionally."
+                />
+              </div>
               <Button onClick={downloadCertificatePDF} variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF

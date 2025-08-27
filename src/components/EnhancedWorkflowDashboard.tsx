@@ -8,6 +8,7 @@ import { useAutonomousWorkflows } from '@/hooks/useAutonomousWorkflows';
 import { WorkflowStepExecutor } from './WorkflowStepExecutor';
 import { WorkflowProgressTracker } from './WorkflowProgressTracker';
 import { PlayCircle, PauseCircle, CheckCircle, AlertCircle, Clock, TrendingUp } from 'lucide-react';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 export function EnhancedWorkflowDashboard() {
   const { 
@@ -139,16 +140,23 @@ export function EnhancedWorkflowDashboard() {
           )}
         </TabsContent>
 
-        <TabsContent value="next-steps" className="space-y-4">
-          {nextSteps.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No immediate actions required</p>
-                <p className="text-sm text-gray-400 mt-2">Maya will notify you when steps are ready</p>
-              </CardContent>
-            </Card>
-          ) : (
+        <TabsContent value="next-steps" className="space-y-4" id="maya-alt-paths">
+          <div className="relative">
+            <div className="absolute top-2 right-2">
+              <TutorialTip
+                id="maya_alt_paths"
+                label="Explore alternatives when time, budget, or difficulty is a constraint. Maya shows multiple pathways to your goals."
+              />
+            </div>
+            {nextSteps.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No immediate actions required</p>
+                  <p className="text-sm text-gray-400 mt-2">Maya will notify you when steps are ready</p>
+                </CardContent>
+              </Card>
+            ) : (
             nextSteps.map((step) => (
               <Card key={step.id} className="w-full">
                 <CardContent className="py-4">
@@ -179,7 +187,8 @@ export function EnhancedWorkflowDashboard() {
                 </CardContent>
               </Card>
             ))
-          )}
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="completed" className="space-y-4">
