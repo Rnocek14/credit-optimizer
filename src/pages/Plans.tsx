@@ -291,6 +291,13 @@ export default function Plans() {
       {/* Saved Courses List Integration */}
       <ErrorBoundary>
         <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-xl font-semibold">Saved Courses</h2>
+            <TutorialTip 
+              id="plansSavedCourses" 
+              label={TIPS.plansSavedCourses} 
+            />
+          </div>
           <SavedCoursesList currentCRI={criData?.cri || 0} />
         </div>
       </ErrorBoundary>

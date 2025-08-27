@@ -9,6 +9,8 @@ import { Star, MapPin, Trophy, Eye, ArrowRight, Sparkles } from "lucide-react";
 import { Helmet } from 'react-helmet-async';
 import { AuthDebugPanel } from '@/components/debug/AuthDebugPanel';
 import { FunctionalityTester } from '@/components/debug/FunctionalityTester';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 
 interface FeaturedProfile {
   id: string;
@@ -151,6 +153,10 @@ export default function Discover() {
             <div className="flex items-center justify-center mb-6">
               <Sparkles className="h-8 w-8 text-primary mr-3" />
               <span className="text-lg font-semibold text-primary tracking-wide">FEATURED TALENT</span>
+              <TutorialTip 
+                id="discoverTalent" 
+                label="Browse featured professionals with AI-verified skills and experience. These profiles showcase top talent with verified credentials and career achievements." 
+              />
             </div>
             
             <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
@@ -162,12 +168,18 @@ export default function Discover() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild className="group">
-                <Link to="/resume-gallery">
-                  Explore Talent Gallery
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2 justify-center">
+                <Button size="lg" asChild className="group">
+                  <Link to="/resume-gallery">
+                    Explore Talent Gallery
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+                <TutorialTip 
+                  id="talentGallery" 
+                  label="Explore the complete talent gallery with advanced filters, search capabilities, and detailed profiles of verified professionals." 
+                />
+              </div>
               <Button size="lg" variant="outline" asChild>
                 <Link to="/auth">Join as Talent</Link>
               </Button>
@@ -179,7 +191,13 @@ export default function Discover() {
       {/* Featured Profiles Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Professionals</h2>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold">Featured Professionals</h2>
+            <TutorialTip 
+              id="featuredProfessionals" 
+              label="These are hand-picked professionals who demonstrate exceptional skills and achievements. Each profile includes AI-verified scores and verified credentials." 
+            />
+          </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Meet our top-rated talent with verified skills and AI-validated expertise.
           </p>

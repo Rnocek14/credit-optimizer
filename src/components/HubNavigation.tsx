@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import TutorialToggle from "@/tutorial/TutorialToggle";
+import TutorialTip from "@/tutorial/TutorialTip";
+import { TIPS } from "@/tutorial/tutorial-map";
 
 // Lazy load TrackManager to keep bundle size trim
 const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").then(module => ({ 
@@ -115,22 +117,28 @@ export function HubNavigation() {
           {visibleHubs.map((hub) => {
             const Icon = hub.icon;
             return (
-              <Button
-                key={hub.id}
-                variant={isActive(hub.href) ? "default" : "ghost"}
-                size="sm"
-                asChild
-                className={cn(
-                  "gap-2 font-medium interactive",
-                  isActive(hub.href) && "bg-primary text-primary-foreground shadow-elevation"
-                )}
-              data-testid={`nav-${hub.id}`}
-            >
-              <Link to={hub.href}>
-                <Icon className="h-4 w-4" />
-                {hub.label}
-              </Link>
-            </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  key={hub.id}
+                  variant={isActive(hub.href) ? "default" : "ghost"}
+                  size="sm"
+                  asChild
+                  className={cn(
+                    "gap-2 font-medium interactive",
+                    isActive(hub.href) && "bg-primary text-primary-foreground shadow-elevation"
+                  )}
+                data-testid={`nav-${hub.id}`}
+              >
+                <Link to={hub.href}>
+                  <Icon className="h-4 w-4" />
+                  {hub.label}
+                </Link>
+              </Button>
+              <TutorialTip 
+                id={`${hub.id}Hub`} 
+                label={TIPS[`${hub.id}Hub` as keyof typeof TIPS]} 
+              />
+              </div>
             );
           })}
 
@@ -141,32 +149,39 @@ export function HubNavigation() {
               <span className="text-sm font-medium text-foreground max-w-[200px] truncate">
                 {displayTrackTitle}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowTrackManager(true)}
-                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Settings className="w-3 h-3 mr-1" />
-                Change
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTrackManager(true)}
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <Settings className="w-3 h-3 mr-1" />
+                  Change
+                </Button>
+                <TutorialTip 
+                  id="trackManager" 
+                  label={TIPS.trackManager} 
+                />
+              </div>
             </div>
           )}
 
           {showContribute && (
-            <DropdownMenu open={isMoreOpen} onOpenChange={setIsMoreOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant={location.pathname.startsWith("/contribute") ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-2 font-medium interactive"
-                  data-testid="nav-contribute"
-                >
-                  <Settings className="h-4 w-4" />
-                  CONTRIBUTE
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
+            <div className="flex items-center gap-1">
+              <DropdownMenu open={isMoreOpen} onOpenChange={setIsMoreOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={location.pathname.startsWith("/contribute") ? "default" : "ghost"}
+                    size="sm"
+                    className="gap-2 font-medium interactive"
+                    data-testid="nav-contribute"
+                  >
+                    <Settings className="h-4 w-4" />
+                    CONTRIBUTE
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 bg-popover shadow-floating border">
                   <DropdownMenuItem asChild>
                     <Link to="/contribute?tab=teach" className="flex items-center gap-2">
@@ -200,6 +215,11 @@ export function HubNavigation() {
                   )}
               </DropdownMenuContent>
             </DropdownMenu>
+            <TutorialTip 
+              id="contributeMenu" 
+              label={TIPS.contributeMenu} 
+            />
+            </div>
           )}
 
           {/* Tutorial Toggle & Theme Toggle */}

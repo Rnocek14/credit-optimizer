@@ -10,6 +10,8 @@ import {
 import { useUserJourney } from "@/contexts/UserJourneyContext";
 import { useNavigate } from "react-router-dom";
 import { useModelRouter } from "@/hooks/useModelRouter";
+import TutorialTip from "@/tutorial/TutorialTip";
+import { TIPS } from "@/tutorial/tutorial-map";
 
 export function AdaptiveDashboard() {
   const { state, actions } = useUserJourney();
@@ -174,6 +176,10 @@ export function AdaptiveDashboard() {
               <h2 className="text-xl font-semibold mb-2 flex items-center gap-2">
                 Maya's Insights
                 {isLoadingInsights && <div className="w-4 h-4 bg-primary rounded-full animate-pulse" />}
+                <TutorialTip 
+                  id="mayaInsights" 
+                  label={TIPS.mayaInsights} 
+                />
               </h2>
               <p className="text-muted-foreground mb-4">
                 {mayaInsights?.welcomeMessage || "Welcome back! Let's continue building your career path."}
@@ -194,6 +200,10 @@ export function AdaptiveDashboard() {
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" />
             Your Journey Progress
+            <TutorialTip 
+              id="phaseProgress" 
+              label={TIPS.phaseProgress} 
+            />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
