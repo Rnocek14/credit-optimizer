@@ -10,6 +10,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
+import TutorialProvider from "./tutorial/TutorialProvider";
 import { DevMenu } from "./components/dev/DevMenu";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -137,8 +138,9 @@ const App = () => {
         <HelmetProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <TooltipProvider>
-            <UserJourneyProvider>
-              <UnifiedDataProvider>
+              <TutorialProvider>
+                <UserJourneyProvider>
+                  <UnifiedDataProvider>
                 <EnhancedErrorBoundary
                   onError={(error) => {
                     console.error('App-level error:', error);
@@ -757,11 +759,12 @@ const App = () => {
                 <XPCelebrationOverlay />
                 {process.env.NODE_ENV !== 'production' && <DevMenu />}
               </BrowserRouter>
-            </EnhancedErrorBoundary>
-          </UnifiedDataProvider>
-          </UserJourneyProvider>
-        </TooltipProvider>
-      </ThemeProvider>
+             </EnhancedErrorBoundary>
+                   </UnifiedDataProvider>
+                 </UserJourneyProvider>
+               </TutorialProvider>
+             </TooltipProvider>
+           </ThemeProvider>
     </HelmetProvider>
   </QueryClientProvider>
 </ProductionErrorBoundary>

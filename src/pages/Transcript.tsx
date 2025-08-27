@@ -15,6 +15,8 @@ import { TrustTranscript } from "@/components/resume/TrustTranscript";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 import { useQuery } from "@tanstack/react-query";
 import { 
   GraduationCap, 
@@ -419,11 +421,17 @@ export default function Transcript() {
         </Card>
 
         {/* Trust Transcript */}
-        <TrustTranscript 
-          currentCRI={criData?.cri || 0}
-          computedAt={criData?.computedAt}
-          trackId={activeTrackId || undefined}
-        />
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-2xl font-semibold">Professional Resume</h2>
+            <TutorialTip id="transcriptResume" label={TIPS.transcriptResume} />
+          </div>
+          <TrustTranscript 
+            currentCRI={criData?.cri || 0}
+            computedAt={criData?.computedAt}
+            trackId={activeTrackId || undefined}
+          />
+        </div>
 
         {/* Entries Grid */}
         {entries.length === 0 ? (

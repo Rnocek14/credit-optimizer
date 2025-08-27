@@ -64,6 +64,8 @@ import { RecommendationsRail } from "@/components/course/RecommendationsRail";
 import { trackTelemetryEvent } from "@/utils/telemetry";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { CRIGaugeSkeleton, SkillBreakdownSkeleton } from '@/components/LoadingStates';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 
 interface Course {
   id: string;
@@ -513,7 +515,10 @@ export default function Explore() {
               {/* AI Recommendations Tab */}
               <TabsContent value="recommendations" className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-semibold">Recommended For You</h2>
+                  <h2 className="text-2xl font-semibold flex items-center gap-2">
+                    Recommended For You
+                    <TutorialTip id="exploreRecommendations" label={TIPS.exploreRecommendations} />
+                  </h2>
                   <Button 
                     onClick={generateRecommendations}
                     disabled={isLoadingRecommendations}
@@ -540,6 +545,7 @@ export default function Explore() {
                       <CardTitle className="flex items-center gap-2">
                         <Brain className="w-5 h-5" />
                         Career Readiness Analysis
+                        <TutorialTip id="criGauge" label={TIPS.criGauge} />
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -557,7 +563,10 @@ export default function Explore() {
 
                         {/* Skill Breakdown */}
                         <div className="md:col-span-2">
-                          <h4 className="text-sm font-medium mb-3">Skill Progress</h4>
+                          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                            Skill Progress
+                            <TutorialTip id="skillBars" label={TIPS.skillBars} />
+                          </h4>
                           <SkillBreakdownBars components={criData.components} />
                         </div>
                       </div>

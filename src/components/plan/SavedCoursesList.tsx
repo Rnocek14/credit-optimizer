@@ -9,6 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { BookOpen, Play, CheckCircle2, Star, Clock, ExternalLink, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 
 interface SavedCourse {
   course_id: string;
@@ -200,6 +202,7 @@ export function SavedCoursesList({ currentCRI, className }: SavedCoursesListProp
             <CardTitle className="flex items-center gap-2 text-lg">
               <TrendingUp className="h-5 w-5 text-emerald-600" />
               Projected CRI After Plan
+              <TutorialTip id="planProjectedCRI" label={TIPS.planProjectedCRI} />
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -233,7 +236,10 @@ export function SavedCoursesList({ currentCRI, className }: SavedCoursesListProp
           <div key={status}>
             <div className="flex items-center gap-2 mb-4">
               <config.icon className={`h-5 w-5 text-${config.color}-600`} />
-              <h3 className="text-lg font-semibold">{config.label}</h3>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                {config.label}
+                {status === 'saved' && <TutorialTip id="plansSavedCourses" label={TIPS.plansSavedCourses} />}
+              </h3>
               <Badge variant="secondary">{courses.length}</Badge>
             </div>
 

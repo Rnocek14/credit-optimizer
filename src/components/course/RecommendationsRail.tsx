@@ -7,6 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { BookOpen, ExternalLink, Star, Clock, TrendingUp, Bookmark, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 import type { CIRecommendation } from '@/types/course-intelligence';
 import { sanitizeUrl } from '@/utils/security';
 import { useToast } from '@/hooks/use-toast';
@@ -300,25 +302,31 @@ function CourseCard({
         )}
 
         <div className="flex gap-2 mt-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onSave}
-            className="flex-1"
-            aria-label={`Save ${course.title} to plan`}
-          >
-            <Bookmark className="h-4 w-4 mr-1" />
-            Save to Plan
-          </Button>
-          <Button
-            size="sm"
-            onClick={tryOpen}
-            className="flex-1"
-            aria-label={`Open ${course.title} course`}
-          >
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Open
-          </Button>
+          <div className="flex items-center gap-1 flex-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onSave}
+              className="flex-1"
+              aria-label={`Save ${course.title} to plan`}
+            >
+              <Bookmark className="h-4 w-4 mr-1" />
+              Save to Plan
+            </Button>
+            <TutorialTip id="recoSave" label={TIPS.recoSave} />
+          </div>
+          <div className="flex items-center gap-1 flex-1">
+            <Button
+              size="sm"
+              onClick={tryOpen}
+              className="flex-1"
+              aria-label={`Open ${course.title} course`}
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Open
+            </Button>
+            <TutorialTip id="recoOpen" label={TIPS.recoOpen} />
+          </div>
         </div>
       </CardContent>
     </Card>

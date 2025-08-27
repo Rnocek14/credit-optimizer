@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import TutorialToggle from "@/tutorial/TutorialToggle";
 
 // Lazy load TrackManager to keep bundle size trim
 const TrackManager = lazy(() => import("@/components/multi-track/TrackManager").then(module => ({ 
@@ -201,8 +202,9 @@ export function HubNavigation() {
             </DropdownMenu>
           )}
 
-          {/* Theme Toggle */}
-          <div className="ml-auto">
+          {/* Tutorial Toggle & Theme Toggle */}
+          <div className="ml-auto flex items-center gap-4">
+            <TutorialToggle />
             <ThemeToggle />
           </div>
         </div>

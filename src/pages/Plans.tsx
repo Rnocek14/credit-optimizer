@@ -26,6 +26,8 @@ import { SavedCoursesList } from "@/components/plan/SavedCoursesList";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
 import { trackTelemetryEvent } from "@/utils/telemetry";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import TutorialTip from '@/tutorial/TutorialTip';
+import { TIPS } from '@/tutorial/tutorial-map';
 
 interface MilestonePlan {
   id: string;
