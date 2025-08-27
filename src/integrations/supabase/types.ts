@@ -9317,10 +9317,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
       calculate_alert_accuracy: {
         Args: { config_id: string; days_back?: number }
         Returns: number
@@ -9554,22 +9550,6 @@ export type Database = {
           validation_breakdown: Json
         }[]
       }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
       has_role: {
         Args: {
           check_role: Database["public"]["Enums"]["app_role"]
@@ -9577,45 +9557,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       is_mentor: {
         Args: Record<PropertyKey, never>
         Returns: boolean
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
       }
       lock_phase6_components: {
         Args: { baseline_snapshot_id: string; target_user_id: string }
@@ -9632,18 +9576,6 @@ export type Database = {
       slugify: {
         Args: { input: string }
         Returns: string
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
       start_course_progress: {
         Args: { course_id_param: string; user_id_param: string }
@@ -9686,30 +9618,6 @@ export type Database = {
       validate_mentor_operation: {
         Args: { user_uuid: string }
         Returns: boolean
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
     }
     Enums: {
