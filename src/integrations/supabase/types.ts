@@ -9807,6 +9807,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: boolean
       }
+      validate_no_public_extensions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "user" | "admin" | "mentor"
