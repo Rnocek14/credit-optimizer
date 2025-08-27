@@ -15,6 +15,7 @@ import { TrustTranscript } from "@/components/resume/TrustTranscript";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useQuery } from "@tanstack/react-query";
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import { 
   GraduationCap, 
   Plus, 
@@ -82,6 +83,13 @@ export default function Transcript() {
 
   useEffect(() => {
     fetchEntries();
+    
+    // Track transcript view
+    trackTelemetryEvent({
+      task: 'resume_view',
+      route: '/transcript',
+      function_name: 'transcript_page_load'
+    });
   }, []);
 
   const fetchEntries = async () => {
