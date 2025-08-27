@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { BookOpen, ExternalLink, Star, Clock, TrendingUp, Bookmark, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CIRecommendation } from '@/types/course-intelligence';
+import { sanitizeUrl } from '@/utils/security';
+import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { EmptyStateCard } from '@/components/LoadingStates';
 import { RecommendationsRailSkeleton } from '@/components/LoadingStates';
@@ -231,6 +233,20 @@ function CourseCard({
   getDifficultyLabel 
 }: CourseCardProps) {
   const { course, score, expectedCRIChange, reason } = recommendation;
+  const { toast } = useToast();
+
+  const tryOpen = () => {
+    const safe = sanitizeUrl(course.url);
+    if (!safe) {
+      toast({
+        title: 'Security Error',
+        description: 'This URL is not allowed for security reasons.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    onOpen();
+  };
 
   return (
     <Card className="hover:shadow-lg transition-all duration-200 h-full flex flex-col" role="listitem">
@@ -296,7 +312,7 @@ function CourseCard({
           </Button>
           <Button
             size="sm"
-            onClick={onOpen}
+            onClick={tryOpen}
             className="flex-1"
             aria-label={`Open ${course.title} course`}
           >

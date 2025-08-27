@@ -13,9 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { TrustTranscript } from "@/components/resume/TrustTranscript";
 import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useQuery } from "@tanstack/react-query";
-import { trackTelemetryEvent } from '@/utils/telemetry';
 import { 
   GraduationCap, 
   Plus, 

@@ -1,4 +1,9 @@
 import '@testing-library/jest-dom';
+import { beforeEach, vi } from 'vitest';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
+
+// Make testing utilities globally available
+Object.assign(global, { screen, fireEvent, waitFor });
 
 // Mock Supabase client
 vi.mock('@/integrations/supabase/client', () => ({

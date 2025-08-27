@@ -9,6 +9,7 @@ import { FileText, Download, Shield, Award, Calendar, Star } from 'lucide-react'
 import { CRIGauge } from '@/components/course/CRIGauge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 interface CompletedCourse {
   course_id: string;
@@ -110,20 +111,14 @@ export function TrustTranscript({ currentCRI, computedAt, trackId, className }: 
 
   const handleExportPDF = async () => {
     try {
-      // Log telemetry
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('ai_model_usage')
-          .insert({
-            user_id: user.id,
-            task: 'transcript_export',
-            route: '/transcript',
-            success: true,
-            function_name: 'export_trust_transcript',
-            complexity: JSON.stringify({ cri: currentCRI, courses: completedCourses.length })
-          });
-      }
+      // Log telemetry using utility function
+      await trackTelemetryEvent({
+        task: 'transcript_export',
+        route: '/transcript',
+        success: true,
+        function_name: 'export_trust_transcript',
+        complexity: { cri: currentCRI, courses: completedCourses.length }
+      });
 
       // For now, use print functionality
       window.print();

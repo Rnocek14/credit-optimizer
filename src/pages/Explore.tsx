@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { sanitizeUrl } from '@/utils/security';
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { TrackManager } from "@/components/multi-track/TrackManager";
@@ -406,17 +407,27 @@ export default function Explore() {
   };
 
   const handleOpenCourse = async (url: string) => {
+    const safe = sanitizeUrl(url);
+    if (!safe) {
+      toast({
+        title: 'Security Error',
+        description: 'This URL is not allowed for security reasons.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       // Track telemetry
       await trackTelemetryEvent({
         task: 'explore_reco_action',
-        complexity: { action: 'open' }
+        complexity: { action: 'open', url: safe }
       });
       
-      window.open(url, '_blank');
+      window.open(safe, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Failed to track course open:', error);
-      window.open(url, '_blank');
+      window.open(safe, '_blank', 'noopener,noreferrer');
     }
   };
 
