@@ -104,7 +104,7 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Key Metrics Row */}
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
@@ -145,7 +145,7 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
         </div>
 
         {/* Financial Metrics Row */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+        <div className="grid grid-cols-3 gap-4 pt-3 border-t">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="flex items-center gap-1">
@@ -186,13 +186,13 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
 
         {/* Next Milestone */}
         {profile.nextMilestone && (
-          <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
+          <div className="bg-primary/5 border border-primary/10 rounded-lg p-2">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Next Milestone</span>
               <TutorialTip id="nextMilestone" label={TIPS.nextMilestone} />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {profile.nextMilestone.title} • ETA: {profile.nextMilestone.eta}
             </p>
           </div>

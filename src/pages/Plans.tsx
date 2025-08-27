@@ -248,7 +248,7 @@ export default function Plans() {
   }
 
   return (
-    <PolishedPageLayout containerSize="xl" spacing="lg" className="space-section-lg">
+    <PolishedPageLayout containerSize="lg" spacing="lg" className="space-section-lg">
       <PageHeader 
         title="📘 Milestone Plans"
         description="Track and manage your personalized learning roadmaps"
@@ -273,7 +273,7 @@ export default function Plans() {
           />
         ) : !tracksLoading && (
           <Card>
-            <CardContent className="py-16 px-10">
+            <CardContent className="py-10 px-6">
               <div className="text-center text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-4" />
                 <p className="text-lg">No active career track found. Please create a track first.</p>
@@ -318,14 +318,14 @@ export default function Plans() {
           <TabsContent value="active" className="mt-8">
             {filteredPlans.length === 0 ? (
               <Card>
-                <CardContent className="py-20 px-10">
+                <CardContent className="py-12 px-6">
                   <div className="text-center">
-                    <BookOpen className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-                    <h3 className="text-xl font-semibold mb-4">No Active Plans Yet</h3>
-                    <p className="text-muted-foreground mb-8 max-w-md mx-auto text-lg">
+                    <BookOpen className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-3">No Active Plans Yet</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                       Ready to level up? Ask Maya to create your first milestone plan!
                     </p>
-                    <Button onClick={() => navigate('/mentor')} className="gap-2 px-6 py-3">
+                    <Button onClick={() => navigate('/mentor')} className="gap-2">
                       <MessageCircle className="w-4 h-4" />
                       Chat with Maya
                     </Button>
@@ -350,11 +350,11 @@ export default function Plans() {
           <TabsContent value="completed" className="mt-8">
             {filteredPlans.length === 0 ? (
               <Card>
-                <CardContent className="py-20 px-10">
+                <CardContent className="py-12 px-6">
                   <div className="text-center">
-                    <CheckCircle2 className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-                    <h3 className="text-xl font-semibold mb-4">No Completed Plans Yet</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto text-lg">
+                    <CheckCircle2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-3">No Completed Plans Yet</h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
                       Complete your first milestone plan to see it here!
                     </p>
                   </div>
@@ -428,31 +428,31 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
     <Card className="transition-all duration-200 hover:shadow-md">
       <Collapsible open={isExpanded} onOpenChange={onToggleExpansion}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-10">
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors p-6">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <CardTitle className="flex items-center gap-4 mb-4">
-                  <span className="text-xl">📘</span>
-                  <span className="text-xl">{plan.title}</span>
+                <CardTitle className="flex items-center gap-3 mb-3">
+                  <span className="text-lg">📘</span>
+                  <span className="text-lg">{plan.title}</span>
                   <Badge variant={plan.status === 'completed' ? 'default' : 'secondary'} className="px-3 py-1">
                     {plan.status}
                   </Badge>
                   <TutorialTip id="planStatus" label={TIPS.planStatus} />
                 </CardTitle>
                 {plan.description && (
-                  <p className="text-muted-foreground mb-6 text-base leading-relaxed">{plan.description}</p>
+                  <p className="text-muted-foreground mb-4 text-sm leading-relaxed">{plan.description}</p>
                 )}
                 
                 {/* Progress */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground text-sm">
                       {completedSteps} of {totalSteps} steps completed
                     </span>
-                    <span className="font-medium text-lg">{progressPercentage}%</span>
+                    <span className="font-medium">{progressPercentage}%</span>
                     <TutorialTip id="planProgress" label={TIPS.planProgress} />
                   </div>
-                  <Progress value={progressPercentage} className="h-3" />
+                  <Progress value={progressPercentage} className="h-2" />
                 </div>
                 
                 <div className="flex items-center justify-between mt-3">
@@ -478,32 +478,32 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="pt-0 px-10 pb-10">
+          <CardContent className="px-6 pb-6">
             <Separator className="mb-8" />
-            <div className="space-y-6">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <h4 className="font-medium text-muted-foreground uppercase tracking-wide">
+                <h4 className="font-medium text-muted-foreground uppercase tracking-wide text-sm">
                   Steps to Complete
                 </h4>
                 <TutorialTip id="planSteps" label={TIPS.planSteps} />
               </div>
               
               {plan.steps.map((step, index) => (
-                <div key={index} className="flex items-start gap-4 p-5 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
                   <Checkbox
                     checked={step.completed || false}
                     onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
                     className="mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-base leading-relaxed ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
+                    <p className={`text-sm leading-relaxed ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
                       {step.title || step.text || `Step ${index + 1}`}
                     </p>
                     {step.description && (
-                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{step.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{step.description}</p>
                     )}
                     {step.completed && step.completed_at && (
-                      <p className="text-sm text-green-600 mt-2">
+                      <p className="text-xs text-green-600 mt-1">
                         ✅ Completed {format(parseISO(step.completed_at), 'MMM d, h:mm a')}
                       </p>
                     )}
