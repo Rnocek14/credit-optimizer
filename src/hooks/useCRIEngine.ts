@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 export interface CRIComponents {
   skills: number;
@@ -142,11 +142,11 @@ export const useCRIEngine = (userId?: string, trackId?: string) => {
     onSuccess: (data) => {
       queryClient.setQueryData(['cri-breakdown', userId, trackId], data);
       queryClient.invalidateQueries({ queryKey: ['cri-breakdown', userId] });
-      toast.success('CRI recalculated successfully!');
+      toast({ title: 'CRI updated', description: 'Your Career Readiness Index was recalculated successfully.' });
     },
     onError: (error: any) => {
       console.error('Error recalculating CRI:', error);
-      toast.error(`Failed to recalculate CRI: ${error.message || 'Unknown error'}`);
+      toast({ title: 'Failed to recalculate CRI', description: error?.message || 'Unknown error', variant: 'destructive' });
     }
   });
 
@@ -172,17 +172,25 @@ export const useCRIEngine = (userId?: string, trackId?: string) => {
     },
     onError: (error: any) => {
       console.error('Error getting Maya explanation:', error);
-      toast.error('Failed to get explanation');
+      toast({ title: 'Could not get explanation', description: error?.message || 'Please try again later.', variant: 'destructive' });
     }
   });
 
   const recalculateCRI = useCallback((trackId?: string) => {
+    if (!userId) {
+      toast({ title: 'Sign in required', description: 'Please sign in to calculate your CRI.', variant: 'destructive' });
+      return;
+    }
     recalculateCRIMutation.mutate(trackId);
-  }, [recalculateCRIMutation]);
+  }, [recalculateCRIMutation, userId]);
 
   const getMayaExplanation = useCallback((context: any, stepId?: string) => {
+    if (!userId) {
+      toast({ title: 'Sign in required', description: 'Please sign in to use Maya explanations.', variant: 'destructive' });
+      return;
+    }
     getMayaExplanationMutation.mutate({ context, stepId });
-  }, [getMayaExplanationMutation]);
+  }, [getMayaExplanationMutation, userId]);
 
   return {
     // Data

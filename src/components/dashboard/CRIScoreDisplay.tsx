@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { TrendingUp, TrendingDown, Minus, Target, Zap } from 'lucide-react';
 import { useCRIEngine } from '@/hooks/useCRIEngine';
+import { useToast } from '@/hooks/use-toast';
 
 interface CRIScoreDisplayProps {
   userId?: string;
@@ -14,6 +15,7 @@ interface CRIScoreDisplayProps {
 
 export function CRIScoreDisplay({ userId, trackId, onImproveClick }: CRIScoreDisplayProps) {
   const { criBreakdown, isLoading, recalculateCRI, isRecalculating } = useCRIEngine(userId, trackId);
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -44,9 +46,21 @@ export function CRIScoreDisplay({ userId, trackId, onImproveClick }: CRIScoreDis
         <CardContent>
           <div className="text-center py-4">
             <p className="text-muted-foreground mb-4">Calculate your CRI score to see personalized insights</p>
-            <Button onClick={() => recalculateCRI(trackId)} disabled={isRecalculating}>
+            <Button 
+              onClick={() => {
+                if (!userId) {
+                  toast({ title: 'Sign in required', description: 'Please sign in to calculate your CRI.', variant: 'destructive' });
+                  return;
+                }
+                recalculateCRI(trackId);
+              }} 
+              disabled={isRecalculating || !userId}
+            >
               {isRecalculating ? 'Calculating...' : 'Calculate CRI'}
             </Button>
+            {!userId && (
+              <p className="text-xs text-muted-foreground mt-2">Sign in to calculate and track your CRI.</p>
+            )}
           </div>
         </CardContent>
       </Card>
