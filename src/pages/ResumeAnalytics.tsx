@@ -1,7 +1,10 @@
 import { HubNavigation } from "@/components/HubNavigation";
 import ResumeAnalyticsDashboard from "@/components/ResumeAnalyticsDashboard";
+import { useTutorialDeeplink } from "@/tutorial/useTutorialDeeplink";
 
 export default function ResumeAnalytics() {
+  useTutorialDeeplink();
+  
   return (
     <>
       <HubNavigation />
@@ -16,7 +19,9 @@ export default function ResumeAnalytics() {
             </p>
           </div>
           
-          <ResumeAnalyticsDashboard />
+          <section id="ra-snapshot">
+            <ResumeAnalyticsDashboard />
+          </section>
         </div>
       </div>
     </>
