@@ -67,13 +67,10 @@ export function useWorkflowValidations(userId?: string) {
 
     try {
       const { data, error } = await supabase
-        .from('user_validation_metrics')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+        .rpc('get_user_validation_metrics', { target_user_id: userId });
 
       if (error && error.code !== 'PGRST116') throw error;
-      setMetrics(data as ValidationMetrics);
+      setMetrics((data && (data as any[])[0] ? (data as any[])[0] as unknown as ValidationMetrics : null));
     } catch (err: any) {
       console.error('Error fetching validation metrics:', err);
     }
