@@ -9568,6 +9568,26 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_maya_visible_insights: {
+        Args: { target_user_id?: string }
+        Returns: {
+          acted_upon_at: string
+          category: string
+          confidence_score: number
+          content: string
+          context_data: Json
+          created_at: string
+          dismissed_at: string
+          expires_at: string
+          feedback_rating: number
+          id: string
+          insight_type: string
+          priority: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_mentor_by_user_id: {
         Args: { user_uuid: string }
         Returns: boolean
@@ -9586,6 +9606,22 @@ export type Database = {
       get_user_role: {
         Args: { user_uuid: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_validation_metrics: {
+        Args: { target_user_id?: string }
+        Returns: {
+          avg_confidence_score: number
+          avg_validation_score: number
+          cri_validations: number
+          high_score_validations: number
+          last_validation_at: string
+          maya_validations: number
+          mentor_validations: number
+          peer_validations: number
+          total_validations: number
+          user_id: string
+          validation_breakdown: Json
+        }[]
       }
       halfvec_avg: {
         Args: { "": number[] }
