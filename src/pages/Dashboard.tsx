@@ -181,8 +181,8 @@ export default function Dashboard() {
     <>
       <HubNavigation />
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8 md:py-12 max-w-6xl space-content-lg">
-          <div className="mb-8 md:mb-12">
+        <div className="container mx-auto px-4 py-6 max-w-4xl space-y-6">
+          <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 Your Career Dashboard
@@ -203,7 +203,7 @@ export default function Dashboard() {
               </div>
               
               <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-primary/20 rounded-lg">
@@ -230,7 +230,7 @@ export default function Dashboard() {
           </div>
 
           {/* Workflow Test Panel */}
-          <div className="mb-8 md:mb-12">
+          <div className="mb-6">
             <WorkflowTestPanel />
           </div>
 
@@ -241,7 +241,7 @@ export default function Dashboard() {
 
           {/* Career Tracks */}
           {careerTracks.length > 0 && (
-            <div className="mb-8 md:mb-12">
+            <div className="mb-6">
               <h2 className="text-xl md:text-2xl font-semibold mb-4 flex items-center gap-2">
               <Target className="h-6 w-6" />
               Recommended Career Tracks
@@ -288,10 +288,10 @@ export default function Dashboard() {
               <BookOpen className="h-6 w-6" />
               Your Learning Roadmap
             </h2>
-            <div className="space-y-4 md:space-y-6">
+            <div className="space-y-3">
               {roadmapSteps.map((step, index) => (
                 <Card key={step.id} className={step.completed ? "opacity-75" : ""}>
-                  <CardContent className="p-6 md:p-8">
+                  <CardContent className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0 mt-1">
                         <Checkbox
@@ -377,7 +377,7 @@ export default function Dashboard() {
 
           {careerTracks.length === 0 && roadmapSteps.length === 0 && (
             <Card>
-              <CardContent className="text-center py-8 md:py-12">
+              <CardContent className="text-center py-6">
                 <BookOpen className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-base md:text-lg font-semibold mb-2">No roadmap found</h3>
                 <p className="text-muted-foreground mb-4 text-sm md:text-base">

@@ -44,7 +44,7 @@ const Planner = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <HubNavigation />
       
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="flex justify-end mb-4">
           <div className="flex items-center gap-2">
             {activeTrackId && (

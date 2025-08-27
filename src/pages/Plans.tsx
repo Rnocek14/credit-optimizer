@@ -493,20 +493,20 @@ function PlanCard({ plan, isExpanded, onToggleExpansion, onStepToggle }: PlanCar
                 </span>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
                 {plan.steps.map((step, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 rounded-md border bg-card hover:bg-muted/30 transition-colors">
+                  <div key={index} className="flex items-start gap-1.5 p-1.5 rounded-md border bg-card hover:bg-muted/30 transition-colors h-16 min-h-0">
                     <Checkbox
                       checked={step.completed || false}
                       onCheckedChange={(checked) => onStepToggle(index, checked as boolean)}
                       className="mt-0.5 flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs leading-relaxed font-medium ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
+                      <p className={`text-xs leading-tight font-medium truncate ${step.completed ? 'text-muted-foreground line-through' : ''}`}>
                         {step.title || step.text || `Step ${index + 1}`}
                       </p>
                       {step.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-tight line-clamp-2">
+                        <p className="text-xs text-muted-foreground leading-tight line-clamp-1 truncate">
                           {step.description}
                         </p>
                       )}
