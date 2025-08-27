@@ -4,6 +4,7 @@
 import { z } from "zod";
 
 // Request Validation Schemas
+// Master Spec Compliant Request Validation
 export const CriRequestSchema = z.object({
   userId: z.string().uuid(),
   trackId: z.string().uuid(),
@@ -26,15 +27,22 @@ export const CRIComponentSchema = z.object({
   weight: z.number()
 });
 
+// Master Spec Compliant Response Validation
 export const CRIResultSchema = z.object({
   success: z.literal(true),
   userId: z.string().uuid(),
   trackId: z.string().uuid(),
-  cri: z.number(),
+  cri: z.number().min(0).max(100),                  // Single CRI score (not breakdown)
   components: z.array(CRIComponentSchema),
-  modelVersion: z.string(),
+  modelVersion: z.literal("cri:v1"),                // Exact version required
   computedAt: z.string(),
-  cached: z.boolean()
+  cached: z.boolean(),
+  telemetry: z.object({
+    latency_ms: z.number(),
+    db_reads: z.number(),
+    db_writes: z.number(),
+    strategy: z.string()
+  }).optional()
 });
 
 export const CIPlatformSchema = z.object({
@@ -88,16 +96,23 @@ export const RecoResultSchema = z.object({
     criBefore: z.number().optional(),
     criAfterEstimate: z.number().optional()
   }),
-  modelVersion: z.string()
+  modelVersion: z.literal("reco:v1"),               // Exact version required
+  telemetry: z.object({
+    latency_ms: z.number(),
+    db_reads: z.number(),
+    db_writes: z.number(),
+    strategy: z.string()
+  }).optional()
 });
 
+// Master Spec Compliant Telemetry Schema
 export const CITelemetrySchema = z.object({
   latency_ms: z.number(),
-  tokens_in: z.number(),
-  tokens_out: z.number(),
+  tokens_in: z.number().optional(),               // AI tokens not always used
+  tokens_out: z.number().optional(),              // AI tokens not always used
   db_reads: z.number(),
   db_writes: z.number(),
-  strategy: z.string().optional()
+  strategy: z.string()                            // Required for tracking
 });
 
 // Type inference

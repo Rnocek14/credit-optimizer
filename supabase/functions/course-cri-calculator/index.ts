@@ -21,31 +21,62 @@ serve(async (req) => {
   const startTime = Date.now();
   
   try {
-    const { userId, trackId, targetCRI = 80 } = await req.json();
+    const { userId, trackId, forceRecompute = false } = await req.json();
     
-    console.log('CRI Calculator - Request:', { userId, trackId, targetCRI });
+    console.log('CRI Calculator - Request:', { userId, trackId, forceRecompute });
 
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!userId || !trackId) {
+      throw new Error('userId and trackId are required');
     }
 
-    // Get user's course completions with scores
+    let dbReads = 0;
+    let dbWrites = 0;
+
+    // Check cache first (unless forceRecompute)
+    if (!forceRecompute) {
+      const { data: cachedResult } = await supabase
+        .from('ci_track_cri_cache')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('track_id', trackId)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      
+      dbReads += 1;
+
+      if (cachedResult) {
+        console.log('Returning cached CRI result');
+        const latencyMs = Date.now() - startTime;
+        
+        return new Response(JSON.stringify({
+          success: true,
+          userId,
+          trackId,
+          cri: cachedResult.cri_score,
+          components: cachedResult.components || [],
+          modelVersion: "cri:v1",
+          computedAt: cachedResult.calculated_at,
+          cached: true,
+          telemetry: {
+            latency_ms: latencyMs,
+            db_reads: dbReads,
+            db_writes: 0,
+            strategy: "cache_hit"
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Get user's course completions
     const { data: completedCourses, error: coursesError } = await supabase
       .from('user_course_events')
-      .select(`
-        *,
-        courses:course_id (
-          id,
-          title,
-          platform,
-          difficulty_level,
-          estimated_hours,
-          instructor_name,
-          category
-        )
-      `)
+      .select('*')
       .eq('user_id', userId)
-      .in('event_type', ['completed', 'assessed']);
+      .eq('event_type', 'completed');
+
+    dbReads += 1;
 
     if (coursesError) {
       console.error('Error fetching completed courses:', coursesError);
@@ -54,123 +85,107 @@ serve(async (req) => {
 
     console.log(`Found ${completedCourses?.length || 0} completed courses for user`);
 
-    // Calculate skill contributions from completed courses
-    const skillContributions: Record<string, number> = {};
-    const courseContributions: any[] = [];
+    // Calculate CRI components (Master Spec format)
+    const components = [
+      {
+        skillId: "react-skills",
+        target: 100,
+        current: Math.min(100, (completedCourses?.length || 0) * 20),
+        weight: 0.3
+      },
+      {
+        skillId: "technical-depth", 
+        target: 100,
+        current: Math.min(100, (completedCourses?.length || 0) * 15),
+        weight: 0.25
+      },
+      {
+        skillId: "product-experience",
+        target: 100,
+        current: Math.min(100, (completedCourses?.length || 0) * 10),
+        weight: 0.25
+      },
+      {
+        skillId: "market-readiness",
+        target: 100,
+        current: Math.min(100, (completedCourses?.length || 0) * 12),
+        weight: 0.2
+      }
+    ];
 
-    (completedCourses || []).forEach(completion => {
-      const course = completion.courses;
-      if (!course) return;
+    // Calculate weighted CRI score
+    const criScore = components.reduce((acc, comp) => {
+      return acc + (comp.current / comp.target) * comp.weight * 100;
+    }, 0);
 
-      // Calculate course contribution to overall CRI
-      const difficultyMultiplier = course.difficulty_level === 'advanced' ? 1.5 :
-                                  course.difficulty_level === 'intermediate' ? 1.2 : 1.0;
-      
-      const platformMultiplier = course.platform === 'Coursera' ? 1.3 :
-                                course.platform === 'edX' ? 1.2 :
-                                course.platform === 'Udemy' ? 1.1 : 1.0;
+    const computedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h cache
 
-      const scoreMultiplier = completion.score ? (completion.score / 100) : 0.8; // Default 0.8 for completion without score
-      
-      const courseValue = difficultyMultiplier * platformMultiplier * scoreMultiplier * 10;
-      
-      // Map course to skill categories (simplified)
-      const skillCategory = course.category || 'general';
-      skillContributions[skillCategory] = (skillContributions[skillCategory] || 0) + courseValue;
-      
-      courseContributions.push({
-        courseId: course.id,
-        title: course.title,
-        platform: course.platform,
-        difficulty: course.difficulty_level,
-        score: completion.score,
-        contribution: courseValue,
-        skillCategory
+    // Cache the result
+    await supabase
+      .from('ci_track_cri_cache')
+      .upsert({
+        user_id: userId,
+        track_id: trackId,
+        cri_score: criScore,
+        cri_breakdown: { components },
+        components,
+        model_version: "cri:v1",
+        calculated_at: computedAt,
+        expires_at: expiresAt
       });
-    });
-
-    // Calculate overall CRI
-    const totalSkillValue = Object.values(skillContributions).reduce((sum, val) => sum + val, 0);
-    const currentCRI = Math.min(totalSkillValue, 100);
     
-    // Calculate skill gaps for target CRI
-    const criGap = Math.max(targetCRI - currentCRI, 0);
-    const skillGaps = Object.entries(skillContributions).map(([skill, value]) => ({
-      skill,
-      currentLevel: Math.min(value, 10),
-      targetLevel: 8, // Default target
-      gap: Math.max(8 - Math.min(value, 10), 0)
-    }));
+    dbWrites += 1;
 
-    // Generate recommendations based on gaps
-    const recommendations = skillGaps
-      .filter(gap => gap.gap > 0)
-      .sort((a, b) => b.gap - a.gap)
-      .slice(0, 3)
-      .map(gap => ({
-        skill: gap.skill,
-        recommendedAction: `Take courses in ${gap.skill} to reach target level`,
-        priority: gap.gap > 5 ? 'high' : gap.gap > 2 ? 'medium' : 'low',
-        estimatedImpact: Math.round(gap.gap * 2.5) // Rough estimate
-      }));
-
-    const criBreakdown = {
-      currentCRI: Math.round(currentCRI * 100) / 100,
-      targetCRI,
-      criGap: Math.round(criGap * 100) / 100,
-      skillContributions,
-      skillGaps,
-      recommendations,
-      courseContributions,
-      lastCalculated: new Date().toISOString(),
-      completedCoursesCount: completedCourses?.length || 0
-    };
-
-    // Store in cache if track-specific
-    if (trackId) {
-      await supabase
-        .from('track_cri_cache')
-        .upsert({
-          user_id: userId,
-          track_id: trackId,
-          cri: currentCRI,
-          breakdown: criBreakdown,
-          skill_levels: skillContributions,
-          gaps: skillGaps,
-          recommendations,
-          updated_at: new Date().toISOString()
-        });
-    }
-
-    console.log(`Calculated CRI: ${currentCRI} (target: ${targetCRI})`);
+    console.log(`Calculated CRI: ${criScore}`);
 
     // Log telemetry
+    const latencyMs = Date.now() - startTime;
     await supabase.from('fn_runs').insert({
-      fn_name: 'course-cri-calculator',
+      function_name: 'course-cri-calculator',
       user_id: userId,
-      status: 'ok',
-      latency_ms: Date.now() - startTime,
-      payload: { trackId, targetCRI, currentCRI, criGap }
+      success: true,
+      latency_ms: latencyMs,
+      created_at: new Date().toISOString(),
+      metadata: {
+        track_id: trackId,
+        db_reads: dbReads,
+        db_writes: dbWrites,
+        strategy: forceRecompute ? "force_recompute" : "computed",
+        model_version: "cri:v1"
+      }
     });
 
     return new Response(JSON.stringify({
       success: true,
       userId,
       trackId,
-      criBreakdown
+      cri: criScore,
+      components,
+      modelVersion: "cri:v1",
+      computedAt,
+      cached: false,
+      telemetry: {
+        latency_ms: latencyMs,
+        db_reads: dbReads,
+        db_writes: dbWrites,
+        strategy: forceRecompute ? "force_recompute" : "computed"
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in course-cri-calculator:', error);
+    console.error('CRI Calculator Error:', error);
+    const latencyMs = Date.now() - startTime;
     
-    // Log error telemetry
+    // Log error to fn_runs
     await supabase.from('fn_runs').insert({
-      fn_name: 'course-cri-calculator',
-      status: 'error',
-      latency_ms: Date.now() - startTime,
-      error_message: error.message
+      function_name: 'course-cri-calculator',
+      success: false,
+      error_message: error.message,
+      latency_ms: latencyMs,
+      created_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({ 

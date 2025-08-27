@@ -21,143 +21,202 @@ serve(async (req) => {
   const startTime = Date.now();
   
   try {
-    const { userId, trackId, skillGaps = [], limit = 5 } = await req.json();
+    const { 
+      userId, 
+      trackId, 
+      limit = 6, 
+      strategy = "gap_fill", 
+      excludeCourseIds = [] 
+    } = await req.json();
     
-    console.log('Course Intelligence Recommendations - Request:', { userId, trackId, skillGaps, limit });
+    console.log('Course Intelligence Recommendations - Request:', { userId, trackId, limit, strategy, excludeCourseIds });
 
-    if (!userId) {
-      throw new Error('userId is required');
+    if (!userId || !trackId) {
+      throw new Error('userId and trackId are required');
     }
 
-    // Get user's existing course completions
-    const { data: userCourses, error: userCoursesError } = await supabase
-      .from('user_course_events')
-      .select('course_id, event_type, score')
+    let dbReads = 0;
+    let dbWrites = 0;
+
+    // Get current CRI for the user/track
+    const { data: criCache } = await supabase
+      .from('ci_track_cri_cache')
+      .select('cri_score')
       .eq('user_id', userId)
-      .in('event_type', ['completed', 'assessed']);
+      .eq('track_id', trackId)
+      .maybeSingle();
+    
+    dbReads += 1;
+    const currentCRI = criCache?.cri_score || 0;
 
-    if (userCoursesError) {
-      console.error('Error fetching user courses:', userCoursesError);
-    }
+    // Get user's completed courses to exclude
+    const { data: completedCourses } = await supabase
+      .from('user_course_events')
+      .select('course_id')
+      .eq('user_id', userId)
+      .eq('event_type', 'completed');
+    
+    dbReads += 1;
+    const completedCourseIds = new Set(
+      completedCourses?.map(c => c.course_id) || []
+    );
 
-    const completedCourseIds = userCourses?.map(uc => uc.course_id) || [];
-
-    // Calculate CRI contribution score for courses
-    const calculateCourseScore = (course: any) => {
-      // Base scoring algorithm
-      const difficultyScore = Math.min(parseFloat(course.difficulty) || 5, 10) / 10;
-      const instructorScore = Math.min(parseFloat(course.instructor_rating) || 5, 10) / 10;
-      const platformScore = course.platform === 'Coursera' ? 0.9 : 
-                           course.platform === 'edX' ? 0.8 : 
-                           course.platform === 'Udemy' ? 0.7 : 0.6;
-      
-      // Skill coverage score (higher if covers gap skills)
-      const skillTags = Array.isArray(course.skills) ? course.skills : 
-                       typeof course.skills === 'string' ? course.skills.split(',') : [];
-      
-      const gapCoverage = skillGaps.length > 0 ? 
-        skillGaps.filter(gap => skillTags.some(skill => 
-          skill.toLowerCase().includes(gap.toLowerCase()) || 
-          gap.toLowerCase().includes(skill.toLowerCase())
-        )).length / skillGaps.length : 0.5;
-
-      return {
-        total: (difficultyScore * 0.3 + instructorScore * 0.3 + platformScore * 0.2 + gapCoverage * 0.2) * 100,
-        breakdown: {
-          difficulty: difficultyScore * 30,
-          instructor: instructorScore * 30, 
-          platform: platformScore * 20,
-          skillCoverage: gapCoverage * 20
-        }
-      };
-    };
-
-    // Get courses from existing schema, filtered by active status
+    // Get available courses with scores from new CI schema
     const { data: courses, error: coursesError } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('is_active', true)
-      .not('id', 'in', `(${completedCourseIds.length > 0 ? completedCourseIds.map(id => `'${id}'`).join(',') : "''"})`)
-      .limit(100);
+      .from('ci_courses')
+      .select(`
+        *,
+        platform:ci_platforms(*),
+        instructor:ci_instructors(*),
+        cri_scores:ci_course_cri_scores(*)
+      `)
+      .eq('active', true)
+      .not('id', 'in', `(${Array.from(excludeCourseIds.concat([...completedCourseIds])).join(',') || "''"})`)
+      .limit(20); // Get more than needed for filtering
+    
+    dbReads += 1;
 
     if (coursesError) {
       console.error('Error fetching courses:', coursesError);
       throw coursesError;
     }
 
-    console.log(`Found ${courses?.length || 0} candidate courses`);
+    // Filter out completed courses
+    const availableCourses = courses?.filter(
+      course => !completedCourseIds.has(course.id)
+    ) || [];
 
-    // Score and rank courses
-    const scoredCourses = (courses || []).map(course => {
-      const score = calculateCourseScore(course);
-      const reasons = [];
+    console.log(`Found ${availableCourses.length} candidate courses`);
+
+    // Score and rank courses based on strategy
+    const scoredCourses = availableCourses.map(course => {
+      const criScores = course.cri_scores?.[0];
+      const instructor = course.instructor;
       
-      if (score.breakdown.skillCoverage > 15) {
-        reasons.push(`Covers key skill gaps`);
+      // Calculate recommendation score based on strategy
+      let baseScore = 0;
+      let expectedCRIChange = 0;
+      let reason = "";
+
+      switch (strategy) {
+        case "foundations":
+          baseScore = (criScores?.rigor_score || 70) * 0.4 + 
+                     (instructor?.reputation || 3) * 20 + 
+                     (course.difficulty <= 2 ? 30 : 10);
+          expectedCRIChange = Math.min(15, baseScore * 0.15);
+          reason = `Foundation course in ${course.title} to build core skills`;
+          break;
+          
+        case "accelerate":
+          baseScore = (criScores?.outcome_score || 70) * 0.4 + 
+                     (instructor?.reputation || 3) * 15 + 
+                     (course.difficulty >= 4 ? 35 : 10);
+          expectedCRIChange = Math.min(25, baseScore * 0.25);
+          reason = `Advanced course to accelerate learning in ${course.title}`;
+          break;
+          
+        default: // gap_fill
+          baseScore = (criScores?.difficulty_score || 70) * 0.3 + 
+                     (criScores?.outcome_score || 70) * 0.3 + 
+                     (instructor?.reputation || 3) * 15 + 
+                     (course.difficulty === 3 ? 25 : 10);
+          expectedCRIChange = Math.min(20, baseScore * 0.2);
+          reason = `Fills skill gaps in ${course.title} for your track`;
+          break;
       }
-      if (score.breakdown.difficulty > 20) {
-        reasons.push(`Appropriate difficulty level`);
-      }
-      if (score.breakdown.instructor > 20) {
-        reasons.push(`High-rated instructor`);
-      }
-      if (score.breakdown.platform > 15) {
-        reasons.push(`Reputable platform`);
-      }
+
+      // Normalize score to 0-1 range
+      const normalizedScore = Math.min(1, baseScore / 100);
 
       return {
-        courseId: course.id,
-        title: course.title,
-        description: course.description,
-        url: course.course_url,
-        platform: course.platform,
-        instructor: course.instructor_name,
-        estimatedHours: course.estimated_hours,
-        cost: course.cost_usd,
-        difficulty: course.difficulty_level,
-        score: score.total,
-        scoreBreakdown: score.breakdown,
-        reasons: reasons.length > 0 ? reasons : ['General skill development'],
-        skillsCovered: Array.isArray(course.skills) ? course.skills : 
-                      typeof course.skills === 'string' ? course.skills.split(',') : []
+        course: {
+          id: course.id,
+          platform: course.platform,
+          instructor: course.instructor,
+          title: course.title,
+          slug: course.slug,
+          url: course.url,
+          difficulty: course.difficulty,
+          durationHours: course.duration_hours
+        },
+        reason,
+        score: normalizedScore,
+        expectedCRIChange,
+        covers: [
+          {
+            skillId: `skill-${course.id}`,
+            from: currentCRI,
+            to: Math.min(100, currentCRI + expectedCRIChange),
+            weight: 1.0
+          }
+        ]
       };
     });
 
-    // Sort by score and limit results
+    // Sort by score and take top recommendations
     const recommendations = scoredCourses
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
+    const candidateCount = availableCourses.length;
+    const selected = recommendations.length;
+    const criAfterEstimate = currentCRI + 
+      recommendations.reduce((sum, rec) => sum + rec.expectedCRIChange, 0) / (recommendations.length || 1);
+
     console.log(`Returning ${recommendations.length} recommendations`);
 
     // Log telemetry
+    const latencyMs = Date.now() - startTime;
     await supabase.from('fn_runs').insert({
-      fn_name: 'course-intelligence-recommendations',
+      function_name: 'course-intelligence-recommendations',
       user_id: userId,
-      status: 'ok',
-      latency_ms: Date.now() - startTime,
-      payload: { trackId, skillGaps, limit, resultCount: recommendations.length }
+      success: true,
+      latency_ms: latencyMs,
+      created_at: new Date().toISOString(),
+      metadata: {
+        track_id: trackId,
+        strategy,
+        db_reads: dbReads,
+        db_writes: dbWrites,
+        candidate_count: candidateCount,
+        selected_count: selected,
+        model_version: "reco:v1"
+      }
     });
 
     return new Response(JSON.stringify({
       success: true,
       userId,
       trackId,
-      skillGaps,
-      recommendations
+      recommendations,
+      metrics: {
+        candidateCount,
+        selected,
+        criBefore: currentCRI,
+        criAfterEstimate
+      },
+      modelVersion: "reco:v1",
+      telemetry: {
+        latency_ms: latencyMs,
+        db_reads: dbReads,
+        db_writes: dbWrites,
+        strategy
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in course-intelligence-recommendations:', error);
+    console.error('Course Intelligence Recommendations Error:', error);
+    const latencyMs = Date.now() - startTime;
     
-    // Log error telemetry
+    // Log error to fn_runs
     await supabase.from('fn_runs').insert({
-      fn_name: 'course-intelligence-recommendations',
-      status: 'error',
-      latency_ms: Date.now() - startTime,
-      error_message: error.message
+      function_name: 'course-intelligence-recommendations',
+      success: false,
+      error_message: error.message,
+      latency_ms: latencyMs,
+      created_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({ 

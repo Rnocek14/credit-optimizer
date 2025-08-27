@@ -1,5 +1,5 @@
 // TypeScript Contracts - Single Source of Truth for Course Intelligence
-// Aligned with ChatGPT Master Spec
+// Aligned with ChatGPT Master Spec - Exact Format Required
 
 export type UUID = string;
 
@@ -8,7 +8,7 @@ export interface CIPlatform {
   id: UUID;
   slug: string;
   name: string;
-  url: string;
+  url?: string;  // Made optional to match spec
 }
 
 export interface CIInstructor {
@@ -38,8 +38,8 @@ export interface CICourse {
   instructor?: CIInstructor;
   title: string;
   slug: string;
-  url: string;
-  difficulty: number;       // 1-5
+  url?: string;           // Made optional to match spec
+  difficulty: number;      // 1-5
   durationHours: number;
 }
 
@@ -59,7 +59,7 @@ export interface CIRecommendation {
   expectedCRIChange: number; // +/-
 }
 
-// CRI Types
+// CRI Types (Master Spec Compliant)
 export interface CRIComponent {
   skillId: UUID;
   target: number;
@@ -71,9 +71,9 @@ export interface CRIResult {
   success: true;
   userId: UUID;
   trackId: UUID;
-  cri: number;
+  cri: number;                    // Single CRI score (not criBreakdown)
   components: CRIComponent[];
-  modelVersion: string;
+  modelVersion: string;           // Must be "cri:v1"
   computedAt: string;
   cached: boolean;
 }
@@ -93,14 +93,14 @@ export interface RecoResult {
   modelVersion: string;
 }
 
-// Telemetry Type
+// Telemetry Type (Master Spec Compliant)
 export interface CITelemetry {
   latency_ms: number;
-  tokens_in: number;
-  tokens_out: number;
+  tokens_in?: number;
+  tokens_out?: number;
   db_reads: number;
   db_writes: number;
-  strategy?: string;
+  strategy: string;         // Required for telemetry tracking
 }
 
 // Request Types
@@ -118,7 +118,7 @@ export interface RecoRequest {
   excludeCourseIds?: UUID[];
 }
 
-// Maya Integration Types
+// Maya Integration Types (Master Spec Compliant)
 export interface RecoBundle {
   trackId: UUID;
   cri: number;
@@ -128,8 +128,8 @@ export interface RecoBundle {
     expectedCRIChange: number;
   }>;
   model: {
-    cri: string;
-    reco: string;
+    cri: "cri:v1";      // Exact version string required
+    reco: "reco:v1";    // Exact version string required
   };
 }
 
