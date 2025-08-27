@@ -29,6 +29,7 @@ import { usePivotRecommendations } from "@/hooks/usePivotRecommendations";
 import { testAllEdgeFunctions } from "@/lib/edgeFunctionTests";
 import { testPivotToRoadmapWorkflow, testMultiplePivotScenarios } from "@/lib/pivotRoadmapTests";
 import { testPivotRoadmapIdUniqueness, validateVisualUniqueness } from "@/lib/skillTreeValidation";
+import TutorialTip from "@/tutorial/TutorialTip";
 
 interface UserStats {
   totalXp: number;
@@ -430,7 +431,13 @@ export default function ResumeAnalyticsDashboard() {
 
         {/* Key Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card>
+          <Card id="ra-xp-card" className="relative">
+            <div className="absolute top-2 right-2">
+              <TutorialTip
+                id="ra_xp_stats"
+                label="XP & Stats Overview - Track your learning progress with XP points, badges, goals, and activity metrics. These stats show your overall engagement and achievement level."
+              />
+            </div>
             <CardContent className="p-4 text-center">
               <Tooltip>
                 <TooltipTrigger>

@@ -67,6 +67,7 @@ import { CompareMarketTrendsPanel } from "@/components/CompareMarketTrendsPanel"
 import { MarketDataSeeder } from "@/components/MarketDataSeeder";
 import { StrategyGeneratorPanel } from "@/components/StrategyGeneratorPanel";
 import { MayaAIAssistant } from "@/components/MayaAIAssistant";
+import TutorialTip from "@/tutorial/TutorialTip";
 
 export function MarketIntelligenceDashboard() {
   console.log('🔍 MarketIntelligenceDashboard: Component loading...');
@@ -560,12 +561,20 @@ export function MarketIntelligenceDashboard() {
             <div className="grid gap-6">
               {/* Row 1: Market Pulse & Opportunity Score */}
               <div className="grid gap-6 lg:grid-cols-2">
-                <MarketPulseWidget 
-                  marketData={marketData} 
-                  selectedCareerPath={selectedCareerPath?.title}
-                  selectedLocation={selectedLocation?.value}
-                  onActionClick={() => setActiveTab('research')}
-                />
+                <Card id="mi-overview-card" className="relative">
+                  <div className="absolute top-4 right-4">
+                    <TutorialTip
+                      id="mi_overview_card"
+                      label="Market Intelligence Overview - This card shows real-time market data and pulse indicators for your selected career and location. Use this to get a quick snapshot of market conditions."
+                    />
+                  </div>
+                  <MarketPulseWidget 
+                    marketData={marketData} 
+                    selectedCareerPath={selectedCareerPath?.title}
+                    selectedLocation={selectedLocation?.value}
+                    onActionClick={() => setActiveTab('research')}
+                  />
+                </Card>
                 
                 <OpportunityScoreWidget 
                   marketData={marketData}
