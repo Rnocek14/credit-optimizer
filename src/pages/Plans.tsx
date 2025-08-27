@@ -22,6 +22,9 @@ import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { CareerSwitchSimulator } from "@/components/CareerSwitchSimulator";
 import { LocationOptimizerDrawer } from "@/components/LocationOptimizerDrawer";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { SavedCoursesList } from "@/components/plan/SavedCoursesList";
+import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
+import { trackTelemetryEvent } from "@/utils/telemetry";
 
 interface MilestonePlan {
   id: string;
@@ -47,6 +50,30 @@ export default function Plans() {
   const queryClient = useQueryClient();
   const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
   const { tracks, isLoading: tracksLoading } = useTracks();
+  const { getCRI } = useCourseIntelligence();
+
+  // Calculate the trackId to use for CareerProfileCard
+  const trackIdToUse = activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id || null;
+
+  // Fetch CRI data for current track
+  const { data: criData } = useQuery({
+    queryKey: ['user-cri', trackIdToUse],
+    queryFn: async () => {
+      if (!trackIdToUse) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      try {
+        const result = await getCRI(user.id, trackIdToUse, false);
+        await trackTelemetryEvent({ task: 'plan_view', complexity: { track_id: trackIdToUse } });
+        return result;
+      } catch (error) {
+        console.error('CRI fetch error:', error);
+        return null;
+      }
+    },
+    enabled: !!trackIdToUse
+  });
 
   // Debug logging
   console.log('Plans.tsx Debug:', { 
@@ -55,9 +82,6 @@ export default function Plans() {
     tracksLoading, 
     tracks: tracks.map(t => ({ id: t.id, name: t.track_name, archived: t.archived }))
   });
-
-  // Calculate the trackId to use for CareerProfileCard
-  const trackIdToUse = activeTrackId || tracks.find(t => !t.archived)?.id || tracks[0]?.id || null;
   console.log('trackIdToUse:', trackIdToUse);
 
   // Show empty state if no tracks
@@ -238,7 +262,7 @@ export default function Plans() {
         </div>
       </div>
 
-      {/* Career Profile Card - Only render if trackIdToUse exists */}
+        {/* Career Profile Card - Only render if trackIdToUse exists */}
       {trackIdToUse ? (
         <div className="mb-8">
           <CareerProfileCard 
@@ -260,6 +284,11 @@ export default function Plans() {
           </Card>
         </div>
       )}
+
+      {/* Saved Courses List Integration */}
+      <div className="mb-8">
+        <SavedCoursesList currentCRI={criData?.cri || 0} />
+      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-6">

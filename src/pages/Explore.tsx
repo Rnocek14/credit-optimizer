@@ -56,6 +56,11 @@ import { TrackManager } from "@/components/multi-track/TrackManager";
 import { InstitutionSelector } from "@/components/multi-track/InstitutionSelector";
 import { QUERY_KEYS } from "@/lib/queryKeys";
 import { getCurrentUser, ensureValidSession } from "@/lib/auth";
+import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
+import { CRIGauge } from "@/components/course/CRIGauge";
+import { SkillBreakdownBars } from "@/components/course/SkillBreakdownBars";
+import { RecommendationsRail } from "@/components/course/RecommendationsRail";
+import { trackTelemetryEvent } from "@/utils/telemetry";
 
 interface Course {
   id: string;
@@ -119,8 +124,56 @@ export default function Explore() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { getCRI, getRecommendations, recordCourseEvent } = useCourseIntelligence();
+  
+  // Get active track
+  const { activeTrackId } = useActiveTrackStore();
 
-  // Fetch user progress data
+  // Fetch CRI data using Course Intelligence
+  const { data: criData, isLoading: criLoading } = useQuery({
+    queryKey: ['user-cri', activeTrackId],
+    queryFn: async () => {
+      if (!activeTrackId) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      try {
+        return await getCRI(user.id, activeTrackId, false);
+      } catch (error) {
+        console.error('CRI fetch error:', error);
+        return null;
+      }
+    },
+    enabled: !!activeTrackId
+  });
+
+  // Fetch course recommendations using Course Intelligence
+  const { data: recommendations, isLoading: recommendationsLoading } = useQuery({
+    queryKey: ['course-recommendations', activeTrackId, selectedSkill],
+    queryFn: async () => {
+      if (!activeTrackId) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      try {
+        const result = await getRecommendations(user.id, activeTrackId, 6, 'gap_fill', []);
+        
+        // Track telemetry
+        await trackTelemetryEvent({
+          task: 'explore_reco_view',
+          complexity: { track_id: activeTrackId, count: result?.recommendations?.length || 0 }
+        });
+        
+        return result;
+      } catch (error) {
+        console.error('Recommendations fetch error:', error);
+        return null;
+      }
+    },
+    enabled: !!activeTrackId
+  });
+
+  // Fetch user progress data for compatibility
   const { data: userProgress } = useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE(),
     queryFn: async () => {
@@ -141,21 +194,13 @@ export default function Explore() {
         .order('created_at', { ascending: false })
         .limit(3);
 
-      // Get latest resume scores
-      const { data: resume } = await supabase
-        .from('ai_resume_drafts')
-        .select('cri_average, readiness_score')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
       return {
         currentLevel: userLevel?.[0]?.current_level || 1,
         totalXp: userLevel?.[0]?.total_xp || 0,
         recentGoals: goals || [],
-        criScore: resume?.[0]?.cri_average || 0,
-        readinessScore: resume?.[0]?.readiness_score || 0,
-        skillGaps: ['React', 'TypeScript'], // Could be derived from resume analysis
+        criScore: criData?.cri || 0,
+        readinessScore: criData?.cri || 0,
+        skillGaps: criData?.components?.map((c: any) => c.skillId) || [],
         nextFocus: goals?.[0]?.title || 'Set your first career goal'
       } as UserProgress;
     }
@@ -332,19 +377,44 @@ export default function Explore() {
     }
   };
 
-  const handleSaveCourse = async (courseId: string, currentlySaved: boolean) => {
+  const handleSaveCourse = async (courseId: string) => {
     try {
-      await saveCourse.mutateAsync({ courseId, save: !currentlySaved });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      await recordCourseEvent(user.id, courseId, 'enrolled', undefined, 'Saved from Explore page');
+      
+      // Track telemetry
+      await trackTelemetryEvent({
+        task: 'explore_reco_action',
+        complexity: { course_id: courseId, action: 'save' }
+      });
+      
       toast({
-        title: currentlySaved ? "Course removed" : "Course saved!",
-        description: currentlySaved ? "Removed from your saved courses" : "Added to your saved courses",
+        title: "Course saved!",
+        description: "Added to your learning plan",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update saved courses",
+        description: "Failed to save course",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleOpenCourse = async (url: string) => {
+    try {
+      // Track telemetry
+      await trackTelemetryEvent({
+        task: 'explore_reco_action',
+        complexity: { action: 'open' }
+      });
+      
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Failed to track course open:', error);
+      window.open(url, '_blank');
     }
   };
 
@@ -450,35 +520,64 @@ export default function Explore() {
                   </Button>
                 </div>
 
-                {userProgress && (
+                {/* CRI Dashboard */}
+                {criData && (
                   <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Brain className="w-5 h-5" />
-                        AI Analysis
+                        Career Readiness Analysis
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Based on your Level {userProgress.currentLevel} progress, recent goals, and CRI score of {userProgress.criScore.toFixed(1)}, 
-                        here's what we recommend:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Target className="w-4 h-4 text-primary" />
-                          <span>Focus: {userProgress.skillGaps.join(', ')}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* CRI Gauge */}
+                        <div className="flex flex-col items-center">
+                          <CRIGauge 
+                            value={criData.cri} 
+                            target={Math.min(100, criData.cri + 20)}
+                          />
+                          <p className="text-xs text-muted-foreground mt-2 text-center">
+                            Updated {new Date(criData.computedAt).toLocaleDateString()}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <TrendingUp className="w-4 h-4 text-green-500" />
-                          <span>CRI Goal: {(userProgress.criScore + 20).toFixed(1)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Clock className="w-4 h-4 text-blue-500" />
-                          <span>Timeline: 4-6 weeks</span>
+
+                        {/* Skill Breakdown */}
+                        <div className="md:col-span-2">
+                          <h4 className="text-sm font-medium mb-3">Skill Progress</h4>
+                          <SkillBreakdownBars components={criData.components} />
                         </div>
                       </div>
+
+                      {recommendations && (
+                        <div className="mt-4 pt-4 border-t">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Target className="w-4 h-4 text-primary" />
+                              <span>Found: {recommendations.recommendations.length} courses</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-emerald-500" />
+                              <span>Est. CRI Boost: +{recommendations.metrics.criAfterEstimate - recommendations.metrics.criBefore}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-blue-500" />
+                              <span>Total Candidates: {recommendations.metrics.candidateCount}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Course Recommendations */}
+                {recommendations?.recommendations && (
+                  <RecommendationsRail
+                    recommendations={recommendations.recommendations}
+                    onSaveCourse={handleSaveCourse}
+                    onOpenCourse={handleOpenCourse}
+                  />
                 )}
 
                 {/* AI Recommended Courses */}

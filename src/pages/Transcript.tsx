@@ -11,6 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { TrustTranscript } from "@/components/resume/TrustTranscript";
+import { useCourseIntelligence } from "@/hooks/useCourseIntelligence";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
+import { useQuery } from "@tanstack/react-query";
 import { 
   GraduationCap, 
   Plus, 
@@ -45,6 +49,26 @@ export default function Transcript() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { getCRI } = useCourseIntelligence();
+  const { activeTrackId } = useActiveTrackStore();
+
+  // Fetch CRI data for Trust Transcript
+  const { data: criData } = useQuery({
+    queryKey: ['user-cri', activeTrackId],
+    queryFn: async () => {
+      if (!activeTrackId) return null;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      try {
+        return await getCRI(user.id, activeTrackId, false);
+      } catch (error) {
+        console.error('CRI fetch error:', error);
+        return null;
+      }
+    },
+    enabled: !!activeTrackId
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -385,6 +409,13 @@ export default function Transcript() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Trust Transcript */}
+        <TrustTranscript 
+          currentCRI={criData?.cri || 0}
+          computedAt={criData?.computedAt}
+          trackId={activeTrackId || undefined}
+        />
 
         {/* Entries Grid */}
         {entries.length === 0 ? (
