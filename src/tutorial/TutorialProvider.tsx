@@ -27,7 +27,7 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
     localStorage.setItem('lp:tutorial:enabled', String(v));
     trackTelemetryEvent({ 
       task: 'tutorial_toggle', 
-      complexity: { enabled: v } 
+      complexity: { enabled: v, source: 'header' }
     });
   };
 
