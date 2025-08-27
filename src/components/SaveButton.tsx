@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Bookmark, BookmarkCheck } from "lucide-react";
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface SaveButtonProps {
   courseId: string;
@@ -111,38 +112,47 @@ export default function SaveButton({ courseId, variant = "outline", size = "sm",
 
   if (!isAuthenticated) {
     return (
+      <div className="flex items-center gap-1">
+        <Button
+          variant={variant}
+          size={size}
+          className={className}
+          onClick={handleSaveToggle}
+          disabled={loading}
+        >
+          <Bookmark className="h-4 w-4 mr-2" />
+          Save
+        </Button>
+        <TutorialTip id="saveButtonUnauthenticated" label="Sign in to save courses to your personalized learning plan" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
       <Button
-        variant={variant}
+        variant={isSaved ? "default" : variant}
         size={size}
         className={className}
         onClick={handleSaveToggle}
         disabled={loading}
       >
-        <Bookmark className="h-4 w-4 mr-2" />
-        Save
+        {isSaved ? (
+          <>
+            <BookmarkCheck className="h-4 w-4 mr-2" />
+            Saved
+          </>
+        ) : (
+          <>
+            <Bookmark className="h-4 w-4 mr-2" />
+            Save
+          </>
+        )}
       </Button>
-    );
-  }
-
-  return (
-    <Button
-      variant={isSaved ? "default" : variant}
-      size={size}
-      className={className}
-      onClick={handleSaveToggle}
-      disabled={loading}
-    >
-      {isSaved ? (
-        <>
-          <BookmarkCheck className="h-4 w-4 mr-2" />
-          Saved
-        </>
-      ) : (
-        <>
-          <Bookmark className="h-4 w-4 mr-2" />
-          Save
-        </>
-      )}
-    </Button>
+      <TutorialTip 
+        id={isSaved ? "saveButtonSaved" : "saveButtonAuthenticated"} 
+        label={isSaved ? "Course successfully saved to your learning plan" : "Save courses to your personalized learning plan when logged in"} 
+      />
+    </div>
   );
 }

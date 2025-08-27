@@ -30,6 +30,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { HubNavigation } from '@/components/HubNavigation';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface Message {
   id: string;
@@ -378,12 +379,13 @@ export default function MentorChat() {
     return (
       <Card key={plan.id} className={`mb-4 ${plan.status === 'completed' ? 'bg-green-50 border-green-200' : ''}`}>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${plan.status === 'completed' ? 'bg-green-500' : plan.status === 'active' ? 'bg-blue-500' : 'bg-gray-400'}`} />
-              <CardTitle className="text-base">{plan.title}</CardTitle>
-              {plan.status === 'completed' && <Trophy className="h-4 w-4 text-yellow-500" />}
-            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${plan.status === 'completed' ? 'bg-green-500' : plan.status === 'active' ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                <CardTitle className="text-base">{plan.title}</CardTitle>
+                {plan.status === 'completed' && <Trophy className="h-4 w-4 text-yellow-500" />}
+                <TutorialTip id="mentorChatPlanExpansion" label="Expandable plan cards showing detailed step breakdowns and completion dates" />
+              </div>
             <Button
               variant="ghost"
               size="sm"
@@ -410,11 +412,14 @@ export default function MentorChat() {
             <div className="space-y-3">
               {plan.steps.map((step: any, index: number) => (
                 <div key={index} className="flex items-start gap-3 p-2 rounded bg-muted/30">
-                  <Checkbox
-                    checked={step.completed}
-                    onCheckedChange={(checked) => updateMilestoneStep(plan.id, index, checked as boolean)}
-                    className="mt-1"
-                  />
+                  <div className="flex items-center gap-1">
+                    <Checkbox
+                      checked={step.completed}
+                      onCheckedChange={(checked) => updateMilestoneStep(plan.id, index, checked as boolean)}
+                      className="mt-1"
+                    />
+                    <TutorialTip id="mentorChatStepTracking" label="Individual step completion with automatic progress calculation" />
+                  </div>
                   <div className="flex-1">
                     <div className={`font-medium ${step.completed ? 'line-through text-muted-foreground' : ''}`}>
                       {step.title}
@@ -477,19 +482,26 @@ export default function MentorChat() {
           <div className="lg:col-span-1">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="chat" className="text-xs">💬 Context</TabsTrigger>
-                <TabsTrigger value="plans" className="text-xs">📘 My Plans</TabsTrigger>
+                <TabsTrigger value="chat" className="text-xs flex items-center gap-1">
+                  💬 Context
+                  <TutorialTip id="mentorChatContext" label="Comprehensive context panel showing your CRI score, readiness metrics, and goals" />
+                </TabsTrigger>
+                <TabsTrigger value="plans" className="text-xs flex items-center gap-1">
+                  📘 My Plans
+                  <TutorialTip id="mentorChatPlanManager" label="Comprehensive milestone plan management with step-by-step tracking" />
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="chat" className="space-y-4 mt-4">
             {userContext && (
               <>
-                {/* XP Progress */}
+                 {/* XP Progress */}
                 <Card className={currentMilestone ? 'ring-2 ring-primary ring-opacity-50' : ''}>
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-primary" />
                       Your Progress
+                      <TutorialTip id="mentorChatXPProgress" label="Real-time XP tracking with visual progress bars showing your advancement" />
                       {currentMilestone && (
                         <Badge variant="default" className="ml-auto">
                           <Trophy className="h-3 w-3 mr-1" />

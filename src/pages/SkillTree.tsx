@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BookOpen, Target, Award, TestTube, Globe, Focus, Route } from 'lucide-react';
 import type { GraphNode } from '@/lib/careerGraph';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 const SkillTree = () => {
   const { toast } = useToast();
@@ -171,12 +172,13 @@ const SkillTree = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Career Graph</h1>
-            <p className="text-muted-foreground">
-              Explore your unified career journey with skills, jobs, courses, and pathfinding
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold">Career Graph</h1>
+          <TutorialTip id="skillTreeOverview" label="Explore your unified career journey with skills, jobs, courses, and pathfinding" />
+          <p className="text-muted-foreground">
+            Explore your unified career journey with skills, jobs, courses, and pathfinding
+          </p>
+        </div>
         </div>
         <div className="flex items-center gap-4">
           <LocationDropdown
@@ -188,39 +190,54 @@ const SkillTree = () => {
             onCareerPathChange={setSelectedCareerPath}
           />
           <div className="flex items-center gap-2">
-            <ExportTreeButton containerRef={skillTreeRef} />
-            <Button 
-              variant={showPivotPaths ? "default" : "outline"}
-              size="sm" 
-              onClick={() => setShowPivotPaths(!showPivotPaths)}
-            >
-              <Route className="h-4 w-4 mr-2" />
-              {showPivotPaths ? 'Hide' : 'Show'} Pivot Paths
-            </Button>
-            <Button 
-              variant={showPathfinding ? "default" : "outline"}
-              size="sm" 
-              onClick={() => setShowPathfinding(!showPathfinding)}
-            >
-              <Target className="h-4 w-4 mr-2" />
-              {showPathfinding ? 'Hide' : 'Show'} Pathfinding
-            </Button>
-            <Button 
-              variant={showLayoutControls ? "default" : "outline"}
-              size="sm" 
-              onClick={() => setShowLayoutControls(!showLayoutControls)}
-            >
-              <Focus className="h-4 w-4 mr-2" />
-              {showLayoutControls ? 'Hide' : 'Show'} Layout Controls
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowPerformanceTest(!showPerformanceTest)}
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
-            </Button>
+            <div className="flex items-center gap-1">
+              <ExportTreeButton containerRef={skillTreeRef} />
+              <TutorialTip id="skillTreeExport" label="Export your career visualization as an image for presentations" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant={showPivotPaths ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setShowPivotPaths(!showPivotPaths)}
+              >
+                <Route className="h-4 w-4 mr-2" />
+                {showPivotPaths ? 'Hide' : 'Show'} Pivot Paths
+              </Button>
+              <TutorialTip id="skillTreePivotPaths" label="AI-powered pivot path analysis shows alternative career routes" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant={showPathfinding ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setShowPathfinding(!showPathfinding)}
+              >
+                <Target className="h-4 w-4 mr-2" />
+                {showPathfinding ? 'Hide' : 'Show'} Pathfinding
+              </Button>
+              <TutorialTip id="skillTreePathfinding" label="Intelligent pathfinding algorithms calculate optimal learning sequences" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant={showLayoutControls ? "default" : "outline"}
+                size="sm" 
+                onClick={() => setShowLayoutControls(!showLayoutControls)}
+              >
+                <Focus className="h-4 w-4 mr-2" />
+                {showLayoutControls ? 'Hide' : 'Show'} Layout Controls
+              </Button>
+              <TutorialTip id="skillTreeLayoutControls" label="Customize how your career graph is displayed with different layout algorithms" />
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowPerformanceTest(!showPerformanceTest)}
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                {showPerformanceTest ? 'Hide' : 'Show'} Performance Test
+              </Button>
+              <TutorialTip id="skillTreePerformanceTest" label="Test the performance and optimization of your career graph rendering" />
+            </div>
           </div>
         </div>
       </div>
@@ -228,7 +245,10 @@ const SkillTree = () => {
       {/* Career Graph Statistics */}
       {statistics && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium mb-2">Career Graph Statistics</h3>
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-sm font-medium">Career Graph Statistics</h3>
+            <TutorialTip id="skillTreeStatistics" label="View comprehensive metrics about your career graph" />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
             <div>
               <p className="font-medium">Total Nodes</p>
@@ -260,6 +280,7 @@ const SkillTree = () => {
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <TutorialTip id="skillTreeQuickStats" label="At-a-glance view of your total skills, jobs, courses, projects, and certifications" />
         <div className="bg-card text-card-foreground p-4 rounded-lg border">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />

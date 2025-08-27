@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface SkillDetailSidePanelProps {
   skill: {
@@ -195,10 +196,22 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
 
         <Tabs defaultValue="overview" className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
-            <TabsTrigger value="prereqs" className="text-xs">Prerequisites</TabsTrigger>
-            <TabsTrigger value="resources" className="text-xs">Resources</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs flex items-center gap-1">
+              Overview
+              <TutorialTip id="skillDetailOverview" label="Comprehensive skill information including description and XP rewards" />
+            </TabsTrigger>
+            <TabsTrigger value="progress" className="text-xs flex items-center gap-1">
+              Progress
+              <TutorialTip id="skillDetailProgress" label="Visual progress tracking with XP breakdown and CRI scores" />
+            </TabsTrigger>
+            <TabsTrigger value="prereqs" className="text-xs flex items-center gap-1">
+              Prerequisites
+              <TutorialTip id="skillDetailPrerequisites" label="Prerequisites checker showing required skills and completion status" />
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="text-xs flex items-center gap-1">
+              Resources
+              <TutorialTip id="skillDetailResources" label="Curated learning resources matched to this skill" />
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 mt-4">
@@ -217,53 +230,65 @@ export const SkillDetailSidePanel: React.FC<SkillDetailSidePanelProps> = ({
             </Card>
 
             <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">XP Reward</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-primary">{skill.xp_value}</div>
-                  <p className="text-xs text-muted-foreground">Points when mastered</p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-1">
+                      XP Reward
+                      <TutorialTip id="skillDetailXPReward" label="XP point system showing the value of mastering this skill" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">{skill.xp_value}</div>
+                    <p className="text-xs text-muted-foreground">Points when mastered</p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Difficulty</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-primary">Level {skill.difficulty_level}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {skill.difficulty_level <= 2 ? 'Beginner' : 
-                     skill.difficulty_level <= 4 ? 'Intermediate' : 'Advanced'}
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-1">
+                      Difficulty
+                      <TutorialTip id="skillDetailDifficulty" label="Difficulty assessment with level indicators for proper preparation" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary">Level {skill.difficulty_level}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {skill.difficulty_level <= 2 ? 'Beginner' : 
+                       skill.difficulty_level <= 4 ? 'Intermediate' : 'Advanced'}
+                    </p>
+                  </CardContent>
+                </Card>
             </div>
 
             <div className="space-y-3">
               {canPlan && (
-                <Button 
-                  onClick={() => onPlanSkill(skill.id)}
-                  className="w-full"
-                  size="lg"
-                >
-                  <Target className="h-4 w-4 mr-2" />
-                  Plan This Skill with Maya
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => onPlanSkill(skill.id)}
+                    className="w-full"
+                    size="lg"
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    Plan This Skill with Maya
+                  </Button>
+                  <TutorialTip id="skillDetailPlanIntegration" label="One-click integration with Maya to create personalized learning plans" />
+                </div>
               )}
               
               <Dialog open={projectModalOpen} onOpenChange={setProjectModalOpen}>
                 <DialogTrigger asChild>
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    size="lg"
-                    data-testid="attach-proof-skill"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Attach Proof Project
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline"
+                      className="w-full"
+                      size="lg"
+                      data-testid="attach-proof-skill"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Attach Proof Project
+                    </Button>
+                    <TutorialTip id="skillDetailProofProjects" label="Attach proof projects to demonstrate skill mastery with portfolio links" />
+                  </div>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>

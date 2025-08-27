@@ -103,6 +103,78 @@ export const TIPS = {
   courseStartButton: "Begin your learning journey with integrated progress tracking and milestone management.",
   courseCompletion: "Mark courses complete to unlock achievements, update your profile, and track your learning ROI.",
   courseProgressBadge: "Visual progress tracking shows your completion status, time invested, and learning milestones achieved.",
+
+  // SkillTree Page - Phase 2 Expansion
+  skillTreeOverview: "Explore your unified career graph with skills, jobs, courses, projects, and career pathfinding - all interconnected for optimal learning.",
+  skillTreeStatistics: "View comprehensive metrics about your career graph including node counts, connections, and progress across different content types.",
+  skillTreeFilters: "Advanced filtering system to focus on specific categories, completion status, and recommendations based on your goals.",
+  skillTreeQuickStats: "At-a-glance view of your total skills, jobs, courses, projects, and certifications available in your career path.",
+  skillTreeLayoutControls: "Customize how your career graph is displayed with different layout algorithms optimized for learning and exploration.",
+  skillTreePivotPaths: "AI-powered pivot path analysis shows alternative career routes and transition opportunities from your current position.",
+  skillTreePathfinding: "Intelligent pathfinding algorithms calculate optimal learning sequences and career progression routes.",
+  skillTreePerformanceTest: "Test the performance and optimization of your career graph rendering for large datasets and complex connections.",
+  skillTreeExport: "Export your career visualization as an image for presentations, portfolio documentation, or sharing with mentors.",
+  skillTreeLocationROI: "Geographic salary and market analysis for your selected career path, helping you make informed relocation decisions.",
+  skillTreeCareerGoal: "Set and track progress toward specific career goals - the system will highlight relevant skills and create custom learning paths.",
+
+  // Interactive Skill Tree Components - Phase 2
+  interactiveSkillTreeCamera: "Pan, zoom, and navigate through your skill tree with smooth camera controls optimized for exploring large career graphs.",
+  interactiveSkillTreeMinimap: "Bird's eye view of your entire skill tree with position indicator for easy navigation through complex career maps.",
+  interactiveSkillTreeSearch: "Intelligent search across all nodes - skills, jobs, courses, projects - with real-time filtering and highlighting.",
+  interactiveSkillTreeConnections: "Visual connections show prerequisites, dependencies, and career progression pathways between different elements.",
+  interactiveSkillTreeNodeDetails: "Click any node to view detailed information, progress tracking, learning resources, and action options.",
+
+  // Maya AI Systems - Phase 2 Complete Coverage
+  mayaChatOverview: "Your personal AI career mentor providing contextual guidance, progress insights, and strategic career advice.",
+  mayaChatInterface: "Conversational interface designed for natural career discussions with AI-powered understanding of your goals and progress.",
+  mayaChatConfidence: "Each Maya response includes confidence scoring to help you understand the reliability and certainty of career advice.",
+  mayaChatQuickActions: "Pre-designed prompts for common career questions - skill gap analysis, career transitions, market insights, and learning plans.",
+  mayaChatHistory: "Your complete conversation history with Maya, searchable and organized for easy reference to past career guidance.",
+  mayaChatContext: "Maya automatically considers your profile, progress, goals, and recent activities to provide personalized and relevant advice.",
+  mayaChatInsights: "Structured insights and actionable recommendations extracted from Maya's analysis of your career situation.",
+
+  // MentorChat - Milestone & XP System
+  mentorChatWelcome: "Personalized welcome message from Maya based on your current progress, recent achievements, and next recommended actions.",
+  mentorChatXPProgress: "Real-time XP tracking with visual progress bars showing your advancement toward the next level and milestone rewards.",
+  mentorChatLevelMilestones: "Achievement system with meaningful milestones that unlock new features, recognition, and advanced career guidance.",
+  mentorChatPlanManager: "Comprehensive milestone plan management with step-by-step tracking, completion checkboxes, and progress visualization.",
+  mentorChatPlanExpansion: "Expandable plan cards showing detailed step breakdowns, completion dates, and interactive progress tracking.",
+  mentorChatStepTracking: "Individual step completion with checkbox interactions, automatic progress calculation, and celebration triggers.",
+  mentorChatCelebrations: "Motivational celebration animations and notifications when you complete plans, reach milestones, or level up.",
+  mentorChatRecentActions: "Timeline of your recent learning activities, course completions, and skill progress for Maya's contextual awareness.",
+  mentorChatContext: "Comprehensive context panel showing your CRI score, readiness metrics, goals, and recent achievements for informed discussions.",
+
+  // Maya Onboarding - Complete Step-by-Step Guide
+  mayaOnboardingIntro: "Meet Maya, your AI career companion, with explanation of personalized guidance, smart recommendations, and continuous learning support.",
+  mayaOnboardingProgress: "Visual progress indicator showing your advancement through the onboarding process with completion percentage.",
+  mayaOnboardingRoleDiscovery: "Identify your professional role and experience level to customize Maya's personality and guidance approach.",
+  mayaOnboardingGoalSetting: "Select your career goals from comprehensive options to enable targeted recommendations and personalized learning paths.",
+  mayaOnboardingSkillsAnalysis: "Quick skills assessment with both suggested and custom skill entry to establish your baseline for growth tracking.",
+  mayaOnboardingPersonalization: "Final step where Maya analyzes your responses to create a personalized career strategy and learning plan.",
+  mayaOnboardingRoleOptions: "Choose from learner, professional, career changer, or employer roles to receive appropriately targeted guidance.",
+  mayaOnboardingExperience: "Select your experience level (beginner, intermediate, advanced) to receive properly calibrated challenge and support.",
+  mayaOnboardingGoalSelection: "Multi-select goal system covering skill learning, career advancement, salary growth, portfolio building, and more.",
+  mayaOnboardingSkillEntry: "Interactive skill selection with popular suggestions plus custom skill addition for comprehensive profile building.",
+
+  // SkillDetailSidePanel - Complete Feature Coverage
+  skillDetailOverview: "Comprehensive skill information including description, XP rewards, difficulty level, and current progress tracking.",
+  skillDetailProgress: "Visual progress tracking with XP breakdown, completion percentage, CRI scores, and verification sources.",
+  skillDetailPrerequisites: "Prerequisites checker showing required skills, completion status, and pathway to unlock this skill.",
+  skillDetailResources: "Curated learning resources including courses, tutorials, and materials specifically matched to this skill.",
+  skillDetailPlanIntegration: "One-click integration with Maya to create personalized learning plans and milestone tracking for this skill.",
+  skillDetailProofProjects: "Attach proof projects to demonstrate skill mastery with portfolio links, skill tags, and verification options.",
+  skillDetailTabs: "Organized information tabs for overview, progress tracking, prerequisites, and learning resources for focused exploration.",
+  skillDetailXPReward: "XP point system showing the value and impact of mastering this skill on your overall career progression.",
+  skillDetailDifficulty: "Difficulty assessment with level indicators and beginner/intermediate/advanced classifications for proper preparation.",
+  skillDetailVerification: "Verification system showing skill validation sources, CRI scores, and credibility indicators for employer confidence.",
+  skillDetailCourseIntegration: "Direct access to related courses with compact course cards, difficulty indicators, and one-click enrollment.",
+
+  // SaveButton - Authentication & Functionality
+  saveButtonAuthenticated: "Save courses to your personalized learning plan when logged in - automatic sync across all devices and platforms.",
+  saveButtonUnauthenticated: "Sign in to save courses to your personalized learning plan for organized career development and progress tracking.",
+  saveButtonSaved: "Course successfully saved to your learning plan - accessible from your dashboard, saved page, and profile sections.",
+  saveButtonLoading: "Processing your save request - courses are automatically organized by category and integrated with your learning path.",
+  saveButtonRemove: "Remove courses from your saved list - this won't affect any progress or completion tracking you've already earned.",
   courseExternalLink: "Opens the course page on the provider's platform where you can enroll and begin learning.",
   courseRating: "Community rating showing course quality and learner satisfaction from previous students.",
   courseDuration: "Estimated time investment needed to complete this course and gain the listed skills.",

@@ -13,6 +13,7 @@ interface MayaOnboardingProps {
 
 // Add imports for the experience level hook
 import { useUserExperienceLevel } from "@/hooks/useUserExperienceLevel";
+import TutorialTip from '@/tutorial/TutorialTip';
 
 export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -236,8 +237,9 @@ export function MayaOnboarding({ onComplete }: MayaOnboardingProps) {
         {/* Progress indicator */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
               Step {currentStep + 1} of {steps.length}
+              <TutorialTip id="mayaOnboardingProgress" label="Visual progress indicator showing your advancement through the onboarding process" />
             </span>
             <span className="text-sm text-muted-foreground">
               {Math.round(((currentStep + 1) / steps.length) * 100)}% complete
@@ -273,9 +275,12 @@ function IntroStep({ onNext }: { onNext: (data: any) => void }) {
       </div>
       
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-          Hi! I'm Maya 👋
-        </h1>
+        <div className="flex items-center justify-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Hi! I'm Maya 👋
+          </h1>
+          <TutorialTip id="mayaOnboardingIntro" label="Meet Maya, your AI career companion with personalized guidance and smart recommendations" />
+        </div>
         <p className="text-lg text-muted-foreground">
           Your AI-powered career companion
         </p>
@@ -353,7 +358,10 @@ function RoleDiscoveryStep({ onNext }: { onNext: (data: any) => void }) {
 
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold mb-3">What describes you best?</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="font-semibold">What describes you best?</h3>
+            <TutorialTip id="mayaOnboardingRoleOptions" label="Choose your professional role to receive appropriately targeted guidance" />
+          </div>
           <div className="grid gap-3">
             {roles.map((role) => (
               <Card 
@@ -380,7 +388,10 @@ function RoleDiscoveryStep({ onNext }: { onNext: (data: any) => void }) {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-3">Experience level?</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="font-semibold">Experience level?</h3>
+            <TutorialTip id="mayaOnboardingExperience" label="Select your experience level to receive properly calibrated challenge and support" />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {experienceLevels.map((level) => (
               <Card 
@@ -440,7 +451,10 @@ function GoalsSettingStep({ onNext }: { onNext: (data: any) => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">What are your goals?</h2>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <h2 className="text-2xl font-bold">What are your goals?</h2>
+          <TutorialTip id="mayaOnboardingGoalSelection" label="Multi-select goal system covering skill learning, career advancement, and more" />
+        </div>
         <p className="text-muted-foreground">
           Select all that apply - I'll help you achieve them
         </p>
