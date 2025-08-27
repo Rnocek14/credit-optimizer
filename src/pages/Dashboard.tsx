@@ -20,6 +20,7 @@ import { getCurrentUser, getUserProfile } from "@/lib/authHelper";
 import { useAnalytics } from "@/lib/analytics";
 import { useNavigate } from "react-router-dom";
 import { NextSmartStep } from "@/components/NextSmartStep";
+import TutorialTip from "@/tutorial/TutorialTip";
 import type { Tables } from "@/integrations/supabase/types";
 
 type CareerTrack = Tables<"career_tracks">;
@@ -182,9 +183,12 @@ export default function Dashboard() {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-              Your Career Dashboard
-            </h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                Your Career Dashboard
+              </h1>
+              <TutorialTip id="dashboardOverview" label="Career dashboard overview" />
+            </div>
             <p className="text-muted-foreground text-sm md:text-base">
               Track your progress and follow your personalized roadmap
             </p>
@@ -193,7 +197,10 @@ export default function Dashboard() {
           {/* Next Smart Step Widget */}
           <div className="mb-6 md:mb-8">
             <div className="grid gap-6 md:grid-cols-2">
-              <NextSmartStep userId={currentUser?.id} />
+              <div className="flex items-start gap-2">
+                <NextSmartStep userId={currentUser?.id} />
+                <TutorialTip id="dashboardNextStep" label="AI-powered next step recommendations" />
+              </div>
               
               <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
                 <CardContent className="p-6">
@@ -202,11 +209,14 @@ export default function Dashboard() {
                       <div className="p-3 bg-primary/20 rounded-lg">
                         <Brain className="h-6 w-6 text-primary" />
                       </div>
-                      <div>
-                        <h3 className="text-xl font-semibold mb-1">AI Career Planner</h3>
-                        <p className="text-muted-foreground">
-                          Generate personalized learning paths with ROI optimization
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <h3 className="text-xl font-semibold mb-1">AI Career Planner</h3>
+                          <p className="text-muted-foreground">
+                            Generate personalized learning paths with ROI optimization
+                          </p>
+                        </div>
+                        <TutorialTip id="dashboardPlanner" label="Advanced career planning tool" />
                       </div>
                     </div>
                     <Button onClick={handlePlannerAccess} className="flex items-center gap-2">

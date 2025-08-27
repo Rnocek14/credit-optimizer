@@ -21,6 +21,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { HubNavigation } from '@/components/HubNavigation';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface AnalyticsData {
   views: { date: string; count: number; source: string; }[];
@@ -433,23 +434,29 @@ export default function Analytics() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
-            <p className="text-muted-foreground">
-              Track your resume performance and engagement metrics
-            </p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
+              <p className="text-muted-foreground">
+                Track your resume performance and engagement metrics
+              </p>
+            </div>
+            <TutorialTip id="analyticsOverview" label="Analytics dashboard overview" />
           </div>
           <div className="flex items-center gap-4 mt-4 md:mt-0">
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1">
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                  <SelectItem value="90d">Last 90 days</SelectItem>
+                </SelectContent>
+              </Select>
+              <TutorialTip id="analyticsTimeRange" label="Time range selection" />
+            </div>
             <Button variant="outline" onClick={() => navigate(`/resume/${user?.id}`)}>
               <ExternalLink className="h-4 w-4 mr-2" />
               View Resume
@@ -463,7 +470,10 @@ export default function Analytics() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Views</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium text-muted-foreground">Total Views</p>
+                    <TutorialTip id="analyticsViews" label="Profile and resume views" />
+                  </div>
                   <p className="text-2xl font-bold">{getTotalViews().toLocaleString()}</p>
                 </div>
                 <Eye className="h-8 w-8 text-blue-500" />
@@ -475,7 +485,10 @@ export default function Analytics() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Clicks</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium text-muted-foreground">Total Clicks</p>
+                    <TutorialTip id="analyticsClicks" label="User engagement clicks" />
+                  </div>
                   <p className="text-2xl font-bold">{getTotalClicks().toLocaleString()}</p>
                 </div>
                 <MousePointer className="h-8 w-8 text-green-500" />
@@ -487,7 +500,10 @@ export default function Analytics() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">CTR</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-sm font-medium text-muted-foreground">CTR</p>
+                    <TutorialTip id="analyticsCTR" label="Click-through rate percentage" />
+                  </div>
                   <p className="text-2xl font-bold">{getClickThroughRate()}%</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-purple-500" />

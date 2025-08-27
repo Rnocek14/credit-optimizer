@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useWorkflowCertificates } from '@/hooks/useWorkflowCertificates';
 import { HubNavigation } from '@/components/HubNavigation';
+import TutorialTip from '@/tutorial/TutorialTip';
 import { 
   Award, 
   Download, 
@@ -99,10 +100,13 @@ export default function CertificatesPage() {
       <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-            <Award className="w-8 h-8 text-yellow-500" />
-            Maya Certificates
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Award className="w-8 h-8 text-yellow-500" />
+              Maya Certificates
+            </h1>
+            <TutorialTip id="certificatesOverview" label="Professional certificates overview" />
+          </div>
           <p className="text-muted-foreground">
             Professional certifications for AI-guided workflow completions
           </p>
@@ -112,10 +116,13 @@ export default function CertificatesPage() {
         {certificates.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Certification Portfolio
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Certification Portfolio
+                </CardTitle>
+                <TutorialTip id="certificateStats" label="Certificate portfolio metrics" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -143,10 +150,13 @@ export default function CertificatesPage() {
         {/* Certificate Verification */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Verify Certificate
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Verify Certificate
+              </CardTitle>
+              <TutorialTip id="certificateVerification" label="Certificate authenticity verification" />
+            </div>
             <CardDescription>
               Enter a verification code to validate a Maya certificate
             </CardDescription>

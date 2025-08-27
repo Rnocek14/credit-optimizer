@@ -11,6 +11,7 @@ import { useCourseProgress } from '@/hooks/useCourseProgress';
 import { CourseCompletionModal } from '@/components/CourseCompletionModal';
 import { Trophy } from 'lucide-react';
 import { SaveToPlanButton } from '@/components/SaveToPlanButton';
+import TutorialTip from '@/tutorial/TutorialTip';
 
 interface CourseCardProps {
   course: {

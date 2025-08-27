@@ -87,7 +87,80 @@ export const TIPS = {
   savedCoursesList: "Courses you've saved from recommendations. Complete them to boost your CRI and advance your career.",
   courseStatus: "Track whether courses are Saved (bookmarked), Enrolled (started), or Completed (finished).",
   courseProgress: "Monitor your learning progress and see how courses impact your Career Readiness Index.",
-  criProjection: "See how completing your saved courses will boost your CRI score and career readiness."
+  criProjection: "See how completing your saved courses will boost your CRI score and career readiness.",
+
+  // Phase 1: Core User Journey Components
+  
+  // Course Card Features
+  courseCard: "Comprehensive course information including difficulty, cost, skills, and provider details to help you make informed learning decisions.",
+  courseTitle: "Course name and main topic - click to view detailed description and learning outcomes.",
+  coursePlatform: "Educational provider hosting this course - we partner with top industry-recognized platforms.",
+  courseDifficulty: "Skill level required (Beginner/Intermediate/Advanced) to help you choose appropriate learning paths.",
+  courseCost: "Investment required for your professional development - many free and affordable options available.",
+  courseDescription: "Detailed overview of what you'll learn and how it applies to your career goals.",
+  courseSkills: "Skills you'll gain from this course - these align with industry demands and career progression paths.",
+  courseSaveButton: "Save courses to your personalized learning plan for organized career development and progress tracking.",
+  courseStartButton: "Begin your learning journey with integrated progress tracking and milestone management.",
+  courseCompletion: "Mark courses complete to unlock achievements, update your profile, and track your learning ROI.",
+  courseProgressBadge: "Visual progress tracking shows your completion status, time invested, and learning milestones achieved.",
+  courseExternalLink: "Opens the course page on the provider's platform where you can enroll and begin learning.",
+  courseRating: "Community rating showing course quality and learner satisfaction from previous students.",
+  courseDuration: "Estimated time investment needed to complete this course and gain the listed skills.",
+
+  // Analytics Dashboard
+  analyticsOverview: "Comprehensive dashboard tracking your career development metrics, engagement, and progress trends.",
+  analyticsViews: "Total views of your professional profile, resume, and portfolio across all platforms.",
+  analyticsClicks: "Engagement metrics showing how often people interact with your professional content.",
+  analyticsCTR: "Click-through rate indicates how compelling your professional presentation is to viewers.",
+  analyticsScore: "AI-generated score reflecting your career readiness and professional profile strength.",
+  analyticsTimeRange: "Customize your analytics view to track progress over different time periods (7d, 30d, 90d).",
+  analyticsSources: "Breakdown of where your profile views come from - gallery, direct links, embeds, etc.",
+  analyticsBadgeImpact: "How earning achievement badges improved your profile performance and visibility.",
+  analyticsMentorFeedback: "Professional insights and ratings from industry mentors reviewing your profile.",
+  analyticsGalleryStats: "Performance metrics when your profile is featured in our public gallery.",
+  analyticsExport: "Export your analytics data for portfolio documentation or professional presentations.",
+
+  // Achievement System - Badges  
+  badgesOverview: "Achievement badges recognize your career development milestones and platform engagement.",
+  badgeCard: "Individual achievement showing requirements, progress, and professional value.",
+  badgeProgress: "Track your progress toward earning new badges with real-time completion indicators.",
+  badgeRequirements: "Specific criteria needed to unlock each achievement badge and recognition level.",
+  badgeEarned: "Completed achievements that validate your skills and dedication to professional growth.",
+  badgeSuggestions: "Personalized badge recommendations based on your current activities and goals.",
+  badgeStats: "Overview of your achievement portfolio including completion rates and milestone tracking.",
+  badgeTarget: "Specific goal or threshold you need to reach to earn this achievement badge.",
+  badgeType: "Category of achievement - goals, skills, engagement, or career milestones.",
+
+  // Certificates System
+  certificatesOverview: "Professional certificates validating your AI-guided workflow completions and skills.",
+  certificateCard: "Individual certificate showing completion details, AI confidence scores, and verification codes.",
+  certificateVerification: "Verify any certificate's authenticity using its unique verification code for employers.",
+  certificateStats: "Portfolio metrics including total certificates, confidence scores, and AI decision tracking.",
+  certificateDownload: "Download official certificate documents for your professional portfolio and LinkedIn.",
+  certificateMayaScore: "AI confidence rating showing how effectively you collaborated with our AI assistant.",
+  certificateSharing: "Share your verified achievements with employers and professional networks.",
+  certificateWorkflow: "The specific AI-guided workflow that was completed to earn this certificate.",
+  certificateDecisions: "Number of AI-powered decisions made during the workflow completion process.",
+
+  // Dashboard Enhancement
+  dashboardOverview: "Your personalized career command center showing progress, recommendations, and next steps.",
+  dashboardHeader: "Welcome section with your current career phase and personalized motivational messaging.",
+  dashboardTracks: "AI-recommended career paths based on your skills, goals, and market opportunities.",
+  dashboardRoadmap: "Step-by-step learning path customized for your career transition and skill development.",
+  dashboardProgress: "Visual progress tracking across all your active learning initiatives and goals.",
+  dashboardNextStep: "AI-powered recommendations for your most impactful next career development action.",
+  dashboardPlanner: "Advanced AI career planner with ROI optimization and personalized learning paths.",
+  dashboardWorkflow: "Test and manage automated career development workflows and AI assistance.",
+  dashboardAnalytics: "Integrated performance metrics showing how your efforts translate to career progress.",
+  roadmapSteps: "Individual milestones in your career journey with timelines, priorities, and success metrics.",
+  roadmapCompletion: "Mark steps complete to track progress and unlock new opportunities and recommendations.",
+  roadmapPrerequisites: "Skills or achievements needed before starting this step in your career development.",
+  roadmapCategory: "Type of milestone - skills, networking, application, or assessment activities.",
+  roadmapPriority: "Importance level (High/Medium/Low) to help you focus on the most impactful actions.",
+  roadmapTimeline: "Estimated timeframe for completing this milestone in your career development journey.",
+  roadmapMetrics: "Success indicators that show when you've successfully completed this milestone.",
+  trackRecommendations: "AI-analyzed career paths showing time to proficiency and growth potential.",
+  trackReasoning: "Detailed explanation of why this career track aligns with your goals and market trends."
 } as const;
 
 export type TipId = keyof typeof TIPS;
