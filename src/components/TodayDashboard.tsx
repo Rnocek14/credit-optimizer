@@ -46,6 +46,46 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   // Use secure authentication with proper session management
   const { user, isLoading: authLoading, hasPermission } = useSecureAuth();
   
+  // All hooks must be called before any conditional returns to maintain consistent hook order
+  const {
+    nextStep,
+    quickWins,
+    currentStreak,
+    unstickData,
+    isLoading: smartDashboardLoading,
+    actions
+  } = useSmartTodayDashboard(user?.id);
+
+  const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user?.id);
+  const { data: userLevel } = useQuery({
+    queryKey: ['user-level', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
+      return data?.[0] || null;
+    },
+    enabled: !!user?.id
+  });
+
+  // Gamification state
+  const [xpToasts, setXpToasts] = React.useState<{ id: string; text: string }[]>([]);
+  const { badges, days } = useGamificationData(user?.id);
+  const { open, setOpen, title, subtitle, kind } = useCelebrations({
+    currentLevel: userLevel?.current_level,
+    previousLevel: undefined, // We don't track previous level yet
+    currentStreak: getCurrentStreak ? getCurrentStreak() : currentStreak,
+  });
+
+  // Activate Maya context tracking
+  const {
+    trackPageVisit,
+    trackTimeSpent,
+    trackCourseInteraction,
+    trackGoalProgress,
+    trackMilestone,
+    trackEngagement
+  } = useMayaContextTracking();
+  
   // Auth diagnostics for development
   React.useEffect(() => {
     if (import.meta.env.DEV) {
@@ -83,7 +123,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     );
   }
   
-  // Show sign-in prompt for unauthenticated users
+  // Show sign-in prompt for unauthenticated users (after hooks to maintain hook order)
   if (!user) {
     return (
       <Card className="border-destructive" data-testid="auth-required">
@@ -104,43 +144,6 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       </Card>
     );
   }
-  const {
-    nextStep,
-    quickWins,
-    currentStreak,
-    unstickData,
-    isLoading,
-    actions
-  } = useSmartTodayDashboard(user.id);
-
-  const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user.id);
-  const { data: userLevel } = useQuery({
-    queryKey: ['user-level', user.id],
-    queryFn: async () => {
-      const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
-      return data?.[0] || null;
-    },
-    enabled: !!user.id
-  });
-
-  // Gamification state
-  const [xpToasts, setXpToasts] = React.useState<{ id: string; text: string }[]>([]);
-  const { badges, days } = useGamificationData(user.id);
-  const { open, setOpen, title, subtitle, kind } = useCelebrations({
-    currentLevel: userLevel?.current_level,
-    previousLevel: undefined, // We don't track previous level yet
-    currentStreak: getCurrentStreak ? getCurrentStreak() : currentStreak,
-  });
-
-  // Activate Maya context tracking
-  const {
-    trackPageVisit,
-    trackTimeSpent,
-    trackCourseInteraction,
-    trackGoalProgress,
-    trackMilestone,
-    trackEngagement
-  } = useMayaContextTracking();
 
   // Track page visit when component mounts
   React.useEffect(() => {
@@ -218,9 +221,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     { name: 'Node.js', progress: 45, level: 'Beginner' }
   ];
 
-  console.log('TodayDashboard render:', { userId: user.id, isLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+  console.log('TodayDashboard render:', { userId: user.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
 
-  if (isLoading) {
+  if (smartDashboardLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="next-step-skeleton">

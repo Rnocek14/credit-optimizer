@@ -123,22 +123,12 @@ export default function PlanHub() {
     }
   });
 
-  const { data: skillGaps = [] } = useSkillGaps(currentUser?.id);
-  console.log('PlanHub: Skill gaps state:', { 
-    hasSkillGaps: !!skillGaps, 
-    skillGapsCount: skillGaps?.length
-  });
-
-  const { data: recommendations = [] } = useUnifiedRecommendations(currentUser?.id);
-  console.log('PlanHub: Recommendations state:', { 
-    recCount: recommendations?.length
-  });
+  // Data fetching moved to TodayDashboard component to prevent duplicate hook calls
+  console.log('PlanHub: Data fetching handled by child components');
 
   console.log('PlanHub render complete:', { 
     user: currentUser?.id, 
-    activeTab, 
-    hasSkillGaps: !!skillGaps, 
-    hasRecommendations: !!recommendations
+    activeTab
   });
 
   const handleTabChange = (tab: string) => {
@@ -146,13 +136,8 @@ export default function PlanHub() {
   };
 
   const handleNextStepClick = () => {
-    // Use first recommendation if available
-    const firstReco = recommendations[0];
-    if (firstReco?.actions[0]?.href) {
-      window.location.href = firstReco.actions[0].href;
-    } else {
-      setSearchParams({ tab: 'roadmap' });
-    }
+    // Navigate to roadmap tab - TodayDashboard handles its own next step logic
+    setSearchParams({ tab: 'roadmap' });
   };
 
   // Career profile card handlers
