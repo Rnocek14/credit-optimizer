@@ -238,19 +238,17 @@ export default function PlanHub() {
 
         {/* Today Dashboard - Now integrated in Overview tab */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-                <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
-                <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
-                <TabsTrigger value="gaps" data-testid="tab-gaps">Skill Gaps</TabsTrigger>
-                <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
-                <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
-                <TabsTrigger value="switch" data-testid="tab-switch">Career Switch</TabsTrigger>
-              </TabsList>
+        <div className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-7">
+              <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+              <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
+              <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
+              <TabsTrigger value="gaps" data-testid="tab-gaps">Skill Gaps</TabsTrigger>
+              <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
+              <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
+              <TabsTrigger value="switch" data-testid="tab-switch">Career Switch</TabsTrigger>
+            </TabsList>
 
               <TabsContent value="overview" className="mt-6">
                 {/* Career Profile Card */}
@@ -280,72 +278,93 @@ export default function PlanHub() {
               </TabsContent>
 
               <TabsContent value="goals" className="mt-6">
-                <EnhancedGoalDashboard userId={currentUser?.id} />
+                <div className="space-y-6">
+                  <MayaInlinePanel context="plan" />
+                  <EnhancedGoalDashboard userId={currentUser?.id} />
+                </div>
               </TabsContent>
 
               <TabsContent value="roadmap" className="mt-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  {planFeatures.filter(f => f.tab === 'roadmap').map((feature) => {
-                    const Icon = feature.icon;
-                    return (
-                      <Card key={feature.tab} className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${feature.color}`}>
-                              <Icon className="h-6 w-6" />
+                <div className="space-y-6">
+                  <MayaInlinePanel context="plan" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {planFeatures.filter(f => f.tab === 'roadmap').map((feature) => {
+                      const Icon = feature.icon;
+                      return (
+                        <Card key={feature.tab} className="hover:shadow-md transition-shadow">
+                          <CardHeader>
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${feature.color}`}>
+                                <Icon className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg">{feature.title}</CardTitle>
+                                <CardDescription>{feature.description}</CardDescription>
+                              </div>
                             </div>
-                            <div>
-                              <CardTitle className="text-lg">{feature.title}</CardTitle>
-                              <CardDescription>{feature.description}</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Button className="w-full" variant="default" data-testid="cta-next-step">
-                            Start Planning
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                  
-                  {/* Add example roadmap content */}
-                  <Card className="md:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Your AI-Generated Roadmap</CardTitle>
-                      <CardDescription>Based on your goal to become a Data Scientist</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                         <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
-                           <div className="w-2 h-2 bg-primary rounded-full"></div>
-                           <span className="text-sm">Learn Python fundamentals (Current)</span>
-                         </div>
-                         <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
-                           <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
-                           <span className="text-sm text-muted-foreground">Master statistics and probability</span>
-                         </div>
-                         <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
-                           <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
-                           <span className="text-sm text-muted-foreground">Learn machine learning basics</span>
-                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                          </CardHeader>
+                          <CardContent>
+                            <Button className="w-full" variant="default" data-testid="cta-next-step">
+                              Start Planning
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                    
+                    {/* Add example roadmap content */}
+                    <Card className="md:col-span-2">
+                      <CardHeader>
+                        <CardTitle>Your AI-Generated Roadmap</CardTitle>
+                        <CardDescription>Based on your goal to become a Data Scientist</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+                             <div className="w-2 h-2 bg-primary rounded-full"></div>
+                             <span className="text-sm">Learn Python fundamentals (Current)</span>
+                           </div>
+                           <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                             <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                             <span className="text-sm text-muted-foreground">Master statistics and probability</span>
+                           </div>
+                           <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
+                             <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
+                             <span className="text-sm text-muted-foreground">Learn machine learning basics</span>
+                           </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="gaps" className="mt-6">
-                <SkillGapRecommendations />
+                <div className="space-y-6">
+                  <MayaInlinePanel context="plan" />
+                  <SkillGapRecommendations />
+                </div>
               </TabsContent>
 
               <TabsContent value="workflows" className="mt-6">
-                <GoalOrchestrator userId={currentUser?.id} />
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <MayaIntelligencePanel 
+                      currentPath="/plan/workflows" 
+                      contextData={{ activeTab: "workflows", tracksCount: tracks?.length || 0 }}
+                      compact={true}
+                    />
+                  </div>
+                  <GoalOrchestrator userId={currentUser?.id} />
+                </div>
               </TabsContent>
 
 
               <TabsContent value="proof" className="mt-6">
-                <TrackProofProjectManager />
+                <div className="space-y-6">
+                  <MayaInlinePanel context="plan" />
+                  <TrackProofProjectManager />
+                </div>
               </TabsContent>
 
               <TabsContent value="switch" className="mt-6">
@@ -360,19 +379,6 @@ export default function PlanHub() {
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
-
-          {/* Maya Guidance Panel */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-4">
-              <MayaIntelligencePanel 
-                currentPath="/plan" 
-                contextData={{ activeTab: activeTab, tracksCount: tracks?.length || 0 }}
-                compact={true}
-              />
-              <MayaInlinePanel context="plan" />
-            </div>
-          </div>
         </div>
       </div>
       
