@@ -181,8 +181,8 @@ export default function Dashboard() {
     <>
       <HubNavigation />
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-6 md:py-8">
-          <div className="mb-6 md:mb-8">
+        <div className="container mx-auto px-6 py-8 md:py-12 max-w-6xl space-content-lg">
+          <div className="mb-8 md:mb-12">
             <div className="flex items-center gap-2 mb-2">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 Your Career Dashboard
@@ -195,8 +195,8 @@ export default function Dashboard() {
           </div>
 
           {/* Next Smart Step Widget */}
-          <div className="mb-6 md:mb-8">
-            <div className="grid gap-6 md:grid-cols-2">
+          <div className="mb-8 md:mb-12">
+            <div className="grid gap-8 md:grid-cols-2">
               <div className="flex items-start gap-2">
                 <NextSmartStep userId={currentUser?.id} />
                 <TutorialTip id="dashboardNextStep" label="AI-powered next step recommendations" />
@@ -230,7 +230,7 @@ export default function Dashboard() {
           </div>
 
           {/* Workflow Test Panel */}
-          <div className="mb-6 md:mb-8">
+          <div className="mb-8 md:mb-12">
             <WorkflowTestPanel />
           </div>
 
@@ -241,12 +241,12 @@ export default function Dashboard() {
 
           {/* Career Tracks */}
           {careerTracks.length > 0 && (
-            <div className="mb-6 md:mb-8">
+            <div className="mb-8 md:mb-12">
               <h2 className="text-xl md:text-2xl font-semibold mb-4 flex items-center gap-2">
               <Target className="h-6 w-6" />
               Recommended Career Tracks
             </h2>
-            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {careerTracks.map((track) => (
                 <Card key={track.id}>
                   <CardHeader>
@@ -288,10 +288,10 @@ export default function Dashboard() {
               <BookOpen className="h-6 w-6" />
               Your Learning Roadmap
             </h2>
-            <div className="space-y-3 md:space-y-4">
+            <div className="space-y-4 md:space-y-6">
               {roadmapSteps.map((step, index) => (
                 <Card key={step.id} className={step.completed ? "opacity-75" : ""}>
-                  <CardContent className="p-4 md:p-6">
+                  <CardContent className="p-6 md:p-8">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0 mt-1">
                         <Checkbox

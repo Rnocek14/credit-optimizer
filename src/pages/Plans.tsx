@@ -247,9 +247,9 @@ export default function Plans() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-6 py-12 max-w-6xl space-content-lg">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-12">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">📘 Milestone Plans</h1>
@@ -270,7 +270,7 @@ export default function Plans() {
 
         {/* Career Profile Card - Only render if trackIdToUse exists */}
       {trackIdToUse ? (
-        <div className="mb-8">
+        <div className="mb-12">
           <CareerProfileCard 
             trackId={trackIdToUse}
             onSimulateSwitch={() => openSwitchSimulatorWith(trackIdToUse)}
@@ -279,7 +279,7 @@ export default function Plans() {
           />
         </div>
       ) : !tracksLoading && (
-        <div className="mb-8">
+        <div className="mb-12">
           <Card>
             <CardContent className="p-6">
               <div className="text-center text-muted-foreground">
@@ -293,7 +293,7 @@ export default function Plans() {
 
       {/* Saved Courses List Integration */}
       <ErrorBoundary>
-        <div className="mb-8">
+        <div className="mb-12">
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-xl font-semibold">Saved Courses</h2>
             <TutorialTip 
@@ -306,7 +306,7 @@ export default function Plans() {
       </ErrorBoundary>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'active' | 'completed')} className="mb-8">
         <div className="flex items-center gap-4 mb-4">
           <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="active" className="flex items-center gap-2">
@@ -339,7 +339,7 @@ export default function Plans() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {filteredPlans.map((plan) => (
                 <PlanCard
                   key={plan.id}
@@ -367,7 +367,7 @@ export default function Plans() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {filteredPlans.map((plan) => (
                 <PlanCard
                   key={plan.id}

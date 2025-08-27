@@ -26,14 +26,14 @@ export function PolishedPageLayout({
     md: 'container-md', 
     lg: 'container-lg',
     xl: 'container-xl',
-    full: 'w-full px-4'
+    full: 'container-full'
   };
 
   const spacingClasses = {
     none: '',
-    sm: 'py-4',
-    md: 'py-6',
-    lg: 'py-8'
+    sm: 'py-6',
+    md: 'py-8',
+    lg: 'py-12'
   };
 
   return (

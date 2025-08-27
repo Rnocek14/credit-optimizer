@@ -431,9 +431,9 @@ export default function Analytics() {
   return (
     <div className="min-h-screen bg-background">
       <HubNavigation />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12 max-w-6xl space-content-lg">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12">
           <div className="flex items-center gap-2">
             <div>
               <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
@@ -465,7 +465,7 @@ export default function Analytics() {
         </div>
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -525,7 +525,7 @@ export default function Analytics() {
         </div>
 
         {/* Charts and Details */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-8">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="engagement">Engagement</TabsTrigger>
@@ -533,14 +533,14 @@ export default function Analytics() {
             <TabsTrigger value="gallery">Gallery Activity</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Views Over Time */}
               <Card>
                 <CardHeader>
                   <CardTitle>Resume Views Over Time</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-8">
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={analytics?.views}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -558,7 +558,7 @@ export default function Analytics() {
                 <CardHeader>
                   <CardTitle>Traffic Sources</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-8">
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -586,8 +586,8 @@ export default function Analytics() {
               <CardHeader>
                 <CardTitle>Badge Impact Analysis</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="p-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-muted-foreground">
                       {analytics?.badgeImpact.beforeBadges}
