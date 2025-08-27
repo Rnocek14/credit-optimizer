@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Target, TrendingUp, Zap, Users, BookOpen, Award, Flame, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { useSmartTodayDashboard } from '@/hooks/useSmartTodayDashboard';
 import { useCRIEngine } from '@/hooks/useCRIEngine';
 import { useGamification } from '@/hooks/useGamification';
@@ -41,10 +42,68 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { data: user } = useQuery({
-    queryKey: ['user'],
-    queryFn: async () => (await supabase.auth.getUser()).data.user
-  });
+  
+  // Use secure authentication with proper session management
+  const { user, isLoading: authLoading, hasPermission } = useSecureAuth();
+  
+  // Auth diagnostics for development
+  React.useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('🔐 TodayDashboard Auth State:', {
+        user: user ? {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isDevUser: user.isDevUser
+        } : null,
+        authLoading,
+        hasUser: !!user,
+        userId: user?.id
+      });
+    }
+  }, [user, authLoading]);
+  
+  // Show auth loading state
+  if (authLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="auth-loading">
+          <CardHeader>
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="h-4 bg-muted rounded w-full"></div>
+              <div className="h-4 bg-muted rounded w-2/3"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Show sign-in prompt for unauthenticated users
+  if (!user) {
+    return (
+      <Card className="border-destructive" data-testid="auth-required">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            Authentication Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">
+            Please sign in to view your personalized dashboard and track your progress.
+          </p>
+          <Button onClick={() => window.location.href = '/auth'} className="w-full">
+            Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   const {
     nextStep,
     quickWins,
@@ -52,22 +111,21 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     unstickData,
     isLoading,
     actions
-  } = useSmartTodayDashboard(user?.id);
+  } = useSmartTodayDashboard(user.id);
 
-  const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user?.id);
+  const { getCurrentStreak, getLongestStreak, metrics } = useGamification(user.id);
   const { data: userLevel } = useQuery({
-    queryKey: ['user-level', user?.id],
+    queryKey: ['user-level', user.id],
     queryFn: async () => {
-      if (!user?.id) return null;
       const { data } = await supabase.rpc('get_user_level', { user_id_param: user.id });
       return data?.[0] || null;
     },
-    enabled: !!user?.id
+    enabled: !!user.id
   });
 
   // Gamification state
   const [xpToasts, setXpToasts] = React.useState<{ id: string; text: string }[]>([]);
-  const { badges, days } = useGamificationData(user?.id);
+  const { badges, days } = useGamificationData(user.id);
   const { open, setOpen, title, subtitle, kind } = useCelebrations({
     currentLevel: userLevel?.current_level,
     previousLevel: undefined, // We don't track previous level yet
@@ -127,7 +185,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   };
 
   const handleChallengeComplete = async (challengeId: string, xpAwarded: number) => {
-    if (!user?.id) return;
+    if (!user.id) return;
     
     try {
       await awardXP(user.id, xpAwarded, 'LEARNING_SESSION', 'Completed daily challenge');
@@ -160,7 +218,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     { name: 'Node.js', progress: 45, level: 'Beginner' }
   ];
 
-  console.log('TodayDashboard render:', { user: user?.id, isLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+  console.log('TodayDashboard render:', { userId: user.id, isLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
 
   if (isLoading) {
     return (
@@ -196,7 +254,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       {/* Maya Intelligence Overview - Full Width */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <MayaInsightsCard 
-          userName={user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'}
+          userName={user.name || user.email?.split('@')[0] || 'there'}
           currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
           nextStep={nextStep}
           recommendations={quickWins}
@@ -218,14 +276,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* CRI Score Display */}
         <CRIScoreDisplay 
-          userId={user?.id}
+          userId={user.id}
           onImproveClick={() => window.location.href = '/cri'}
         />
 
         {/* Daily Challenge */}
         <DailyChallengeCard 
           currentStreak={getCurrentStreak ? getCurrentStreak() : currentStreak}
-          userId={user?.id}
+          userId={user.id}
           onChallengeComplete={handleChallengeComplete}
         />
 
@@ -463,7 +521,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
               </p>
             </div>
 
-            {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
+        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
               <div className="pt-3">
                 <Button
                   size="sm"

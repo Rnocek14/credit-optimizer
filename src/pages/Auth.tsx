@@ -111,8 +111,8 @@ export default function Auth() {
           description: "You've been signed in successfully.",
         });
 
-        // Redirect to explore-hub for all users
-        navigate("/explore-hub");
+        // Redirect to today dashboard for all users
+        navigate("/today");
       }
     } catch (error: any) {
       console.error("Sign in error:", error);
@@ -208,8 +208,8 @@ export default function Auth() {
         description: "You're now signed in as Mateo (demo user).",
       });
       
-      // Navigate to explore-hub
-      navigate("/explore-hub");
+      // Navigate to today dashboard
+      navigate("/today");
     } catch (error: any) {
       console.error("Demo login error:", error);
       toast({
