@@ -9595,14 +9595,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
-      unaccent: {
-        Args: { "": string }
-        Returns: string
-      }
-      unaccent_init: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       update_learning_streak: {
         Args: { activity_date?: string; user_id_param: string }
         Returns: Json

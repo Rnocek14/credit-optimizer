@@ -28,6 +28,7 @@ export default function TutorialTip({ id, label, children }: Props) {
       <TooltipTrigger asChild>
         <button
           type="button"
+          data-tutorial-tip={id}
           className="inline-flex items-center justify-center h-5 w-5 rounded-full border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           aria-describedby={`tip-${id}`}
         >

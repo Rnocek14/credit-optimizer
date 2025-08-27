@@ -230,9 +230,32 @@ export const TIPS = {
   roadmapCategory: "Type of milestone - skills, networking, application, or assessment activities.",
   roadmapPriority: "Importance level (High/Medium/Low) to help you focus on the most impactful actions.",
   roadmapTimeline: "Estimated timeframe for completing this milestone in your career development journey.",
-  roadmapMetrics: "Success indicators that show when you've successfully completed this milestone.",
+  trackMetrics: "Success indicators that show when you've successfully completed this milestone.",
   trackRecommendations: "AI-analyzed career paths showing time to proficiency and growth potential.",
-  trackReasoning: "Detailed explanation of why this career track aligns with your goals and market trends."
+  trackReasoning: "Detailed explanation of why this career track aligns with your goals and market trends.",
+  
+  // Phase 4C + 5: Deep-Link Tutorial Tips
+  
+  // Market Intelligence Tips
+  mi_overview_card: "This card summarizes trend, demand, and salary in one glance. Click to drill into sources and explore detailed market analysis.",
+  mi_trend_compare: "Compare 2–4 careers side-by-side. The highlight shows the best performer on your chosen metric with real-time data.",
+  mi_alerts_tip: "Turn on alerts for demand spikes, salary moves, or new credentials. Stay ahead of market changes in your field.",
+  mi_roi_heatmap: "Heatmap shows where your path pays off most after cost of living. Hover for detailed ROI breakdown by location.",
+  mi_export_csv: "Export the current view to CSV for deeper analysis or sharing with colleagues and mentors.",
+  
+  // Resume Analytics Tips
+  ra_snapshot: "XP, badges, goals, and recent gains in one place. Your complete career development overview at a glance.",
+  ra_roi_lqi_explain: "ROI & LQI factors show where your growth could accelerate most. Focus on high-impact opportunities first.",
+  ra_timeline: "Scroll the timeline to see pace and impact of your learning. Identify patterns and optimize your growth velocity.",
+  ra_skills_top: "Top skills are inferred from transcripts and projects—click to open gaps analysis and improvement recommendations.",
+  ra_reco_action: "Add a course, set a goal, or export a recruiter-ready summary. Take immediate action on your career development.",
+  
+  // Maya Workflows Tips
+  maya_why_this_step: "See why Maya picked this step—logic, alternatives, and fit analysis. Understand the AI reasoning behind recommendations.",
+  maya_confidence: "Confidence reflects data quality and past success in similar contexts. Higher confidence means better predictions.",
+  maya_alt_paths: "Explore alternatives when time, budget, or difficulty is a constraint. Maya shows multiple pathways to your goals.",
+  maya_certificates: "Earn 'Trusted by Maya' certificates after high-confidence completions. Validate your achievements with AI backing.",
+  maya_share_linkedin: "Share your verified step or certificate on LinkedIn. Showcase your AI-validated career progress professionally.",
 } as const;
 
 export type TipId = keyof typeof TIPS;

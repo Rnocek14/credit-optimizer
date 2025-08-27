@@ -3,7 +3,8 @@ import { trackTelemetryEvent } from '@/utils/telemetry';
 
 type TutorialContextValue = {
   enabled: boolean;
-  setEnabled: (v: boolean) => void;
+  setEnabled: (v: boolean, source?: { source: string }) => void;
+  openTipById: (tipId: string) => boolean;
 };
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
@@ -22,16 +23,31 @@ export default function TutorialProvider({ children }: { children: React.ReactNo
     if (stored) setEnabled(stored === 'true');
   }, []);
 
-  const handleSetEnabled = (v: boolean) => {
+  const handleSetEnabled = (v: boolean, source?: { source: string }) => {
     setEnabled(v);
     localStorage.setItem('lp:tutorial:enabled', String(v));
     trackTelemetryEvent({ 
       task: 'tutorial_toggle', 
-      complexity: { enabled: v, source: 'header' }
+      complexity: { enabled: v, source: source?.source || 'header' }
     });
   };
 
-  const value = useMemo(() => ({ enabled, setEnabled: handleSetEnabled }), [enabled]);
+  const openTipById = (tipId: string): boolean => {
+    const tipElement = document.querySelector(`[data-tutorial-tip="${tipId}"]`);
+    if (tipElement) {
+      (tipElement as HTMLElement).focus();
+      const event = new MouseEvent('mouseenter', { bubbles: true });
+      tipElement.dispatchEvent(event);
+      return true;
+    }
+    return false;
+  };
+
+  const value = useMemo(() => ({ 
+    enabled, 
+    setEnabled: handleSetEnabled, 
+    openTipById 
+  }), [enabled]);
   
   return (
     <TutorialContext.Provider value={value}>
