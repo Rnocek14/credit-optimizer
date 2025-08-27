@@ -117,7 +117,7 @@ export function HubNavigation() {
           {visibleHubs.map((hub) => {
             const Icon = hub.icon;
             return (
-              <div className="flex items-center gap-1">
+              <div key={hub.id} className="flex items-center gap-1">
                 <Button
                   key={hub.id}
                   variant={isActive(hub.href) ? "default" : "ghost"}

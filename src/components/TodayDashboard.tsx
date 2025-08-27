@@ -104,46 +104,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     }
   }, [user, authLoading]);
   
-  // Show auth loading state
-  if (authLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="auth-loading">
-          <CardHeader>
-            <div className="h-6 bg-muted rounded w-3/4"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="h-4 bg-muted rounded w-full"></div>
-              <div className="h-4 bg-muted rounded w-2/3"></div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
-  // Show sign-in prompt for unauthenticated users (after hooks to maintain hook order)
-  if (!user) {
-    return (
-      <Card className="border-destructive" data-testid="auth-required">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-5 w-5" />
-            Authentication Required
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            Please sign in to view your personalized dashboard and track your progress.
-          </p>
-          <Button onClick={() => window.location.href = '/auth'} className="w-full">
-            Sign In
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Loading and auth states - render conditionally but keep hooks consistent
+  const isAuthLoading = authLoading;
+  const hasUser = !!user;
 
   // Track page visit when component mounts
   React.useEffect(() => {
@@ -154,24 +117,8 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     });
   }, [trackPageVisit, userLevel, getCurrentStreak, currentStreak]);
 
-  // Feature flag fallback
-  if (!unifiedTodayDashboard) {
-    return (
-      <Card className="border-primary" data-testid="today-dashboard-fallback">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Today's Focus
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Today's recommendations are being prepared. Check back soon for personalized suggestions!
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Feature flag state - no early return
+  const hasUnifiedDashboard = unifiedTodayDashboard;
 
   const handleNextStepClick = (actionIndex = 0) => {
     if (!nextStep || !nextStep.actions[actionIndex]) return;
@@ -221,9 +168,77 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     { name: 'Node.js', progress: 45, level: 'Beginner' }
   ];
 
-  console.log('TodayDashboard render:', { userId: user.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
+  console.log('TodayDashboard render:', { userId: user?.id, isLoading: smartDashboardLoading, nextStep: !!nextStep, quickWins: quickWins?.length });
 
-  if (smartDashboardLoading) {
+  // Determine what to render based on state - no early returns to maintain hook order
+  const shouldShowAuthLoading = isAuthLoading;
+  const shouldShowAuthRequired = !hasUser;
+  const shouldShowFeatureFallback = !hasUnifiedDashboard;
+  const shouldShowDataLoading = smartDashboardLoading && hasUser;
+  const shouldShowMainDashboard = hasUser && hasUnifiedDashboard && !smartDashboardLoading;
+
+  // Auth loading state
+  if (shouldShowAuthLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="auth-loading">
+          <CardHeader>
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="h-4 bg-muted rounded w-full"></div>
+              <div className="h-4 bg-muted rounded w-2/3"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Sign-in required state
+  if (shouldShowAuthRequired) {
+    return (
+      <Card className="border-destructive" data-testid="auth-required">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            Authentication Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-4">
+            Please sign in to view your personalized dashboard and track your progress.
+          </p>
+          <Button onClick={() => window.location.href = '/auth'} className="w-full">
+            Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Feature flag fallback
+  if (shouldShowFeatureFallback) {
+    return (
+      <Card className="border-primary" data-testid="today-dashboard-fallback">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            Today's Focus
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">
+            Today's recommendations are being prepared. Check back soon for personalized suggestions!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Data loading state
+  if (shouldShowDataLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="md:col-span-2 lg:col-span-1 animate-pulse" data-testid="next-step-skeleton">
