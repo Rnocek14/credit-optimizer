@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import TrackSelector from "@/components/tracks/TrackSelector";
 import { TrackManager } from "@/components/multi-track/TrackManager";
+import { TrackPlanningView } from "@/components/plan/TrackPlanningView";
 import { getCurrentUser } from "@/lib/auth";
 import { QUERY_KEYS } from "@/lib/queryKeys";
 
@@ -198,8 +199,9 @@ export default function Plan() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">📋 Overview</TabsTrigger>
+            <TabsTrigger value="planning">🎯 Planning</TabsTrigger>
             <TabsTrigger value="roadmap">🗺️ Roadmap</TabsTrigger>
             <TabsTrigger value="goals">🎯 Micro Goals</TabsTrigger>
           </TabsList>
@@ -334,6 +336,11 @@ export default function Plan() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* Planning Tab */}
+          <TabsContent value="planning" className="space-y-6">
+            <TrackPlanningView />
           </TabsContent>
 
           {/* Roadmap Tab */}
