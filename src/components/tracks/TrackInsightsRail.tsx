@@ -58,8 +58,22 @@ export function TrackInsightsRail() {
 
         if (progressError) {
           console.error('Error fetching track progress:', progressError);
-        } else {
-          setProgress(progressData);
+        } else if (progressData) {
+          // Transform the data to match TrackProgress interface
+          const transformedProgress: TrackProgress = {
+            track_id: progressData.track_id,
+            track_name: progressData.title || '', // Use title as track_name fallback
+            title: progressData.title,
+            color: progressData.color,
+            icon: progressData.icon,
+            xp: 0, // Default - could be calculated from user activity
+            badges: 0, // Default - could be fetched from user_badges
+            goals: 0, // Default - could be fetched from career_goals
+            cri_score: progressData.current_cri_score || 0,
+            risk_score: 0, // Default - could be calculated
+            roi_score: 0, // Default - could be calculated
+          };
+          setProgress(transformedProgress);
         }
       } catch (error) {
         console.error('Error fetching track data:', error);
