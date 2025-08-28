@@ -11,6 +11,7 @@ interface FeatureFlags {
   gamificationGallery: boolean;
   gamificationTimeline: boolean;
   gamificationSound: boolean;
+  growthLayerEnabled: boolean;
 }
 
 /**
@@ -38,6 +39,9 @@ export function getFeatureFlags(): FeatureFlags {
     gamificationGallery: searchParams.get('gamification_gallery') !== 'false',
     gamificationTimeline: searchParams.get('gamification_timeline') !== 'false',
     gamificationSound: searchParams.get('gamification_sound') === 'true',
+    
+    // Growth layer - disabled by default, controllable via query param
+    growthLayerEnabled: searchParams.get('growth_layer') === 'true',
   };
 }
 

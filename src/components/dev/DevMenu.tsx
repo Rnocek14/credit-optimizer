@@ -108,6 +108,20 @@ export function DevMenu() {
     }
   };
 
+  const handleToggleGrowthLayer = () => {
+    const currentParams = new URLSearchParams(window.location.search);
+    const isEnabled = currentParams.get('growth_layer') === 'true';
+    
+    if (isEnabled) {
+      currentParams.delete('growth_layer');
+    } else {
+      currentParams.set('growth_layer', 'true');
+    }
+    
+    const newUrl = `${window.location.pathname}${currentParams.toString() ? '?' + currentParams.toString() : ''}`;
+    window.location.href = newUrl;
+  };
+
   if (!isExpanded) {
     return (
       <Button
@@ -200,11 +214,27 @@ export function DevMenu() {
           <Bug className="mr-2 h-3 w-3" />
           Debug Prerequisites
         </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleToggleGrowthLayer}
+          className="w-full justify-start text-xs h-8"
+        >
+          <Zap className="mr-2 h-3 w-3" />
+          Toggle Growth Layer
+        </Button>
       </div>
 
       <div className="mt-3 pt-3 border-t border-muted-foreground/10">
         <p className="text-xs text-muted-foreground">
           Demo Mode: {isDemoMode ? '🟢 ON' : '🔴 OFF'}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Growth Layer: {new URLSearchParams(window.location.search).get('growth_layer') === 'true' ? '🟢 ON' : '🔴 OFF'}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          <a href="/quick-start" className="text-primary hover:underline">→ Quick Start</a>
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           Console: <code className="text-xs">lpDebug.prereq('course title')</code>

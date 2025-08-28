@@ -115,6 +115,7 @@ import {
 import AIAnalyzer from "./pages/AIAnalyzer";
 import Build from "./pages/Build";
 import TrackComparePage from "./components/compare/TrackComparePage";
+import QuickStart from "./pages/QuickStart";
 import { StakeholderProtectedRoute } from "./components/StakeholderProtectedRoute";
 import { EnhancedErrorBoundary } from "./components/enhanced/EnhancedErrorBoundary";
 import { ProductionErrorBoundary } from "./components/enhanced/ProductionErrorBoundary";
@@ -153,6 +154,7 @@ const App = () => {
           {/* Core Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
+          <Route path="/quick-start" element={<QuickStart />} />
           <Route 
             path="/auth" 
             element={

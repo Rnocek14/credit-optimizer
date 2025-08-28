@@ -1,8 +1,10 @@
-# Growth Layer: Server Adapters (PR-2)
+# Growth Layer Implementation
+
+## PR-2: Server Adapters ✅ COMPLETE
 
 This document describes the new Supabase Edge Functions that implement the growth layer server adapters.
 
-## Endpoints
+### Endpoints
 
 All endpoints are exposed as Supabase Edge Functions. Call them from the client like:
 
@@ -43,24 +45,67 @@ const { data, error } = await supabase.functions.invoke('<function-name>', { bod
 - Returns current-period usage for Maya quick analyses:
   - `{ success, limit_reached, remaining, used, limit, reset_date, current_period }`
 
-## Security & Hardening
+### Security & Hardening
 - CORS enabled on all functions
 - Auth required for `onboarding-submit` and `quota-check`
 - Public endpoints take minimal inputs; preview is sanitized
 - `referral_events` table is readable only by service role (policy)
 - Rate limiting backed by `public.edge_invocations` (service-only)
 
-## Telemetry
+### Telemetry
 - `onboarding_submitted` { goal, has_target_role, has_location }
 - `instant_diagnosis_generated` { score_bucket, score }
 - `referral_event_recorded` { type }
 - `quota_checked` { remaining, limit_reached }
 
-## Tables/RPCs used
+### Tables/RPCs used
 - `user_onboarding_responses`, `referrals`, `usage_quotas`
 - RPC: `after_maya_analysis_increment_quota()`, `record_referral_event(...)`
 - Rate limit table: `edge_invocations`
 
-## Notes
-- OTP expiry warning remains operational; no impact to these endpoints.
-- UI for `/quick-start` will consume these in PR-3.
+## PR-3: Growth Layer UI ✅ COMPLETE
+
+### Core Components
+- **QuickStart Page** (`/quick-start`): 3-step career assessment wizard
+  - Goal selection → Role input → Location input  
+  - Instant AI diagnosis with score & insights
+  - Quota checking integration
+  - Responsive design with semantic UI tokens
+
+- **ShareModal Component**: Social sharing for assessment results
+  - Copy link functionality
+  - Twitter, LinkedIn, Facebook integration
+  - Referral code tracking
+
+### Feature Flag Integration
+- ✅ `growthLayerEnabled` flag in `featureFlags.ts`
+- ✅ DevMenu toggle for growth layer testing
+- ✅ Route protection when feature disabled
+
+### Hooks & API Integration
+- **useQuotaCheck**: Real-time usage limit monitoring
+- **useOnboardingSubmit**: Career assessment submission with error handling
+- Client-side telemetry tracking for all user interactions
+
+### Developer Experience
+- ✅ DevMenu integration with quick access to `/quick-start`
+- ✅ Feature flag toggle for testing
+- ✅ Console debugging utilities
+
+### Client Telemetry Events
+- `quick_start_view` { step }
+- `quick_start_submit` { career_goal, target_role, location }
+- `quick_start_result_view` { score, bucket, insights_count }
+- `share_link_copied` { method, referral_code }
+- `share_social_clicked` { platform, referral_code }
+
+### Architecture Notes
+- Clean separation between UI and business logic
+- Proper TypeScript typing with form validation
+- Semantic design system integration (HSL colors, design tokens)
+- Accessibility considerations with ARIA labels
+
+## Next: PR-4
+- Public share page (`/share/:code`)
+- Advanced telemetry dashboard
+- A/B testing infrastructure
