@@ -9508,14 +9508,6 @@ export type Database = {
         Args: { mentor_user_id: string }
         Returns: undefined
       }
-      check_view_security: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          issue_type: string
-          suggestion: string
-          view_name: string
-        }[]
-      }
       clone_career_track: {
         Args: {
           new_color?: string
