@@ -1,3 +1,4 @@
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -44,7 +45,27 @@ export function useOnboardingSubmit() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Ensure a referral code exists for this user if the function didn't return one
+      if (!result?.referralCode) {
+        supabase.auth.getSession().then(({ data }) => {
+          const uid = data?.session?.user?.id;
+          if (!uid) return;
+          supabase
+            .from('referrals')
+            .insert({ user_id: uid })
+            .select('referral_code')
+            .single()
+            .then(({ data: refRow, error }) => {
+              if (error) {
+                console.warn('Referral creation failed:', error);
+                return;
+              }
+              console.log('Referral ensured for user:', { userId: uid, code: refRow?.referral_code });
+            });
+        });
+      }
+
       // Invalidate quota check to update usage
       queryClient.invalidateQueries({ queryKey: ['quota-check'] });
     },

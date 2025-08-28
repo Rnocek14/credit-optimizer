@@ -1,3 +1,4 @@
+
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, supabase, withCircuitBreaker, requireUser } from '../_shared/utils.ts';
@@ -19,44 +20,42 @@ serve(async (req) => {
   return withCircuitBreaker(async () => {
     // Authenticate user
     const { user } = await requireUser(req);
-    
-    // Get current date for monthly quota check
+
+    // Get current month start for reset/period fields
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Check user's current quota for this month
-    const { data: quotaData, error: quotaError } = await supabase
-      .from('usage_quotas')
-      .select('maya_analyses_used, month_start')
-      .eq('user_id', user.id)
-      .single();
+    // Ensure a current-month quota row exists and is up-to-date (resets usage on month rollover)
+    const { data: ensuredQuota, error: ensureErr } = await supabase
+      .rpc('ensure_quota_row', { p_user: user.id });
 
-    let analysesUsed = 0;
-    let isCurrentMonth = true;
-
-    if (quotaData) {
-      analysesUsed = quotaData.maya_analyses_used || 0;
-      
-      // Check if the quota record is for the current month
-      const recordMonth = new Date(quotaData.month_start);
-      isCurrentMonth = recordMonth.getFullYear() === monthStart.getFullYear() && 
-                       recordMonth.getMonth() === monthStart.getMonth();
-      
-      // If not current month, reset the count
-      if (!isCurrentMonth) {
-        analysesUsed = 0;
-      }
+    if (ensureErr) {
+      await trackTelemetryEvent({
+        task: 'quota_checked',
+        function_name: 'quota-check',
+        user_id: user.id,
+        success: false,
+        complexity: { error: ensureErr.message, phase: 'ensure_quota_row' }
+      });
+      throw ensureErr;
     }
+
+    const quotaRow = ensuredQuota as any;
+    const analysesUsed: number = quotaRow?.maya_analyses_used ?? 0;
 
     // Define quota limits (could be made configurable)
     const FREE_TIER_LIMIT = 5;
     const PRO_TIER_LIMIT = 50;
-    
+
     // For now, assume free tier. In the future, this could check user's subscription
     const userLimit = FREE_TIER_LIMIT;
-    
+
     const remaining = Math.max(0, userLimit - analysesUsed);
     const limitReached = analysesUsed >= userLimit;
+
+    // Compute current period and reset date based on current month
+    const currentPeriod = monthStart.toISOString();
+    const resetDate = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString();
 
     // Track telemetry
     await trackTelemetryEvent({
@@ -69,7 +68,7 @@ serve(async (req) => {
         limit: userLimit,
         remaining,
         limit_reached: limitReached,
-        is_current_month: isCurrentMonth
+        ensured_row: true
       }
     });
 
@@ -79,8 +78,8 @@ serve(async (req) => {
       remaining,
       used: analysesUsed,
       limit: userLimit,
-      reset_date: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1).toISOString(),
-      current_period: monthStart.toISOString()
+      reset_date: resetDate,
+      current_period: currentPeriod
     };
   });
 });
