@@ -18,33 +18,35 @@ serve(async (req) => {
   }
 
   return withCircuitBreaker(async () => {
-    // Extract referral code from URL path
+    // Extract referral code from URL path, query, or body
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    const referralCode = pathParts[pathParts.length - 2]; // /referral/:code/event
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    let referralCode = '';
+
+    if (pathParts.length >= 2) {
+      referralCode = pathParts[pathParts.length - 1] === 'event'
+        ? pathParts[pathParts.length - 2]
+        : pathParts[pathParts.length - 1];
+    }
+
+    if (!referralCode) {
+      referralCode = url.searchParams.get('code') || '';
+    }
+
+    const requestText = await req.text();
+    let body: any = {};
+    try {
+      body = JSON.parse(requestText || '{}');
+    } catch {
+      // ignore, will validate below
+    }
+
+    if (!referralCode) {
+      referralCode = body.code || '';
+    }
 
     if (!referralCode || !validateReferralCode(referralCode)) {
       throw new Error('Invalid referral code format');
-    }
-
-    // Get client info for rate limiting and logging
-    const clientIP = getClientIP(req);
-    const userAgent = getUserAgent(req);
-    const rateLimitKey = `referral_event_${clientIP}`;
-
-    // Rate limiting: 20 requests per minute per IP
-    const withinRateLimit = await checkRateLimit(rateLimitKey, 5, 20); // 5 minute window, 20 requests
-    if (!withinRateLimit) {
-      throw new Error('Rate limit exceeded: 20 requests per 5 minutes');
-    }
-
-    // Parse and validate request body
-    const requestText = await req.text();
-    let body;
-    try {
-      body = JSON.parse(requestText);
-    } catch {
-      throw new Error('Invalid JSON in request body');
     }
 
     const validationResult = ReferralEventSchema.safeParse(body);
@@ -55,12 +57,23 @@ serve(async (req) => {
 
     const { type } = validationResult.data;
 
+    // Get client info for rate limiting and logging
+    const clientIP = getClientIP(req);
+    const userAgent = getUserAgent(req);
+    const rateLimitKey = `referral_event_${clientIP}`;
+
+    // Rate limiting: 20 requests per 5 minutes per IP
+    const withinRateLimit = await checkRateLimit(rateLimitKey, 5, 20);
+    if (!withinRateLimit) {
+      throw new Error('Rate limit exceeded: 20 requests per 5 minutes');
+    }
+
     // Verify referral code exists
     const { data: referralData, error: referralError } = await supabase
       .from('referrals')
       .select('user_id')
       .eq('referral_code', referralCode)
-      .single();
+      .maybeSingle();
 
     if (referralError || !referralData) {
       throw new Error('Referral code not found');

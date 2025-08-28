@@ -3205,6 +3205,27 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_invocations: {
+        Row: {
+          created_at: string
+          id: string
+          identifier: string
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          identifier: string
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identifier?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       educator_profiles: {
         Row: {
           average_cri_score: number | null

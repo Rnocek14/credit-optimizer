@@ -72,6 +72,7 @@ serve(async (req) => {
       "Focus on building relevant skills for your target role.",
       "Consider creating projects that demonstrate your capabilities."
     ];
+    let mayaAnalysisData: any = null;
 
     try {
       const { data: mayaData, error: mayaError } = await supabase.functions.invoke(
@@ -90,15 +91,16 @@ serve(async (req) => {
         }
       );
 
-      if (!mayaError && mayaData?.insights) {
-        // Extract score and insights from Maya response
-        const confidence = mayaData.insights?.confidence || 65;
-        mayaScore = Math.round(confidence);
+      if (!mayaError && mayaData) {
+        mayaAnalysisData = mayaData;
+        const confidence = mayaData.insights?.confidence ?? mayaData.insights?.score ?? 65;
+        mayaScore = Math.round(Number(confidence) || 65);
         
         if (mayaData.guidance) {
+          const trimmed = String(mayaData.guidance).slice(0, 160);
           insights = [
             generateShortInsight(mayaScore, career_goal),
-            mayaData.guidance.slice(0, 120) + '...',
+            trimmed,
             "Get a full analysis to see detailed recommendations."
           ];
         }
@@ -113,10 +115,10 @@ serve(async (req) => {
       .from('referrals')
       .select('referral_code')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (existingReferral) {
-      referralCode = existingReferral.referral_code;
+      referralCode = (existingReferral as any).referral_code;
     } else {
       // Create new referral record (trigger will generate code)
       const { data: newReferral, error: referralError } = await supabase
@@ -133,7 +135,7 @@ serve(async (req) => {
         console.error('Failed to create referral:', referralError);
         // Continue without referral code rather than fail
       } else {
-        referralCode = newReferral.referral_code;
+        referralCode = (newReferral as any).referral_code;
       }
     }
 
@@ -154,7 +156,7 @@ serve(async (req) => {
         goal: career_goal,
         has_target_role: !!sanitizedTargetRole,
         has_location: !!sanitizedLocation,
-        maya_analysis: !!mayaData
+        maya_analysis: !!mayaAnalysisData
       }
     });
 

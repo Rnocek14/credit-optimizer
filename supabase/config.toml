@@ -5,3 +5,16 @@ verify_jwt = false
 
 [functions.maya-manual-insights]
 verify_jwt = false
+
+# PR-2 Server Adapters
+[functions.onboarding-submit]
+verify_jwt = true
+
+[functions.quota-check]
+verify_jwt = true
+
+[functions.referral-preview]
+verify_jwt = false
+
+[functions.referral-event]
+verify_jwt = false
