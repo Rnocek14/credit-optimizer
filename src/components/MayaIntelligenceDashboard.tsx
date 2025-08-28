@@ -433,7 +433,7 @@ export function MayaIntelligenceDashboard() {
                               </div>
                             )}
                             
-                            <div id="maya-certificates" className="relative">
+                            <div id="maya-certs" className="relative">
                               <div className="absolute top-2 right-2">
                                 <TutorialTip
                                   id="maya_certificates"

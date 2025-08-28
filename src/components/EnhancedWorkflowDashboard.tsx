@@ -140,7 +140,7 @@ export function EnhancedWorkflowDashboard() {
           )}
         </TabsContent>
 
-        <TabsContent value="next-steps" className="space-y-4" id="maya-alt-paths">
+        <TabsContent value="next-steps" className="space-y-4" id="maya-alts">
           <div className="relative">
             <div className="absolute top-2 right-2">
               <TutorialTip
