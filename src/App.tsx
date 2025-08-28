@@ -154,7 +154,14 @@ const App = () => {
           {/* Core Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Navigate to="/plan" replace />} />
-          <Route path="/quick-start" element={<QuickStart />} />
+          <Route 
+            path="/quick-start" 
+            element={
+              <ProtectedRoute requireAuth={true}>
+                <QuickStart />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/auth" 
             element={

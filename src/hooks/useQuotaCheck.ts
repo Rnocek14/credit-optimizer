@@ -17,7 +17,16 @@ export function useQuotaCheck() {
     queryFn: async (): Promise<QuotaData> => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Authentication required');
+        // Return safe defaults for unauthenticated users
+        return {
+          success: false,
+          limit_reached: true,
+          remaining: 0,
+          used: 0,
+          limit: 0,
+          reset_date: new Date().toISOString(),
+          current_period: new Date().toISOString()
+        };
       }
 
       const { data, error } = await supabase.functions.invoke('quota-check', {

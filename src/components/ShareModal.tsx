@@ -24,7 +24,7 @@ export function ShareModal({ isOpen, onClose, referralCode, scoreBucket, insight
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   
-  const shareUrl = `${window.location.origin}/share/${referralCode}`;
+  const shareUrl = referralCode ? `${window.location.origin}/share/${referralCode}` : '';
   const shareText = `I just got my career readiness assessment! Check out this quick diagnosis tool.`;
 
   const handleCopyLink = async () => {
@@ -119,6 +119,7 @@ export function ShareModal({ isOpen, onClose, referralCode, scoreBucket, insight
                 variant="outline"
                 size="sm"
                 className="shrink-0"
+                disabled={!referralCode}
               >
                 {copied ? (
                   <Check className="w-4 h-4 text-success" />
