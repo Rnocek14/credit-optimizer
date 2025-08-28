@@ -6494,6 +6494,60 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip: unknown | null
+          referral_code: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip?: unknown | null
+          referral_code: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip?: unknown | null
+          referral_code?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          clicks: number
+          created_at: string
+          id: string
+          referral_code: string | null
+          signups: number
+          user_id: string
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          signups?: number
+          user_id: string
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          signups?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       resume_events: {
         Row: {
           created_at: string
@@ -8073,6 +8127,30 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_quotas: {
+        Row: {
+          created_at: string
+          maya_analyses_used: number
+          month_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          maya_analyses_used?: number
+          month_start?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          maya_analyses_used?: number
+          month_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_type: string
@@ -8597,6 +8675,33 @@ export type Database = {
           salary_range_max?: number | null
           salary_range_min?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_onboarding_responses: {
+        Row: {
+          career_goal: string | null
+          created_at: string
+          id: string
+          location: string | null
+          target_role: string | null
+          user_id: string
+        }
+        Insert: {
+          career_goal?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          target_role?: string | null
+          user_id: string
+        }
+        Update: {
+          career_goal?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          target_role?: string | null
           user_id?: string
         }
         Relationships: []
@@ -9436,6 +9541,10 @@ export type Database = {
       }
     }
     Functions: {
+      after_maya_analysis_increment_quota: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       award_xp: {
         Args: {
           action_type_param: string
@@ -9704,6 +9813,10 @@ export type Database = {
       }
       recompute_track_metrics: {
         Args: { p_track_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      record_referral_event: {
+        Args: { p_code: string; p_ip: unknown; p_type: string; p_ua: string }
         Returns: undefined
       }
       refresh_career_steps_with_levels: {
