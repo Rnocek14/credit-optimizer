@@ -471,13 +471,6 @@ export type Database = {
             foreignKeyName: "ai_resume_drafts_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "ai_resume_drafts_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -2904,13 +2897,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "career_tracks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "course_progress_track_usage_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
           },
           {
             foreignKeyName: "course_progress_track_usage_track_id_fkey"
@@ -6452,13 +6438,6 @@ export type Database = {
             foreignKeyName: "proof_projects_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "proof_projects_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -7710,13 +7689,6 @@ export type Database = {
             foreignKeyName: "track_courses_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "track_courses_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -7815,13 +7787,6 @@ export type Database = {
             foreignKeyName: "track_mentor_verifications_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "track_mentor_verifications_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -7853,13 +7818,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "career_tracks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "track_projects_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
           },
           {
             foreignKeyName: "track_projects_track_id_fkey"
@@ -7908,13 +7866,6 @@ export type Database = {
             foreignKeyName: "track_skills_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "track_skills_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -7953,13 +7904,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "career_tracks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "track_steps_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
           },
           {
             foreignKeyName: "track_steps_track_id_fkey"
@@ -8955,13 +8899,6 @@ export type Database = {
             foreignKeyName: "user_track_badges_track_id_fkey"
             columns: ["track_id"]
             isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
-          },
-          {
-            foreignKeyName: "user_track_badges_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
             referencedRelation: "user_track_progress_v"
             referencedColumns: ["track_id"]
           },
@@ -8996,13 +8933,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "career_tracks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_track_xp_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
           },
           {
             foreignKeyName: "user_track_xp_track_id_fkey"
@@ -9051,13 +8981,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "career_tracks"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_track_xp_events_track_id_fkey"
-            columns: ["track_id"]
-            isOneToOne: false
-            referencedRelation: "track_cri_history_v"
-            referencedColumns: ["track_id"]
           },
           {
             foreignKeyName: "user_track_xp_events_track_id_fkey"
@@ -9460,28 +9383,46 @@ export type Database = {
     Views: {
       track_cri_history_v: {
         Row: {
-          cri_score: number | null
-          day: string | null
+          cri_average: number | null
+          readiness_score: number | null
+          recorded_at: string | null
+          resume_title: string | null
           track_id: string | null
+          track_title: string | null
+          user_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_resume_drafts_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_resume_drafts_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "user_track_progress_v"
+            referencedColumns: ["track_id"]
+          },
+        ]
       }
       user_track_progress_v: {
         Row: {
-          archived: boolean | null
-          badges: number | null
           color: string | null
-          cri_score: number | null
-          goals: number | null
+          completion_percentage: number | null
+          courses_completed: number | null
+          created_at: string | null
+          current_cri_score: number | null
+          description: string | null
           icon: string | null
-          risk_score: number | null
-          roi_score: number | null
+          last_activity_at: string | null
           title: string | null
+          total_courses: number | null
           track_id: string | null
-          track_name: string | null
           updated_at: string | null
           user_id: string | null
-          xp: number | null
         }
         Relationships: [
           {
@@ -9566,6 +9507,14 @@ export type Database = {
       check_mentor_achievements: {
         Args: { mentor_user_id: string }
         Returns: undefined
+      }
+      check_view_security: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          issue_type: string
+          suggestion: string
+          view_name: string
+        }[]
       }
       clone_career_track: {
         Args: {
