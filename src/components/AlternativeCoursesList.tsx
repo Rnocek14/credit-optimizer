@@ -41,15 +41,34 @@ export function AlternativeCoursesList() {
       
       if (error) throw error;
       
-      // Transform data to match our types
-      const transformedData = (data || []).map(course => ({
-        ...course,
-        provider: course.provider.toLowerCase() as Provider,
-        description: null, // Field doesn't exist yet
-        skills: course.skills as SkillTag[] | null
-      }));
+      // Transform and validate data to match our types
+      const transformedData: AlternativeCourse[] = (data || []).map(course => {
+        // Normalize provider to lowercase and ensure it's a valid Provider type
+        let normalizedProvider: Provider = 'other';
+        const providerLower = course.provider?.toLowerCase() || 'other';
+        
+        if (['youtube', 'udemy', 'coursera', 'edx', 'masterclass', 'other'].includes(providerLower)) {
+          normalizedProvider = providerLower as Provider;
+        }
+        
+        return {
+          id: course.id,
+          provider: normalizedProvider,
+          external_id: course.external_id,
+          title: course.title,
+          description: null, // Field doesn't exist in DB yet
+          url: course.url,
+          creator_name: course.creator_name,
+          published_at: course.published_at,
+          estimated_hours: course.estimated_hours,
+          difficulty: course.difficulty,
+          cri_score: course.cri_score,
+          skills: course.skills as SkillTag[] | null,
+          created_at: course.created_at
+        };
+      });
       
-      console.log('[alt] catalog', transformedData?.length);
+      console.log('[alt] catalog', transformedData.length);
       return transformedData;
     },
     enabled: altCoursesEnabled && !!activeTrackId
