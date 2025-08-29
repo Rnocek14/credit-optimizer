@@ -13,6 +13,7 @@ import { SortingControls, type SortOption } from "@/components/discover/SortingC
 import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
 import { useRealCourseRecommendations } from "@/hooks/useRealCourseRecommendations";
 import { sortMarketTrends } from "@/lib/marketScoring";
+import { getRelevantCareerPaths, DEFAULT_MARKET_DATA } from "@/lib/skillCareerMapping";
 import { useState, useEffect } from "react";
 
 export default function DiscoverHub() {
@@ -259,30 +260,49 @@ export default function DiscoverHub() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(recommendations.length > 0 ? recommendations : trendingCourses).slice(0, 12).map((course) => {
-                  // Find relevant market data for the course
-                  const relevantMarketData = sortedMarketData.find(trend => 
-                    course.skill_tags?.some(tag => 
-                      trend.career_path.toLowerCase().includes(tag.toLowerCase()) ||
-                      tag.toLowerCase().includes(trend.career_path.toLowerCase())
-                    )
-                  );
+                  // Enhanced skill-to-career matching
+                  let relevantMarketData = null;
                   
-                  return (
-                  <MarketEnhancedCourseCard
-                      key={course.id}
-                      course={{
-                        ...course,
-                        cost: course.cost ? String(course.cost) : undefined
-                      }}
-                      marketData={relevantMarketData ? {
-                        ...relevantMarketData,
-                        updated_at: new Date().toISOString()
-                      } : undefined}
-                      currentSalary={75000}
-                      targetRole={relevantMarketData?.career_path}
-                      showROI={true}
-                    />
-                  );
+                  if (course.skill_tags && course.skill_tags.length > 0) {
+                    const relevantCareers = getRelevantCareerPaths(course.skill_tags);
+                    
+                    // Find the best matching market data based on career relevance
+                    for (const career of relevantCareers) {
+                      const marketMatch = sortedMarketData.find(trend => 
+                        trend.career_path.toLowerCase().includes(career.toLowerCase()) ||
+                        career.toLowerCase().includes(trend.career_path.toLowerCase())
+                      );
+                      if (marketMatch) {
+                        relevantMarketData = marketMatch;
+                        break;
+                      }
+                    }
+                  }
+                  
+                  // Use default market data if no specific match found
+                  if (!relevantMarketData) {
+                    relevantMarketData = {
+                      ...DEFAULT_MARKET_DATA,
+                      career_path: course.skill_tags?.[0] ? `${course.skill_tags[0]} Professional` : "Technology Professional"
+                    };
+                  }
+                  
+                   return (
+                   <MarketEnhancedCourseCard
+                       key={course.id}
+                       course={{
+                         ...course,
+                         cost: course.cost ? String(course.cost) : undefined
+                       }}
+                       marketData={{
+                         ...relevantMarketData,
+                         updated_at: new Date().toISOString()
+                       }}
+                       currentSalary={75000}
+                       targetRole={relevantMarketData?.career_path}
+                       showROI={true}
+                     />
+                   );
                 })}
               </div>
             )}
