@@ -41,6 +41,9 @@ interface TodayDashboardProps {
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline, altCoursesEnabled } = useFeatureFlags();
+  
+  // Debug feature flags for Alternative Courses
+  console.log('[TodayDashboard] altCoursesEnabled:', altCoursesEnabled);
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();

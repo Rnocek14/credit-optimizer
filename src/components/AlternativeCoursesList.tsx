@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SkillTagsFallback } from '@/components/SkillTagsFallback';
-import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider } from '@/types/alternativeCourses';
+import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider, SkillTag } from '@/types/alternativeCourses';
 
 export function AlternativeCoursesList() {
   const { activeTrackId } = useActiveTrackStore();
@@ -40,8 +40,17 @@ export function AlternativeCoursesList() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      console.log('[alt] catalog', data?.length);
-      return data || [];
+      
+      // Transform data to match our types
+      const transformedData = (data || []).map(course => ({
+        ...course,
+        provider: course.provider.toLowerCase() as Provider,
+        description: null, // Field doesn't exist yet
+        skills: course.skills as SkillTag[] | null
+      }));
+      
+      console.log('[alt] catalog', transformedData?.length);
+      return transformedData;
     },
     enabled: altCoursesEnabled && !!activeTrackId
   });
