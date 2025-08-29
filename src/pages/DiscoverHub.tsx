@@ -12,14 +12,27 @@ import { MarketEnhancedCourseCard } from "@/components/discover/MarketEnhancedCo
 import { SortingControls, type SortOption } from "@/components/discover/SortingControls";
 import { useMarketIntelligence } from "@/hooks/useMarketIntelligence";
 import { useRealCourseRecommendations } from "@/hooks/useRealCourseRecommendations";
+import { useSkillGaps } from "@/hooks/useSkillGaps";
+import { useUser } from "@/hooks/useUser";
 import { sortMarketTrends } from "@/lib/marketScoring";
 import { getRelevantCareerPaths, DEFAULT_MARKET_DATA } from "@/lib/skillCareerMapping";
 import { useState, useEffect } from "react";
 
 export default function DiscoverHub() {
   const { activeTrackId } = useActiveTrackStore();
+  const { user } = useUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentSort, setCurrentSort] = useState<SortOption>('opportunity');
+  
+  // Get user's skill gaps for personalized recommendations
+  const { data: userSkillGaps = [], isLoading: skillGapsLoading } = useSkillGaps(user?.id);
+  
+  // Create skill gaps array - use user's actual gaps or fallback to popular tech skills
+  const skillGapsForRecommendations = userSkillGaps.length > 0 
+    ? userSkillGaps.map(gap => gap.skill)
+    : ['React', 'Python', 'JavaScript', 'Data Analysis', 'Cloud Computing', 'Machine Learning'];
+  
+  console.log('[discover] Using skill gaps:', skillGapsForRecommendations.slice(0, 3));
   
   // Market intelligence
   const { 
@@ -28,12 +41,14 @@ export default function DiscoverHub() {
     loading: marketLoading 
   } = useMarketIntelligence();
   
-  // Course recommendations
+  // Course recommendations with skill gaps and error handling
   const { 
     recommendations, 
     trendingCourses, 
-    isLoadingRecommendations 
-  } = useRealCourseRecommendations();
+    isLoadingRecommendations,
+    isLoadingTrending,
+    recommendationsError
+  } = useRealCourseRecommendations(skillGapsForRecommendations, 80);
 
   // Fetch market data on mount
   useEffect(() => {
@@ -240,7 +255,26 @@ export default function DiscoverHub() {
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6">
-            {isLoadingRecommendations ? (
+            {/* Error State */}
+            {recommendationsError && !isLoadingRecommendations && (
+              <Card className="p-6 text-center">
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    Unable to load course recommendations. Showing cached results.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.reload()}
+                    className="mx-auto"
+                  >
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Loading State */}
+            {(isLoadingRecommendations || isLoadingTrending || skillGapsLoading) ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {[...Array(6)].map((_, i) => (
                   <Card key={i} className="animate-pulse">
@@ -259,7 +293,31 @@ export default function DiscoverHub() {
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {(recommendations.length > 0 ? recommendations : trendingCourses).slice(0, 12).map((course) => {
+                {/* Show recommendations first, then trending, with proper fallback */}
+                {(() => {
+                  const coursesToShow = recommendations.length > 0 ? recommendations : trendingCourses;
+                  
+                  if (coursesToShow.length === 0) {
+                    return (
+                      <Card className="col-span-full p-6 text-center">
+                        <CardContent>
+                          <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                          <h3 className="text-lg font-medium mb-2">No Courses Available</h3>
+                          <p className="text-muted-foreground mb-4">
+                            We're having trouble loading course recommendations. Please check your connection and try again.
+                          </p>
+                          <Button 
+                            onClick={() => window.location.reload()}
+                            variant="outline"
+                          >
+                            Refresh Page
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                  
+                  return coursesToShow.slice(0, 12).map((course) => {
                   // Enhanced skill-to-career matching
                   let relevantMarketData = null;
                   
@@ -302,8 +360,9 @@ export default function DiscoverHub() {
                        targetRole={relevantMarketData?.career_path}
                        showROI={true}
                      />
-                   );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
           </TabsContent>
