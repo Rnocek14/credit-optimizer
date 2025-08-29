@@ -3,15 +3,16 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
 import { useCareerGraph } from '@/hooks/useCareerGraph';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
+import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
 import { AchievementsRail } from './AchievementsRail';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Brain, Target, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Brain, Target, TrendingUp, AlertCircle, RefreshCw, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-// import SkillTreeHarness from "@/components/SkillTreeHarness";
+import { skillTreeDebug } from '@/utils/skillTreeDebug';
 
 export const SkillTreeProgress: React.FC = () => {
   const navigate = useNavigate();
@@ -258,10 +259,32 @@ export const SkillTreeProgress: React.FC = () => {
                 We couldn't load any skill nodes. Check active data in career_graph_nodes.
               </p>
             </div>
-            <Button onClick={reload} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Reload
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={reload} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Reload
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  skillTreeDebug.enableStabilityMode();
+                  reload();
+                }}
+              >
+                Stability Mode
+              </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => skillTreeDebug.diagnose()}
+                  className="gap-1"
+                >
+                  <Settings className="h-3 w-3" />
+                  Debug
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -369,21 +392,24 @@ export const SkillTreeProgress: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="min-h-[800px] h-[800px] relative">
-                {/* 🧪 STEP 1: Harness mode - uncomment to test ReactFlow rendering */}
-                {/* {typeof window !== 'undefined' && localStorage.getItem('ST_HARNESS') === '1' ? (
-                  <SkillTreeHarness />
-                ) : ( */}
-                <ReactFlowProvider>
-                  <UnifiedCareerCanvas
-                    nodes={renderNodes}
-                    edges={renderEdges || []}
-                    onNodeClick={handleNodeClick}
-                    layoutAlgorithm="semantic-hierarchy"
-                    showPivotPaths={false}
-                    focusMode={false}
-                  />
-                </ReactFlowProvider>
-                {/* )} */}
+                <ErrorBoundaryWrapper 
+                  resetKeys={[renderNodes.length, renderEdges.length]}
+                  onError={(error) => {
+                    console.error('🚨 Skill tree error:', error);
+                    toast.error('Skill tree rendering failed. Try refreshing or switching to grid mode.');
+                  }}
+                >
+                  <ReactFlowProvider>
+                    <UnifiedCareerCanvas
+                      nodes={renderNodes}
+                      edges={renderEdges || []}
+                      onNodeClick={handleNodeClick}
+                      layoutAlgorithm="semantic-hierarchy"
+                      showPivotPaths={false}
+                      focusMode={false}
+                    />
+                  </ReactFlowProvider>
+                </ErrorBoundaryWrapper>
               </div>
             </CardContent>
           </Card>

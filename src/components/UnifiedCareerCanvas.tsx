@@ -91,111 +91,90 @@ const calculateLayout = (
     sampleOutput: safeNodes[0]
   });
 
-  // 🧪 Enhanced edge mapping with proper fallbacks
-  const safeEdges = Array.isArray(graphEdges)
-    ? graphEdges
-        .map(e => ({
-          ...e,
-          source: String(e.source || e.from_id || ''),
-          target: String(e.target || e.to_id || ''),
-        }))
-        .filter(e => e.source && e.target)
-    : [];
+  // Simplified edge processing
+  const safeEdges = Array.isArray(graphEdges) ? graphEdges
+    .map(e => ({
+      ...e,
+      source: String(e.source || e.from_id || ''),
+      target: String(e.target || e.to_id || ''),
+    }))
+    .filter(e => e.source && e.target) : [];
 
-  // 🧪 Prune edges against actual node IDs
+  // Prune edges to only include nodes that exist
   const nodeIdSet = new Set(safeNodes.map(n => n.id));
   const prunedEdges = safeEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
 
-  console.log('🧪 ST DIAG - Sanitized Input', {
-    safeNodesCount: safeNodes.length,
-    safeEdgesCount: safeEdges.length,
-    prunedEdgesCount: prunedEdges.length,
-    sampleNode: safeNodes?.[0],
-    sampleEdge: prunedEdges?.[0]
-  });
-
-  // Debug edge mapping for console
-  console.log('🧪 ST Edge Shape Check', {
-    haveSourceTarget: prunedEdges.every(e => e.source && e.target),
-    sample: prunedEdges.slice(0, 3),
-    totalPrunedEdges: prunedEdges.length
+  console.log('🔗 Edge processing:', {
+    totalEdges: graphEdges?.length || 0,
+    safeEdges: safeEdges.length,
+    prunedEdges: prunedEdges.length
   });
 
   if (safeNodes.length === 0) {
-    console.warn('🪵 Canvas received 0 valid nodes. Check upstream loader.', {
-      originalNodes: graphNodes?.length || 0,
-      filteredNodes: safeNodes.length,
-      sample: graphNodes?.slice(0, 3)
-    });
+    console.warn('🪵 No valid nodes to render');
     return [];
   }
 
-  console.log('🎨 Starting enhanced layout calculation for', safeNodes.length, 'validated nodes');
-
+  // 🔧 Phase 1: Simplified layout with error boundary
   try {
-    // Convert validated GraphNodes to LayoutNodes
-    // 🔧 STEP 3: Simple mapping since titles are normalized
+    // Check for force grid mode
+    const FORCE_GRID = typeof window !== 'undefined' && 
+      localStorage.getItem('ST_FORCE_GRID') === '1';
+    
+    if (FORCE_GRID) {
+      console.log('📐 Force grid mode enabled');
+      return gridFallback(safeNodes);
+    }
+
+    // Try enhanced layout
     const layoutNodes: LayoutNode[] = safeNodes.map(node => ({
       id: node.id,
       type: node.type,
-      title: node.title, // guaranteed to exist from normalization
-      category: extractCategoryFromNode(node) || 'Uncategorized',
+      title: node.title,
+      category: extractCategoryFromNode(node) || 'General',
       level: extractLevelFromNode(node),
       data: node.data
     }));
 
-    // Convert validated GraphEdges to LayoutEdges - use pruned edges
     const layoutEdges: LayoutEdge[] = prunedEdges.map(edge => ({
       source: edge.source!,
       target: edge.target!,
       type: mapEdgeType(edge.edge_type || edge.type)
     }));
 
-    // Calculate dynamic container size based on node count
+    // Calculate container size
     const nodeCount = layoutNodes.length;
-    const estimatedWidth = Math.max(1600, Math.ceil(Math.sqrt(nodeCount)) * 250);
-    const estimatedHeight = Math.max(1200, Math.ceil(nodeCount / Math.ceil(Math.sqrt(nodeCount))) * 200);
+    const cols = Math.ceil(Math.sqrt(nodeCount));
+    const estimatedWidth = Math.max(1200, cols * 250);
+    const estimatedHeight = Math.max(800, Math.ceil(nodeCount / cols) * 200);
 
-    // Use enhanced layout algorithm with collision detection
+    console.log('🎨 Attempting enhanced layout...', {
+      nodes: layoutNodes.length,
+      edges: layoutEdges.length,
+      containerSize: `${estimatedWidth}x${estimatedHeight}`
+    });
+
     const result = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
       algorithm,
       containerWidth: estimatedWidth,
       containerHeight: estimatedHeight,
-      nodeSpacing: {
-        horizontal: 220,
-        vertical: 160,
-        category: 100
-      },
-      layerHeight: 250,
+      nodeSpacing: { horizontal: 220, vertical: 160, category: 100 },
+      layerHeight: 200,
       focusNodeId: searchTerm ? layoutNodes.find(n => 
         n.title.toLowerCase().includes(searchTerm.toLowerCase())
       )?.id : undefined,
-      showOnlyGoalPath: showGoalPathOnly || !!selectedCareerPath,
-      goalPath: selectedCareerPath ? layoutNodes
-        .filter(n => n.type === 'job' || n.type === 'step')
-        .map(n => n.id) : undefined
+      showOnlyGoalPath: showGoalPathOnly || !!selectedCareerPath
     });
 
-  // 🧪 FORCE_GRID debug mode  
-    const FORCE_GRID = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_GRID') === '1';
-    
-    // Strengthen fallback trigger with tooFew check
-    const tooFew = !result || result.length === 0 || result.length < safeNodes.length * 0.6;
-    
-    if (FORCE_GRID || tooFew) {
-      console.warn('📐 Fallback grid engaged', {
-        force: FORCE_GRID, 
-        input: safeNodes.length, 
-        result: result?.length ?? 0
-      });
-      console.timeEnd('layout');
+    // Validate result
+    if (!result || !Array.isArray(result) || result.length === 0) {
+      console.warn('📐 Enhanced layout returned empty, using grid fallback');
       return gridFallback(safeNodes);
     }
 
-    console.log('✅ Enhanced layout completed for', result.length, 'positioned nodes');
-    console.timeEnd('layout');
+    console.log('✅ Enhanced layout successful:', result.length, 'positioned nodes');
 
-    // Convert to React Flow Node format with data-testid
+    // Convert to React Flow nodes
     return result.map(posNode => {
       const originalNode = safeNodes.find(n => n.id === posNode.id);
       if (!originalNode) {
@@ -456,17 +435,16 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
   const reactFlowInstance = useReactFlow();
   
-  // PR-6: Memoized layout with graphHash for performance
+  // PR-6: Stabilized layout with error boundaries and simplified calculation
   const flowNodes = useMemo(() => {
-    console.log('🎨 Recalculating layout with enhanced system...');
-    const startTime = performance.now();
+    console.log('🎨 Starting layout calculation...', { nodeCount: graphNodes?.length });
     
     // ✅ FORCE TEST MODE - shows single test node if ST_FORCE_TEST=1
     const FORCE_TEST = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_TEST') === '1';
     if (FORCE_TEST) {
       const forceNodes = [{ 
         id: 'test-node', 
-        type: 'default',  // Use default type for guaranteed rendering
+        type: 'default',
         position: { x: 200, y: 200 }, 
         data: { 
           title: '🧪 Debug Test Node',
@@ -487,64 +465,78 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       console.log('🧪 FORCE_TEST enabled - rendering test node');
       return forceNodes;
     }
+
+    // Early return for empty data
+    if (!Array.isArray(graphNodes) || graphNodes.length === 0) {
+      console.log('📝 No nodes to render');
+      return [];
+    }
     
     // 🧪 STEP 3A: Robust Input Sanitization
-    const safeNodes = Array.isArray(graphNodes)
-      ? graphNodes
-          .map(n => ({
-            ...n,
-            id: String(n.id), // Force string IDs
-            type: (n.type && ['job', 'skill', 'step', 'course', 'project', 'certification'].includes(n.type)) ? n.type : 'skill' as NodeType, // Ensure valid NodeType
-            title: n.title || (n as any)?.data?.title || 'Untitled',
-          }))
-          .filter(n => n.id && n.type && n.title)
-      : [];
-
-    // 🧪 STEP 3B: Robust Edge Sanitization  
-    const safeEdges = Array.isArray(graphEdges)
-      ? graphEdges
-          .map(e => ({
-            ...e,
-            source: String((e as any).source ?? (e as any).from_id ?? ''),
-            target: String((e as any).target ?? (e as any).to_id ?? ''),
-          }))
-          .filter(e => e.source && e.target)
-      : [];
-
-    // 🧪 STEP 3C: Prune edges against actual node IDs
-    const nodeIdSet = new Set(safeNodes.map(n => n.id));
-    const prunedEdges = safeEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
-
-    console.log('🔍 Pipeline Sanitization:', {
-      originalNodes: graphNodes?.length || 0,
+    const safeNodes = graphNodes
+      .map(n => ({
+        ...n,
+        id: String(n.id),
+        type: (n.type && ['job', 'skill', 'step', 'course', 'project', 'certification'].includes(n.type)) ? n.type : 'skill' as NodeType,
+        title: n.title || (n as any)?.data?.title || 'Untitled',
+      }))
+      .filter(n => n.id && n.type && n.title);
+    
+    console.log('🧪 Input validation:', {
+      inputNodes: graphNodes.length,
       safeNodes: safeNodes.length,
-      originalEdges: graphEdges?.length || 0,
-      safeEdges: safeEdges.length,
-      prunedEdges: prunedEdges.length,
       sampleNode: safeNodes[0]
     });
 
-    const result = calculateLayout(safeNodes, prunedEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode);
-    
-    // 🧪 STEP 2: Enhanced Pipeline Assertions - throw on empty result
-    if (!Array.isArray(result) || result.length === 0) {
-      const error = new Error(`❌ Skill Tree pipeline produced 0 flow nodes`);
-      console.error('❌ PIPELINE BROKE: flowNodes empty', {
-        originalNodes: graphNodes?.length || 0,
-        safeNodes: safeNodes.length,
-        prunedEdges: prunedEdges.length,
-        layoutResult: result?.length || 0,
-        sampleInput: safeNodes[0]
-      });
-      throw error;
+    // Early return for empty data after filtering
+    if (safeNodes.length === 0) {
+      console.warn('🪵 No valid nodes after filtering');
+      return [];
     }
+
+    // 🔧 Phase 1 Fix: Force grid layout for stability
+    const FORCE_GRID = typeof window !== 'undefined' && 
+      (localStorage.getItem('ST_FORCE_GRID') === '1' || 
+       localStorage.getItem('ST_STABILITY_MODE') === '1');
     
-    const endTime = performance.now();
-    console.log(`⚡ Layout calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
-    console.log('🎛️ Canvas will render', { nodeCount: result.length, sample: result[0] });
-    
-    return result;
-  }, [graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode]);
+    if (FORCE_GRID) {
+      console.log('📐 Stability mode: using grid layout');
+      return gridFallback(safeNodes);
+    }
+
+    // Try enhanced layout with fallback
+    try {
+      const result = calculateLayout(
+        safeNodes,
+        graphEdges || [],
+        layoutAlgorithm,
+        layoutConfig,
+        searchTerm,
+        selectedCareerPath,
+        focusMode
+      );
+      
+      // Validate result
+      if (!Array.isArray(result) || result.length === 0) {
+        console.warn('📐 Layout returned empty, using grid fallback');
+        return gridFallback(safeNodes);
+      }
+      
+      console.log('✅ Enhanced layout successful:', result.length, 'nodes');
+      return result;
+    } catch (error) {
+      console.error('❌ Enhanced layout failed, using grid fallback:', error);
+      return gridFallback(safeNodes);
+    }
+  }, [
+    graphNodes, 
+    graphEdges, 
+    layoutAlgorithm, 
+    layoutConfig, 
+    searchTerm, 
+    selectedCareerPath, 
+    focusMode
+  ]);
 
   const flowEdges = useMemo(() => {
     let edges = graphEdges.map(convertToFlowEdge);
