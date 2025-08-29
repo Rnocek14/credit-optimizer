@@ -5,6 +5,7 @@ import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useToast } from '@/hooks/use-toast';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SkillTagsFallback } from '@/components/SkillTagsFallback';
 import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider, SkillTag } from '@/types/alternativeCourses';
+import { AlternativeCoursesErrorBoundary } from './AlternativeCoursesErrorBoundary';
 
 export function AlternativeCoursesList() {
-  const { activeTrackId } = useActiveTrackStore();
+  const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
   const { altCoursesEnabled, skillTreeForceTagsFallback } = useFeatureFlags();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -27,10 +29,35 @@ export function AlternativeCoursesList() {
   const [resolving, setResolving] = useState(false);
   const [resolvedCourse, setResolvedCourse] = useState<AlternativeCourse | null>(null);
 
-  // Debug logging
-  console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
+  // Fetch user's career tracks for track selector
+  const { data: userTracks = [] } = useQuery({
+    queryKey: ['user-tracks'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('career_tracks')
+        .select('id, track_name, title')
+        .eq('user_id', user.id)
+        .eq('archived', false)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('[alt] tracks error:', error);
+        return [];
+      }
+      console.log('[alt] available tracks:', data.length);
+      return data || [];
+    },
+    enabled: altCoursesEnabled
+  });
 
-  // Fetch alternative courses catalog
+  // Debug logging - comprehensive visibility
+  console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
+  console.log('[alt] activeTrackId:', activeTrackId);
+  console.log('[alt] component state:', { isModalOpen, resolving, hasResolvedCourse: !!resolvedCourse });
+  console.log('[alt] userTracks:', userTracks.length);
   const { data: catalog = [], isLoading: catalogLoading } = useQuery<AlternativeCourse[]>({
     queryKey: ['alt-catalog', activeTrackId],
     queryFn: async (): Promise<AlternativeCourse[]> => {
@@ -261,6 +288,42 @@ export function AlternativeCoursesList() {
             Select an active track to view alternative courses
           </CardDescription>
         </CardHeader>
+        <CardContent className="space-y-4">
+          {userTracks.length > 0 ? (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                Choose a track to explore alternative learning resources:
+              </div>
+              <Select onValueChange={(trackId) => setActiveTrackId(trackId)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a track..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {userTracks.map((track) => (
+                    <SelectItem key={track.id} value={track.id}>
+                      {track.track_name || track.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <p>No career tracks found.</p>
+              <p className="text-sm mt-1">
+                Create a career track first to use alternative courses.
+              </p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-3"
+                onClick={() => window.location.href = '/plan?tab=goals'}
+              >
+                Create Track
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
     );
   }
@@ -281,171 +344,192 @@ export function AlternativeCoursesList() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Alternative Learning Resources</CardTitle>
-          <CardDescription>
-            Expand your learning with courses from multiple platforms
-          </CardDescription>
-        </div>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Course
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add Alternative Course</DialogTitle>
-              <DialogDescription>
-                Discover, paste a link, or import courses from various platforms
-              </DialogDescription>
-            </DialogHeader>
-            <Tabs defaultValue="discover" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="discover">Discover</TabsTrigger>
-                <TabsTrigger value="paste">Paste Link</TabsTrigger>
-                <TabsTrigger value="import">Import Playlist</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="discover" className="space-y-4">
-                <div className="grid gap-4 max-h-96 overflow-y-auto">
-                  {catalog.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      isTagged={isAlreadyTagged(course.id)}
-                      onAdd={() => addMutation.mutate({ altCourseId: course.id })}
-                      onOpen={() => handleOpenCourse(course)}
-                      isAdding={addMutation.isPending}
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="paste" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="course-url">Course URL</Label>
-                    <Input
-                      id="course-url"
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      value={pasteUrl}
-                      onChange={(e) => setPasteUrl(e.target.value)}
-                      disabled={resolving}
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleResolveUrl} 
-                    disabled={!pasteUrl.trim() || resolving}
-                    className="w-full"
-                  >
-                    {resolving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Resolving...
-                      </>
-                    ) : (
-                      'Preview Course'
-                    )}
-                  </Button>
-                  
-                  {resolvedCourse && (
-                    <div className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{resolvedCourse.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {resolvedCourse.creator_name || 'External Course'}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {resolvedCourse.provider}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm">
-                        {resolvedCourse.cri_score && (
-                          <Badge variant="secondary">
-                            CRI {resolvedCourse.cri_score}
-                          </Badge>
-                        )}
-                        {resolvedCourse.difficulty && (
-                          <span className="text-muted-foreground">
-                            {'★'.repeat(resolvedCourse.difficulty)}{'☆'.repeat(5-resolvedCourse.difficulty)}
-                          </span>
-                        )}
-                        {resolvedCourse.estimated_hours && (
-                          <span className="text-muted-foreground">
-                            {resolvedCourse.estimated_hours}h
-                          </span>
-                        )}
-                      </div>
-
-                      {skillTreeForceTagsFallback && (
-                        <SkillTagsFallback skills={resolvedCourse.skills || []} maxDisplay={6} />
-                      )}
-                      
+    <AlternativeCoursesErrorBoundary>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Alternative Learning Resources</CardTitle>
+            <CardDescription>
+              Expand your learning with courses from multiple platforms
+            </CardDescription>
+          </div>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Add Alternative Course</DialogTitle>
+                <DialogDescription>
+                  Discover, paste a link, or import courses from various platforms
+                </DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="discover" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="discover">Discover</TabsTrigger>
+                  <TabsTrigger value="paste">Paste Link</TabsTrigger>
+                  <TabsTrigger value="import">Import Playlist</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="discover" className="space-y-4">
+                  {catalog.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground space-y-3">
+                      <p>No courses in the catalog yet.</p>
+                      <p className="text-sm">Try pasting a course URL to add the first one!</p>
                       <Button 
-                        onClick={() => addMutation.mutate({ altCourseId: resolvedCourse.id })}
-                        disabled={addMutation.isPending || isAlreadyTagged(resolvedCourse.id)}
-                        className="w-full"
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          const tabsList = document.querySelector('[role="tablist"]');
+                          const pasteTab = Array.from(tabsList?.children || [])
+                            .find(tab => tab.textContent?.includes('Paste'));
+                          (pasteTab as HTMLElement)?.click();
+                        }}
                       >
-                        {addMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Adding...
-                          </>
-                        ) : isAlreadyTagged(resolvedCourse.id) ? (
-                          'Already in Track'
-                        ) : (
-                          'Add to Track'
-                        )}
+                        Go to Paste Link →
                       </Button>
                     </div>
+                  ) : (
+                    <div className="grid gap-4 max-h-96 overflow-y-auto">
+                      {catalog.map((course) => (
+                        <CourseCard
+                          key={course.id}
+                          course={course}
+                          isTagged={isAlreadyTagged(course.id)}
+                          onAdd={() => addMutation.mutate({ altCourseId: course.id })}
+                          onOpen={() => handleOpenCourse(course)}
+                          isAdding={addMutation.isPending}
+                        />
+                      ))}
+                    </div>
                   )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="import" className="space-y-4">
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Playlist import coming soon!</p>
-                  <p className="text-sm mt-1">Bulk import YouTube playlists and course collections</p>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {usage.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No alternative courses added yet.</p>
-            <p className="text-sm mt-1">Click "Add Course" to get started.</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {usage.map((item) => {
-              const course = catalog.find(c => c.id === item.alt_course_id);
-              if (!course) return null;
-              
-              return (
-                <CourseCard
-                  key={item.id}
-                  course={course}
-                  isTagged={true}
-                  onRemove={() => removeMutation.mutate(item.id)}
-                  onOpen={() => handleOpenCourse(course)}
-                  isRemoving={removeMutation.isPending}
-                />
-              );
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                </TabsContent>
+                
+                <TabsContent value="paste" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="course-url">Course URL</Label>
+                      <Input
+                        id="course-url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={pasteUrl}
+                        onChange={(e) => setPasteUrl(e.target.value)}
+                        disabled={resolving}
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleResolveUrl} 
+                      disabled={!pasteUrl.trim() || resolving}
+                      className="w-full"
+                    >
+                      {resolving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Resolving...
+                        </>
+                      ) : (
+                        'Preview Course'
+                      )}
+                    </Button>
+                    
+                    {resolvedCourse && (
+                      <div className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{resolvedCourse.title}</h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {resolvedCourse.creator_name || 'External Course'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {resolvedCourse.provider}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm">
+                          {resolvedCourse.cri_score && (
+                            <Badge variant="secondary">
+                              CRI {resolvedCourse.cri_score}
+                            </Badge>
+                          )}
+                          {resolvedCourse.difficulty && (
+                            <span className="text-muted-foreground">
+                              {'★'.repeat(resolvedCourse.difficulty)}{'☆'.repeat(5-resolvedCourse.difficulty)}
+                            </span>
+                          )}
+                          {resolvedCourse.estimated_hours && (
+                            <span className="text-muted-foreground">
+                              {resolvedCourse.estimated_hours}h
+                            </span>
+                          )}
+                        </div>
+
+                        {skillTreeForceTagsFallback && (
+                          <SkillTagsFallback skills={resolvedCourse.skills || []} maxDisplay={6} />
+                        )}
+                        
+                        <Button 
+                          onClick={() => addMutation.mutate({ altCourseId: resolvedCourse.id })}
+                          disabled={addMutation.isPending || isAlreadyTagged(resolvedCourse.id)}
+                          className="w-full"
+                        >
+                          {addMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Adding...
+                            </>
+                          ) : isAlreadyTagged(resolvedCourse.id) ? (
+                            'Already in Track'
+                          ) : (
+                            'Add to Track'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="import" className="space-y-4">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Playlist import coming soon!</p>
+                    <p className="text-sm mt-1">Bulk import YouTube playlists and course collections</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {usage.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No alternative courses added yet.</p>
+              <p className="text-sm mt-1">Click "Add Course" to get started.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {usage.map((item) => {
+                const course = catalog.find(c => c.id === item.alt_course_id);
+                if (!course) return null;
+                
+                return (
+                  <CourseCard
+                    key={item.id}
+                    course={course}
+                    isTagged={true}
+                    onRemove={() => removeMutation.mutate(item.id)}
+                    onOpen={() => handleOpenCourse(course)}
+                    isRemoving={removeMutation.isPending}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </AlternativeCoursesErrorBoundary>
   );
 }
 

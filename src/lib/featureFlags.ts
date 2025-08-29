@@ -23,6 +23,12 @@ export function getFeatureFlags(): FeatureFlags {
   const searchParams = new URLSearchParams(window.location.search);
   const isProduction = process.env.NODE_ENV === 'production';
   
+  // Debug URL parameters for troubleshooting
+  if (typeof window !== 'undefined') {
+    const urlParams = Object.fromEntries(searchParams);
+    console.log('[flags] URL params:', urlParams);
+  }
+  
   const flags = {
     // Today Dashboard - ENABLED for demo
     unifiedTodayDashboard: true,
