@@ -14,30 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SkillTagsFallback } from '@/components/SkillTagsFallback';
-
-interface AlternativeCourse {
-  id: string;
-  title: string;
-  provider: string;
-  url: string;
-  difficulty: number | null;
-  estimated_hours: number | null;
-  cri_score: number | null;
-  creator_name: string | null;
-  skills?: any;
-  created_at: string;
-}
-
-interface AltCourseUsage {
-  id: string;
-  alt_course_id: string;
-  note: string | null;
-  created_at: string;
-}
+import { AlternativeCourse, UserAltCourseUsage, AltCourseResolveResponse, Provider } from '@/types/alternativeCourses';
 
 export function AlternativeCoursesList() {
   const { activeTrackId } = useActiveTrackStore();
-  const { altCoursesEnabled } = useFeatureFlags();
+  const { altCoursesEnabled, skillTreeForceTagsFallback } = useFeatureFlags();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -46,25 +27,29 @@ export function AlternativeCoursesList() {
   const [resolving, setResolving] = useState(false);
   const [resolvedCourse, setResolvedCourse] = useState<AlternativeCourse | null>(null);
 
+  // Debug logging
+  console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
+
   // Fetch alternative courses catalog
-  const { data: catalog = [], isLoading: catalogLoading } = useQuery({
+  const { data: catalog = [], isLoading: catalogLoading } = useQuery<AlternativeCourse[]>({
     queryKey: ['alt-catalog', activeTrackId],
     queryFn: async (): Promise<AlternativeCourse[]> => {
       const { data, error } = await supabase
         .from('alternative_courses')
-        .select('*')
+        .select('id, provider, external_id, title, description, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      console.log('[alt] catalog', data?.length);
       return data || [];
     },
     enabled: altCoursesEnabled && !!activeTrackId
   });
 
   // Fetch user's alt course usage for this track
-  const { data: usage = [], isLoading: usageLoading } = useQuery({
+  const { data: usage = [], isLoading: usageLoading } = useQuery<UserAltCourseUsage[]>({
     queryKey: ['alt-usage', activeTrackId],
-    queryFn: async (): Promise<AltCourseUsage[]> => {
+    queryFn: async (): Promise<UserAltCourseUsage[]> => {
       if (!activeTrackId) return [];
       
       const { data: { user } } = await supabase.auth.getUser();
@@ -78,6 +63,7 @@ export function AlternativeCoursesList() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
+      console.log('[alt] usage', data?.length);
       return data || [];
     },
     enabled: altCoursesEnabled && !!activeTrackId
@@ -164,18 +150,19 @@ export function AlternativeCoursesList() {
     trackTelemetryEvent({ task: 'alt_resolve_started', complexity: { url: pasteUrl } });
 
     try {
-      const { data, error } = await supabase.functions.invoke('alt-resolve', {
+      const { data, error } = await supabase.functions.invoke<AltCourseResolveResponse>('alt-resolve', {
         body: { url: pasteUrl.trim() }
       });
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to resolve course');
 
-      setResolvedCourse(data.course);
+      console.log('[alt-resolve] success:', data.course?.id);
+      setResolvedCourse(data.course!);
       trackTelemetryEvent({ 
         task: 'alt_resolve_succeeded', 
         complexity: { 
-          provider: data.course.provider,
+          provider: data.course!.provider,
           cached: data.cached 
         } 
       });
@@ -343,7 +330,9 @@ export function AlternativeCoursesList() {
                         )}
                       </div>
 
-                      <SkillTagsFallback skills={resolvedCourse.skills || []} maxDisplay={6} />
+                      {skillTreeForceTagsFallback && (
+                        <SkillTagsFallback skills={resolvedCourse.skills || []} maxDisplay={6} />
+                      )}
                       
                       <Button 
                         onClick={() => addMutation.mutate({ altCourseId: resolvedCourse.id })}
@@ -425,10 +414,13 @@ function CourseCard({
   isAdding, 
   isRemoving 
 }: CourseCardProps) {
-  const providerColors: Record<string, string> = {
+  const { skillTreeForceTagsFallback } = useFeatureFlags();
+  
+  const providerColors: Record<Provider, string> = {
     youtube: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     udemy: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     coursera: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    edx: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     masterclass: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
     other: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
   };
@@ -444,7 +436,7 @@ function CourseCard({
         </div>
         <Badge 
           variant="outline" 
-          className={`text-xs ml-2 ${providerColors[course.provider] || providerColors.other}`}
+          className={`text-xs ml-2 ${providerColors[course.provider as Provider] || providerColors.other}`}
         >
           {course.provider}
         </Badge>
@@ -468,7 +460,9 @@ function CourseCard({
         )}
       </div>
 
-      <SkillTagsFallback skills={course.skills || []} maxDisplay={6} />
+      {skillTreeForceTagsFallback && (
+        <SkillTagsFallback skills={course.skills || []} maxDisplay={6} />
+      )}
       
       <div className="flex gap-2">
         <Button 

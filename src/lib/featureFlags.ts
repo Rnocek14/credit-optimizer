@@ -23,7 +23,7 @@ export function getFeatureFlags(): FeatureFlags {
   const searchParams = new URLSearchParams(window.location.search);
   const isProduction = process.env.NODE_ENV === 'production';
   
-  return {
+  const flags = {
     // Today Dashboard - ENABLED for demo
     unifiedTodayDashboard: true,
     
@@ -45,12 +45,17 @@ export function getFeatureFlags(): FeatureFlags {
     // Growth layer - disabled by default, controllable via query param
     growthLayerEnabled: searchParams.get('growth_layer') === 'true',
     
-    // Alternative courses - disabled by default, controllable via query param
+    // Alternative courses - controllable via query param (alt_courses=true|false)
     altCoursesEnabled: searchParams.get('alt_courses') === 'true',
     
-    // Skill Tree fallback - enabled by default until tree is fixed
-    skillTreeForceTagsFallback: searchParams.get('skill_tree_fallback') !== 'false',
+    // Skill Tree fallback - controllable via query param (skill_fallback=true|false)
+    skillTreeForceTagsFallback: searchParams.get('skill_fallback') !== 'false',
   };
+  
+  // Debug logging (one-time log)
+  console.log('[featureFlags]', flags);
+  
+  return flags;
 }
 
 /**

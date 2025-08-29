@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface TelemetryEvent {
   task: string;
   route?: string;
-  complexity?: Record<string, any>;
+  complexity?: Record<string, unknown>;
   success?: boolean;
   function_name?: string;
 }
