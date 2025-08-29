@@ -33,13 +33,14 @@ import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
 import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
 import { MayaInsightDebugPanel } from '@/components/debug/MayaInsightDebugPanel';
 import { DbHealthBadge } from '@/components/DbHealthBadge';
+import { AlternativeCoursesList } from '@/components/AlternativeCoursesList';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
 }
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
-  const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline } = useFeatureFlags();
+  const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline, altCoursesEnabled } = useFeatureFlags();
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -623,6 +624,22 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
             </CardContent>
           </Card>
         )}
+        
+        {/* Alternative Courses Section */}
+        {altCoursesEnabled && (
+          <Card className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-blue-500" />
+                Alternative Learning
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AlternativeCoursesList />
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Gamification Features */}
         {gamificationTimeline && (
           <div className="md:col-span-2 lg:col-span-3">
