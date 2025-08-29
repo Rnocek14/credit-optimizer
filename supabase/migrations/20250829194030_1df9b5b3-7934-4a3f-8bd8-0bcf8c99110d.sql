@@ -1,0 +1,38 @@
+-- Phase 1B: Fix provider constraint first, then normalize
+-- 1) Drop the existing provider check constraint 
+ALTER TABLE alternative_courses DROP CONSTRAINT IF EXISTS alternative_courses_provider_check;
+
+-- 2) Add new constraint that allows lowercase providers
+ALTER TABLE alternative_courses 
+ADD CONSTRAINT alternative_courses_provider_check 
+CHECK (provider IN ('youtube', 'udemy', 'coursera', 'edx', 'masterclass', 'other'));
+
+-- 3) Now normalize provider casing to lowercase
+UPDATE alternative_courses SET provider = lower(provider) WHERE provider IS NOT NULL;
+
+-- 4) Add missing description column
+ALTER TABLE IF EXISTS alternative_courses
+  ADD COLUMN IF NOT EXISTS description text;
+
+-- 5) Add useful indexes for performance
+CREATE INDEX IF NOT EXISTS idx_alt_courses_provider_external 
+  ON alternative_courses(provider, external_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_alt_courses_provider_external 
+  ON alternative_courses(provider, external_id) 
+  WHERE provider IS NOT NULL AND external_id IS NOT NULL;
+
+-- 6) Add unique constraint on user alt course usage
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_user_alt_usage 
+  ON user_alt_course_usage(user_id, track_id, alt_course_id);
+
+-- 7) Ensure RLS policies are correct
+ALTER TABLE alternative_courses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS alt_courses_read_all ON alternative_courses;
+CREATE POLICY alt_courses_read_all ON alternative_courses
+  FOR SELECT USING (true);
+
+ALTER TABLE user_alt_course_usage ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS alt_usage_owner ON user_alt_course_usage;
+CREATE POLICY alt_usage_owner ON user_alt_course_usage
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
