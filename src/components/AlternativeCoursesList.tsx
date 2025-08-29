@@ -281,16 +281,16 @@ export function AlternativeCoursesList() {
 
   if (!activeTrackId) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Alternative Learning Resources</CardTitle>
-          <CardDescription>
-            Select an active track to view alternative courses
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-4">
+        <div className="text-center py-6 space-y-4">
+          <div>
+            <h3 className="text-lg font-medium">Select an Active Track</h3>
+            <p className="text-sm text-muted-foreground">
+              Choose a track to view alternative courses
+            </p>
+          </div>
           {userTracks.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-w-sm mx-auto">
               <div className="text-sm text-muted-foreground">
                 Choose a track to explore alternative learning resources:
               </div>
@@ -323,35 +323,35 @@ export function AlternativeCoursesList() {
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (catalogLoading || usageLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Alternative Learning Resources</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading courses...</span>
+      </div>
     );
   }
 
   return (
     <AlternativeCoursesErrorBoundary>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Alternative Learning Resources</CardTitle>
-            <CardDescription>
-              Expand your learning with courses from multiple platforms
-            </CardDescription>
+      <div className="space-y-4">
+        {/* Debug info */}
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="text-xs opacity-60 p-2 bg-muted/30 rounded border-dashed border">
+            Track: {activeTrackId ? 'Set' : 'None'} | Catalog: {catalog.length} | Usage: {usage.length}
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Courses from multiple platforms to expand your learning
+            </span>
           </div>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogTrigger asChild>
@@ -501,8 +501,9 @@ export function AlternativeCoursesList() {
               </Tabs>
             </DialogContent>
           </Dialog>
-        </CardHeader>
-        <CardContent>
+        </div>
+        
+        <div>
           {usage.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No alternative courses added yet.</p>
@@ -527,8 +528,8 @@ export function AlternativeCoursesList() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </AlternativeCoursesErrorBoundary>
   );
 }
