@@ -23,10 +23,24 @@ export function getFeatureFlags(): FeatureFlags {
   const searchParams = new URLSearchParams(window.location.search);
   const isProduction = process.env.NODE_ENV === 'production';
   
+  // Helper function to get flag value with fallback parameter names
+  const getFlagValue = (primaryParam: string, fallbackParam?: string, defaultValue: string = 'false'): string => {
+    const primary = searchParams.get(primaryParam);
+    if (primary !== null) return primary;
+    
+    if (fallbackParam) {
+      const fallback = searchParams.get(fallbackParam);
+      if (fallback !== null) return fallback;
+    }
+    
+    return defaultValue;
+  };
+  
   // Debug URL parameters for troubleshooting
   if (typeof window !== 'undefined') {
     const urlParams = Object.fromEntries(searchParams);
     console.log('[flags] URL params:', urlParams);
+    console.log('[flags] Raw URL:', window.location.search);
   }
   
   const flags = {
@@ -43,19 +57,19 @@ export function getFeatureFlags(): FeatureFlags {
     advancedTelemetry: true,
     
     // Gamification features - enabled in dev, controllable in prod
-    gamificationCelebrations: searchParams.get('gamification_celebrations') !== 'false',
-    gamificationGallery: searchParams.get('gamification_gallery') !== 'false',
-    gamificationTimeline: searchParams.get('gamification_timeline') !== 'false',
-    gamificationSound: searchParams.get('gamification_sound') === 'true',
+    gamificationCelebrations: getFlagValue('gamification_celebrations', 'gamification-celebrations', 'true') !== 'false',
+    gamificationGallery: getFlagValue('gamification_gallery', 'gamification-gallery', 'true') !== 'false',
+    gamificationTimeline: getFlagValue('gamification_timeline', 'gamification-timeline', 'true') !== 'false',
+    gamificationSound: getFlagValue('gamification_sound', 'gamification-sound') === 'true',
     
     // Growth layer - disabled by default, controllable via query param
-    growthLayerEnabled: searchParams.get('growth_layer') === 'true',
+    growthLayerEnabled: getFlagValue('growth_layer', 'growth-layer') === 'true',
     
-    // Alternative courses - controllable via query param (alt_courses=true|false)
-    altCoursesEnabled: searchParams.get('alt_courses') === 'true',
+    // Alternative courses - FLEXIBLE parameter names (alt_courses, alt-courses)
+    altCoursesEnabled: getFlagValue('alt_courses', 'alt-courses') === 'true',
     
-    // Skill Tree fallback - controllable via query param (skill_fallback=true|false)
-    skillTreeForceTagsFallback: searchParams.get('skill_fallback') !== 'false',
+    // Skill Tree fallback - FLEXIBLE parameter names (skill_fallback, skill-fallback)
+    skillTreeForceTagsFallback: getFlagValue('skill_fallback', 'skill-fallback', 'true') !== 'false',
   };
   
   // Debug logging (one-time log)

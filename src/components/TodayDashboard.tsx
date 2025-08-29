@@ -637,18 +637,11 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         )}
         
         {/* Alternative Courses Section */}
+        {/* Alternative Courses Section */}
         {altCoursesEnabled && (
-          <Card className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-blue-500" />
-                Alternative Learning
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AlternativeCoursesList />
-            </CardContent>
-          </Card>
+          <div className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
+            <AlternativeCoursesList />
+          </div>
         )}
         
         {/* Gamification Features */}
