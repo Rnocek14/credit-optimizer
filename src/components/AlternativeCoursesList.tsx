@@ -39,7 +39,10 @@ export function AlternativeCoursesList() {
         .select('id, provider, external_id, title, description, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[alt] catalog error:', error);
+        throw error;
+      }
       
       // Transform and validate data to match our types
       const transformedData: AlternativeCourse[] = (data || []).map(course => {
@@ -185,10 +188,15 @@ export function AlternativeCoursesList() {
         body: { url: pasteUrl.trim() }
       });
 
-      if (error) throw error;
+      console.log('[alt-resolve] Raw response:', { data, error });
+
+      if (error) {
+        console.error('[alt-resolve] Supabase function error:', error);
+        throw error;
+      }
       if (!data?.success) throw new Error(data?.error || 'Failed to resolve course');
 
-      console.log('[alt-resolve] success:', data.course?.id);
+      console.log('[alt-resolve] success:', data.course?.id, { cached: data.cached });
       setResolvedCourse(data.course!);
       trackTelemetryEvent({ 
         task: 'alt_resolve_succeeded', 
@@ -202,16 +210,27 @@ export function AlternativeCoursesList() {
         toast({ title: 'Course found', description: 'Using existing course data.' });
       }
     } catch (error: any) {
-      console.error('URL resolution failed:', error);
-      trackTelemetryEvent({ 
-        task: 'alt_resolve_failed', 
-        complexity: { url: pasteUrl, error: error.message } 
-      });
-      toast({
-        title: 'Could not resolve URL',
-        description: error.message || 'Please check the URL and try again.',
-        variant: 'destructive'
-      });
+      console.error('[alt-resolve] URL resolution failed:', error);
+      
+      // Enhanced error logging for debugging
+      if (error?.message?.includes('FetchError')) {
+        console.error('[alt-resolve] Network/deployment error - edge function may not be deployed');
+        toast({
+          title: 'Edge Function Error',
+          description: 'alt-resolve function may not be deployed. Check Supabase functions.',
+          variant: 'destructive'
+        });
+      } else {
+        trackTelemetryEvent({ 
+          task: 'alt_resolve_failed', 
+          complexity: { url: pasteUrl, error: error.message } 
+        });
+        toast({
+          title: 'Could not resolve URL',
+          description: error.message || 'Please check the URL and try again.',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setResolving(false);
     }
