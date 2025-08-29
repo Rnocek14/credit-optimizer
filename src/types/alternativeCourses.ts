@@ -11,7 +11,7 @@ export interface AlternativeCourse {
   provider: Provider;
   external_id: string;
   title: string;
-  description: string | null;
+  description?: string | null; // Optional since we're not storing this in DB yet
   url: string;
   creator_name: string | null;
   published_at: string | null;

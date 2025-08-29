@@ -36,7 +36,7 @@ export function AlternativeCoursesList() {
     queryFn: async (): Promise<AlternativeCourse[]> => {
       const { data, error } = await supabase
         .from('alternative_courses')
-        .select('id, provider, external_id, title, description, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
+        .select('id, provider, external_id, title, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
