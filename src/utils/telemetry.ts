@@ -8,6 +8,19 @@ export interface TelemetryEvent {
   function_name?: string;
 }
 
+// Alt courses telemetry events
+export type AltCourseTelemetryTask = 
+  | 'alt_course_clicked'
+  | 'alt_course_tag_added' 
+  | 'alt_course_tag_removed'
+  | 'alt_course_resolved'
+  | 'alt_resolve_started'
+  | 'alt_resolve_succeeded' 
+  | 'alt_resolve_failed'
+  | 'yt_playlist_import_started'
+  | 'yt_playlist_import_completed'
+  | 'db_health_checked';
+
 export const trackTelemetryEvent = async (event: TelemetryEvent): Promise<void> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();

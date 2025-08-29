@@ -642,32 +642,47 @@ export type Database = {
       alternative_courses: {
         Row: {
           created_at: string | null
+          creator_name: string | null
           cri_score: number | null
           difficulty: number | null
           estimated_hours: number | null
+          external_id: string
           id: string
           provider: string
+          published_at: string | null
+          skills: Json | null
           title: string
+          topics: unknown | null
           url: string
         }
         Insert: {
           created_at?: string | null
+          creator_name?: string | null
           cri_score?: number | null
           difficulty?: number | null
           estimated_hours?: number | null
+          external_id: string
           id?: string
           provider: string
+          published_at?: string | null
+          skills?: Json | null
           title: string
+          topics?: unknown | null
           url: string
         }
         Update: {
           created_at?: string | null
+          creator_name?: string | null
           cri_score?: number | null
           difficulty?: number | null
           estimated_hours?: number | null
+          external_id?: string
           id?: string
           provider?: string
+          published_at?: string | null
+          skills?: Json | null
           title?: string
+          topics?: unknown | null
           url?: string
         }
         Relationships: []
@@ -10069,6 +10084,13 @@ export type Database = {
       }
     }
     Enums: {
+      alt_course_provider:
+        | "youtube"
+        | "udemy"
+        | "coursera"
+        | "edx"
+        | "masterclass"
+        | "other"
       app_role: "user" | "admin" | "mentor"
     }
     CompositeTypes: {
@@ -10197,6 +10219,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alt_course_provider: [
+        "youtube",
+        "udemy",
+        "coursera",
+        "edx",
+        "masterclass",
+        "other",
+      ],
       app_role: ["user", "admin", "mentor"],
     },
   },

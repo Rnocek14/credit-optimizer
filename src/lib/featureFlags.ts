@@ -13,6 +13,7 @@ interface FeatureFlags {
   gamificationSound: boolean;
   growthLayerEnabled: boolean;
   altCoursesEnabled: boolean;
+  skillTreeForceTagsFallback: boolean;
 }
 
 /**
@@ -46,6 +47,9 @@ export function getFeatureFlags(): FeatureFlags {
     
     // Alternative courses - disabled by default, controllable via query param
     altCoursesEnabled: searchParams.get('alt_courses') === 'true',
+    
+    // Skill Tree fallback - enabled by default until tree is fixed
+    skillTreeForceTagsFallback: searchParams.get('skill_tree_fallback') !== 'false',
   };
 }
 
