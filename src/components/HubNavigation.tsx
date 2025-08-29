@@ -110,7 +110,7 @@ export function HubNavigation() {
               <Target className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-h4 font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Life Path
+              Pivot
             </span>
           </Link>
 
