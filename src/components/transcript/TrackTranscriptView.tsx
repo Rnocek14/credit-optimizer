@@ -9,6 +9,7 @@ import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface Course {
   id: string;
@@ -27,7 +28,8 @@ interface TrackTranscriptViewProps {
 
 export function TrackTranscriptView({ courses = [], className }: TrackTranscriptViewProps) {
   const { activeTrackId } = useActiveTrackStore();
-  const { usage, tagCourse, untagCourse, isTagging, isUntagging } = useTrackTranscript(activeTrackId);
+  const { usage, tagCourse, untagCourse, isTagging, isUntagging, isAlreadyTagged } = useTrackTranscript(activeTrackId);
+  const { toast } = useToast();
   const [newCourseId, setNewCourseId] = useState('');
   const [newCourseNotes, setNewCourseNotes] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -56,6 +58,16 @@ export function TrackTranscriptView({ courses = [], className }: TrackTranscript
 
   const handleAddCourse = async () => {
     if (!newCourseId.trim()) return;
+    
+    // Check for duplicates client-side to provide immediate feedback
+    if (isAlreadyTagged(newCourseId)) {
+      toast({
+        title: 'Course already in track',
+        description: 'This course is already added to your track transcript.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     try {
       await tagCourse({ courseId: newCourseId, note: newCourseNotes });
@@ -137,8 +149,12 @@ export function TrackTranscriptView({ courses = [], className }: TrackTranscript
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddCourse} disabled={isTagging || !newCourseId.trim()}>
-                  {isTagging ? 'Adding...' : 'Add Course'}
+                <Button 
+                  onClick={handleAddCourse} 
+                  disabled={isTagging || !newCourseId.trim() || isAlreadyTagged(newCourseId)}
+                >
+                  {isAlreadyTagged(newCourseId) ? 'Already in track' : 
+                   isTagging ? 'Adding...' : 'Add Course'}
                 </Button>
               </div>
             </DialogContent>

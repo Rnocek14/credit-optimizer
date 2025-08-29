@@ -8,6 +8,7 @@ import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useTrackTranscript } from '@/hooks/useTrackTranscript';
 import { useTracks } from '@/hooks/useTracks';
 import { useToast } from '@/hooks/use-toast';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 interface Course {
   id: string;
@@ -123,6 +124,17 @@ export function TrackResumeBuilder({ courses = [], className }: TrackResumeBuild
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      // Track telemetry event
+      trackTelemetryEvent({
+        task: 'resume_exported',
+        complexity: { 
+          track_id: activeTrack.id,
+          total_courses: totalCourses,
+          avg_cri: Math.round(avgCRI),
+          avg_difficulty: Math.round(avgDifficulty * 10) / 10
+        }
+      });
 
       toast({
         title: 'Resume exported',

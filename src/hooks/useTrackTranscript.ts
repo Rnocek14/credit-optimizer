@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 
 export interface TrackCourseUsage {
   id: string;
@@ -54,30 +55,71 @@ export function useTrackTranscript(trackId?: string | null) {
       if (error) throw error;
       return data as TrackCourseUsage;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['course-progress-track-usage', trackId] });
       toast({ title: 'Tagged course', description: 'Course tagged to this track.' });
+      
+      // Track telemetry event
+      trackTelemetryEvent({
+        task: 'track_course_tag_added',
+        complexity: { track_id: trackId, course_id: variables.courseId }
+      });
     },
     onError: (err: any) => {
-      toast({ title: 'Failed to tag course', description: err.message, variant: 'destructive' });
+      // Handle duplicate constraint error gracefully
+      const isDuplicateError = err.message?.includes('duplicate key value') || 
+                               err.code === '23505';
+      
+      if (isDuplicateError) {
+        toast({ 
+          title: 'Course already in track', 
+          description: 'This course is already added to your track transcript.',
+          variant: 'destructive' 
+        });
+      } else {
+        toast({ 
+          title: 'Failed to tag course', 
+          description: err.message || 'An error occurred while adding the course.',
+          variant: 'destructive' 
+        });
+      }
     }
   });
 
   const untagCourse = useMutation({
     mutationFn: async (usageId: string) => {
+      // Get the course_id before deletion for telemetry
+      const { data: usageData } = await supabase
+        .from('course_progress_track_usage')
+        .select('course_id')
+        .eq('id', usageId)
+        .single();
+      
       const { error } = await supabase
         .from('course_progress_track_usage')
         .delete()
         .eq('id', usageId);
       if (error) throw error;
-      return true;
+      return usageData?.course_id;
     },
-    onSuccess: () => {
+    onSuccess: (courseId) => {
       queryClient.invalidateQueries({ queryKey: ['course-progress-track-usage', trackId] });
       toast({ title: 'Removed tag', description: 'Course untagged from this track.' });
+      
+      // Track telemetry event
+      if (courseId && trackId) {
+        trackTelemetryEvent({
+          task: 'track_course_tag_removed',
+          complexity: { track_id: trackId, course_id: courseId }
+        });
+      }
     },
     onError: (err: any) => {
-      toast({ title: 'Failed to untag course', description: err.message, variant: 'destructive' });
+      toast({ 
+        title: 'Failed to untag course', 
+        description: err.message || 'An error occurred while removing the course.',
+        variant: 'destructive' 
+      });
     }
   });
 
@@ -90,5 +132,7 @@ export function useTrackTranscript(trackId?: string | null) {
     isTagging: tagCourse.isPending,
     isUntagging: untagCourse.isPending,
     refetch: usageQuery.refetch,
+    isAlreadyTagged: (courseId: string) => 
+      usageQuery.data?.some(u => u.course_id === courseId) || false,
   };
 }
