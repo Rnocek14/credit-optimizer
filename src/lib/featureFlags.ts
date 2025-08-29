@@ -62,7 +62,22 @@ export function getFeatureFlags(): FeatureFlags {
  * React hook for feature flags
  */
 export function useFeatureFlags(): FeatureFlags {
-  return getFeatureFlags();
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const flags = getFeatureFlags();
+  
+  // dev log - One-time log per session
+  if (typeof window !== 'undefined') {
+    const key = '__ALT_FLAGS_LOGGED__';
+    if (!(window as any)[key]) {
+      console.log('[flags]', { 
+        altCoursesEnabled: flags.altCoursesEnabled, 
+        skillTreeForceTagsFallback: flags.skillTreeForceTagsFallback 
+      });
+      (window as any)[key] = true;
+    }
+  }
+  
+  return flags;
 }
 
 /**

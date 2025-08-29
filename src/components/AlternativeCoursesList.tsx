@@ -36,7 +36,7 @@ export function AlternativeCoursesList() {
     queryFn: async (): Promise<AlternativeCourse[]> => {
       const { data, error } = await supabase
         .from('alternative_courses')
-        .select('id, provider, external_id, title, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
+        .select('id, provider, external_id, title, description, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -56,7 +56,7 @@ export function AlternativeCoursesList() {
           provider: normalizedProvider,
           external_id: course.external_id,
           title: course.title,
-          description: null, // Field doesn't exist in DB yet
+          description: course.description,
           url: course.url,
           creator_name: course.creator_name,
           published_at: course.published_at,
@@ -90,8 +90,11 @@ export function AlternativeCoursesList() {
         .eq('track_id', activeTrackId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      console.log('[alt] usage', data?.length);
+      if (error) {
+        console.error('[alt] usage error:', error);
+        throw error;
+      }
+      console.log('[alt] usage', data?.length ?? 0);
       return data || [];
     },
     enabled: altCoursesEnabled && !!activeTrackId
@@ -223,7 +226,11 @@ export function AlternativeCoursesList() {
   };
 
   if (!altCoursesEnabled) {
-    return null;
+    return (
+      <div className="text-xs opacity-60 p-4 border border-dashed rounded-lg bg-muted/20">
+        Alt Courses disabled (set ?alt_courses=true to enable)
+      </div>
+    );
   }
 
   if (!activeTrackId) {

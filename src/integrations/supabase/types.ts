@@ -644,6 +644,7 @@ export type Database = {
           created_at: string | null
           creator_name: string | null
           cri_score: number | null
+          description: string | null
           difficulty: number | null
           estimated_hours: number | null
           external_id: string
@@ -659,6 +660,7 @@ export type Database = {
           created_at?: string | null
           creator_name?: string | null
           cri_score?: number | null
+          description?: string | null
           difficulty?: number | null
           estimated_hours?: number | null
           external_id: string
@@ -674,6 +676,7 @@ export type Database = {
           created_at?: string | null
           creator_name?: string | null
           cri_score?: number | null
+          description?: string | null
           difficulty?: number | null
           estimated_hours?: number | null
           external_id?: string

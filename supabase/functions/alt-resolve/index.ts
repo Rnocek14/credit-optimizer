@@ -1,246 +1,277 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0?target=deno';
+import { corsHeaders } from '../_shared/utils.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
+// Course resolution types
 interface ResolveRequest {
   url: string;
 }
 
 type Provider = 'youtube' | 'udemy' | 'coursera' | 'edx' | 'masterclass' | 'other';
 
-function detectProvider(url: string): { provider: Provider; externalId: string | null } {
-  try {
-    const u = new URL(url);
-
-    // YouTube
-    if (u.hostname.includes('youtube.com') || u.hostname === 'youtu.be') {
-      const vid = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : null);
-      return { provider: 'youtube', externalId: vid };
-    }
-
-    // Udemy
-    if (u.hostname.includes('udemy.com')) {
-      const match = u.pathname.match(/\/course\/([^/?#]+)/);
-      return { provider: 'udemy', externalId: match?.[1] ?? null };
-    }
-
-    // Coursera
-    if (u.hostname.includes('coursera.org')) {
-      const match = u.pathname.match(/\/learn\/([^/?#]+)/);
-      return { provider: 'coursera', externalId: match?.[1] ?? null };
-    }
-
-    // edX
-    if (u.hostname.includes('edx.org')) {
-      const match = u.pathname.match(/\/course\/([^/?#]+)/);
-      return { provider: 'edx', externalId: match?.[1] ?? null };
-    }
-
-    // MasterClass
-    if (u.hostname.includes('masterclass.com')) {
-      const slug = u.pathname.replace(/^\/+/, '');
-      return { provider: 'masterclass', externalId: slug || null };
-    }
-
-    return { provider: 'other', externalId: url };
-  } catch (error) {
-    return { provider: 'other', externalId: url };
-  }
+interface SkillTag {
+  name: string;
+  weight?: number;
 }
 
-async function fetchMetadata(url: string) {
+interface AlternativeCourse {
+  id: string;
+  provider: Provider;
+  external_id: string | null;
+  title: string;
+  description: string | null;
+  url: string;
+  creator_name: string | null;
+  published_at: string | null;
+  estimated_hours: number | null;
+  difficulty: number | null;
+  cri_score: number | null;
+  skills: SkillTag[] | null;
+}
+
+// Provider detection
+function detectProvider(url: string): { provider: Provider; external_id: string | null } {
+  const urlObj = new URL(url);
+  const hostname = urlObj.hostname.toLowerCase();
+  
+  if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+    const videoId = urlObj.searchParams.get('v') || urlObj.pathname.split('/').pop();
+    return { provider: 'youtube', external_id: videoId };
+  }
+  
+  if (hostname.includes('udemy.com')) {
+    const courseId = urlObj.pathname.split('/')[2] || null;
+    return { provider: 'udemy', external_id: courseId };
+  }
+  
+  if (hostname.includes('coursera.org')) {
+    const courseId = urlObj.pathname.split('/').pop() || null;
+    return { provider: 'coursera', external_id: courseId };
+  }
+  
+  if (hostname.includes('edx.org')) {
+    const courseId = urlObj.pathname.split('/')[3] || null;
+    return { provider: 'edx', external_id: courseId };
+  }
+  
+  if (hostname.includes('masterclass.com')) {
+    const courseId = urlObj.pathname.split('/')[2] || null;
+    return { provider: 'masterclass', external_id: courseId };
+  }
+  
+  return { provider: 'other', external_id: null };
+}
+
+// Metadata fetching
+async function fetchMetadata(url: string): Promise<{ title: string; description: string | null }> {
   try {
-    console.log(`Fetching metadata for: ${url}`);
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AltCourseBot/1.0)' }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PathfindAI/1.0)',
+      },
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`Failed to fetch: ${response.status}`);
     }
     
     const html = await response.text();
     
     // Extract title
-    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
-    const ogTitleMatch = html.match(/<meta property="og:title" content="([^"]+)"/i);
-    const title = (ogTitleMatch?.[1] || titleMatch?.[1] || 'Untitled Course').trim();
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].trim() : 'Untitled Course';
     
-    // Extract description
-    const descMatch = html.match(/<meta name="description" content="([^"]+)"/i);
-    const ogDescMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
-    const description = (ogDescMatch?.[1] || descMatch?.[1] || null)?.trim();
+    // Extract description from meta tags
+    const descMatch = html.match(/<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"']+)["\'][^>]*>/i) ||
+                     html.match(/<meta[^>]*property=["\']og:description["\'][^>]*content=["\']([^"']+)["\'][^>]*>/i);
+    const description = descMatch ? descMatch[1].trim() : null;
     
     return { title, description };
   } catch (error) {
-    console.error(`Failed to fetch metadata for ${url}:`, error);
-    return { 
-      title: 'External Course',
-      description: 'Course imported from external source'
-    };
+    console.error('Metadata fetch error:', error);
+    return { title: 'External Course', description: null };
   }
 }
 
-function mapSkills(title: string, description: string | null): any[] {
-  const text = `${title} ${description || ''}`.toLowerCase();
-  const skillKeywords = [
-    'react', 'javascript', 'typescript', 'node', 'python', 'java', 'sql',
-    'docker', 'kubernetes', 'aws', 'azure', 'gcp', 'design', 'ui', 'ux',
-    'machine learning', 'data science', 'analytics', 'marketing', 'sales'
-  ];
-  
-  const detectedSkills: any[] = [];
-  skillKeywords.forEach(skill => {
-    if (text.includes(skill)) {
-      detectedSkills.push({ name: skill, weight: 0.7 });
-    }
-  });
-  
-  return detectedSkills;
-}
-
-function calculateCRI(params: {
-  provider: Provider;
-  title: string;
-  description: string | null;
-}): { criScore: number; difficulty: number } {
-  const baseScore = 55;
-  
-  // Provider reputation weights
-  const providerWeights: Record<Provider, number> = {
-    youtube: 5,
-    udemy: 10,
-    coursera: 20,
-    edx: 20,
-    masterclass: 8,
-    other: 0
+// Skill mapping
+function mapSkills(title: string, description: string | null): SkillTag[] {
+  const skillKeywords = {
+    'React': ['react', 'jsx', 'component', 'hook'],
+    'JavaScript': ['javascript', 'js', 'node', 'npm'],
+    'Python': ['python', 'django', 'flask', 'pandas'],
+    'TypeScript': ['typescript', 'ts', 'type'],
+    'CSS': ['css', 'style', 'design', 'layout'],
+    'HTML': ['html', 'markup', 'web'],
+    'Node.js': ['node', 'express', 'server'],
+    'Database': ['database', 'sql', 'mongodb', 'postgres'],
+    'API': ['api', 'rest', 'graphql', 'endpoint'],
+    'DevOps': ['docker', 'kubernetes', 'deployment', 'ci/cd'],
   };
   
-  // Quality indicators
-  let qualityBonus = 0;
-  if (params.description && params.description.length > 200) qualityBonus += 5;
-  if (params.title.toLowerCase().includes('complete') || params.title.toLowerCase().includes('comprehensive')) {
-    qualityBonus += 5;
+  const content = `${title} ${description || ''}`.toLowerCase();
+  const skills: SkillTag[] = [];
+  
+  for (const [skill, keywords] of Object.entries(skillKeywords)) {
+    const matches = keywords.filter(keyword => content.includes(keyword)).length;
+    if (matches > 0) {
+      skills.push({ name: skill, weight: matches / keywords.length });
+    }
   }
   
-  // Difficulty assessment (1-5 scale)
-  const titleLower = params.title.toLowerCase();
-  let difficulty = 3; // Default medium
-  
-  if (titleLower.includes('beginner') || titleLower.includes('intro')) difficulty = 2;
-  if (titleLower.includes('advanced') || titleLower.includes('expert')) difficulty = 4;
-  if (titleLower.includes('master') || titleLower.includes('professional')) difficulty = 5;
-  
-  const criScore = Math.max(0, Math.min(100, 
-    baseScore + providerWeights[params.provider] + qualityBonus
-  ));
-  
-  return { criScore, difficulty };
+  return skills.slice(0, 5); // Limit to top 5 skills
 }
 
+// CRI calculation
+function calculateCRI(provider: Provider, title: string, description: string | null): { cri_score: number; difficulty: number } {
+  const baseScores: Record<Provider, number> = {
+    youtube: 65,
+    udemy: 75,
+    coursera: 85,
+    edx: 80,
+    masterclass: 70,
+    other: 60,
+  };
+  
+  let cri = baseScores[provider];
+  let difficulty = 3; // Default medium
+  
+  const content = `${title} ${description || ''}`.toLowerCase();
+  
+  // Adjust for content indicators
+  if (content.includes('beginner') || content.includes('intro')) {
+    difficulty = Math.max(1, difficulty - 1);
+    cri += 5;
+  }
+  
+  if (content.includes('advanced') || content.includes('expert')) {
+    difficulty = Math.min(5, difficulty + 1);
+    cri += 10;
+  }
+  
+  if (content.includes('complete') || content.includes('comprehensive')) {
+    cri += 8;
+  }
+  
+  if (content.includes('hands-on') || content.includes('project')) {
+    cri += 12;
+  }
+  
+  return { cri_score: Math.min(100, cri), difficulty };
+}
+
+// Main handler
 Deno.serve(async (req) => {
-  // Handle CORS
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
+  
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { 
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-
+  
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const { url }: ResolveRequest = await req.json();
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    const body: ResolveRequest = await req.json();
-    console.log('Resolving URL:', body.url);
-    
-    // Detect provider and extract ID
-    const { provider, externalId } = detectProvider(body.url);
-    console.log(`Detected provider: ${provider}, external_id: ${externalId}`);
-    
-    // Check if already exists
-    const { data: existing } = await supabase
-      .from('alternative_courses')
-      .select('*')
-      .eq('provider', provider)
-      .eq('external_id', externalId || body.url)
-      .single();
-    
-    if (existing) {
-      console.log('Course already exists, returning existing record');
+    if (!url) {
       return new Response(JSON.stringify({ 
-        success: true, 
-        course: existing,
-        cached: true 
+        success: false, 
+        error: 'URL is required' 
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
-    // Fetch fresh metadata
-    const metadata = await fetchMetadata(body.url);
-    const skills = mapSkills(metadata.title, metadata.description);
-    const { criScore, difficulty } = calculateCRI({
-      provider,
-      title: metadata.title,
-      description: metadata.description
-    });
+    console.log('[alt-resolve] Processing URL:', url);
+    
+    // Initialize Supabase
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { persistSession: false } }
+    );
+    
+    const { provider, external_id } = detectProvider(url);
+    
+    // Check if course already exists
+    if (external_id) {
+      const { data: existing } = await supabase
+        .from('alternative_courses')
+        .select('*')
+        .eq('provider', provider)
+        .eq('external_id', external_id)
+        .maybeSingle();
+        
+      if (existing) {
+        console.log('[alt-resolve] Found existing course:', existing.id);
+        return new Response(JSON.stringify({
+          success: true,
+          course: existing,
+          cached: true,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    
+    // Fetch metadata
+    const { title, description } = await fetchMetadata(url);
+    const skills = mapSkills(title, description);
+    const { cri_score, difficulty } = calculateCRI(provider, title, description);
+    
+    // Estimate hours based on provider and content
+    let estimated_hours = 5; // Default
+    if (provider === 'coursera' || provider === 'edx') estimated_hours = 20;
+    if (provider === 'udemy') estimated_hours = 12;
+    if (provider === 'masterclass') estimated_hours = 8;
     
     // Insert new course
     const courseData = {
       provider,
-      external_id: externalId || body.url,
-      title: metadata.title,
-      description: metadata.description,
-      url: body.url,
-      creator_name: null,
-      published_at: null,
-      estimated_hours: null,
+      external_id,
+      title: title.slice(0, 255), // Truncate if needed
+      description: description?.slice(0, 500) || null,
+      url,
+      creator_name: null, // Could be extracted from metadata
+      published_at: new Date().toISOString(),
+      estimated_hours,
       difficulty,
-      cri_score: criScore,
-      skills: skills
+      cri_score,
+      skills,
     };
     
-    const { data: course, error } = await supabase
+    const { data: newCourse, error } = await supabase
       .from('alternative_courses')
       .insert(courseData)
       .select()
       .single();
     
     if (error) {
-      console.error('Database error:', error);
+      console.error('[alt-resolve] Database error:', error);
       throw error;
     }
     
-    console.log('Successfully resolved and stored course:', course.id);
+    console.log('[alt-resolve] Created new course:', newCourse.id);
     
-    return new Response(JSON.stringify({ 
-      success: true, 
-      course,
-      cached: false 
+    return new Response(JSON.stringify({
+      success: true,
+      course: newCourse,
+      cached: false,
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
     
   } catch (error) {
-    console.error('Alt-resolve error:', error);
-    
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: error.message || 'Failed to resolve course'
+    console.error('[alt-resolve] Error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Internal server error',
     }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

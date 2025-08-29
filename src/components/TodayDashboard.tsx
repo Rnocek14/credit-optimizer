@@ -40,10 +40,10 @@ interface TodayDashboardProps {
 }
 
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
-  const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline, altCoursesEnabled } = useFeatureFlags();
+  const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline, altCoursesEnabled, skillTreeForceTagsFallback } = useFeatureFlags();
   
   // Debug feature flags for Alternative Courses
-  console.log('[TodayDashboard] altCoursesEnabled:', altCoursesEnabled);
+  console.log('[TodayDashboard] flags:', { altCoursesEnabled, skillTreeForceTagsFallback });
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -274,6 +274,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
 
   return (
     <div className="space-y-6">
+      {/* Dev Banner for Alternative Courses */}
+      {(altCoursesEnabled || skillTreeForceTagsFallback) && (
+        <div className="mb-2 rounded-md border border-dashed p-2 text-xs bg-primary/5 border-primary/20">
+          <span className="font-medium text-primary">Dev Flags →</span>{' '}
+          alt_courses:{String(altCoursesEnabled)} | skill_fallback:{String(skillTreeForceTagsFallback)}
+        </div>
+      )}
+      
       {/* Maya Intelligence Overview - Full Width */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <MayaInsightsCard 
