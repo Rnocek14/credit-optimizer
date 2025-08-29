@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AlternativeCoursesList } from '@/components/AlternativeCoursesList';
 
 interface Course {
   id: string;
@@ -251,6 +252,11 @@ export function TrackTranscriptView({ courses = [], className }: TrackTranscript
             })}
           </div>
         )}
+        
+        {/* Alternative Courses Section */}
+        <div className="mt-6">
+          <AlternativeCoursesList />
+        </div>
       </CardContent>
     </Card>
   );

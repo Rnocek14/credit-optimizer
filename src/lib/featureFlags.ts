@@ -12,6 +12,7 @@ interface FeatureFlags {
   gamificationTimeline: boolean;
   gamificationSound: boolean;
   growthLayerEnabled: boolean;
+  altCoursesEnabled: boolean;
 }
 
 /**
@@ -42,6 +43,9 @@ export function getFeatureFlags(): FeatureFlags {
     
     // Growth layer - disabled by default, controllable via query param
     growthLayerEnabled: searchParams.get('growth_layer') === 'true',
+    
+    // Alternative courses - disabled by default, controllable via query param
+    altCoursesEnabled: searchParams.get('alt_courses') === 'true',
   };
 }
 

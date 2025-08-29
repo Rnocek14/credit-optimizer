@@ -6,9 +6,11 @@ import { Separator } from '@/components/ui/separator';
 import { Download, FileText, Star, Trophy, Award, GraduationCap } from 'lucide-react';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useTrackTranscript } from '@/hooks/useTrackTranscript';
+import { useAltTranscript } from '@/hooks/useAltTranscript';
 import { useTracks } from '@/hooks/useTracks';
 import { useToast } from '@/hooks/use-toast';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Course {
   id: string;
@@ -29,6 +31,7 @@ export function TrackResumeBuilder({ courses = [], className }: TrackResumeBuild
   const { activeTrackId } = useActiveTrackStore();
   const { tracks } = useTracks();
   const { usage } = useTrackTranscript(activeTrackId);
+  const { usage: altUsage } = useAltTranscript(activeTrackId);
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
 
@@ -90,6 +93,28 @@ export function TrackResumeBuilder({ courses = [], className }: TrackResumeBuild
 
     setIsExporting(true);
     try {
+      // Fetch alternative courses data with details
+      const altCourseDetails = await Promise.all(
+        altUsage.map(async (usage) => {
+          const { data } = await supabase
+            .from('alternative_courses')
+            .select('*')
+            .eq('id', usage.alt_course_id)
+            .single();
+          
+          return {
+            title: data?.title,
+            provider: data?.provider,
+            url: data?.url,
+            difficulty: data?.difficulty,
+            estimated_hours: data?.estimated_hours,
+            cri_score: data?.cri_score,
+            tagged_at: usage.created_at,
+            note: usage.note
+          };
+        })
+      );
+
       // Create resume data with intelligence metrics
       const resumeData = {
         track: {
@@ -111,6 +136,7 @@ export function TrackResumeBuilder({ courses = [], className }: TrackResumeBuild
           instructor_rating: course.instructor_rating,
           completion_rate: course.completion_rate,
         })),
+        alternative_courses: altCourseDetails.filter(course => course.title), // Filter out failed fetches
         generated_at: new Date().toISOString(),
       };
 
@@ -131,6 +157,7 @@ export function TrackResumeBuilder({ courses = [], className }: TrackResumeBuild
         complexity: { 
           track_id: activeTrack.id,
           total_courses: totalCourses,
+          total_alt_courses: altUsage.length,
           avg_cri: Math.round(avgCRI),
           avg_difficulty: Math.round(avgDifficulty * 10) / 10
         }

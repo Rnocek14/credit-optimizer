@@ -32,6 +32,7 @@ import { OnboardingTutorial, useOnboarding } from '@/components/onboarding/Onboa
 import { useMayaContextTracking } from '@/hooks/useMayaContextTracking';
 import { MayaIntelligencePanel } from '@/components/MayaIntelligencePanel';
 import { MayaInsightDebugPanel } from '@/components/debug/MayaInsightDebugPanel';
+import { DbHealthBadge } from '@/components/DbHealthBadge';
 
 interface TodayDashboardProps {
   onNextStepClick?: () => void;
@@ -277,16 +278,21 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           nextStep={nextStep}
           recommendations={quickWins}
         />
-        <MayaIntelligencePanel 
-          currentPath="/today"
-          contextData={{ 
-            user_level: userLevel?.current_level,
-            current_streak: getCurrentStreak ? getCurrentStreak() : currentStreak,
-            total_xp: userLevel?.total_xp,
-            daily_context: true
-          }}
-          compact={true}
-        />
+        <div className="flex flex-col gap-4">
+          <MayaIntelligencePanel 
+            currentPath="/today"
+            contextData={{ 
+              user_level: userLevel?.current_level,
+              current_streak: getCurrentStreak ? getCurrentStreak() : currentStreak,
+              total_xp: userLevel?.total_xp,
+              daily_context: true
+            }}
+            compact={true}
+          />
+          <div className="flex justify-center">
+            <DbHealthBadge />
+          </div>
+        </div>
         <MayaInsightDebugPanel />
       </div>
 

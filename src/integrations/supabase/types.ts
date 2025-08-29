@@ -639,6 +639,39 @@ export type Database = {
           },
         ]
       }
+      alternative_courses: {
+        Row: {
+          created_at: string | null
+          cri_score: number | null
+          difficulty: number | null
+          estimated_hours: number | null
+          id: string
+          provider: string
+          title: string
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          cri_score?: number | null
+          difficulty?: number | null
+          estimated_hours?: number | null
+          id?: string
+          provider: string
+          title: string
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          cri_score?: number | null
+          difficulty?: number | null
+          estimated_hours?: number | null
+          id?: string
+          provider?: string
+          title?: string
+          url?: string
+        }
+        Relationships: []
+      }
       anomaly_detections: {
         Row: {
           anomaly_score: number
@@ -3170,7 +3203,15 @@ export type Database = {
           raw_data?: Json
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "data_imports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       economic_indicators: {
         Row: {
@@ -3369,6 +3410,13 @@ export type Database = {
           profile_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "featured_gallery_curations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "featured_gallery_curations_profile_id_fkey"
             columns: ["profile_id"]
@@ -4839,7 +4887,15 @@ export type Database = {
           target_career?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "maya_learning_paths_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       maya_proactive_insights: {
         Row: {
@@ -6771,7 +6827,22 @@ export type Database = {
           reason?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "role_audit_log_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "role_audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       salary_benchmarks: {
         Row: {
@@ -6950,7 +7021,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "saved_plan_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       security_audit_log: {
         Row: {
@@ -7205,6 +7284,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "data_imports"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_extractions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -8206,7 +8292,64 @@ export type Database = {
           user_id?: string
           xp_awarded?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      user_alt_course_usage: {
+        Row: {
+          alt_course_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          alt_course_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          alt_course_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_alt_course_usage_alt_course_id_fkey"
+            columns: ["alt_course_id"]
+            isOneToOne: false
+            referencedRelation: "alternative_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_alt_course_usage_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_alt_course_usage_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "user_track_progress_v"
+            referencedColumns: ["track_id"]
+          },
+        ]
       }
       user_badges: {
         Row: {
@@ -8611,7 +8754,15 @@ export type Database = {
           is_active?: boolean | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_insight_interactions: {
         Row: {
@@ -8835,7 +8986,22 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_transcript_health"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_skill_progress: {
         Row: {
@@ -9560,6 +9726,14 @@ export type Database = {
           },
         ]
       }
+      v_transcript_health: {
+        Row: {
+          duplicate_rows: number | null
+          total_tags: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       after_maya_analysis_increment_quota: {
@@ -9781,6 +9955,13 @@ export type Database = {
       get_track_insights: {
         Args: { p_track_id: string }
         Returns: Json
+      }
+      get_transcript_health: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          duplicate_rows: number
+          total_tags: number
+        }[]
       }
       get_user_level: {
         Args: { user_id_param: string }
