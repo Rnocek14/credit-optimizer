@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/lib/authHelper';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +34,7 @@ export function AlternativeCoursesList() {
   const { data: userTracks = [] } = useQuery({
     queryKey: ['user-tracks'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return [];
       
       const { data, error } = await supabase
@@ -59,7 +60,7 @@ export function AlternativeCoursesList() {
     queryFn: async (): Promise<UserAltCourseUsage[]> => {
       if (!activeTrackId) return [];
       
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return [];
       
       const { data, error } = await supabase
@@ -134,7 +135,7 @@ export function AlternativeCoursesList() {
   // Add course to track
   const addMutation = useMutation({
     mutationFn: async ({ altCourseId, note }: { altCourseId: string; note?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user || !activeTrackId) throw new Error('Missing user or track');
       
       const { data, error } = await supabase
