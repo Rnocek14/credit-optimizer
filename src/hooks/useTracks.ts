@@ -13,8 +13,13 @@ export function useTracks() {
   const tracksQuery = useQuery({
     queryKey: ['career-tracks'],
     queryFn: async (): Promise<CareerTrack[]> => {
+      console.log('[useTracks] Fetching tracks...');
       const user = await getCurrentUser();
-      if (!user) return [];
+      console.log('[useTracks] User:', user?.id);
+      if (!user) {
+        console.log('[useTracks] No user found, returning empty array');
+        return [];
+      }
       const { data, error } = await supabase
         .from('career_tracks')
         .select('*')
@@ -23,7 +28,11 @@ export function useTracks() {
         .order('order_index', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useTracks] Error fetching tracks:', error);
+        throw error;
+      }
+      console.log('[useTracks] Tracks fetched:', data?.length || 0, 'tracks');
       return (data || []) as CareerTrack[];
     },
   });

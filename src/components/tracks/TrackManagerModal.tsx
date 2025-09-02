@@ -361,16 +361,16 @@ export function TrackManagerModal({ children }: TrackManagerModalProps) {
                         <SelectTrigger className="bg-background">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background border shadow-lg z-50">
-                          {TRACK_ICONS.map(({ icon, label }) => (
-                            <SelectItem key={icon} value={icon} className="hover:bg-muted">
-                              <span className="flex items-center gap-2">
-                                <span className="text-lg">{icon}</span>
-                                {label}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
+                         <SelectContent className="bg-background border shadow-lg z-[99999]">
+                           {TRACK_ICONS.map(({ icon, label }) => (
+                             <SelectItem key={icon} value={icon} className="hover:bg-muted">
+                               <span className="flex items-center gap-2">
+                                 <span className="text-lg">{icon}</span>
+                                 {label}
+                               </span>
+                             </SelectItem>
+                           ))}
+                         </SelectContent>
                       </Select>
                     </div>
 

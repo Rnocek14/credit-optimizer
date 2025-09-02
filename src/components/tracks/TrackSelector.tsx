@@ -157,22 +157,36 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent 
-          className="min-w-[300px] shadow-xl z-[9999]" 
+          className="min-w-[300px] max-w-[400px] shadow-2xl z-[99999] bg-background/95 backdrop-blur-sm border-2" 
           sideOffset={4}
           align="end"
         >
-          <div className="p-2 border-b bg-background">
+          <div className="p-3 border-b bg-background/90 backdrop-blur-sm">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search tracks..."
-              className="w-full px-2 py-2 rounded-md bg-background border"
+              className="w-full px-3 py-2 rounded-md bg-background border-2 border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
 
-          <div className="max-h-64 overflow-auto">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-sm opacity-70">No tracks found</div>
+          <div className="max-h-64 overflow-auto bg-background/90">
+            {isLoading ? (
+              <div className="px-3 py-4 text-sm opacity-70 flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                Loading tracks...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="px-3 py-4 text-sm opacity-70">
+                {tracks.length === 0 ? (
+                  <div className="space-y-2">
+                    <div>No tracks created yet</div>
+                    <div className="text-xs text-muted-foreground">Create your first track below ↓</div>
+                  </div>
+                ) : (
+                  'No tracks match your search'
+                )}
+              </div>
             ) : (
               filtered.map((t) => (
                 <TrackItem key={t.id} track={t} activeId={activeTrackId} onSelect={handleTrackSelect} />
@@ -180,30 +194,32 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             )}
           </div>
 
-        <div className="p-2 border-t bg-background">
-          <div className="flex items-center gap-2">
+        <div className="p-3 border-t bg-background/90 backdrop-blur-sm">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-md border-2 hover:bg-primary/10 hover:border-primary text-sm font-medium transition-all duration-200 hover:scale-105"
               data-testid="create-track"
             >
               <Plus className="w-4 h-4" /> Create New
             </button>
             <button
               onClick={handleRename}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-md border hover:bg-muted text-sm transition-all duration-200"
+              disabled={!active}
             >
               <Pencil className="w-4 h-4" /> Rename
             </button>
             <button
               onClick={handleArchiveToggle}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-md border hover:bg-muted text-sm transition-all duration-200"
+              disabled={!active}
             >
               <Archive className="w-4 h-4" /> {active?.archived ? 'Restore' : 'Archive'}
             </button>
             <TrackManagerModal>
               <button
-                className="inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-md border hover:bg-muted text-sm transition-all duration-200"
                 title="Advanced Track Management"
               >
                 <Settings className="w-4 h-4" />
@@ -211,8 +227,8 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
             </TrackManagerModal>
             <button
               onClick={() => refetch()}
-              className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-muted text-sm"
-              title="Refresh"
+              className="ml-auto inline-flex items-center gap-1 px-3 py-2 rounded-md border hover:bg-muted text-sm transition-all duration-200"
+              title="Refresh tracks"
             >
               <RefreshCw className="w-4 h-4" />
             </button>

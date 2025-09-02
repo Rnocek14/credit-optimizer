@@ -38,8 +38,13 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['career-tracks'],
     queryFn: async () => {
+      console.log('[TrackManagerModal] Fetching tracks...');
       const user = await getCurrentUser();
-      if (!user) throw new Error('Not authenticated');
+      console.log('[TrackManagerModal] User:', user?.id);
+      if (!user) {
+        console.log('[TrackManagerModal] No user found');
+        throw new Error('Not authenticated');
+      }
 
       const { data, error } = await supabase
         .from('career_tracks')
@@ -47,7 +52,11 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
         .eq('user_id', user.id)
         .order('order_index', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[TrackManagerModal] Error fetching tracks:', error);
+        throw error;
+      }
+      console.log('[TrackManagerModal] Tracks fetched:', data?.length || 0, 'tracks');
       return data as CareerTrack[];
     },
     enabled: !!user && isOpen, // Only fetch when dialog is open and user exists
