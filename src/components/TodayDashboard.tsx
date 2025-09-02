@@ -42,9 +42,6 @@ interface TodayDashboardProps {
 export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   const { unifiedTodayDashboard, gamificationCelebrations, gamificationGallery, gamificationTimeline, altCoursesEnabled, skillTreeForceTagsFallback } = useFeatureFlags();
   
-  // Debug feature flags for Alternative Courses
-  console.log('[TodayDashboard] flags:', { altCoursesEnabled, skillTreeForceTagsFallback });
-  console.log('[today] AlternativeCoursesList mount check:', { altCoursesEnabled });
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -273,10 +270,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     );
   }
 
+  // Debug banner for Alternative Courses (only with debug flag)
+  const showDebugBanner = altCoursesEnabled || skillTreeForceTagsFallback;
+  const debugModeActive = new URLSearchParams(window.location.search).get('alt_debug') === '1';
+
   return (
     <div className="space-y-6">
-      {/* Dev Banner for Alternative Courses */}
-      {(altCoursesEnabled || skillTreeForceTagsFallback) && (
+      {/* Debug Banner for Alternative Courses - Only show with ?alt_debug=1 */}
+      {showDebugBanner && debugModeActive && (
         <div className="mb-2 rounded-md border border-dashed p-2 text-xs bg-primary/5 border-primary/20">
           <span className="font-medium text-primary">Dev Flags →</span>{' '}
           alt_courses:{String(altCoursesEnabled)} | skill_fallback:{String(skillTreeForceTagsFallback)}

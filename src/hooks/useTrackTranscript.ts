@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { trackTelemetryEvent } from '@/utils/telemetry';
+import { getCurrentUser } from '@/lib/auth';
 
 export interface TrackCourseUsage {
   id: string;
@@ -21,7 +22,7 @@ export function useTrackTranscript(trackId?: string | null) {
   const usageQuery = useQuery({
     queryKey: ['course-progress-track-usage', trackId],
     queryFn: async (): Promise<TrackCourseUsage[]> => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) return [];
       if (!trackId) return [];
       const { data, error } = await supabase
@@ -39,7 +40,7 @@ export function useTrackTranscript(trackId?: string | null) {
 
   const tagCourse = useMutation({
     mutationFn: async ({ courseId, note, progressId }: { courseId: string; note?: string; progressId?: string; }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user || !trackId) throw new Error('Missing user or track');
       const { data, error } = await supabase
         .from('course_progress_track_usage')

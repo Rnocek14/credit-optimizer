@@ -71,13 +71,17 @@ export function getFeatureFlags(): FeatureFlags {
     skillTreeForceTagsFallback: toBool(getFlagValue('skill_fallback', 'skill-fallback', 'true')),
   };
   
-  // Single consolidated debug log 
+  // Single consolidated debug log (only once per session)
   if (typeof window !== 'undefined') {
-    console.log('[flags]', {
-      raw: window.location.search,
-      altCoursesEnabled: flags.altCoursesEnabled,
-      skillTreeForceTagsFallback: flags.skillTreeForceTagsFallback
-    });
+    const key = '__FLAGS_LOGGED__';
+    if (!(window as any)[key]) {
+      console.log('[flags]', {
+        raw: window.location.search,
+        altCoursesEnabled: flags.altCoursesEnabled,
+        skillTreeForceTagsFallback: flags.skillTreeForceTagsFallback
+      });
+      (window as any)[key] = true;
+    }
   }
   
   return flags;
@@ -87,22 +91,8 @@ export function getFeatureFlags(): FeatureFlags {
  * React hook for feature flags
  */
 export function useFeatureFlags(): FeatureFlags {
-  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  const flags = getFeatureFlags();
-  
-  // dev log - One-time log per session
-  if (typeof window !== 'undefined') {
-    const key = '__ALT_FLAGS_LOGGED__';
-    if (!(window as any)[key]) {
-      console.log('[flags]', { 
-        altCoursesEnabled: flags.altCoursesEnabled, 
-        skillTreeForceTagsFallback: flags.skillTreeForceTagsFallback 
-      });
-      (window as any)[key] = true;
-    }
-  }
-  
-  return flags;
+  // Return cached flags - logging is handled in getFeatureFlags()
+  return getFeatureFlags();
 }
 
 /**

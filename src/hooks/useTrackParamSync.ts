@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { usePathStore } from '@/stores/usePathStore';
 import { toast } from '@/hooks/use-toast';
 
@@ -15,7 +16,8 @@ export function useTrackParamSync(opts: UseTrackParamSyncOptions) {
   const navigate = useNavigate();
 
   const fromQuery = params.get('track') ?? undefined;
-  const { activeTrackId, setActiveTrackId, setLastOpenedTrackId, getLastOpenedTrackId } = usePathStore();
+  const { activeTrackId, setActiveTrackId } = useActiveTrackStore();
+  const { setLastOpenedTrackId, getLastOpenedTrackId } = usePathStore();
 
   const isValid = (id?: string) =>
     !!id && !!userTracks?.some(t => t.id === id && !t.archived);

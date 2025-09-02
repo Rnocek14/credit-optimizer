@@ -7,7 +7,7 @@ import { PathCanvas } from '@/components/path/PathCanvas';
 import { LoadingState } from '@/components/LoadingState';
 import { EmptyBuildState } from '@/components/EmptyBuildState';
 import { TrackNotFoundState } from '@/components/TrackNotFoundState';
-import { usePathStore } from '@/stores/usePathStore';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { TrackManager } from '@/components/multi-track/TrackManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useTrackParamSync } from '@/hooks/useTrackParamSync';
@@ -16,7 +16,7 @@ export default function Build() {
   const { user, isLoading } = useSecureAuth();
   const [showTrackManager, setShowTrackManager] = useState(false);
   const navigate = useNavigate();
-  const { setActiveTrackId } = usePathStore();
+  const { setActiveTrackId } = useActiveTrackStore();
 
   // Fetch user tracks for validation
   const { data: userTracks } = useQuery({

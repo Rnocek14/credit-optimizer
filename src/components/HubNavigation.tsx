@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSecureAuth } from "@/hooks/useSecureAuth";
 import { useJourneyStore } from "@/stores/journeyStore";
-import { usePathStore } from "@/stores/usePathStore";
+import { useActiveTrackStore } from "@/stores/useActiveTrackStore";
 import { useState, Suspense, lazy } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useQuery } from "@tanstack/react-query";
@@ -34,7 +34,7 @@ export function HubNavigation() {
   const location = useLocation();
   const { hasPermission, user } = useSecureAuth();
   const { stage, permissions } = useJourneyStore();
-  const { activeTrackId } = usePathStore();
+  const { activeTrackId } = useActiveTrackStore();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [showTrackManager, setShowTrackManager] = useState(false);
 

@@ -104,7 +104,6 @@ export function AlternativeCoursesList() {
     enabled: altCoursesEnabled && !!activeTrackId
   });
 
-  // Auto-select sole track for convenience
   React.useEffect(() => {
     if (!activeTrackId && userTracks.length === 1 && altCoursesEnabled) {
       console.log('[alt] auto-selecting sole track:', userTracks[0].id);
@@ -113,9 +112,6 @@ export function AlternativeCoursesList() {
   }, [activeTrackId, userTracks, altCoursesEnabled, setActiveTrackId]);
 
   React.useEffect(() => {
-    console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
-    console.log('[alt] activeTrackId:', activeTrackId);
-    
     // Health check telemetry  
     if (altCoursesEnabled && activeTrackId) {
       trackTelemetryEvent({ 
