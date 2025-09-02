@@ -44,6 +44,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
   
   // Debug feature flags for Alternative Courses
   console.log('[TodayDashboard] flags:', { altCoursesEnabled, skillTreeForceTagsFallback });
+  console.log('[today] AlternativeCoursesList mount check:', { altCoursesEnabled });
   const { showOnboarding, completeOnboarding, skipOnboarding } = useOnboarding();
   const queryClient = useQueryClient();
   const { toast } = useToast();

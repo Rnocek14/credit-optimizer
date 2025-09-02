@@ -185,7 +185,10 @@ Deno.serve(async (req) => {
       });
     }
     
-    console.log('[alt-resolve] Processing URL:', url);
+    console.log('[edge:alt-resolve] Processing URL:', url);
+    
+    const { provider, external_id } = detectProvider(url);
+    console.log('[edge:alt-resolve] Detected:', { provider, external_id });
     
     // Initialize Supabase
     const supabase = createClient(
@@ -193,8 +196,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
-    
-    const { provider, external_id } = detectProvider(url);
     
     // Check if course already exists
     if (external_id) {
@@ -206,7 +207,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
         
       if (existing) {
-        console.log('[alt-resolve] Found existing course:', existing.id);
+        console.log('[edge:alt-resolve] Found existing course:', existing.id, { cached: true });
         return new Response(JSON.stringify({
           success: true,
           course: existing,
@@ -254,7 +255,7 @@ Deno.serve(async (req) => {
       throw error;
     }
     
-    console.log('[alt-resolve] Created new course:', newCourse.id);
+    console.log('[edge:alt-resolve] Created new course:', newCourse.id, { cached: false });
     
     return new Response(JSON.stringify({
       success: true,
