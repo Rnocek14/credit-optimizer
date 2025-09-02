@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Plus, Trash2, Loader2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2, Loader2, Target, BookOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -274,30 +274,71 @@ export function AlternativeCoursesList() {
 
   if (!altCoursesEnabled) {
     return (
-      <div className="text-xs opacity-60 p-4 border border-dashed rounded-lg bg-muted/20">
-        Alt Courses disabled (set ?alt_courses=true to enable)
+      <div className="text-center py-8 space-y-4">
+        <div className="text-lg font-medium text-muted-foreground">
+          Alternative Courses Feature
+        </div>
+        <div className="text-sm text-muted-foreground space-y-2">
+          <p>This feature is currently disabled.</p>
+          <p>Add <code className="bg-muted px-2 py-1 rounded text-xs">?alt_courses=true</code> to your URL to enable it.</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('alt_courses', 'true');
+            window.location.href = url.toString();
+          }}
+        >
+          Enable Alternative Courses
+        </Button>
       </div>
     );
   }
 
   if (!activeTrackId) {
     return (
-      <div className="space-y-4">
-        <div className="text-center py-6 space-y-4">
+      <div className="space-y-6">
+        {/* Enhanced debug info */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800">
+            <Target className="h-4 w-4" />
+            <span className="font-medium">No Active Track Selected</span>
+          </div>
+          <div className="text-sm text-amber-700 space-y-1">
+            <p>Debug Info: userTracks={userTracks.length} | altEnabled={String(altCoursesEnabled)}</p>
+            <p>Current activeTrackId: {activeTrackId || 'null'}</p>
+          </div>
+        </div>
+
+        <div className="text-center py-8 space-y-4">
           <div>
-            <h3 className="text-lg font-medium">Select an Active Track</h3>
-            <p className="text-sm text-muted-foreground">
-              Choose a track to view alternative courses
+            <h3 className="text-xl font-semibold">Select an Active Track</h3>
+            <p className="text-muted-foreground mt-2">
+              Choose a career track to explore alternative learning resources
             </p>
           </div>
+          
           {userTracks.length > 0 ? (
-            <div className="space-y-3 max-w-sm mx-auto">
-              <div className="text-sm text-muted-foreground">
-                Choose a track to explore alternative learning resources:
+            <div className="space-y-4 max-w-md mx-auto">
+              <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                <strong>Available Tracks ({userTracks.length}):</strong>
+                <div className="mt-2 space-y-1">
+                  {userTracks.map(track => (
+                    <div key={track.id} className="text-xs opacity-75">
+                      • {track.track_name || track.title} ({track.id.slice(0, 8)}...)
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Select onValueChange={(trackId) => setActiveTrackId(trackId)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a track..." />
+              
+              <Select onValueChange={(trackId) => {
+                console.log('[alt] Track selected:', trackId);
+                setActiveTrackId(trackId);
+              }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a track to continue..." />
                 </SelectTrigger>
                 <SelectContent>
                   {userTracks.map((track) => (
@@ -309,18 +350,20 @@ export function AlternativeCoursesList() {
               </Select>
             </div>
           ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <p>No career tracks found.</p>
-              <p className="text-sm mt-1">
-                Create a career track first to use alternative courses.
-              </p>
+            <div className="text-center py-8 space-y-4">
+              <div className="text-muted-foreground">
+                <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-lg font-medium">No Career Tracks Found</p>
+                <p className="text-sm mt-2">
+                  Create your first career track to start exploring alternative courses.
+                </p>
+              </div>
               <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-3"
                 onClick={() => window.location.href = '/plan?tab=goals'}
+                className="mt-4"
               >
-                Create Track
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Track
               </Button>
             </div>
           )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -637,15 +637,23 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           </Card>
         )}
         
-        {/* Alternative Courses Section */}
-        {altCoursesEnabled && (
-          <>
-            <div className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
+        {/* Alternative Courses Section - Moved up for better visibility */}
+        <div className="md:col-span-2 lg:col-span-3" data-testid="alternative-courses">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-purple-500" />
+                Alternative Learning Paths
+              </CardTitle>
+              <CardDescription>
+                Explore courses from multiple platforms to enhance your learning journey
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <AlternativeCoursesList />
-            </div>
-            {console.log('[today] mounting AlternativeCoursesList, altCoursesEnabled=' + altCoursesEnabled)}
-          </>
-        )}
+            </CardContent>
+          </Card>
+        </div>
         
         {/* Gamification Features */}
         {gamificationTimeline && (
