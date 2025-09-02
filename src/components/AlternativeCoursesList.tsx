@@ -48,63 +48,12 @@ export function AlternativeCoursesList() {
         return [];
       }
       console.log('[alt] available tracks:', data.length);
+      console.log('[alt] activeTrackId:', activeTrackId);
       return data || [];
     },
     enabled: altCoursesEnabled
   });
 
-  // Debug logging - comprehensive visibility
-  console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
-  console.log('[alt] activeTrackId:', activeTrackId);
-  console.log('[alt] component state:', { isModalOpen, resolving, hasResolvedCourse: !!resolvedCourse });
-  console.log('[alt] userTracks:', userTracks.length);
-  const { data: catalog = [], isLoading: catalogLoading } = useQuery<AlternativeCourse[]>({
-    queryKey: ['alt-catalog', activeTrackId],
-    queryFn: async (): Promise<AlternativeCourse[]> => {
-      const { data, error } = await supabase
-        .from('alternative_courses')
-        .select('id, provider, external_id, title, description, url, creator_name, published_at, estimated_hours, difficulty, cri_score, skills, created_at')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('[alt] catalog error:', error);
-        throw error;
-      }
-      
-      // Transform and validate data to match our types
-      const transformedData: AlternativeCourse[] = (data || []).map(course => {
-        // Normalize provider to lowercase and ensure it's a valid Provider type
-        let normalizedProvider: Provider = 'other';
-        const providerLower = course.provider?.toLowerCase() || 'other';
-        
-        if (['youtube', 'udemy', 'coursera', 'edx', 'masterclass', 'other'].includes(providerLower)) {
-          normalizedProvider = providerLower as Provider;
-        }
-        
-        return {
-          id: course.id,
-          provider: normalizedProvider,
-          external_id: course.external_id,
-          title: course.title,
-          description: course.description,
-          url: course.url,
-          creator_name: course.creator_name,
-          published_at: course.published_at,
-          estimated_hours: course.estimated_hours,
-          difficulty: course.difficulty,
-          cri_score: course.cri_score,
-          skills: course.skills as SkillTag[] | null,
-          created_at: course.created_at
-        };
-      });
-      
-      console.log('[alt] catalog', transformedData.length);
-      return transformedData;
-    },
-    enabled: altCoursesEnabled && !!activeTrackId
-  });
-
-  // Fetch user's alt course usage for this track
   const { data: usage = [], isLoading: usageLoading } = useQuery<UserAltCourseUsage[]>({
     queryKey: ['alt-usage', activeTrackId],
     queryFn: async (): Promise<UserAltCourseUsage[]> => {
@@ -129,6 +78,47 @@ export function AlternativeCoursesList() {
     },
     enabled: altCoursesEnabled && !!activeTrackId
   });
+
+  // Fetch alternative courses catalog
+  const { data: catalog = [], isLoading: catalogLoading } = useQuery<AlternativeCourse[]>({
+    queryKey: ['alt-catalog', activeTrackId],
+    queryFn: async (): Promise<AlternativeCourse[]> => {
+      const { data, error } = await supabase
+        .from('alternative_courses')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('[alt] catalog error:', error);
+        throw error;
+      }
+      
+      console.log('[alt] catalog', data?.length || 0);
+      return (data || []).map(course => ({
+        ...course,
+        provider: (course.provider?.toLowerCase() || 'other') as Provider,
+        skills: course.skills as SkillTag[] | null
+      }));
+    },
+    enabled: altCoursesEnabled && !!activeTrackId
+  });
+
+  React.useEffect(() => {
+    console.log('[alt] flags', { altCoursesEnabled, skillTreeForceTagsFallback });
+    console.log('[alt] activeTrackId:', activeTrackId);
+    
+    // Health check telemetry  
+    if (altCoursesEnabled && activeTrackId) {
+      trackTelemetryEvent({ 
+        task: 'db_health_checked', 
+        complexity: { 
+          catalog_count: catalog?.length || 0, 
+          usage_count: usage?.length || 0,
+          tracks_available: userTracks?.length || 0
+        } 
+      });
+    }
+  }, [altCoursesEnabled, skillTreeForceTagsFallback, activeTrackId, catalog?.length, usage?.length, userTracks?.length]);
 
   const isAlreadyTagged = (altCourseId: string) =>
     usage.some(u => u.alt_course_id === altCourseId);
@@ -183,7 +173,10 @@ export function AlternativeCoursesList() {
         .delete()
         .eq('id', usageId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[alt] remove error:', error);
+        throw error;
+      }
       return usageId;
     },
     onSuccess: () => {

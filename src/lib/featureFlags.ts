@@ -72,7 +72,12 @@ export function getFeatureFlags(): FeatureFlags {
     skillTreeForceTagsFallback: getFlagValue('skill_fallback', 'skill-fallback', 'true') !== 'false',
   };
   
-  // Debug logging (one-time log)
+  // Debug logging with comprehensive flag state
+  console.log('[flags] Current flag state:', {
+    altCoursesEnabled: flags.altCoursesEnabled,
+    skillTreeForceTagsFallback: flags.skillTreeForceTagsFallback,
+    raw: window.location.search
+  });
   console.log('[featureFlags]', flags);
   
   return flags;

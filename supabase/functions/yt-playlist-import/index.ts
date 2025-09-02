@@ -34,14 +34,30 @@ Deno.serve(async (req) => {
     
     console.log('[yt-playlist-import] Processing playlist:', playlistUrl);
     
-    // For now, return a placeholder response
-    // TODO: Implement YouTube playlist parsing and batch course import
+    // Mock implementation - simulate playlist processing
+    console.log('[edge:playlist] mock items=5');
+    
+    const mockItems = Array.from({ length: 5 }, (_, i) => ({
+      id: `mock-${i + 1}`,
+      provider: 'youtube',
+      external_id: `mock-video-${i + 1}`,
+      title: `Mock Course ${i + 1}: Advanced Development`,
+      description: `This is a mock course description for testing the playlist import functionality.`,
+      url: `https://youtube.com/watch?v=mock-${i + 1}`,
+      creator_name: 'Mock Instructor',
+      published_at: new Date().toISOString(),
+      estimated_hours: Math.floor(Math.random() * 10) + 1,
+      difficulty: Math.floor(Math.random() * 5) + 1,
+      cri_score: Math.floor(Math.random() * 40) + 60,
+      skills: [{ name: 'development', weight: 0.8 }],
+      created_at: new Date().toISOString()
+    }));
     
     return new Response(JSON.stringify({
       success: true,
-      message: 'Playlist import feature coming soon!',
-      items: [],
-      total: 0,
+      message: 'Playlist import completed (mock)',
+      items: mockItems,
+      total: mockItems.length,
       mock: true,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

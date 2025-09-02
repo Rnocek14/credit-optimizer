@@ -13,6 +13,7 @@ import { useSecureAuth } from '@/hooks/useSecureAuth';
 import { toast } from 'sonner';
 import type { CareerTrack } from '@/types/tracks';
 import { usePathStore } from '@/stores/usePathStore';
+import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
 import { slugify, generateUniqueSlug } from '@/lib/slugify';
 
 export interface TrackManagerProps {
@@ -32,6 +33,7 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useSecureAuth();
+  const { setActiveTrackId } = useActiveTrackStore();
 
   const { data: tracks = [], isLoading } = useQuery({
     queryKey: ['career-tracks'],
@@ -80,6 +82,11 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
     },
     onSuccess: (newTrack) => {
       queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
+      console.log('[track-builder] created track', newTrack.id, 'and set activeTrackId');
+      
+      // CRITICAL: Set activeTrackId in the store for Alternative Courses to work
+      setActiveTrackId(newTrack.id);
+      
       toast.success(`Created track: ${newTrack.track_name}`);
       setNewTrackName('');
       setIsOpen(false);
