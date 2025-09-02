@@ -117,6 +117,16 @@ async function calculateCRI(supabase: any, userId: string, trackId?: string) {
     marketReadiness: marketReadinessScore
   });
 
+  // Get historical CRI data for trending
+  const { data: historicalCRI } = await supabase
+    .from('user_cri_scores')
+    .select('current_cri_score as cri_score, last_calculated as calculated_at')
+    .eq('user_id', userId)
+    .order('last_calculated', { ascending: false })
+    .limit(10);
+
+  const trend = calculateCRITrend(historicalCRI || []);
+
   // Store CRI calculation in user_cri_scores table
   const { data: criRecord, error: insertError } = await supabase
     .from('user_cri_scores')
@@ -137,12 +147,9 @@ async function calculateCRI(supabase: any, userId: string, trackId?: string) {
       blocking_factors: [],
       last_calculated: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id',
-      ignoreDuplicates: false
     })
     .select()
-    .single();
+    .maybeSingle();
 
   if (insertError) {
     console.error('Error storing CRI calculation:', insertError);
@@ -161,6 +168,7 @@ async function calculateCRI(supabase: any, userId: string, trackId?: string) {
         marketReadiness: marketReadinessScore
       },
       insights,
+      trend,
       recommendations: generateRecommendations(criScore, insights),
       calculationId: criRecord?.id
     }),

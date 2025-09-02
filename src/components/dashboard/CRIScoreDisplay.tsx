@@ -68,6 +68,8 @@ export function CRIScoreDisplay({ userId, trackId, onImproveClick }: CRIScoreDis
   }
 
   const getTrendIcon = () => {
+    if (!criBreakdown?.trend?.direction) return <Minus className="h-4 w-4 text-muted-foreground" />;
+    
     switch (criBreakdown.trend.direction) {
       case 'improving':
         return <TrendingUp className="h-4 w-4 text-green-500" />;
@@ -79,6 +81,8 @@ export function CRIScoreDisplay({ userId, trackId, onImproveClick }: CRIScoreDis
   };
 
   const getTrendColor = () => {
+    if (!criBreakdown?.trend?.direction) return 'text-muted-foreground';
+    
     switch (criBreakdown.trend.direction) {
       case 'improving':
         return 'text-green-600';
@@ -128,10 +132,13 @@ export function CRIScoreDisplay({ userId, trackId, onImproveClick }: CRIScoreDis
             {getTrendIcon()}
             <div className="text-sm">
               <div className={`font-medium ${getTrendColor()}`}>
-                {criBreakdown.trend.direction}
+                {criBreakdown?.trend?.direction || 'stable'}
               </div>
               <div className="text-xs text-muted-foreground">
-                {Math.abs(criBreakdown.trend.change)}% change
+                {criBreakdown?.trend?.change !== undefined 
+                  ? `${Math.abs(criBreakdown.trend.change)}% change`
+                  : '0% change'
+                }
               </div>
             </div>
           </div>
