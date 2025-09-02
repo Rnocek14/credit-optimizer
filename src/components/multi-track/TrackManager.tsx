@@ -116,13 +116,17 @@ export function TrackManager({ currentTrackId, onTrackSelect, open, onOpenChange
       queryClient.invalidateQueries({ queryKey: ['career-tracks'] });
       toast.success('Track archived');
       
-      // Archive safety guard - clear stale references
-      const { getLastOpenedTrackId, setLastOpenedTrackId, setActiveTrackId, activeTrackId } = usePathStore.getState();
+      // Archive safety guard - clear stale references from active track store
+      const { activeTrackId } = useActiveTrackStore.getState();
+      if (activeTrackId === archivedId) {
+        setActiveTrackId(null);
+        console.log('[track-builder] archived active track; cleared activeTrackId');
+      }
+      
+      // Also clear from path store for backward compatibility
+      const { getLastOpenedTrackId, setLastOpenedTrackId } = usePathStore.getState();
       if (getLastOpenedTrackId() === archivedId) {
         setLastOpenedTrackId(undefined);
-      }
-      if (activeTrackId === archivedId) {
-        setActiveTrackId(undefined);
       }
       
       // Navigate away from build if user is on the archived track

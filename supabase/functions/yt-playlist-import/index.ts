@@ -32,10 +32,11 @@ Deno.serve(async (req) => {
       });
     }
     
-    console.log('[yt-playlist-import] Processing playlist:', playlistUrl);
+    console.log('[edge:yt-playlist-import] start');
+    console.log('[edge:yt-playlist-import] Processing playlist:', playlistUrl);
     
     // Mock implementation - simulate playlist processing
-    console.log('[edge:playlist] mock items=5');
+    console.log('[edge:yt-playlist-import] mock=true total=5');
     
     const mockItems = Array.from({ length: 5 }, (_, i) => ({
       id: `mock-${i + 1}`,
