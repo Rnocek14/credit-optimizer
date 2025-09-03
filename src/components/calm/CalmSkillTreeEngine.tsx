@@ -7,6 +7,7 @@ import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
 import { CalmSkillTreeControls } from './CalmSkillTreeControls';
 import { OrphanParkingLot } from './OrphanParkingLot';
 import { LaneBackground, CALM_LANES } from './LaneBackground';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export interface CalmSkillTreeEngineProps {
@@ -94,13 +95,17 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
         console.warn(`🔧 Filtered ${rawNodes.length - validNodes.length} invalid nodes`);
       }
 
-      // Validate edge data structure  
-      const validEdges = rawEdges.filter(edge => 
-        edge && typeof edge === 'object' && 
-        edge.source && edge.target &&
-        validNodes.some(n => n.id === edge.source) &&
-        validNodes.some(n => n.id === edge.target)
-      );
+      // Validate edge data structure - handle both data formats
+      const validEdges = rawEdges.filter(edge => {
+        if (!edge || typeof edge !== 'object') return false;
+        
+        const source = edge.source || edge.from_id;
+        const target = edge.target || edge.to_id;
+        
+        return source && target &&
+          validNodes.some(n => n.id === source) &&
+          validNodes.some(n => n.id === target);
+      });
 
       if (validEdges.length !== rawEdges.length) {
         console.warn(`🔧 Filtered ${rawEdges.length - validEdges.length} invalid edges`);
@@ -164,8 +169,10 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
         // Hide edges that cross lanes
         return calmSubgraph.edges.filter(edge => {
           try {
-            const sourceNode = calmSubgraph.nodes.find(n => n.id === edge.source);
-            const targetNode = calmSubgraph.nodes.find(n => n.id === edge.target);
+            const source = edge.source || edge.from_id;
+            const target = edge.target || edge.to_id;
+            const sourceNode = calmSubgraph.nodes.find(n => n.id === source);
+            const targetNode = calmSubgraph.nodes.find(n => n.id === target);
             
             if (!sourceNode || !targetNode) return false;
             
@@ -346,6 +353,17 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
             <ErrorBoundaryWrapper 
               resetKeys={[calmSubgraph.nodes.length, processedEdges.length]}
               onError={(error) => console.error('🚨 Calm canvas error:', error)}
+              fallback={
+                <div className="p-8 text-center">
+                  <h3 className="text-lg font-semibold text-destructive mb-2">Canvas Error</h3>
+                  <p className="text-muted-foreground mb-4">
+                    The skill tree canvas failed to render. This is usually due to layout issues.
+                  </p>
+                  <Button onClick={() => window.location.reload()}>
+                    Reload Page
+                  </Button>
+                </div>
+              }
             >
               <ReactFlowProvider>
                 <UnifiedCareerCanvas
@@ -374,8 +392,12 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
       {/* Orphan Parking Lot */}
       <OrphanParkingLot
         orphanNodes={calmSubgraph.hiddenNodes.filter(n => 
-          // Only show truly orphaned nodes (no connections)
-          !rawEdges.some(e => e.source === n.id || e.target === n.id)
+          // Only show truly orphaned nodes (no connections) - handle both data formats
+          !rawEdges.some(e => {
+            const source = e.source || e.from_id;
+            const target = e.target || e.to_id;
+            return source === n.id || target === n.id;
+          })
         )}
         isExpanded={showOrphanDrawer}
         onToggle={() => setShowOrphanDrawer(!showOrphanDrawer)}

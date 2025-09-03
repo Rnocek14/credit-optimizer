@@ -143,18 +143,20 @@ export function buildCalmSubgraph(
     config
   );
 
-  // Step 5: Filter edges with strict prioritization
+  // Step 5: Filter edges with strict prioritization - handle both data formats
   const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-  const candidateEdges = allEdges.filter(edge => 
-    visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
-  );
+  const candidateEdges = allEdges.filter(edge => {
+    const source = edge.source || edge.from_id;
+    const target = edge.target || edge.to_id;
+    return visibleNodeIds.has(source) && visibleNodeIds.has(target);
+  });
 
   // Prioritize edges: goal path > within-lane > cross-lane
   const prioritizedEdges = candidateEdges.sort((a, b) => {
-    const aSource = visibleNodes.find(n => n.id === a.source);
-    const aTarget = visibleNodes.find(n => n.id === a.target);
-    const bSource = visibleNodes.find(n => n.id === b.source);
-    const bTarget = visibleNodes.find(n => n.id === b.target);
+    const aSource = visibleNodes.find(n => n.id === (a.source || a.from_id));
+    const aTarget = visibleNodes.find(n => n.id === (a.target || a.to_id));
+    const bSource = visibleNodes.find(n => n.id === (b.source || b.from_id));
+    const bTarget = visibleNodes.find(n => n.id === (b.target || b.to_id));
     
     if (!aSource || !aTarget || !bSource || !bTarget) return 0;
     
@@ -225,9 +227,11 @@ function buildFocusSubgraph(
   const visibleNodeIds = new Set([focusNodeId, ...neighborIds]);
   
   const visibleNodes = allNodes.filter(n => visibleNodeIds.has(n.id));
-  const visibleEdges = allEdges.filter(edge => 
-    visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
-  );
+  const visibleEdges = allEdges.filter(edge => {
+    const source = edge.source || edge.from_id;
+    const target = edge.target || edge.to_id;
+    return visibleNodeIds.has(source) && visibleNodeIds.has(target);
+  });
 
   return {
     nodes: visibleNodes,
@@ -254,12 +258,15 @@ function findGoalPath(
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   const edgeMap = new Map<string, string[]>();
   
-  // Build reverse adjacency (prerequisites)
+  // Build reverse adjacency (prerequisites) - handle both data formats
   edges.forEach(edge => {
-    if (!edgeMap.has(edge.target)) {
-      edgeMap.set(edge.target, []);
+    const source = edge.source || edge.from_id;
+    const target = edge.target || edge.to_id;
+    
+    if (!edgeMap.has(target)) {
+      edgeMap.set(target, []);
     }
-    edgeMap.get(edge.target)!.push(edge.source);
+    edgeMap.get(target)!.push(source);
   });
 
   const visited = new Set<string>();
@@ -294,14 +301,16 @@ function getNodeNeighbors(
     
     if (current.distance >= hops) continue;
 
-    // Find connected nodes
+    // Find connected nodes - handle both data formats
     edges.forEach(edge => {
       let nextId: string | null = null;
+      const source = edge.source || edge.from_id;
+      const target = edge.target || edge.to_id;
       
-      if (edge.source === current.id) {
-        nextId = edge.target;
-      } else if (edge.target === current.id) {
-        nextId = edge.source;
+      if (source === current.id) {
+        nextId = target;
+      } else if (target === current.id) {
+        nextId = source;
       }
 
       if (nextId && !visited.has(nextId)) {

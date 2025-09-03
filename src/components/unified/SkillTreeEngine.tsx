@@ -96,6 +96,17 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
             console.error('🚨 Calm mode error:', error);
             toast.error('Calm mode failed to load. Falling back to normal view.');
           }}
+          fallback={
+            <div className="p-8 text-center">
+              <h3 className="text-lg font-semibold text-destructive mb-2">Calm Mode Error</h3>
+              <p className="text-muted-foreground mb-4">
+                The calm mode failed to initialize. This is usually due to data format issues.
+              </p>
+              <Button onClick={() => window.location.href = '/progress'}>
+                Return to Normal View
+              </Button>
+            </div>
+          }
         >
           <div className="space-y-6">
             {/* Stats Section (conditional) */}
