@@ -75,7 +75,97 @@ function gridFallback(nodes: GraphNode[] | { id: string; title: string; type: st
   }));
 }
 
-// Enhanced layout calculation with safe fallback system
+// Strongly Connected Components detection for cycle handling
+const findSCCs = (nodes: GraphNode[], edges: ExtendedGraphEdge[]): GraphNode[][] => {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const adjacency = new Map<string, string[]>();
+  
+  // Build adjacency list
+  nodes.forEach(n => adjacency.set(n.id, []));
+  edges.forEach(e => {
+    const source = String(e.source || e.from_id);
+    const target = String(e.target || e.to_id);
+    if (adjacency.has(source) && adjacency.has(target)) {
+      adjacency.get(source)!.push(target);
+    }
+  });
+  
+  // Tarjan's algorithm for SCC detection
+  const index = new Map<string, number>();
+  const lowLink = new Map<string, number>();
+  const onStack = new Set<string>();
+  const stack: string[] = [];
+  const sccs: string[][] = [];
+  let indexCounter = 0;
+  
+  const strongConnect = (nodeId: string) => {
+    index.set(nodeId, indexCounter);
+    lowLink.set(nodeId, indexCounter);
+    indexCounter++;
+    stack.push(nodeId);
+    onStack.add(nodeId);
+    
+    const neighbors = adjacency.get(nodeId) || [];
+    for (const neighbor of neighbors) {
+      if (!index.has(neighbor)) {
+        strongConnect(neighbor);
+        lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, lowLink.get(neighbor)!));
+      } else if (onStack.has(neighbor)) {
+        lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, index.get(neighbor)!));
+      }
+    }
+    
+    if (lowLink.get(nodeId) === index.get(nodeId)) {
+      const scc: string[] = [];
+      let w: string;
+      do {
+        w = stack.pop()!;
+        onStack.delete(w);
+        scc.push(w);
+      } while (w !== nodeId);
+      sccs.push(scc);
+    }
+  };
+  
+  nodes.forEach(n => {
+    if (!index.has(n.id)) {
+      strongConnect(n.id);
+    }
+  });
+  
+  return sccs.map(scc => scc.map(id => nodeMap.get(id)!).filter(Boolean));
+};
+
+// Compact depth remapping to eliminate visual gaps
+const compactDepths = (depthMap: Map<string, number>): Map<string, number> => {
+  const uniqueDepths = Array.from(new Set(Array.from(depthMap.values()))).sort((a, b) => a - b);
+  const remap = new Map<number, number>();
+  uniqueDepths.forEach((depth, index) => remap.set(depth, index));
+  
+  const compactMap = new Map<string, number>();
+  depthMap.forEach((depth, nodeId) => {
+    compactMap.set(nodeId, remap.get(depth) ?? 0);
+  });
+  
+  return compactMap;
+};
+
+// Calculate positions for SCC members in a circle
+const placeMembersInCircle = (centerX: number, centerY: number, sccNodes: GraphNode[]): Map<string, { x: number; y: number }> => {
+  const positions = new Map<string, { x: number; y: number }>();
+  const radius = Math.max(60, Math.min(120, sccNodes.length * 25));
+  
+  sccNodes.forEach((node, index) => {
+    const angle = (2 * Math.PI * index) / sccNodes.length;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+    positions.set(node.id, { x, y });
+  });
+  
+  return positions;
+};
+
+// Enhanced layout calculation with cycle handling and compact depths
 const calculateLayout = (
   graphNodes: GraphNode[], 
   graphEdges: ExtendedGraphEdge[], 
@@ -85,14 +175,15 @@ const calculateLayout = (
   selectedCareerPath?: string | null,
   showGoalPathOnly: boolean = false
 ): Node[] => {
-  console.time('layout');
+  // Phase 1: No console.time to prevent re-entry issues
+  console.log('🎨 Starting layout calculation without timers...');
   
-  // 🧪 STEP 3: Enhanced input sanitization - already done in useMemo
+  // Enhanced input sanitization
   const safeNodes = Array.isArray(graphNodes)
     ? graphNodes
         .map(n => ({
           ...n,
-          id: String(n.id), // Force string IDs
+          id: String(n.id),
           type: validateNodeType(n.type),
           title: n.title || 'Untitled',
         }))
@@ -130,7 +221,6 @@ const calculateLayout = (
     return [];
   }
 
-  // 🔧 Phase 1: Simplified layout with error boundary
   try {
     // Check for force grid mode
     const FORCE_GRID = typeof window !== 'undefined' && 
@@ -141,104 +231,193 @@ const calculateLayout = (
       return gridFallback(safeNodes);
     }
 
-    // Try enhanced layout
-    const layoutNodes: LayoutNode[] = safeNodes.map(node => ({
-      id: node.id,
-      type: node.type,
-      title: node.title,
-      category: extractCategoryFromNode(node) || 'General',
-      level: extractLevelFromNode(node),
-      data: node.data
-    }));
-
-    const layoutEdges: LayoutEdge[] = prunedEdges.map(edge => ({
-      source: edge.source!,
-      target: edge.target!,
-      type: mapEdgeType(edge.edge_type || edge.type)
-    }));
-
-    // Calculate container size
-    const nodeCount = layoutNodes.length;
-    const cols = Math.ceil(Math.sqrt(nodeCount));
-    const estimatedWidth = Math.max(1200, cols * 250);
-    const estimatedHeight = Math.max(800, Math.ceil(nodeCount / cols) * 200);
-
-    console.log('🎨 Attempting enhanced layout...', {
-      nodes: layoutNodes.length,
-      edges: layoutEdges.length,
-      containerSize: `${estimatedWidth}x${estimatedHeight}`
-    });
-
-    const result = calculateEnhancedSkillTreeLayout(layoutNodes, layoutEdges, {
-      algorithm,
-      containerWidth: estimatedWidth,
-      containerHeight: estimatedHeight,
-      nodeSpacing: { horizontal: 220, vertical: 160, category: 100 },
-      layerHeight: 200,
-      focusNodeId: searchTerm ? layoutNodes.find(n => 
-        n.title.toLowerCase().includes(searchTerm.toLowerCase())
-      )?.id : undefined,
-      showOnlyGoalPath: showGoalPathOnly || !!selectedCareerPath
-    });
-
-    // Validate result
-    if (!result || !Array.isArray(result) || result.length === 0) {
-      console.warn('📐 Enhanced layout returned empty, using grid fallback');
-      return gridFallback(safeNodes);
-    }
-
-    console.log('✅ Enhanced layout successful:', result.length, 'positioned nodes');
-
-    // Convert to React Flow nodes
-    return result.map(posNode => {
-      const originalNode = safeNodes.find(n => n.id === posNode.id);
-      if (!originalNode) {
-        console.warn(`Original node not found for ${posNode.id}`);
-        return {
-          id: `${posNode.type}:${posNode.id}`,
-          position: { x: posNode.x, y: posNode.y },
-          data: { 
-            title: posNode.title,
-            type: posNode.type,
-            category: posNode.clusterGroup,
-            'data-testid': 'skill-node',
-            'data-node-type': posNode.type,
-            'data-node-id': posNode.id
-          },
-          type: 'default'
-        };
+    // Phase 3: Handle cycles with SCC detection
+    const sccs = findSCCs(safeNodes, prunedEdges);
+    const cyclicNodes = new Set<string>();
+    const sccMap = new Map<string, GraphNode[]>();
+    
+    sccs.forEach(scc => {
+      if (scc.length > 1) {
+        scc.forEach(node => {
+          cyclicNodes.add(node.id);
+          sccMap.set(node.id, scc);
+        });
       }
+    });
 
-      // Check for special node types for enhanced styling
+    console.log('🔄 Cycle detection:', {
+      totalSCCs: sccs.length,
+      cyclicSCCs: sccs.filter(scc => scc.length > 1).length,
+      cyclicNodes: cyclicNodes.size
+    });
+
+    // Calculate basic depths for DAG layout
+    const depthMap = new Map<string, number>();
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+    
+    const calculateDepth = (nodeId: string): number => {
+      if (visited.has(nodeId)) return depthMap.get(nodeId) || 0;
+      if (visiting.has(nodeId)) return 0; // Cycle detected, use depth 0
+      
+      visiting.add(nodeId);
+      let maxDepth = 0;
+      
+      // Find incoming edges (predecessors)
+      const predecessors = prunedEdges
+        .filter(e => e.target === nodeId)
+        .map(e => e.source);
+      
+      for (const pred of predecessors) {
+        if (!cyclicNodes.has(pred) || !cyclicNodes.has(nodeId)) {
+          maxDepth = Math.max(maxDepth, calculateDepth(pred) + 1);
+        }
+      }
+      
+      visiting.delete(nodeId);
+      visited.add(nodeId);
+      depthMap.set(nodeId, maxDepth);
+      return maxDepth;
+    };
+    
+    safeNodes.forEach(node => {
+      if (!visited.has(node.id)) {
+        calculateDepth(node.id);
+      }
+    });
+
+    // Phase 2: Compact depth bands
+    const compactDepthMap = compactDepths(depthMap);
+    
+    console.log('📏 Depth analysis:', {
+      originalDepths: Array.from(new Set(depthMap.values())).sort((a, b) => a - b),
+      compactDepths: Array.from(new Set(compactDepthMap.values())).sort((a, b) => a - b),
+      maxDepth: Math.max(...compactDepthMap.values())
+    });
+
+    // Phase 4: Identify orphans (nodes with no valid edges)
+    const connectedNodes = new Set<string>();
+    prunedEdges.forEach(e => {
+      connectedNodes.add(e.source);
+      connectedNodes.add(e.target);
+    });
+    
+    const orphans = safeNodes.filter(n => !connectedNodes.has(n.id));
+    const connected = safeNodes.filter(n => connectedNodes.has(n.id));
+    
+    console.log('🏝️ Orphan analysis:', {
+      totalNodes: safeNodes.length,
+      connectedNodes: connected.length,
+      orphanNodes: orphans.length
+    });
+
+    // Layout configuration
+    const BASE_X = 100;
+    const BASE_Y = 100;
+    const LAYER_X_GAP = 280;
+    const LAYER_Y_GAP = 180;
+    const ORPHAN_LANE_X = BASE_X - 260;
+    
+    const positions = new Map<string, { x: number; y: number }>();
+    
+    // Phase 4: Park orphans in dedicated lane
+    orphans.forEach((node, index) => {
+      positions.set(node.id, {
+        x: ORPHAN_LANE_X,
+        y: BASE_Y + index * 140
+      });
+    });
+    
+    // Layout connected nodes by depth with SCC handling
+    const depthGroups = new Map<number, GraphNode[]>();
+    connected.forEach(node => {
+      const depth = compactDepthMap.get(node.id) || 0;
+      if (!depthGroups.has(depth)) depthGroups.set(depth, []);
+      depthGroups.get(depth)!.push(node);
+    });
+    
+    // Position nodes by depth layer
+    depthGroups.forEach((nodes, depth) => {
+      const layerX = BASE_X + depth * LAYER_X_GAP;
+      
+      // Group by SCC for cyclic nodes
+      const sccGroups = new Map<string, GraphNode[]>();
+      const regularNodes: GraphNode[] = [];
+      
+      nodes.forEach(node => {
+        if (cyclicNodes.has(node.id)) {
+          const sccKey = sccMap.get(node.id)?.map(n => n.id).sort().join('|') || node.id;
+          if (!sccGroups.has(sccKey)) sccGroups.set(sccKey, []);
+          sccGroups.get(sccKey)!.push(node);
+        } else {
+          regularNodes.push(node);
+        }
+      });
+      
+      let yOffset = 0;
+      
+      // Position regular nodes
+      regularNodes.forEach((node, index) => {
+        positions.set(node.id, {
+          x: layerX,
+          y: BASE_Y + yOffset
+        });
+        yOffset += LAYER_Y_GAP;
+      });
+      
+      // Position SCC groups in circles
+      sccGroups.forEach(sccNodes => {
+        if (sccNodes.length === 1) {
+          positions.set(sccNodes[0].id, {
+            x: layerX,
+            y: BASE_Y + yOffset
+          });
+          yOffset += LAYER_Y_GAP;
+        } else {
+          // Place SCC in a circle
+          const centerY = BASE_Y + yOffset + 100;
+          const sccPositions = placeMembersInCircle(layerX, centerY, sccNodes);
+          sccPositions.forEach((pos, nodeId) => {
+            positions.set(nodeId, pos);
+          });
+          yOffset += 240; // Space for the circular SCC
+        }
+      });
+    });
+
+    console.log('✅ Enhanced layout with cycle handling successful:', positions.size, 'positioned nodes');
+
+    // Convert to React Flow nodes with positions
+    return safeNodes.map(originalNode => {
+      const pos = positions.get(originalNode.id) || { x: 0, y: 0 };
       const isCheckpoint = originalNode.data && (originalNode.data as any).isCheckpoint;
       const isBranchPoint = originalNode.data && (originalNode.data as any).isBranchPoint;
       const pathType = originalNode.data && (originalNode.data as any).pathType;
+      const isOrphan = orphans.includes(originalNode);
+      const isInCycle = cyclicNodes.has(originalNode.id);
       
       return {
         id: originalNode.id,
-        position: { x: posNode.x, y: posNode.y },
+        position: pos,
         data: {
           title: originalNode.title,
           description: originalNode.description,
           type: originalNode.type,
-          category: posNode.clusterGroup,
           node: originalNode,
           isCheckpoint,
           isBranchPoint,
+          isOrphan,
+          isInCycle,
           pathType,
           estimatedTime: originalNode.estimated_time_hours,
           'data-testid': 'skill-node',
           'data-node-type': originalNode.type,
           'data-node-id': originalNode.id,
-          style: {
-            borderColor: getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint),
-            backgroundColor: getNodeBackgroundColor(originalNode.type, pathType)
-          }
         },
         type: validateNodeType(originalNode.type),
         style: {
-          background: getNodeBackgroundColor(originalNode.type, pathType),
-          border: `${isCheckpoint ? '4px' : isBranchPoint ? '3px' : '2px'} solid ${getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint)}`,
+          background: getNodeBackgroundColor(originalNode.type, pathType, isOrphan, isInCycle),
+          border: `${isCheckpoint ? '4px' : isBranchPoint ? '3px' : '2px'} solid ${getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint, isOrphan, isInCycle)}`,
           borderRadius: isCheckpoint ? '16px' : isBranchPoint ? '20px' : '12px',
           padding: '12px',
           fontSize: '11px',
@@ -252,13 +431,17 @@ const calculateLayout = (
             ? '0 4px 20px rgba(37, 99, 235, 0.3)' 
             : isBranchPoint 
             ? '0 3px 15px rgba(124, 58, 237, 0.25)'
+            : isOrphan
+            ? '0 2px 8px rgba(107, 114, 128, 0.2)'
+            : isInCycle
+            ? '0 3px 12px rgba(239, 68, 68, 0.2)'
             : '0 2px 8px rgba(0, 0, 0, 0.1)',
           transition: 'all 0.2s ease-in-out',
-          ...(isCheckpoint && {
-            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, #f8fafc)`,
+          ...(isOrphan && {
+            opacity: 0.7,
           }),
-          ...(isBranchPoint && {
-            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, #faf5ff)`,
+          ...(isInCycle && {
+            background: `linear-gradient(135deg, ${getNodeBackgroundColor(originalNode.type, pathType)}, #fff1f2)`,
           })
         }
       };
@@ -271,7 +454,6 @@ const calculateLayout = (
       algorithm
     });
     console.warn('🪜 Using grid fallback layout', { inputNodes: safeNodes.length });
-    console.timeEnd('layout');
     return gridFallback(safeNodes);
   }
 };
@@ -387,10 +569,18 @@ const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
   return edge;
 };
 
-// Enhanced helper functions for styling with checkpoint and branch support
-const getNodeBorderColor = (nodeType: string, isCheckpoint?: boolean, isBranchPoint?: boolean): string => {
+// Enhanced helper functions for styling with checkpoint, branch, orphan, and cycle support
+const getNodeBorderColor = (
+  nodeType: string, 
+  isCheckpoint?: boolean, 
+  isBranchPoint?: boolean,
+  isOrphan?: boolean,
+  isInCycle?: boolean
+): string => {
   if (isCheckpoint) return '#2563eb'; // Primary blue
   if (isBranchPoint) return '#7c3aed'; // Purple accent
+  if (isOrphan) return '#6b7280'; // Gray for orphans
+  if (isInCycle) return '#ef4444'; // Red for cycles
   
   const colors = {
     skill: '#2563eb',     // Blue
@@ -403,7 +593,16 @@ const getNodeBorderColor = (nodeType: string, isCheckpoint?: boolean, isBranchPo
   return colors[nodeType as keyof typeof colors] || '#6b7280';
 };
 
-const getNodeBackgroundColor = (nodeType: string, pathType?: string): string => {
+const getNodeBackgroundColor = (
+  nodeType: string, 
+  pathType?: string,
+  isOrphan?: boolean,
+  isInCycle?: boolean
+): string => {
+  // Special states override path type colors
+  if (isOrphan) return '#f3f4f6'; // Light gray for orphans
+  if (isInCycle) return '#fef2f2'; // Light red for cycles
+  
   // Path type colors for differentiation
   if (pathType) {
     const pathColors = {
@@ -464,9 +663,37 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   const [tooltipNode, setTooltipNode] = useState<{ node: GraphNode; x: number; y: number } | null>(null);
   const reactFlowInstance = useReactFlow();
   
-  // PR-6: Stabilized layout with error boundaries and simplified calculation
-  const flowNodes = useMemo(() => {
-    console.log('🎨 Starting layout calculation...', { nodeCount: graphNodes?.length });
+  // Phase 1: Data hash to prevent multiple layout calculations
+  const dataHash = useMemo(() => {
+    // Create a deterministic hash of the input data
+    const nodeIds = graphNodes.map(n => n.id).slice(0, 10).join('|') + ':' + graphNodes.length;
+    const edgeIds = graphEdges.map(e => e.id ?? `${e.source}-${e.target}`).slice(-10).join('|') + ':' + graphEdges.length;
+    const configHash = `${layoutAlgorithm}:${searchTerm}:${selectedCareerPath}:${focusMode}`;
+    
+    const combined = nodeIds + '|' + edgeIds + '|' + configHash;
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash;
+  }, [graphNodes, graphEdges, layoutAlgorithm, searchTerm, selectedCareerPath, focusMode]);
+
+  const lastHashRef = React.useRef<number | null>(null);
+
+  // Phase 5: Synchronous positioned nodes and edges calculation
+  const { positionedNodes, validatedEdges } = useMemo(() => {
+    console.log('🎨 Starting synchronized layout calculation...', { 
+      nodeCount: graphNodes?.length,
+      dataHash,
+      lastHash: lastHashRef.current
+    });
+    
+    // Phase 1: Guard against redundant calculations
+    if (lastHashRef.current === dataHash) {
+      console.log('🔄 Data hash unchanged, skipping layout recalculation');
+      return { positionedNodes: [], validatedEdges: [] };
+    }
     
     // ✅ FORCE TEST MODE - shows single test node if ST_FORCE_TEST=1
     const FORCE_TEST = typeof window !== 'undefined' && localStorage.getItem('ST_FORCE_TEST') === '1';
@@ -492,13 +719,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         }
       }];
       console.log('🧪 FORCE_TEST enabled - rendering test node');
-      return forceNodes;
+      return { positionedNodes: forceNodes, validatedEdges: [] };
     }
 
     // Early return for empty data
     if (!Array.isArray(graphNodes) || graphNodes.length === 0) {
       console.log('📝 No nodes to render');
-      return [];
+      return { positionedNodes: [], validatedEdges: [] };
     }
     
     // 🧪 STEP 3A: Robust Input Sanitization
@@ -520,7 +747,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     // Early return for empty data after filtering
     if (safeNodes.length === 0) {
       console.warn('🪵 No valid nodes after filtering');
-      return [];
+      return { positionedNodes: [], validatedEdges: [] };
     }
 
     // 🔧 Phase 1 Fix: Force grid layout for stability
@@ -530,10 +757,12 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     
     if (FORCE_GRID) {
       console.log('📐 Stability mode: using grid layout');
-      return gridFallback(safeNodes);
+      const gridNodes = gridFallback(safeNodes);
+      return { positionedNodes: gridNodes, validatedEdges: [] };
     }
 
     // Try enhanced layout with fallback
+    let layoutNodes: Node[] = [];
     try {
       const result = calculateLayout(
         safeNodes,
@@ -548,47 +777,38 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       // Validate result
       if (!Array.isArray(result) || result.length === 0) {
         console.warn('📐 Layout returned empty, using grid fallback');
-        return gridFallback(safeNodes);
+        layoutNodes = gridFallback(safeNodes);
+      } else {
+        console.log('✅ Enhanced layout successful:', result.length, 'nodes');
+        layoutNodes = result;
       }
-      
-      console.log('✅ Enhanced layout successful:', result.length, 'nodes');
-      return result;
     } catch (error) {
       console.error('❌ Enhanced layout failed, using grid fallback:', error);
-      return gridFallback(safeNodes);
+      layoutNodes = gridFallback(safeNodes);
     }
-  }, [
-    graphNodes, 
-    graphEdges, 
-    layoutAlgorithm, 
-    layoutConfig, 
-    searchTerm, 
-    selectedCareerPath, 
-    focusMode
-  ]);
 
-  const flowEdges = useMemo(() => {
+    // Process edges with validation
     console.log('🔗 EDGE CONVERSION DEBUG:', {
       rawGraphEdgesCount: graphEdges.length,
       rawGraphEdgesSample: graphEdges.slice(0, 2),
     });
     
-    let edges = graphEdges.map(convertToFlowEdge);
+    let processedEdges = graphEdges.map(convertToFlowEdge);
     
     // Phase 4: Enhanced validation with sanity checks
-    const nodeIds = new Set(flowNodes.map(n => n.id));
-    const uniqueNodeIds = new Set(flowNodes.map(n => n.id));
+    const nodeIds = new Set(layoutNodes.map(n => n.id));
+    const uniqueNodeIds = new Set(layoutNodes.map(n => n.id));
     
     // Sanity check: Ensure all node IDs are unique
-    if (uniqueNodeIds.size !== flowNodes.length) {
+    if (uniqueNodeIds.size !== layoutNodes.length) {
       console.warn('🚨 DUPLICATE NODE IDs DETECTED:', {
-        totalNodes: flowNodes.length,
+        totalNodes: layoutNodes.length,
         uniqueIds: uniqueNodeIds.size
       });
     }
     
     // Validate edge-node alignment
-    const edgeValidation = edges.map(edge => ({
+    const edgeValidation = processedEdges.map(edge => ({
       edgeId: edge.id,
       hasValidSource: nodeIds.has(edge.source),
       hasValidTarget: nodeIds.has(edge.target),
@@ -601,47 +821,50 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
       console.error('🚨 INVALID EDGES FOUND:', {
         invalidEdges,
         availableNodeIds: Array.from(nodeIds),
-        totalEdges: edges.length
+        totalEdges: processedEdges.length
       });
       
       // Filter out invalid edges
-      edges = edges.filter(edge => 
+      processedEdges = processedEdges.filter(edge => 
         nodeIds.has(edge.source) && nodeIds.has(edge.target)
       );
     }
     
     console.log('🔗 EDGE CONVERSION RESULT:', {
-      convertedEdgesCount: edges.length,
-      validEdges: edges.length,
+      convertedEdgesCount: processedEdges.length,
+      validEdges: processedEdges.length,
       invalidEdges: invalidEdges.length,
       nodeCount: nodeIds.size,
-      nodeTypeDistribution: flowNodes.reduce((acc, node) => {
+      nodeTypeDistribution: layoutNodes.reduce((acc, node) => {
         acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
         return acc;
       }, {} as Record<string, number>)
     });
     
-    // Filter edges based on showPivotPaths - simplified
-    return edges;
-  }, [graphEdges, showPivotPaths, flowNodes]);
+    return { positionedNodes: layoutNodes, validatedEdges: processedEdges };
+  }, [dataHash, graphNodes, graphEdges, layoutAlgorithm, layoutConfig, searchTerm, selectedCareerPath, focusMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const fittedRef = React.useRef(false);
 
-  // Phase 1 & 2: Proper state management - update nodes and edges once per data change
+  // Phase 5: Synchronous state population - set both nodes and edges atomically
   React.useEffect(() => {
-    if (flowNodes.length > 0) {
-      setNodes(flowNodes);
-      fittedRef.current = false; // Reset fit flag when nodes change
+    if (lastHashRef.current === dataHash) return; // Guard against redundant updates
+    
+    lastHashRef.current = dataHash;
+    
+    if (positionedNodes.length > 0) {
+      console.log('📍 Setting positioned nodes and edges synchronously:', {
+        nodes: positionedNodes.length,
+        edges: validatedEdges.length
+      });
+      
+      setNodes(positionedNodes);
+      setEdges(validatedEdges);
+      fittedRef.current = false; // Reset fit flag when data changes
     }
-  }, [flowNodes, setNodes]);
-
-  React.useEffect(() => {
-    if (flowEdges.length > 0) {
-      setEdges(flowEdges);
-    }
-  }, [flowEdges, setEdges]);
+  }, [dataHash, positionedNodes, validatedEdges, setNodes, setEdges]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     // Use simple node ID to find the graph node
@@ -718,7 +941,9 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     showPivotPaths,
     focusMode,
     finalRFNodes: processedNodes.length,
-    searchTerm
+    searchTerm,
+    dataHash,
+    hashChanged: lastHashRef.current !== dataHash
   });
 
   // Phase 4: Default edge options for consistent styling
@@ -803,6 +1028,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
           <div>Total: <span className="font-medium">{graphNodes.length} nodes</span></div>
           <div>Connections: <span className="font-medium">{graphEdges.length}</span></div>
           <div>Layout: <span className="font-medium">{layoutAlgorithm}</span></div>
+          <div>Hash: <span className="font-mono text-xs">{dataHash}</span></div>
         </div>
         {searchTerm && (
           <div className="mt-2 pt-2 border-t text-xs">
