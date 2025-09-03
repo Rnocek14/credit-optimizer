@@ -4,6 +4,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { buildCalmSubgraph, type CalmSubgraph, type CalmGraphNode, type CalmGraphEdge } from '@/lib/calmSubgraph';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
+import { CalmErrorBoundary } from './CalmErrorBoundary';
 import { CalmSkillTreeControls } from './CalmSkillTreeControls';
 import { OrphanParkingLot } from './OrphanParkingLot';
 import { LaneBackground, CALM_LANES } from './LaneBackground';
@@ -33,14 +34,39 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
   userProgress,
   getReadinessLevel
 }) => {
-  // Add early debug logging
+  // Add early debug logging with comprehensive data validation
   console.log('🧘 CalmSkillTreeEngine render start:', {
     rawNodesCount: rawNodes?.length,
     rawEdgesCount: rawEdges?.length,
+    rawNodesType: typeof rawNodes,
+    rawEdgesType: typeof rawEdges,
+    rawNodesValid: Array.isArray(rawNodes),
+    rawEdgesValid: Array.isArray(rawEdges),
+    firstNode: rawNodes?.[0],
+    firstEdge: rawEdges?.[0],
     loading,
     error: !!error,
     timestamp: Date.now()
   });
+
+  // Early validation and safe bailout
+  if (!Array.isArray(rawNodes) || !Array.isArray(rawEdges)) {
+    console.error('❌ Invalid data provided to CalmSkillTreeEngine:', {
+      nodes: typeof rawNodes,
+      edges: typeof rawEdges
+    });
+    
+    return (
+      <div className="flex items-center justify-center h-96 text-destructive">
+        <div className="text-center space-y-4">
+          <p>Invalid data format provided to calm mode</p>
+          <Button onClick={() => window.location.reload()}>
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
   // Calm mode state with strict defaults
   const [visibleDepth, setVisibleDepth] = useState(1);
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
@@ -332,58 +358,125 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Calm Controls */}
-      <CalmSkillTreeControls
-        visibleDepth={visibleDepth}
-        focusNodeId={focusNodeId}
-        showCrossLaneEdges={showCrossLaneEdges}
-        expandedClusters={expandedClusters}
-        hideCompleted={hideCompleted}
-        showOnlyMyTrack={showOnlyMyTrack}
-        showNext4Weeks={showNext4Weeks}
-        onDepthChange={handleDepthChange}
-        onResetView={handleResetView}
-        onExitFocus={handleExitFocus}
-        onExpandNeighbors={handleExpandNeighbors}
-        onToggleFilter={handleToggleFilter}
-        onSearch={handleSearch}
-        onToggleOrphanDrawer={() => setShowOrphanDrawer(!showOrphanDrawer)}
-      />
+      {/* Calm Controls with error boundary */}
+      <ErrorBoundaryWrapper 
+        resetKeys={[rawNodes?.length]}
+        onError={(error) => console.error('🚨 Calm controls error:', error)}
+        fallback={
+          <div className="p-4 text-center text-muted-foreground">
+            Controls temporarily unavailable
+          </div>
+        }
+      >
+        <CalmSkillTreeControls
+          visibleDepth={visibleDepth}
+          focusNodeId={focusNodeId}
+          showCrossLaneEdges={showCrossLaneEdges}
+          expandedClusters={expandedClusters}
+          hideCompleted={hideCompleted}
+          showOnlyMyTrack={showOnlyMyTrack}
+          showNext4Weeks={showNext4Weeks}
+          onDepthChange={handleDepthChange}
+          onResetView={handleResetView}
+          onExitFocus={handleExitFocus}
+          onExpandNeighbors={handleExpandNeighbors}
+          onToggleFilter={handleToggleFilter}
+          onSearch={handleSearch}
+          onToggleOrphanDrawer={() => setShowOrphanDrawer(!showOrphanDrawer)}
+        />
+      </ErrorBoundaryWrapper>
 
-      {/* Main Canvas */}
+      {/* Main Canvas with comprehensive error handling */}
       <div className="relative">
         <div className="min-h-[700px] h-[700px] relative bg-background rounded-lg border overflow-hidden">
-          {/* Lane Backgrounds */}
-          <LaneBackground lanes={CALM_LANES} height={700} />
+          {/* Lane Backgrounds with error boundary */}
+          <ErrorBoundaryWrapper 
+            resetKeys={[]}
+            onError={(error) => console.error('🚨 Lane background error:', error)}
+            fallback={<div className="absolute inset-0 bg-background" />}
+          >
+            <LaneBackground lanes={CALM_LANES} height={700} />
+          </ErrorBoundaryWrapper>
           
-          {/* React Flow Canvas */}
+          {/* React Flow Canvas with multiple fallback levels */}
           <div className="relative z-10 h-full">
-            <ErrorBoundaryWrapper 
-              resetKeys={[calmSubgraph.nodes.length, processedEdges.length]}
-              onError={(error) => console.error('🚨 Calm canvas error:', error)}
-              fallback={
-                <div className="p-8 text-center">
-                  <h3 className="text-lg font-semibold text-destructive mb-2">Canvas Error</h3>
-                  <p className="text-muted-foreground mb-4">
-                    The skill tree canvas failed to render. This is usually due to layout issues.
-                  </p>
-                  <Button onClick={() => window.location.reload()}>
-                    Reload Page
-                  </Button>
-                </div>
-              }
+            <CalmErrorBoundary 
+              fallbackMode="safe"
+              onFallbackToNormal={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('st_calm');
+                window.history.replaceState({}, '', url.toString());
+                window.location.reload();
+              }}
+              onReload={() => window.location.reload()}
             >
-              <ReactFlowProvider>
-                <UnifiedCareerCanvas
-                  nodes={calmSubgraph.nodes as any}
-                  edges={processedEdges as any}
-                  onNodeClick={handleNodeClick}
-                  layoutAlgorithm="semantic-hierarchy"
-                  showPivotPaths={false}
-                  focusMode={true}
-                />
-              </ReactFlowProvider>
-            </ErrorBoundaryWrapper>
+              <ErrorBoundaryWrapper 
+                resetKeys={[calmSubgraph.nodes.length, processedEdges.length]}
+                onError={(error) => {
+                  console.error('🚨 Canvas render error:', error);
+                  toast.error('Canvas rendering failed', {
+                    description: 'Switching to safe mode.'
+                  });
+                }}
+                fallback={
+                  <div className="p-8 text-center space-y-4">
+                    <h3 className="text-lg font-semibold text-destructive">Canvas Render Error</h3>
+                    <p className="text-muted-foreground">
+                      The skill tree canvas failed to render properly. 
+                      This usually indicates data format issues or layout conflicts.
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button 
+                        onClick={() => window.location.reload()}
+                        variant="default"
+                        size="sm"
+                      >
+                        Reload Page
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          const url = new URL(window.location.href);
+                          url.searchParams.delete('st_calm');
+                          window.history.replaceState({}, '', url.toString());
+                          window.location.reload();
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Exit Calm Mode
+                      </Button>
+                    </div>
+                    
+                    {/* Debug info in development */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <details className="text-left text-xs bg-muted p-3 rounded border mt-4">
+                        <summary className="cursor-pointer font-medium mb-2">
+                          Debug Information
+                        </summary>
+                        <div className="space-y-1 font-mono">
+                          <div>Nodes: {calmSubgraph.nodes.length}</div>
+                          <div>Edges: {processedEdges.length}</div>
+                          <div>Raw Nodes: {rawNodes?.length || 'N/A'}</div>
+                          <div>Raw Edges: {rawEdges?.length || 'N/A'}</div>
+                          <div>Build Time: {calmSubgraph.metadata.performance.buildTime.toFixed(1)}ms</div>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                }
+              >
+                <ReactFlowProvider>
+                  <UnifiedCareerCanvas
+                    nodes={calmSubgraph.nodes as any}
+                    edges={processedEdges as any}
+                    onNodeClick={handleNodeClick}
+                    layoutAlgorithm="semantic-hierarchy"
+                    showPivotPaths={false}
+                    focusMode={true}
+                  />
+                </ReactFlowProvider>
+              </ErrorBoundaryWrapper>
+            </CalmErrorBoundary>
           </div>
 
           {/* Debug Info */}
@@ -397,21 +490,31 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
         </div>
       </div>
 
-      {/* Orphan Parking Lot */}
-      <OrphanParkingLot
-        orphanNodes={calmSubgraph.hiddenNodes.filter(n => 
-          // Only show truly orphaned nodes (no connections) - handle both data formats
-          !rawEdges.some(e => {
-            const source = e.source || e.from_id;
-            const target = e.target || e.to_id;
-            return source === n.id || target === n.id;
-          })
-        )}
-        isExpanded={showOrphanDrawer}
-        onToggle={() => setShowOrphanDrawer(!showOrphanDrawer)}
-        onMoveToCanvas={handleMoveFromOrphans}
-        onMarkAsReference={handleMarkAsReference}
-      />
+      {/* Orphan Parking Lot with error boundary */}
+      <ErrorBoundaryWrapper 
+        resetKeys={[calmSubgraph.hiddenNodes.length]}
+        onError={(error) => console.error('🚨 Orphan parking lot error:', error)}
+        fallback={
+          <div className="p-4 text-center text-muted-foreground">
+            Orphan nodes list temporarily unavailable
+          </div>
+        }
+      >
+        <OrphanParkingLot
+          orphanNodes={calmSubgraph.hiddenNodes.filter(n => 
+            // Only show truly orphaned nodes (no connections) - handle both data formats
+            !rawEdges.some(e => {
+              const source = e.source || e.from_id;
+              const target = e.target || e.to_id;
+              return source === n.id || target === n.id;
+            })
+          )}
+          isExpanded={showOrphanDrawer}
+          onToggle={() => setShowOrphanDrawer(!showOrphanDrawer)}
+          onMoveToCanvas={handleMoveFromOrphans}
+          onMarkAsReference={handleMarkAsReference}
+        />
+      </ErrorBoundaryWrapper>
     </div>
   );
 };

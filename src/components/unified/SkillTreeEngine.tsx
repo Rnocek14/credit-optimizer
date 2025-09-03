@@ -2,13 +2,14 @@ import React, { useCallback, useMemo } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
+import { CalmSkillTreeEngine } from '@/components/calm/CalmSkillTreeEngine';
+import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, RefreshCw, Settings } from 'lucide-react';
 import { toast } from 'sonner';
+import { Loader2, AlertCircle, RefreshCw, Settings } from 'lucide-react';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
-import { CalmSkillTreeEngine } from '@/components/calm/CalmSkillTreeEngine';
 
 export interface SkillTreeEngineProps {
   // Data
@@ -81,80 +82,48 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
 
   // Render calm mode if enabled
   if (calmMode && mode === 'progress') {
-    console.log('🧘 Activating calm mode with props:', {
-      nodesCount: rawNodes?.length,
-      edgesCount: rawEdges?.length,
-      loading,
-      error: !!error,
-      rawNodesType: typeof rawNodes,
-      rawEdgesType: typeof rawEdges,
-      firstNode: rawNodes?.[0],
-      firstEdge: rawEdges?.[0]
-    });
+    console.log('🧘 Activating calm mode with comprehensive error handling');
     
-    try {
-      return (
-        <ErrorBoundaryWrapper 
-          resetKeys={[calmMode ? 'calm' : 'normal', rawNodes?.length || 0, rawEdges?.length || 0]}
-          onError={(error) => {
-            console.error('🚨 Calm mode error:', error);
-            toast.error('Calm mode failed to load. Falling back to normal view.');
-          }}
-          fallback={
-            <div className="p-8 text-center">
-              <h3 className="text-lg font-semibold text-destructive mb-2">Calm Mode Error</h3>
-              <p className="text-muted-foreground mb-4">
-                The calm mode failed to initialize. This is usually due to data format issues.
-              </p>
-              <Button onClick={() => window.location.href = '/progress'}>
-                Return to Normal View
-              </Button>
-            </div>
-          }
-        >
-          <div className="space-y-6">
-            {/* Stats Section (conditional) */}
-            {showStats && statsComponent && (
-              <div>{statsComponent}</div>
-            )}
-            
-            {/* Add debug logging before rendering CalmSkillTreeEngine */}
-            {(() => {
-              console.log('🔍 About to render CalmSkillTreeEngine with:', {
-                nodesValid: Array.isArray(rawNodes) && rawNodes.every(n => n?.id),
-                edgesValid: Array.isArray(rawEdges) && rawEdges.every(e => (e?.from_id || e?.source) && (e?.to_id || e?.target)),
-                loading,
-                error
-              });
-              return null;
-            })()}
-            
-            <CalmSkillTreeEngine
-              nodes={rawNodes}
-              edges={rawEdges}
-              loading={loading}
-              error={error}
-              onNodeClick={onNodeClick}
-              onReload={onReload}
-              criScore={criScore}
-              userProgress={userProgress}
-              getReadinessLevel={getReadinessLevel}
-            />
-            
-            {/* Right Rail (conditional) */}
-            {showRightRail && rightRailComponent && (
-              <div className="mt-6">
-                {rightRailComponent}
-              </div>
-            )}
+    return (
+      <ErrorBoundaryWrapper 
+        resetKeys={[calmMode ? 'calm' : 'normal', rawNodes?.length || 0, rawEdges?.length || 0]}
+        onError={(error) => {
+          console.error('🚨 Calm mode error:', error);
+          toast.error('Calm mode failed to load. Falling back to normal view.');
+        }}
+        fallback={
+          <div className="p-8 text-center">
+            <h3 className="text-lg font-semibold text-destructive mb-2">Calm Mode Error</h3>
+            <p className="text-muted-foreground mb-4">
+              The calm mode failed to initialize. This is usually due to data format issues.
+            </p>
+            <Button onClick={() => window.location.href = '/progress'}>
+              Return to Normal View
+            </Button>
           </div>
-        </ErrorBoundaryWrapper>
-      );
-    } catch (error) {
-      console.error('🚨 Calm mode initialization failed:', error);
-      toast.error('Calm mode unavailable. Using normal view.');
-      // Fall through to normal mode
-    }
+        }
+      >
+        <div className="space-y-6">
+          {showStats && statsComponent && <div>{statsComponent}</div>}
+          
+          <CalmSkillTreeEngine
+            nodes={rawNodes}
+            edges={rawEdges}
+            loading={loading}
+            error={error}
+            onNodeClick={onNodeClick}
+            onReload={onReload}
+            criScore={criScore}
+            userProgress={userProgress}
+            getReadinessLevel={getReadinessLevel}
+          />
+          
+          {showRightRail && rightRailComponent && (
+            <div className="mt-6">{rightRailComponent}</div>
+          )}
+        </div>
+      </ErrorBoundaryWrapper>
+    );
   }
 
   // Get CRI-based node styling helper for progress mode
