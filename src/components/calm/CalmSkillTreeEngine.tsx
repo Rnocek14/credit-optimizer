@@ -33,6 +33,14 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
   userProgress,
   getReadinessLevel
 }) => {
+  // Add early debug logging
+  console.log('🧘 CalmSkillTreeEngine render start:', {
+    rawNodesCount: rawNodes?.length,
+    rawEdgesCount: rawEdges?.length,
+    loading,
+    error: !!error,
+    timestamp: Date.now()
+  });
   // Calm mode state with strict defaults
   const [visibleDepth, setVisibleDepth] = useState(1);
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);

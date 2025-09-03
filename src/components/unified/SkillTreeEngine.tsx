@@ -85,7 +85,11 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
       nodesCount: rawNodes?.length,
       edgesCount: rawEdges?.length,
       loading,
-      error: !!error
+      error: !!error,
+      rawNodesType: typeof rawNodes,
+      rawEdgesType: typeof rawEdges,
+      firstNode: rawNodes?.[0],
+      firstEdge: rawEdges?.[0]
     });
     
     try {
@@ -113,6 +117,17 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
             {showStats && statsComponent && (
               <div>{statsComponent}</div>
             )}
+            
+            {/* Add debug logging before rendering CalmSkillTreeEngine */}
+            {(() => {
+              console.log('🔍 About to render CalmSkillTreeEngine with:', {
+                nodesValid: Array.isArray(rawNodes) && rawNodes.every(n => n?.id),
+                edgesValid: Array.isArray(rawEdges) && rawEdges.every(e => (e?.from_id || e?.source) && (e?.to_id || e?.target)),
+                loading,
+                error
+              });
+              return null;
+            })()}
             
             <CalmSkillTreeEngine
               nodes={rawNodes}
