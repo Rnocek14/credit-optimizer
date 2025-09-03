@@ -20,6 +20,10 @@ export const SkillTreeProgress: React.FC = () => {
     criScore: 0
   });
 
+  // Calm mode feature flag from URL
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const calmEnabled = urlParams.get('st_calm') === '1';
+
   // Get current user
   useEffect(() => {
     const getUser = async () => {
@@ -274,6 +278,8 @@ export const SkillTreeProgress: React.FC = () => {
         criScore={criScore}
         userProgress={userProgress}
         getReadinessLevel={getReadinessLevel}
+        // Calm mode configuration
+        calmMode={calmEnabled}
       />
     </div>
   );

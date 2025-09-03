@@ -4,6 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CareerGraph, createCareerGraphFromDatabase, type GraphNode, type GraphEdge } from '@/lib/careerGraph';
 
+// Export types for use in other components
+export type { GraphNode, GraphEdge } from '@/lib/careerGraph';
+
 export interface CareerGraphState {
   graph: CareerGraph | null;
   nodes: GraphNode[];

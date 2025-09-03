@@ -37,6 +37,9 @@ export interface SkillTreeEngineProps {
   criScore?: any;
   userProgress?: any[];
   getReadinessLevel?: (score: number) => { level: string; color: string };
+  
+  // Calm mode configuration
+  calmMode?: boolean;
 }
 
 export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
@@ -57,7 +60,8 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
   rightRailComponent,
   criScore,
   userProgress,
-  getReadinessLevel
+  getReadinessLevel,
+  calmMode = false
 }) => {
   const { activeTrackId } = useActiveTrackStore();
 
@@ -70,8 +74,41 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
     error: !!error,
     showStats,
     showRightRail,
-    activeTrackId
+    activeTrackId,
+    calmMode
   });
+
+  // Render calm mode if enabled
+  if (calmMode && mode === 'progress') {
+    const { CalmSkillTreeEngine } = require('@/components/calm/CalmSkillTreeEngine');
+    return (
+      <div className="space-y-6">
+        {/* Stats Section (conditional) */}
+        {showStats && statsComponent && (
+          <div>{statsComponent}</div>
+        )}
+        
+        <CalmSkillTreeEngine
+          nodes={rawNodes}
+          edges={rawEdges}
+          loading={loading}
+          error={error}
+          onNodeClick={onNodeClick}
+          onReload={onReload}
+          criScore={criScore}
+          userProgress={userProgress}
+          getReadinessLevel={getReadinessLevel}
+        />
+        
+        {/* Right Rail (conditional) */}
+        {showRightRail && rightRailComponent && (
+          <div className="mt-6">
+            {rightRailComponent}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Get CRI-based node styling helper for progress mode
   const getCriNodeStyle = useCallback((nodeId: string) => {
