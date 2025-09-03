@@ -39,9 +39,18 @@ interface UnifiedCareerCanvasProps {
   layoutConfig?: Partial<LayoutConfig>;
 }
 
-// Phase 3: Node type validation helper
+// Phase 1: Node type mapping with explicit constants
+const NODE_TYPE_MAP = {
+  skill: 'skill',
+  job: 'job',
+  course: 'course',
+  step: 'step',
+  project: 'project',
+  certification: 'certification',
+} as const;
+
 const validateNodeType = (type: any): NodeType => {
-  const validTypes = ['job', 'skill', 'step', 'course', 'project', 'certification'];
+  const validTypes = ['job', 'skill', 'step', 'course', 'project', 'certification', 'default'];
   return (type && validTypes.includes(type)) ? type : 'default';
 };
 
@@ -321,11 +330,11 @@ const mapEdgeType = (edgeType: string): 'teaches' | 'requires' | 'qualifies_for'
   return mapping[edgeType] || 'supports';
 };
 
-// Convert GraphEdge to React Flow Edge with enhanced styling + DEBUG MODE
+// Convert GraphEdge to React Flow Edge with enhanced styling + Phase 2: String ID normalization
 const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
-  // Use source/target if available, fallback to from_id/to_id
-  const sourceId = graphEdge.source || graphEdge.from_id;
-  const targetId = graphEdge.target || graphEdge.to_id;
+  // Phase 2: Guarantee string ID normalization
+  const sourceId = String(graphEdge.source || graphEdge.from_id || '');
+  const targetId = String(graphEdge.target || graphEdge.to_id || '');
   const edgeType = graphEdge.edge_type || graphEdge.type || 'connection';
   
   // DEBUG: Validate edge has required fields
@@ -341,16 +350,18 @@ const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
   const isTeachingEdge = edgeType === 'teaches' || edgeType === 'unlocks';
   const isRequirementEdge = edgeType === 'requires' || edgeType === 'prerequisite';
   
-  // Phase 4: Clean production edge styling (removed debug mode)
+  // Phase 3: Clean production edge styling with proper animations
+  const isImportantEdge = (graphEdge.importance_weight || 1) >= 2;
   const edge: Edge = {
     id: `${sourceId}-${targetId}`,
     source: sourceId,
     target: targetId,
     type: 'smoothstep',
+    animated: edgeType === 'unlocks' || edgeType === 'teaches' || isImportantEdge,
     style: {
       stroke: getEdgeColor(edgeType),
       strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1),
-      opacity: 0.8,
+      opacity: 1,
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
@@ -360,10 +371,10 @@ const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
     },
     label: edgeType.replace('_', ' '),
     labelStyle: {
-      fontSize: '9px',
+      fontSize: '10px',
       fontWeight: '600',
       background: 'rgba(255, 255, 255, 0.9)',
-      padding: '4px 8px',
+      padding: '2px 6px',
       borderRadius: '4px',
     },
     data: {
@@ -564,8 +575,19 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     
     let edges = graphEdges.map(convertToFlowEdge);
     
-    // DEBUG: Validate edge-node alignment
+    // Phase 4: Enhanced validation with sanity checks
     const nodeIds = new Set(flowNodes.map(n => n.id));
+    const uniqueNodeIds = new Set(flowNodes.map(n => n.id));
+    
+    // Sanity check: Ensure all node IDs are unique
+    if (uniqueNodeIds.size !== flowNodes.length) {
+      console.warn('🚨 DUPLICATE NODE IDs DETECTED:', {
+        totalNodes: flowNodes.length,
+        uniqueIds: uniqueNodeIds.size
+      });
+    }
+    
+    // Validate edge-node alignment
     const edgeValidation = edges.map(edge => ({
       edgeId: edge.id,
       hasValidSource: nodeIds.has(edge.source),
@@ -581,13 +603,22 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         availableNodeIds: Array.from(nodeIds),
         totalEdges: edges.length
       });
+      
+      // Filter out invalid edges
+      edges = edges.filter(edge => 
+        nodeIds.has(edge.source) && nodeIds.has(edge.target)
+      );
     }
     
     console.log('🔗 EDGE CONVERSION RESULT:', {
       convertedEdgesCount: edges.length,
-      validEdges: edges.length - invalidEdges.length,
+      validEdges: edges.length,
       invalidEdges: invalidEdges.length,
-      nodeCount: nodeIds.size
+      nodeCount: nodeIds.size,
+      nodeTypeDistribution: flowNodes.reduce((acc, node) => {
+        acc[node.type || 'unknown'] = (acc[node.type || 'unknown'] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
     });
     
     // Filter edges based on showPivotPaths - simplified
