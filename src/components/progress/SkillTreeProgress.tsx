@@ -170,8 +170,13 @@ export const SkillTreeProgress: React.FC = () => {
   const enhancedNodes = React.useMemo(() => {
     if (!Array.isArray(graphNodes)) return [];
     
-    return graphNodes.map(node => ({
+    return graphNodes.map((node, index) => ({
       ...node,
+      // Preserve original position or add fallback grid position
+      position: (node as any).position ?? { 
+        x: 100 + (index % 6) * 220, 
+        y: 100 + Math.floor(index / 6) * 160 
+      },
       data: {
         title: node.title,
         description: node.description || '',
@@ -188,20 +193,50 @@ export const SkillTreeProgress: React.FC = () => {
     }));
   }, [graphNodes, criScore, userProgress, getReadinessLevel]);
 
+  // Filter orphan edges to prevent React Flow errors
+  const safeEdges = React.useMemo(() => {
+    if (!Array.isArray(graphEdges) || !Array.isArray(enhancedNodes)) return [];
+    
+    const nodeIds = new Set(enhancedNodes.map(n => n.id));
+    const filtered = graphEdges.filter(edge => {
+      const source = (edge as any).source ?? edge.from_id;
+      const target = (edge as any).target ?? edge.to_id;
+      return nodeIds.has(source) && nodeIds.has(target);
+    });
+    
+    // Debug logging for orphan edge filtering
+    if (graphEdges.length !== filtered.length) {
+      console.log('🔧 Progress: Filtered orphan edges', {
+        original: graphEdges.length,
+        filtered: filtered.length,
+        dropped: graphEdges.length - filtered.length
+      });
+    }
+    
+    return filtered;
+  }, [graphEdges, enhancedNodes]);
+
   // Debug bridge for runtime diagnostics
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__skillTreeDiag = {
         nodesCount: enhancedNodes.length,
-        edgesCount: graphEdges?.length || 0,
+        edgesCount: safeEdges.length,
+        originalNodes: graphNodes,
+        originalEdges: graphEdges,
         sampleNode: enhancedNodes[0],
-        sampleEdge: graphEdges?.[0],
+        sampleEdge: safeEdges[0],
         graphLoading: graphLoading,
         userProgress: userProgress?.length || 0
       };
-      console.log('🔬 ST DEBUG BRIDGE', (window as any).__skillTreeDiag);
+      console.log('🔬 Progress ST DEBUG', {
+        pre: { nodes: graphNodes?.length, edges: graphEdges?.length },
+        post: { nodes: enhancedNodes.length, edges: safeEdges.length },
+        orphanEdgesDropped: (graphEdges?.length || 0) - safeEdges.length,
+        hasPositions: enhancedNodes.some(n => n.position)
+      });
     }
-  }, [enhancedNodes, graphEdges, graphLoading, userProgress]);
+  }, [enhancedNodes, safeEdges, graphNodes, graphEdges, graphLoading, userProgress]);
   const statsComponent = (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -254,7 +289,7 @@ export const SkillTreeProgress: React.FC = () => {
   return (
     <SkillTreeEngine
       nodes={enhancedNodes}
-      edges={graphEdges || []}
+      edges={safeEdges}
       loading={isLoading}
       error={graphError}
       onNodeClick={handleNodeClick}
