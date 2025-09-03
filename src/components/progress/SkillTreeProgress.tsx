@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ReactFlowProvider } from '@xyflow/react';
 import { useCareerReadiness } from '@/hooks/useCareerReadiness';
 import { useCareerGraph } from '@/hooks/useCareerGraph';
-import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
+import { SkillTreeEngine } from '@/components/unified/SkillTreeEngine';
 import { AchievementsRail } from './AchievementsRail';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, Brain, Target, TrendingUp, AlertCircle, RefreshCw, Settings } from 'lucide-react';
+import { Brain, Target, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { skillTreeDebug } from '@/utils/skillTreeDebug';
 
 export const SkillTreeProgress: React.FC = () => {
   const navigate = useNavigate();
@@ -76,52 +72,6 @@ export const SkillTreeProgress: React.FC = () => {
 
   const isLoading = criLoading || graphLoading;
 
-  // Direct pass-through: let layout engine handle positioning
-  const nodes = React.useMemo(() => {
-    return Array.isArray(graphNodes) ? graphNodes : [];
-  }, [graphNodes]);
-
-  // Add canary node fallback when no data loads
-  const SHOW_CANARY = (nodes?.length ?? 0) === 0 && !isLoading;
-  const canaryNodes = SHOW_CANARY ? [{
-    id: 'canary-node',
-    type: 'skill' as const,
-    position: { x: 100, y: 100 },  // ✅ Add required position for React Flow
-    title: '👋 Canary Node - Data Loading Test',
-    description: 'This node proves the canvas is working',
-    data: {
-      title: '👋 Canary Node - Data Loading Test',
-      category: 'debug',
-      'data-testid': 'skill-node',
-      'data-node-type': 'skill',
-      'data-node-id': 'canary-node',
-    }
-  }] : [];
-
-  const renderNodes = SHOW_CANARY ? canaryNodes : nodes;
-
-  // Direct pass-through for edges
-  const edges = React.useMemo(() => {
-    return Array.isArray(graphEdges) ? graphEdges : [];
-  }, [graphEdges]);
-
-  const renderEdges = SHOW_CANARY ? [] : edges;
-
-  // Debug global bridge for console inspection
-  React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).__skillTreeDiag = {
-        nodesCount: renderNodes?.length,
-        edgesCount: renderEdges?.length,
-        firstNode: renderNodes?.[0],
-        firstEdge: renderEdges?.[0],
-        isCanary: SHOW_CANARY,
-        originalNodes: graphNodes?.length,
-        originalEdges: graphEdges?.length,
-      };
-    }
-  }, [renderNodes, renderEdges, SHOW_CANARY, graphNodes, graphEdges]);
-
   // Listen for real-time progress updates
   useEffect(() => {
     if (!user?.id) return;
@@ -159,21 +109,6 @@ export const SkillTreeProgress: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
-
-  // Debug bridge for runtime diagnostics
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).__skillTreeDiag = {
-        nodesCount: nodes.length,
-        edgesCount: edges.length,
-        sampleNode: nodes[0],
-        sampleEdge: edges[0],
-        graphLoading: graphLoading,
-        userProgress: userProgress?.length || 0
-      };
-      console.log('🔬 ST DEBUG BRIDGE', (window as any).__skillTreeDiag);
-    }
-  }, [nodes, edges, graphLoading, userProgress]);
 
   // Enhanced node click handler with deep linking
   const handleNodeClick = (node: any) => {
@@ -233,225 +168,103 @@ export const SkillTreeProgress: React.FC = () => {
 
   // Enhanced nodes with CRI styling and progress data
   const enhancedNodes = React.useMemo(() => {
-    if (!renderNodes) return [];
+    if (!Array.isArray(graphNodes)) return [];
     
-    return renderNodes.map(node => ({
+    return graphNodes.map(node => ({
       ...node,
       data: {
-        ...node.data,
+        title: node.title,
+        description: node.description || '',
+        type: node.type,
+        category: (node as any).category || 'General',
+        'data-testid': 'skill-node',
+        'data-node-type': node.type,
+        'data-node-id': node.id,
         style: getNodeStyle(node.id),
         criLevel: criScore ? getReadinessLevel(criScore.overall).level : 'Unknown',
-        userProgress: userProgress?.find(p => p.skillId === node.id || p.stepId === node.id)
+        userProgress: userProgress?.find(p => p.skillId === node.id || p.stepId === node.id),
+        ...node.data
       }
     }));
-  }, [renderNodes, criScore, userProgress, getReadinessLevel]);
+  }, [graphNodes, criScore, userProgress, getReadinessLevel]);
 
-  // Render meaningful empty state (not a blank canvas)
-  if ((graphNodes?.length ?? 0) === 0 && !isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center max-w-md">
-          <CardContent className="space-y-4">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+  // Debug bridge for runtime diagnostics
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__skillTreeDiag = {
+        nodesCount: enhancedNodes.length,
+        edgesCount: graphEdges?.length || 0,
+        sampleNode: enhancedNodes[0],
+        sampleEdge: graphEdges?.[0],
+        graphLoading: graphLoading,
+        userProgress: userProgress?.length || 0
+      };
+      console.log('🔬 ST DEBUG BRIDGE', (window as any).__skillTreeDiag);
+    }
+  }, [enhancedNodes, graphEdges, graphLoading, userProgress]);
+  const statsComponent = (
+    <div className="grid gap-4 md:grid-cols-3">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-lg">No skills to display</h3>
-              <p className="text-sm text-muted-foreground">
-                We couldn't load any skill nodes. Check active data in career_graph_nodes.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={reload} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Reload
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  skillTreeDebug.enableStabilityMode();
-                  reload();
-                }}
-              >
-                Stability Mode
-              </Button>
-              {process.env.NODE_ENV === 'development' && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => skillTreeDebug.diagnose()}
-                  className="gap-1"
-                >
-                  <Settings className="h-3 w-3" />
-                  Debug
-                </Button>
+              <p className="text-sm text-muted-foreground">Career Readiness</p>
+              <p className="text-2xl font-bold">{criScore?.overall || 0}%</p>
+              {criScore && (
+                <Badge variant="outline" className={criScore ? getReadinessLevel(criScore.overall).color : ''}>
+                  {criScore ? getReadinessLevel(criScore.overall).level : 'Unknown'}
+                </Badge>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6">
-          <CardContent className="flex items-center gap-4">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <div>
-              <p className="font-medium">Loading Skill Tree</p>
-              <p className="text-sm text-muted-foreground">
-                Fetching your progress and skill data...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (graphError) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6">
-          <CardContent className="text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <p className="text-destructive mb-4">Error loading skill tree</p>
-            <p className="text-sm text-muted-foreground mb-4">{graphError}</p>
-            <Button onClick={reload} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Reload
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const readiness = criScore ? getReadinessLevel(criScore.overall) : null;
-
-  return (
-    <div className="space-y-6" data-testid="skill-tree-canvas">
-      {/* CRI Overview */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Career Readiness</p>
-                <p className="text-2xl font-bold">{criScore?.overall || 0}%</p>
-                {readiness && (
-                  <Badge variant="outline" className={readiness.color}>
-                    {readiness.level}
-                  </Badge>
-                )}
-              </div>
-              <Brain className="h-8 w-8 text-primary" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Skills Completed</p>
-                <p className="text-2xl font-bold">
-                  {criScore?.breakdown?.completedSkills || 0}
-                </p>
-              </div>
-              <Target className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Growth Score</p>
-                <p className="text-2xl font-bold">
-                  {Math.round((criScore?.breakdown?.completedSkills || 0) / (criScore?.breakdown?.totalSkills || 1) * 100)}%
-                </p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content: Skill Tree + Right Rail */}
-      <div className="grid gap-6 lg:grid-cols-4">
-        {/* Skill Tree Canvas */}
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Skill Journey</CardTitle>
-              <CardDescription>
-                Explore skills, track progress, and discover learning paths
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="min-h-[800px] h-[800px] relative">
-                <ErrorBoundaryWrapper 
-                  resetKeys={[renderNodes.length, renderEdges.length]}
-                  onError={(error) => {
-                    console.error('🚨 Skill tree error:', error);
-                    toast.error('Skill tree rendering failed. Try refreshing or switching to grid mode.');
-                  }}
-                >
-                  <ReactFlowProvider>
-                    <UnifiedCareerCanvas
-                      nodes={renderNodes}
-                      edges={renderEdges || []}
-                      onNodeClick={handleNodeClick}
-                      layoutAlgorithm="semantic-hierarchy"
-                      showPivotPaths={false}
-                      focusMode={false}
-                    />
-                  </ReactFlowProvider>
-                </ErrorBoundaryWrapper>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Rail */}
-        <div className="lg:col-span-1">
-          <AchievementsRail />
-        </div>
-      </div>
-
-      {/* Node Actions Help */}
+            <Brain className="h-8 w-8 text-primary" />
+          </div>
+        </CardContent>
+      </Card>
+      
       <Card>
-        <CardHeader>
-          <CardTitle>How to Use Your Skill Tree</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="text-center p-3 border rounded-lg">
-              <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <h4 className="font-medium mb-1">Click Skills</h4>
-              <p className="text-xs text-muted-foreground">
-                Explore courses, projects, and career paths
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Skills Completed</p>
+              <p className="text-2xl font-bold">
+                {criScore?.breakdown?.completedSkills || 0}
               </p>
             </div>
-            <div className="text-center p-3 border rounded-lg">
-              <Brain className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-              <h4 className="font-medium mb-1">Track Progress</h4>
-              <p className="text-xs text-muted-foreground">
-                See your CRI score and skill completion
+            <Target className="h-8 w-8 text-green-500" />
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Growth Score</p>
+              <p className="text-2xl font-bold">
+                {Math.round((criScore?.breakdown?.completedSkills || 0) / (criScore?.breakdown?.totalSkills || 1) * 100)}%
               </p>
             </div>
-            <div className="text-center p-3 border rounded-lg">
-              <TrendingUp className="h-6 w-6 mx-auto mb-2 text-green-500" />
-              <h4 className="font-medium mb-1">Plan Growth</h4>
-              <p className="text-xs text-muted-foreground">
-                Discover next steps and opportunities
-              </p>
-            </div>
+            <TrendingUp className="h-8 w-8 text-blue-500" />
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+
+  return (
+    <SkillTreeEngine
+      nodes={enhancedNodes}
+      edges={graphEdges || []}
+      loading={isLoading}
+      error={graphError}
+      onNodeClick={handleNodeClick}
+      onReload={reload}
+      mode="progress"
+      showStats={true}
+      showRightRail={true}
+      layoutAlgorithm={'semantic-hierarchy' as const}
+      statsComponent={statsComponent}
+      rightRailComponent={<AchievementsRail />}
+    />
   );
 };
