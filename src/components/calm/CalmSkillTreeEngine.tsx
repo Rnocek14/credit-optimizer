@@ -39,39 +39,58 @@ export function CalmSkillTreeEngine({
   // If external data is provided, use it directly; otherwise fetch
   const shouldFetch = !rawNodes.length && !rawEdges.length && !externalLoading && !externalError;
 
-  const { data: fetchedNodes = [], isLoading: fetchLoading, error: fetchError } = useQuery<any[], Error>({
-    queryKey: ['career-graph-nodes'],
-    queryFn: async () => {
-      console.log('🌟 Calm Mode: Fetching nodes...');
-      const { data, error } = await supabase
+  // Simple data fetching without complex generics - bypass supabase typing issues
+  const fetchNodes = async (): Promise<any[]> => {
+    console.log('🌟 Calm Mode: Fetching nodes...');
+    try {
+      // Use any to bypass complex supabase typing
+      const supabaseClient: any = supabase;
+      const result = await supabaseClient
         .from('career_graph_nodes')
         .select('*')
         .eq('active', true);
       
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: shouldFetch,
-  });
+      if (result.error) throw result.error;
+      return result.data || [];
+    } catch (error) {
+      console.error('Error fetching nodes:', error);
+      throw error;
+    }
+  };
 
-  const { data: fetchedEdges = [], isLoading: edgesLoading, error: edgesError } = useQuery<any[], Error>({
-    queryKey: ['career-graph-edges'],
-    queryFn: async () => {
-      console.log('🌟 Calm Mode: Fetching edges...');
-      const { data, error } = await supabase
+  const fetchEdges = async (): Promise<any[]> => {
+    console.log('🌟 Calm Mode: Fetching edges...');
+    try {
+      // Use any to bypass complex supabase typing
+      const supabaseClient: any = supabase;
+      const result = await supabaseClient
         .from('career_graph_edges')
         .select('*')
         .eq('active', true);
       
-      if (error) throw error;
-      return data || [];
-    },
+      if (result.error) throw result.error;
+      return result.data || [];
+    } catch (error) {
+      console.error('Error fetching edges:', error);
+      throw error;
+    }
+  };
+
+  const nodesQuery = useQuery({
+    queryKey: ['career-graph-nodes'],
+    queryFn: fetchNodes,
+    enabled: shouldFetch,
+  });
+
+  const edgesQuery = useQuery({
+    queryKey: ['career-graph-edges'], 
+    queryFn: fetchEdges,
     enabled: shouldFetch,
   });
 
   // Use external data if provided, otherwise use fetched data
-  const nodes = rawNodes.length > 0 ? rawNodes : fetchedNodes;
-  const edges = rawEdges.length > 0 ? rawEdges : fetchedEdges;
+  const nodes = rawNodes.length > 0 ? rawNodes : (nodesQuery.data || []);
+  const edges = rawEdges.length > 0 ? rawEdges : (edgesQuery.data || []);
 
   // Process data with simplified typing to avoid infinite recursion
   const processedData = useMemo(() => {
@@ -184,8 +203,8 @@ export function CalmSkillTreeEngine({
     }
   }, [nodes, edges]);
 
-  const isLoading = externalLoading || fetchLoading || edgesLoading;
-  const hasError = externalError || fetchError || edgesError || processedData.processingError;
+  const isLoading = externalLoading || nodesQuery.isLoading || edgesQuery.isLoading;
+  const hasError = externalError || nodesQuery.error || edgesQuery.error || processedData.processingError;
 
   // Loading state
   if (isLoading) {
@@ -202,7 +221,7 @@ export function CalmSkillTreeEngine({
 
   // Error state with recovery options
   if (hasError) {
-    const errorMessage = externalError || fetchError?.message || edgesError?.message || processedData.processingError?.message || 'Unknown error occurred';
+    const errorMessage = externalError || nodesQuery.error?.message || edgesQuery.error?.message || processedData.processingError?.message || 'Unknown error occurred';
     console.error('🚨 Calm Mode: Displaying error state:', errorMessage);
     
     return (
