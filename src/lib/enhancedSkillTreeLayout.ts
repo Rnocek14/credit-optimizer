@@ -153,22 +153,44 @@ export class EnhancedSkillTreeLayout {
     console.log(`🎨 Starting enhanced layout calculation with ${this.config.algorithm}`);
     this.hadCycles = false;
     
+    // Input validation
+    if (!this.nodes || this.nodes.length === 0) {
+      console.warn('⚠️ No nodes provided for layout');
+      return [];
+    }
+
+    // Validate edges reference existing nodes
+    const nodeIds = new Set(this.nodes.map(n => n.id));
+    const validEdges = this.edges.filter(edge => 
+      nodeIds.has(edge.source) && nodeIds.has(edge.target)
+    );
+    
+    if (validEdges.length !== this.edges.length) {
+      console.warn(`🔧 Filtered ${this.edges.length - validEdges.length} invalid edges`);
+      this.edges = validEdges;
+    }
+    
     let result: PositionedNode[];
-    switch (this.config.algorithm) {
-      case 'semantic-hierarchy':
-        result = this.calculateSemanticHierarchy();
-        break;
-      case 'category-cluster':
-        result = this.calculateCategoryCluster();
-        break;
-      case 'goal-focused':
-        result = this.calculateGoalFocused();
-        break;
-      case 'progressive-disclosure':
-        result = this.calculateProgressiveDisclosure();
-        break;
-      default:
-        result = this.calculateSemanticHierarchy();
+    try {
+      switch (this.config.algorithm) {
+        case 'semantic-hierarchy':
+          result = this.calculateSemanticHierarchy();
+          break;
+        case 'category-cluster':
+          result = this.calculateCategoryCluster();
+          break;
+        case 'goal-focused':
+          result = this.calculateGoalFocused();
+          break;
+        case 'progressive-disclosure':
+          result = this.calculateProgressiveDisclosure();
+          break;
+        default:
+          result = this.calculateSemanticHierarchy();
+      }
+    } catch (error) {
+      console.error('❌ Layout algorithm failed, falling back to grid layout:', error);
+      result = this.createSafeGridLayout();
     }
 
     // Guarantee every input node yields a positioned node
@@ -207,6 +229,31 @@ export class EnhancedSkillTreeLayout {
     if (this.hadCycles) {
       console.warn('🔄 Layout cycles were detected and handled with heuristic depth assignment');
     }
+
+    return result;
+  }
+
+  private createSafeGridLayout(): PositionedNode[] {
+    console.log('🔧 Creating safe grid layout fallback');
+    const result: PositionedNode[] = [];
+    const COLS = 6;
+    const X_OFFSET = 100;
+    const Y_OFFSET = 100;
+    const CELL_WIDTH = 220;
+    const CELL_HEIGHT = 160;
+
+    this.nodes.forEach((node, index) => {
+      const col = index % COLS;
+      const row = Math.floor(index / COLS);
+      
+      result.push({
+        ...node,
+        x: X_OFFSET + col * CELL_WIDTH,
+        y: Y_OFFSET + row * CELL_HEIGHT,
+        depth: 0,
+        clusterGroup: node.category || 'default'
+      });
+    });
 
     return result;
   }
@@ -265,70 +312,105 @@ export class EnhancedSkillTreeLayout {
     const depths = new Map<string, number>();
     const visited = new Set<string>();
     const visiting = new Set<string>();
-    const cycleEdges = new Set<string>();
+    const cycleNodes = new Set<string>();
+    let recursionCount = 0;
+    const MAX_RECURSION = 1000; // Prevent infinite recursion
 
-    const calculateDepth = (nodeId: string): number => {
+    const calculateDepth = (nodeId: string, currentDepth: number = 0): number => {
+      // Prevent infinite recursion
+      if (++recursionCount > MAX_RECURSION) {
+        console.error(`🚨 Max recursion exceeded for node ${nodeId}`);
+        depths.set(nodeId, MAX_DEPTH);
+        return MAX_DEPTH;
+      }
+
+      // Already calculated
       if (depths.has(nodeId)) return depths.get(nodeId)!;
+      
+      // Circular dependency detected
       if (visiting.has(nodeId)) {
-        console.warn(`🔄 Circular dependency detected involving node ${nodeId}`);
-        // Mark cycle but don't bail - assign heuristic depth
-        cycleEdges.add(nodeId);
+        console.warn(`🔄 Circular dependency detected for node ${nodeId}`);
+        cycleNodes.add(nodeId);
         this.hadCycles = true;
         
-        // Assign clamped depth for cycle nodes
-        const dependencies = this.edges.filter(e => e.target === nodeId);
-        const depthValues = dependencies.map(dep => depths.get(dep.source) || 0);
-        const heuristicDepth = Math.min(
-          depthValues.length > 0 ? Math.max(...depthValues) + 1 : 0,
-          MAX_DEPTH
-        );
-        depths.set(nodeId, heuristicDepth);
-        visiting.delete(nodeId);
-        return heuristicDepth;
+        // Break the cycle by assigning a safe depth
+        const safeDepth = Math.min(currentDepth, MAX_DEPTH - 1);
+        depths.set(nodeId, safeDepth);
+        return safeDepth;
+      }
+
+      // Depth limit exceeded
+      if (currentDepth >= MAX_DEPTH) {
+        console.warn(`⚠️ Depth limit reached for node ${nodeId}`);
+        depths.set(nodeId, MAX_DEPTH);
+        return MAX_DEPTH;
       }
 
       visiting.add(nodeId);
       
-      // Find all dependencies (incoming edges)
-      const dependencies = this.edges.filter(e => e.target === nodeId);
-      
-      if (dependencies.length === 0) {
-        // Root node
-        depths.set(nodeId, 0);
-        visiting.delete(nodeId);
-        return 0;
-      }
+      try {
+        // Find all dependencies (incoming edges)
+        const dependencies = this.edges.filter(e => e.target === nodeId);
+        
+        if (dependencies.length === 0) {
+          // Root node
+          depths.set(nodeId, 0);
+          visiting.delete(nodeId);
+          visited.add(nodeId);
+          return 0;
+        }
 
-      // Calculate max depth of dependencies + 1
-      const depthValues = dependencies.map(dep => calculateDepth(dep.source));
-      const maxDepth = Math.max(...depthValues) + 1;
-      
-      depths.set(nodeId, maxDepth);
-      visiting.delete(nodeId);
-      visited.add(nodeId);
-      
-      return maxDepth;
+        // Calculate max depth of dependencies + 1
+        let maxDepth = 0;
+        for (const dep of dependencies) {
+          // Skip if source node doesn't exist
+          if (!this.nodes.find(n => n.id === dep.source)) continue;
+          
+          const depthValue = calculateDepth(dep.source, currentDepth + 1);
+          maxDepth = Math.max(maxDepth, depthValue);
+        }
+        
+        const finalDepth = Math.min(maxDepth + 1, MAX_DEPTH);
+        depths.set(nodeId, finalDepth);
+        visiting.delete(nodeId);
+        visited.add(nodeId);
+        
+        return finalDepth;
+      } catch (error) {
+        console.error(`❌ Error calculating depth for node ${nodeId}:`, error);
+        depths.set(nodeId, MAX_DEPTH);
+        visiting.delete(nodeId);
+        return MAX_DEPTH;
+      }
     };
 
-    // PR-3: Enhanced orphan handling
+    // Process remaining nodes safely
     this.nodes.forEach(node => {
-      if (!visited.has(node.id)) {
-        const depth = calculateDepth(node.id);
-        
-        // Check if node is truly orphaned (no incoming or outgoing edges)
-        const hasEdges = this.edges.some(e => 
-          e.source === node.id || e.target === node.id
-        );
-        
-        if (!hasEdges) {
-          console.log(`🏝️ Orphan node detected: ${node.title} (${node.id})`);
-          depths.set(node.id, Math.min(10, MAX_DEPTH)); // Place orphans in visible area
+      if (!visited.has(node.id) && !depths.has(node.id)) {
+        try {
+          recursionCount = 0; // Reset for each node
+          const depth = calculateDepth(node.id, 0);
+          
+          // Check if node is truly orphaned (no incoming or outgoing edges)
+          const hasEdges = this.edges.some(e => 
+            e.source === node.id || e.target === node.id
+          );
+          
+          if (!hasEdges) {
+            console.log(`🏝️ Orphan node detected: ${node.title} (${node.id})`);
+            depths.set(node.id, Math.min(2, MAX_DEPTH)); // Place orphans early in layout
+          }
+        } catch (error) {
+          console.error(`❌ Failed to process node ${node.id}:`, error);
+          depths.set(node.id, MAX_DEPTH);
         }
       }
     });
 
-    // PR-3: Longest path refinement for complex DAGs
-    this.refineLongestPath(depths);
+    // Report cycle handling results
+    if (cycleNodes.size > 0) {
+      console.warn(`🔄 Handled ${cycleNodes.size} nodes in cycles:`, Array.from(cycleNodes));
+    }
 
     return depths;
   }

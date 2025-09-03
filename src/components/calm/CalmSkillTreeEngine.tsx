@@ -45,9 +45,96 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
   const [showOnlyMyTrack, setShowOnlyMyTrack] = useState(false);
   const [showNext4Weeks, setShowNext4Weeks] = useState(false);
 
-  // Build calm subgraph
+  // Build calm subgraph with comprehensive error handling
   const calmSubgraph: CalmSubgraph = useMemo(() => {
-    if (!Array.isArray(rawNodes) || !Array.isArray(rawEdges)) {
+    try {
+      if (!Array.isArray(rawNodes) || !Array.isArray(rawEdges)) {
+        console.warn('⚠️ Invalid data types provided to calm engine');
+        return {
+          nodes: [],
+          edges: [],
+          clusters: [],
+          hiddenNodes: [],
+          hiddenEdges: [],
+          metadata: {
+            visibleNodes: 0,
+            visibleEdges: 0,
+            clusterCount: 0,
+            totalHidden: 0,
+            performance: { buildTime: 0 }
+          }
+        };
+      }
+
+      if (rawNodes.length === 0) {
+        console.warn('⚠️ Empty nodes array provided to calm engine');
+        return {
+          nodes: [],
+          edges: [],
+          clusters: [],
+          hiddenNodes: [],
+          hiddenEdges: [],
+          metadata: {
+            visibleNodes: 0,
+            visibleEdges: 0,
+            clusterCount: 0,
+            totalHidden: 0,
+            performance: { buildTime: 0 }
+          }
+        };
+      }
+
+      // Validate node data structure
+      const validNodes = rawNodes.filter(node => 
+        node && typeof node === 'object' && 
+        node.id && node.title && node.type
+      );
+
+      if (validNodes.length !== rawNodes.length) {
+        console.warn(`🔧 Filtered ${rawNodes.length - validNodes.length} invalid nodes`);
+      }
+
+      // Validate edge data structure  
+      const validEdges = rawEdges.filter(edge => 
+        edge && typeof edge === 'object' && 
+        edge.source && edge.target &&
+        validNodes.some(n => n.id === edge.source) &&
+        validNodes.some(n => n.id === edge.target)
+      );
+
+      if (validEdges.length !== rawEdges.length) {
+        console.warn(`🔧 Filtered ${rawEdges.length - validEdges.length} invalid edges`);
+      }
+
+      console.log('🔨 Building calm subgraph with validated data:', {
+        validNodes: validNodes.length,
+        validEdges: validEdges.length,
+        activeGoalId,
+        focusNodeId,
+        expandedClusters: Array.from(expandedClusters)
+      });
+
+      return buildCalmSubgraph(validNodes, validEdges, {
+        activeGoalId,
+        focusNodeId,
+        expandedClusters,
+        config: {
+          maxVisibleNodes: 40,
+          maxVisibleEdges: 60,
+          defaultDepth: visibleDepth,
+          enableClustering: true,
+          laneOrdering: ['foundations', 'skills', 'projects', 'credentials', 'jobs']
+        }
+      });
+    } catch (error) {
+      console.error('❌ Failed to build calm subgraph:', error);
+      
+      // Show user-friendly error message
+      toast.error('Failed to build skill tree view', {
+        description: 'Using safe fallback layout. Check console for details.'
+      });
+      
+      // Return safe fallback
       return {
         nodes: [],
         edges: [],
@@ -63,48 +150,50 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
         }
       };
     }
-
-    return buildCalmSubgraph(rawNodes, rawEdges, {
-      activeGoalId,
-      focusNodeId,
-      expandedClusters,
-      config: {
-        maxVisibleNodes: 40,
-        maxVisibleEdges: 60,
-        defaultDepth: visibleDepth,
-        enableClustering: true,
-        laneOrdering: ['foundations', 'skills', 'projects', 'credentials', 'jobs']
-      }
-    });
   }, [rawNodes, rawEdges, activeGoalId, focusNodeId, expandedClusters, visibleDepth]);
 
-  // Process edges based on cross-lane visibility
+  // Process edges based on cross-lane visibility with error handling
   const processedEdges = useMemo(() => {
-    if (!showCrossLaneEdges) {
-      // Hide edges that cross lanes
-      return calmSubgraph.edges.filter(edge => {
-        const sourceNode = calmSubgraph.nodes.find(n => n.id === edge.source);
-        const targetNode = calmSubgraph.nodes.find(n => n.id === edge.target);
-        
-        if (!sourceNode || !targetNode) return false;
-        
-        // Map nodes to lanes (simplified)
-        const getNodeLane = (node: any) => {
-          switch (node.type) {
-            case 'skill': return node.category?.toLowerCase() === 'foundation' ? 'foundations' : 'skills';
-            case 'course': return 'skills';
-            case 'project': return 'projects';
-            case 'certification': return 'credentials';
-            case 'job': return 'jobs';
-            default: return 'skills';
+    try {
+      if (!calmSubgraph.edges || !Array.isArray(calmSubgraph.edges)) {
+        console.warn('⚠️ Invalid edges in calm subgraph');
+        return [];
+      }
+
+      if (!showCrossLaneEdges) {
+        // Hide edges that cross lanes
+        return calmSubgraph.edges.filter(edge => {
+          try {
+            const sourceNode = calmSubgraph.nodes.find(n => n.id === edge.source);
+            const targetNode = calmSubgraph.nodes.find(n => n.id === edge.target);
+            
+            if (!sourceNode || !targetNode) return false;
+            
+            // Map nodes to lanes (simplified)
+            const getNodeLane = (node: any) => {
+              switch (node.type) {
+                case 'skill': return node.category?.toLowerCase() === 'foundation' ? 'foundations' : 'skills';
+                case 'course': return 'skills';
+                case 'project': return 'projects';
+                case 'certification': return 'credentials';
+                case 'job': return 'jobs';
+                default: return 'skills';
+              }
+            };
+            
+            return getNodeLane(sourceNode) === getNodeLane(targetNode);
+          } catch (error) {
+            console.warn('⚠️ Error processing edge:', edge, error);
+            return false;
           }
-        };
-        
-        return getNodeLane(sourceNode) === getNodeLane(targetNode);
-      });
+        });
+      }
+      
+      return calmSubgraph.edges;
+    } catch (error) {
+      console.error('❌ Failed to process edges:', error);
+      return [];
     }
-    
-    return calmSubgraph.edges;
   }, [calmSubgraph.edges, showCrossLaneEdges, calmSubgraph.nodes]);
 
   // Enhanced node click handler
