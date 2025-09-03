@@ -1,19 +1,18 @@
 // Life Path Unified Career Graph - Core Type Definitions
 // Based on comprehensive research for multi-objective pathfinding with credit transfer
 
-export type NodeType = 'skill' | 'job' | 'course' | 'project' | 'certification' | 'step' | 'exam';
+export type NodeType = 'skill' | 'job' | 'jobGoal' | 'course' | 'project' | 'certification' | 'credential' | 'creditBlock' | 'step' | 'exam';
 
 export type EdgeType = 
   | 'requires' 
   | 'enables' 
   | 'substitutes' 
-  | 'transfersTo' 
-  | 'builds' 
-  | 'pivot' 
+  | 'buildsSkill'
+  | 'stacksInto' 
+  | 'equivalentTo'
+  | 'qualifiesFor'
   | 'ghost' 
   | 'alternative' 
-  | 'stacksTo'
-  | 'enhances'
   | 'creditTransfersTo';
 
 export interface GraphNode {
@@ -30,6 +29,7 @@ export interface GraphNode {
   
   // Institutional info
   institution?: string;
+  institutionId?: string;
   provider?: string;
   modality: 'online' | 'in-person' | 'hybrid' | 'self-paced';
   
@@ -41,6 +41,7 @@ export interface GraphNode {
   // Categorization
   category?: string;
   subcategory?: string;
+  level?: 'associate' | 'bachelor' | 'master' | 'doctoral' | 'certificate';
   tags: string[];
   
   // Prerequisites and outcomes
@@ -52,8 +53,16 @@ export interface GraphNode {
   aceRecommended?: boolean;
   articulationAgreements?: string[];
   
+  // Transfer policies and caps
+  policy?: {
+    residencyCredits?: number;
+    maxTransferCredits?: number;
+    examCap?: number;
+  };
+  
   // Visualization
   position?: { x: number; y: number };
+  attributes?: { depth?: number };
   
   // Metadata
   metadata: Record<string, any>;
@@ -78,6 +87,15 @@ export interface GraphEdge {
   creditTransferRate?: number; // 0-1, how much credit transfers
   institutionalCap?: number;   // max credits that can transfer
   residencyRequirement?: number; // min credits that must be earned at target
+  
+  // Transfer policies
+  policy?: {
+    region?: string;
+    institutionFrom?: string;
+    institutionTo?: string;
+    cap?: number;
+    capCategory?: 'total' | 'exam' | 'transfer';
+  };
   
   // Validation and metadata
   confidence: number; // 0-1 confidence in this connection

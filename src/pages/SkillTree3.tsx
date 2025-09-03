@@ -8,11 +8,11 @@ import PathComparison from '@/components/lifePathGraph/PathComparison';
 import PathfindingControls from '@/components/lifePathGraph/PathfindingControls';
 import { useLifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathResult, ScoringConfig } from '@/types/lifePathGraph';
-import { Route, MapPin, Clock, DollarSign, BookOpen, Target } from 'lucide-react';
+import { Route, MapPin, Clock, DollarSign, BookOpen, Target, TestTube } from 'lucide-react';
 
 export default function SkillTree3() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
-  const [activeGoal, setActiveGoal] = useState<string>('bachelor-cs');
+  const [activeGoal, setActiveGoal] = useState<string>('credential-bachelor-cs');
   const [scoringConfig, setScoringConfig] = useState<ScoringConfig>({
     objectives: {
       time: { weight: 0.3, minimize: true },
@@ -69,7 +69,8 @@ export default function SkillTree3() {
             
             <div className="flex items-center gap-4">
               <Badge variant="outline" className="bg-primary/10">
-                Phase 0 - Prototype
+                <TestTube className="w-3 h-3 mr-1" />
+                Phase 1 - Enhanced
               </Badge>
               <Button onClick={handleFindPaths} disabled={loading}>
                 {loading ? 'Computing...' : 'Find Optimal Paths'}
@@ -98,9 +99,9 @@ export default function SkillTree3() {
                     onChange={(e) => setActiveGoal(e.target.value)}
                     className="w-full mt-1 p-2 border rounded-md bg-background"
                   >
-                    <option value="bachelor-cs">Bachelor's in Computer Science</option>
-                    <option value="associate-nursing">Associate's in Nursing</option>
-                    <option value="certification-aws">AWS Cloud Certification</option>
+                    <option value="credential-bachelor-cs">Bachelor's in Computer Science</option>
+                    <option value="credential-associate-nursing">Associate's in Nursing</option>
+                    <option value="job-software-engineer">Software Engineer Job</option>
                   </select>
                 </div>
                 

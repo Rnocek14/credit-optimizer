@@ -9,7 +9,9 @@ import {
   CreditCalculation
 } from '@/types/lifePathGraph';
 import { dijkstraPathfinding } from '@/lib/pathfinding/dijkstra';
-import { generateMockGraph } from '@/lib/pathfinding/mockData';
+import { generateEnhancedMockGraph } from '@/lib/pathfinding/mockDataEnhanced';
+import { validateGraphIntegrity } from '@/lib/pathfinding/validators';
+import { assignDepthToMainPath, calculatePathMetrics } from '@/lib/pathfinding/algorithms';
 
 export interface LifePathGraph {
   nodes: GraphNode[];
@@ -29,8 +31,12 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         setLoading(true);
         setError(null);
 
-        // For Phase 0, use mock data
-        const mockGraph = generateMockGraph();
+        // For Phase 1, use enhanced mock data
+        const mockGraph = generateEnhancedMockGraph();
+        
+        // Validate graph integrity
+        validateGraphIntegrity(mockGraph.nodes, mockGraph.edges);
+        
         setGraph(mockGraph);
 
         console.log('📊 Life Path Graph loaded:', {
@@ -66,28 +72,47 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         throw new Error(`Goal node not found: ${targetGoalId}`);
       }
 
-      // Basic pathfinding - Phase 0 implementation
-      const basicPath = dijkstraPathfinding(graph, goalNode.id, 'time');
-      const costOptimizedPath = dijkstraPathfinding(graph, goalNode.id, 'cost');
-      const creditOptimizedPath = dijkstraPathfinding(graph, goalNode.id, 'creditLoss');
+      // Enhanced pathfinding - Phase 1 implementation
+      const mockUserState: any = { completedNodeIds: [], existingCredits: [] };
+      
+      const basicPath = dijkstraPathfinding(graph, goalNode.id, 'time', {
+        allowGhost: false,
+        userState: mockUserState,
+        scoringConfig
+      });
+      
+      const costOptimizedPath = dijkstraPathfinding(graph, goalNode.id, 'cost', {
+        allowGhost: false,
+        userState: mockUserState,
+        scoringConfig
+      });
+      
+      const creditOptimizedPath = dijkstraPathfinding(graph, goalNode.id, 'creditLoss', {
+        allowGhost: false,
+        userState: mockUserState,
+        scoringConfig
+      });
+      
+      // Assign depths to main path nodes
+      const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+      const edgeMap = new Map(graph.edges.map(e => [e.id, e]));
+      assignDepthToMainPath(basicPath, nodeMap);
 
-      // Create path results
+      // Create path results with enhanced metrics
       const createPathResult = (path: string[], optimizedFor: string): PathResult => {
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
-        const totalTime = pathNodes.reduce((sum, node) => sum + node.estimatedHours, 0);
-        const totalCost = pathNodes.reduce((sum, node) => sum + node.cost, 0);
-        const totalCredits = pathNodes.reduce((sum, node) => sum + (node.credits || 0), 0);
+        const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
         return {
           id: `path-${optimizedFor}-${Date.now()}`,
           name: `${optimizedFor.charAt(0).toUpperCase() + optimizedFor.slice(1)} Optimized Path`,
           description: `Path optimized for ${optimizedFor}`,
           nodeIds: path,
-          edgeIds: [], // TODO: Calculate actual edges
-          totalTime: Math.round(totalTime / 40), // Convert hours to months (rough estimate)
-          totalCost,
-          totalCredits,
-          creditLoss: 0, // TODO: Calculate from transfer rules
+          edgeIds: [], // TODO: Calculate actual edge IDs
+          totalTime: metrics.totalTime,
+          totalCost: metrics.totalCost,
+          totalCredits: metrics.totalCredits,
+          creditLoss: metrics.creditLoss,
           difficultyScore: pathNodes.reduce((sum, node) => sum + node.difficulty, 0) / pathNodes.length,
           roiScore: 75, // Mock ROI score
           optimizedFor: [optimizedFor as any],
@@ -96,7 +121,10 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
           suggestedAlternatives: [],
           feasible: true,
           warnings: [],
-          metadata: {}
+          metadata: {
+            institutionsCount: metrics.institutionsCount,
+            prerequisitesSatisfied: metrics.prerequisitesSatisfied
+          }
         };
       };
 
