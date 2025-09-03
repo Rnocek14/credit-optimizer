@@ -39,6 +39,12 @@ interface UnifiedCareerCanvasProps {
   layoutConfig?: Partial<LayoutConfig>;
 }
 
+// Phase 3: Node type validation helper
+const validateNodeType = (type: any): NodeType => {
+  const validTypes = ['job', 'skill', 'step', 'course', 'project', 'certification'];
+  return (type && validTypes.includes(type)) ? type : 'default';
+};
+
 // 🔧 STEP 4: Bulletproof grid fallback function (unified implementation)
 function gridFallback(nodes: GraphNode[] | { id: string; title: string; type: string; data?: any }[]): Node[] {
   const COLS = 6, X0 = 60, Y0 = 60, DX = 220, DY = 160;
@@ -46,16 +52,16 @@ function gridFallback(nodes: GraphNode[] | { id: string; title: string; type: st
   
   return nodes.map((n, i) => ({
     id: n.id,
-    type: "default",
+    type: validateNodeType(n.type),
     position: { x: X0 + (i % COLS) * DX, y: Y0 + Math.floor(i / COLS) * DY },
     data: {
       label: n.title,
       title: n.title,
-      type: n.type,
+      type: validateNodeType(n.type),
       node: n,
       "data-testid": "skill-node",
       "data-node-id": n.id,
-      "data-node-type": n.type,
+      "data-node-type": validateNodeType(n.type),
     },
   }));
 }
@@ -78,7 +84,7 @@ const calculateLayout = (
         .map(n => ({
           ...n,
           id: String(n.id), // Force string IDs
-          type: (n.type && ['job', 'skill', 'step', 'course', 'project', 'certification'].includes(n.type)) ? n.type : 'skill' as NodeType,
+          type: validateNodeType(n.type),
           title: n.title || 'Untitled',
         }))
         .filter(n => n.id && n.type && n.title)
@@ -220,7 +226,7 @@ const calculateLayout = (
             backgroundColor: getNodeBackgroundColor(originalNode.type, pathType)
           }
         },
-        type: originalNode.type,
+        type: validateNodeType(originalNode.type),
         style: {
           background: getNodeBackgroundColor(originalNode.type, pathType),
           border: `${isCheckpoint ? '4px' : isBranchPoint ? '3px' : '2px'} solid ${getNodeBorderColor(originalNode.type, isCheckpoint, isBranchPoint)}`,
@@ -335,53 +341,37 @@ const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
   const isTeachingEdge = edgeType === 'teaches' || edgeType === 'unlocks';
   const isRequirementEdge = edgeType === 'requires' || edgeType === 'prerequisite';
   
-  // DEBUG MODE: Make edges VERY visible for troubleshooting
-  const debugMode = process.env.NODE_ENV === 'development';
-  
+  // Phase 4: Clean production edge styling (removed debug mode)
   const edge: Edge = {
     id: `${sourceId}-${targetId}`,
     source: sourceId,
     target: targetId,
-    type: 'smoothstep', // Force smoothstep for visibility
-    animated: true, // Force animation for visibility
+    type: 'smoothstep',
     style: {
-      stroke: debugMode ? '#ff0000' : getEdgeColor(edgeType), // Red in debug mode
-      strokeWidth: debugMode ? 4 : getEdgeWidth(graphEdge.importance_weight || 1), // Thicker in debug
-      opacity: debugMode ? 1.0 : 0.8, // Full opacity in debug mode
+      stroke: getEdgeColor(edgeType),
+      strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1),
+      opacity: 0.8,
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: debugMode ? '#ff0000' : getEdgeColor(edgeType),
-      width: debugMode ? 25 : 20,
-      height: debugMode ? 25 : 20
+      color: getEdgeColor(edgeType),
+      width: 18,
+      height: 18
     },
-    label: debugMode ? `${sourceId}→${targetId} (${edgeType})` : edgeType.replace('_', ' '),
+    label: edgeType.replace('_', ' '),
     labelStyle: {
-      fontSize: debugMode ? '12px' : '9px',
+      fontSize: '9px',
       fontWeight: '600',
-      background: debugMode ? '#ffff00' : 'rgba(255, 255, 255, 0.9)', // Yellow in debug
+      background: 'rgba(255, 255, 255, 0.9)',
       padding: '4px 8px',
       borderRadius: '4px',
-      border: debugMode ? '2px solid #ff0000' : 'none'
     },
     data: {
       edgeType: edgeType,
       reasoning: graphEdge.reasoning,
       importance: graphEdge.importance_weight,
-      debug: debugMode ? { sourceId, targetId, originalEdge: graphEdge } : undefined
     }
   };
-
-  // DEBUG: Log each edge conversion
-  if (debugMode) {
-    console.log('🔗 Converted edge:', {
-      edgeId: edge.id,
-      source: edge.source,
-      target: edge.target,
-      type: edgeType,
-      animated: edge.animated
-    });
-  }
   
   return edge;
 };
@@ -604,19 +594,22 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     return edges;
   }, [graphEdges, showPivotPaths, flowNodes]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const fittedRef = React.useRef(false);
 
-  // PR-6: Stable update with fitView only when layout changes
-  const [layoutComplete, setLayoutComplete] = React.useState(false);
-  
-  React.useLayoutEffect(() => {
-    setNodes(flowNodes);
-    setLayoutComplete(true);
+  // Phase 1 & 2: Proper state management - update nodes and edges once per data change
+  React.useEffect(() => {
+    if (flowNodes.length > 0) {
+      setNodes(flowNodes);
+      fittedRef.current = false; // Reset fit flag when nodes change
+    }
   }, [flowNodes, setNodes]);
 
-  React.useLayoutEffect(() => {
-    setEdges(flowEdges);
+  React.useEffect(() => {
+    if (flowEdges.length > 0) {
+      setEdges(flowEdges);
+    }
   }, [flowEdges, setEdges]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -663,28 +656,28 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     });
   }, [nodes, searchTerm]);
 
-  // Auto-fit view when nodes are loaded - Fixed with proper delay for React Flow #004
+  // Phase 1: Single fitView with proper guard
   React.useEffect(() => {
-    if (processedNodes?.length > 0 && reactFlowInstance) {
-      // Delay to ensure container has proper dimensions before fitView
-      const timeoutId = setTimeout(() => {
-        try {
-          reactFlowInstance.fitView({ 
-            padding: 0.2, 
-            includeHiddenNodes: false, 
-            duration: 400,
-            minZoom: 0.1,
-            maxZoom: 1.25
-          });
-          console.log('🎯 Auto-fitted view for', processedNodes.length, 'nodes after delay');
-        } catch (error) {
-          console.warn('Auto-fit failed:', error);
-        }
-      }, 50); // 50ms delay to allow container measurement
+    if (!reactFlowInstance || fittedRef.current || nodes.length === 0) return;
 
-      return () => clearTimeout(timeoutId);
-    }
-  }, [processedNodes?.length, reactFlowInstance]);
+    const timeoutId = setTimeout(() => {
+      try {
+        reactFlowInstance.fitView({ 
+          padding: 0.2, 
+          includeHiddenNodes: false, 
+          duration: 300,
+          minZoom: 0.1,
+          maxZoom: 1.25
+        });
+        fittedRef.current = true; // Prevent multiple fitView calls
+        console.log('🎯 Single fitView completed for', nodes.length, 'nodes');
+      } catch (error) {
+        console.warn('FitView failed:', error);
+      }
+    }, 60);
+
+    return () => clearTimeout(timeoutId);
+  }, [nodes.length, reactFlowInstance]);
 
   console.log('🎨 UnifiedCareerCanvas render:', {
     graphNodesCount: graphNodes.length,
@@ -697,6 +690,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     searchTerm
   });
 
+  // Phase 4: Default edge options for consistent styling
+  const defaultEdgeOptions = {
+    type: 'smoothstep',
+    markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
+    style: { strokeWidth: 2, opacity: 1 },
+  };
+
   return (
     <div className="w-full h-full min-h-[400px]">
       <ReactFlow
@@ -708,11 +708,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={nodeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
         connectionMode={ConnectionMode.Loose}
-        fitView
+        connectionLineStyle={{ strokeWidth: 2 }}
         attributionPosition="bottom-left"
         className="unified-career-canvas"
         style={{ width: '100%', height: '100%' }}
+        proOptions={{ hideAttribution: true }}
       >
         <Background />
         <Controls />
