@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { ReactFlowProvider } from '@xyflow/react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { buildCalmSubgraph } from '@/lib/calmSubgraph';
@@ -376,11 +377,13 @@ function SafeCanvas({ nodes, edges, onNodeClick }: { nodes: any[], edges: any[],
     }
     
     return (
-      <UnifiedCareerCanvas
-        nodes={nodes}
-        edges={edges}
-        onNodeClick={onNodeClick}
-      />
+      <ReactFlowProvider>
+        <UnifiedCareerCanvas
+          nodes={nodes}
+          edges={edges}
+          onNodeClick={onNodeClick}
+        />
+      </ReactFlowProvider>
     );
   } catch (error) {
     console.error('💥 SafeCanvas: Rendering error:', error);
