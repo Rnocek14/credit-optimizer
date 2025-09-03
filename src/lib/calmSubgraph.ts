@@ -91,15 +91,15 @@ const NODE_X_GAP = 80;
 const NODES_PER_ROW = 3;
 
 export function buildCalmSubgraph(
-  allNodes: CalmGraphNode[],
-  allEdges: CalmGraphEdge[],
+  allNodes: any[],
+  allEdges: any[],
   options: {
     activeGoalId?: string;
     focusNodeId?: string;
     expandedClusters?: Set<string>;
     config?: Partial<CalmConfig>;
   } = {}
-): CalmSubgraph {
+): { nodes: any[]; edges: any[] } {
   const startTime = performance.now();
   
   try {
@@ -114,180 +114,89 @@ export function buildCalmSubgraph(
       throw new Error('Edges must be an array');
     }
 
-    // Validate individual nodes
-    const validNodes = allNodes.filter((node, index) => {
-      if (!node || typeof node !== 'object') {
-        console.warn(`⚠️ Invalid node at index ${index}:`, node);
-        return false;
-      }
-      
-      if (!node.id || typeof node.id !== 'string') {
-        console.warn(`⚠️ Node missing/invalid id at index ${index}:`, node);
-        return false;
-      }
-      
-      if (!node.type || typeof node.type !== 'string') {
-        console.warn(`⚠️ Node missing/invalid type at index ${index}:`, node);
-        return false;
-      }
-      
-      if (!node.title || typeof node.title !== 'string') {
-        console.warn(`⚠️ Node missing/invalid title at index ${index}:`, node);
-        return false;
-      }
-      
-      return true;
-    });
-
-    // Validate individual edges
-    const validEdges = allEdges.filter((edge, index) => {
-      if (!edge || typeof edge !== 'object') {
-        console.warn(`⚠️ Invalid edge at index ${index}:`, edge);
-        return false;
-      }
-      
-      const source = edge.source || edge.from_id;
-      const target = edge.target || edge.to_id;
-      
-      if (!source || typeof source !== 'string') {
-        console.warn(`⚠️ Edge missing/invalid source at index ${index}:`, edge);
-        return false;
-      }
-      
-      if (!target || typeof target !== 'string') {
-        console.warn(`⚠️ Edge missing/invalid target at index ${index}:`, edge);
-        return false;
-      }
-      
-      // Ensure both source and target nodes exist
-      const sourceExists = validNodes.some(n => n.id === source);
-      const targetExists = validNodes.some(n => n.id === target);
-      
-      if (!sourceExists) {
-        console.warn(`⚠️ Edge references non-existent source node ${source}:`, edge);
-        return false;
-      }
-      
-      if (!targetExists) {
-        console.warn(`⚠️ Edge references non-existent target node ${target}:`, edge);
-        return false;
-      }
-      
-      return true;
-    });
-
-    console.log('🔨 Building calm subgraph with validated data:', {
-      originalNodes: allNodes.length,
-      validNodes: validNodes.length,
-      originalEdges: allEdges.length,
-      validEdges: validEdges.length
-    });
-
-    if (validNodes.length === 0) {
-      console.warn('⚠️ No valid nodes found, returning empty subgraph');
-      return createEmptySubgraph();
+    if (allNodes.length === 0) {
+      console.warn('⚠️ No nodes found, returning empty subgraph');
+      return { nodes: [], edges: [] };
     }
 
-    const config = { ...DEFAULT_CALM_CONFIG, ...options.config };
-    const { activeGoalId, focusNodeId, expandedClusters = new Set() } = options;
+    // Simple transformation for now - just return first 10 nodes with positions
+    const processedNodes = allNodes.slice(0, 10).map((node, index) => ({
+      id: String(node.id || `node-${index}`),
+      type: 'skill',
+      position: {
+        x: (index % 3) * 250 + 100,
+        y: Math.floor(index / 3) * 150 + 100
+      },
+      data: {
+        title: node.title || 'Untitled',
+        description: node.description || '',
+        category: node.category || 'skill',
+        level: node.level || 1,
+        isCompleted: Boolean(node.is_completed),
+        requiredXP: parseInt(node.required_xp) || 0,
+        unlockedAt: node.unlocked_at || null,
+        completedAt: node.completed_at || null,
+        tags: Array.isArray(node.tags) ? node.tags : [],
+        metadata: node.metadata || {}
+      },
+      style: { width: 180, height: 120 }
+    }));
 
-    console.log('🔨 Starting subgraph build with options:', {
-      activeGoalId,
-      focusNodeId,
-      expandedClusters: Array.from(expandedClusters)
-    });
+    // Process edges - handle both formats
+    const processedEdges = allEdges
+      .filter(edge => {
+        const source = edge.source || edge.from_id;
+        const target = edge.target || edge.to_id;
+        return source && target && 
+               processedNodes.some(n => n.id === String(source)) &&
+               processedNodes.some(n => n.id === String(target));
+      })
+      .slice(0, 15)
+      .map((edge, index) => ({
+        id: String(edge.id || `edge-${index}`),
+        source: String(edge.source || edge.from_id),
+        target: String(edge.target || edge.to_id),
+        type: 'default',
+        animated: false,
+        style: {
+          stroke: '#94a3b8',
+          strokeWidth: 2
+        }
+      }));
 
-    // Step 1: If focus mode, show only neighborhood
-    if (focusNodeId) {
-      return buildFocusSubgraph(validNodes, validEdges, focusNodeId, config);
-    }
-
-    // Step 2: Build goal path if active goal exists
-    let coreNodes = new Set<string>();
-    if (activeGoalId) {
-      const goalPath = findGoalPath(validNodes, validEdges, activeGoalId);
-      goalPath.forEach(nodeId => coreNodes.add(nodeId));
-      
-      // Add 1-hop neighbors to goal path
-      goalPath.forEach(nodeId => {
-        const neighbors = getNodeNeighbors(validNodes, validEdges, nodeId, 1);
-        neighbors.forEach(neighborId => coreNodes.add(neighborId));
-      });
-    }
-
-    // Step 3: If no goal, show representative nodes from each lane
-    if (coreNodes.size === 0) {
-      coreNodes = selectRepresentativeNodes(validNodes, config);
-    }
-
-    // Step 4: Build lane-based layout
-    const { visibleNodes, clusters } = buildLaneLayout(
-      validNodes, 
-      Array.from(coreNodes), 
-      expandedClusters,
-      config
-    );
-
-    // Step 5: Filter edges with strict prioritization - handle both data formats
-    const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-    const candidateEdges = validEdges.filter(edge => {
-      const source = edge.source || edge.from_id;
-      const target = edge.target || edge.to_id;
-      return visibleNodeIds.has(source) && visibleNodeIds.has(target);
-    });
-
-    // Prioritize edges: goal path > within-lane > cross-lane
-    const prioritizedEdges = candidateEdges.sort((a, b) => {
-      const aSource = visibleNodes.find(n => n.id === (a.source || a.from_id));
-      const aTarget = visibleNodes.find(n => n.id === (a.target || a.to_id));
-      const bSource = visibleNodes.find(n => n.id === (b.source || b.from_id));
-      const bTarget = visibleNodes.find(n => n.id === (b.target || b.to_id));
-      
-      if (!aSource || !aTarget || !bSource || !bTarget) return 0;
-      
-      const aWithinLane = mapNodeToLane(aSource) === mapNodeToLane(aTarget);
-      const bWithinLane = mapNodeToLane(bSource) === mapNodeToLane(bTarget);
-      
-      // Within-lane edges get priority
-      if (aWithinLane && !bWithinLane) return -1;
-      if (!aWithinLane && bWithinLane) return 1;
-      
-      return 0;
-    });
-
-    const visibleEdges = prioritizedEdges.slice(0, config.maxVisibleEdges);
-
-    const hiddenNodes = validNodes.filter(n => !visibleNodeIds.has(n.id));
-    const hiddenEdges = validEdges.filter(edge => 
-      !visibleEdges.some(ve => ve.id === edge.id)
-    );
-
-    const buildTime = performance.now() - startTime;
-
-    const result: CalmSubgraph = {
-      nodes: [...visibleNodes, ...clusters],
-      edges: visibleEdges,
-      clusters,
-      hiddenNodes,
-      hiddenEdges,
-      metadata: {
-        visibleNodes: visibleNodes.length,
-        visibleEdges: visibleEdges.length,
-        clusterCount: clusters.length,
-        totalHidden: hiddenNodes.length,
-        performance: { buildTime }
-      }
-    };
-
-    console.log('✅ Calm subgraph built successfully:', result.metadata);
-    return result;
+    console.log('✅ Calm subgraph built successfully');
+    return { nodes: processedNodes, edges: processedEdges };
     
   } catch (error) {
     console.error('❌ Critical error in buildCalmSubgraph:', error);
     console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     
-    // Return empty but valid subgraph to prevent cascading failures
-    return createEmptySubgraph();
+    // Return safe fallback with a single error node
+    return {
+      nodes: [{
+        id: 'error-fallback-main',
+        type: 'skill',
+        position: { x: 200, y: 150 },
+        data: {
+          title: 'Error Loading Skills',
+          description: `Failed to process skill tree data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          category: 'error',
+          level: 1,
+          isCompleted: false,
+          requiredXP: 0,
+          unlockedAt: null,
+          completedAt: null,
+          tags: ['error'],
+          metadata: { 
+            error: true, 
+            originalError: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          }
+        },
+        style: { width: 220, height: 140 }
+      }],
+      edges: []
+    };
   }
 }
 

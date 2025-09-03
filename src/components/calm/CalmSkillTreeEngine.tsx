@@ -1,520 +1,373 @@
-// Calm Skill Tree Engine: Progressive disclosure implementation
-import React, { useState, useMemo, useCallback } from 'react';
-import { ReactFlowProvider } from '@xyflow/react';
-import { buildCalmSubgraph, type CalmSubgraph, type CalmGraphNode, type CalmGraphEdge } from '@/lib/calmSubgraph';
-import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
-import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
-import { CalmErrorBoundary } from './CalmErrorBoundary';
-import { CalmSkillTreeControls } from './CalmSkillTreeControls';
-import { OrphanParkingLot } from './OrphanParkingLot';
-import { LaneBackground, CALM_LANES } from './LaneBackground';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
+import { validateCalmModeData } from '@/lib/calmModeValidation';
+import { buildCalmSubgraph } from '@/lib/calmSubgraph';
+import { CalmErrorBoundary } from './CalmErrorBoundary';
 
-export interface CalmSkillTreeEngineProps {
-  nodes: CalmGraphNode[];
-  edges: CalmGraphEdge[];
-  loading: boolean;
-  error: string | null;
-  onNodeClick?: (node: any) => void;
-  onReload?: () => void;
-  criScore?: any;
-  userProgress?: any[];
-  getReadinessLevel?: (score: number) => { level: string; color: string };
-}
+export function CalmSkillTreeEngine() {
+  console.log('🌟 CalmSkillTreeEngine: Starting render');
 
-export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
-  nodes: rawNodes,
-  edges: rawEdges,
-  loading,
-  error,
-  onNodeClick,
-  onReload,
-  criScore,
-  userProgress,
-  getReadinessLevel
-}) => {
-  // Add early debug logging with comprehensive data validation
-  console.log('🧘 CalmSkillTreeEngine render start:', {
-    rawNodesCount: rawNodes?.length,
-    rawEdgesCount: rawEdges?.length,
-    rawNodesType: typeof rawNodes,
-    rawEdgesType: typeof rawEdges,
-    rawNodesValid: Array.isArray(rawNodes),
-    rawEdgesValid: Array.isArray(rawEdges),
-    firstNode: rawNodes?.[0],
-    firstEdge: rawEdges?.[0],
-    loading,
-    error: !!error,
-    timestamp: Date.now()
+  // Fetch data with comprehensive error handling
+  const { data: nodes = [], isLoading: nodesLoading, error: nodesError } = useQuery({
+    queryKey: ['career-graph-nodes'],
+    queryFn: async () => {
+      try {
+        console.log('🌟 Calm Mode: Fetching nodes...');
+        const { data, error } = await supabase
+          .from('career_graph_nodes')
+          .select('*')
+          .eq('active', true);
+        
+        if (error) {
+          console.error('❌ Calm Mode: Error fetching nodes:', error);
+          throw error;
+        }
+        console.log('✅ Calm Mode: Fetched nodes:', data?.length || 0, 'items');
+        return data || [];
+      } catch (error) {
+        console.error('💥 Calm Mode: Critical error fetching nodes:', error);
+        throw error;
+      }
+    },
   });
 
-  // Early validation and safe bailout
-  if (!Array.isArray(rawNodes) || !Array.isArray(rawEdges)) {
-    console.error('❌ Invalid data provided to CalmSkillTreeEngine:', {
-      nodes: typeof rawNodes,
-      edges: typeof rawEdges
-    });
+  const { data: edges = [], isLoading: edgesLoading, error: edgesError } = useQuery({
+    queryKey: ['career-graph-edges'],
+    queryFn: async () => {
+      try {
+        console.log('🌟 Calm Mode: Fetching edges...');
+        const { data, error } = await supabase
+          .from('career_graph_edges')
+          .select('*')
+          .eq('active', true);
+        
+        if (error) {
+          console.error('❌ Calm Mode: Error fetching edges:', error);
+          throw error;
+        }
+        console.log('✅ Calm Mode: Fetched edges:', data?.length || 0, 'items');
+        return data || [];
+      } catch (error) {
+        console.error('💥 Calm Mode: Critical error fetching edges:', error);
+        throw error;
+      }
+    },
+  });
+
+  // Process data with comprehensive error handling
+  const { processedNodes, processedEdges, validationResult, processingError } = useMemo(() => {
+    console.log('🧠 Calm Mode: Processing data...');
     
-    return (
-      <div className="flex items-center justify-center h-96 text-destructive">
-        <div className="text-center space-y-4">
-          <p>Invalid data format provided to calm mode</p>
-          <Button onClick={() => window.location.reload()}>
-            Reload Page
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  // Calm mode state with strict defaults
-  const [visibleDepth, setVisibleDepth] = useState(1);
-  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
-  const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
-  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
-  const [showCrossLaneEdges, setShowCrossLaneEdges] = useState(false);
-  const [showOrphanDrawer, setShowOrphanDrawer] = useState(false);
-
-  // Filters
-  const [hideCompleted, setHideCompleted] = useState(false);
-  const [showOnlyMyTrack, setShowOnlyMyTrack] = useState(false);
-  const [showNext4Weeks, setShowNext4Weeks] = useState(false);
-
-  // Build calm subgraph with comprehensive error handling
-  const calmSubgraph: CalmSubgraph = useMemo(() => {
     try {
-      if (!Array.isArray(rawNodes) || !Array.isArray(rawEdges)) {
-        console.warn('⚠️ Invalid data types provided to calm engine');
+      // Early return for loading state
+      if (!nodes || !edges) {
+        console.log('ℹ️ Calm Mode: Data not yet loaded');
         return {
-          nodes: [],
-          edges: [],
-          clusters: [],
-          hiddenNodes: [],
-          hiddenEdges: [],
-          metadata: {
-            visibleNodes: 0,
-            visibleEdges: 0,
-            clusterCount: 0,
-            totalHidden: 0,
-            performance: { buildTime: 0 }
-          }
+          processedNodes: [],
+          processedEdges: [],
+          validationResult: { isValid: true, errors: [], warnings: ['Data loading'] },
+          processingError: null
         };
       }
 
-      if (rawNodes.length === 0) {
-        console.warn('⚠️ Empty nodes array provided to calm engine');
+      // Validate inputs are arrays
+      if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+        const error = 'Invalid data format: nodes and edges must be arrays';
+        console.error('❌ Calm Mode:', error);
         return {
-          nodes: [],
-          edges: [],
-          clusters: [],
-          hiddenNodes: [],
-          hiddenEdges: [],
-          metadata: {
-            visibleNodes: 0,
-            visibleEdges: 0,
-            clusterCount: 0,
-            totalHidden: 0,
-            performance: { buildTime: 0 }
-          }
+          processedNodes: [],
+          processedEdges: [],
+          validationResult: { isValid: false, errors: [error], warnings: [] },
+          processingError: new Error(error)
         };
       }
 
-      // Validate node data structure
-      const validNodes = rawNodes.filter(node => 
-        node && typeof node === 'object' && 
-        node.id && node.title && node.type
-      );
-
-      if (validNodes.length !== rawNodes.length) {
-        console.warn(`🔧 Filtered ${rawNodes.length - validNodes.length} invalid nodes`);
+      // Early return for empty data - create a placeholder
+      if (nodes.length === 0 && edges.length === 0) {
+        console.log('ℹ️ Calm Mode: No data available, creating placeholder');
+        return {
+          processedNodes: [{
+            id: 'placeholder-node',
+            type: 'skill',
+            position: { x: 300, y: 200 },
+            data: {
+              title: 'No Skills Available',
+              description: 'No skill data found in the database',
+              category: 'placeholder',
+              level: 1,
+              isCompleted: false,
+              requiredXP: 0,
+              unlockedAt: null,
+              completedAt: null,
+              tags: ['placeholder'],
+              metadata: { placeholder: true }
+            },
+            style: { width: 200, height: 120 }
+          }],
+          processedEdges: [],
+          validationResult: { isValid: true, errors: [], warnings: ['No data available - showing placeholder'] },
+          processingError: null
+        };
       }
 
-      // Validate edge data structure - handle both data formats
-      const validEdges = rawEdges.filter(edge => {
-        if (!edge || typeof edge !== 'object') return false;
-        
-        const source = edge.source || edge.from_id;
-        const target = edge.target || edge.to_id;
-        
-        return source && target &&
-          validNodes.some(n => n.id === source) &&
-          validNodes.some(n => n.id === target);
-      });
+      // Validate data format
+      const validation = validateCalmModeData(nodes, edges);
+      console.log('🔍 Calm Mode: Validation result:', validation);
 
-      if (validEdges.length !== rawEdges.length) {
-        console.warn(`🔧 Filtered ${rawEdges.length - validEdges.length} invalid edges`);
+      if (!validation.isValid) {
+        console.error('❌ Calm Mode: Data validation failed:', validation.errors);
+        return {
+          processedNodes: [],
+          processedEdges: [],
+          validationResult: validation,
+          processingError: new Error(`Validation failed: ${validation.errors.join(', ')}`)
+        };
       }
 
-      console.log('🔨 Building calm subgraph with validated data:', {
-        validNodes: validNodes.length,
-        validEdges: validEdges.length,
-        activeGoalId,
-        focusNodeId,
-        expandedClusters: Array.from(expandedClusters)
-      });
+      // Build the subgraph with error handling
+      console.log('🔄 Calm Mode: Building subgraph...');
+      const result = buildCalmSubgraph(nodes, edges);
+      
+      // Validate the result
+      if (!result || !Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
+        const error = 'Invalid subgraph result';
+        console.error('❌ Calm Mode:', error);
+        return {
+          processedNodes: [],
+          processedEdges: [],
+          validationResult: { isValid: false, errors: [error], warnings: [] },
+          processingError: new Error(error)
+        };
+      }
 
-      return buildCalmSubgraph(validNodes, validEdges, {
-        activeGoalId,
-        focusNodeId,
-        expandedClusters,
-        config: {
-          maxVisibleNodes: 40,
-          maxVisibleEdges: 60,
-          defaultDepth: visibleDepth,
-          enableClustering: true,
-          laneOrdering: ['foundations', 'skills', 'projects', 'credentials', 'jobs']
-        }
-      });
-    } catch (error) {
-      console.error('❌ Failed to build calm subgraph:', error);
+      console.log('✅ Calm Mode: Subgraph built successfully');
+      console.log('📊 Calm Mode: Processed', result.nodes.length, 'nodes and', result.edges.length, 'edges');
       
-      // Show user-friendly error message
-      toast.error('Failed to build skill tree view', {
-        description: 'Using safe fallback layout. Check console for details.'
-      });
-      
-      // Return safe fallback
       return {
-        nodes: [],
-        edges: [],
-        clusters: [],
-        hiddenNodes: [],
-        hiddenEdges: [],
-        metadata: {
-          visibleNodes: 0,
-          visibleEdges: 0,
-          clusterCount: 0,
-          totalHidden: 0,
-          performance: { buildTime: 0 }
-        }
+        processedNodes: result.nodes,
+        processedEdges: result.edges,
+        validationResult: validation,
+        processingError: null
+      };
+      
+    } catch (error) {
+      console.error('💥 Calm Mode: Critical error during data processing:', error);
+      return {
+        processedNodes: [],
+        processedEdges: [],
+        validationResult: { 
+          isValid: false, 
+          errors: [`Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`], 
+          warnings: [] 
+        },
+        processingError: error instanceof Error ? error : new Error('Unknown processing error')
       };
     }
-  }, [rawNodes, rawEdges, activeGoalId, focusNodeId, expandedClusters, visibleDepth]);
+  }, [nodes, edges]);
 
-  // Process edges based on cross-lane visibility with error handling
-  const processedEdges = useMemo(() => {
-    try {
-      if (!calmSubgraph.edges || !Array.isArray(calmSubgraph.edges)) {
-        console.warn('⚠️ Invalid edges in calm subgraph');
-        return [];
-      }
+  const isLoading = nodesLoading || edgesLoading;
+  const hasError = nodesError || edgesError || processingError;
 
-      if (!showCrossLaneEdges) {
-        // Hide edges that cross lanes
-        return calmSubgraph.edges.filter(edge => {
-          try {
-            const source = edge.source || edge.from_id;
-            const target = edge.target || edge.to_id;
-            const sourceNode = calmSubgraph.nodes.find(n => n.id === source);
-            const targetNode = calmSubgraph.nodes.find(n => n.id === target);
-            
-            if (!sourceNode || !targetNode) return false;
-            
-            // Map nodes to lanes (simplified)
-            const getNodeLane = (node: any) => {
-              switch (node.type) {
-                case 'skill': return node.category?.toLowerCase() === 'foundation' ? 'foundations' : 'skills';
-                case 'course': return 'skills';
-                case 'project': return 'projects';
-                case 'certification': return 'credentials';
-                case 'job': return 'jobs';
-                default: return 'skills';
-              }
-            };
-            
-            return getNodeLane(sourceNode) === getNodeLane(targetNode);
-          } catch (error) {
-            console.warn('⚠️ Error processing edge:', edge, error);
-            return false;
-          }
-        });
-      }
-      
-      return calmSubgraph.edges;
-    } catch (error) {
-      console.error('❌ Failed to process edges:', error);
-      return [];
-    }
-  }, [calmSubgraph.edges, showCrossLaneEdges, calmSubgraph.nodes]);
-
-  // Enhanced node click handler
-  const handleNodeClick = useCallback((node: any) => {
-    console.log('🎯 Calm mode node clicked:', node);
-    
-    // Handle cluster expansion
-    if (node.type === 'cluster') {
-      const clusterId = node.id;
-      const newExpanded = new Set(expandedClusters);
-      
-      if (newExpanded.has(clusterId)) {
-        newExpanded.delete(clusterId);
-      } else {
-        newExpanded.add(clusterId);
-      }
-      
-      setExpandedClusters(newExpanded);
-      toast.success(`${newExpanded.has(clusterId) ? 'Expanded' : 'Collapsed'} ${node.data?.title}`);
-      return;
-    }
-
-    // Enter focus mode on regular node click
-    if (!focusNodeId) {
-      setFocusNodeId(node.id);
-      toast.success('Focus mode activated', {
-        description: 'Showing neighbors only. Click "Exit Focus" to see all.'
-      });
-    }
-
-    // Call parent handler
-    if (onNodeClick) {
-      onNodeClick(node);
-    }
-  }, [expandedClusters, focusNodeId, onNodeClick]);
-
-  // Control handlers
-  const handleDepthChange = useCallback((depth: number) => {
-    setVisibleDepth(depth);
-    console.log('🔧 Depth changed to:', depth);
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    setFocusNodeId(null);
-    setVisibleDepth(1);
-    setExpandedClusters(new Set());
-    setActiveGoalId(null);
-    setShowCrossLaneEdges(false);
-    toast.success('View reset');
-  }, []);
-
-  const handleExitFocus = useCallback(() => {
-    setFocusNodeId(null);
-    toast.success('Exited focus mode');
-  }, []);
-
-  const handleExpandNeighbors = useCallback(() => {
-    if (focusNodeId) {
-      // This would expand 2-hop neighbors in the subgraph
-      toast.success('Neighbors expanded');
-    }
-  }, [focusNodeId]);
-
-  const handleToggleFilter = useCallback((filter: string, enabled: boolean) => {
-    switch (filter) {
-      case 'hideCompleted':
-        setHideCompleted(enabled);
-        break;
-      case 'showOnlyMyTrack':
-        setShowOnlyMyTrack(enabled);
-        break;
-      case 'showNext4Weeks':
-        setShowNext4Weeks(enabled);
-        break;
-    }
-    console.log('🔧 Filter toggled:', filter, enabled);
-  }, []);
-
-  const handleSearch = useCallback((query: string) => {
-    // Find matching node and focus on it
-    const matchingNode = rawNodes.find(node => 
-      node.title.toLowerCase().includes(query.toLowerCase())
+  // Loading state
+  if (isLoading) {
+    console.log('⏳ Calm Mode: Showing loading state');
+    return (
+      <Card className="p-8 text-center">
+        <div className="space-y-4">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-muted-foreground">Loading calm skill tree...</p>
+        </div>
+      </Card>
     );
+  }
+
+  // Error state with recovery options
+  if (hasError) {
+    const errorMessage = nodesError?.message || edgesError?.message || processingError?.message || 'Unknown error occurred';
+    console.error('🚨 Calm Mode: Displaying error state:', errorMessage);
     
-    if (matchingNode) {
-      setFocusNodeId(matchingNode.id);
-      toast.success(`Found: ${matchingNode.title}`);
-    } else {
-      toast.error(`No results for: ${query}`);
-    }
-  }, [rawNodes]);
-
-  const handleMoveFromOrphans = useCallback((nodeId: string) => {
-    // This would move orphan node to main canvas
-    toast.success('Node moved to canvas');
-  }, []);
-
-  const handleMarkAsReference = useCallback((nodeId: string) => {
-    // This would mark orphan as reference-only
-    toast.success('Marked as reference');
-  }, []);
-
-  // Log calm mode state
-  React.useEffect(() => {
-    console.log('🔇 Calm mode state:', {
-      visibleDepth,
-      focusNodeId,
-      expandedClusters: Array.from(expandedClusters),
-      showCrossLaneEdges,
-      metadata: calmSubgraph.metadata
-    });
-  }, [visibleDepth, focusNodeId, expandedClusters, showCrossLaneEdges, calmSubgraph.metadata]);
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-96">Loading calm view...</div>;
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center h-96 text-destructive">Error: {error}</div>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Calm Controls with error boundary */}
-      <ErrorBoundaryWrapper 
-        resetKeys={[rawNodes?.length]}
-        onError={(error) => console.error('🚨 Calm controls error:', error)}
-        fallback={
-          <div className="p-4 text-center text-muted-foreground">
-            Controls temporarily unavailable
+    return (
+      <Card className="border-destructive/50 bg-destructive/10 p-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <h3 className="font-semibold">Failed to Load Calm Mode</h3>
           </div>
-        }
-      >
-        <CalmSkillTreeControls
-          visibleDepth={visibleDepth}
-          focusNodeId={focusNodeId}
-          showCrossLaneEdges={showCrossLaneEdges}
-          expandedClusters={expandedClusters}
-          hideCompleted={hideCompleted}
-          showOnlyMyTrack={showOnlyMyTrack}
-          showNext4Weeks={showNext4Weeks}
-          onDepthChange={handleDepthChange}
-          onResetView={handleResetView}
-          onExitFocus={handleExitFocus}
-          onExpandNeighbors={handleExpandNeighbors}
-          onToggleFilter={handleToggleFilter}
-          onSearch={handleSearch}
-          onToggleOrphanDrawer={() => setShowOrphanDrawer(!showOrphanDrawer)}
-        />
-      </ErrorBoundaryWrapper>
-
-      {/* Main Canvas with comprehensive error handling */}
-      <div className="relative">
-        <div className="min-h-[700px] h-[700px] relative bg-background rounded-lg border overflow-hidden">
-          {/* Lane Backgrounds with error boundary */}
-          <ErrorBoundaryWrapper 
-            resetKeys={[]}
-            onError={(error) => console.error('🚨 Lane background error:', error)}
-            fallback={<div className="absolute inset-0 bg-background" />}
-          >
-            <LaneBackground lanes={CALM_LANES} height={700} />
-          </ErrorBoundaryWrapper>
-          
-          {/* React Flow Canvas with multiple fallback levels */}
-          <div className="relative z-10 h-full">
-            <CalmErrorBoundary 
-              fallbackMode="safe"
-              onFallbackToNormal={() => {
+          <p className="text-sm text-muted-foreground">
+            {errorMessage}
+          </p>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                console.log('🔄 Calm Mode: User clicked retry');
+                window.location.reload();
+              }} 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+            <Button
+              onClick={() => {
+                console.log('🔄 Calm Mode: User switching to normal view');
                 const url = new URL(window.location.href);
                 url.searchParams.delete('st_calm');
                 window.history.replaceState({}, '', url.toString());
                 window.location.reload();
               }}
-              onReload={() => window.location.reload()}
+              variant="secondary"
+              size="sm"
             >
-              <ErrorBoundaryWrapper 
-                resetKeys={[calmSubgraph.nodes.length, processedEdges.length]}
-                onError={(error) => {
-                  console.error('🚨 Canvas render error:', error);
-                  toast.error('Canvas rendering failed', {
-                    description: 'Switching to safe mode.'
-                  });
-                }}
-                fallback={
-                  <div className="p-8 text-center space-y-4">
-                    <h3 className="text-lg font-semibold text-destructive">Canvas Render Error</h3>
-                    <p className="text-muted-foreground">
-                      The skill tree canvas failed to render properly. 
-                      This usually indicates data format issues or layout conflicts.
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <Button 
-                        onClick={() => window.location.reload()}
-                        variant="default"
-                        size="sm"
-                      >
-                        Reload Page
-                      </Button>
-                      <Button 
-                        onClick={() => {
-                          const url = new URL(window.location.href);
-                          url.searchParams.delete('st_calm');
-                          window.history.replaceState({}, '', url.toString());
-                          window.location.reload();
-                        }}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Exit Calm Mode
-                      </Button>
-                    </div>
-                    
-                    {/* Debug info in development */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <details className="text-left text-xs bg-muted p-3 rounded border mt-4">
-                        <summary className="cursor-pointer font-medium mb-2">
-                          Debug Information
-                        </summary>
-                        <div className="space-y-1 font-mono">
-                          <div>Nodes: {calmSubgraph.nodes.length}</div>
-                          <div>Edges: {processedEdges.length}</div>
-                          <div>Raw Nodes: {rawNodes?.length || 'N/A'}</div>
-                          <div>Raw Edges: {rawEdges?.length || 'N/A'}</div>
-                          <div>Build Time: {calmSubgraph.metadata.performance.buildTime.toFixed(1)}ms</div>
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                }
-              >
-                <ReactFlowProvider>
-                  <UnifiedCareerCanvas
-                    nodes={calmSubgraph.nodes as any}
-                    edges={processedEdges as any}
-                    onNodeClick={handleNodeClick}
-                    layoutAlgorithm="semantic-hierarchy"
-                    showPivotPaths={false}
-                    focusMode={true}
-                  />
-                </ReactFlowProvider>
-              </ErrorBoundaryWrapper>
-            </CalmErrorBoundary>
+              Switch to Normal View
+            </Button>
           </div>
+        </div>
+      </Card>
+    );
+  }
 
-          {/* Debug Info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="absolute top-2 right-2 text-xs bg-black/75 text-white p-2 rounded pointer-events-none font-mono">
-              Calm Mode | Nodes: {calmSubgraph.metadata.visibleNodes}/{rawNodes.length} | 
-              Edges: {processedEdges.length} | Clusters: {calmSubgraph.metadata.clusterCount} |
-              Focus: {focusNodeId ? 'ON' : 'OFF'} | Build: {calmSubgraph.metadata.performance.buildTime.toFixed(1)}ms
-            </div>
-          )}
+  // Validation error state
+  if (!validationResult.isValid) {
+    console.error('🚨 Calm Mode: Displaying validation error state');
+    
+    return (
+      <Card className="border-destructive/50 bg-destructive/10 p-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <h3 className="font-semibold">Data Validation Failed</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            {validationResult.errors.map((error, i) => (
+              <p key={i} className="text-destructive">{error}</p>
+            ))}
+            {validationResult.warnings.map((warning, i) => (
+              <p key={i} className="text-amber-600">{warning}</p>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => {
+                console.log('🔄 Calm Mode: User clicked retry after validation error');
+                window.location.reload();
+              }} 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+            <Button
+              onClick={() => {
+                console.log('🔄 Calm Mode: User switching to normal view after validation error');
+                const url = new URL(window.location.href);
+                url.searchParams.delete('st_calm');
+                window.history.replaceState({}, '', url.toString());
+                window.location.reload();
+              }}
+              variant="secondary"
+              size="sm"
+            >
+              Switch to Normal View
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Main render with comprehensive error boundaries
+  console.log('🎨 Calm Mode: Rendering main UI with', processedNodes.length, 'nodes and', processedEdges.length, 'edges');
+  
+  return (
+    <CalmErrorBoundary 
+      fallbackMode="safe"
+      onFallbackToNormal={() => {
+        console.log('🔄 Calm Mode: Error boundary triggered fallback to normal');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('st_calm');
+        window.history.replaceState({}, '', url.toString());
+        window.location.reload();
+      }}
+    >
+      <div className="space-y-6">
+        {/* Main Canvas with comprehensive error isolation */}
+        <div className="min-h-[600px] rounded-lg border bg-background">
+          <CalmErrorBoundary 
+            fallbackMode="safe"
+            onFallbackToNormal={() => {
+              console.log('🔄 Calm Mode: Canvas error boundary triggered fallback');
+              const url = new URL(window.location.href);
+              url.searchParams.delete('st_calm');
+              window.history.replaceState({}, '', url.toString());
+              window.location.reload();
+            }}
+          >
+            <SafeCanvas 
+              nodes={processedNodes}
+              edges={processedEdges}
+            />
+          </CalmErrorBoundary>
         </div>
       </div>
-
-      {/* Orphan Parking Lot with error boundary */}
-      <ErrorBoundaryWrapper 
-        resetKeys={[calmSubgraph.hiddenNodes.length]}
-        onError={(error) => console.error('🚨 Orphan parking lot error:', error)}
-        fallback={
-          <div className="p-4 text-center text-muted-foreground">
-            Orphan nodes list temporarily unavailable
-          </div>
-        }
-      >
-        <OrphanParkingLot
-          orphanNodes={calmSubgraph.hiddenNodes.filter(n => 
-            // Only show truly orphaned nodes (no connections) - handle both data formats
-            !rawEdges.some(e => {
-              const source = e.source || e.from_id;
-              const target = e.target || e.to_id;
-              return source === n.id || target === n.id;
-            })
-          )}
-          isExpanded={showOrphanDrawer}
-          onToggle={() => setShowOrphanDrawer(!showOrphanDrawer)}
-          onMoveToCanvas={handleMoveFromOrphans}
-          onMarkAsReference={handleMarkAsReference}
-        />
-      </ErrorBoundaryWrapper>
-    </div>
+    </CalmErrorBoundary>
   );
-};
+}
+
+// Safe canvas wrapper with additional error isolation
+function SafeCanvas({ nodes, edges }: { nodes: any[], edges: any[] }) {
+  try {
+    console.log('🎨 SafeCanvas: Rendering with', nodes.length, 'nodes and', edges.length, 'edges');
+    
+    // Additional safety checks
+    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+      console.error('🚨 SafeCanvas: Invalid data types');
+      throw new Error('Invalid node or edge data format');
+    }
+    
+    return (
+      <UnifiedCareerCanvas
+        nodes={nodes}
+        edges={edges}
+        className="h-[600px]"
+      />
+    );
+  } catch (error) {
+    console.error('💥 SafeCanvas: Rendering error:', error);
+    
+    return (
+      <div className="flex items-center justify-center h-[600px] text-muted-foreground">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
+          <div>
+            <h3 className="font-semibold mb-2">Canvas Rendering Failed</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              The skill tree canvas could not be rendered properly.
+            </p>
+            <Button
+              onClick={() => {
+                console.log('🔄 SafeCanvas: User switching to normal view');
+                const url = new URL(window.location.href);
+                url.searchParams.delete('st_calm');
+                window.history.replaceState({}, '', url.toString());
+                window.location.reload();
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Switch to Normal View
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
