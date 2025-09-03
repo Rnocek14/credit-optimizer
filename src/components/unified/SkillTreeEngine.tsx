@@ -61,10 +61,16 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
 }) => {
   const { activeTrackId } = useActiveTrackStore();
 
-  // Lite diagnostic: Log what engine receives
+  // 🔬 ENHANCED ENGINE LOGS
   console.log('[engine] received', {
-    nodes: Array.isArray(rawNodes) ? rawNodes.length : 'not-array',
-    edges: Array.isArray(rawEdges) ? rawEdges.length : 'not-array',
+    mode,
+    nodesLen: Array.isArray(rawNodes) ? rawNodes.length : 'not-array',
+    edgesLen: Array.isArray(rawEdges) ? rawEdges.length : 'not-array',
+    loading,
+    error: !!error,
+    showStats,
+    showRightRail,
+    activeTrackId
   });
 
   // Get CRI-based node styling helper for progress mode

@@ -166,17 +166,46 @@ export const SkillTreeProgress: React.FC = () => {
     }
   };
 
-  // Lite diagnostic: Log raw data going into engine (matches Build approach)
-  useEffect(() => {
-    if (graphNodes && graphEdges) {
-      console.log('[progress → engine] prepass', {
-        nodes: Array.isArray(graphNodes) ? graphNodes.length : 'not-array',
-        edges: Array.isArray(graphEdges) ? graphEdges.length : 'not-array',
-        sampleNode: graphNodes?.[0],
-        sampleEdge: graphEdges?.[0],
-      });
-    }
-  }, [graphNodes, graphEdges]);
+  // 🔬 SURGICAL DIAGNOSTIC FLAGS
+  const __forceCanary = !!(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('st_canary'));
+  const __slimMode = !!(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('st_slim'));
+
+  // 🐣 CANARY NODES (hard-coded test data)
+  const canaryNodes = [{
+    id: 'canary-progress',
+    type: 'skill',
+    position: { x: 200, y: 200 },
+    title: 'Progress Canary',
+    data: { title: 'Progress Canary', 'data-testid': 'skill-node' }
+  }];
+
+  // 📊 DATA GATING CHECKS
+  console.log('[progress] query enable gates', {
+    graphLoading,
+    criLoading,
+    userId: user?.id,
+    hasUser: !!user?.id,
+    graphError: !!graphError
+  });
+
+  // 🔄 RAW PIPELINE LOGS (right before engine)
+  const nodesForEngine = __forceCanary ? canaryNodes : (graphNodes || []);
+  const edgesForEngine = __forceCanary ? [] : (graphEdges || []);
+
+  console.log('[progress→engine] raw', {
+    canaryMode: __forceCanary,
+    slimMode: __slimMode,
+    nodesType: Array.isArray(graphNodes),
+    nodesLen: graphNodes?.length ?? null,
+    edgesType: Array.isArray(graphEdges),
+    edgesLen: graphEdges?.length ?? null,
+    finalNodesLen: nodesForEngine.length,
+    finalEdgesLen: edgesForEngine.length
+  });
+
+  if (__forceCanary) {
+    console.info('[progress] CANARY MODE', { active: true });
+  }
   const statsComponent = (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -227,23 +256,25 @@ export const SkillTreeProgress: React.FC = () => {
   );
 
   return (
-    <SkillTreeEngine
-      nodes={graphNodes || []}
-      edges={graphEdges || []}
-      loading={isLoading}
-      error={graphError}
-      onNodeClick={handleNodeClick}
-      onReload={reload}
-      mode="progress"
-      showStats={true}
-      showRightRail={true}
-      layoutAlgorithm={'semantic-hierarchy' as const}
-      statsComponent={statsComponent}
-      rightRailComponent={<AchievementsRail />}
-      // Pass CRI data as enrichment props instead of node mutation
-      criScore={criScore}
-      userProgress={userProgress}
-      getReadinessLevel={getReadinessLevel}
-    />
+    <div className="h-[800px] min-h-[600px] w-full">
+      <SkillTreeEngine
+        nodes={nodesForEngine}
+        edges={edgesForEngine}
+        loading={isLoading}
+        error={graphError}
+        onNodeClick={handleNodeClick}
+        onReload={reload}
+        mode="progress"
+        showStats={!__slimMode}
+        showRightRail={!__slimMode}
+        layoutAlgorithm={'semantic-hierarchy' as const}
+        statsComponent={__slimMode ? undefined : statsComponent}
+        rightRailComponent={__slimMode ? undefined : <AchievementsRail />}
+        // Pass CRI data as enrichment props instead of node mutation
+        criScore={criScore}
+        userProgress={userProgress}
+        getReadinessLevel={getReadinessLevel}
+      />
+    </div>
   );
 };
