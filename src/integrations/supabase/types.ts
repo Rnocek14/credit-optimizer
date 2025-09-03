@@ -4380,6 +4380,153 @@ export type Database = {
         }
         Relationships: []
       }
+      life_path_edges: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          credit_transfer_rate: number | null
+          data_source: string | null
+          edge_type: string
+          id: string
+          metadata: Json | null
+          source_id: string
+          target_id: string
+          updated_at: string | null
+          validated: boolean | null
+          weight_cost: number | null
+          weight_credit_loss: number | null
+          weight_difficulty: number | null
+          weight_roi: number | null
+          weight_time: number | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          credit_transfer_rate?: number | null
+          data_source?: string | null
+          edge_type: string
+          id?: string
+          metadata?: Json | null
+          source_id: string
+          target_id: string
+          updated_at?: string | null
+          validated?: boolean | null
+          weight_cost?: number | null
+          weight_credit_loss?: number | null
+          weight_difficulty?: number | null
+          weight_roi?: number | null
+          weight_time?: number | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          credit_transfer_rate?: number | null
+          data_source?: string | null
+          edge_type?: string
+          id?: string
+          metadata?: Json | null
+          source_id?: string
+          target_id?: string
+          updated_at?: string | null
+          validated?: boolean | null
+          weight_cost?: number | null
+          weight_credit_loss?: number | null
+          weight_difficulty?: number | null
+          weight_roi?: number | null
+          weight_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "life_path_edges_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "life_path_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "life_path_edges_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "life_path_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      life_path_nodes: {
+        Row: {
+          ace_recommended: boolean | null
+          active: boolean | null
+          cost: number | null
+          created_at: string | null
+          credits: number | null
+          description: string | null
+          difficulty: number | null
+          estimated_hours: number | null
+          id: string
+          institution: string | null
+          metadata: Json | null
+          modality: string | null
+          node_type: string
+          position_x: number | null
+          position_y: number | null
+          prerequisite_ids: string[] | null
+          provider: string | null
+          skill_outcomes: string[] | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          validated: boolean | null
+        }
+        Insert: {
+          ace_recommended?: boolean | null
+          active?: boolean | null
+          cost?: number | null
+          created_at?: string | null
+          credits?: number | null
+          description?: string | null
+          difficulty?: number | null
+          estimated_hours?: number | null
+          id?: string
+          institution?: string | null
+          metadata?: Json | null
+          modality?: string | null
+          node_type: string
+          position_x?: number | null
+          position_y?: number | null
+          prerequisite_ids?: string[] | null
+          provider?: string | null
+          skill_outcomes?: string[] | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          validated?: boolean | null
+        }
+        Update: {
+          ace_recommended?: boolean | null
+          active?: boolean | null
+          cost?: number | null
+          created_at?: string | null
+          credits?: number | null
+          description?: string | null
+          difficulty?: number | null
+          estimated_hours?: number | null
+          id?: string
+          institution?: string | null
+          metadata?: Json | null
+          modality?: string | null
+          node_type?: string
+          position_x?: number | null
+          position_y?: number | null
+          prerequisite_ids?: string[] | null
+          provider?: string | null
+          skill_outcomes?: string[] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          validated?: boolean | null
+        }
+        Relationships: []
+      }
       location_career_metrics: {
         Row: {
           career_node_id: string | null
