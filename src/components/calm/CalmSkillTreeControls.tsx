@@ -1,43 +1,25 @@
-// Calm Skill Tree Controls: Progressive Disclosure UI
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+// Calm Skill Tree Controls: Interactive controls for progressive disclosure
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
-  Eye, 
-  EyeOff, 
-  RotateCcw, 
-  Focus, 
-  Expand, 
-  Filter,
-  Search,
-  ChevronDown,
-  ChevronUp
+  Eye, EyeOff, Search, RotateCcw, Focus, Expand, 
+  Filter, Layers, Target, Archive
 } from 'lucide-react';
 
 export interface CalmControlsProps {
-  // Current state
   visibleDepth: number;
   focusNodeId: string | null;
   showCrossLaneEdges: boolean;
   expandedClusters: Set<string>;
-  
-  // Filters
   hideCompleted: boolean;
   showOnlyMyTrack: boolean;
   showNext4Weeks: boolean;
-  
-  // Metadata
-  visibleNodes: number;
-  totalNodes: number;
-  visibleEdges: number;
-  clusterCount: number;
-  
-  // Actions
   onDepthChange: (depth: number) => void;
-  onToggleCrossLaneEdges: (show: boolean) => void;
   onResetView: () => void;
   onExitFocus: () => void;
   onExpandNeighbors: () => void;
@@ -54,12 +36,7 @@ export const CalmSkillTreeControls: React.FC<CalmControlsProps> = ({
   hideCompleted,
   showOnlyMyTrack,
   showNext4Weeks,
-  visibleNodes,
-  totalNodes,
-  visibleEdges,
-  clusterCount,
   onDepthChange,
-  onToggleCrossLaneEdges,
   onResetView,
   onExitFocus,
   onExpandNeighbors,
@@ -67,184 +44,133 @@ export const CalmSkillTreeControls: React.FC<CalmControlsProps> = ({
   onSearch,
   onToggleOrphanDrawer
 }) => {
-  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(searchQuery);
   };
 
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Enhanced Visibility Status */}
-          <div className="flex items-center gap-2">
-            <Badge 
-              variant={visibleNodes <= 40 ? "default" : "destructive"} 
-              className="text-xs"
-            >
-              {visibleNodes}/{totalNodes} nodes
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              {visibleEdges} edges
-            </Badge>
-            {clusterCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {clusterCount} clusters
-              </Badge>
-            )}
-          </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5" />
+            Calm Mode Controls
+          </CardTitle>
+          <Badge variant="outline">
+            Depth: {visibleDepth} | Clusters: {expandedClusters.size}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Search */}
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <Input
+            placeholder="Search skills..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1"
+          />
+          <Button type="submit" size="sm">
+            <Search className="h-4 w-4" />
+          </Button>
+        </form>
 
-          {/* Depth Control with Smart Labels */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">View:</span>
-            <div className="w-32">
-              <Slider
-                value={[visibleDepth]}
-                onValueChange={([depth]) => onDepthChange(depth)}
-                min={1}
-                max={5}
-                step={1}
-                className="w-full"
-              />
-            </div>
-            <span className="text-xs text-muted-foreground w-20">
-              {visibleDepth === 1 ? 'Essential' : 
-               visibleDepth === 2 ? 'Extended' :
-               visibleDepth === 3 ? 'Detailed' :
-               visibleDepth === 4 ? 'Complete' : 'Full'}
-            </span>
-          </div>
-
-          {/* Focus Mode Controls */}
-          {focusNodeId ? (
+        {/* Focus Mode Controls */}
+        {focusNodeId && (
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant="default" className="text-xs">
-                <Focus className="h-3 w-3 mr-1" />
-                Focus Mode
-              </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onExpandNeighbors}
-                className="text-xs"
-              >
-                <Expand className="h-3 w-3 mr-1" />
+              <Focus className="h-4 w-4" />
+              <span className="text-sm font-medium">Focus Mode Active</span>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={onExpandNeighbors}>
+                <Expand className="h-4 w-4 mr-2" />
                 Expand
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onExitFocus}
-                className="text-xs"
-              >
+              <Button size="sm" variant="outline" onClick={onExitFocus}>
+                <EyeOff className="h-4 w-4 mr-2" />
                 Exit Focus
               </Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {/* Search */}
-              <form onSubmit={handleSearchSubmit} className="flex items-center gap-1">
-                <input
-                  type="text"
-                  placeholder="Search nodes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="text-xs px-2 py-1 border rounded w-32 h-8"
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 px-2"
-                >
-                  <Search className="h-3 w-3" />
-                </Button>
-              </form>
-
-              {/* Filters Toggle */}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="text-xs h-8"
-              >
-                <Filter className="h-3 w-3 mr-1" />
-                Filters
-                {isFilterOpen ? (
-                  <ChevronUp className="h-3 w-3 ml-1" />
-                ) : (
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                )}
-              </Button>
-            </div>
-          )}
-
-          {/* Edge Toggle */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Cross-lane edges:</span>
-            <Switch
-              checked={showCrossLaneEdges}
-              onCheckedChange={onToggleCrossLaneEdges}
-            />
-            {showCrossLaneEdges ? (
-              <Eye className="h-3 w-3 text-muted-foreground" />
-            ) : (
-              <EyeOff className="h-3 w-3 text-muted-foreground" />
-            )}
-          </div>
-
-          {/* Reset View - Prominent */}
-          <Button
-            size="sm"
-            variant="default"
-            onClick={onResetView}
-            className="text-xs font-medium"
-          >
-            <RotateCcw className="h-3 w-3 mr-1" />
-            Reset View
-          </Button>
-
-          {/* Budget Status Indicator */}
-          {visibleNodes > 40 && (
-            <Badge variant="destructive" className="text-xs animate-pulse">
-              Over Budget!
-            </Badge>
-          )}
-        </div>
-
-        {/* Expanded Filters */}
-        {isFilterOpen && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Hide completed</span>
-                <Switch
-                  checked={hideCompleted}
-                  onCheckedChange={(checked) => onToggleFilter('hideCompleted', checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Only my track</span>
-                <Switch
-                  checked={showOnlyMyTrack}
-                  onCheckedChange={(checked) => onToggleFilter('showOnlyMyTrack', checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Next 4 weeks</span>
-                <Switch
-                  checked={showNext4Weeks}
-                  onCheckedChange={(checked) => onToggleFilter('showNext4Weeks', checked)}
-                />
-              </div>
-            </div>
           </div>
         )}
+
+        {/* Depth Control */}
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Visible Depth</Label>
+          <div className="flex items-center gap-4">
+            <input
+              type="range"
+              min={1}
+              max={3}
+              value={visibleDepth}
+              onChange={(e) => onDepthChange(parseInt(e.target.value))}
+              className="flex-1"
+            />
+            <span className="text-sm text-muted-foreground w-8">{visibleDepth}</span>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filters
+          </Label>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="cross-lane" className="text-sm">Cross-lane edges</Label>
+              <Switch
+                id="cross-lane"
+                checked={showCrossLaneEdges}
+                onCheckedChange={(checked) => onToggleFilter('showCrossLaneEdges', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hide-completed" className="text-sm">Hide completed</Label>
+              <Switch
+                id="hide-completed"
+                checked={hideCompleted}
+                onCheckedChange={(checked) => onToggleFilter('hideCompleted', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="my-track" className="text-sm">Show only my track</Label>
+              <Switch
+                id="my-track"
+                checked={showOnlyMyTrack}
+                onCheckedChange={(checked) => onToggleFilter('showOnlyMyTrack', checked)}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="next-4weeks" className="text-sm">Next 4 weeks</Label>
+              <Switch
+                id="next-4weeks"
+                checked={showNext4Weeks}
+                onCheckedChange={(checked) => onToggleFilter('showNext4Weeks', checked)}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-2 border-t">
+          <Button variant="outline" size="sm" onClick={onResetView} className="flex-1">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset View
+          </Button>
+          <Button variant="outline" size="sm" onClick={onToggleOrphanDrawer} className="flex-1">
+            <Archive className="h-4 w-4 mr-2" />
+            Orphans
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

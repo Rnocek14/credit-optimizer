@@ -1,6 +1,5 @@
 // Lane Background: Semantic columns for skill tree organization
 import React from 'react';
-import { Card } from '@/components/ui/card';
 
 export interface LaneBackgroundProps {
   lanes: Array<{
@@ -22,32 +21,18 @@ export const LaneBackground: React.FC<LaneBackgroundProps> = ({
       {lanes.map((lane) => (
         <div
           key={lane.id}
-          className="absolute top-0"
+          className="absolute top-0 bottom-0 border-r border-dashed border-border/30"
           style={{
             left: lane.x,
             width: lane.width,
-            height: height,
-            background: `linear-gradient(180deg, ${lane.color}08 0%, ${lane.color}04 100%)`,
-            borderLeft: `1px solid ${lane.color}20`,
-            borderRight: `1px solid ${lane.color}20`
+            backgroundColor: `${lane.color}08`
           }}
         >
-          {/* Lane Header */}
           <div 
-            className="sticky top-4 left-4 z-10"
-            style={{ marginLeft: 16, marginTop: 16 }}
+            className="absolute top-4 left-4 text-xs font-medium text-muted-foreground uppercase tracking-wide"
+            style={{ color: lane.color }}
           >
-            <Card className="px-3 py-1.5 bg-background/90 backdrop-blur-sm border">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: lane.color }}
-                />
-                <span className="text-xs font-medium text-muted-foreground">
-                  {lane.title}
-                </span>
-              </div>
-            </Card>
+            {lane.title}
           </div>
         </div>
       ))}
@@ -55,41 +40,41 @@ export const LaneBackground: React.FC<LaneBackgroundProps> = ({
   );
 };
 
-// Lane configuration
+// Define lane configuration
 export const CALM_LANES = [
   {
     id: 'foundations',
     title: 'Foundations',
-    color: 'hsl(210, 40%, 60%)', // Blue
+    color: 'hsl(var(--primary))',
     x: 100,
-    width: 320
+    width: 280
   },
   {
     id: 'skills',
-    title: 'Core Skills', 
-    color: 'hsl(142, 40%, 60%)', // Green
-    x: 420,
-    width: 320
+    title: 'Skills',
+    color: 'hsl(var(--secondary))',
+    x: 380,
+    width: 280
   },
   {
     id: 'projects',
     title: 'Projects',
-    color: 'hsl(43, 40%, 60%)', // Yellow
-    x: 740,
-    width: 320
+    color: 'hsl(var(--accent))',
+    x: 660,
+    width: 280
   },
   {
     id: 'credentials',
     title: 'Credentials',
-    color: 'hsl(271, 40%, 60%)', // Purple
-    x: 1060,
-    width: 320
+    color: 'hsl(var(--muted-foreground))',
+    x: 940,
+    width: 280
   },
   {
     id: 'jobs',
     title: 'Jobs',
-    color: 'hsl(25, 40%, 60%)', // Orange
-    x: 1380,
-    width: 320
+    color: 'hsl(var(--destructive))',
+    x: 1220,
+    width: 280
   }
 ];
