@@ -166,77 +166,17 @@ export const SkillTreeProgress: React.FC = () => {
     }
   };
 
-  // Enhanced nodes with CRI styling and progress data
-  const enhancedNodes = React.useMemo(() => {
-    if (!Array.isArray(graphNodes)) return [];
-    
-    return graphNodes.map((node, index) => ({
-      ...node,
-      // Preserve original position or add fallback grid position
-      position: (node as any).position ?? { 
-        x: 100 + (index % 6) * 220, 
-        y: 100 + Math.floor(index / 6) * 160 
-      },
-      data: {
-        title: node.title,
-        description: node.description || '',
-        type: node.type,
-        category: (node as any).category || 'General',
-        'data-testid': 'skill-node',
-        'data-node-type': node.type,
-        'data-node-id': node.id,
-        style: getNodeStyle(node.id),
-        criLevel: criScore ? getReadinessLevel(criScore.overall).level : 'Unknown',
-        userProgress: userProgress?.find(p => p.skillId === node.id || p.stepId === node.id),
-        ...node.data
-      }
-    }));
-  }, [graphNodes, criScore, userProgress, getReadinessLevel]);
-
-  // Filter orphan edges to prevent React Flow errors
-  const safeEdges = React.useMemo(() => {
-    if (!Array.isArray(graphEdges) || !Array.isArray(enhancedNodes)) return [];
-    
-    const nodeIds = new Set(enhancedNodes.map(n => n.id));
-    const filtered = graphEdges.filter(edge => {
-      const source = (edge as any).source ?? edge.from_id;
-      const target = (edge as any).target ?? edge.to_id;
-      return nodeIds.has(source) && nodeIds.has(target);
-    });
-    
-    // Debug logging for orphan edge filtering
-    if (graphEdges.length !== filtered.length) {
-      console.log('🔧 Progress: Filtered orphan edges', {
-        original: graphEdges.length,
-        filtered: filtered.length,
-        dropped: graphEdges.length - filtered.length
-      });
-    }
-    
-    return filtered;
-  }, [graphEdges, enhancedNodes]);
-
-  // Debug bridge for runtime diagnostics
+  // Lite diagnostic: Log raw data going into engine (matches Build approach)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).__skillTreeDiag = {
-        nodesCount: enhancedNodes.length,
-        edgesCount: safeEdges.length,
-        originalNodes: graphNodes,
-        originalEdges: graphEdges,
-        sampleNode: enhancedNodes[0],
-        sampleEdge: safeEdges[0],
-        graphLoading: graphLoading,
-        userProgress: userProgress?.length || 0
-      };
-      console.log('🔬 Progress ST DEBUG', {
-        pre: { nodes: graphNodes?.length, edges: graphEdges?.length },
-        post: { nodes: enhancedNodes.length, edges: safeEdges.length },
-        orphanEdgesDropped: (graphEdges?.length || 0) - safeEdges.length,
-        hasPositions: enhancedNodes.some(n => n.position)
+    if (graphNodes && graphEdges) {
+      console.log('[progress → engine] prepass', {
+        nodes: Array.isArray(graphNodes) ? graphNodes.length : 'not-array',
+        edges: Array.isArray(graphEdges) ? graphEdges.length : 'not-array',
+        sampleNode: graphNodes?.[0],
+        sampleEdge: graphEdges?.[0],
       });
     }
-  }, [enhancedNodes, safeEdges, graphNodes, graphEdges, graphLoading, userProgress]);
+  }, [graphNodes, graphEdges]);
   const statsComponent = (
     <div className="grid gap-4 md:grid-cols-3">
       <Card>
@@ -288,8 +228,8 @@ export const SkillTreeProgress: React.FC = () => {
 
   return (
     <SkillTreeEngine
-      nodes={enhancedNodes}
-      edges={safeEdges}
+      nodes={graphNodes || []}
+      edges={graphEdges || []}
       loading={isLoading}
       error={graphError}
       onNodeClick={handleNodeClick}
@@ -300,6 +240,10 @@ export const SkillTreeProgress: React.FC = () => {
       layoutAlgorithm={'semantic-hierarchy' as const}
       statsComponent={statsComponent}
       rightRailComponent={<AchievementsRail />}
+      // Pass CRI data as enrichment props instead of node mutation
+      criScore={criScore}
+      userProgress={userProgress}
+      getReadinessLevel={getReadinessLevel}
     />
   );
 };

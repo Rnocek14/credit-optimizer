@@ -32,6 +32,11 @@ export interface SkillTreeEngineProps {
   statsComponent?: React.ReactNode;
   controlsComponent?: React.ReactNode;
   rightRailComponent?: React.ReactNode;
+  
+  // Progress enrichment props (read-only styling)
+  criScore?: any;
+  userProgress?: any[];
+  getReadinessLevel?: (score: number) => { level: string; color: string };
 }
 
 export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
@@ -49,9 +54,39 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
   layoutConfig,
   statsComponent,
   controlsComponent,
-  rightRailComponent
+  rightRailComponent,
+  criScore,
+  userProgress,
+  getReadinessLevel
 }) => {
   const { activeTrackId } = useActiveTrackStore();
+
+  // Lite diagnostic: Log what engine receives
+  console.log('[engine] received', {
+    nodes: Array.isArray(rawNodes) ? rawNodes.length : 'not-array',
+    edges: Array.isArray(rawEdges) ? rawEdges.length : 'not-array',
+  });
+
+  // Get CRI-based node styling helper for progress mode
+  const getCriNodeStyle = useCallback((nodeId: string) => {
+    if (mode !== 'progress' || !criScore || !getReadinessLevel) return {};
+    
+    const readiness = getReadinessLevel(criScore.overall);
+    
+    // Apply tinting based on CRI level
+    switch (readiness.level) {
+      case 'Ready':
+        return { backgroundColor: 'hsl(142 76% 36%)', opacity: 0.9 }; // Green tint
+      case 'Nearly Ready':
+        return { backgroundColor: 'hsl(43 96% 56%)', opacity: 0.8 }; // Yellow tint
+      case 'In Progress':
+        return { backgroundColor: 'hsl(221 83% 53%)', opacity: 0.7 }; // Blue tint
+      case 'Getting Started':
+        return { backgroundColor: 'hsl(25 95% 53%)', opacity: 0.6 }; // Orange tint
+      default:
+        return { backgroundColor: 'hsl(210 14% 53%)', opacity: 0.5 }; // Gray tint
+    }
+  }, [mode, criScore, getReadinessLevel]);
 
   // ✅ UNIFIED NODE PROCESSING: Ensure all nodes have React Flow requirements
   const processedNodes = useMemo(() => {
@@ -73,33 +108,57 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
         'data-testid': 'skill-node',
         'data-node-type': node.type,
         'data-node-id': node.id,
+        // Add CRI enrichment for progress mode only
+        ...(mode === 'progress' && criScore && getReadinessLevel ? {
+          criLevel: getReadinessLevel(criScore.overall).level,
+          userProgress: userProgress?.find(p => p.skillId === node.id || p.stepId === node.id),
+        } : {}),
         // Preserve existing data
         ...node.data
       },
-      // Apply mode-specific styling
+      // Apply mode-specific styling with CRI enrichment
       style: {
         ...getNodeModeStyle(mode),
+        ...getCriNodeStyle(node.id),
         ...node.style
       }
     }));
-  }, [rawNodes, mode]);
+  }, [rawNodes, mode, criScore, userProgress, getReadinessLevel, getCriNodeStyle]);
 
-  // ✅ UNIFIED EDGE PROCESSING
+  // ✅ UNIFIED EDGE PROCESSING with orphan filtering
   const processedEdges = useMemo(() => {
     if (!Array.isArray(rawEdges)) return [];
     
-    return rawEdges.map(edge => ({
+    // First ensure proper source/target mapping
+    const mappedEdges = rawEdges.map(edge => ({
       ...edge,
-      // Ensure source/target from from_id/to_id if needed
       source: edge.source || edge.from_id,
       target: edge.target || edge.to_id,
-      // Apply mode-specific styling
       style: {
         ...getEdgeModeStyle(mode),
         ...edge.style
       }
     }));
-  }, [rawEdges, mode]);
+
+    // Filter orphan edges (no corresponding nodes)
+    const nodeIds = new Set(rawNodes.map(n => n.id));
+    const filteredEdges = mappedEdges.filter(edge => {
+      const hasValidSource = nodeIds.has(edge.source);
+      const hasValidTarget = nodeIds.has(edge.target);
+      return hasValidSource && hasValidTarget;
+    });
+
+    // Debug logging for orphan edge filtering
+    if (mappedEdges.length !== filteredEdges.length) {
+      console.log(`🔧 ${mode}: Filtered orphan edges`, {
+        original: mappedEdges.length,
+        filtered: filteredEdges.length,
+        dropped: mappedEdges.length - filteredEdges.length
+      });
+    }
+
+    return filteredEdges;
+  }, [rawEdges, rawNodes, mode]);
 
   // ✅ CANARY NODE FALLBACK (unified across modes)
   const showCanary = processedNodes.length === 0 && !loading;
