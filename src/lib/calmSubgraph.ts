@@ -119,50 +119,102 @@ export function buildCalmSubgraph(
       return { nodes: [], edges: [] };
     }
 
-    // Simple transformation for now - just return first 10 nodes with positions
-    const processedNodes = allNodes.slice(0, 10).map((node, index) => ({
-      id: String(node.id || `node-${index}`),
-      type: 'skill',
-      position: {
-        x: (index % 3) * 250 + 100,
-        y: Math.floor(index / 3) * 150 + 100
-      },
-      data: {
-        title: node.title || 'Untitled',
-        description: node.description || '',
-        category: node.category || 'skill',
-        level: node.level || 1,
-        isCompleted: Boolean(node.is_completed),
-        requiredXP: parseInt(node.required_xp) || 0,
-        unlockedAt: node.unlocked_at || null,
-        completedAt: node.completed_at || null,
-        tags: Array.isArray(node.tags) ? node.tags : [],
-        metadata: node.metadata || {}
-      },
-      style: { width: 180, height: 120 }
-    }));
+    // Enhanced transformation with proper field mapping
+    console.log('🔄 Processing nodes:', allNodes.length, 'sample:', allNodes[0]);
+    
+    const processedNodes = allNodes.slice(0, 15).map((node, index) => {
+      // Handle both database schema (node_type) and mock data (type)
+      const nodeType = node.node_type || node.type || 'skill';
+      const nodeId = String(node.id || `node-${index}`);
+      const nodeTitle = node.title || `Node ${index + 1}`;
+      
+      console.log(`🎯 Processing node ${nodeId}:`, {
+        title: nodeTitle,
+        type: nodeType,
+        category: node.category
+      });
+      
+      return {
+        id: nodeId,
+        type: nodeType,
+        position: {
+          x: (index % 4) * 250 + 100,
+          y: Math.floor(index / 4) * 180 + 100
+        },
+        data: {
+          title: nodeTitle,
+          description: node.description || '',
+          category: node.category || 'General',
+          level: node.level || node.difficulty_level || 1,
+          isCompleted: Boolean(node.is_completed),
+          requiredXP: parseInt(node.required_xp) || 0,
+          unlockedAt: node.unlocked_at || null,
+          completedAt: node.completed_at || null,
+          tags: Array.isArray(node.tags) ? node.tags : [],
+          metadata: node.metadata || {},
+          'data-testid': 'skill-node',
+          'data-node-type': nodeType,
+          'data-node-id': nodeId
+        },
+        style: { 
+          width: 200, 
+          height: 140,
+          border: '2px solid #e2e8f0',
+          borderRadius: '8px',
+          background: '#ffffff'
+        }
+      };
+    });
+    
+    console.log('✅ Processed nodes successfully:', processedNodes.length);
 
-    // Process edges - handle both formats
+    // Process edges - handle both database and mock formats
+    console.log('🔗 Processing edges:', allEdges.length, 'sample:', allEdges[0]);
+    
     const processedEdges = allEdges
       .filter(edge => {
         const source = edge.source || edge.from_id;
         const target = edge.target || edge.to_id;
-        return source && target && 
-               processedNodes.some(n => n.id === String(source)) &&
-               processedNodes.some(n => n.id === String(target));
-      })
-      .slice(0, 15)
-      .map((edge, index) => ({
-        id: String(edge.id || `edge-${index}`),
-        source: String(edge.source || edge.from_id),
-        target: String(edge.target || edge.to_id),
-        type: 'default',
-        animated: false,
-        style: {
-          stroke: '#94a3b8',
-          strokeWidth: 2
+        const hasValidNodes = processedNodes.some(n => n.id === String(source)) &&
+                             processedNodes.some(n => n.id === String(target));
+        
+        if (!hasValidNodes) {
+          console.warn('🚫 Filtered out edge:', { source, target, edgeId: edge.id });
         }
-      }));
+        
+        return source && target && hasValidNodes;
+      })
+      .slice(0, 20)
+      .map((edge, index) => {
+        const edgeId = String(edge.id || `edge-${index}`);
+        const source = String(edge.source || edge.from_id);
+        const target = String(edge.target || edge.to_id);
+        const edgeType = edge.edge_type || 'connection';
+        
+        console.log(`🎯 Processing edge ${edgeId}:`, { source, target, type: edgeType });
+        
+        return {
+          id: edgeId,
+          source: source,
+          target: target,
+          type: 'smoothstep',
+          animated: edgeType === 'teaches' || edgeType === 'unlocks',
+          style: {
+            stroke: edgeType === 'teaches' ? '#3b82f6' : 
+                   edgeType === 'qualifies_for' ? '#10b981' : '#94a3b8',
+            strokeWidth: 2
+          },
+          label: edgeType.replace('_', ' '),
+          labelStyle: {
+            fontSize: '10px',
+            background: '#ffffff',
+            padding: '2px 4px',
+            borderRadius: '4px'
+          }
+        };
+      });
+    
+    console.log('✅ Processed edges successfully:', processedEdges.length);
 
     console.log('✅ Calm subgraph built successfully');
     return { nodes: processedNodes, edges: processedEdges };

@@ -45,28 +45,40 @@ export const CalmModeTestCanvas: React.FC<CalmModeTestCanvasProps> = ({
     return () => clearTimeout(timer);
   }, [testMode, onStatusChange]);
 
-  // Mock data for isolated testing
+  // Mock data for isolated testing - matches database schema exactly
   const mockNodes = useMemo(() => [
     {
       id: 'test-skill-1',
-      type: 'skill',
+      node_type: 'skill',
+      type: 'skill', // Also add for React Flow compatibility
       title: 'Test Skill 1',
       description: 'This is a test skill for isolated testing',
-      data: { category: 'Testing' }
+      category: 'Testing', // Flatten category
+      market_demand_score: 0.8,
+      difficulty_level: 2,
+      active: true
     },
     {
       id: 'test-skill-2', 
+      node_type: 'skill',
       type: 'skill',
       title: 'Test Skill 2',
       description: 'Another test skill',
-      data: { category: 'Testing' }
+      category: 'Testing',
+      market_demand_score: 0.7,
+      difficulty_level: 1,
+      active: true
     },
     {
       id: 'test-job-1',
+      node_type: 'job',
       type: 'job',
       title: 'Test Job',
       description: 'A test job role',
-      data: { category: 'Career' }
+      category: 'Career',
+      market_demand_score: 0.9,
+      difficulty_level: 3,
+      active: true
     }
   ], []);
 
@@ -75,15 +87,23 @@ export const CalmModeTestCanvas: React.FC<CalmModeTestCanvasProps> = ({
       id: 'edge-1-2',
       from_id: 'test-skill-1',
       to_id: 'test-skill-2',
+      source: 'test-skill-1', // Add for React Flow compatibility
+      target: 'test-skill-2',
       edge_type: 'teaches',
-      reasoning: 'Test relationship'
+      reasoning: 'Test relationship',
+      confidence_score: 0.9,
+      importance_weight: 1.0
     },
     {
       id: 'edge-2-job',
       from_id: 'test-skill-2',
       to_id: 'test-job-1',
+      source: 'test-skill-2',
+      target: 'test-job-1',
       edge_type: 'qualifies_for',
-      reasoning: 'Skill leads to job'
+      reasoning: 'Skill leads to job',
+      confidence_score: 0.8,
+      importance_weight: 0.9
     }
   ], []);
 

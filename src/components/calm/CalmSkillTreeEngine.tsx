@@ -328,6 +328,16 @@ export function CalmSkillTreeEngine({
 
   // Main render with comprehensive error boundaries
   console.log('🎨 Calm Mode: Rendering main UI with', processedData.nodes.length, 'nodes and', processedData.edges.length, 'edges');
+  console.log('🔍 Sample processed node:', processedData.nodes[0]);
+  console.log('🔍 Sample processed edge:', processedData.edges[0]);
+  
+  // Add localStorage debug flags
+  if (typeof window !== 'undefined' && localStorage.getItem('ST_DEBUG_DATA') === '1') {
+    console.log('🐛 Debug mode - Full processed data:', { 
+      nodes: processedData.nodes, 
+      edges: processedData.edges 
+    });
+  }
   
   return (
     <CalmErrorBoundary 
