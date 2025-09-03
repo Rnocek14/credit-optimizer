@@ -119,7 +119,7 @@ export function buildCalmSubgraph(
       return { nodes: [], edges: [] };
     }
 
-    // Enhanced transformation with proper field mapping
+    // Enhanced transformation with proper field mapping for GraphNode format
     console.log('🔄 Processing nodes:', allNodes.length, 'sample:', allNodes[0]);
     
     const processedNodes = allNodes.slice(0, 15).map((node, index) => {
@@ -134,16 +134,17 @@ export function buildCalmSubgraph(
         category: node.category
       });
       
+      // Return GraphNode format - let UnifiedCareerCanvas handle React Flow transformation
       return {
         id: nodeId,
         type: nodeType,
-        position: {
-          x: (index % 4) * 250 + 100,
-          y: Math.floor(index / 4) * 180 + 100
-        },
+        title: nodeTitle,
+        description: node.description || '',
+        difficulty: node.difficulty_level === 1 ? 'beginner' : 
+                   node.difficulty_level === 2 ? 'intermediate' : 'advanced',
+        estimated_time_hours: node.estimated_time_hours || 0,
+        cost: node.cost_estimate || 0,
         data: {
-          title: nodeTitle,
-          description: node.description || '',
           category: node.category || 'General',
           level: node.level || node.difficulty_level || 1,
           isCompleted: Boolean(node.is_completed),
@@ -152,16 +153,8 @@ export function buildCalmSubgraph(
           completedAt: node.completed_at || null,
           tags: Array.isArray(node.tags) ? node.tags : [],
           metadata: node.metadata || {},
-          'data-testid': 'skill-node',
-          'data-node-type': nodeType,
-          'data-node-id': nodeId
-        },
-        style: { 
-          width: 200, 
-          height: 140,
-          border: '2px solid #e2e8f0',
-          borderRadius: '8px',
-          background: '#ffffff'
+          market_demand_score: node.market_demand_score || 0.5,
+          ai_confidence_score: node.ai_confidence_score || 0.8
         }
       };
     });
@@ -193,24 +186,17 @@ export function buildCalmSubgraph(
         
         console.log(`🎯 Processing edge ${edgeId}:`, { source, target, type: edgeType });
         
+        // Return GraphEdge format - let UnifiedCareerCanvas handle React Flow transformation
         return {
           id: edgeId,
+          from_id: source,
+          to_id: target,
           source: source,
           target: target,
-          type: 'smoothstep',
-          animated: edgeType === 'teaches' || edgeType === 'unlocks',
-          style: {
-            stroke: edgeType === 'teaches' ? '#3b82f6' : 
-                   edgeType === 'qualifies_for' ? '#10b981' : '#94a3b8',
-            strokeWidth: 2
-          },
-          label: edgeType.replace('_', ' '),
-          labelStyle: {
-            fontSize: '10px',
-            background: '#ffffff',
-            padding: '2px 4px',
-            borderRadius: '4px'
-          }
+          edge_type: edgeType,
+          type: edgeType,
+          importance_weight: edge.importance_weight || 1.0,
+          reasoning: edge.reasoning || `${edgeType} relationship`
         };
       });
     
@@ -223,15 +209,17 @@ export function buildCalmSubgraph(
     console.error('❌ Critical error in buildCalmSubgraph:', error);
     console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     
-    // Return safe fallback with a single error node
+    // Return safe fallback with a single error node in GraphNode format
     return {
       nodes: [{
         id: 'error-fallback-main',
         type: 'skill',
-        position: { x: 200, y: 150 },
+        title: 'Error Loading Skills',
+        description: `Failed to process skill tree data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        difficulty: 'beginner',
+        estimated_time_hours: 0,
+        cost: 0,
         data: {
-          title: 'Error Loading Skills',
-          description: `Failed to process skill tree data: ${error instanceof Error ? error.message : 'Unknown error'}`,
           category: 'error',
           level: 1,
           isCompleted: false,
@@ -244,8 +232,7 @@ export function buildCalmSubgraph(
             originalError: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
           }
-        },
-        style: { width: 220, height: 140 }
+        }
       }],
       edges: []
     };
