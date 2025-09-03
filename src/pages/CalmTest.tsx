@@ -122,7 +122,7 @@ export default function CalmTest() {
               }}
               fallbackMessage="Calm mode test failed - this is expected for error testing"
             >
-              <div className="bg-muted/20 rounded-lg p-4 min-h-[500px]">
+              <div className="bg-muted/20 rounded-lg p-4 w-full h-[600px]">
                 <CalmModeTestCanvas 
                   testMode={testMode}
                   onStatusChange={(status) => {

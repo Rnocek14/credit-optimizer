@@ -350,8 +350,8 @@ export function CalmSkillTreeEngine({
       }}
     >
       <div className="space-y-6">
-        {/* Main Canvas with comprehensive error isolation */}
-        <div className="min-h-[600px] rounded-lg border bg-background">
+        {/* Main Canvas with comprehensive error isolation - Fixed explicit dimensions */}
+        <div className="w-full h-[600px] rounded-lg border bg-background">
           <CalmErrorBoundary 
             fallbackMode="safe"
             onFallbackToNormal={() => {

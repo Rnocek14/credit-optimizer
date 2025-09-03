@@ -604,10 +604,11 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     });
   }, [nodes, searchTerm]);
 
-  // Auto-fit view when nodes are loaded
+  // Auto-fit view when nodes are loaded - Fixed with proper delay for React Flow #004
   React.useEffect(() => {
     if (processedNodes?.length > 0 && reactFlowInstance) {
-      requestAnimationFrame(() => {
+      // Delay to ensure container has proper dimensions before fitView
+      const timeoutId = setTimeout(() => {
         try {
           reactFlowInstance.fitView({ 
             padding: 0.2, 
@@ -616,11 +617,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
             minZoom: 0.1,
             maxZoom: 1.25
           });
-          console.log('🎯 Auto-fitted view for', processedNodes.length, 'nodes');
+          console.log('🎯 Auto-fitted view for', processedNodes.length, 'nodes after delay');
         } catch (error) {
           console.warn('Auto-fit failed:', error);
         }
-      });
+      }, 50); // 50ms delay to allow container measurement
+
+      return () => clearTimeout(timeoutId);
     }
   }, [processedNodes?.length, reactFlowInstance]);
 
@@ -636,7 +639,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   });
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '400px' }}>
+    <div className="w-full h-full min-h-[400px]">
       <ReactFlow
         nodes={processedNodes}
         edges={edges}
@@ -650,6 +653,7 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
         fitView
         attributionPosition="bottom-left"
         className="unified-career-canvas"
+        style={{ width: '100%', height: '100%' }}
       >
         <Background />
         <Controls />
