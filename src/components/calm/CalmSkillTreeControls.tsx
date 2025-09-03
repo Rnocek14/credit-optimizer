@@ -79,10 +79,16 @@ export const CalmSkillTreeControls: React.FC<CalmControlsProps> = ({
     <Card className="mb-4">
       <CardContent className="p-4">
         <div className="flex flex-wrap items-center gap-4">
-          {/* Visibility Status */}
+          {/* Enhanced Visibility Status */}
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+            <Badge 
+              variant={visibleNodes <= 40 ? "default" : "destructive"} 
+              className="text-xs"
+            >
               {visibleNodes}/{totalNodes} nodes
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {visibleEdges} edges
             </Badge>
             {clusterCount > 0 && (
               <Badge variant="secondary" className="text-xs">
@@ -91,20 +97,25 @@ export const CalmSkillTreeControls: React.FC<CalmControlsProps> = ({
             )}
           </div>
 
-          {/* Depth Control */}
+          {/* Depth Control with Smart Labels */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Depth:</span>
-            <div className="w-24">
+            <span className="text-sm text-muted-foreground">View:</span>
+            <div className="w-32">
               <Slider
                 value={[visibleDepth]}
                 onValueChange={([depth]) => onDepthChange(depth)}
                 min={1}
-                max={10}
+                max={5}
                 step={1}
                 className="w-full"
               />
             </div>
-            <span className="text-xs text-muted-foreground w-8">{visibleDepth}</span>
+            <span className="text-xs text-muted-foreground w-20">
+              {visibleDepth === 1 ? 'Essential' : 
+               visibleDepth === 2 ? 'Extended' :
+               visibleDepth === 3 ? 'Detailed' :
+               visibleDepth === 4 ? 'Complete' : 'Full'}
+            </span>
           </div>
 
           {/* Focus Mode Controls */}
@@ -185,16 +196,23 @@ export const CalmSkillTreeControls: React.FC<CalmControlsProps> = ({
             )}
           </div>
 
-          {/* Reset View */}
+          {/* Reset View - Prominent */}
           <Button
             size="sm"
-            variant="outline"
+            variant="default"
             onClick={onResetView}
-            className="text-xs"
+            className="text-xs font-medium"
           >
             <RotateCcw className="h-3 w-3 mr-1" />
             Reset View
           </Button>
+
+          {/* Budget Status Indicator */}
+          {visibleNodes > 40 && (
+            <Badge variant="destructive" className="text-xs animate-pulse">
+              Over Budget!
+            </Badge>
+          )}
         </div>
 
         {/* Expanded Filters */}

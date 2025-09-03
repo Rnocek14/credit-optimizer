@@ -67,18 +67,28 @@ export interface CalmSubgraph {
 }
 
 const DEFAULT_CALM_CONFIG: CalmConfig = {
-  maxVisibleNodes: 48,
-  maxVisibleEdges: 200,
-  defaultDepth: 3,
+  maxVisibleNodes: 40,
+  maxVisibleEdges: 60,
+  defaultDepth: 1,
   enableClustering: true,
   laneOrdering: ['foundations', 'skills', 'projects', 'credentials', 'jobs']
 };
 
-// Lane positioning constants
-const LANE_WIDTH = 320;
-const LANE_GAP = 80;
-const NODE_Y_GAP = 120;
-const NODES_PER_ROW = 4;
+// Strict per-lane render budgets
+const LANE_NODE_CAPS = {
+  foundations: 8,
+  skills: 12,
+  projects: 8,
+  credentials: 6,
+  jobs: 6
+} as const;
+
+// Strict grid layout constants
+const LANE_WIDTH = 280;
+const LANE_GAP = 60;
+const NODE_Y_GAP = 100;
+const NODE_X_GAP = 80;
+const NODES_PER_ROW = 3;
 
 export function buildCalmSubgraph(
   allNodes: CalmGraphNode[],
@@ -133,11 +143,32 @@ export function buildCalmSubgraph(
     config
   );
 
-  // Step 5: Filter edges to visible nodes only
+  // Step 5: Filter edges with strict prioritization
   const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-  const visibleEdges = allEdges.filter(edge => 
+  const candidateEdges = allEdges.filter(edge => 
     visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
-  ).slice(0, config.maxVisibleEdges);
+  );
+
+  // Prioritize edges: goal path > within-lane > cross-lane
+  const prioritizedEdges = candidateEdges.sort((a, b) => {
+    const aSource = visibleNodes.find(n => n.id === a.source);
+    const aTarget = visibleNodes.find(n => n.id === a.target);
+    const bSource = visibleNodes.find(n => n.id === b.source);
+    const bTarget = visibleNodes.find(n => n.id === b.target);
+    
+    if (!aSource || !aTarget || !bSource || !bTarget) return 0;
+    
+    const aWithinLane = mapNodeToLane(aSource) === mapNodeToLane(aTarget);
+    const bWithinLane = mapNodeToLane(bSource) === mapNodeToLane(bTarget);
+    
+    // Within-lane edges get priority
+    if (aWithinLane && !bWithinLane) return -1;
+    if (!aWithinLane && bWithinLane) return 1;
+    
+    return 0;
+  });
+
+  const visibleEdges = prioritizedEdges.slice(0, config.maxVisibleEdges);
 
   const hiddenNodes = allNodes.filter(n => !visibleNodeIds.has(n.id));
   const hiddenEdges = allEdges.filter(edge => 
@@ -291,12 +322,22 @@ function selectRepresentativeNodes(
   const representative = new Set<string>();
   const nodesByLane = groupNodesByLane(nodes);
 
-  // Select top nodes from each lane
+  // Apply strict per-lane caps using render budget
   config.laneOrdering.forEach(lane => {
     const laneNodes = nodesByLane.get(lane) || [];
+    const laneCap = LANE_NODE_CAPS[lane as keyof typeof LANE_NODE_CAPS] || 6;
+    
+    // Priority scoring: market demand + readiness + recency
+    const priorityScore = (node: CalmGraphNode) => {
+      const marketScore = node.market_demand_score || 0;
+      const category = node.category?.toLowerCase();
+      const recencyBonus = category === 'trending' ? 10 : 0;
+      return marketScore + recencyBonus;
+    };
+    
     const topNodes = laneNodes
-      .sort((a, b) => (b.market_demand_score || 0) - (a.market_demand_score || 0))
-      .slice(0, Math.floor(config.maxVisibleNodes / config.laneOrdering.length));
+      .sort((a, b) => priorityScore(b) - priorityScore(a))
+      .slice(0, laneCap);
     
     topNodes.forEach(node => representative.add(node.id));
   });
@@ -356,13 +397,29 @@ function buildLaneLayout(
     const visibleLaneNodes = laneNodes.filter(n => coreNodeIds.includes(n.id));
     const hiddenLaneNodes = laneNodes.filter(n => !coreNodeIds.includes(n.id));
     
-    // Position visible nodes
+    // Position visible nodes on strict grid with collision detection
+    const occupiedPositions = new Set<string>();
+    
     visibleLaneNodes.forEach((node, index) => {
-      const row = Math.floor(index / NODES_PER_ROW);
-      const col = index % NODES_PER_ROW;
+      let row = Math.floor(index / NODES_PER_ROW);
+      let col = index % NODES_PER_ROW;
+      
+      // Collision detection: if position occupied, bump to next row
+      let positionKey = `${laneIndex}-${row}-${col}`;
+      while (occupiedPositions.has(positionKey)) {
+        if (col < NODES_PER_ROW - 1) {
+          col++;
+        } else {
+          row++;
+          col = 0;
+        }
+        positionKey = `${laneIndex}-${row}-${col}`;
+      }
+      
+      occupiedPositions.add(positionKey);
       
       node.position = {
-        x: laneX + col * 80,
+        x: laneX + col * NODE_X_GAP,
         y: 100 + row * NODE_Y_GAP
       };
       

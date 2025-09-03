@@ -32,12 +32,12 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
   userProgress,
   getReadinessLevel
 }) => {
-  // Calm mode state
-  const [visibleDepth, setVisibleDepth] = useState(3);
+  // Calm mode state with strict defaults
+  const [visibleDepth, setVisibleDepth] = useState(1);
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
   const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
-  const [showCrossLaneEdges, setShowCrossLaneEdges] = useState(true);
+  const [showCrossLaneEdges, setShowCrossLaneEdges] = useState(false);
   const [showOrphanDrawer, setShowOrphanDrawer] = useState(false);
 
   // Filters
@@ -69,8 +69,8 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
       focusNodeId,
       expandedClusters,
       config: {
-        maxVisibleNodes: 48,
-        maxVisibleEdges: 200,
+        maxVisibleNodes: 40,
+        maxVisibleEdges: 60,
         defaultDepth: visibleDepth,
         enableClustering: true,
         laneOrdering: ['foundations', 'skills', 'projects', 'credentials', 'jobs']
@@ -149,9 +149,10 @@ export const CalmSkillTreeEngine: React.FC<CalmSkillTreeEngineProps> = ({
 
   const handleResetView = useCallback(() => {
     setFocusNodeId(null);
-    setVisibleDepth(3);
+    setVisibleDepth(1);
     setExpandedClusters(new Set());
     setActiveGoalId(null);
+    setShowCrossLaneEdges(false);
     toast.success('View reset');
   }, []);
 
