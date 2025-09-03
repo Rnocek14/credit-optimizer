@@ -82,30 +82,45 @@ export const CalmModeTestCanvas: React.FC<CalmModeTestCanvasProps> = ({
     }
   ], []);
 
-  const mockEdges = useMemo(() => [
-    {
-      id: 'edge-1-2',
-      from_id: 'test-skill-1',
-      to_id: 'test-skill-2',
-      source: 'test-skill-1', // Add for React Flow compatibility
-      target: 'test-skill-2',
-      edge_type: 'teaches',
-      reasoning: 'Test relationship',
-      confidence_score: 0.9,
-      importance_weight: 1.0
-    },
-    {
-      id: 'edge-2-job',
-      from_id: 'test-skill-2',
-      to_id: 'test-job-1',
-      source: 'test-skill-2',
-      target: 'test-job-1',
-      edge_type: 'qualifies_for',
-      reasoning: 'Skill leads to job',
-      confidence_score: 0.8,
-      importance_weight: 0.9
-    }
-  ], []);
+  const mockEdges = useMemo(() => {
+    console.log('🧪 Creating mock edges for test mode');
+    
+    return [
+      {
+        id: 'edge-1-2',
+        from_id: 'test-skill-1',
+        to_id: 'test-skill-2',
+        source: 'test-skill-1', // Add for React Flow compatibility
+        target: 'test-skill-2',
+        edge_type: 'teaches',
+        reasoning: 'Test relationship: Skill 1 teaches Skill 2',
+        confidence_score: 0.9,
+        importance_weight: 1.0
+      },
+      {
+        id: 'edge-2-job',
+        from_id: 'test-skill-2',
+        to_id: 'test-job-1',
+        source: 'test-skill-2',
+        target: 'test-job-1',
+        edge_type: 'qualifies_for',
+        reasoning: 'Skill 2 qualifies for Test Job',
+        confidence_score: 0.8,
+        importance_weight: 0.9
+      },
+      {
+        id: 'edge-1-job',
+        from_id: 'test-skill-1',
+        to_id: 'test-job-1',
+        source: 'test-skill-1',
+        target: 'test-job-1',
+        edge_type: 'supports',
+        reasoning: 'Skill 1 supports Test Job',
+        confidence_score: 0.7,
+        importance_weight: 0.8
+      }
+    ];
+  }, []);
 
   const handleNodeClick = (node: any) => {
     addLog(`Node clicked: ${node.title || node.id}`);

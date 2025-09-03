@@ -164,18 +164,32 @@ export function buildCalmSubgraph(
     // Process edges - handle both database and mock formats
     console.log('🔗 Processing edges:', allEdges.length, 'sample:', allEdges[0]);
     
+    // Create a set of valid node IDs for edge validation
+    const validNodeIds = new Set(processedNodes.map(n => n.id));
+    console.log('✅ Valid node IDs for edge matching:', Array.from(validNodeIds));
+    
     const processedEdges = allEdges
       .filter(edge => {
-        const source = edge.source || edge.from_id;
-        const target = edge.target || edge.to_id;
-        const hasValidNodes = processedNodes.some(n => n.id === String(source)) &&
-                             processedNodes.some(n => n.id === String(target));
+        const source = String(edge.source || edge.from_id);
+        const target = String(edge.target || edge.to_id);
+        const hasValidNodes = validNodeIds.has(source) && validNodeIds.has(target);
         
-        if (!hasValidNodes) {
-          console.warn('🚫 Filtered out edge:', { source, target, edgeId: edge.id });
+        if (!source || !target) {
+          console.warn('🚫 Edge missing source/target IDs:', { edge, source, target });
+          return false;
         }
         
-        return source && target && hasValidNodes;
+        if (!hasValidNodes) {
+          console.warn('🚫 Edge references non-existent nodes:', { 
+            edgeId: edge.id, 
+            source, 
+            target, 
+            availableNodes: Array.from(validNodeIds) 
+          });
+          return false;
+        }
+        
+        return true;
       })
       .slice(0, 20)
       .map((edge, index) => {

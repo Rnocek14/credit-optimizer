@@ -315,47 +315,75 @@ const mapEdgeType = (edgeType: string): 'teaches' | 'requires' | 'qualifies_for'
   return mapping[edgeType] || 'supports';
 };
 
-// Convert GraphEdge to React Flow Edge with enhanced styling
+// Convert GraphEdge to React Flow Edge with enhanced styling + DEBUG MODE
 const convertToFlowEdge = (graphEdge: ExtendedGraphEdge): Edge => {
   // Use source/target if available, fallback to from_id/to_id
   const sourceId = graphEdge.source || graphEdge.from_id;
   const targetId = graphEdge.target || graphEdge.to_id;
   const edgeType = graphEdge.edge_type || graphEdge.type || 'connection';
   
+  // DEBUG: Validate edge has required fields
+  if (!sourceId || !targetId) {
+    console.error('🚨 EDGE MISSING IDs:', {
+      edgeId: graphEdge.id,
+      sourceId,
+      targetId,
+      originalEdge: graphEdge
+    });
+  }
+  
   const isTeachingEdge = edgeType === 'teaches' || edgeType === 'unlocks';
   const isRequirementEdge = edgeType === 'requires' || edgeType === 'prerequisite';
   
-  return {
+  // DEBUG MODE: Make edges VERY visible for troubleshooting
+  const debugMode = process.env.NODE_ENV === 'development';
+  
+  const edge: Edge = {
     id: `${sourceId}-${targetId}`,
     source: sourceId,
     target: targetId,
-    type: isTeachingEdge ? 'smoothstep' : 'default',
-    animated: edgeType === 'unlocks' || edgeType === 'leads_to' || edgeType === 'teaches',
+    type: 'smoothstep', // Force smoothstep for visibility
+    animated: true, // Force animation for visibility
     style: {
-      stroke: getEdgeColor(edgeType),
-      strokeWidth: getEdgeWidth(graphEdge.importance_weight || 1),
-      opacity: 0.8
+      stroke: debugMode ? '#ff0000' : getEdgeColor(edgeType), // Red in debug mode
+      strokeWidth: debugMode ? 4 : getEdgeWidth(graphEdge.importance_weight || 1), // Thicker in debug
+      opacity: debugMode ? 1.0 : 0.8, // Full opacity in debug mode
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: getEdgeColor(edgeType),
-      width: 20,
-      height: 20
+      color: debugMode ? '#ff0000' : getEdgeColor(edgeType),
+      width: debugMode ? 25 : 20,
+      height: debugMode ? 25 : 20
     },
-    label: edgeType.replace('_', ' '),
+    label: debugMode ? `${sourceId}→${targetId} (${edgeType})` : edgeType.replace('_', ' '),
     labelStyle: {
-      fontSize: '9px',
-      fontWeight: '500',
-      background: 'rgba(255, 255, 255, 0.9)',
-      padding: '2px 6px',
-      borderRadius: '4px'
+      fontSize: debugMode ? '12px' : '9px',
+      fontWeight: '600',
+      background: debugMode ? '#ffff00' : 'rgba(255, 255, 255, 0.9)', // Yellow in debug
+      padding: '4px 8px',
+      borderRadius: '4px',
+      border: debugMode ? '2px solid #ff0000' : 'none'
     },
     data: {
       edgeType: edgeType,
       reasoning: graphEdge.reasoning,
-      importance: graphEdge.importance_weight
+      importance: graphEdge.importance_weight,
+      debug: debugMode ? { sourceId, targetId, originalEdge: graphEdge } : undefined
     }
   };
+
+  // DEBUG: Log each edge conversion
+  if (debugMode) {
+    console.log('🔗 Converted edge:', {
+      edgeId: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edgeType,
+      animated: edge.animated
+    });
+  }
+  
+  return edge;
 };
 
 // Enhanced helper functions for styling with checkpoint and branch support
@@ -539,11 +567,42 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
   ]);
 
   const flowEdges = useMemo(() => {
+    console.log('🔗 EDGE CONVERSION DEBUG:', {
+      rawGraphEdgesCount: graphEdges.length,
+      rawGraphEdgesSample: graphEdges.slice(0, 2),
+    });
+    
     let edges = graphEdges.map(convertToFlowEdge);
+    
+    // DEBUG: Validate edge-node alignment
+    const nodeIds = new Set(flowNodes.map(n => n.id));
+    const edgeValidation = edges.map(edge => ({
+      edgeId: edge.id,
+      hasValidSource: nodeIds.has(edge.source),
+      hasValidTarget: nodeIds.has(edge.target),
+      source: edge.source,
+      target: edge.target
+    }));
+    
+    const invalidEdges = edgeValidation.filter(e => !e.hasValidSource || !e.hasValidTarget);
+    if (invalidEdges.length > 0) {
+      console.error('🚨 INVALID EDGES FOUND:', {
+        invalidEdges,
+        availableNodeIds: Array.from(nodeIds),
+        totalEdges: edges.length
+      });
+    }
+    
+    console.log('🔗 EDGE CONVERSION RESULT:', {
+      convertedEdgesCount: edges.length,
+      validEdges: edges.length - invalidEdges.length,
+      invalidEdges: invalidEdges.length,
+      nodeCount: nodeIds.size
+    });
     
     // Filter edges based on showPivotPaths - simplified
     return edges;
-  }, [graphEdges, showPivotPaths]);
+  }, [graphEdges, showPivotPaths, flowNodes]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
