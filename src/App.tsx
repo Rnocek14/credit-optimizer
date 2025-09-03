@@ -31,6 +31,7 @@ import Transcripts from "./pages/Transcripts";
 import CourseHistory from "./pages/CourseHistory";
 import SkillTree from "./pages/SkillTree";
 import SkillTreeBuilder from "./pages/SkillTreeBuilder";
+import SkillTree3 from "./pages/SkillTree3";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import Admin from "./pages/Admin";
 import MentorInbox from "./pages/MentorInbox";
@@ -652,6 +653,14 @@ const App = () => {
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <SkillTreeBuilder />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/skilltree3" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <SkillTree3 />
               </ProtectedRoute>
             } 
           />
