@@ -3,6 +3,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { UnifiedCareerCanvas } from '@/components/UnifiedCareerCanvas';
 import { ErrorBoundaryWrapper } from '@/components/ErrorBoundaryWrapper';
 import { CalmSkillTreeEngine } from '@/components/calm/CalmSkillTreeEngine';
+import { CalmModeErrorBoundary } from '@/components/calm/CalmModeErrorBoundary';
 import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

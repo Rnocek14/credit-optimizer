@@ -73,6 +73,7 @@ import DiscoverHub from "./pages/DiscoverHub";
 import ProgressHub from "./pages/ProgressHub";
 import TodayDashboard from "./pages/TodayDashboard";
 import ContributeTabbed from "./pages/ContributeTabbed";
+import CalmTest from "./pages/CalmTest";
 import CareerCopilot from "./pages/CareerCopilot";
 import SprintBoard from "./pages/SprintBoard";
 import TeachAnalytics from "./pages/TeachAnalytics";
@@ -220,6 +221,14 @@ const App = () => {
             element={
               <ProtectedRoute requireAuth={true} requireOnboarding={true}>
                 <ContributeTabbed />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/calm-test" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <CalmTest />
               </ProtectedRoute>
             } 
           />
