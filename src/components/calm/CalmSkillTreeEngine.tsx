@@ -66,8 +66,7 @@ export function CalmSkillTreeEngine({
       const supabaseClient: any = supabase;
       const result = await supabaseClient
         .from('career_graph_edges')
-        .select('*')
-        .eq('active', true);
+        .select('*');
       
       if (result.error) throw result.error;
       return result.data || [];
