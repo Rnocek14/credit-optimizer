@@ -609,7 +609,13 @@ export const UnifiedCareerCanvas: React.FC<UnifiedCareerCanvasProps> = ({
     if (processedNodes?.length > 0 && reactFlowInstance) {
       requestAnimationFrame(() => {
         try {
-          reactFlowInstance.fitView({ padding: 0.1, includeHiddenNodes: false, duration: 400 });
+          reactFlowInstance.fitView({ 
+            padding: 0.2, 
+            includeHiddenNodes: false, 
+            duration: 400,
+            minZoom: 0.1,
+            maxZoom: 1.25
+          });
           console.log('🎯 Auto-fitted view for', processedNodes.length, 'nodes');
         } catch (error) {
           console.warn('Auto-fit failed:', error);

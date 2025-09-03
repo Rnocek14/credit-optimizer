@@ -77,6 +77,12 @@ export interface LayoutEdge {
   type: 'teaches' | 'requires' | 'qualifies_for' | 'supports' | 'prerequisite';
 }
 
+// Layout configuration with strict depth limits
+const MAX_DEPTH = 10;           // Never exceed this depth
+const MAX_CANVAS_HEIGHT = 2000; // Hard ceiling for layout
+const LAYER_GAP = 180;          // Consistent spacing between layers
+const ORPHAN_ISLAND_Y = 1600;   // Dedicated area for orphan nodes
+
 export interface LayoutConfig {
   algorithm: 'semantic-hierarchy' | 'category-cluster' | 'goal-focused' | 'progressive-disclosure';
   containerWidth: number;
@@ -170,19 +176,36 @@ export class EnhancedSkillTreeLayout {
     if (missingNodes.length > 0) {
       console.warn(`🔧 Adding ${missingNodes.length} missing nodes to layout`);
       const maxY = Math.max(...result.map(n => n.y)) + 200;
+      // Create orphan island with grid layout
+      const orphanCols = 8;
       missingNodes.forEach((node, i) => {
+        const col = i % orphanCols;
+        const row = Math.floor(i / orphanCols);
         result.push({
           ...node,
-          x: 100 + (i * 220),
-          y: maxY,
-          depth: 999,
+          x: 100 + (col * 220),
+          y: ORPHAN_ISLAND_Y + (row * 120),
+          depth: MAX_DEPTH,
           clusterGroup: 'orphan'
         });
       });
     }
 
+    // Enhanced debug logging
+    const orphanCount = result.filter(n => n.clusterGroup === 'orphan').length;
+    const cycleCount = result.filter(n => n.depth === MAX_DEPTH && n.clusterGroup !== 'orphan').length;
+    const minY = Math.min(...result.map(n => n.y));
+    const maxY = Math.max(...result.map(n => n.y));
+    
+    console.info('[layout]', { 
+      orphans: orphanCount, 
+      cycleNodes: cycleCount, 
+      clamped: result.filter(n => n.depth >= MAX_DEPTH).length,
+      span: { minY, maxY }
+    });
+
     if (this.hadCycles) {
-      console.warn('Layout cycles detected; fell back to heuristic depth for cycle nodes');
+      console.warn('🔄 Layout cycles were detected and handled with heuristic depth assignment');
     }
 
     return result;
@@ -252,10 +275,13 @@ export class EnhancedSkillTreeLayout {
         cycleEdges.add(nodeId);
         this.hadCycles = true;
         
-        // Assign max(depths of sources) + 1 for cycle nodes
+        // Assign clamped depth for cycle nodes
         const dependencies = this.edges.filter(e => e.target === nodeId);
         const depthValues = dependencies.map(dep => depths.get(dep.source) || 0);
-        const heuristicDepth = depthValues.length > 0 ? Math.max(...depthValues) + 1 : 0;
+        const heuristicDepth = Math.min(
+          depthValues.length > 0 ? Math.max(...depthValues) + 1 : 0,
+          MAX_DEPTH
+        );
         depths.set(nodeId, heuristicDepth);
         visiting.delete(nodeId);
         return heuristicDepth;
@@ -296,7 +322,7 @@ export class EnhancedSkillTreeLayout {
         
         if (!hasEdges) {
           console.log(`🏝️ Orphan node detected: ${node.title} (${node.id})`);
-          depths.set(node.id, 999); // Place orphans at bottom
+          depths.set(node.id, Math.min(10, MAX_DEPTH)); // Place orphans in visible area
         }
       }
     });
@@ -336,7 +362,7 @@ export class EnhancedSkillTreeLayout {
     const layers = new Map<number, Map<string, LayoutNode[]>>();
 
     this.nodes.forEach(node => {
-      const depth = depthMap.get(node.id) ?? 999; // Disconnected nodes go to bottom
+      const depth = Math.min(depthMap.get(node.id) ?? MAX_DEPTH, MAX_DEPTH); // Cap all depths
       
       if (!layers.has(depth)) {
         layers.set(depth, new Map());
@@ -374,8 +400,8 @@ export class EnhancedSkillTreeLayout {
     sortedDepths.forEach((depth, depthIndex) => {
       const depthLayer = layers.get(depth)!;
       
-      // PR-1 CRITICAL FIX: Base Y coordinate determined by depth only
-      const baseY = 120 + depth * LAYER_GAP; // Use depth, not depthIndex
+      // Clamped Y positioning to keep nodes visible
+      const baseY = Math.min(120 + depth * LAYER_GAP, MAX_CANVAS_HEIGHT - 400);
       
       console.log(`📍 Depth ${depth} positioned at baseY: ${baseY}`);
       
