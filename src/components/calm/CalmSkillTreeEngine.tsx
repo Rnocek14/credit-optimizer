@@ -9,58 +9,72 @@ import { validateCalmModeData } from '@/lib/calmModeValidation';
 import { buildCalmSubgraph } from '@/lib/calmSubgraph';
 import { CalmErrorBoundary } from './CalmErrorBoundary';
 
-export function CalmSkillTreeEngine() {
-  console.log('🌟 CalmSkillTreeEngine: Starting render');
+export interface CalmSkillTreeEngineProps {
+  nodes: any[];
+  edges: any[];
+  loading: boolean;
+  error: string | null;
+  onNodeClick?: (node: any) => void;
+  onReload?: () => void;
+  criScore?: any;
+  userProgress?: any[];
+  getReadinessLevel?: (score: number) => { level: string; color: string };
+}
 
-  // Fetch data with comprehensive error handling
-  const { data: nodes = [], isLoading: nodesLoading, error: nodesError } = useQuery({
+export function CalmSkillTreeEngine({
+  nodes: rawNodes = [],
+  edges: rawEdges = [],
+  loading: externalLoading = false,
+  error: externalError = null,
+  onNodeClick,
+  onReload
+}: CalmSkillTreeEngineProps) {
+  console.log('🌟 CalmSkillTreeEngine: Starting render with external data', {
+    rawNodesCount: rawNodes?.length,
+    rawEdgesCount: rawEdges?.length,
+    externalLoading,
+    externalError: !!externalError
+  });
+
+  // If external data is provided, use it directly; otherwise fetch
+  const shouldFetch = !rawNodes.length && !rawEdges.length && !externalLoading && !externalError;
+
+  const { data: fetchedNodes = [], isLoading: fetchLoading, error: fetchError } = useQuery<any[], Error>({
     queryKey: ['career-graph-nodes'],
     queryFn: async () => {
-      try {
-        console.log('🌟 Calm Mode: Fetching nodes...');
-        const { data, error } = await supabase
-          .from('career_graph_nodes')
-          .select('*')
-          .eq('active', true);
-        
-        if (error) {
-          console.error('❌ Calm Mode: Error fetching nodes:', error);
-          throw error;
-        }
-        console.log('✅ Calm Mode: Fetched nodes:', data?.length || 0, 'items');
-        return data || [];
-      } catch (error) {
-        console.error('💥 Calm Mode: Critical error fetching nodes:', error);
-        throw error;
-      }
+      console.log('🌟 Calm Mode: Fetching nodes...');
+      const { data, error } = await supabase
+        .from('career_graph_nodes')
+        .select('*')
+        .eq('active', true);
+      
+      if (error) throw error;
+      return data || [];
     },
+    enabled: shouldFetch,
   });
 
-  const { data: edges = [], isLoading: edgesLoading, error: edgesError } = useQuery({
+  const { data: fetchedEdges = [], isLoading: edgesLoading, error: edgesError } = useQuery<any[], Error>({
     queryKey: ['career-graph-edges'],
     queryFn: async () => {
-      try {
-        console.log('🌟 Calm Mode: Fetching edges...');
-        const { data, error } = await supabase
-          .from('career_graph_edges')
-          .select('*')
-          .eq('active', true);
-        
-        if (error) {
-          console.error('❌ Calm Mode: Error fetching edges:', error);
-          throw error;
-        }
-        console.log('✅ Calm Mode: Fetched edges:', data?.length || 0, 'items');
-        return data || [];
-      } catch (error) {
-        console.error('💥 Calm Mode: Critical error fetching edges:', error);
-        throw error;
-      }
+      console.log('🌟 Calm Mode: Fetching edges...');
+      const { data, error } = await supabase
+        .from('career_graph_edges')
+        .select('*')
+        .eq('active', true);
+      
+      if (error) throw error;
+      return data || [];
     },
+    enabled: shouldFetch,
   });
 
-  // Process data with comprehensive error handling
-  const { processedNodes, processedEdges, validationResult, processingError } = useMemo(() => {
+  // Use external data if provided, otherwise use fetched data
+  const nodes = rawNodes.length > 0 ? rawNodes : fetchedNodes;
+  const edges = rawEdges.length > 0 ? rawEdges : fetchedEdges;
+
+  // Process data with simplified typing to avoid infinite recursion
+  const processedData = useMemo(() => {
     console.log('🧠 Calm Mode: Processing data...');
     
     try {
@@ -68,8 +82,8 @@ export function CalmSkillTreeEngine() {
       if (!nodes || !edges) {
         console.log('ℹ️ Calm Mode: Data not yet loaded');
         return {
-          processedNodes: [],
-          processedEdges: [],
+          nodes: [],
+          edges: [],
           validationResult: { isValid: true, errors: [], warnings: ['Data loading'] },
           processingError: null
         };
@@ -80,8 +94,8 @@ export function CalmSkillTreeEngine() {
         const error = 'Invalid data format: nodes and edges must be arrays';
         console.error('❌ Calm Mode:', error);
         return {
-          processedNodes: [],
-          processedEdges: [],
+          nodes: [],
+          edges: [],
           validationResult: { isValid: false, errors: [error], warnings: [] },
           processingError: new Error(error)
         };
@@ -91,7 +105,7 @@ export function CalmSkillTreeEngine() {
       if (nodes.length === 0 && edges.length === 0) {
         console.log('ℹ️ Calm Mode: No data available, creating placeholder');
         return {
-          processedNodes: [{
+          nodes: [{
             id: 'placeholder-node',
             type: 'skill',
             position: { x: 300, y: 200 },
@@ -109,7 +123,7 @@ export function CalmSkillTreeEngine() {
             },
             style: { width: 200, height: 120 }
           }],
-          processedEdges: [],
+          edges: [],
           validationResult: { isValid: true, errors: [], warnings: ['No data available - showing placeholder'] },
           processingError: null
         };
@@ -122,8 +136,8 @@ export function CalmSkillTreeEngine() {
       if (!validation.isValid) {
         console.error('❌ Calm Mode: Data validation failed:', validation.errors);
         return {
-          processedNodes: [],
-          processedEdges: [],
+          nodes: [],
+          edges: [],
           validationResult: validation,
           processingError: new Error(`Validation failed: ${validation.errors.join(', ')}`)
         };
@@ -138,8 +152,8 @@ export function CalmSkillTreeEngine() {
         const error = 'Invalid subgraph result';
         console.error('❌ Calm Mode:', error);
         return {
-          processedNodes: [],
-          processedEdges: [],
+          nodes: [],
+          edges: [],
           validationResult: { isValid: false, errors: [error], warnings: [] },
           processingError: new Error(error)
         };
@@ -149,8 +163,8 @@ export function CalmSkillTreeEngine() {
       console.log('📊 Calm Mode: Processed', result.nodes.length, 'nodes and', result.edges.length, 'edges');
       
       return {
-        processedNodes: result.nodes,
-        processedEdges: result.edges,
+        nodes: result.nodes,
+        edges: result.edges,
         validationResult: validation,
         processingError: null
       };
@@ -158,8 +172,8 @@ export function CalmSkillTreeEngine() {
     } catch (error) {
       console.error('💥 Calm Mode: Critical error during data processing:', error);
       return {
-        processedNodes: [],
-        processedEdges: [],
+        nodes: [],
+        edges: [],
         validationResult: { 
           isValid: false, 
           errors: [`Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`], 
@@ -170,8 +184,8 @@ export function CalmSkillTreeEngine() {
     }
   }, [nodes, edges]);
 
-  const isLoading = nodesLoading || edgesLoading;
-  const hasError = nodesError || edgesError || processingError;
+  const isLoading = externalLoading || fetchLoading || edgesLoading;
+  const hasError = externalError || fetchError || edgesError || processedData.processingError;
 
   // Loading state
   if (isLoading) {
@@ -188,7 +202,7 @@ export function CalmSkillTreeEngine() {
 
   // Error state with recovery options
   if (hasError) {
-    const errorMessage = nodesError?.message || edgesError?.message || processingError?.message || 'Unknown error occurred';
+    const errorMessage = externalError || fetchError?.message || edgesError?.message || processedData.processingError?.message || 'Unknown error occurred';
     console.error('🚨 Calm Mode: Displaying error state:', errorMessage);
     
     return (
@@ -205,7 +219,11 @@ export function CalmSkillTreeEngine() {
             <Button 
               onClick={() => {
                 console.log('🔄 Calm Mode: User clicked retry');
-                window.location.reload();
+                if (onReload) {
+                  onReload();
+                } else {
+                  window.location.reload();
+                }
               }} 
               variant="outline" 
               size="sm"
@@ -234,7 +252,7 @@ export function CalmSkillTreeEngine() {
   }
 
   // Validation error state
-  if (!validationResult.isValid) {
+  if (!processedData.validationResult.isValid) {
     console.error('🚨 Calm Mode: Displaying validation error state');
     
     return (
@@ -245,10 +263,10 @@ export function CalmSkillTreeEngine() {
             <h3 className="font-semibold">Data Validation Failed</h3>
           </div>
           <div className="space-y-2 text-sm">
-            {validationResult.errors.map((error, i) => (
+            {processedData.validationResult.errors.map((error, i) => (
               <p key={i} className="text-destructive">{error}</p>
             ))}
-            {validationResult.warnings.map((warning, i) => (
+            {processedData.validationResult.warnings.map((warning, i) => (
               <p key={i} className="text-amber-600">{warning}</p>
             ))}
           </div>
@@ -256,7 +274,11 @@ export function CalmSkillTreeEngine() {
             <Button 
               onClick={() => {
                 console.log('🔄 Calm Mode: User clicked retry after validation error');
-                window.location.reload();
+                if (onReload) {
+                  onReload();
+                } else {
+                  window.location.reload();
+                }
               }} 
               variant="outline" 
               size="sm"
@@ -285,7 +307,7 @@ export function CalmSkillTreeEngine() {
   }
 
   // Main render with comprehensive error boundaries
-  console.log('🎨 Calm Mode: Rendering main UI with', processedNodes.length, 'nodes and', processedEdges.length, 'edges');
+  console.log('🎨 Calm Mode: Rendering main UI with', processedData.nodes.length, 'nodes and', processedData.edges.length, 'edges');
   
   return (
     <CalmErrorBoundary 
@@ -312,8 +334,9 @@ export function CalmSkillTreeEngine() {
             }}
           >
             <SafeCanvas 
-              nodes={processedNodes}
-              edges={processedEdges}
+              nodes={processedData.nodes}
+              edges={processedData.edges}
+              onNodeClick={onNodeClick}
             />
           </CalmErrorBoundary>
         </div>
@@ -323,7 +346,7 @@ export function CalmSkillTreeEngine() {
 }
 
 // Safe canvas wrapper with additional error isolation
-function SafeCanvas({ nodes, edges }: { nodes: any[], edges: any[] }) {
+function SafeCanvas({ nodes, edges, onNodeClick }: { nodes: any[], edges: any[], onNodeClick?: (node: any) => void }) {
   try {
     console.log('🎨 SafeCanvas: Rendering with', nodes.length, 'nodes and', edges.length, 'edges');
     
@@ -337,7 +360,7 @@ function SafeCanvas({ nodes, edges }: { nodes: any[], edges: any[] }) {
       <UnifiedCareerCanvas
         nodes={nodes}
         edges={edges}
-        className="h-[600px]"
+        onNodeClick={onNodeClick}
       />
     );
   } catch (error) {
