@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle, RefreshCw, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useActiveTrackStore } from '@/stores/useActiveTrackStore';
+import { CalmSkillTreeEngine } from '@/components/calm/CalmSkillTreeEngine';
 
 export interface SkillTreeEngineProps {
   // Data
@@ -80,34 +81,54 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
 
   // Render calm mode if enabled
   if (calmMode && mode === 'progress') {
-    const { CalmSkillTreeEngine } = require('@/components/calm/CalmSkillTreeEngine');
-    return (
-      <div className="space-y-6">
-        {/* Stats Section (conditional) */}
-        {showStats && statsComponent && (
-          <div>{statsComponent}</div>
-        )}
-        
-        <CalmSkillTreeEngine
-          nodes={rawNodes}
-          edges={rawEdges}
-          loading={loading}
-          error={error}
-          onNodeClick={onNodeClick}
-          onReload={onReload}
-          criScore={criScore}
-          userProgress={userProgress}
-          getReadinessLevel={getReadinessLevel}
-        />
-        
-        {/* Right Rail (conditional) */}
-        {showRightRail && rightRailComponent && (
-          <div className="mt-6">
-            {rightRailComponent}
+    console.log('🧘 Activating calm mode with props:', {
+      nodesCount: rawNodes?.length,
+      edgesCount: rawEdges?.length,
+      loading,
+      error: !!error
+    });
+    
+    try {
+      return (
+        <ErrorBoundaryWrapper 
+          resetKeys={[calmMode ? 'calm' : 'normal', rawNodes?.length || 0, rawEdges?.length || 0]}
+          onError={(error) => {
+            console.error('🚨 Calm mode error:', error);
+            toast.error('Calm mode failed to load. Falling back to normal view.');
+          }}
+        >
+          <div className="space-y-6">
+            {/* Stats Section (conditional) */}
+            {showStats && statsComponent && (
+              <div>{statsComponent}</div>
+            )}
+            
+            <CalmSkillTreeEngine
+              nodes={rawNodes}
+              edges={rawEdges}
+              loading={loading}
+              error={error}
+              onNodeClick={onNodeClick}
+              onReload={onReload}
+              criScore={criScore}
+              userProgress={userProgress}
+              getReadinessLevel={getReadinessLevel}
+            />
+            
+            {/* Right Rail (conditional) */}
+            {showRightRail && rightRailComponent && (
+              <div className="mt-6">
+                {rightRailComponent}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    );
+        </ErrorBoundaryWrapper>
+      );
+    } catch (error) {
+      console.error('🚨 Calm mode initialization failed:', error);
+      toast.error('Calm mode unavailable. Using normal view.');
+      // Fall through to normal mode
+    }
   }
 
   // Get CRI-based node styling helper for progress mode

@@ -20,9 +20,21 @@ export const SkillTreeProgress: React.FC = () => {
     criScore: 0
   });
 
-  // Calm mode feature flag from URL
+  // Enhanced calm mode detection with debugging
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const calmEnabled = urlParams.get('st_calm') === '1';
+  
+  // Debug calm mode activation
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('🧘 Calm mode detection:', {
+        url: window.location.href,
+        searchParams: window.location.search,
+        calmParam: urlParams.get('st_calm'),
+        calmEnabled
+      });
+    }
+  }, [calmEnabled]);
 
   // Get current user
   useEffect(() => {
