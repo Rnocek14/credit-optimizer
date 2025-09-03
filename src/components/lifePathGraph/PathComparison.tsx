@@ -11,7 +11,7 @@ interface PathComparisonProps {
   graph: LifePathGraph;
 }
 
-export function PathComparison({ result, graph }: PathComparisonProps) {
+export default function PathComparison({ result, graph }: PathComparisonProps) {
   const [selectedPaths, setSelectedPaths] = useState<string[]>(['fastest', 'cheapest']);
 
   const paths = {

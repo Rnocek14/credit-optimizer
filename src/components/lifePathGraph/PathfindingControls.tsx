@@ -12,7 +12,7 @@ interface PathfindingControlsProps {
   onChange: (config: ScoringConfig) => void;
 }
 
-export function PathfindingControls({ config, onChange }: PathfindingControlsProps) {
+export default function PathfindingControls({ config, onChange }: PathfindingControlsProps) {
   const updateObjectiveWeight = (objective: keyof ScoringConfig['objectives'], weight: number) => {
     onChange({
       ...config,

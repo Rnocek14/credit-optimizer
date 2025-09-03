@@ -30,7 +30,7 @@ interface LifePathCanvasProps {
   selectedNode?: GraphNode | null;
 }
 
-export function LifePathCanvas({ 
+export default function LifePathCanvas({ 
   graph, 
   pathfindingResult, 
   onNodeClick, 
