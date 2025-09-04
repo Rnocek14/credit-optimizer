@@ -116,7 +116,7 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       >
         {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
         {data.isMainPath && typeof data.stepNumber === "number" && data.stepNumber > 0 && (
-          <StepBadge stepNumber={data.stepNumber} />
+          <StepBadge stepNumber={data.stepNumber} isMainPath />
         )}
         
         {/* Overlap Indicator */}
