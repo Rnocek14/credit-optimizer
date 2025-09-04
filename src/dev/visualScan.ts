@@ -1,0 +1,205 @@
+// src/dev/visualScan.ts
+// Dev-only helper to scan the rendered React Flow canvas and the in-memory graph.
+
+export type VisualScanIssue =
+  | { type: 'NODE_OVERLAP'; aId: string; bId: string; overlapArea: number }
+  | { type: 'EDGE_CROSSING'; aId: string; bId: string; point: { x: number; y: number } }
+  | { type: 'EDGE_THROUGH_NODE'; edgeId: string; nodeId: string }
+  | { type: 'MISSING_LABEL'; edgeId: string }
+  | { type: 'DISCONNECTED_PATH_SEGMENT'; reason: string; nodeId?: string; edgeId?: string };
+
+export type VisualScanCareerReport = {
+  careerId: string;
+  careerLabel: string;
+  preset: 'fastest'|'cheapest'|'creditMaximized'|'balanced';
+  pathNodes: string[];              // ordered ids
+  pathEdges: string[];              // ids in path
+  firstDegreeNeighbors: string[];   // off-path neighbors touching path
+  notes?: string;
+};
+
+export type VisualScanSnapshot = {
+  counts: { nodes: number; edges: number; labels: number };
+  tiers?: { edgeOn: number; edgeRelated: number; edgeOff: number };
+  issues: VisualScanIssue[];
+  careers: VisualScanCareerReport[];
+};
+
+type Rect = { x: number; y: number; w: number; h: number; id: string };
+
+const $all = (sel: string, root: Document | HTMLElement = document) =>
+  Array.from(root.querySelectorAll(sel)) as HTMLElement[];
+
+function getNodeRects(): Rect[] {
+  // React Flow nodes have .react-flow__node; our LifePath nodes also carry data-testid=lp-node
+  return $all('.react-flow__node[data-id], [data-testid="lp-node"]')
+    .map((el) => {
+      const box = el.getBoundingClientRect();
+      const id = el.getAttribute('data-id') || el.getAttribute('data-nodeid') || el.dataset['id'] || el.dataset['nodeid'] || '';
+      // Convert to canvas coords by subtracting canvas page offset (approx: use viewport for relative checks)
+      return { id, x: box.left, y: box.top, w: box.width, h: box.height };
+    })
+    // Filter out empties
+    .filter(r => !!r.id && r.w > 0 && r.h > 0);
+}
+
+function rectsOverlap(a: Rect, b: Rect, pad = 2) {
+  // Allow small padding so tight nodes don't false positive
+  return !(a.x + a.w + pad < b.x || b.x + b.w + pad < a.x || a.y + a.h + pad < b.y || b.y + b.h + pad < a.y);
+}
+
+function overlapArea(a: Rect, b: Rect) {
+  const xOverlap = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const yOverlap = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return xOverlap * yOverlap;
+}
+
+function getEdgeSegments(): { id: string; segs: { x1:number,y1:number,x2:number,y2:number }[] }[] {
+  // React Flow renders edges as SVG paths within .react-flow__edges
+  // We approximate by sampling path real segments via path.getPointAtLength.
+  const paths = $all('.react-flow__edge-path, .react-flow__edge path[data-id], .react-flow__edge path') as unknown as SVGPathElement[];
+  const res: { id: string; segs: {x1:number,y1:number,x2:number,y2:number}[] }[] = [];
+  for (const p of paths) {
+    const id = p.getAttribute('data-id') || (p.parentElement?.getAttribute('data-id')) || (p.parentElement?.id) || '';
+    try {
+      const total = p.getTotalLength();
+      const step = Math.max(8, total / 24); // adaptive sampling
+      const points: {x:number;y:number}[] = [];
+      for (let d=0; d<=total; d+=step) {
+        const { x, y } = p.getPointAtLength(d);
+        points.push({ x, y });
+      }
+      const segs = [];
+      for (let i=1;i<points.length;i++) {
+        const a = points[i-1], b = points[i];
+        segs.push({ x1:a.x, y1:a.y, x2:b.x, y2:b.y });
+      }
+      res.push({ id, segs });
+    } catch { /* ignore bad paths */ }
+  }
+  return res;
+}
+
+function linesIntersect(a:{x1:number,y1:number,x2:number,y2:number}, b:{x1:number,y1:number,x2:number,y2:number}) {
+  // standard segment intersection
+  const det = (x1:number,y1:number,x2:number,y2:number)=>x1*y2-x2*y1;
+  const sub = (a:{x:number,y:number},b:{x:number,y:number})=>({x:a.x-b.x,y:a.y-b.y});
+  const A={x:a.x1,y:a.y1}, B={x:a.x2,y:a.y2}, C={x:b.x1,y:b.y1}, D={x:b.x2,y:b.y2};
+  const r=sub(B,A), s=sub(D,C);
+  const rxs = det(r.x,r.y,s.x,s.y);
+  const q_p = sub(C,A);
+  if (rxs === 0) return false; // parallel or collinear (ignore for now)
+  const t = det(q_p.x,q_p.y,s.x,s.y) / rxs;
+  const u = det(q_p.x,q_p.y,r.x,r.y) / rxs;
+  return t>0 && t<1 && u>0 && u<1;
+}
+
+function segmentIntersections(a:{x1:number,y1:number,x2:number,y2:number}[], b:{x1:number,y1:number,x2:number,y2:number}[]) {
+  for (const sa of a) for (const sb of b) if (linesIntersect(sa, sb)) return true;
+  return false;
+}
+
+function edgeThroughNode(edgeSegs:{x1:number,y1:number,x2:number,y2:number}[], node:Rect) {
+  // If any sample point lies within node rect we treat as "through node"
+  for (const s of edgeSegs) {
+    // mid-point check for speed
+    const mx=(s.x1+s.x2)/2, my=(s.y1+s.y2)/2;
+    if (mx >= node.x && mx <= node.x+node.w && my >= node.y && my <= node.y+node.h) return true;
+  }
+  return false;
+}
+
+export function runVisualScan(opts: {
+  graph: any; // LifePathGraph
+  pathfindingResult?: any|null;
+  activePreset: 'fastest'|'cheapest'|'creditMaximized'|'balanced';
+  careerSelector?: (n:any)=>boolean; // default: node.type==='job' || tags include 'career'
+}): VisualScanSnapshot {
+  const nodes = getNodeRects();
+  const edges = getEdgeSegments();
+  const issues: VisualScanIssue[] = [];
+
+  // 1) Node overlap checks
+  for (let i=0;i<nodes.length;i++) for (let j=i+1;j<nodes.length;j++) {
+    if (rectsOverlap(nodes[i], nodes[j], 2)) {
+      const area = overlapArea(nodes[i], nodes[j]);
+      if (area > 6) issues.push({ type:'NODE_OVERLAP', aId:nodes[i].id, bId:nodes[j].id, overlapArea: area });
+    }
+  }
+
+  // 2) Edge crossings and edges through node boxes
+  for (let i=0;i<edges.length;i++) for (let j=i+1;j<edges.length;j++) {
+    if (segmentIntersections(edges[i].segs, edges[j].segs)) {
+      issues.push({ type:'EDGE_CROSSING', aId:edges[i].id, bId:edges[j].id, point:{ x:0, y:0 }});
+    }
+  }
+  for (const e of edges) {
+    for (const n of nodes) {
+      if (edgeThroughNode(e.segs, n)) issues.push({ type:'EDGE_THROUGH_NODE', edgeId:e.id, nodeId:n.id });
+    }
+  }
+
+  // 3) Per-career connection map (active preset)
+  const pf = opts.pathfindingResult;
+  const presetMap = pf ? {
+    fastest: pf.fastest, cheapest: pf.cheapest, creditMaximized: pf.creditMaximized, balanced: pf.balanced
+  } : null;
+  const activePath = presetMap ? presetMap[opts.activePreset] : null;
+
+  const isCareer = opts.careerSelector || ((n:any) =>
+    (n.type && n.type.toLowerCase()==='job') ||
+    (Array.isArray(n.tags) && n.tags.some((t:string)=>/career|role|job/i.test(t)))
+  );
+
+  const careers = (opts.graph?.nodes||[]).filter(isCareer);
+
+  const connections: VisualScanCareerReport[] = careers.map((c:any) => {
+    // naive: connected if any edge touches career node
+    const touchingEdges = (opts.graph?.edges||[]).filter((e:any)=> e.sourceId===c.id || e.targetId===c.id);
+    const neighborIds = new Set<string>();
+    touchingEdges.forEach((e:any)=>{
+      neighborIds.add(e.sourceId===c.id ? e.targetId : e.sourceId);
+    });
+
+    const pathIds: string[] = activePath?.nodeIds || [];
+    const pathEdgeIds: string[] = activePath?.edgeIds || [];
+
+    // first-degree neighbors intersecting the path
+    const firstDegreeOnPath = Array.from(neighborIds).filter(id => pathIds.includes(id));
+
+    return {
+      careerId: c.id,
+      careerLabel: c.label || c.name || c.title || c.id,
+      preset: opts.activePreset,
+      pathNodes: pathIds,
+      pathEdges: pathEdgeIds,
+      firstDegreeNeighbors: Array.from(neighborIds),
+      notes: firstDegreeOnPath.length ? `touches path at ${firstDegreeOnPath.length} nodes` : undefined
+    };
+  });
+
+  // 4) Label presence (transfer)
+  $all('[data-testid="lp-edge"]').forEach((el) => {
+    const hasLabel = el.querySelector('[data-testid="lp-edge-label"]');
+    if (!hasLabel) {
+      const id = el.getAttribute('data-id') || el.id || '';
+      if (id) issues.push({ type:'MISSING_LABEL', edgeId:id });
+    }
+  });
+
+  // Tier counts if Visual V2 present
+  const tiers = {
+    edgeOn: document.querySelectorAll('.lp-edge-on-path').length,
+    edgeRelated: document.querySelectorAll('.lp-edge-related').length,
+    edgeOff: document.querySelectorAll('.lp-edge-off-path').length,
+  };
+
+  const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;
+
+  return {
+    counts: { nodes: nodes.length, edges: edges.length, labels },
+    tiers,
+    issues,
+    careers: connections
+  };
+}
