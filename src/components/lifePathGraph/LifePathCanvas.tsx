@@ -20,7 +20,7 @@ import { CALM_LANES } from '@/components/calm/LaneBackground';
 import { MetricsPill } from '@/components/ui/metrics-pill';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodePosition } from '@/lib/pathfinding/visualization';
+import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodePosition, determineEdgeTier, determineNodeTier } from '@/lib/pathfinding/visualization';
 import { Eye, EyeOff, Zap, DollarSign, BookOpen, BarChart3 } from 'lucide-react';
 
 /* RUNTIME AUDIT PANEL – BEGIN */
@@ -31,6 +31,9 @@ function toJSON(v: any) {
   try { return JSON.stringify(v, null, 2); } catch { return String(v); }
 }
 /* RUNTIME AUDIT PANEL – END */
+
+// ---------- VISUAL V2 FEATURE FLAG ----------
+const LP_VISUAL_V2 = true; // Set to false to instantly rollback
 
 // ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
@@ -306,6 +309,13 @@ export default function LifePathCanvas({
         institutionLane
       );
 
+      // Visual V2: Determine node tier for hierarchy
+      const tier = LP_VISUAL_V2 ? determineNodeTier(
+        node.id, 
+        safeActivePath.nodeIds, 
+        graph.edges
+      ) : 'off-path';
+
       return {
         id: node.id,
         type: 'lifePathNode',
@@ -318,11 +328,13 @@ export default function LifePathCanvas({
           stepNumber: isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined,
           showGhost: false,
           ghostReason: undefined,
+          tier: LP_VISUAL_V2 ? tier : undefined,
         },
         style: {
           opacity: 1, // SAFE: render everything fully
           zIndex: isInMainPath ? 10 : 1,
         },
+        className: LP_VISUAL_V2 ? `lp-node-${tier}` : '',
         hidden: false, // SAFE: never hide
       };
     });
@@ -377,16 +389,32 @@ export default function LifePathCanvas({
     const visible = new Set(reactFlowNodes.map(n => n.id));
     const edges = graph.edges
       .filter(e => visible.has(e.sourceId) && visible.has(e.targetId))
-      .map(edge => ({
-        id: edge.id,
-        source: edge.sourceId,
-        target: edge.targetId,
-        type: 'lifePathEdge',
-        data: { edge, isHighlighted: false, pathType: undefined }
-      }));
+      .map(edge => {
+        // Visual V2: Determine edge tier for hierarchy
+        const tier = LP_VISUAL_V2 ? determineEdgeTier(
+          edge.id, 
+          safeActivePath.nodeIds, 
+          graph.nodes, 
+          graph.edges
+        ) : 'off-path';
+        
+        return {
+          id: edge.id,
+          source: edge.sourceId,
+          target: edge.targetId,
+          type: 'lifePathEdge',
+          data: { 
+            edge, 
+            isHighlighted: false, 
+            pathType: undefined,
+            tier: LP_VISUAL_V2 ? tier : undefined
+          },
+          className: LP_VISUAL_V2 ? `lp-edge-${tier}` : ''
+        };
+      });
     console.log('[life-path] reactFlowEdges:', edges.length);
     return edges;
-  }, [graph.edges, reactFlowNodes]);
+  }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds]);
 
   // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />
 

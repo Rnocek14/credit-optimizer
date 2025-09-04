@@ -34,6 +34,7 @@ interface LifePathNodeData {
   transferUsed?: number;
   examUsed?: number;
   residencyMet?: number;
+  tier?: 'on-path' | 'related' | 'off-path';
 }
 
 interface LifePathNodeProps {
@@ -54,7 +55,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
     overlapGoals,
     transferUsed = 0,
     examUsed = 0,
-    residencyMet = 0
+    residencyMet = 0,
+    tier
   } = data;
 
   const getNodeIcon = () => {
@@ -72,20 +74,40 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   };
 
   const getNodeColor = () => {
+    // Visual V2: Use tier-based styling with semantic tokens
+    if (tier) {
+      let baseColor = '';
+      switch (tier) {
+        case 'on-path':
+          baseColor = 'border-primary bg-primary/10 shadow-lg';
+          break;
+        case 'related':
+          baseColor = 'border-secondary bg-secondary/10';
+          break;
+        case 'off-path':
+          baseColor = 'border-muted bg-muted/5';
+          break;
+      }
+      
+      if (isSelected) baseColor += ' ring-2 ring-primary';
+      return baseColor;
+    }
+
+    // Legacy styling
     if (isSelected) return 'ring-2 ring-primary';
-    if (pathType === 'fastest') return 'border-blue-500 bg-blue-50 dark:bg-blue-950/20';
-    if (pathType === 'cheapest') return 'border-green-500 bg-green-50 dark:bg-green-950/20';
-    if (pathType === 'credit-max') return 'border-purple-500 bg-purple-50 dark:bg-purple-950/20';
+    if (pathType === 'fastest') return 'border-primary bg-primary/10';
+    if (pathType === 'cheapest') return 'border-secondary bg-secondary/10';
+    if (pathType === 'credit-max') return 'border-accent bg-accent/10';
     if (isInPath) return 'border-primary bg-primary/10';
     
     switch (node.type) {
-      case 'skill': return 'border-orange-300 bg-orange-50 dark:bg-orange-950/20';
-      case 'course': return 'border-blue-300 bg-blue-50 dark:bg-blue-950/20';
-      case 'job': return 'border-green-300 bg-green-50 dark:bg-green-950/20';
-      case 'certification': return 'border-purple-300 bg-purple-50 dark:bg-purple-950/20';
-      case 'project': return 'border-indigo-300 bg-indigo-50 dark:bg-indigo-950/20';
-      case 'exam': return 'border-amber-300 bg-amber-50 dark:bg-amber-950/20';
-      default: return 'border-gray-300 bg-gray-50 dark:bg-gray-950/20';
+      case 'skill': return 'border-secondary bg-secondary/10';
+      case 'course': return 'border-primary bg-primary/10';
+      case 'job': return 'border-accent bg-accent/10';
+      case 'certification': return 'border-secondary bg-secondary/10';
+      case 'project': return 'border-accent bg-accent/10';
+      case 'exam': return 'border-muted bg-muted/10';
+      default: return 'border-muted bg-muted/10';
     }
   };
 

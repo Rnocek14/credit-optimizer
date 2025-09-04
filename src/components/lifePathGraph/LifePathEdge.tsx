@@ -8,6 +8,7 @@ interface LifePathEdgeData {
   edge: GraphEdge;
   isHighlighted: boolean;
   pathType?: string;
+  tier?: 'on-path' | 'related' | 'off-path';
 }
 
 interface LifePathEdgeProps {
@@ -33,7 +34,7 @@ export function LifePathEdgeComponent({
   data,
   markerEnd,
 }: LifePathEdgeProps) {
-  const { edge, isHighlighted } = data;
+  const { edge, isHighlighted, tier } = data;
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -45,34 +46,60 @@ export function LifePathEdgeComponent({
   });
 
   const getEdgeStyle = () => {
+    // Visual V2: Use tier-based styling if available
+    if (tier) {
+      const baseStyle = {
+        strokeWidth: tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1,
+        opacity: tier === 'on-path' ? 1 : tier === 'related' ? 0.6 : 0.25,
+      };
+
+      // Use semantic colors based on tier
+      switch (tier) {
+        case 'on-path':
+          return { ...baseStyle, stroke: 'hsl(var(--primary))' };
+        case 'related':
+          return { ...baseStyle, stroke: 'hsl(var(--muted-foreground))' };
+        case 'off-path':
+          return { ...baseStyle, stroke: 'hsl(var(--muted-foreground))' };
+      }
+    }
+
+    // Legacy styling
     const baseStyle = {
       strokeWidth: isHighlighted ? 3 : 1.5,
     };
 
     switch (edge.type) {
       case 'requires':
-        return { ...baseStyle, stroke: '#3b82f6' }; // blue
+        return { ...baseStyle, stroke: 'hsl(var(--primary))' };
       case 'enables':
-        return { ...baseStyle, stroke: '#10b981' }; // green
+        return { ...baseStyle, stroke: 'hsl(var(--secondary))' };
       case 'substitutes':
-        return { ...baseStyle, stroke: '#f59e0b', strokeDasharray: '8,4' }; // amber, dashed
+        return { ...baseStyle, stroke: 'hsl(var(--accent))', strokeDasharray: '8,4' };
       case 'creditTransfersTo':
-        return { ...baseStyle, stroke: '#8b5cf6' }; // purple
+        return { ...baseStyle, stroke: 'hsl(var(--secondary))' };
       case 'ghost':
-        return { ...baseStyle, stroke: '#ef4444', strokeDasharray: '4,4', opacity: 0.6 }; // red, dotted
+        return { ...baseStyle, stroke: 'hsl(var(--destructive))', strokeDasharray: '4,4', opacity: 0.6 };
       case 'alternative':
-        return { ...baseStyle, stroke: '#6b7280', strokeDasharray: '6,3' }; // gray, dashed
+        return { ...baseStyle, stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '6,3' };
       default:
-        return { ...baseStyle, stroke: '#6b7280' }; // gray
+        return { ...baseStyle, stroke: 'hsl(var(--muted-foreground))' };
     }
   };
 
   const getEdgeLabel = () => {
+    // Always show transfer info, even in filtered views (Phase 1 requirement)
     if (edge.type === 'creditTransfersTo') {
       const rate = typeof edge.creditTransferRate === 'number' ? edge.creditTransferRate : 1;
       const pct = Math.max(0, Math.min(100, Math.round(rate * 100)));
       return `${pct}% transfer`;
     }
+    
+    // Collapsed transfer info for crowded views
+    if (edge.metadata?.transferCount && edge.metadata.transferCount > 1) {
+      return `• +${edge.metadata.transferCount} transfers`;
+    }
+    
     if (edge.type === 'alternative') return 'Alt';
     if (edge.type === 'equivalentTo') return 'Equivalent';
     if (edge.type === 'ghost') return 'Ghost';

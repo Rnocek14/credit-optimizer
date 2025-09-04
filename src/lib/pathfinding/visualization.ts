@@ -175,3 +175,48 @@ export function formatPathMetrics(metrics: {
     `${metrics.institutionsCount} institutions`,
   ].join(' • ');
 }
+
+// Visual V2 - Edge and Node Tiering
+export type EdgeTier = 'on-path' | 'related' | 'off-path';
+export type NodeTier = 'on-path' | 'related' | 'off-path';
+
+export function determineEdgeTier(
+  edgeId: string,
+  activePathNodeIds: string[],
+  allNodes: any[],
+  allEdges: any[]
+): EdgeTier {
+  const edge = allEdges.find(e => e.id === edgeId);
+  if (!edge) return 'off-path';
+  
+  const sourceInPath = activePathNodeIds.includes(edge.sourceId);
+  const targetInPath = activePathNodeIds.includes(edge.targetId);
+  
+  // On-path: both nodes are in the active path
+  if (sourceInPath && targetInPath) return 'on-path';
+  
+  // Related: touches at least one node in the active path
+  if (sourceInPath || targetInPath) return 'related';
+  
+  return 'off-path';
+}
+
+export function determineNodeTier(
+  nodeId: string,
+  activePathNodeIds: string[],
+  allEdges: any[]
+): NodeTier {
+  // On-path: node is in the active path
+  if (activePathNodeIds.includes(nodeId)) return 'on-path';
+  
+  // Related: node connects to any node in the active path
+  const isRelated = allEdges.some(edge => {
+    const connectsToPath = activePathNodeIds.includes(edge.sourceId) || activePathNodeIds.includes(edge.targetId);
+    const touchesThisNode = edge.sourceId === nodeId || edge.targetId === nodeId;
+    return connectsToPath && touchesThisNode;
+  });
+  
+  if (isRelated) return 'related';
+  
+  return 'off-path';
+}

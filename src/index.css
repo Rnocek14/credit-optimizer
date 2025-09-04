@@ -111,6 +111,13 @@ All colors MUST be HSL for consistent theming.
     --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-hover)));
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.3));
     --gradient-glass: linear-gradient(135deg, hsl(var(--background) / 0.8), hsl(var(--background) / 0.4));
+    
+    /* Visual V2 - Life Path Graph Hierarchy */
+    --node-glow-on-path: 0 0 8px hsl(var(--primary) / 0.4);
+    --node-glow-related: 0 0 4px hsl(var(--secondary) / 0.3);
+    --edge-on-path: hsl(var(--primary));
+    --edge-related: hsl(var(--muted-foreground) / 0.6);
+    --edge-off-path: hsl(var(--muted-foreground) / 0.25);
 
     /* Spacing Scale */
     --space-1: 0.25rem;
@@ -212,6 +219,13 @@ All colors MUST be HSL for consistent theming.
     --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-hover)));
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.5));
     --gradient-glass: linear-gradient(135deg, hsl(var(--background) / 0.95), hsl(var(--background) / 0.8));
+    
+    /* Visual V2 - Life Path Graph Hierarchy (Dark Mode) */
+    --node-glow-on-path: 0 0 12px hsl(var(--primary) / 0.6);
+    --node-glow-related: 0 0 6px hsl(var(--secondary) / 0.4);
+    --edge-on-path: hsl(var(--primary));
+    --edge-related: hsl(var(--muted-foreground) / 0.6);
+    --edge-off-path: hsl(var(--muted-foreground) / 0.25);
     --sidebar-background: 240 5.9% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -289,6 +303,38 @@ All colors MUST be HSL for consistent theming.
     @apply text-xs font-medium;
     line-height: 1.4;
   }
+}
+
+/* Visual V2 - Life Path Graph Hierarchy */
+.lp-node-on-path {
+  box-shadow: var(--node-glow-on-path);
+  border-width: 2px;
+}
+
+.lp-node-related {
+  box-shadow: var(--node-glow-related);
+}
+
+.lp-node-off-path {
+  opacity: 0.7;
+}
+
+.lp-edge-on-path {
+  stroke: var(--edge-on-path) !important;
+  stroke-width: 3 !important;
+  opacity: 1 !important;
+}
+
+.lp-edge-related {
+  stroke: var(--edge-related) !important;
+  stroke-width: 2 !important;
+  opacity: 0.6 !important;
+}
+
+.lp-edge-off-path {
+  stroke: var(--edge-off-path) !important;
+  stroke-width: 1 !important;
+  opacity: 0.25 !important;
 }
 
 /* Enhanced Utility Classes and Animations */
