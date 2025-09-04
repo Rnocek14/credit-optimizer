@@ -114,7 +114,7 @@ export default function LifePathCanvas({
     n.tags?.includes('gen-ed');
 
   // IMPORTANT: do not filter if we don't have a path yet
-  const filteredNodes = React.useMemo(() => {
+  const baseNodes = React.useMemo(() => {
     if (!activePath?.nodeIds?.length) return graph.nodes;
 
     const nodes = graph.nodes.filter(n => {
@@ -133,17 +133,19 @@ export default function LifePathCanvas({
   const safeActivePath = isPathEmpty
     ? { nodeIds: graph.nodes.filter(n => n.type !== 'job').slice(0, 3).map(n => n.id) }
     : activePath;
+  
+  // Ghosts are always visible when path is empty; otherwise follow the toggle
+  const SAFE_SHOW_GHOSTS = showGhosts || isPathEmpty;
 
   const reactFlowNodes: Node[] = React.useMemo(() => {
-    return filteredNodes.map((node, index) => {
+    return baseNodes.map((node, index) => {
       const inPath = !!safeActivePath?.nodeIds?.includes(node.id);
       const stepNumber = inPath ? safeActivePath!.nodeIds.indexOf(node.id) + 1 : undefined;
 
-      // Pass `allowGhost=true` for now OR allow when inPath
-      const allowGhost = true; // temporary failsafe to avoid over-ghosting
-      const ghostInfo = determineNodeGhostStatus?.(node, undefined, allowGhost) ?? { isGhost: false };
-      const isGhost = ghostInfo.isGhost && !inPath; // never ghost the main path
-      const ghostReason = isGhost ? ghostInfo.reason : undefined;
+      // Use SAFE_SHOW_GHOSTS guard
+      const ghostInfo = determineNodeGhostStatus?.(node, undefined, SAFE_SHOW_GHOSTS) ?? { isGhost: false };
+      const isGhost = ghostInfo.isGhost && !SAFE_SHOW_GHOSTS;
+      const ghostReason = ghostInfo.reason;
 
       // Lane assignment
       let lane = 2; // Global/Orphan
@@ -171,13 +173,13 @@ export default function LifePathCanvas({
           ghostReason,
         },
         style: {
-          opacity: inPath ? 1 : 0.65,
+          // Main path = 1.0, ghosted = 0.35, others = 0.65
+          opacity: inPath ? 1 : (isGhost ? 0.35 : 0.65),
           zIndex: inPath ? 10 : 1,
-        },
-        hidden: false, // <- never hide (prevents vanishing)
+        }
       } as Node;
     });
-  }, [filteredNodes, selectedNode?.id, pathfindingResult, safeActivePath?.nodeIds]);
+  }, [baseNodes, selectedNode?.id, pathfindingResult, safeActivePath?.nodeIds, SAFE_SHOW_GHOSTS]);
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
   type BranchOption = {
@@ -196,7 +198,7 @@ export default function LifePathCanvas({
     const points: { anchorNodeId: string; options: BranchOption[] }[] = [];
 
     // Simple heuristic: find nodes at depth 1 that share skill outcomes or equivalency
-    const algebraLike = filteredNodes.filter(n =>
+    const algebraLike = baseNodes.filter(n =>
       n.type === "course" &&
       (n.title.toLowerCase().includes("algebra") || n.tags?.includes("math")) &&
       (n.attributes?.depth === 1)
@@ -219,7 +221,7 @@ export default function LifePathCanvas({
     }
 
     return points;
-  }, [filteredNodes, safeActivePath, isPathEmpty]);
+  }, [baseNodes, safeActivePath, isPathEmpty]);
 
   // Convert graph edges to React Flow edges - filter to existing nodes only
   const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
