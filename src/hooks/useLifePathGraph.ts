@@ -101,6 +101,46 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       const edgeMap = new Map(graph.edges.map(e => [e.id, e]));
       assignDepthToMainPath(basicPath, nodeMap);
 
+      // Minimal walkable path guarantee (≥3 nodes)
+      type PathResultInternal = { nodeIds: string[]; totalTime: number; totalCost: number; totalCredits: number; creditLoss: number };
+
+      function ensureMinimal(path: PathResultInternal, nodes: Map<string, any>, targetGoalId: string): PathResultInternal {
+        if (path?.nodeIds?.length >= 3) return path;
+
+        const ids: string[] = [];
+        const skill = Array.from(nodes.values()).find(n => n.type === "skill");
+        if (skill) ids.push(skill.id);
+
+        const intro = Array.from(nodes.values()).find(n => n.type === "course" && (n.attributes?.depth === 1 || (n.prerequisiteIds || []).length === 0));
+        if (intro) ids.push(intro.id);
+
+        const creditBlock = Array.from(nodes.values()).find(n => n.type === "creditBlock");
+        if (creditBlock) ids.push(creditBlock.id);
+
+        const credential = Array.from(nodes.values()).find(n => n.type === "credential");
+        if (credential) ids.push(credential.id);
+
+        if (targetGoalId) ids.push(targetGoalId);
+
+        const nodeIds = Array.from(new Set(ids)).slice(0, 5);
+        if (nodeIds.length < 3) return path;
+
+        return {
+          ...path,
+          nodeIds,
+          totalTime: path.totalTime || 24,
+          totalCost: path.totalCost || 8000,
+          totalCredits: path.totalCredits || 60,
+          creditLoss: path.creditLoss || 0
+        };
+      }
+
+      // Ensure minimal paths for all computed results
+      const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+      const enhancedBasicPath = ensureMinimal({ nodeIds: basicPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
+      const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
+      const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
+
       // Create path results with enhanced metrics
       const createPathResult = (path: string[], optimizedFor: string): PathResult => {
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
@@ -131,37 +171,11 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         };
       };
 
-      // Ensure minimally walkable paths (fallback if < 3 nodes)
-      const ensureMinimalPath = (path: string[], pathType: string): string[] => {
-        if (path.length >= 3) return path;
-        
-        console.warn(`[pathfinding] Path too short (${path.length}), creating fallback for ${pathType}`);
-        
-        // Build fallback: skill → intro course → creditBlock → credential → job
-        const skill = graph.nodes.find(n => n.type === 'skill');
-        const introCourse = graph.nodes.find(n => 
-          n.type === 'course' && 
-          (n.prerequisiteIds.length <= 1 || n.tags?.includes('intro'))
-        );
-        const creditBlock = graph.nodes.find(n => n.type === 'creditBlock');
-        const credential = graph.nodes.find(n => n.type === 'credential');
-        const job = graph.nodes.find(n => n.type === 'job' && n.id === targetGoalId);
-        
-        const fallbackPath = [skill?.id, introCourse?.id, creditBlock?.id, credential?.id, job?.id]
-          .filter(Boolean) as string[];
-        
-        console.log(`[pathfinding] Generated fallback path: ${fallbackPath.join(' → ')}`);
-        return fallbackPath.length >= 3 ? fallbackPath : path;
-      };
-
-      const enhancedBasicPath = ensureMinimalPath(basicPath, 'time');
-      const enhancedCostPath = ensureMinimalPath(costOptimizedPath, 'cost');
-      const enhancedCreditPath = ensureMinimalPath(creditOptimizedPath, 'credits');
 
       const result: PathfindingResult = {
-        fastest: createPathResult(enhancedBasicPath, 'time'),
-        cheapest: createPathResult(enhancedCostPath, 'cost'),
-        creditMaximized: createPathResult(enhancedCreditPath, 'credits'),
+        fastest: createPathResult(enhancedBasicPathResult.nodeIds, 'time'),
+        cheapest: createPathResult(enhancedCostPathResult.nodeIds, 'cost'),
+        creditMaximized: createPathResult(enhancedCreditPathResult.nodeIds, 'credits'),
         paretoFrontier: [],
         ghostPaths: [],
         tradeoffs: {
@@ -169,7 +183,7 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
           costVsCredits: { correlation: 0.3, alternatives: [] }
         },
         recommendations: {
-          primary: createPathResult(basicPath, 'balanced'),
+          primary: createPathResult(enhancedBasicPathResult.nodeIds, 'balanced'),
           alternatives: [],
           reasoning: 'This path offers the best balance of time and cost efficiency for your current skill level.'
         }

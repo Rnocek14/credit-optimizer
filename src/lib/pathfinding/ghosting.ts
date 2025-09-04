@@ -1,195 +1,133 @@
-import { GraphEdge, GraphNode, UserState } from '@/types/lifePathGraph';
+import { GraphNode, GraphEdge, UserState } from '@/types/lifePathGraph';
 
-export interface GhostInfo {
+export type GhostInfo = {
   isGhost: boolean;
   reason?: string;
-  details?: {
-    time?: string;
-    cost?: string;
-    cap?: string;
-    requirement?: string;
-  };
-}
+  details?: Record<string, string | number>;
+};
 
-export function determineGhostStatus(
+// Node-level ghosting (caps, budget, time, modality, prereqs)
+export function determineNodeGhostStatus(
   node: GraphNode,
   userState?: UserState,
-  allowGhost: boolean = false
+  allowGhost = true
 ): GhostInfo {
-  // Safety guard: don't block rendering when no user state
-  if (!userState) {
-    return { isGhost: false };
-  }
-  
-  if (allowGhost) {
-    return { isGhost: false };
-  }
+  if (allowGhost) return { isGhost: false };
 
-  // CLEP/Exam alternatives that exceed caps
-  if (node.type === 'exam' && node.tags.includes('clep')) {
-    const examCreditsUsed = userState?.existingCredits
-      .filter(c => c.nodeId.includes('clep') || c.nodeId.includes('exam'))
-      .reduce((sum, c) => sum + c.credits, 0) || 0;
-    
-    const examCap = 30; // Standard exam cap
-    if (examCreditsUsed + (node.credits || 0) > examCap) {
+  // Exam cap (e.g., CLEP)
+  if (node.type === "exam") {
+    const usedExamCredits =
+      userState?.existingCredits
+        ?.filter(c => c.nodeId.includes('exam') || c.nodeId.includes('clep'))
+        .reduce((s, c) => s + (c.credits || 0), 0) || 0;
+
+    const examCap = 30;
+    if (usedExamCredits + (node.credits || 0) > examCap) {
       return {
         isGhost: true,
         reason: `Exceeds exam cap (${examCap}cr)`,
-        details: {
-          cap: `${examCreditsUsed}/${examCap} used`
-        }
+        details: { cap: `${usedExamCredits}/${examCap} used` }
       };
     }
   }
 
-  // Budget constraints
-  if (userState?.preferences.maxCost && node.cost > userState.preferences.maxCost) {
-    return {
-      isGhost: true,
-      reason: 'Exceeds budget',
-      details: {
-        cost: `$${node.cost.toLocaleString()}`
-      }
-    };
-  }
-
-  // Time constraints
-  if (userState?.preferences.maxTimeMonths) {
-    const nodeTimeMonths = Math.ceil(node.estimatedHours / 40); // Assuming 40 hours per month
-    if (nodeTimeMonths > userState.preferences.maxTimeMonths) {
+  // Budget
+  if (userState?.preferences?.maxCost && node.cost) {
+    if (node.cost > userState.preferences.maxCost) {
       return {
         isGhost: true,
-        reason: 'Exceeds time limit',
-        details: {
-          time: `${nodeTimeMonths} months`
-        }
+        reason: "Exceeds budget",
+        details: { cost: `$${node.cost.toLocaleString()}` }
       };
     }
   }
 
-  // Modality constraints
-  if (userState?.preferences.preferredModality && 
-      userState.preferences.preferredModality !== 'any' &&
-      node.modality !== userState.preferences.preferredModality) {
+  // Time
+  if (userState?.preferences?.maxTimeMonths && node.estimatedHours) {
+    const months = Math.ceil(node.estimatedHours / 40);
+    if (months > userState.preferences.maxTimeMonths) {
+      return {
+        isGhost: true,
+        reason: "Exceeds time limit",
+        details: { time: `${months} months` }
+      };
+    }
+  }
+
+  // Modality
+  if (
+    userState?.preferences?.preferredModality &&
+    userState.preferences.preferredModality !== "any" &&
+    node.modality &&
+    node.modality !== userState.preferences.preferredModality
+  ) {
     return {
       isGhost: true,
       reason: `Requires ${node.modality} attendance`,
-      details: {
-        requirement: `User prefers ${userState.preferences.preferredModality}`
-      }
+      details: { requirement: `User prefers ${userState.preferences.preferredModality}` }
     };
   }
 
-  // Prerequisites not met
-  const unmetPrereqs = node.prerequisiteIds.filter(prereqId => 
-    !userState?.completedNodeIds.includes(prereqId) &&
-    !userState?.inProgressNodeIds.includes(prereqId)
-  );
-
-  if (unmetPrereqs.length > 0) {
+  // Prereqs
+  const prereqs = node.prerequisiteIds || [];
+  const satisfied =
+    (userState?.completedNodeIds || []).concat(userState?.inProgressNodeIds || []);
+  const unmet = prereqs.filter(id => !satisfied.includes(id));
+  if (unmet.length > 0) {
     return {
       isGhost: true,
-      reason: 'Prerequisites not met',
-      details: {
-        requirement: `${unmetPrereqs.length} missing prerequisites`
-      }
+      reason: "Prerequisites not met",
+      details: { requirement: `${unmet.length} missing prerequisites` }
     };
   }
 
   return { isGhost: false };
 }
 
+// Edge-level ghosting (transfer caps, residency)
 export function determineEdgeGhostStatus(
   edge: GraphEdge,
-  sourceNode: GraphNode,
-  targetNode: GraphNode,
+  source: GraphNode,
+  target: GraphNode,
   userState?: UserState,
-  allowGhost: boolean = false
+  allowGhost = true
 ): GhostInfo {
-  if (allowGhost) {
-    return { isGhost: false };
-  }
+  if (allowGhost) return { isGhost: false };
 
-  // Transfer cap violations
-  if (edge.type === 'creditTransfersTo' && edge.policy) {
-    const { cap, capCategory } = edge.policy;
-    
-    if (cap && capCategory) {
-      let creditsUsed = 0;
-      
-      if (capCategory === 'exam') {
-        creditsUsed = userState?.existingCredits
-          .filter(c => c.nodeId.includes('clep') || c.nodeId.includes('exam'))
-          .reduce((sum, c) => sum + c.credits, 0) || 0;
-      } else if (capCategory === 'transfer') {
-        creditsUsed = userState?.existingCredits
-          .filter(c => c.institution !== userState.preferences.currentInstitution)
-          .reduce((sum, c) => sum + c.credits, 0) || 0;
-      }
-      
-      if (creditsUsed + (sourceNode.credits || 0) > cap) {
+  if (edge.type === "creditTransfersTo" && edge.policy) {
+    const cap = edge.policy?.cap;
+    const capCategory = edge.policy?.capCategory || "transfer";
+    if (cap) {
+      const used =
+        userState?.existingCredits
+          ?.filter(c => (capCategory === "exam" ? (c.nodeId.includes('exam') || c.nodeId.includes('clep')) : c.institution !== userState.preferences?.currentInstitution))
+          .reduce((s, c) => s + (c.credits || 0), 0) || 0;
+      const next = used + (source.credits || 0);
+      if (next > cap) {
         return {
           isGhost: true,
           reason: `Exceeds ${capCategory} cap (${cap}cr)`,
-          details: {
-            cap: `${creditsUsed}/${cap} used`
-          }
+          details: { cap: `${used}/${cap} used` }
         };
       }
     }
   }
 
-  // Residency requirement violations
-  if (edge.type === 'stacksInto' && targetNode.policy?.residencyCredits) {
-    const residencyMet = userState?.existingCredits
-      .filter(c => c.institution === targetNode.institution)
-      .reduce((sum, c) => sum + c.credits, 0) || 0;
-    
-    if (residencyMet < targetNode.policy.residencyCredits) {
+  if (edge.type === "stacksInto" && target.policy?.residencyCredits) {
+    const need = target.policy.residencyCredits;
+    const have =
+      userState?.existingCredits
+        ?.filter(c => c.institution === target.institutionId)
+        .reduce((s, c) => s + (c.credits || 0), 0) || 0;
+
+    if (have < need) {
       return {
         isGhost: true,
-        reason: `Violates residency requirement`,
-        details: {
-          requirement: `≥${targetNode.policy.residencyCredits}cr at ${targetNode.institution}`
-        }
+        reason: "Violates residency requirement",
+        details: { requirement: `≥${need}cr at ${target.institutionId}` }
       };
     }
   }
 
   return { isGhost: false };
-}
-
-export function generateGhostAlternatives(
-  node: GraphNode,
-  allNodes: GraphNode[],
-  userState?: UserState
-): GraphNode[] {
-  const alternatives: GraphNode[] = [];
-
-  // Find equivalent courses/exams
-  const equivalents = allNodes.filter(otherNode => 
-    otherNode.id !== node.id &&
-    otherNode.skillOutcomes.some(skill => node.skillOutcomes.includes(skill))
-  );
-
-  // Find CLEP alternatives for courses
-  if (node.type === 'course') {
-    const clepAlternatives = allNodes.filter(otherNode =>
-      otherNode.type === 'exam' &&
-      otherNode.tags.includes('clep') &&
-      otherNode.skillOutcomes.some(skill => node.skillOutcomes.includes(skill))
-    );
-    alternatives.push(...clepAlternatives);
-  }
-
-  // Find different modality options
-  const modalityAlternatives = allNodes.filter(otherNode =>
-    otherNode.id !== node.id &&
-    otherNode.title === node.title &&
-    otherNode.modality !== node.modality
-  );
-  alternatives.push(...modalityAlternatives);
-
-  return alternatives.slice(0, 3); // Limit to top 3 alternatives
 }

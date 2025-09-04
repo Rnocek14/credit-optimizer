@@ -101,7 +101,8 @@ export default function SkillTree3() {
                   >
                     <option value="credential-bachelor-cs">Bachelor's in Computer Science</option>
                     <option value="credential-associate-nursing">Associate's in Nursing</option>
-                    <option value="job-software-engineer">Software Engineer Job</option>
+                <option value="job-software-engineer">Software Engineer Job</option>
+                <option value="job-registered-nurse">Registered Nurse Job</option>
                   </select>
                 </div>
                 

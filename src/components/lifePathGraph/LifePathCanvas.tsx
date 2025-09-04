@@ -106,64 +106,46 @@ export default function LifePathCanvas({
     console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
   }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length]);
 
-  // Convert graph nodes to React Flow nodes
-  const reactFlowNodes: Node[] = useMemo(() => {
-    // Get active goal/discipline from pathfinding target
-    const activeGoalNode = activePath?.nodeIds ? 
-      graph.nodes.find(n => n.id === activePath.nodeIds[activePath.nodeIds.length - 1]) : null;
-    const activeDiscipline = activeGoalNode?.tags?.find(tag => 
-      ['cs', 'computer-science', 'nursing', 'business'].includes(tag.toLowerCase())
-    );
-    
-    const filteredNodes = graph.nodes.filter(node => {
-      // Always include shared trunk nodes (skills, gen-ed, creditBlocks with shared tag)
-      if (node.type === 'skill' || 
-          node.tags?.includes('gen-ed') || 
-          node.tags?.includes('shared') ||
-          (node.type === 'creditBlock' && node.tags?.includes('foundational'))) {
-        return true;
-      }
-      
-      // Include nodes in the active path
-      if (activePath?.nodeIds.includes(node.id)) {
-        return true;
-      }
-      
-      // Single-discipline rule: only show nodes matching active discipline
-      if (activeDiscipline) {
-        return node.tags?.some(tag => tag.toLowerCase().includes(activeDiscipline.toLowerCase()));
-      }
-      
-      // If no discipline identified, show all (fallback)
-      return true;
-    });
+  // Compute active goal and discipline
+  const activeGoalId = activePath?.nodeIds?.[activePath.nodeIds.length - 1];
+  const activeGoalNode = graph.nodes.find(n => n.id === activeGoalId);
+
+  // Discipline from goal tags
+  const activeDiscipline =
+    activeGoalNode?.tags?.find(t =>
+      ["cs", "computer-science", "nursing", "business"].includes(t.toLowerCase())
+    ) || null;
+
+  // Helper: shared trunk node?
+  const isShared = (node: any) =>
+    node.type === "skill" ||
+    node.type === "creditBlock" ||
+    node.tags?.includes("shared") ||
+    node.tags?.includes("gen-ed");
+
+  // Filter by discipline (always include active path + shared trunk)
+  const filteredNodes = graph.nodes.filter(n => {
+    if (isShared(n)) return true;
+    if (activePath?.nodeIds?.includes(n.id)) return true;
+    if (!activeDiscipline) return true;
+    return n.tags?.some((t: string) => t.toLowerCase().includes(activeDiscipline.toLowerCase()));
+  });
+
+  const reactFlowNodes = useMemo(() => {
+    const userState = undefined; // Mock user state for now
 
     return filteredNodes.map((node, index) => {
-      const isInMainPath = isPathEmpty ? false : (activePath?.nodeIds.includes(node.id) || false);
-      const stepNumber = isInMainPath ? (activePath?.nodeIds.indexOf(node.id) ?? -1) + 1 : undefined;
-      const overlapCount = overlapCounts[node.id] || 1;
-      
-      // Ghost detection logic with specific reasons
-      const isGhost = !showGhosts && !isInMainPath && node.type !== 'job';
-      let ghostReason = '';
-      if (isGhost) {
-        // Specific ghost reason based on node type and context
-        if (node.type === 'exam' && node.tags?.includes('clep')) {
-          ghostReason = 'Exceeds exam cap (30cr)';
-        } else if (node.type === 'course' && node.institutionId !== 'fcc') {
-          ghostReason = 'Not cost-optimal';
-        } else if (node.type === 'credential' && !node.tags?.includes(activeDiscipline || '')) {
-          ghostReason = 'Different discipline';
-        } else if (!activePath?.nodeIds.includes(node.id)) {
-          ghostReason = 'Not in selected path';
-        }
-      }
-      
-      // Enhanced positioning with lane support
-      let institutionLane = 0;
-      if (node.institutionId === 'fsu') institutionLane = 1;
-      else if (node.institutionId === 'fcc') institutionLane = 0;
-      else if (!node.institutionId || node.institutionId === 'orphan') institutionLane = 2; // orphan lane
+      const isInMainPath = !isPathEmpty && activePath!.nodeIds.includes(node.id);
+      const stepNumber = isInMainPath ? activePath!.nodeIds.indexOf(node.id) + 1 : undefined;
+
+      // Ghost status (specific reasons) – respect "Show Alternatives" toggle
+      const ghostInfo = determineNodeGhostStatus(node, userState, showGhosts);
+      const isGhost = ghostInfo.isGhost && !showGhosts;
+      const ghostReason = ghostInfo.reason;
+      // Institution lane: 0 = FCC, 1 = FSU, 2 = Global/Orphan
+      let institutionLane = 2;
+      if (node.institutionId === "fcc") institutionLane = 0;
+      else if (node.institutionId === "fsu") institutionLane = 1;
       
       const position = node.position || calculateNodePosition(
         index, 
@@ -181,14 +163,8 @@ export default function LifePathCanvas({
           isInPath: isInMainPath,
           isMainPath: isInMainPath,
           stepNumber,
-          pathType: getNodePathType(node.id, pathfindingResult),
           showGhost: isGhost,
           ghostReason,
-          overlapCount,
-          overlapGoals: ['CS', 'Nursing'], // TODO: Make dynamic based on active goals
-          transferUsed: 42, // TODO: Calculate from actual transfer data
-          examUsed: 6,      // TODO: Calculate from actual exam data  
-          residencyMet: 30  // TODO: Calculate from actual residency data
         },
         style: {
           opacity: isInMainPath ? 1 : 0.6,

@@ -110,9 +110,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       />
       
       <div className="relative">
-        {/* Step Number Badge - Fixed visibility */}
-        {isMainPath && stepNumber && stepNumber > 0 && (
-          <StepBadge stepNumber={stepNumber} isMainPath={true} />
+        {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
+        {data.isMainPath && typeof data.stepNumber === "number" && data.stepNumber > 0 && (
+          <StepBadge stepNumber={data.stepNumber} />
         )}
         
         {/* Overlap Indicator */}
@@ -205,11 +205,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
             />
           )}
           
-          {/* Ghost Reason Chip */}
-          {showGhost && ghostReason && (
-            <div className="mt-2">
-              <GhostReasonChip reason={ghostReason} />
-            </div>
+          {/* Ghost Reason Chip – only when node is ghosted and we're not showing alternatives */}
+          {data.showGhost && data.ghostReason && (
+            <GhostReasonChip reason={data.ghostReason} />
           )}
         </CardContent>
       </Card>

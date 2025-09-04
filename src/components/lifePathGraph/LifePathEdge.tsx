@@ -2,6 +2,7 @@ import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import { GraphEdge } from '@/types/lifePathGraph';
 import { Badge } from '@/components/ui/badge';
+import { determineEdgeGhostStatus } from '@/lib/pathfinding/ghosting';
 
 interface LifePathEdgeData {
   edge: GraphEdge;
@@ -67,46 +68,37 @@ export function LifePathEdgeComponent({
   };
 
   const getEdgeLabel = () => {
-    switch (edge.type) {
-      case 'substitutes':
-        return 'Alt';
-      case 'creditTransfersTo':
-        // Fixed transfer rate calculation: Math.round(creditTransferRate * 100)
-        const transferRate = edge.creditTransferRate || 0.85; // Default 85% transfer rate
-        return `${Math.round(transferRate * 100)}% transfer`;
-      case 'ghost':
-        return 'Ghost';
-      case 'equivalentTo':
-        return 'Equivalent';
-      case 'buildsSkill':
-        return 'Builds';
-      default:
-        return null;
+    if (edge.type === "alternative") return "Alt";
+    if (edge.type === "ghost") return "Ghost";
+    if (edge.type === "creditTransfersTo") {
+      const rate =
+        typeof edge.creditTransferRate === "number"
+          ? edge.creditTransferRate
+          : (edge.weights?.creditLoss != null
+              ? Math.max(0, 1 - (edge.weights.creditLoss / Math.max(1, 3)))
+              : 1);
+      return `${Math.round(rate * 100)}% transfer`;
     }
+    if (edge.type === "equivalentTo") return "Equivalent";
+    if (edge.type === "buildsSkill") return "Builds";
+    return null;
   };
 
   const getLabelColor = () => {
-    switch (edge.type) {
-      case 'substitutes':
-        return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200';
-      case 'creditTransfersTo':
-        const transferRate = edge.creditTransferRate || (1 - (edge.weights.creditLoss / (edge.weights.creditLoss + 3))) || 1;
-        if (transferRate === 1) {
-          return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200';
-        } else if (transferRate >= 0.8) {
-          return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200';
-        } else {
-          return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200';
-        }
-      case 'ghost':
-        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200';
-      case 'equivalentTo':
-        return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200';
-      case 'buildsSkill':
-        return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200';
+    if (edge.type === "creditTransfersTo") {
+      const label = getEdgeLabel();
+      const pct = parseInt((label || "100").replace(/\D/g, ""), 10) || 100;
+      if (pct === 100) return "bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200";
+      if (pct >= 80) return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200";
+      return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200";
     }
+    if (edge.type === "equivalentTo")
+      return "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200";
+    if (edge.type === "alternative")
+      return "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200";
+    if (edge.type === "ghost")
+      return "bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200";
+    return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200";
   };
 
   const label = getEdgeLabel();
