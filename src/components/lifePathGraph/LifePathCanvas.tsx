@@ -36,7 +36,7 @@ function toJSON(v: any) {
 
 // ---------- VISUAL V2 FEATURE FLAG ----------
 import { LP_VISUAL_V2 } from '@/lib/flags';
-import { runVisualScan, VisualScanSnapshot } from '@/dev/visualScan';
+import { VisualScanner } from './VisualScanner';
 
 // ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
@@ -70,9 +70,6 @@ export default function LifePathCanvas({
   const [auditLog, setAuditLog] = React.useState<string>('');
   const [auditReport, setAuditReport] = React.useState<any>(null);
   
-  // Visual Scanner state
-  const [scanRunning, setScanRunning] = React.useState(false);
-  const [scanReport, setScanReport] = React.useState<VisualScanSnapshot|null>(null);
   
   // Smart phase defaulting: C in production, S in dev (unless ?audit=1)
   const getDefaultPhase = (): AuditPhase => {
@@ -195,44 +192,6 @@ export default function LifePathCanvas({
     setAuditRunning(false);
   }
 
-  // Visual Scanner runner
-  async function runVisualScanNow() {
-    setScanRunning(true);
-    try {
-      const report = runVisualScan({
-        graph,
-        pathfindingResult,
-        activePreset,
-      });
-      setScanReport(report);
-      console.info('[visual-scan]', report);
-    } finally {
-      setScanRunning(false);
-    }
-  }
-
-  // (Optional) overlay highlighters for issues — dev-only
-  function markIssues(report: VisualScanSnapshot | null) {
-    if (!report) return;
-    document.querySelectorAll('[data-lp-mark]').forEach(n=>n.remove());
-    const addBox = (r:DOMRect, color:string) => {
-      const div = document.createElement('div');
-      div.setAttribute('data-lp-mark','1');
-      Object.assign(div.style, {
-        position:'fixed', left:`${r.left}px`, top:`${r.top}px`,
-        width:`${r.width}px`, height:`${r.height}px`,
-        border:`2px solid ${color}`, borderRadius:'8px', pointerEvents:'none', zIndex:'9999'
-      });
-      document.body.appendChild(div);
-    };
-    // highlight nodes involved in issues
-    report.issues.forEach(i=>{
-      if (i.type==='NODE_OVERLAP' || i.type==='EDGE_THROUGH_NODE') {
-        const el = document.querySelector(`.react-flow__node[data-id="${(i as any).nodeId|| (i as any).aId}"]`) as HTMLElement | null;
-        if (el) addBox(el.getBoundingClientRect(), i.type==='NODE_OVERLAP' ? '#ef4444' : '#f59e0b');
-      }
-    });
-  }
   /* RUNTIME AUDIT PANEL – END */
 
   const [showGhosts, setShowGhosts] = useState(SAFE_SHOW_GHOSTS_FLAG);
@@ -659,24 +618,18 @@ export default function LifePathCanvas({
     </pre>
   </div>
 
-  {/* Visual Scanner — dev only or ?audit=1, same guard as audit panel */}
-  <div className="mt-3 p-2 rounded border border-muted">
-    <div className="text-sm font-medium mb-2">Visual Scanner</div>
-    <button
-      className="px-3 py-1 rounded bg-primary text-primary-foreground"
-      onClick={async ()=>{ await runVisualScanNow(); markIssues(scanReport); }}>
-      {scanRunning ? 'Scanning…' : 'Run Visual Scan'}
-    </button>
-
-    <div className="mt-2 text-xs opacity-80">
-      {scanReport ? (
-        <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(scanReport, null, 2)}</pre>
-      ) : 'No scan yet.'}
-    </div>
-  </div>
 </div>
 )}
 {/* RUNTIME AUDIT PANEL – END */}
+
+{/* INDEPENDENT VISUAL SCANNER */}
+{import.meta.env.DEV && (
+  <VisualScanner 
+    graph={graph}
+    pathfindingResult={pathfindingResult}
+    activePreset={activePreset}
+  />
+)}
       
         {/* Metrics Pill */}
       <div className="flex items-center gap-4">
