@@ -40,19 +40,22 @@ export function LifePathEdgeComponent({
 }: LifePathEdgeProps) {
   const { edge, isHighlighted, tier, isRelatedToHovered = false, showPreviousPath = false, label } = data;
 
-  // Add padding to avoid nodes when V2 is enabled
-  const pad = LP_VISUAL_V2 ? 16 : 0;
-  const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
-  const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
+  // Add bigger padding to avoid nodes when V2 is enabled
+  const padX = LP_VISUAL_V2 ? 28 : 0;
+  const padY = LP_VISUAL_V2 ? 8 : 0;
+  const adjustedSourceX = sourcePosition === 'right' ? sourceX + padX : sourceX - padX;
+  const adjustedTargetX = targetPosition === 'left' ? targetX - padX : targetX + padX;
+  const adjustedSourceY = sourcePosition === 'bottom' ? sourceY + padY : sourceY - padY;
+  const adjustedTargetY = targetPosition === 'top' ? targetY - padY : targetY + padY;
 
   // Use SmoothStep routing in Visual V2 for better orthogonal paths
   const [edgePath, labelX, labelY] = LP_VISUAL_V2 
     ? getSmoothStepPath({
         sourceX: adjustedSourceX,
-        sourceY,
+        sourceY: adjustedSourceY,
         sourcePosition,
         targetX: adjustedTargetX,
-        targetY,
+        targetY: adjustedTargetY,
         targetPosition,
         borderRadius: 12,
       })
@@ -159,14 +162,20 @@ export function LifePathEdgeComponent({
   const displayLabel = getEdgeLabel();
   const tierClass = tier ? `lp-edge-${tier}` : '';
 
+  // Debug tier assignment in development
+  if (LP_VISUAL_V2 && process.env.NODE_ENV !== 'production') {
+    console.debug('Edge tier:', id, tier);
+  }
+
   return (
     <>
       <BaseEdge
         path={edgePath}
-        className={`react-flow__edge-path ${tierClass}`}
+        className={tierClass} // Apply tier class directly to the path element
         style={getEdgeStyle()}
         data-testid="lp-edge"
         data-id={id}
+        data-edge-type={edge.type}
         markerEnd={markerEnd}
       />
       

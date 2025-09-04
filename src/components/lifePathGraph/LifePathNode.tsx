@@ -142,7 +142,7 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       />
       
       <div 
-        className={`relative lifepath-node ${tierClass}`}
+        className={`relative lifepath-node ${tierClass} ${getNodeColor()}`}
         data-testid="lp-node"
         data-id={node.id}
       >
@@ -154,7 +154,7 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
         {/* Overlap Indicator */}
         <OverlapIndicator count={overlapCount || 1} goals={overlapGoals} />
         
-        <Card className={`w-64 cursor-pointer transition-all hover:shadow-md ${getNodeColor()}`}>
+        <Card className="w-64 cursor-pointer transition-all hover:shadow-md">
           <CardContent className="p-4">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">

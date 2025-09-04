@@ -478,6 +478,11 @@ export default function LifePathCanvas({
           graph.edges
         ) : 'off-path';
 
+        // Debug tier assignment in development
+        if (LP_VISUAL_V2 && process.env.NODE_ENV !== 'production') {
+          console.debug('Canvas edge tier:', edge.id, tier, 'activePathNodes:', safeActivePath.nodeIds);
+        }
+
         // Always show transfer labels for creditTransfersTo edges
         const label = edge.type === 'creditTransfersTo' 
           ? `${Math.round((edge.creditTransferRate ?? 1) * 100)}% transfer`
