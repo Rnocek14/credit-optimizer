@@ -71,8 +71,8 @@ export function LifePathEdgeComponent({
       case 'substitutes':
         return 'Alt';
       case 'creditTransfersTo':
-        // Enhanced transfer rate display
-        const transferRate = edge.creditTransferRate || (1 - (edge.weights.creditLoss / (edge.weights.creditLoss + 3))) || 1;
+        // Fixed transfer rate calculation: Math.round(creditTransferRate * 100)
+        const transferRate = edge.creditTransferRate || 0.85; // Default 85% transfer rate
         return `${Math.round(transferRate * 100)}% transfer`;
       case 'ghost':
         return 'Ghost';

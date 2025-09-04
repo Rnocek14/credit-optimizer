@@ -110,8 +110,10 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       />
       
       <div className="relative">
-        {/* Step Number Badge */}
-        <StepBadge stepNumber={stepNumber || 0} isMainPath={isMainPath} />
+        {/* Step Number Badge - Fixed visibility */}
+        {isMainPath && stepNumber && stepNumber > 0 && (
+          <StepBadge stepNumber={stepNumber} isMainPath={true} />
+        )}
         
         {/* Overlap Indicator */}
         <OverlapIndicator count={overlapCount || 1} goals={overlapGoals} />

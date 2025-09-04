@@ -1,11 +1,11 @@
-// Enhanced mock data for Phase 1 - Corrected types and semantics
+// Enhanced mock data for Phase 1 - Complete CS + Nursing chains
 
 import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, GraphEdge } from '@/types/lifePathGraph';
 
 export function generateEnhancedMockGraph(): LifePathGraph {
   const nodes: GraphNode[] = [
-    // Skills (foundational)
+    // === SHARED TRUNK SKILLS ===
     {
       id: 'skill-math-fundamentals',
       type: 'skill',
@@ -18,7 +18,7 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       active: true,
       validated: true,
       lastUpdated: new Date().toISOString(),
-      tags: ['mathematics', 'foundational'],
+      tags: ['mathematics', 'foundational', 'shared'],
       prerequisiteIds: [],
       skillOutcomes: ['algebra', 'functions', 'trigonometry'],
       attributes: { depth: 0 },
@@ -36,22 +36,40 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       active: true,
       validated: true,
       lastUpdated: new Date().toISOString(),
-      tags: ['programming', 'foundational'],
+      tags: ['programming', 'foundational', 'computer-science', 'shared'],
       prerequisiteIds: [],
       skillOutcomes: ['variables', 'loops', 'functions', 'debugging'],
       attributes: { depth: 0 },
       metadata: {}
     },
-
-    // Community College Courses
     {
-      id: 'course-cc-algebra',
-      type: 'course',
-      title: 'College Algebra',
-      description: 'MAC 1105 - Algebraic functions, equations, and graphing',
-      estimatedHours: 150,
-      cost: 1200,
-      credits: 3,
+      id: 'skill-science-fundamentals',
+      type: 'skill',
+      title: 'Science Fundamentals',
+      description: 'Basic biology, chemistry, and physics concepts',
+      estimatedHours: 120,
+      cost: 0,
+      difficulty: 3,
+      modality: 'self-paced',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['science', 'foundational', 'nursing', 'shared'],
+      prerequisiteIds: [],
+      skillOutcomes: ['biology', 'chemistry', 'physics', 'scientific-method'],
+      attributes: { depth: 0 },
+      metadata: {}
+    },
+
+    // === SHARED GENERAL EDUCATION ===
+    {
+      id: 'creditblock-gen-ed',
+      type: 'creditBlock',
+      title: 'General Education Requirements',
+      description: 'Foundational 45 credits covering math, science, English, humanities',
+      estimatedHours: 1800,
+      cost: 18000,
+      credits: 45,
       difficulty: 2,
       institution: 'Florida Community College',
       institutionId: 'fcc',
@@ -59,12 +77,14 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       active: true,
       validated: true,
       lastUpdated: new Date().toISOString(),
-      tags: ['mathematics', 'general-education'],
+      tags: ['general-education', 'foundational', 'shared'],
       prerequisiteIds: ['skill-math-fundamentals'],
-      skillOutcomes: ['algebra', 'functions', 'graphing'],
+      skillOutcomes: ['critical-thinking', 'communication', 'quantitative-reasoning'],
       attributes: { depth: 1 },
-      metadata: { commonCourseNumber: 'MAC1105', transferable: true }
+      metadata: { transferable: true, stacksInto: ['all-degrees'] }
     },
+
+    // === COMPUTER SCIENCE DISCIPLINE ===
     {
       id: 'course-cc-intro-cs',
       type: 'course',
@@ -80,110 +100,20 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       active: true,
       validated: true,
       lastUpdated: new Date().toISOString(),
-      tags: ['computer-science', 'programming'],
+      tags: ['computer-science', 'programming', 'intro'],
       prerequisiteIds: ['skill-programming-basics'],
       skillOutcomes: ['programming', 'problem-solving', 'algorithms-intro'],
       attributes: { depth: 1 },
       metadata: { commonCourseNumber: 'COP1000', transferable: true }
     },
-
-    // CLEP Alternative
-    {
-      id: 'exam-clep-algebra',
-      type: 'exam',
-      title: 'CLEP College Mathematics',
-      description: 'Credit by examination covering college algebra and basic statistics',
-      estimatedHours: 40,
-      cost: 93,
-      credits: 6,
-      difficulty: 3,
-      provider: 'College Board',
-      modality: 'in-person',
-      active: true,
-      validated: true,
-      lastUpdated: new Date().toISOString(),
-      tags: ['clep', 'mathematics', 'alternative'],
-      prerequisiteIds: ['skill-math-fundamentals'],
-      skillOutcomes: ['algebra', 'statistics', 'problem-solving'],
-      attributes: { depth: 1 },
-      metadata: { examCode: 'CLEP-MATH', examType: 'CLEP' }
-    },
-
-    // University Courses
-    {
-      id: 'course-univ-calculus',
-      type: 'course',
-      title: 'Calculus I',
-      description: 'MAC 2311 - Limits, derivatives, and applications',
-      estimatedHours: 180,
-      cost: 1800,
-      credits: 4,
-      difficulty: 4,
-      institution: 'Florida State University',
-      institutionId: 'fsu',
-      modality: 'in-person',
-      active: true,
-      validated: true,
-      lastUpdated: new Date().toISOString(),
-      tags: ['calculus', 'mathematics', 'university'],
-      prerequisiteIds: ['course-cc-algebra'],
-      skillOutcomes: ['calculus', 'derivatives', 'limits', 'applications'],
-      attributes: { depth: 2 },
-      metadata: { commonCourseNumber: 'MAC2311' }
-    },
     {
       id: 'course-univ-data-structures',
       type: 'course',
       title: 'Data Structures & Algorithms',
-      description: 'COP 3530 - Advanced data structures and algorithm design',
-      estimatedHours: 220,
-      cost: 1800,
+      description: 'COP 3530 - Advanced programming concepts',
+      estimatedHours: 240,
+      cost: 3200,
       credits: 4,
-      difficulty: 5,
-      institution: 'Florida State University',
-      institutionId: 'fsu',
-      modality: 'in-person',
-      active: true,
-      validated: true,
-      lastUpdated: new Date().toISOString(),
-      tags: ['algorithms', 'data-structures', 'computer-science'],
-      prerequisiteIds: ['course-cc-intro-cs', 'course-univ-calculus'],
-      skillOutcomes: ['algorithms', 'data-structures', 'complexity-analysis', 'optimization'],
-      attributes: { depth: 3 },
-      metadata: { commonCourseNumber: 'COP3530' }
-    },
-
-    // General Education Credit Block
-    {
-      id: 'creditblock-gen-ed',
-      type: 'creditBlock',
-      title: 'General Education Requirements',
-      description: 'Core curriculum requirements (36 credits)',
-      estimatedHours: 1080,
-      cost: 12000,
-      credits: 36,
-      difficulty: 2,
-      modality: 'hybrid',
-      active: true,
-      validated: true,
-      lastUpdated: new Date().toISOString(),
-      tags: ['general-education', 'requirements'],
-      prerequisiteIds: [],
-      skillOutcomes: ['critical-thinking', 'communication', 'quantitative-reasoning'],
-      attributes: { depth: 1 },
-      metadata: { rule: 'GE', categories: ['humanities', 'social-sciences', 'natural-sciences'] }
-    },
-
-    // Credentials (Fixed from job type)
-    {
-      id: 'credential-bachelor-cs',
-      type: 'credential',
-      level: 'bachelor',
-      title: "Bachelor's in Computer Science",
-      description: 'Bachelor of Science in Computer Science (120 credits)',
-      estimatedHours: 4800,
-      cost: 60000,
-      credits: 120,
       difficulty: 4,
       institution: 'Florida State University',
       institutionId: 'fsu',
@@ -191,21 +121,164 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       active: true,
       validated: true,
       lastUpdated: new Date().toISOString(),
-      tags: ['degree', 'computer-science', 'bachelor'],
-      prerequisiteIds: ['course-univ-data-structures', 'creditblock-gen-ed'],
-      skillOutcomes: ['cs-degree', 'software-engineering', 'systems-design'],
+      tags: ['computer-science', 'algorithms'],
+      prerequisiteIds: ['course-cc-intro-cs'],
+      skillOutcomes: ['data-structures', 'algorithms', 'complexity-analysis'],
+      attributes: { depth: 2 },
+      metadata: { commonCourseNumber: 'COP3530', upperLevel: true }
+    },
+    {
+      id: 'creditblock-cs-shared',
+      type: 'creditBlock',
+      title: 'CS Shared Foundation',
+      description: 'Common lower-division CS coursework (60 credits)',
+      estimatedHours: 2400,
+      cost: 24000,
+      credits: 60,
+      difficulty: 3,
+      institution: 'Florida Community College + FSU',
+      institutionId: 'mixed',
+      modality: 'hybrid',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['computer-science', 'foundational', 'shared'],
+      prerequisiteIds: ['creditblock-gen-ed', 'course-cc-intro-cs'],
+      skillOutcomes: ['programming', 'math', 'physics', 'discrete-math'],
+      attributes: { depth: 2 },
+      metadata: { transferable: true, stacksInto: ['ba-cs', 'bs-cs'] }
+    },
+    {
+      id: 'credential-bachelor-cs',
+      type: 'credential',
+      title: 'Bachelor of Science in Computer Science',
+      description: 'Four-year degree in computer science (120 credits)',
+      estimatedHours: 4800,
+      cost: 45000,
+      credits: 120,
+      difficulty: 4,
+      institution: 'Florida State University',
+      institutionId: 'fsu',
+      modality: 'hybrid',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['computer-science', 'bachelor', 'cs'],
+      prerequisiteIds: ['creditblock-cs-shared'],
+      skillOutcomes: ['software-engineering', 'system-design', 'algorithms'],
       policy: {
-        residencyCredits: 30,
+        residencyCredits: 60,
         maxTransferCredits: 60,
         examCap: 30
       },
-      attributes: { depth: 4 },
+      attributes: { depth: 3 },
       metadata: { degreeType: 'Bachelor of Science', totalCredits: 120 }
+    },
+    {
+      id: 'job-software-engineer',
+      type: 'job',
+      title: 'Software Engineer',
+      description: 'Design and develop software applications',
+      estimatedHours: 0,
+      cost: 0,
+      difficulty: 4,
+      modality: 'hybrid',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['computer-science', 'software', 'engineering'],
+      prerequisiteIds: ['credential-bachelor-cs'],
+      skillOutcomes: ['software-development', 'system-architecture'],
+      attributes: { depth: 4 },
+      metadata: { socCode: '15-1252', medianSalary: 110000 }
+    },
+
+    // === NURSING DISCIPLINE ===
+    {
+      id: 'course-anatomy-physiology-1',
+      type: 'course',
+      title: 'Anatomy & Physiology I',
+      description: 'BSC 2085 - Human body systems fundamentals',
+      estimatedHours: 240,
+      cost: 1800,
+      credits: 4,
+      difficulty: 4,
+      institution: 'Florida Community College',
+      institutionId: 'fcc',
+      modality: 'in-person',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['nursing', 'science', 'prerequisite'],
+      prerequisiteIds: ['skill-science-fundamentals'],
+      skillOutcomes: ['human-anatomy', 'physiology', 'medical-terminology'],
+      attributes: { depth: 1 },
+      metadata: { commonCourseNumber: 'BSC2085', labRequired: true }
+    },
+    {
+      id: 'course-anatomy-physiology-2',
+      type: 'course',
+      title: 'Anatomy & Physiology II',
+      description: 'BSC 2086 - Advanced human body systems',
+      estimatedHours: 240,
+      cost: 1800,
+      credits: 4,
+      difficulty: 4,
+      institution: 'Florida Community College',
+      institutionId: 'fcc',
+      modality: 'in-person',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['nursing', 'science', 'prerequisite'],
+      prerequisiteIds: ['course-anatomy-physiology-1'],
+      skillOutcomes: ['advanced-anatomy', 'pathophysiology', 'homeostasis'],
+      attributes: { depth: 2 },
+      metadata: { commonCourseNumber: 'BSC2086', labRequired: true }
+    },
+    {
+      id: 'course-microbiology',
+      type: 'course',
+      title: 'Microbiology',
+      description: 'MCB 2010 - Microorganisms and disease',
+      estimatedHours: 240,
+      cost: 1800,
+      credits: 4,
+      difficulty: 4,
+      institution: 'Florida Community College',
+      institutionId: 'fcc',
+      modality: 'in-person',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['nursing', 'science', 'prerequisite'],
+      prerequisiteIds: ['course-anatomy-physiology-1'],
+      skillOutcomes: ['microbiology', 'infection-control', 'laboratory-skills'],
+      attributes: { depth: 2 },
+      metadata: { commonCourseNumber: 'MCB2010', labRequired: true }
+    },
+    {
+      id: 'exam-teas',
+      type: 'exam',
+      title: 'TEAS Exam',
+      description: 'Test of Essential Academic Skills for nursing admission',
+      estimatedHours: 40,
+      cost: 100,
+      difficulty: 3,
+      provider: 'ATI Testing',
+      modality: 'in-person',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['nursing', 'admission', 'exam'],
+      prerequisiteIds: ['course-anatomy-physiology-1'],
+      skillOutcomes: ['test-taking', 'academic-readiness'],
+      attributes: { depth: 2 },
+      metadata: { minimumScore: 62, validityPeriod: '2 years' }
     },
     {
       id: 'credential-associate-nursing',
       type: 'credential',
-      level: 'associate',
       title: 'Associate Degree in Nursing',
       description: 'Associate of Science in Nursing (64 credits)',
       estimatedHours: 2560,
@@ -219,34 +292,14 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       validated: true,
       lastUpdated: new Date().toISOString(),
       tags: ['nursing', 'healthcare', 'associate'],
-      prerequisiteIds: ['skill-math-fundamentals'],
+      prerequisiteIds: ['course-anatomy-physiology-2', 'course-microbiology', 'exam-teas'],
       skillOutcomes: ['nursing', 'patient-care', 'medical-knowledge'],
       policy: {
         residencyCredits: 32,
         maxTransferCredits: 32
       },
-      attributes: { depth: 2 },
+      attributes: { depth: 3 },
       metadata: { degreeType: 'Associate of Science', clinicalHours: 800 }
-    },
-
-    // Jobs (separate from credentials)
-    {
-      id: 'job-software-engineer',
-      type: 'job',
-      title: 'Software Engineer',
-      description: 'Design and develop software applications',
-      estimatedHours: 0,
-      cost: 0,
-      difficulty: 4,
-      modality: 'in-person',
-      active: true,
-      validated: true,
-      lastUpdated: new Date().toISOString(),
-      tags: ['software', 'engineering', 'technology'],
-      prerequisiteIds: ['credential-bachelor-cs'],
-      skillOutcomes: ['software-development', 'system-architecture'],
-      attributes: { depth: 5 },
-      metadata: { socCode: '15-1252', medianSalary: 110000 }
     },
     {
       id: 'job-registered-nurse',
@@ -263,17 +316,39 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       tags: ['nursing', 'healthcare', 'patient-care'],
       prerequisiteIds: ['credential-associate-nursing'],
       skillOutcomes: ['patient-care', 'medical-procedures', 'healthcare-systems'],
-      attributes: { depth: 3 },
+      attributes: { depth: 4 },
       metadata: { socCode: '29-1141', medianSalary: 77600 }
+    },
+
+    // === ALTERNATIVE PATHS ===
+    {
+      id: 'exam-clep-algebra',
+      type: 'exam',
+      title: 'CLEP College Mathematics',
+      description: 'Credit by examination covering college algebra',
+      estimatedHours: 40,
+      cost: 93,
+      credits: 6,
+      difficulty: 3,
+      provider: 'College Board',
+      modality: 'in-person',
+      active: true,
+      validated: true,
+      lastUpdated: new Date().toISOString(),
+      tags: ['mathematics', 'clep', 'alternative'],
+      prerequisiteIds: ['skill-math-fundamentals'],
+      skillOutcomes: ['algebra', 'statistics'],
+      attributes: { depth: 1 },
+      metadata: { examCode: 'CLEP-MATH', validityPeriod: 'lifetime' }
     }
   ];
 
   const edges: GraphEdge[] = [
-    // Skill to course enablement
+    // === SHARED TRUNK PROGRESSION ===
     {
-      id: 'skill-math-enables-algebra',
+      id: 'skill-math-enables-gen-ed',
       sourceId: 'skill-math-fundamentals',
-      targetId: 'course-cc-algebra',
+      targetId: 'creditblock-gen-ed',
       type: 'enables',
       weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.2 },
       confidence: 0.9,
@@ -282,7 +357,21 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       metadata: {}
     },
     {
-      id: 'skill-prog-enables-cs',
+      id: 'gen-ed-enables-cs-shared',
+      sourceId: 'creditblock-gen-ed',
+      targetId: 'creditblock-cs-shared',
+      type: 'stacksInto',
+      creditTransferRate: 1.0,
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 1.0,
+      source: 'transfer_agreement',
+      validated: true,
+      metadata: {}
+    },
+
+    // === CS DISCIPLINE CHAIN ===
+    {
+      id: 'skill-prog-enables-intro-cs',
       sourceId: 'skill-programming-basics',
       targetId: 'course-cc-intro-cs',
       type: 'enables',
@@ -292,159 +381,153 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       validated: true,
       metadata: {}
     },
-
-    // Prerequisites within institution
     {
-      id: 'algebra-requires-for-calculus',
-      sourceId: 'course-cc-algebra',
-      targetId: 'course-univ-calculus',
-      type: 'requires',
-      weights: { time: 1, cost: 1800, creditLoss: 0, difficulty: 1.3, roi: 1.1 },
-      confidence: 1.0,
-      source: 'institutional_policy',
-      validated: true,
-      metadata: {}
-    },
-    {
-      id: 'cs-and-calc-require-ds',
+      id: 'intro-cs-to-cs-shared',
       sourceId: 'course-cc-intro-cs',
-      targetId: 'course-univ-data-structures',
-      type: 'requires',
-      weights: { time: 1, cost: 1800, creditLoss: 0, difficulty: 1.4, roi: 1.2 },
-      confidence: 1.0,
-      source: 'institutional_policy',
-      validated: true,
-      metadata: {}
-    },
-    {
-      id: 'calculus-requires-for-ds',
-      sourceId: 'course-univ-calculus',
-      targetId: 'course-univ-data-structures',
-      type: 'requires',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0.2, roi: 1.0 },
-      confidence: 1.0,
-      source: 'institutional_policy',
-      validated: true,
-      metadata: {}
-    },
-
-    // Credit transfer between institutions
-    {
-      id: 'cc-algebra-transfers-to-calc-prereq',
-      sourceId: 'course-cc-algebra',
-      targetId: 'course-univ-calculus',
-      type: 'creditTransfersTo',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
-      creditTransferRate: 1.0,
-      policy: {
-        region: 'US-FL',
-        institutionFrom: 'fcc',
-        institutionTo: 'fsu',
-        cap: 60,
-        capCategory: 'total'
-      },
-      confidence: 0.95,
-      source: 'florida_articulation',
-      validated: true,
-      metadata: { articulationAgreement: 'florida-state-system' }
-    },
-
-    // CLEP equivalency
-    {
-      id: 'clep-equivalent-to-algebra',
-      sourceId: 'exam-clep-algebra',
-      targetId: 'course-cc-algebra',
-      type: 'equivalentTo',
-      weights: { time: -110, cost: -1107, creditLoss: 0, difficulty: 0.5, roi: 2.0 },
-      creditTransferRate: 1.0,
-      policy: {
-        capCategory: 'exam'
-      },
-      confidence: 0.8,
-      source: 'ace_recommendation',
-      validated: true,
-      metadata: { aceId: 'CLEP-MATH-001', examType: 'CLEP' }
-    },
-
-    // Stacking into credit blocks and credentials
-    {
-      id: 'algebra-stacks-into-gen-ed',
-      sourceId: 'course-cc-algebra',
-      targetId: 'creditblock-gen-ed',
+      targetId: 'creditblock-cs-shared',
       type: 'stacksInto',
+      creditTransferRate: 1.0,
       weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
       confidence: 1.0,
-      source: 'curriculum_analysis',
+      source: 'transfer_agreement',
       validated: true,
       metadata: {}
     },
     {
-      id: 'gen-ed-stacks-into-bachelor',
-      sourceId: 'creditblock-gen-ed',
+      id: 'cs-shared-to-bachelor',
+      sourceId: 'creditblock-cs-shared',
       targetId: 'credential-bachelor-cs',
       type: 'stacksInto',
+      creditTransferRate: 1.0,
       weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
       confidence: 1.0,
-      source: 'degree_requirements',
+      source: 'transfer_agreement',
       validated: true,
       metadata: {}
     },
     {
-      id: 'data-structures-stacks-into-bachelor',
-      sourceId: 'course-univ-data-structures',
-      targetId: 'credential-bachelor-cs',
-      type: 'stacksInto',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
-      confidence: 1.0,
-      source: 'degree_requirements',
-      validated: true,
-      metadata: {}
-    },
-
-    // BuildsSkill edges from courses to skills
-    {
-      id: 'algebra-builds-math-skills',
-      sourceId: 'course-cc-algebra',
-      targetId: 'skill-math-fundamentals',
-      type: 'buildsSkill',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.1 },
-      confidence: 0.9,
-      source: 'curriculum_analysis',
-      validated: true,
-      metadata: {}
-    },
-    {
-      id: 'intro-cs-builds-programming',
-      sourceId: 'course-cc-intro-cs',
-      targetId: 'skill-programming-basics',
-      type: 'buildsSkill',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.2 },
-      confidence: 0.9,
-      source: 'curriculum_analysis',
-      validated: true,
-      metadata: {}
-    },
-
-    // Credential to job qualification
-    {
-      id: 'bachelor-qualifies-for-swe',
+      id: 'bachelor-cs-to-job',
       sourceId: 'credential-bachelor-cs',
       targetId: 'job-software-engineer',
-      type: 'qualifiesFor',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 3.0 },
+      type: 'enables',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 2.5 },
+      confidence: 0.8,
+      source: 'employment_data',
+      validated: true,
+      metadata: {}
+    },
+
+    // === NURSING DISCIPLINE CHAIN ===
+    {
+      id: 'skill-science-enables-ap1',
+      sourceId: 'skill-science-fundamentals',
+      targetId: 'course-anatomy-physiology-1',
+      type: 'enables',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.4 },
       confidence: 0.9,
-      source: 'labor_market_analysis',
+      source: 'curriculum_analysis',
       validated: true,
       metadata: {}
     },
     {
-      id: 'nursing-qualifies-for-rn',
+      id: 'ap1-to-ap2',
+      sourceId: 'course-anatomy-physiology-1',
+      targetId: 'course-anatomy-physiology-2',
+      type: 'requires',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 1.0,
+      source: 'prerequisite_policy',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'ap1-to-micro',
+      sourceId: 'course-anatomy-physiology-1',
+      targetId: 'course-microbiology',
+      type: 'enables',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 0.9,
+      source: 'prerequisite_policy',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'ap1-to-teas',
+      sourceId: 'course-anatomy-physiology-1',
+      targetId: 'exam-teas',
+      type: 'enables',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 0.8,
+      source: 'admission_requirement',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'prereqs-to-adn',
+      sourceId: 'course-anatomy-physiology-2',
+      targetId: 'credential-associate-nursing',
+      type: 'requires',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 1.0,
+      source: 'admission_requirement',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'micro-to-adn',
+      sourceId: 'course-microbiology',
+      targetId: 'credential-associate-nursing',
+      type: 'requires',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 1.0,
+      source: 'admission_requirement',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'teas-to-adn',
+      sourceId: 'exam-teas',
+      targetId: 'credential-associate-nursing',
+      type: 'requires',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 1.0,
+      source: 'admission_requirement',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'adn-to-rn-job',
       sourceId: 'credential-associate-nursing',
       targetId: 'job-registered-nurse',
-      type: 'qualifiesFor',
-      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 2.5 },
+      type: 'enables',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 2.0 },
       confidence: 0.95,
-      source: 'licensing_requirements',
+      source: 'employment_data',
+      validated: true,
+      metadata: {}
+    },
+
+    // === ALTERNATIVE PATHS ===
+    {
+      id: 'clep-alternative',
+      sourceId: 'skill-math-fundamentals',
+      targetId: 'exam-clep-algebra',
+      type: 'alternative',
+      weights: { time: -2, cost: -1000, creditLoss: 0, difficulty: 1, roi: 1.5 },
+      confidence: 0.7,
+      source: 'testing_policy',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'clep-transfers-to-gen-ed',
+      sourceId: 'exam-clep-algebra',
+      targetId: 'creditblock-gen-ed',
+      type: 'creditTransfersTo',
+      creditTransferRate: 0.67, // 6 credits toward 45 total
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.0 },
+      confidence: 0.9,
+      source: 'transfer_policy',
       validated: true,
       metadata: {}
     }

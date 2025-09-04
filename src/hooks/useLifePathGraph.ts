@@ -138,15 +138,19 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         console.warn(`[pathfinding] Path too short (${path.length}), creating fallback for ${pathType}`);
         
         // Build fallback: skill → intro course → creditBlock → credential → job
-        const skill = graph.nodes.find(n => n.type === 'skill' && n.title.toLowerCase().includes('programming'));
-        const introCourse = graph.nodes.find(n => n.type === 'course' && n.prerequisiteIds.length === 0);
+        const skill = graph.nodes.find(n => n.type === 'skill');
+        const introCourse = graph.nodes.find(n => 
+          n.type === 'course' && 
+          (n.prerequisiteIds.length <= 1 || n.tags?.includes('intro'))
+        );
         const creditBlock = graph.nodes.find(n => n.type === 'creditBlock');
-        const credential = graph.nodes.find(n => n.id === goalNode.id);
-        const job = graph.nodes.find(n => n.type === 'job');
+        const credential = graph.nodes.find(n => n.type === 'credential');
+        const job = graph.nodes.find(n => n.type === 'job' && n.id === targetGoalId);
         
         const fallbackPath = [skill?.id, introCourse?.id, creditBlock?.id, credential?.id, job?.id]
           .filter(Boolean) as string[];
         
+        console.log(`[pathfinding] Generated fallback path: ${fallbackPath.join(' → ')}`);
         return fallbackPath.length >= 3 ? fallbackPath : path;
       };
 

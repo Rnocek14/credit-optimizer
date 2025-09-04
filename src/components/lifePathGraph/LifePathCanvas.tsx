@@ -108,23 +108,33 @@ export default function LifePathCanvas({
 
   // Convert graph nodes to React Flow nodes
   const reactFlowNodes: Node[] = useMemo(() => {
-    // Filter by active goal/discipline - for now assume first credential defines discipline
-    const activeCredential = graph.nodes.find(n => n.type === 'credential');
-    const activeDiscipline = activeCredential?.tags?.find(tag => ['cs', 'nursing', 'business'].includes(tag.toLowerCase()));
+    // Get active goal/discipline from pathfinding target
+    const activeGoalNode = activePath?.nodeIds ? 
+      graph.nodes.find(n => n.id === activePath.nodeIds[activePath.nodeIds.length - 1]) : null;
+    const activeDiscipline = activeGoalNode?.tags?.find(tag => 
+      ['cs', 'computer-science', 'nursing', 'business'].includes(tag.toLowerCase())
+    );
     
     const filteredNodes = graph.nodes.filter(node => {
-      // Always include shared nodes (gen-ed, creditBlocks, skills)
-      if (node.type === 'skill' || node.type === 'creditBlock' || 
-          node.tags?.includes('gen-ed') || node.tags?.includes('shared')) {
+      // Always include shared trunk nodes (skills, gen-ed, creditBlocks with shared tag)
+      if (node.type === 'skill' || 
+          node.tags?.includes('gen-ed') || 
+          node.tags?.includes('shared') ||
+          (node.type === 'creditBlock' && node.tags?.includes('foundational'))) {
         return true;
       }
       
-      // Include nodes that match the active discipline
+      // Include nodes in the active path
+      if (activePath?.nodeIds.includes(node.id)) {
+        return true;
+      }
+      
+      // Single-discipline rule: only show nodes matching active discipline
       if (activeDiscipline) {
         return node.tags?.some(tag => tag.toLowerCase().includes(activeDiscipline.toLowerCase()));
       }
       
-      // Default: include all nodes if no discipline filtering
+      // If no discipline identified, show all (fallback)
       return true;
     });
 
@@ -133,14 +143,19 @@ export default function LifePathCanvas({
       const stepNumber = isInMainPath ? (activePath?.nodeIds.indexOf(node.id) ?? -1) + 1 : undefined;
       const overlapCount = overlapCounts[node.id] || 1;
       
-      // Ghost detection logic
+      // Ghost detection logic with specific reasons
       const isGhost = !showGhosts && !isInMainPath && node.type !== 'job';
       let ghostReason = '';
       if (isGhost) {
-        if (node.type === 'exam' && node.tags.includes('clep')) {
-          ghostReason = 'Toggle alternatives to unlock';
-        } else if (node.type === 'course' && !activePath?.nodeIds.includes(node.id)) {
-          ghostReason = 'Not in optimal path';
+        // Specific ghost reason based on node type and context
+        if (node.type === 'exam' && node.tags?.includes('clep')) {
+          ghostReason = 'Exceeds exam cap (30cr)';
+        } else if (node.type === 'course' && node.institutionId !== 'fcc') {
+          ghostReason = 'Not cost-optimal';
+        } else if (node.type === 'credential' && !node.tags?.includes(activeDiscipline || '')) {
+          ghostReason = 'Different discipline';
+        } else if (!activePath?.nodeIds.includes(node.id)) {
+          ghostReason = 'Not in selected path';
         }
       }
       
