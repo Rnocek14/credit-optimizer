@@ -6,8 +6,6 @@ import {
   Controls,
   Background,
   MiniMap,
-  useNodesState,
-  useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { determineNodeGhostStatus } from '@/lib/pathfinding/ghosting';
@@ -90,13 +88,6 @@ export default function LifePathCanvas({
     }
   }, [pathfindingResult, activePreset]);
 
-
-  // Quick telemetry (log once on mount)
-  React.useEffect(() => {
-    console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
-    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
-  }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length]);
-
   // ---- Active goal / discipline ----
   const activeGoalId = activePath?.nodeIds?.[activePath.nodeIds.length - 1] ?? null;
   const activeGoalNode = activeGoalId ? graph.nodes.find(n => n.id === activeGoalId) : undefined;
@@ -128,6 +119,13 @@ export default function LifePathCanvas({
     return nodes.length ? nodes : graph.nodes;
   }, [graph.nodes, activePath?.nodeIds, activeDiscipline]);
 
+  // Quick telemetry (log once on mount)
+  React.useEffect(() => {
+    console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
+    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
+    console.info('[life-path] baseNodes length:', baseNodes.length);
+  }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length, baseNodes.length]);
+
   // Safety net for pathfinding
   const isPathEmpty = !activePath?.nodeIds?.length;
   const safeActivePath = isPathEmpty
@@ -138,13 +136,17 @@ export default function LifePathCanvas({
   const SAFE_SHOW_GHOSTS = showGhosts || isPathEmpty;
 
   const reactFlowNodes: Node[] = React.useMemo(() => {
+    console.log('[LifePathCanvas] Generating nodes from baseNodes:', baseNodes.length);
+    
     return baseNodes.map((node, index) => {
       const inPath = !!safeActivePath?.nodeIds?.includes(node.id);
       const stepNumber = inPath ? safeActivePath!.nodeIds.indexOf(node.id) + 1 : undefined;
 
-      // Use SAFE_SHOW_GHOSTS guard
+      // Fix ghost logic: Use SAFE_SHOW_GHOSTS to determine if we show ghosts
+      // If SAFE_SHOW_GHOSTS is true, allow ghosting calculation
+      // If SAFE_SHOW_GHOSTS is false, no ghosting (isGhost = false)
       const ghostInfo = determineNodeGhostStatus?.(node, undefined, SAFE_SHOW_GHOSTS) ?? { isGhost: false };
-      const isGhost = ghostInfo.isGhost && !SAFE_SHOW_GHOSTS;
+      const isGhost = SAFE_SHOW_GHOSTS ? ghostInfo.isGhost : false;
       const ghostReason = ghostInfo.reason;
 
       // Lane assignment
@@ -158,7 +160,14 @@ export default function LifePathCanvas({
         lane
       );
 
-      return {
+      // Validate position
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+        console.warn('[LifePathCanvas] Invalid position for node:', node.id, position);
+        position.x = index * 200;
+        position.y = 100;
+      }
+
+      const nodeObj = {
         id: node.id,
         type: 'lifePathNode',
         position,
@@ -178,8 +187,12 @@ export default function LifePathCanvas({
           zIndex: inPath ? 10 : 1,
         }
       } as Node;
+      
+      return nodeObj;
     });
   }, [baseNodes, selectedNode?.id, pathfindingResult, safeActivePath?.nodeIds, SAFE_SHOW_GHOSTS]);
+  
+  console.log('[LifePathCanvas] Generated nodes:', reactFlowNodes.length);
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
   type BranchOption = {
@@ -226,7 +239,7 @@ export default function LifePathCanvas({
   // Convert graph edges to React Flow edges - filter to existing nodes only
   const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
   const reactFlowEdges: Edge[] = React.useMemo(() => {
-    return graph.edges
+    const edges = graph.edges
       .filter(e => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId))
       .map(edge => ({
         id: edge.id,
@@ -239,18 +252,13 @@ export default function LifePathCanvas({
           pathType: undefined
         }
       }));
+    
+    console.log('[LifePathCanvas] Generated edges:', edges.length);
+    return edges;
   }, [graph.edges, visibleNodeIds]);
-  
-  const [nodes, setNodes, onNodesChange] = useNodesState(reactFlowNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(reactFlowEdges);
 
-  React.useEffect(() => {
-    setNodes(reactFlowNodes);
-  }, [reactFlowNodes, setNodes]);
-
-  React.useEffect(() => {
-    setEdges(reactFlowEdges);
-  }, [reactFlowEdges, setEdges]);
+  // REMOVED: Double state management - no useNodesState/useEdgesState
+  // Pass reactFlowNodes and reactFlowEdges directly to ReactFlow
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     const graphNode = graph.nodes.find(n => n.id === node.id);
@@ -258,6 +266,16 @@ export default function LifePathCanvas({
       onNodeClick(graphNode);
     }
   }, [graph.nodes, onNodeClick]);
+
+  // Error boundary: ensure we always have valid data
+  if (!reactFlowNodes.length) {
+    console.warn('[LifePathCanvas] No nodes to render!');
+    return (
+      <div className="w-full h-[600px] flex items-center justify-center border rounded-lg">
+        <p className="text-muted-foreground">No nodes available to display</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-4">
@@ -359,10 +377,8 @@ export default function LifePathCanvas({
         </div>
         
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          nodes={reactFlowNodes}
+          edges={reactFlowEdges}
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
