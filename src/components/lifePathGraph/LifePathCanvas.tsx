@@ -491,7 +491,9 @@ export default function LifePathCanvas({
             isRelatedToHovered: hoveredNode ? (edge.sourceId === hoveredNode || edge.targetId === hoveredNode) : false,
             showPreviousPath: showPreviousPath && (previousPath.includes(edge.sourceId) && previousPath.includes(edge.targetId)) && !(safeActivePath.nodeIds.includes(edge.sourceId) && safeActivePath.nodeIds.includes(edge.targetId))
           },
-          className: LP_VISUAL_V2 ? `lp-edge-${tier}` : ''
+          className: LP_VISUAL_V2 ? `lp-edge-${tier}` : '',
+          sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
+          targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
         };
       });
     console.log('[life-path] reactFlowEdges:', edges.length);

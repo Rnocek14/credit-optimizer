@@ -18,38 +18,38 @@
 }
 
 /* Edge tier classes */
-.lp-edge-on-path {
-  stroke-opacity: var(--lp-edge-on);
-  stroke-width: var(--lp-edge-on-w);
-  stroke: hsl(var(--primary));
+.lp-edge-on-path path,
+.lp-edge-on-path .react-flow__edge-path {
+  stroke-width: 3 !important;
+  opacity: 1;
+  stroke: hsl(var(--primary)) !important;
 }
 
-.lp-edge-related {
-  stroke-opacity: var(--lp-edge-related);
-  stroke-width: var(--lp-edge-related-w);
-  stroke: hsl(var(--muted-foreground));
+.lp-edge-related path,
+.lp-edge-related .react-flow__edge-path {
+  stroke-width: 2 !important;
+  opacity: 0.6;
+  stroke: hsl(var(--muted-foreground)) !important;
 }
 
-.lp-edge-off-path {
-  stroke-opacity: var(--lp-edge-off);
-  stroke-width: var(--lp-edge-off-w);
-  stroke: hsl(var(--muted-foreground));
+.lp-edge-off-path path,
+.lp-edge-off-path .react-flow__edge-path {
+  stroke-width: 1 !important;
+  opacity: 0.25;
+  stroke: hsl(var(--muted-foreground)) !important;
 }
 
 /* Node tier classes with subtle glows and borders */
 .lp-node-on-path {
-  box-shadow: 0 0 0 2px hsl(var(--primary)) inset, 0 0 0 1px hsl(var(--primary));
-  opacity: 1;
+  box-shadow: 0 0 0 2px hsl(var(--primary)) inset, 0 8px 24px rgba(0,0,0,.2);
 }
 
 .lp-node-related {
-  box-shadow: 0 0 0 1px hsl(var(--muted-foreground));
-  opacity: .9;
+  box-shadow: 0 0 0 1px hsl(var(--muted-foreground)) inset;
 }
 
 .lp-node-off-path {
-  box-shadow: 0 0 0 1px hsl(var(--muted-foreground));
-  opacity: .65;
+  opacity: .85;
 }
 
 /* Step badge with subtle halo for visibility */

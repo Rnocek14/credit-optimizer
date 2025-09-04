@@ -130,6 +130,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
     }
   };
 
+  const tierClass = tier ? `lp-node-${tier}` : '';
+
   return (
     <>
       {/* Visual V2: Use left/right anchoring for better routing */}
@@ -140,9 +142,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       />
       
       <div 
-        className="relative"
+        className={`relative lifepath-node ${tierClass}`}
         data-testid="lp-node"
-        data-node-id={data.node.id}
+        data-id={node.id}
       >
         {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
         {data.isMainPath && typeof data.stepNumber === "number" && data.stepNumber > 0 && (

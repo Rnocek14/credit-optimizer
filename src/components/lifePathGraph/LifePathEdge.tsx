@@ -149,12 +149,33 @@ export function LifePathEdgeComponent({
 
   const label = getEdgeLabel();
 
+  // Add padding to avoid nodes when V2 is enabled
+  const pad = LP_VISUAL_V2 ? 16 : 0;
+  const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
+  const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
+
+  const finalEdgePath = LP_VISUAL_V2 
+    ? getSmoothStepPath({
+        sourceX: adjustedSourceX,
+        sourceY,
+        sourcePosition,
+        targetX: adjustedTargetX,
+        targetY,
+        targetPosition,
+        borderRadius: 12,
+      })[0]
+    : edgePath;
+
+  const tierClass = tier ? `lp-edge-${tier}` : '';
+
   return (
-    <g data-testid="lp-edge" data-edge-id={edge.id}>
-      <BaseEdge 
-        path={edgePath} 
-        markerEnd={markerEnd} 
-        style={getEdgeStyle()} 
+    <g data-testid="lp-edge" data-id={id} className={tierClass}>
+      <path
+        d={finalEdgePath}
+        className="react-flow__edge-path"
+        style={getEdgeStyle()}
+        data-id={id}
+        markerEnd={markerEnd}
       />
       
       {label && (

@@ -56,28 +56,32 @@ function overlapArea(a: Rect, b: Rect) {
 
 function getEdgeSegments(): { id: string; segs: { x1:number,y1:number,x2:number,y2:number }[] }[] {
   // React Flow renders edges as SVG paths within .react-flow__edges
-  // We approximate by sampling path real segments via path.getPointAtLength.
-  const paths = $all('.react-flow__edge-path, .react-flow__edge path[data-id], .react-flow__edge path') as unknown as SVGPathElement[];
-  const res: { id: string; segs: {x1:number,y1:number,x2:number,y2:number}[] }[] = [];
+  const paths = Array.from(document.querySelectorAll<SVGPathElement>(
+    '.react-flow__edges .react-flow__edge-path'
+  ));
+  const results = [];
+
   for (const p of paths) {
-    const id = p.getAttribute('data-id') || (p.parentElement?.getAttribute('data-id')) || (p.parentElement?.id) || '';
+    const id = p.getAttribute('data-id') || p.parentElement?.getAttribute('data-id') || '';
+    if (!id) continue;
+
     try {
       const total = p.getTotalLength();
-      const step = Math.max(8, total / 24); // adaptive sampling
-      const points: {x:number;y:number}[] = [];
-      for (let d=0; d<=total; d+=step) {
-        const { x, y } = p.getPointAtLength(d);
-        points.push({ x, y });
+      const step = Math.max(6, total / 32);
+      const pts: {x:number;y:number}[] = [];
+      for (let d = 0; d <= total; d += step) {
+        const pt = p.getPointAtLength(d);
+        // pt is already in SVG viewport coords; no DOMRect translation needed
+        pts.push({ x: pt.x, y: pt.y });
       }
       const segs = [];
-      for (let i=1;i<points.length;i++) {
-        const a = points[i-1], b = points[i];
-        segs.push({ x1:a.x, y1:a.y, x2:b.x, y2:b.y });
+      for (let i = 1; i < pts.length; i++) {
+        segs.push({ x1: pts[i-1].x, y1: pts[i-1].y, x2: pts[i].x, y2: pts[i].y });
       }
-      res.push({ id, segs });
+      results.push({ id, segs });
     } catch { /* ignore bad paths */ }
   }
-  return res;
+  return results;
 }
 
 function linesIntersect(a:{x1:number,y1:number,x2:number,y2:number}, b:{x1:number,y1:number,x2:number,y2:number}) {
@@ -95,8 +99,25 @@ function linesIntersect(a:{x1:number,y1:number,x2:number,y2:number}, b:{x1:numbe
 }
 
 function segmentIntersections(a:{x1:number,y1:number,x2:number,y2:number}[], b:{x1:number,y1:number,x2:number,y2:number}[]) {
-  for (const sa of a) for (const sb of b) if (linesIntersect(sa, sb)) return true;
-  return false;
+  const hits = [];
+  for (const sa of a) {
+    for (const sb of b) {
+      if (linesIntersect(sa, sb)) {
+        // Calculate intersection point for better reporting
+        const det = (x1:number,y1:number,x2:number,y2:number)=>x1*y2-x2*y1;
+        const sub = (a:{x:number,y:number},b:{x:number,y:number})=>({x:a.x-b.x,y:a.y-b.y});
+        const A={x:sa.x1,y:sa.y1}, B={x:sa.x2,y:sa.y2}, C={x:sb.x1,y:sb.y1}, D={x:sb.x2,y:sb.y2};
+        const r=sub(B,A), s=sub(D,C);
+        const rxs = det(r.x,r.y,s.x,s.y);
+        const q_p = sub(C,A);
+        const t = det(q_p.x,q_p.y,s.x,s.y) / rxs;
+        const intersectionX = A.x + t * r.x;
+        const intersectionY = A.y + t * r.y;
+        hits.push({ x: intersectionX, y: intersectionY });
+      }
+    }
+  }
+  return hits;
 }
 
 function edgeThroughNode(edgeSegs:{x1:number,y1:number,x2:number,y2:number}[], node:Rect) {
@@ -128,9 +149,13 @@ export function runVisualScan(opts: {
   }
 
   // 2) Edge crossings and edges through node boxes
-  for (let i=0;i<edges.length;i++) for (let j=i+1;j<edges.length;j++) {
-    if (segmentIntersections(edges[i].segs, edges[j].segs)) {
-      issues.push({ type:'EDGE_CROSSING', aId:edges[i].id, bId:edges[j].id, point:{ x:0, y:0 }});
+  for (let i=0;i<edges.length;i++) {
+    for (let j=i+1;j<edges.length;j++) {
+      const hits = segmentIntersections(edges[i].segs, edges[j].segs);
+      if (hits.length > 0) {
+        const point = hits[0]; // Use first intersection point
+        issues.push({ type:'EDGE_CROSSING', aId:edges[i].id, bId:edges[j].id, point });
+      }
     }
   }
   for (const e of edges) {
