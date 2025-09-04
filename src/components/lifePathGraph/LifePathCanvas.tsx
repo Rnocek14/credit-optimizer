@@ -6,8 +6,10 @@ import {
   Controls,
   Background,
   MiniMap,
+  Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import '@/styles/lifePath.css';
 import { determineNodeGhostStatus } from '@/lib/pathfinding/ghosting';
 import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathfindingResult } from '@/types/lifePathGraph';
@@ -33,7 +35,7 @@ function toJSON(v: any) {
 /* RUNTIME AUDIT PANEL – END */
 
 // ---------- VISUAL V2 FEATURE FLAG ----------
-const LP_VISUAL_V2 = true; // Set to false to instantly rollback
+import { LP_VISUAL_V2 } from '@/lib/flags';
 
 // ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
@@ -95,11 +97,22 @@ export default function LifePathCanvas({
   }
 
   function sampleDOM() {
+    const q = (s: string) => document.querySelectorAll(s).length;
     return {
       nodes: countByTestId('lp-node'),
       edges: countByTestId('lp-edge'),
       stepBadges: countByTestId('lp-step-badge'),
-      transferLabels: countByTestId('lp-edge-label'), // Precise edge label counting
+      transferLabels: countByTestId('lp-edge-label'),
+      edgeTiers: LP_VISUAL_V2 ? {
+        on: q('.lp-edge-on-path'),
+        related: q('.lp-edge-related'),
+        off: q('.lp-edge-off-path')
+      } : { on: 0, related: 0, off: 0 },
+      nodeTiers: LP_VISUAL_V2 ? {
+        on: q('.lp-node-on-path, [data-testid="lp-node"].lp-node-on-path'),
+        related: q('.lp-node-related, [data-testid="lp-node"].lp-node-related'),
+        off: q('.lp-node-off-path, [data-testid="lp-node"].lp-node-off-path')
+      } : { on: 0, related: 0, off: 0 }
     };
   }
 
@@ -335,6 +348,8 @@ export default function LifePathCanvas({
           zIndex: isInMainPath ? 10 : 1,
         },
         className: LP_VISUAL_V2 ? `lp-node-${tier}` : '',
+        sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
+        targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
         hidden: false, // SAFE: never hide
       };
     });

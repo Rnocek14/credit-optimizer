@@ -1,0 +1,84 @@
+/**
+ * Life Path Graph Visual V2 Styles
+ * Provides tiered visual hierarchy and routing improvements
+ */
+
+:root {
+  /* Edge tiers - opacity and width */
+  --lp-edge-on: 1;
+  --lp-edge-related: .6;
+  --lp-edge-off: .25;
+
+  --lp-edge-on-w: 3;
+  --lp-edge-related-w: 2;
+  --lp-edge-off-w: 1;
+
+  /* Node styling */
+  --lp-node-radius: 14px;
+}
+
+/* Edge tier classes */
+.lp-edge-on-path {
+  stroke-opacity: var(--lp-edge-on);
+  stroke-width: var(--lp-edge-on-w);
+  stroke: hsl(var(--primary));
+}
+
+.lp-edge-related {
+  stroke-opacity: var(--lp-edge-related);
+  stroke-width: var(--lp-edge-related-w);
+  stroke: hsl(var(--muted-foreground));
+}
+
+.lp-edge-off-path {
+  stroke-opacity: var(--lp-edge-off);
+  stroke-width: var(--lp-edge-off-w);
+  stroke: hsl(var(--muted-foreground));
+}
+
+/* Node tier classes with subtle glows and borders */
+.lp-node-on-path {
+  box-shadow: 0 0 0 2px hsl(var(--primary)) inset, 0 0 0 1px hsl(var(--primary));
+  opacity: 1;
+}
+
+.lp-node-related {
+  box-shadow: 0 0 0 1px hsl(var(--muted-foreground));
+  opacity: .9;
+}
+
+.lp-node-off-path {
+  box-shadow: 0 0 0 1px hsl(var(--muted-foreground));
+  opacity: .65;
+}
+
+/* Step badge with subtle halo for visibility */
+.lp-step-badge {
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.35));
+}
+
+/* Edge label styling for better visibility */
+.lp-edge-label {
+  background: hsl(var(--background) / 0.95);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: all;
+  backdrop-filter: blur(4px);
+}
+
+/* Smooth transitions for tier changes */
+.react-flow__node,
+.react-flow__edge {
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Better contrast for dark theme */
+.dark {
+  --lp-edge-on: 1;
+  --lp-edge-related: .7;
+  --lp-edge-off: .3;
+}

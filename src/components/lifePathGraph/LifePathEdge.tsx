@@ -1,8 +1,9 @@
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getSmoothStepPath } from '@xyflow/react';
 import { GraphEdge } from '@/types/lifePathGraph';
 import { Badge } from '@/components/ui/badge';
 import { determineEdgeGhostStatus } from '@/lib/pathfinding/ghosting';
+import { LP_VISUAL_V2 } from '@/lib/flags';
 
 interface LifePathEdgeData {
   edge: GraphEdge;
@@ -36,14 +37,25 @@ export function LifePathEdgeComponent({
 }: LifePathEdgeProps) {
   const { edge, isHighlighted, tier } = data;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  // Use SmoothStep routing in Visual V2 for better orthogonal paths
+  const [edgePath, labelX, labelY] = LP_VISUAL_V2 
+    ? getSmoothStepPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+        borderRadius: 6,
+      })
+    : getBezierPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+      });
 
   const getEdgeStyle = () => {
     // Visual V2: Use tier-based styling if available
@@ -143,13 +155,12 @@ export function LifePathEdgeComponent({
               top: labelY,
             }}
           >
-            <Badge 
-              variant="outline" 
-              className={`text-xs px-2 py-1 border font-medium shadow-sm ${getLabelColor()}`}
+            <div 
+              className={`lp-edge-label ${getLabelColor()}`}
               data-testid="lp-edge-label"
             >
               {label}
-            </Badge>
+            </div>
           </div>
         </EdgeLabelRenderer>
       )}

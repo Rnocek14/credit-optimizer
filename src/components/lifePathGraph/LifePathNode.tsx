@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import { GraphNode } from '@/types/lifePathGraph';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { LP_VISUAL_V2 } from '@/lib/flags';
 import { 
   BookOpen, 
   Briefcase, 
@@ -125,9 +126,10 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
 
   return (
     <>
+      {/* Visual V2: Use left/right anchoring for better routing */}
       <Handle
         type="target"
-        position={Position.Top}
+        position={LP_VISUAL_V2 ? Position.Left : Position.Top}
         className="w-3 h-3 !bg-muted-foreground"
       />
       
@@ -241,7 +243,7 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={LP_VISUAL_V2 ? Position.Right : Position.Bottom}
         className="w-3 h-3 !bg-muted-foreground"
       />
     </>
