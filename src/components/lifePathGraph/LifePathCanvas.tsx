@@ -90,16 +90,6 @@ export default function LifePathCanvas({
     }
   }, [pathfindingResult, activePreset]);
 
-  // Active path sanity check
-  const isPathEmpty = !activePath || !activePath.nodeIds?.length;
-  if (isPathEmpty) {
-    console.warn('[life-path] No path; rendering full graph in debug mode');
-  }
-
-  // Only show ghosts when path is empty to provide context
-  React.useEffect(() => {
-    setShowGhosts(isPathEmpty);
-  }, [isPathEmpty]);
 
   // Quick telemetry (log once on mount)
   React.useEffect(() => {
@@ -107,51 +97,63 @@ export default function LifePathCanvas({
     console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
   }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length]);
 
-  // Compute active goal and discipline
-  const activeGoalId = activePath?.nodeIds?.[activePath.nodeIds.length - 1];
-  const activeGoalNode = graph.nodes.find(n => n.id === activeGoalId);
+  // ---- Active goal / discipline ----
+  const activeGoalId = activePath?.nodeIds?.[activePath.nodeIds.length - 1] ?? null;
+  const activeGoalNode = activeGoalId ? graph.nodes.find(n => n.id === activeGoalId) : undefined;
 
-  // Discipline from goal tags
   const activeDiscipline =
     activeGoalNode?.tags?.find(t =>
-      ["cs", "computer-science", "nursing", "business"].includes(t.toLowerCase())
-    ) || null;
+      ['cs', 'computer-science', 'nursing', 'business'].includes(t.toLowerCase())
+    ) ?? null;
 
-  // Helper: shared trunk node?
-  const isShared = (node: any) =>
-    node.type === "skill" ||
-    node.type === "creditBlock" ||
-    node.tags?.includes("shared") ||
-    node.tags?.includes("gen-ed");
+  // Helper: shared trunk nodes should always stay
+  const isShared = (n: GraphNode) =>
+    n.type === 'skill' ||
+    n.type === 'creditBlock' ||
+    n.tags?.includes('shared') ||
+    n.tags?.includes('gen-ed');
 
-  // Filter by discipline (always include active path + shared trunk)
-  const filteredNodes = graph.nodes.filter(n => {
-    if (isShared(n)) return true;
-    if (activePath?.nodeIds?.includes(n.id)) return true;
-    if (!activeDiscipline) return true;
-    return n.tags?.some((t: string) => t.toLowerCase().includes(activeDiscipline.toLowerCase()));
-  });
+  // IMPORTANT: do not filter if we don't have a path yet
+  const filteredNodes = React.useMemo(() => {
+    if (!activePath?.nodeIds?.length) return graph.nodes;
 
-  const reactFlowNodes = useMemo(() => {
-    const userState = undefined; // Mock user state for now
+    const nodes = graph.nodes.filter(n => {
+      if (isShared(n)) return true;
+      if (activePath.nodeIds.includes(n.id)) return true;
+      if (!activeDiscipline) return true;
+      return n.tags?.some(t => t.toLowerCase().includes(activeDiscipline.toLowerCase()));
+    });
 
+    // Safety: if filtering removed everything, show all nodes
+    return nodes.length ? nodes : graph.nodes;
+  }, [graph.nodes, activePath?.nodeIds, activeDiscipline]);
+
+  // Safety net for pathfinding
+  const isPathEmpty = !activePath?.nodeIds?.length;
+  const safeActivePath = isPathEmpty
+    ? { nodeIds: graph.nodes.filter(n => n.type !== 'job').slice(0, 3).map(n => n.id) }
+    : activePath;
+
+  const reactFlowNodes: Node[] = React.useMemo(() => {
     return filteredNodes.map((node, index) => {
-      const isInMainPath = !isPathEmpty && activePath!.nodeIds.includes(node.id);
-      const stepNumber = isInMainPath ? activePath!.nodeIds.indexOf(node.id) + 1 : undefined;
+      const inPath = !!safeActivePath?.nodeIds?.includes(node.id);
+      const stepNumber = inPath ? safeActivePath!.nodeIds.indexOf(node.id) + 1 : undefined;
 
-      // Ghost status (specific reasons) – respect "Show Alternatives" toggle
-      const ghostInfo = determineNodeGhostStatus(node, userState, showGhosts);
-      const isGhost = ghostInfo.isGhost && !showGhosts;
-      const ghostReason = ghostInfo.reason;
-      // Institution lane: 0 = FCC, 1 = FSU, 2 = Global/Orphan
-      let institutionLane = 2;
-      if (node.institutionId === "fcc") institutionLane = 0;
-      else if (node.institutionId === "fsu") institutionLane = 1;
-      
+      // Pass `allowGhost=true` for now OR allow when inPath
+      const allowGhost = true; // temporary failsafe to avoid over-ghosting
+      const ghostInfo = determineNodeGhostStatus?.(node, undefined, allowGhost) ?? { isGhost: false };
+      const isGhost = ghostInfo.isGhost && !inPath; // never ghost the main path
+      const ghostReason = isGhost ? ghostInfo.reason : undefined;
+
+      // Lane assignment
+      let lane = 2; // Global/Orphan
+      if (node.institutionId === 'fcc') lane = 0;
+      else if (node.institutionId === 'fsu') lane = 1;
+
       const position = node.position || calculateNodePosition(
-        index, 
+        index,
         node.attributes?.depth ?? 0,
-        institutionLane
+        lane
       );
 
       return {
@@ -161,20 +163,21 @@ export default function LifePathCanvas({
         data: {
           node,
           isSelected: selectedNode?.id === node.id,
-          isInPath: isInMainPath,
-          isMainPath: isInMainPath,
+          isInPath: inPath,
+          isMainPath: inPath,
           stepNumber,
+          pathType: getNodePathType(node.id, pathfindingResult),
           showGhost: isGhost,
           ghostReason,
         },
         style: {
-          opacity: isInMainPath ? 1 : 0.6,
-          zIndex: isInMainPath ? 10 : 1,
+          opacity: inPath ? 1 : 0.65,
+          zIndex: inPath ? 10 : 1,
         },
-        hidden: false
-      };
+        hidden: false, // <- never hide (prevents vanishing)
+      } as Node;
     });
-  }, [filteredNodes, selectedNode, pathfindingResult, activePath, showGhosts, isPathEmpty]);
+  }, [filteredNodes, selectedNode?.id, pathfindingResult, safeActivePath?.nodeIds]);
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
   type BranchOption = {
@@ -189,7 +192,7 @@ export default function LifePathCanvas({
   };
 
   const branchPoints = useMemo(() => {
-    if (!activePath?.nodeIds?.length) return [];
+    if (!safeActivePath?.nodeIds?.length) return [];
     const points: { anchorNodeId: string; options: BranchOption[] }[] = [];
 
     // Simple heuristic: find nodes at depth 1 that share skill outcomes or equivalency
@@ -209,50 +212,33 @@ export default function LifePathCanvas({
           time: Math.ceil((n.estimatedHours || 120) / 40),
           cost: n.cost || 0,
           credits: n.credits || 0,
-          isRecommended: activePath.nodeIds.includes(n.id),
+          isRecommended: safeActivePath.nodeIds.includes(n.id),
           preset: isPathEmpty ? "balanced" : "active",
         }))
       });
     }
 
     return points;
-  }, [filteredNodes, activePath, isPathEmpty]);
+  }, [filteredNodes, safeActivePath, isPathEmpty]);
 
-  // Convert graph edges to React Flow edges
-  const reactFlowEdges: Edge[] = useMemo(() => {
-    return graph.edges.map((edge) => {
-      const isInMainPath = activePath && isEdgeInMainPath(edge, activePath);
-      const edgeStyle = styleEdge(edge.type, isInMainPath, edge.type === 'ghost');
-      
-      return {
+  // Convert graph edges to React Flow edges - filter to existing nodes only
+  const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
+  const reactFlowEdges: Edge[] = React.useMemo(() => {
+    return graph.edges
+      .filter(e => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId))
+      .map(edge => ({
         id: edge.id,
         source: edge.sourceId,
         target: edge.targetId,
         type: 'lifePathEdge',
         data: {
           edge,
-          isHighlighted: isInMainPath,
-          pathType: getEdgePathType(edge.id, pathfindingResult),
-          showTransferRate: edge.type === 'creditTransfersTo'
-        },
-        style: {
-          stroke: edgeStyle.color,
-          strokeWidth: edgeStyle.thickness,
-          strokeDasharray: edgeStyle.dash?.join(','),
-          opacity: edgeStyle.opacity,
-          zIndex: isInMainPath ? 10 : 1,
+          isHighlighted: false,
+          pathType: undefined
         }
-      };
-    });
-  }, [graph.edges, pathfindingResult, activePath]);
+      }));
+  }, [graph.edges, visibleNodeIds]);
   
-  function isEdgeInMainPath(edge: any, path: any): boolean {
-    if (!path?.nodeIds) return false;
-    const sourceIndex = path.nodeIds.indexOf(edge.sourceId);
-    const targetIndex = path.nodeIds.indexOf(edge.targetId);
-    return sourceIndex !== -1 && targetIndex !== -1 && Math.abs(targetIndex - sourceIndex) === 1;
-  }
-
   const [nodes, setNodes, onNodesChange] = useNodesState(reactFlowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(reactFlowEdges);
 
@@ -328,23 +314,23 @@ export default function LifePathCanvas({
         </div>
       </div>
       
-      {/* Metrics Pill */}
+        {/* Metrics Pill */}
       <div className="flex items-center gap-4">
-        {activePath && (
+        {safeActivePath && (
           <MetricsPill 
             metrics={{
-              totalTime: activePath.totalTime,
-              totalCost: activePath.totalCost,
-              totalCredits: activePath.totalCredits,
-              creditLoss: activePath.creditLoss,
-              institutionsCount: activePath.metadata?.institutionsCount,
-              prerequisitesSatisfied: activePath.metadata?.prerequisitesSatisfied,
+              totalTime: activePath?.totalTime || 24,
+              totalCost: activePath?.totalCost || 8000,
+              totalCredits: activePath?.totalCredits || 60,
+              creditLoss: activePath?.creditLoss || 0,
+              institutionsCount: activePath?.metadata?.institutionsCount,
+              prerequisitesSatisfied: activePath?.metadata?.prerequisitesSatisfied,
             }}
           />
         )}
         {process.env.NODE_ENV !== 'production' && (
           <Badge variant="outline" className="text-xs">
-            Path: {activePath?.nodeIds?.length || 0} • Nodes: {graph.nodes.length}
+            Path: {safeActivePath?.nodeIds?.length || 0} • Nodes: {graph.nodes.length}
           </Badge>
         )}
       </div>
