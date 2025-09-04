@@ -420,72 +420,44 @@ export default function LifePathCanvas({
         </div>
       </div>
 
-      {/* RUNTIME AUDIT PANEL – BEGIN */}
-      <div className="mt-4 rounded-xl border p-3 bg-white/70 dark:bg-zinc-900/50">
-        <div className="flex items-center justify-between gap-2">
-          <div className="font-medium">Runtime Visual Audit</div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs opacity-70">Phase:</span>
-            <button
-              className={`px-2 py-1 rounded text-xs ${phase==='S'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
-              onClick={() => setPhase('S')}
-              data-testid="audit-phase-s"
-              title="Safe: render ON, showGhosts ON, filtering OFF"
-            >S</button>
-            <button
-              className={`px-2 py-1 rounded text-xs ${phase==='A'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
-              onClick={() => setPhase('A')}
-              data-testid="audit-phase-a"
-              title="Filtering ON"
-            >A</button>
-            <button
-              className={`px-2 py-1 rounded text-xs ${phase==='B'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
-              onClick={() => setPhase('B')}
-              data-testid="audit-phase-b"
-              title="Normal render ON"
-            >B</button>
-            <button
-              className={`px-2 py-1 rounded text-xs ${phase==='C'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
-              onClick={() => setPhase('C')}
-              data-testid="audit-phase-c"
-              title="Ghost hiding allowed"
-            >C</button>
+{/* RUNTIME AUDIT PANEL – BEGIN */}
+<div className="mt-4 rounded-xl border p-3 bg-white/70 dark:bg-neutral-900/70">
+  <div className="font-semibold mb-2">Runtime Visual Audit</div>
 
-            <button
-              className="ml-3 px-3 py-1 rounded text-xs bg-emerald-600 text-white disabled:opacity-50"
-              onClick={runAudit}
-              disabled={auditRunning}
-              data-testid="audit-run"
-            >
-              {auditRunning ? 'Running…' : 'Run Audit'}
-            </button>
-          </div>
-        </div>
+  <div className="flex items-center gap-2 mb-2">
+    <span className="text-sm">Phase:</span>
+    <button data-testid="audit-phase-s" className={`px-2 py-1 rounded ${phase==='S'?'bg-black text-white dark:bg-white dark:text-black':'bg-gray-200 dark:bg-neutral-700'}`} onClick={() => setPhase('S')} title="Safe: render ON, showGhosts ON, filtering OFF">S</button>
+    <button data-testid="audit-phase-a" className={`px-2 py-1 rounded ${phase==='A'?'bg-black text-white dark:bg-white dark:text-black':'bg-gray-200 dark:bg-neutral-700'}`} onClick={() => setPhase('A')} title="Filtering ON">A</button>
+    <button data-testid="audit-phase-b" className={`px-2 py-1 rounded ${phase==='B'?'bg-black text-white dark:bg-white dark:text-black':'bg-gray-200 dark:bg-neutral-700'}`} onClick={() => setPhase('B')} title="Normal render ON">B</button>
+    <button data-testid="audit-phase-c" className={`px-2 py-1 rounded ${phase==='C'?'bg-black text-white dark:bg-white dark:text-black':'bg-gray-200 dark:bg-neutral-700'}`} onClick={() => setPhase('C')} title="Ghost hiding allowed">C</button>
 
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border p-2">
-            <div className="text-xs font-medium mb-1">Live Snapshot</div>
-            <div className="text-[11px] opacity-70">
-              Nodes: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-node"]').length : 0 } •
-              Edges: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-edge"]').length : 0 } •
-              Steps: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-step-badge"]').length : 0 }
-            </div>
-            <pre className="mt-2 text-[11px] whitespace-pre-wrap max-h-48 overflow-auto">{auditLog}</pre>
-          </div>
+    <button className="ml-auto px-3 py-1 rounded border" onClick={runAudit} disabled={auditRunning}>
+      {auditRunning ? 'Running…' : 'Run Audit'}
+    </button>
+  </div>
 
-          <div className="rounded-lg border p-2">
-            <div className="text-xs font-medium mb-1">Final Report (JSON)</div>
-            <pre className="text-[11px] whitespace-pre-wrap max-h-48 overflow-auto">
-              {auditReport ? toJSON(auditReport) : 'Run the audit to generate a report…'}
-            </pre>
-          </div>
-        </div>
+  <div className="text-xs opacity-70 mb-2">
+    S = Safe (render ON, showGhosts ON, filtering OFF) • A = Filtering ON • B = Normal render ON • C = Ghost hiding allowed
+  </div>
 
-        <div className="mt-2 text-[11px] opacity-70">
-          S = Safe (render ON, showGhosts ON, filtering OFF) • A = Filtering ON • B = Normal render ON • C = Ghost hiding allowed
-        </div>
-      </div>
-      {/* RUNTIME AUDIT PANEL – END */}
+  <div className="rounded border p-2 text-xs mb-2 bg-neutral-50 dark:bg-neutral-800">
+    <div className="font-medium mb-1">Live Snapshot</div>
+    <div className="mb-2">
+      Nodes: {typeof document !== 'undefined' ? document.querySelectorAll('[data-testid="lp-node"]').length : 0} •{' '}
+      Edges: {typeof document !== 'undefined' ? document.querySelectorAll('[data-testid="lp-edge"]').length : 0} •{' '}
+      Steps: {typeof document !== 'undefined' ? document.querySelectorAll('[data-testid="lp-step-badge"]').length : 0}
+    </div>
+    <pre className="whitespace-pre-wrap">{auditLog}</pre>
+  </div>
+
+  <div className="rounded border p-2 text-xs bg-neutral-50 dark:bg-neutral-800">
+    <div className="font-medium mb-1">Final Report (JSON)</div>
+    <pre className="whitespace-pre-wrap">
+      {auditReport ? toJSON(auditReport) : 'Run the audit to generate a report…'}
+    </pre>
+  </div>
+</div>
+{/* RUNTIME AUDIT PANEL – END */}
       
         {/* Metrics Pill */}
       <div className="flex items-center gap-4">
