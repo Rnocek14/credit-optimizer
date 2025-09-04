@@ -11,6 +11,8 @@ interface VisualScannerProps {
 }
 
 export function VisualScanner({ graph, pathfindingResult, activePreset }: VisualScannerProps) {
+  const isAuditOn = import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit'));
+  if (!isAuditOn) return null;
   const [scanRunning, setScanRunning] = useState(false);
   const [scanReport, setScanReport] = useState<VisualScanSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);

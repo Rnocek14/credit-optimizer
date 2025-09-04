@@ -327,58 +327,46 @@ export default function LifePathCanvas({
 
   // Nodes → React Flow
   const reactFlowNodes: Node[] = useMemo(() => {
-    const nodesSource = baseNodes; // in safe mode we always use baseNodes
-    return nodesSource.map((node, index) => {
-      const isInMainPath = safeActivePath.nodeIds.includes(node.id);
-      const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined;
-      // SAFE: never hide via ghosting
-      const isGhost = SAFE_RENDER_FLAG ? false : (!showGhosts && !isInMainPath && node.type !== 'job');
-      const ghostReason = undefined;
-
+    return graph.nodes.map(n => {
+      const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
+      const isInMainPath = safeActivePath.nodeIds.includes(n.id);
+      const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(n.id) + 1 : undefined;
+      
       let institutionLane = 2;
-      if (node.institutionId === 'fcc') institutionLane = 0;
-      else if (node.institutionId === 'fsu') institutionLane = 1;
+      if (n.institutionId === 'fcc') institutionLane = 0;
+      else if (n.institutionId === 'fsu') institutionLane = 1;
 
-      const position = node.position || calculateNodePosition(
-        index,
-        node.attributes?.depth ?? 0,
+      const position = n.position || calculateNodePosition(
+        graph.nodes.indexOf(n),
+        n.attributes?.depth ?? 0,
         institutionLane
       );
 
-      // Visual V2: Determine node tier for hierarchy
-      const tier = LP_VISUAL_V2 ? determineNodeTier(
-        node.id, 
-        safeActivePath.nodeIds, 
-        graph.edges
-      ) : 'off-path';
-
       return {
-        id: node.id,
+        id: n.id,
         type: 'lifePathNode',
         position,
-        data: {
-          node,
-          isSelected: selectedNode?.id === node.id,
+        data: { 
+          node: n,
+          isSelected: selectedNode?.id === n.id,
           isInPath: isInMainPath,
           isMainPath: isInMainPath,
-          stepNumber: isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined,
-          showGhost: false,
-          ghostReason: undefined,
-          tier: LP_VISUAL_V2 ? tier : undefined,
-          isHovered: hoveredNode === node.id,
-          showPreviousPath: showPreviousPath && previousPath.includes(node.id) && !safeActivePath.nodeIds.includes(node.id),
+          stepNumber,
+          tier: nodeTier,
+          isHovered: hoveredNode === n.id,
+          showPreviousPath: showPreviousPath && previousPath.includes(n.id) && !safeActivePath.nodeIds.includes(n.id),
         },
         style: {
-          opacity: 1, // SAFE: render everything fully
+          opacity: 1,
           zIndex: isInMainPath ? 10 : 1,
         },
-        className: LP_VISUAL_V2 ? `lp-node-${tier}` : '',
+        className: LP_VISUAL_V2 && nodeTier ? `lp-node-${nodeTier}` : '',
         sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
         targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
-        hidden: false, // SAFE: never hide
+        hidden: false,
       };
     });
-  }, [baseNodes, selectedNode, activePathString, hoveredNode, showPreviousPath, previousPath.join(','), LP_VISUAL_V2]);
+  }, [graph.nodes, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2]);
   
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
@@ -423,51 +411,45 @@ export default function LifePathCanvas({
     return points;
   }, [baseNodes, safeActivePath, isPathEmpty]);
 
-  // Edges → React Flow (only between visible nodes)
+  // Edges → React Flow (visible edges only)
   const reactFlowEdges: Edge[] = useMemo(() => {
     const visible = new Set(reactFlowNodes.map(n => n.id));
-    const edges = graph.edges
+    return graph.edges
       .filter(e => visible.has(e.sourceId) && visible.has(e.targetId))
-      .map(edge => {
-        // Visual V2: Determine edge tier for hierarchy
-        const tier = LP_VISUAL_V2 ? determineEdgeTier(
-          edge.id, 
-          safeActivePath.nodeIds, 
-          graph.nodes, 
-          graph.edges
-        ) : undefined;
-
-        // Always show transfer labels (Phase 1 requirement)
-        const label = edge.type === 'creditTransfersTo' 
-          ? `${Math.round((edge.creditTransferRate ?? 1) * 100)}% transfer`
+      .map(e => {
+        const tier = LP_VISUAL_V2
+          ? determineEdgeTier(e.id, safeActivePath.nodeIds, graph.nodes, graph.edges)
           : undefined;
 
-        // Debug tier assignment in development
-        if (LP_VISUAL_V2 && process.env.NODE_ENV !== 'production') {
-          console.debug('Canvas edge tier:', edge.id, tier, 'activePathNodes:', safeActivePath.nodeIds);
-        }
-        
+        const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
+
+        const label =
+          e.type === 'creditTransfersTo'
+            ? `${Math.round((e.creditTransferRate ?? 1) * 100)}% transfer`
+            : undefined;
+
         return {
-          id: edge.id,
-          source: edge.sourceId,
-          target: edge.targetId,
+          id: e.id,
+          source: e.sourceId,
+          target: e.targetId,
           type: 'lifePathEdge',
-          data: { 
-            edge, 
-            isHighlighted: false, 
-            pathType: undefined,
-            tier: LP_VISUAL_V2 ? tier : undefined,
-            isRelatedToHovered: hoveredNode ? (edge.sourceId === hoveredNode || edge.targetId === hoveredNode) : false,
-            showPreviousPath: showPreviousPath && (previousPath.includes(edge.sourceId) && previousPath.includes(edge.targetId)) && !(safeActivePath.nodeIds.includes(edge.sourceId) && safeActivePath.nodeIds.includes(edge.targetId)),
-            label
-          },
-          className: LP_VISUAL_V2 ? `lp-edge-${tier}` : '',
           sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
-          targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
+          targetPosition: LP_VISUAL_V2 ? Position.Left  : Position.Top,
+          data: {
+            edge: e,
+            isHighlighted: false,
+            tier,
+            isRelatedToHovered,
+            label,
+            showPreviousPath:
+              showPreviousPath &&
+              previousPath.some(id => [e.sourceId, e.targetId].includes(id)) &&
+              !safeActivePath.nodeIds.some(id => [e.sourceId, e.targetId].includes(id)),
+          },
+          className: LP_VISUAL_V2 && tier ? `lp-edge-${tier}` : '',
         };
       });
-    console.log('[life-path] reactFlowEdges:', edges.length);
-    return edges;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
 
   // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />

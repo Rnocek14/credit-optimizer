@@ -133,7 +133,11 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   const tierClass = tier ? `lp-node-${tier}` : '';
 
   return (
-    <>
+    <div
+      data-testid="lp-node"
+      data-id={node.id}
+      className={`lp-node ${tierClass}`}
+    >
       {/* Visual V2: Use left/right anchoring for better routing */}
       <Handle
         type="target"
@@ -159,8 +163,6 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
           minWidth: 'var(--lp-node-min-width, 280px)',
           maxWidth: 'var(--lp-node-max-width, 350px)',
         }}
-        data-testid="lp-node"
-        data-id={node.id}
       >
         <CardContent className="p-4">
           {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
@@ -274,6 +276,6 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
           height: 12,
         }}
       />
-    </>
+    </div>
   );
 }
