@@ -26,21 +26,28 @@ export type VisualScanSnapshot = {
 };
 
 type Rect = { x: number; y: number; w: number; h: number; id: string };
+type LineSegment = { x1: number; y1: number; x2: number; y2: number };
 
 const $all = (sel: string, root: Document | HTMLElement = document) =>
   Array.from(root.querySelectorAll(sel)) as HTMLElement[];
 
 function getNodeRects(): Rect[] {
-  // React Flow nodes have .react-flow__node; our LifePath nodes also carry data-testid=lp-node
-  return $all('.react-flow__node[data-id], [data-testid="lp-node"]')
-    .map((el) => {
-      const box = el.getBoundingClientRect();
-      const id = el.getAttribute('data-id') || el.getAttribute('data-nodeid') || el.dataset['id'] || el.dataset['nodeid'] || '';
-      // Convert to canvas coords by subtracting canvas page offset (approx: use viewport for relative checks)
-      return { id, x: box.left, y: box.top, w: box.width, h: box.height };
-    })
-    // Filter out empties
-    .filter(r => !!r.id && r.w > 0 && r.h > 0);
+  const raw = Array.from(
+    document.querySelectorAll('.react-flow__node[data-id]')
+  ) as HTMLElement[];
+  
+  // Deduplicate by data-id (keep the largest/outermost rect)
+  const byId = new Map<string, Rect>();
+  for (const el of raw) {
+    const id = el.getAttribute('data-id') || '';
+    if (!id) continue;
+    const box = el.getBoundingClientRect();
+    const rect = { id, x: box.left, y: box.top, w: box.width, h: box.height };
+    // Keep the largest (outermost) rect if multiple with same id
+    const prev = byId.get(id);
+    if (!prev || (rect.w * rect.h) > (prev.w * prev.h)) byId.set(id, rect);
+  }
+  return Array.from(byId.values());
 }
 
 function rectsOverlap(a: Rect, b: Rect, pad = 2) {
@@ -54,17 +61,16 @@ function overlapArea(a: Rect, b: Rect) {
   return xOverlap * yOverlap;
 }
 
-function getEdgeSegments(): { id: string; segs: { x1:number,y1:number,x2:number,y2:number }[] }[] {
-  // React Flow renders edges as SVG paths within .react-flow__edges
-  const paths = Array.from(document.querySelectorAll<SVGPathElement>(
-    '.react-flow__edges .react-flow__edge-path'
-  ));
+function getEdgeSegments(): { id: string; segs: LineSegment[] }[] {
+  const paths = Array.from(
+    document.querySelectorAll('.react-flow__edges .react-flow__edge-path')
+  ) as SVGPathElement[];
+  
   const results = [];
-
   for (const p of paths) {
     const id = p.getAttribute('data-id') || p.parentElement?.getAttribute('data-id') || '';
     if (!id) continue;
-
+    
     try {
       const total = p.getTotalLength();
       const step = Math.max(6, total / 32);
@@ -84,7 +90,7 @@ function getEdgeSegments(): { id: string; segs: { x1:number,y1:number,x2:number,
   return results;
 }
 
-function linesIntersect(a:{x1:number,y1:number,x2:number,y2:number}, b:{x1:number,y1:number,x2:number,y2:number}) {
+function linesIntersect(a: LineSegment, b: LineSegment) {
   // standard segment intersection
   const det = (x1:number,y1:number,x2:number,y2:number)=>x1*y2-x2*y1;
   const sub = (a:{x:number,y:number},b:{x:number,y:number})=>({x:a.x-b.x,y:a.y-b.y});
@@ -98,7 +104,7 @@ function linesIntersect(a:{x1:number,y1:number,x2:number,y2:number}, b:{x1:numbe
   return t>0 && t<1 && u>0 && u<1;
 }
 
-function segmentIntersections(a:{x1:number,y1:number,x2:number,y2:number}[], b:{x1:number,y1:number,x2:number,y2:number}[]) {
+function segmentIntersections(a: LineSegment[], b: LineSegment[]) {
   const hits = [];
   for (const sa of a) {
     for (const sb of b) {
@@ -109,6 +115,7 @@ function segmentIntersections(a:{x1:number,y1:number,x2:number,y2:number}[], b:{
         const A={x:sa.x1,y:sa.y1}, B={x:sa.x2,y:sa.y2}, C={x:sb.x1,y:sb.y1}, D={x:sb.x2,y:sb.y2};
         const r=sub(B,A), s=sub(D,C);
         const rxs = det(r.x,r.y,s.x,s.y);
+        if (rxs === 0) continue; // Skip parallel lines
         const q_p = sub(C,A);
         const t = det(q_p.x,q_p.y,s.x,s.y) / rxs;
         const intersectionX = A.x + t * r.x;
@@ -120,7 +127,7 @@ function segmentIntersections(a:{x1:number,y1:number,x2:number,y2:number}[], b:{
   return hits;
 }
 
-function edgeThroughNode(edgeSegs:{x1:number,y1:number,x2:number,y2:number}[], node:Rect) {
+function edgeThroughNode(edgeSegs: LineSegment[], node: Rect) {
   // If any sample point lies within node rect we treat as "through node"
   for (const s of edgeSegs) {
     // mid-point check for speed
@@ -140,34 +147,49 @@ export function runVisualScan(opts: {
   const edges = getEdgeSegments();
   const issues: VisualScanIssue[] = [];
 
-  // 1) Node overlap checks
-  for (let i=0;i<nodes.length;i++) for (let j=i+1;j<nodes.length;j++) {
-    if (rectsOverlap(nodes[i], nodes[j], 2)) {
-      const area = overlapArea(nodes[i], nodes[j]);
-      if (area > 6) issues.push({ type:'NODE_OVERLAP', aId:nodes[i].id, bId:nodes[j].id, overlapArea: area });
-    }
-  }
-
-  // 2) Edge crossings and edges through node boxes
-  for (let i=0;i<edges.length;i++) {
-    for (let j=i+1;j<edges.length;j++) {
-      const hits = segmentIntersections(edges[i].segs, edges[j].segs);
-      if (hits.length > 0) {
-        const point = hits[0]; // Use first intersection point
-        issues.push({ type:'EDGE_CROSSING', aId:edges[i].id, bId:edges[j].id, point });
+  // Find node overlaps (avoid self-overlaps and duplicates)
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) { // j starts at i+1 to avoid self + dup
+      const a = nodes[i], b = nodes[j];
+      if (a.id === b.id) continue; // no self-overlap
+      const area = overlapArea(a, b);
+      if (area > 6) { // threshold
+        issues.push({
+          type: 'NODE_OVERLAP',
+          aId: a.id,
+          bId: b.id,
+          overlapArea: area,
+        });
       }
     }
   }
+
+  // Edge crossings and edges through node boxes
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const hits = segmentIntersections(edges[i].segs, edges[j].segs);
+      if (hits.length > 0) {
+        const point = hits[0]; // Use first intersection point
+        issues.push({ type: 'EDGE_CROSSING', aId: edges[i].id, bId: edges[j].id, point });
+      }
+    }
+  }
+  
   for (const e of edges) {
     for (const n of nodes) {
-      if (edgeThroughNode(e.segs, n)) issues.push({ type:'EDGE_THROUGH_NODE', edgeId:e.id, nodeId:n.id });
+      if (edgeThroughNode(e.segs, n)) {
+        issues.push({ type: 'EDGE_THROUGH_NODE', edgeId: e.id, nodeId: n.id });
+      }
     }
   }
 
-  // 3) Per-career connection map (active preset)
+  // Per-career connection map (active preset)
   const pf = opts.pathfindingResult;
   const presetMap = pf ? {
-    fastest: pf.fastest, cheapest: pf.cheapest, creditMaximized: pf.creditMaximized, balanced: pf.balanced
+    fastest: pf.fastest, 
+    cheapest: pf.cheapest, 
+    creditMaximized: pf.creditMaximized, 
+    balanced: pf.recommendations?.primary || pf.balanced
   } : null;
   const activePath = presetMap ? presetMap[opts.activePreset] : null;
 
@@ -203,12 +225,16 @@ export function runVisualScan(opts: {
     };
   });
 
-  // 4) Label presence (transfer)
-  $all('[data-testid="lp-edge"]').forEach((el) => {
-    const hasLabel = el.querySelector('[data-testid="lp-edge-label"]');
-    if (!hasLabel) {
-      const id = el.getAttribute('data-id') || el.id || '';
-      if (id) issues.push({ type:'MISSING_LABEL', edgeId:id });
+  // Check for missing labels (only require labels for transfer-ish edges)
+  document.querySelectorAll('[data-testid="lp-edge"]').forEach(el => {
+    const id = el.getAttribute('data-id') || '';
+    const type = el.getAttribute('data-edge-type') || '';
+    const hasLabel = !!el.querySelector('[data-testid="lp-edge-label"]');
+    
+    // Require labels only for transfer edges
+    const needsLabel = /creditTransfersTo/i.test(type);
+    if (needsLabel && !hasLabel && id) {
+      issues.push({ type: 'MISSING_LABEL', edgeId: id });
     }
   });
 

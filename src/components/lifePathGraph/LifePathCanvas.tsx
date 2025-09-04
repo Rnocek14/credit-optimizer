@@ -477,6 +477,11 @@ export default function LifePathCanvas({
           graph.nodes, 
           graph.edges
         ) : 'off-path';
+
+        // Always show transfer labels for creditTransfersTo edges
+        const label = edge.type === 'creditTransfersTo' 
+          ? `${Math.round((edge.creditTransferRate ?? 1) * 100)}% transfer`
+          : undefined;
         
         return {
           id: edge.id,
@@ -489,7 +494,8 @@ export default function LifePathCanvas({
             pathType: undefined,
             tier: LP_VISUAL_V2 ? tier : undefined,
             isRelatedToHovered: hoveredNode ? (edge.sourceId === hoveredNode || edge.targetId === hoveredNode) : false,
-            showPreviousPath: showPreviousPath && (previousPath.includes(edge.sourceId) && previousPath.includes(edge.targetId)) && !(safeActivePath.nodeIds.includes(edge.sourceId) && safeActivePath.nodeIds.includes(edge.targetId))
+            showPreviousPath: showPreviousPath && (previousPath.includes(edge.sourceId) && previousPath.includes(edge.targetId)) && !(safeActivePath.nodeIds.includes(edge.sourceId) && safeActivePath.nodeIds.includes(edge.targetId)),
+            label
           },
           className: LP_VISUAL_V2 ? `lp-edge-${tier}` : '',
           sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
@@ -498,7 +504,7 @@ export default function LifePathCanvas({
       });
     console.log('[life-path] reactFlowEdges:', edges.length);
     return edges;
-  }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds]);
+  }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
 
   // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />
 

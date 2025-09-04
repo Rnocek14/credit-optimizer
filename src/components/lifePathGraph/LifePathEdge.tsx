@@ -12,6 +12,7 @@ interface LifePathEdgeData {
   tier?: 'on-path' | 'related' | 'off-path';
   isRelatedToHovered?: boolean;
   showPreviousPath?: boolean;
+  label?: string;
 }
 
 interface LifePathEdgeProps {
@@ -37,18 +38,23 @@ export function LifePathEdgeComponent({
   data,
   markerEnd,
 }: LifePathEdgeProps) {
-  const { edge, isHighlighted, tier, isRelatedToHovered = false, showPreviousPath = false } = data;
+  const { edge, isHighlighted, tier, isRelatedToHovered = false, showPreviousPath = false, label } = data;
+
+  // Add padding to avoid nodes when V2 is enabled
+  const pad = LP_VISUAL_V2 ? 16 : 0;
+  const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
+  const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
 
   // Use SmoothStep routing in Visual V2 for better orthogonal paths
   const [edgePath, labelX, labelY] = LP_VISUAL_V2 
     ? getSmoothStepPath({
-        sourceX,
+        sourceX: adjustedSourceX,
         sourceY,
         sourcePosition,
-        targetX,
+        targetX: adjustedTargetX,
         targetY,
         targetPosition,
-        borderRadius: 6,
+        borderRadius: 12,
       })
     : getBezierPath({
         sourceX,
@@ -118,6 +124,9 @@ export function LifePathEdgeComponent({
       return `${pct}% transfer`;
     }
     
+    // Use provided label if available
+    if (label) return label;
+    
     // Collapsed transfer info for crowded views
     if (edge.metadata?.transferCount && edge.metadata.transferCount > 1) {
       return `• +${edge.metadata.transferCount} transfers`;
@@ -132,8 +141,8 @@ export function LifePathEdgeComponent({
 
   const getLabelColor = () => {
     if (edge.type === "creditTransfersTo") {
-      const label = getEdgeLabel();
-      const pct = parseInt((label || "100").replace(/\D/g, ""), 10) || 100;
+      const labelText = getEdgeLabel();
+      const pct = parseInt((labelText || "100").replace(/\D/g, ""), 10) || 100;
       if (pct === 100) return "bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200";
       if (pct >= 80) return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200";
       return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200";
@@ -147,38 +156,21 @@ export function LifePathEdgeComponent({
     return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200";
   };
 
-  const label = getEdgeLabel();
-
-  // Add padding to avoid nodes when V2 is enabled
-  const pad = LP_VISUAL_V2 ? 16 : 0;
-  const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
-  const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
-
-  const finalEdgePath = LP_VISUAL_V2 
-    ? getSmoothStepPath({
-        sourceX: adjustedSourceX,
-        sourceY,
-        sourcePosition,
-        targetX: adjustedTargetX,
-        targetY,
-        targetPosition,
-        borderRadius: 12,
-      })[0]
-    : edgePath;
-
+  const displayLabel = getEdgeLabel();
   const tierClass = tier ? `lp-edge-${tier}` : '';
 
   return (
-    <g data-testid="lp-edge" data-id={id} className={tierClass}>
-      <path
-        d={finalEdgePath}
-        className="react-flow__edge-path"
+    <>
+      <BaseEdge
+        path={edgePath}
+        className={`react-flow__edge-path ${tierClass}`}
         style={getEdgeStyle()}
+        data-testid="lp-edge"
         data-id={id}
         markerEnd={markerEnd}
       />
       
-      {label && (
+      {displayLabel && (
         <EdgeLabelRenderer>
           <div
             className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
@@ -191,11 +183,11 @@ export function LifePathEdgeComponent({
               className={`lp-edge-label ${getLabelColor()}`}
               data-testid="lp-edge-label"
             >
-              {label}
+              {displayLabel}
             </div>
           </div>
         </EdgeLabelRenderer>
       )}
-    </g>
+    </>
   );
 }
