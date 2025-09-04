@@ -201,6 +201,13 @@ export default function LifePathCanvas({
   const [showPreviousPath, setShowPreviousPath] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
+  // Quick safety toggle (optional, but handy) - auto-enable V2 in dev
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      try { localStorage.setItem('LP_VISUAL_V2', '1'); } catch {}
+    }
+  }, []);
+
   // Auto-trigger pathfinding when preset changes or on initial load (debounced)
   useEffect(() => {
     if (!findPaths || !activeGoal || graph.nodes.length === 0) return;

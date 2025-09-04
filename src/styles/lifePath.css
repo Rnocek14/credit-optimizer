@@ -17,6 +17,22 @@
   --lp-node-radius: 14px;
 }
 
+/* V2 tiers — target the <path> directly */
+.react-flow__edges .react-flow__edge-path.lp-edge-on-path {
+  stroke-width: 3px !important;
+  opacity: 1 !important;
+}
+
+.react-flow__edges .react-flow__edge-path.lp-edge-related {
+  stroke-width: 2px !important;
+  opacity: 0.6 !important;
+}
+
+.react-flow__edges .react-flow__edge-path.lp-edge-off-path {
+  stroke-width: 1px !important;
+  opacity: 0.25 !important;
+}
+
 /* V2: Enhanced edge tier specificity - multiple selector patterns */
 .lp-edge-on-path .react-flow__edge-path,
 .react-flow__edge-path.lp-edge-on-path,

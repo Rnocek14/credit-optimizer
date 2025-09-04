@@ -30,50 +30,67 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
 
-  // V2: Increased padding to avoid node frames for V2 routes
-  const pad = 24;
-  const adjSourceX = sourcePosition === 'right' ? sourceX + pad : sourcePosition === 'left' ? sourceX - pad : sourceX;
-  const adjTargetX = targetPosition === 'left'  ? targetX - pad : targetPosition === 'right' ? targetX + pad : targetX;
+  // V2: Slightly higher padding to avoid node rects
+  const pad = LP_VISUAL_V2 ? 24 : 0;
+  const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
+  const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
 
-  const [smoothPath] = getSmoothStepPath({
-    sourceX: adjSourceX,
-    sourceY,
-    sourcePosition,
-    targetX: adjTargetX,
-    targetY,
-    targetPosition,
-    borderRadius: 12,
-  });
+  // If you use SmoothStep, feed adjusted coords
+  const finalEdgePath = LP_VISUAL_V2
+    ? getSmoothStepPath({
+        sourceX: adjustedSourceX,
+        sourceY,
+        sourcePosition,
+        targetX: adjustedTargetX,
+        targetY,
+        targetPosition,
+        borderRadius: 12,
+      })[0]
+    : getSmoothStepPath({
+        sourceX,
+        sourceY,
+        sourcePosition,
+        targetX,
+        targetY,
+        targetPosition,
+        borderRadius: 12,
+      })[0];
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
+  const dataTier = tier || '';
+  const dataEdgeType = edge?.type || '';
+
   const baseOpacity = showPreviousPath ? 0.3 : tier === 'on-path' ? 1 : tier === 'related' ? 0.6 : 0.25;
-  const hoverBoost  = isRelatedToHovered ? 0.4 : 0;
+  const hoverBoost = isRelatedToHovered ? 0.4 : 0;
   const strokeWidth = tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1;
 
   // Prefer semantic tokens but keep a safe fallback
-  const stroke =
-    tier === 'on-path'
-      ? 'hsl(var(--primary))'
-      : 'hsl(var(--muted-foreground))';
+  const stroke = tier === 'on-path' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+
+  const computedStyle = {
+    opacity: Math.min(1, baseOpacity + hoverBoost),
+    stroke,
+    strokeWidth,
+    fill: 'none'
+  };
 
   return (
     <g
       className={`lp-edge ${tierClass}`}
       data-testid="lp-edge"
       data-id={id}
-      data-edge-type={edge?.type || ''}
+      data-edge-type={dataEdgeType}
     >
       <path
-        className={`react-flow__edge-path lp-edge-path ${tierClass}`}
-        d={smoothPath}
-        stroke={stroke}
+        className={`react-flow__edge-path ${tierClass}`.trim()}
+        d={finalEdgePath}
+        style={computedStyle}
         fill="none"
-        strokeWidth={strokeWidth}
-        style={{ opacity: Math.min(1, baseOpacity + hoverBoost) }}
         markerEnd={markerEnd}
         data-id={id}
-        data-edge-type={edge?.type || ''}
-        data-tier={tier || ''}
+        data-testid="lp-edge-path"
+        data-tier={dataTier}
+        data-edge-type={dataEdgeType}
       />
       {label && (
         <foreignObject

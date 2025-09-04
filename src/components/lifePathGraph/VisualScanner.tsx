@@ -11,11 +11,8 @@ interface VisualScannerProps {
 }
 
 export function VisualScanner({ graph, pathfindingResult, activePreset }: VisualScannerProps) {
-  // V2: Always show in DEV mode for independent operation
-  const isDevMode = import.meta.env.DEV;
-  const hasAuditParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit');
-  
-  if (!isDevMode && !hasAuditParam) {
+  // Gate the panel only by import.meta.env.DEV (not the URL)
+  if (!import.meta.env.DEV) {
     return null;
   }
   const [scanRunning, setScanRunning] = useState(false);
