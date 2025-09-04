@@ -7,7 +7,7 @@ const q = {
   preset: (k: string) => `[data-testid="lp-preset-${k}"]`,
 };
 
-function getTransferLabelCountFromBody($body: JQuery<HTMLElement>): number {
+function getTransferLabelCountFromBody($body: JQuery): number {
   const txt = $body.text() || "";
   const matches = txt.match(/\b\d{1,3}% transfer\b/g) || [];
   return matches.length;
@@ -15,12 +15,17 @@ function getTransferLabelCountFromBody($body: JQuery<HTMLElement>): number {
 
 describe("Life Path — Runtime Visual Audit (Safe Render Mode)", () => {
   beforeEach(() => {
-    // Mock authentication (if required)
+    // If your app gates the page behind auth, stub a token here (safe no-op if not used)
     cy.window().then((win) => {
-      win.localStorage.setItem('supabase.auth.token', JSON.stringify({
-        access_token: 'mock-token',
-        user: { id: '3c459625-e499-5ddb-b64d-a442dd21f474' }
-      }));
+      try {
+        win.localStorage.setItem(
+          'supabase.auth.token',
+          JSON.stringify({
+            access_token: 'mock-token',
+            user: { id: '3c459625-e499-5ddb-b64d-a442dd21f474' },
+          })
+        );
+      } catch {}
     });
 
     cy.visit(pathUrl);
@@ -65,7 +70,7 @@ describe("Life Path — Runtime Visual Audit (Safe Render Mode)", () => {
     });
   });
 
-  it("Presets: each preset yields an active path with ≥ 3 steps; node/edge counts do not drop", () => {
+  it("Presets: each preset yields an active path with ≥ 3 steps; counts do not drop", () => {
     const presets = ["fastest", "cheapest", "creditMaximized", "balanced"];
 
     // Baseline counts
@@ -74,14 +79,10 @@ describe("Life Path — Runtime Visual Audit (Safe Render Mode)", () => {
 
     presets.forEach((p) => {
       cy.get(q.preset(p)).should("exist").click();
-
-      // give the UI a moment to update
       cy.wait(400);
 
       // Step badges approximate visible main path length
-      cy.get(q.step)
-        .its("length")
-        .should("be.greaterThan", 2);
+      cy.get(q.step).its("length").should("be.greaterThan", 2);
 
       // Counts should not collapse
       cy.get("@baseNodes").then((baseNodes: any) => {
