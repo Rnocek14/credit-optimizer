@@ -72,8 +72,11 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         throw new Error(`Goal node not found: ${targetGoalId}`);
       }
 
-      // Enhanced pathfinding - Phase 1 implementation
-      const mockUserState: any = { completedNodeIds: [], existingCredits: [] };
+      // Enhanced pathfinding - Phase 1 implementation with mock completed nodes
+      const mockUserState: any = { 
+        completedNodeIds: ['skill-math-fundamentals', 'skill-programming-basics'], 
+        existingCredits: [] 
+      };
       
       const basicPath = dijkstraPathfinding(graph, goalNode.id, 'time', {
         allowGhost: false,

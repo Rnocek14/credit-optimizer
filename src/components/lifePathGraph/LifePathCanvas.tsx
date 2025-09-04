@@ -44,7 +44,7 @@ export default function LifePathCanvas({
   onNodeClick, 
   selectedNode 
 }: LifePathCanvasProps) {
-  const [showGhosts, setShowGhosts] = useState(false);
+  const [showGhosts, setShowGhosts] = useState(true);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
@@ -87,10 +87,22 @@ export default function LifePathCanvas({
     }
   }, [pathfindingResult, activePreset]);
 
+  // Active path sanity check
+  const isPathEmpty = !activePath || !activePath.nodeIds?.length;
+  if (isPathEmpty) {
+    console.warn('[life-path] No path; rendering full graph in debug mode');
+  }
+
+  // Quick telemetry (log once on mount)
+  React.useEffect(() => {
+    console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
+    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
+  }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length]);
+
   // Convert graph nodes to React Flow nodes
   const reactFlowNodes: Node[] = useMemo(() => {
     return graph.nodes.map((node, index) => {
-      const isInMainPath = activePath?.nodeIds.includes(node.id) || false;
+      const isInMainPath = isPathEmpty ? false : (activePath?.nodeIds.includes(node.id) || false);
       const stepNumber = isInMainPath ? (activePath?.nodeIds.indexOf(node.id) ?? -1) + 1 : undefined;
       const overlapCount = overlapCounts[node.id] || 1;
       
@@ -137,13 +149,13 @@ export default function LifePathCanvas({
           residencyMet: 30  // TODO: Calculate from actual residency data
         },
         style: {
-          opacity: isInMainPath ? 1 : (showGhosts || !isGhost) ? 0.6 : 0.3,
+          opacity: isInMainPath ? 1 : 0.6,
           zIndex: isInMainPath ? 10 : 1,
         },
-        hidden: isGhost && !showGhosts
+        hidden: false
       };
     });
-  }, [graph.nodes, selectedNode, pathfindingResult, activePath, showGhosts, overlapCounts]);
+  }, [graph.nodes, selectedNode, pathfindingResult, activePath, showGhosts, overlapCounts, isPathEmpty]);
 
   // Convert graph edges to React Flow edges
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -256,18 +268,23 @@ export default function LifePathCanvas({
       </div>
       
       {/* Metrics Pill */}
-      {activePath && (
-        <MetricsPill 
-          metrics={{
-            totalTime: activePath.totalTime,
-            totalCost: activePath.totalCost,
-            totalCredits: activePath.totalCredits,
-            creditLoss: activePath.creditLoss,
-            institutionsCount: activePath.metadata?.institutionsCount,
-            prerequisitesSatisfied: activePath.metadata?.prerequisitesSatisfied,
-          }}
-        />
-      )}
+      <div className="flex items-center gap-4">
+        {activePath && (
+          <MetricsPill 
+            metrics={{
+              totalTime: activePath.totalTime,
+              totalCost: activePath.totalCost,
+              totalCredits: activePath.totalCredits,
+              creditLoss: activePath.creditLoss,
+              institutionsCount: activePath.metadata?.institutionsCount,
+              prerequisitesSatisfied: activePath.metadata?.prerequisitesSatisfied,
+            }}
+          />
+        )}
+        <Badge variant="outline" className="text-xs">
+          Path: {activePath?.nodeIds?.length || 0} • Nodes: {graph.nodes.length}
+        </Badge>
+      </div>
 
       {/* Graph Canvas with Institution Lanes */}
       <div className="relative w-full h-[600px] border rounded-lg overflow-hidden">
@@ -309,7 +326,8 @@ export default function LifePathCanvas({
       </div>
       
       {/* Enhanced Legend */}
-      <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg text-sm">
+      <div className="flex flex-wrap items-center gap-4 p-3 bg-muted/50 rounded-lg text-sm">
+        <div className="font-medium text-muted-foreground">Node Types:</div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
           <span>Skills</span>
@@ -330,7 +348,10 @@ export default function LifePathCanvas({
           <div className="w-3 h-3 rounded border-2 border-orange-300 bg-orange-50" />
           <span>Exams</span>
         </div>
+        
         <div className="w-px h-6 bg-border mx-2" />
+        
+        <div className="font-medium text-muted-foreground">Edge Types:</div>
         <div className="flex items-center gap-1">
           <div className="w-4 h-px bg-primary" />
           <span>Required</span>
@@ -343,6 +364,11 @@ export default function LifePathCanvas({
           <div className="w-4 h-px bg-purple-500" />
           <span>Transfer</span>
         </div>
+
+        <div className="w-px h-6 bg-border mx-2" />
+        
+        <div className="font-medium text-muted-foreground">Institution Lanes:</div>
+        <span className="text-xs">FCC • FSU • Skills • Jobs</span>
       </div>
     </div>
   );

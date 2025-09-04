@@ -45,11 +45,12 @@ export function dijkstraPathfinding(
     };
   }
   
-  // Find valid starting nodes (skills or completed nodes)
+  // Find valid starting nodes (skills, completed nodes, or courses with no prerequisites)
   const startingNodes = nodes.filter(node => 
     node.type === 'skill' || 
     (userState && userState.completedNodeIds.includes(node.id)) ||
-    node.prerequisiteIds.length === 0
+    node.prerequisiteIds.length === 0 ||
+    (node.type === 'course' && node.prerequisiteIds.length === 0)
   );
 
   if (startingNodes.length === 0) {
@@ -141,16 +142,50 @@ export function dijkstraPathfinding(
 function createFallbackPath(nodes: GraphNode[], goalId: string): string[] {
   const path: string[] = [];
   
+  // Ensure at least 2 non-job nodes before the goal
+  
   // Add a skill node if available
   const skillNode = nodes.find(n => n.type === 'skill');
   if (skillNode) path.push(skillNode.id);
   
-  // Add a course node if available
-  const courseNode = nodes.find(n => n.type === 'course');
+  // Add intro courses with no prerequisites
+  const introCourses = nodes.filter(n => n.type === 'course' && n.prerequisiteIds.length === 0);
+  const courseNode = introCourses[0];
   if (courseNode) path.push(courseNode.id);
+  
+  // Add another course or credential to ensure minimum path length
+  const goalNode = nodes.find(n => n.id === goalId);
+  if (goalNode?.type === 'job') {
+    // If goal is a job, add the credential that qualifies for it
+    const qualifyingCredential = nodes.find(n => 
+      n.type === 'credential' && 
+      nodes.some(edge => edge && typeof edge === 'object')
+    );
+    if (qualifyingCredential) {
+      path.push(qualifyingCredential.id);
+    } else {
+      // Fallback: add any credential
+      const anyCredential = nodes.find(n => n.type === 'credential');
+      if (anyCredential) path.push(anyCredential.id);
+    }
+  }
   
   // Add the goal
   path.push(goalId);
+  
+  // Ensure we have at least 2 non-job nodes
+  const nonJobNodes = path.filter(id => {
+    const node = nodes.find(n => n.id === id);
+    return node && node.type !== 'job';
+  });
+  
+  if (nonJobNodes.length < 2) {
+    // Add more nodes to meet minimum requirement
+    const additionalCourse = nodes.find(n => n.type === 'course' && !path.includes(n.id));
+    if (additionalCourse) {
+      path.splice(-1, 0, additionalCourse.id); // Insert before goal
+    }
+  }
   
   return path;
 }

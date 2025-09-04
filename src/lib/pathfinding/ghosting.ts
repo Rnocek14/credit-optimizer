@@ -16,6 +16,11 @@ export function determineGhostStatus(
   userState?: UserState,
   allowGhost: boolean = false
 ): GhostInfo {
+  // Safety guard: don't block rendering when no user state
+  if (!userState) {
+    return { isGhost: false };
+  }
+  
   if (allowGhost) {
     return { isGhost: false };
   }

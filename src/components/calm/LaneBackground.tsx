@@ -5,6 +5,7 @@ export interface LaneBackgroundProps {
   lanes: Array<{
     id: string;
     title: string;
+    subtitle?: string;
     color: string;
     x: number;
     width: number;
@@ -32,7 +33,12 @@ export const LaneBackground: React.FC<LaneBackgroundProps> = ({
             className="absolute top-4 left-4 text-xs font-medium text-muted-foreground uppercase tracking-wide"
             style={{ color: lane.color }}
           >
-            {lane.title}
+            <div>{lane.title}</div>
+            {lane.subtitle && (
+              <div className="text-xs font-normal normal-case opacity-75 mt-1">
+                {lane.subtitle}
+              </div>
+            )}
           </div>
         </div>
       ))}
@@ -40,18 +46,20 @@ export const LaneBackground: React.FC<LaneBackgroundProps> = ({
   );
 };
 
-// Define lane configuration
+// Define lane configuration with institution sub-labels
 export const CALM_LANES = [
   {
     id: 'foundations',
-    title: 'Foundations',
+    title: 'Foundations / Skills',
+    subtitle: 'FCC • Skills',
     color: 'hsl(var(--primary))',
     x: 100,
     width: 280
   },
   {
     id: 'skills',
-    title: 'Skills',
+    title: 'Skills / Projects', 
+    subtitle: 'Independent',
     color: 'hsl(var(--secondary))',
     x: 380,
     width: 280
@@ -59,6 +67,7 @@ export const CALM_LANES = [
   {
     id: 'projects',
     title: 'Projects',
+    subtitle: 'Portfolio',
     color: 'hsl(var(--accent))',
     x: 660,
     width: 280
@@ -66,6 +75,7 @@ export const CALM_LANES = [
   {
     id: 'credentials',
     title: 'Credentials',
+    subtitle: 'FSU • Universities',
     color: 'hsl(var(--muted-foreground))',
     x: 940,
     width: 280
@@ -73,6 +83,7 @@ export const CALM_LANES = [
   {
     id: 'jobs',
     title: 'Jobs',
+    subtitle: 'Career Goals',
     color: 'hsl(var(--destructive))',
     x: 1220,
     width: 280
