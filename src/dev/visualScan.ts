@@ -32,14 +32,15 @@ const $all = (sel: string, root: Document | HTMLElement = document) =>
   Array.from(root.querySelectorAll(sel)) as HTMLElement[];
 
 function getNodeRects(): Rect[] {
+  // V2: Improved node detection with deduplication by data-id
   const raw = Array.from(
-    document.querySelectorAll('.react-flow__node[data-id]')
+    document.querySelectorAll('.react-flow__node[data-id], [data-testid="lp-node"]')
   ) as HTMLElement[];
   
   // Deduplicate by data-id (keep the largest/outermost rect)
   const byId = new Map<string, Rect>();
   for (const el of raw) {
-    const id = el.getAttribute('data-id') || '';
+    const id = el.getAttribute('data-id') || el.closest('[data-id]')?.getAttribute('data-id') || '';
     if (!id) continue;
     const box = el.getBoundingClientRect();
     const rect = { id, x: box.left, y: box.top, w: box.width, h: box.height };
@@ -47,7 +48,7 @@ function getNodeRects(): Rect[] {
     const prev = byId.get(id);
     if (!prev || (rect.w * rect.h) > (prev.w * prev.h)) byId.set(id, rect);
   }
-  return Array.from(byId.values());
+  return Array.from(byId.values()).filter(r => r.w > 0 && r.h > 0);
 }
 
 function rectsOverlap(a: Rect, b: Rect, pad = 2) {
@@ -238,11 +239,23 @@ export function runVisualScan(opts: {
     }
   });
 
-  // Tier counts if Visual V2 present
+  // V2: Enhanced tier class detection - check multiple selectors
   const tiers = {
-    edgeOn: document.querySelectorAll('.lp-edge-on-path').length,
-    edgeRelated: document.querySelectorAll('.lp-edge-related').length,
-    edgeOff: document.querySelectorAll('.lp-edge-off-path').length,
+    edgeOn: Math.max(
+      document.querySelectorAll('.lp-edge-on-path').length,
+      document.querySelectorAll('.react-flow__edge-path.lp-edge-on-path').length,
+      document.querySelectorAll('[data-tier="on-path"]').length
+    ),
+    edgeRelated: Math.max(
+      document.querySelectorAll('.lp-edge-related').length,
+      document.querySelectorAll('.react-flow__edge-path.lp-edge-related').length,
+      document.querySelectorAll('[data-tier="related"]').length
+    ),
+    edgeOff: Math.max(
+      document.querySelectorAll('.lp-edge-off-path').length,
+      document.querySelectorAll('.react-flow__edge-path.lp-edge-off-path').length,
+      document.querySelectorAll('[data-tier="off-path"]').length
+    ),
   };
 
   const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;

@@ -11,8 +11,13 @@ interface VisualScannerProps {
 }
 
 export function VisualScanner({ graph, pathfindingResult, activePreset }: VisualScannerProps) {
-  const isAuditOn = import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit'));
-  if (!isAuditOn) return null;
+  // V2: Always show in DEV mode for independent operation
+  const isDevMode = import.meta.env.DEV;
+  const hasAuditParam = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit');
+  
+  if (!isDevMode && !hasAuditParam) {
+    return null;
+  }
   const [scanRunning, setScanRunning] = useState(false);
   const [scanReport, setScanReport] = useState<VisualScanSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +133,16 @@ export function VisualScanner({ graph, pathfindingResult, activePreset }: Visual
               <div>Labels: {scanReport.counts.labels}</div>
               <div>Issues: {scanReport.issues.length}</div>
             </div>
+            {scanReport.tiers && (
+              <div className="mt-2 pt-2 border-t border-muted">
+                <div className="font-medium mb-1">V2 Tiers</div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>On-Path: {scanReport.tiers.edgeOn}</div>
+                  <div>Related: {scanReport.tiers.edgeRelated}</div>
+                  <div>Off-Path: {scanReport.tiers.edgeOff}</div>
+                </div>
+              </div>
+            )}
           </div>
           
           {scanReport.issues.length > 0 && (

@@ -30,8 +30,8 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
 
-  // Padding to avoid node frames for V2 routes
-  const pad = 16;
+  // V2: Increased padding to avoid node frames for V2 routes
+  const pad = 24;
   const adjSourceX = sourcePosition === 'right' ? sourceX + pad : sourcePosition === 'left' ? sourceX - pad : sourceX;
   const adjTargetX = targetPosition === 'left'  ? targetX - pad : targetPosition === 'right' ? targetX + pad : targetX;
 
@@ -73,6 +73,7 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
         markerEnd={markerEnd}
         data-id={id}
         data-edge-type={edge?.type || ''}
+        data-tier={tier || ''}
       />
       {label && (
         <foreignObject
