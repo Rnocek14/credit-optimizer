@@ -167,6 +167,8 @@ export default function SkillTree3() {
                       pathfindingResult={pathfindingResult}
                       onNodeClick={handleNodeClick}
                       selectedNode={selectedNode}
+                      findPaths={findPaths}
+                      activeGoal={activeGoal}
                     />
                   </CardContent>
                 </Card>

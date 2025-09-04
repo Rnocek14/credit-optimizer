@@ -47,13 +47,17 @@ interface LifePathCanvasProps {
   pathfindingResult?: PathfindingResult | null;
   onNodeClick?: (node: GraphNode) => void;
   selectedNode?: GraphNode | null;
+  findPaths?: (goalId: string) => void;
+  activeGoal?: string;
 }
 
 export default function LifePathCanvas({ 
   graph, 
   pathfindingResult, 
   onNodeClick, 
-  selectedNode 
+  selectedNode,
+  findPaths,
+  activeGoal 
 }: LifePathCanvasProps) {
   /* RUNTIME AUDIT PANEL – BEGIN */
   const [auditRunning, setAuditRunning] = React.useState(false);
@@ -152,6 +156,14 @@ export default function LifePathCanvas({
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
+
+  // Auto-trigger pathfinding when preset changes or on initial load
+  useEffect(() => {
+    if (findPaths && activeGoal && graph.nodes.length > 0) {
+      console.log(`[LifePathCanvas] Auto-triggering pathfinding for preset: ${activePreset}, goal: ${activeGoal}`);
+      findPaths(activeGoal);
+    }
+  }, [activePreset, activeGoal, findPaths, graph.nodes.length]);
 
   // Calculate overlap counts for nodes used in multiple paths
   const calculateOverlapCounts = useMemo(() => {
