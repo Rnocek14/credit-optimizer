@@ -10,6 +10,8 @@ interface LifePathEdgeData {
   isHighlighted: boolean;
   pathType?: string;
   tier?: 'on-path' | 'related' | 'off-path';
+  isRelatedToHovered?: boolean;
+  showPreviousPath?: boolean;
 }
 
 interface LifePathEdgeProps {
@@ -35,7 +37,7 @@ export function LifePathEdgeComponent({
   data,
   markerEnd,
 }: LifePathEdgeProps) {
-  const { edge, isHighlighted, tier } = data;
+  const { edge, isHighlighted, tier, isRelatedToHovered = false, showPreviousPath = false } = data;
 
   // Use SmoothStep routing in Visual V2 for better orthogonal paths
   const [edgePath, labelX, labelY] = LP_VISUAL_V2 
@@ -60,10 +62,19 @@ export function LifePathEdgeComponent({
   const getEdgeStyle = () => {
     // Visual V2: Use tier-based styling if available
     if (tier) {
-      const baseStyle = {
-        strokeWidth: tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1,
-        opacity: tier === 'on-path' ? 1 : tier === 'related' ? 0.6 : 0.25,
-      };
+      let opacity = tier === 'on-path' ? 1 : tier === 'related' ? 0.6 : 0.25;
+      let strokeWidth = tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1;
+      
+      if (isRelatedToHovered) {
+        opacity = Math.min(1, opacity + 0.4);
+        strokeWidth += 1;
+      }
+      
+      if (showPreviousPath) {
+        opacity = 0.3;
+      }
+      
+      const baseStyle = { strokeWidth, opacity };
 
       // Use semantic colors based on tier
       switch (tier) {

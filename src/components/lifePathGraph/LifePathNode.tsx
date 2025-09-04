@@ -36,6 +36,8 @@ interface LifePathNodeData {
   examUsed?: number;
   residencyMet?: number;
   tier?: 'on-path' | 'related' | 'off-path';
+  isHovered?: boolean;
+  showPreviousPath?: boolean;
 }
 
 interface LifePathNodeProps {
@@ -57,7 +59,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
     transferUsed = 0,
     examUsed = 0,
     residencyMet = 0,
-    tier
+    tier,
+    isHovered = false,
+    showPreviousPath = false
   } = data;
 
   const getNodeIcon = () => {
@@ -91,6 +95,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       }
       
       if (isSelected) baseColor += ' ring-2 ring-primary';
+      if (isHovered) baseColor += ' ring-1 ring-primary/50 scale-105 transition-all duration-200';
+      if (showPreviousPath) baseColor += ' opacity-40 transition-opacity duration-1000';
       return baseColor;
     }
 

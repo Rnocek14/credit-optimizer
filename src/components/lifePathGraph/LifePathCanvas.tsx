@@ -239,6 +239,9 @@ export default function LifePathCanvas({
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
+  const [previousPath, setPreviousPath] = useState<string[]>([]);
+  const [showPreviousPath, setShowPreviousPath] = useState(false);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   // Auto-trigger pathfinding when preset changes or on initial load (debounced)
   useEffect(() => {
@@ -289,6 +292,22 @@ export default function LifePathCanvas({
       default: return pathfindingResult.fastest;
     }
   }, [pathfindingResult, activePreset]);
+
+  // Transition memory: show previous path as ghost when switching presets
+  useEffect(() => {
+    if (activePath?.nodeIds && activePath.nodeIds.length > 0) {
+      const currentPathString = activePath.nodeIds.join(',');
+      const previousPathString = previousPath.join(',');
+      
+      if (previousPath.length > 0 && currentPathString !== previousPathString) {
+        setShowPreviousPath(true);
+        const timer = setTimeout(() => setShowPreviousPath(false), 1500); // 1.5s fade
+        return () => clearTimeout(timer);
+      }
+      
+      setPreviousPath(activePath.nodeIds);
+    }
+  }, [activePath?.nodeIds]);
 
   // ---- Active goal / discipline ----
   const activeGoalId = activePath?.nodeIds?.[activePath.nodeIds.length - 1] ?? null;
@@ -386,6 +405,8 @@ export default function LifePathCanvas({
           showGhost: false,
           ghostReason: undefined,
           tier: LP_VISUAL_V2 ? tier : undefined,
+          isHovered: hoveredNode === node.id,
+          showPreviousPath: showPreviousPath && previousPath.includes(node.id) && !safeActivePath.nodeIds.includes(node.id),
         },
         style: {
           opacity: 1, // SAFE: render everything fully
@@ -466,7 +487,9 @@ export default function LifePathCanvas({
             edge, 
             isHighlighted: false, 
             pathType: undefined,
-            tier: LP_VISUAL_V2 ? tier : undefined
+            tier: LP_VISUAL_V2 ? tier : undefined,
+            isRelatedToHovered: hoveredNode ? (edge.sourceId === hoveredNode || edge.targetId === hoveredNode) : false,
+            showPreviousPath: showPreviousPath && (previousPath.includes(edge.sourceId) && previousPath.includes(edge.targetId)) && !(safeActivePath.nodeIds.includes(edge.sourceId) && safeActivePath.nodeIds.includes(edge.targetId))
           },
           className: LP_VISUAL_V2 ? `lp-edge-${tier}` : ''
         };
@@ -482,6 +505,14 @@ export default function LifePathCanvas({
     const g = graph.nodes.find(n => n.id === node.id);
     if (g && onNodeClick) onNodeClick(g);
   }, [graph.nodes, onNodeClick]);
+
+  const handleNodeMouseEnter = useCallback((_, node: Node) => {
+    setHoveredNode(node.id);
+  }, []);
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setHoveredNode(null);
+  }, []);
 
   // Safety UI if something goes wrong
   if (!reactFlowNodes.length) {
@@ -499,6 +530,13 @@ export default function LifePathCanvas({
           <h3 className="font-semibold">Main Path Mode</h3>
           <Badge variant="outline">Phase 1</Badge>
         </div>
+        
+        {/* View Chip */}
+        {activePath && (
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+            View: Path ({activePath.nodeIds.length}/{graph.nodes.length})
+          </Badge>
+        )}
         
         {/* Preset Chips */}
         <div className="flex items-center gap-2">
@@ -674,9 +712,12 @@ export default function LifePathCanvas({
           nodes={reactFlowNodes}
           edges={reactFlowEdges}
           onNodeClick={handleNodeClick}
+          onNodeMouseEnter={handleNodeMouseEnter}
+          onNodeMouseLeave={handleNodeMouseLeave}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
+          fitViewOptions={{ padding: 0.1, duration: 400 }}
           proOptions={{ hideAttribution: true }}
         >
           <Background />
