@@ -616,7 +616,7 @@ export default function LifePathCanvas({
       </div>
 
 {/* RUNTIME AUDIT PANEL – BEGIN */}
-{((process.env.NODE_ENV !== 'production') || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit'))) && (
+{(import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit'))) && (
 <div className="mt-4 rounded-xl border p-3 bg-white/70 dark:bg-neutral-900/70">
   <div className="font-semibold mb-2">Runtime Visual Audit</div>
 
