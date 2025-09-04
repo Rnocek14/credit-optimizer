@@ -100,7 +100,7 @@ export function LifePathEdgeComponent({
   const label = getEdgeLabel();
 
   return (
-    <>
+    <g data-testid="lp-edge" data-edge-id={edge.id}>
       <BaseEdge 
         path={edgePath} 
         markerEnd={markerEnd} 
@@ -125,6 +125,6 @@ export function LifePathEdgeComponent({
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </g>
   );
 }

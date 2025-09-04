@@ -109,7 +109,11 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
         className="w-3 h-3 !bg-muted-foreground"
       />
       
-      <div className="relative">
+      <div 
+        className="relative"
+        data-testid="lp-node"
+        data-node-id={data.node.id}
+      >
         {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
         {data.isMainPath && typeof data.stepNumber === "number" && data.stepNumber > 0 && (
           <StepBadge stepNumber={data.stepNumber} />

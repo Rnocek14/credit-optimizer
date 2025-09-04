@@ -275,6 +275,7 @@ export default function LifePathCanvas({
             variant={activePreset === 'fastest' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActivePreset('fastest')}
+            data-testid="lp-preset-fastest"
           >
             <Zap className="w-4 h-4 mr-1" />
             Fastest
@@ -283,6 +284,7 @@ export default function LifePathCanvas({
             variant={activePreset === 'cheapest' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActivePreset('cheapest')}
+            data-testid="lp-preset-cheapest"
           >
             <DollarSign className="w-4 h-4 mr-1" />
             Cheapest
@@ -291,6 +293,7 @@ export default function LifePathCanvas({
             variant={activePreset === 'creditMaximized' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActivePreset('creditMaximized')}
+            data-testid="lp-preset-creditMaximized"
           >
             <BookOpen className="w-4 h-4 mr-1" />
             Credit-Max
@@ -299,6 +302,7 @@ export default function LifePathCanvas({
             variant={activePreset === 'balanced' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActivePreset('balanced')}
+            data-testid="lp-preset-balanced"
           >
             <BarChart3 className="w-4 h-4 mr-1" />
             Balanced
