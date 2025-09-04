@@ -23,15 +23,16 @@ import { Badge } from '@/components/ui/badge';
 import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodePosition } from '@/lib/pathfinding/visualization';
 import { Eye, EyeOff, Zap, DollarSign, BookOpen, BarChart3 } from 'lucide-react';
 
-// ---------- SAFE RENDER MODE (turn off once stable) ----------
-const SAFE_RENDER = true;            // Phase A: keep true for now
-const SAFE_SHOW_GHOSTS = true;       // Phase B: show alternatives; never hide
-const SAFE_DISABLE_FILTERING = true; // Phase C: render all nodes; no discipline filter
+/* RUNTIME AUDIT PANEL – BEGIN */
+type AuditPhase = 'S' | 'A' | 'B' | 'C';
+type PresetKey = 'fastest' | 'cheapest' | 'creditMaximized' | 'balanced';
 
-// 🔄 PHASE TRANSITION PLAN:
-// Phase A: SAFE_DISABLE_FILTERING = false (re-enable filtering)
-// Phase B: SAFE_RENDER = false (re-enable normal render)  
-// Phase C: SAFE_SHOW_GHOSTS = false (allow ghost hiding)
+function toJSON(v: any) {
+  try { return JSON.stringify(v, null, 2); } catch { return String(v); }
+}
+/* RUNTIME AUDIT PANEL – END */
+
+// ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
 const nodeTypes = {
   lifePathNode: LifePathNodeComponent,
@@ -54,7 +55,100 @@ export default function LifePathCanvas({
   onNodeClick, 
   selectedNode 
 }: LifePathCanvasProps) {
-  const [showGhosts, setShowGhosts] = useState(SAFE_SHOW_GHOSTS);
+  /* RUNTIME AUDIT PANEL – BEGIN */
+  const [auditRunning, setAuditRunning] = React.useState(false);
+  const [auditLog, setAuditLog] = React.useState<string>('');
+  const [auditReport, setAuditReport] = React.useState<any>(null);
+  const [phase, setPhase] = React.useState<AuditPhase>('S');
+
+  // Expose safe flags via state so we can flip them from the panel.
+  // IMPORTANT: wire these into the booleans you currently use (SAFE_RENDER, SAFE_SHOW_GHOSTS, SAFE_DISABLE_FILTERING)
+  // Replace your hard-coded constants with these computed values:
+  const SAFE_RENDER_FLAG = phase === 'S' || phase === 'A' ? true : false;        // S/A: true, B/C: false
+  const SAFE_DISABLE_FILTERING_FLAG = phase === 'S' ? true : false;              // S: true, A/B/C: false
+  const SAFE_SHOW_GHOSTS_FLAG = phase === 'C' ? false : true;                    // C: false, others: true
+
+  function log(line: string) {
+    setAuditLog(prev => prev + (prev ? '\n' : '') + line);
+  }
+
+  function countByTestId(id: string) {
+    return (document.querySelectorAll(`[data-testid="${id}"]`) || []).length;
+  }
+
+  function sampleDOM() {
+    return {
+      nodes: countByTestId('lp-node'),
+      edges: countByTestId('lp-edge'),
+      stepBadges: countByTestId('lp-step-badge'),
+      transferLabels: Array.from(document.querySelectorAll('body *'))
+        .filter(el => (el.textContent || '').includes('% transfer')).length,
+    };
+  }
+
+  async function clickPreset(p: PresetKey) {
+    const btn = document.querySelector(`[data-testid="lp-preset-${p}"]`) as HTMLButtonElement | null;
+    if (btn) btn.click();
+    await new Promise(r => setTimeout(r, 400));
+    return sampleDOM();
+  }
+
+  async function runAudit() {
+    setAuditRunning(true);
+    setAuditLog('');
+    setAuditReport(null);
+
+    log(`Phase ${phase} starting…`);
+    log(`Flags → SAFE_RENDER=${SAFE_RENDER_FLAG}, SAFE_SHOW_GHOSTS=${SAFE_SHOW_GHOSTS_FLAG}, SAFE_DISABLE_FILTERING=${SAFE_DISABLE_FILTERING_FLAG}`);
+
+    const t0 = sampleDOM();
+    log(`t=0s → ${toJSON(t0)}`);
+
+    await new Promise(r => setTimeout(r, 6000));
+    const t6 = sampleDOM();
+    log(`t=6s → ${toJSON(t6)}`);
+
+    await new Promise(r => setTimeout(r, 6000));
+    const t12 = sampleDOM();
+    log(`t=12s → ${toJSON(t12)}`);
+
+    const presets: PresetKey[] = ['fastest','cheapest','creditMaximized','balanced'];
+    const presetResults: any[] = [];
+    for (const p of presets) {
+      const res = await clickPreset(p);
+      presetResults.push({
+        preset: p,
+        nodeCount: res.nodes,
+        edgeCount: res.edges,
+        activePathLen: res.stepBadges,
+      });
+      log(`Preset ${p} → ${toJSON(presetResults[presetResults.length-1])}`);
+    }
+
+    const report = {
+      phase,
+      flags: {
+        SAFE_RENDER: SAFE_RENDER_FLAG,
+        SAFE_SHOW_GHOSTS: SAFE_SHOW_GHOSTS_FLAG,
+        SAFE_DISABLE_FILTERING: SAFE_DISABLE_FILTERING_FLAG,
+      },
+      domCounts: { t0, t6, t12 },
+      stability: {
+        nodeCountStable: t0.nodes === t6.nodes && t6.nodes === t12.nodes,
+        edgeCountStable: t0.edges === t6.edges && t6.edges === t12.edges,
+      },
+      presets: presetResults,
+      transferLabelsFound: t12.transferLabels,
+      notes: 'Audit completed in-page.',
+    };
+
+    setAuditReport(report);
+    log('FINAL REPORT →\n' + toJSON(report));
+    setAuditRunning(false);
+  }
+  /* RUNTIME AUDIT PANEL – END */
+
+  const [showGhosts, setShowGhosts] = useState(SAFE_SHOW_GHOSTS_FLAG);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
@@ -127,7 +221,7 @@ export default function LifePathCanvas({
 
   // Base nodes (NO FILTERING in safe mode)
   const baseNodes = useMemo(() => {
-    if (SAFE_DISABLE_FILTERING || isPathEmpty) return graph.nodes;
+    if (SAFE_DISABLE_FILTERING_FLAG || isPathEmpty) return graph.nodes;
     const activeDiscipline = getActiveDiscipline();
     const isShared = (n: any) =>
       n.type === 'skill' || n.type === 'creditBlock' || n.tags?.includes('shared') || n.tags?.includes('gen-ed');
@@ -144,7 +238,7 @@ export default function LifePathCanvas({
   useEffect(() => {
     console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
     console.info('[life-path] activePath len:', safeActivePath.nodeIds.length);
-    console.info('[life-path] baseNodes len:', baseNodes.length, '(SAFE_DISABLE_FILTERING=', SAFE_DISABLE_FILTERING, ')');
+    console.info('[life-path] baseNodes len:', baseNodes.length, '(SAFE_DISABLE_FILTERING=', SAFE_DISABLE_FILTERING_FLAG, ')');
   }, [graph.nodes.length, graph.edges.length, safeActivePath.nodeIds.length, baseNodes.length]);
 
   // Nodes → React Flow
@@ -154,7 +248,7 @@ export default function LifePathCanvas({
       const isInMainPath = safeActivePath.nodeIds.includes(node.id);
       const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined;
       // SAFE: never hide via ghosting
-      const isGhost = SAFE_RENDER ? false : (!showGhosts && !isInMainPath && node.type !== 'job');
+      const isGhost = SAFE_RENDER_FLAG ? false : (!showGhosts && !isInMainPath && node.type !== 'job');
       const ghostReason = undefined;
 
       let institutionLane = 2;
@@ -325,6 +419,73 @@ export default function LifePathCanvas({
           </Button>
         </div>
       </div>
+
+      {/* RUNTIME AUDIT PANEL – BEGIN */}
+      <div className="mt-4 rounded-xl border p-3 bg-white/70 dark:bg-zinc-900/50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-medium">Runtime Visual Audit</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs opacity-70">Phase:</span>
+            <button
+              className={`px-2 py-1 rounded text-xs ${phase==='S'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
+              onClick={() => setPhase('S')}
+              data-testid="audit-phase-s"
+              title="Safe: render ON, showGhosts ON, filtering OFF"
+            >S</button>
+            <button
+              className={`px-2 py-1 rounded text-xs ${phase==='A'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
+              onClick={() => setPhase('A')}
+              data-testid="audit-phase-a"
+              title="Filtering ON"
+            >A</button>
+            <button
+              className={`px-2 py-1 rounded text-xs ${phase==='B'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
+              onClick={() => setPhase('B')}
+              data-testid="audit-phase-b"
+              title="Normal render ON"
+            >B</button>
+            <button
+              className={`px-2 py-1 rounded text-xs ${phase==='C'?'bg-blue-600 text-white':'bg-zinc-200 dark:bg-zinc-800'}`}
+              onClick={() => setPhase('C')}
+              data-testid="audit-phase-c"
+              title="Ghost hiding allowed"
+            >C</button>
+
+            <button
+              className="ml-3 px-3 py-1 rounded text-xs bg-emerald-600 text-white disabled:opacity-50"
+              onClick={runAudit}
+              disabled={auditRunning}
+              data-testid="audit-run"
+            >
+              {auditRunning ? 'Running…' : 'Run Audit'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border p-2">
+            <div className="text-xs font-medium mb-1">Live Snapshot</div>
+            <div className="text-[11px] opacity-70">
+              Nodes: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-node"]').length : 0 } •
+              Edges: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-edge"]').length : 0 } •
+              Steps: { (typeof document !== 'undefined') ? document.querySelectorAll('[data-testid="lp-step-badge"]').length : 0 }
+            </div>
+            <pre className="mt-2 text-[11px] whitespace-pre-wrap max-h-48 overflow-auto">{auditLog}</pre>
+          </div>
+
+          <div className="rounded-lg border p-2">
+            <div className="text-xs font-medium mb-1">Final Report (JSON)</div>
+            <pre className="text-[11px] whitespace-pre-wrap max-h-48 overflow-auto">
+              {auditReport ? toJSON(auditReport) : 'Run the audit to generate a report…'}
+            </pre>
+          </div>
+        </div>
+
+        <div className="mt-2 text-[11px] opacity-70">
+          S = Safe (render ON, showGhosts ON, filtering OFF) • A = Filtering ON • B = Normal render ON • C = Ghost hiding allowed
+        </div>
+      </div>
+      {/* RUNTIME AUDIT PANEL – END */}
       
         {/* Metrics Pill */}
       <div className="flex items-center gap-4">
