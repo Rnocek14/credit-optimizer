@@ -68,18 +68,14 @@ export function LifePathEdgeComponent({
   };
 
   const getEdgeLabel = () => {
-    if (edge.type === 'alternative') return 'Alt';
-    if (edge.type === 'ghost') return 'Ghost';
     if (edge.type === 'creditTransfersTo') {
-      const rate =
-        typeof edge.creditTransferRate === 'number'
-          ? edge.creditTransferRate
-          : (edge.weights?.creditLoss != null
-              ? Math.max(0, 1 - edge.weights.creditLoss / Math.max(1, 3))
-              : 1);
-      return `${Math.round(rate * 100)}% transfer`;
+      const rate = typeof edge.creditTransferRate === 'number' ? edge.creditTransferRate : 1;
+      const pct = Math.max(0, Math.min(100, Math.round(rate * 100)));
+      return `${pct}% transfer`;
     }
+    if (edge.type === 'alternative') return 'Alt';
     if (edge.type === 'equivalentTo') return 'Equivalent';
+    if (edge.type === 'ghost') return 'Ghost';
     if (edge.type === 'buildsSkill') return 'Builds';
     return null;
   };

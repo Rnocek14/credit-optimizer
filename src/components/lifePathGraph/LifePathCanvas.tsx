@@ -23,6 +23,11 @@ import { Badge } from '@/components/ui/badge';
 import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodePosition } from '@/lib/pathfinding/visualization';
 import { Eye, EyeOff, Zap, DollarSign, BookOpen, BarChart3 } from 'lucide-react';
 
+// ---------- SAFE RENDER MODE (turn off once stable) ----------
+const SAFE_RENDER = true;            // keep true for now
+const SAFE_SHOW_GHOSTS = true;       // show alternatives; never hide
+const SAFE_DISABLE_FILTERING = true; // render all nodes; no discipline filter
+
 const nodeTypes = {
   lifePathNode: LifePathNodeComponent,
 };
@@ -44,8 +49,7 @@ export default function LifePathCanvas({
   onNodeClick, 
   selectedNode 
 }: LifePathCanvasProps) {
-  // Only show ghosts when active path is empty (to provide context)
-  const [showGhosts, setShowGhosts] = useState(false);
+  const [showGhosts, setShowGhosts] = useState(SAFE_SHOW_GHOSTS);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
@@ -104,93 +108,81 @@ export default function LifePathCanvas({
     n.tags?.includes('shared') ||
     n.tags?.includes('gen-ed');
 
-  // IMPORTANT: do not filter if we don't have a path yet
-  const baseNodes = React.useMemo(() => {
-    if (!activePath?.nodeIds?.length) return graph.nodes;
+  // IMPORTANT: if path is empty, DO NOT filter or hide anything
+  const safeActivePath = activePath && Array.isArray(activePath.nodeIds) ? activePath : { nodeIds: [] };
+  const isPathEmpty = safeActivePath.nodeIds.length === 0;
 
-    const nodes = graph.nodes.filter(n => {
+  // Helper for later (but we'll bypass while SAFE_DISABLE_FILTERING is true)
+  const getActiveDiscipline = () => {
+    const goalId = safeActivePath.nodeIds[safeActivePath.nodeIds.length - 1];
+    const goal = graph.nodes.find(n => n.id === goalId);
+    const tag = goal?.tags?.find(t => ['cs','computer-science','nursing','business'].includes(t.toLowerCase()));
+    return tag || null;
+  };
+
+  // Base nodes (NO FILTERING in safe mode)
+  const baseNodes = useMemo(() => {
+    if (SAFE_DISABLE_FILTERING || isPathEmpty) return graph.nodes;
+    const activeDiscipline = getActiveDiscipline();
+    const isShared = (n: any) =>
+      n.type === 'skill' || n.type === 'creditBlock' || n.tags?.includes('shared') || n.tags?.includes('gen-ed');
+    const filtered = graph.nodes.filter(n => {
       if (isShared(n)) return true;
-      if (activePath.nodeIds.includes(n.id)) return true;
+      if (safeActivePath.nodeIds.includes(n.id)) return true;
       if (!activeDiscipline) return true;
-      return n.tags?.some(t => t.toLowerCase().includes(activeDiscipline.toLowerCase()));
+      return n.tags?.some((t: string) => t.toLowerCase().includes(activeDiscipline.toLowerCase()));
     });
+    return filtered.length ? filtered : graph.nodes;
+  }, [graph.nodes, isPathEmpty, pathfindingResult]);
 
-    // Safety: if filtering removed everything, show all nodes
-    return nodes.length ? nodes : graph.nodes;
-  }, [graph.nodes, activePath?.nodeIds, activeDiscipline]);
-
-  // Quick telemetry (log once on mount)
-  React.useEffect(() => {
+  // Telemetry
+  useEffect(() => {
     console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
-    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
-    console.info('[life-path] baseNodes length:', baseNodes.length);
-  }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length, baseNodes.length]);
+    console.info('[life-path] activePath len:', safeActivePath.nodeIds.length);
+    console.info('[life-path] baseNodes len:', baseNodes.length, '(SAFE_DISABLE_FILTERING=', SAFE_DISABLE_FILTERING, ')');
+  }, [graph.nodes.length, graph.edges.length, safeActivePath.nodeIds.length, baseNodes.length]);
 
-  // Safety net for pathfinding
-  const isPathEmpty = !activePath?.nodeIds?.length;
-  const safeActivePath = isPathEmpty
-    ? { nodeIds: graph.nodes.filter(n => n.type !== 'job').slice(0, 3).map(n => n.id) }
-    : activePath;
-  
-  // Ghosts are always visible when path is empty; otherwise follow the toggle
-  const SAFE_SHOW_GHOSTS = showGhosts || isPathEmpty;
+  // Nodes → React Flow
+  const reactFlowNodes: Node[] = useMemo(() => {
+    const nodesSource = baseNodes; // in safe mode we always use baseNodes
+    return nodesSource.map((node, index) => {
+      const isInMainPath = safeActivePath.nodeIds.includes(node.id);
+      const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined;
+      // SAFE: never hide via ghosting
+      const isGhost = SAFE_RENDER ? false : (!showGhosts && !isInMainPath && node.type !== 'job');
+      const ghostReason = undefined;
 
-  const reactFlowNodes: Node[] = React.useMemo(() => {
-    console.log('[LifePathCanvas] Generating nodes from baseNodes:', baseNodes.length);
-    
-    return baseNodes.map((node, index) => {
-      const inPath = !!safeActivePath?.nodeIds?.includes(node.id);
-      const stepNumber = inPath ? safeActivePath!.nodeIds.indexOf(node.id) + 1 : undefined;
-
-      // Fix ghost logic: Use SAFE_SHOW_GHOSTS to determine if we show ghosts
-      // If SAFE_SHOW_GHOSTS is true, allow ghosting calculation
-      // If SAFE_SHOW_GHOSTS is false, no ghosting (isGhost = false)
-      const ghostInfo = determineNodeGhostStatus?.(node, undefined, SAFE_SHOW_GHOSTS) ?? { isGhost: false };
-      const isGhost = SAFE_SHOW_GHOSTS ? ghostInfo.isGhost : false;
-      const ghostReason = ghostInfo.reason;
-
-      // Lane assignment
-      let lane = 2; // Global/Orphan
-      if (node.institutionId === 'fcc') lane = 0;
-      else if (node.institutionId === 'fsu') lane = 1;
+      let institutionLane = 2;
+      if (node.institutionId === 'fcc') institutionLane = 0;
+      else if (node.institutionId === 'fsu') institutionLane = 1;
 
       const position = node.position || calculateNodePosition(
         index,
         node.attributes?.depth ?? 0,
-        lane
+        institutionLane
       );
 
-      // Validate position
-      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
-        console.warn('[LifePathCanvas] Invalid position for node:', node.id, position);
-        position.x = index * 200;
-        position.y = 100;
-      }
-
-      const nodeObj = {
+      return {
         id: node.id,
         type: 'lifePathNode',
         position,
         data: {
           node,
           isSelected: selectedNode?.id === node.id,
-          isInPath: inPath,
-          isMainPath: inPath,
+          isInPath: isInMainPath,
+          isMainPath: isInMainPath,
           stepNumber,
-          pathType: getNodePathType(node.id, pathfindingResult),
-          showGhost: isGhost,
-          ghostReason,
+          showGhost: false,
+          ghostReason: undefined,
         },
         style: {
-          // Main path = 1.0, ghosted = 0.35, others = 0.65
-          opacity: inPath ? 1 : (isGhost ? 0.35 : 0.65),
-          zIndex: inPath ? 10 : 1,
-        }
-      } as Node;
-      
-      return nodeObj;
+          opacity: 1, // SAFE: render everything fully
+          zIndex: isInMainPath ? 10 : 1,
+        },
+        hidden: false, // SAFE: never hide
+      };
     });
-  }, [baseNodes, selectedNode?.id, pathfindingResult, safeActivePath?.nodeIds, SAFE_SHOW_GHOSTS]);
+  }, [baseNodes, selectedNode, safeActivePath.nodeIds.join(',')]);
   
   console.log('[LifePathCanvas] Generated nodes:', reactFlowNodes.length);
 
@@ -236,45 +228,36 @@ export default function LifePathCanvas({
     return points;
   }, [baseNodes, safeActivePath, isPathEmpty]);
 
-  // Convert graph edges to React Flow edges - filter to existing nodes only
-  const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
-  const reactFlowEdges: Edge[] = React.useMemo(() => {
+  // Edges → React Flow (only between visible nodes)
+  const reactFlowEdges: Edge[] = useMemo(() => {
+    const visible = new Set(reactFlowNodes.map(n => n.id));
     const edges = graph.edges
-      .filter(e => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId))
+      .filter(e => visible.has(e.sourceId) && visible.has(e.targetId))
       .map(edge => ({
         id: edge.id,
         source: edge.sourceId,
         target: edge.targetId,
         type: 'lifePathEdge',
-        data: {
-          edge,
-          isHighlighted: false,
-          pathType: undefined
-        }
+        data: { edge, isHighlighted: false, pathType: undefined }
       }));
-    
-    console.log('[LifePathCanvas] Generated edges:', edges.length);
+    console.log('[life-path] reactFlowEdges:', edges.length);
     return edges;
-  }, [graph.edges, visibleNodeIds]);
+  }, [graph.edges, reactFlowNodes]);
 
-  // REMOVED: Double state management - no useNodesState/useEdgesState
-  // Pass reactFlowNodes and reactFlowEdges directly to ReactFlow
+  // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />
 
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    const graphNode = graph.nodes.find(n => n.id === node.id);
-    if (graphNode && onNodeClick) {
-      onNodeClick(graphNode);
-    }
+  // Click handler
+  const handleNodeClick = useCallback((_, node: Node) => {
+    const g = graph.nodes.find(n => n.id === node.id);
+    if (g && onNodeClick) onNodeClick(g);
   }, [graph.nodes, onNodeClick]);
 
-  // Error boundary: ensure we always have valid data
+  // Safety UI if something goes wrong
   if (!reactFlowNodes.length) {
-    console.warn('[LifePathCanvas] No nodes to render!');
-    return (
-      <div className="w-full h-[600px] flex items-center justify-center border rounded-lg">
-        <p className="text-muted-foreground">No nodes available to display</p>
-      </div>
-    );
+    console.warn('[life-path] No nodes to render — showing fallback note.');
+    return <div className="p-6 text-sm text-amber-700 bg-amber-50 rounded">
+      No nodes available to display (Safe Render Mode). Check console for details.
+    </div>;
   }
 
   return (
@@ -377,13 +360,14 @@ export default function LifePathCanvas({
         </div>
         
         <ReactFlow
+          key="lifepath-safe"
           nodes={reactFlowNodes}
           edges={reactFlowEdges}
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView
-          attributionPosition="bottom-left"
+          proOptions={{ hideAttribution: true }}
         >
           <Background />
           <Controls />

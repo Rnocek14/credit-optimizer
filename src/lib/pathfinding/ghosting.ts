@@ -12,6 +12,7 @@ export function determineNodeGhostStatus(
   userState?: UserState,
   allowGhost = true
 ): GhostInfo {
+  // Safe Render Mode: short-circuit to never ghost while stabilizing
   if (allowGhost) return { isGhost: false };
 
   // Exam cap (e.g., CLEP)
