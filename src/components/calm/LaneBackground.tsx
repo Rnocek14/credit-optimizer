@@ -46,28 +46,28 @@ export const LaneBackground: React.FC<LaneBackgroundProps> = ({
   );
 };
 
-// Define lane configuration with institution sub-labels
+// Define lane configuration with institution labels
 export const CALM_LANES = [
   {
     id: 'foundations',
-    title: 'Foundations / Skills',
-    subtitle: 'FCC • Skills',
+    title: 'FCC',
+    subtitle: 'Community College',
     color: 'hsl(var(--primary))',
     x: 100,
     width: 280
   },
   {
     id: 'skills',
-    title: 'Skills / Projects', 
-    subtitle: 'Independent',
+    title: 'Global/Orphan', 
+    subtitle: 'Skills • Projects',
     color: 'hsl(var(--secondary))',
     x: 380,
     width: 280
   },
   {
     id: 'projects',
-    title: 'Projects',
-    subtitle: 'Portfolio',
+    title: 'FSU',
+    subtitle: 'Universities',
     color: 'hsl(var(--accent))',
     x: 660,
     width: 280
@@ -75,15 +75,15 @@ export const CALM_LANES = [
   {
     id: 'credentials',
     title: 'Credentials',
-    subtitle: 'FSU • Universities',
+    subtitle: 'Degrees • Certs',
     color: 'hsl(var(--muted-foreground))',
     x: 940,
     width: 280
   },
   {
     id: 'jobs',
-    title: 'Jobs',
-    subtitle: 'Career Goals',
+    title: 'Career Goals',
+    subtitle: 'Jobs • Roles',
     color: 'hsl(var(--destructive))',
     x: 1220,
     width: 280

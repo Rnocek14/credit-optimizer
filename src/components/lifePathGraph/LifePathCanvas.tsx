@@ -16,6 +16,7 @@ import { LifePathNodeComponent } from './LifePathNode';
 import { LifePathEdgeComponent } from './LifePathEdge';
 import { BranchDecisionCard } from './BranchDecisionCard';
 import { InstitutionLane } from './InstitutionLane';
+import { EducationalBands } from './EducationalBands';
 import { CALM_LANES } from '@/components/calm/LaneBackground';
 import { MetricsPill } from '@/components/ui/metrics-pill';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,8 @@ export default function LifePathCanvas({
   onNodeClick, 
   selectedNode 
 }: LifePathCanvasProps) {
-  const [showGhosts, setShowGhosts] = useState(true);
+  // Only show ghosts when active path is empty (to provide context)
+  const [showGhosts, setShowGhosts] = useState(false);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
@@ -93,6 +95,11 @@ export default function LifePathCanvas({
     console.warn('[life-path] No path; rendering full graph in debug mode');
   }
 
+  // Only show ghosts when path is empty to provide context
+  React.useEffect(() => {
+    setShowGhosts(isPathEmpty);
+  }, [isPathEmpty]);
+
   // Quick telemetry (log once on mount)
   React.useEffect(() => {
     console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
@@ -101,7 +108,27 @@ export default function LifePathCanvas({
 
   // Convert graph nodes to React Flow nodes
   const reactFlowNodes: Node[] = useMemo(() => {
-    return graph.nodes.map((node, index) => {
+    // Filter by active goal/discipline - for now assume first credential defines discipline
+    const activeCredential = graph.nodes.find(n => n.type === 'credential');
+    const activeDiscipline = activeCredential?.tags?.find(tag => ['cs', 'nursing', 'business'].includes(tag.toLowerCase()));
+    
+    const filteredNodes = graph.nodes.filter(node => {
+      // Always include shared nodes (gen-ed, creditBlocks, skills)
+      if (node.type === 'skill' || node.type === 'creditBlock' || 
+          node.tags?.includes('gen-ed') || node.tags?.includes('shared')) {
+        return true;
+      }
+      
+      // Include nodes that match the active discipline
+      if (activeDiscipline) {
+        return node.tags?.some(tag => tag.toLowerCase().includes(activeDiscipline.toLowerCase()));
+      }
+      
+      // Default: include all nodes if no discipline filtering
+      return true;
+    });
+
+    return filteredNodes.map((node, index) => {
       const isInMainPath = isPathEmpty ? false : (activePath?.nodeIds.includes(node.id) || false);
       const stepNumber = isInMainPath ? (activePath?.nodeIds.indexOf(node.id) ?? -1) + 1 : undefined;
       const overlapCount = overlapCounts[node.id] || 1;
@@ -281,13 +308,18 @@ export default function LifePathCanvas({
             }}
           />
         )}
-        <Badge variant="outline" className="text-xs">
-          Path: {activePath?.nodeIds?.length || 0} • Nodes: {graph.nodes.length}
-        </Badge>
+        {process.env.NODE_ENV !== 'production' && (
+          <Badge variant="outline" className="text-xs">
+            Path: {activePath?.nodeIds?.length || 0} • Nodes: {graph.nodes.length}
+          </Badge>
+        )}
       </div>
 
       {/* Graph Canvas with Institution Lanes */}
       <div className="relative w-full h-[600px] border rounded-lg overflow-hidden">
+        {/* Educational Bands */}
+        <EducationalBands height={600} />
+        
         {/* Institution Lane Backgrounds */}
         <div className="absolute inset-0 z-0">
           {CALM_LANES.map((lane) => (
@@ -368,7 +400,12 @@ export default function LifePathCanvas({
         <div className="w-px h-6 bg-border mx-2" />
         
         <div className="font-medium text-muted-foreground">Institution Lanes:</div>
-        <span className="text-xs">FCC • FSU • Skills • Jobs</span>
+        <span className="text-xs">FCC • Global/Orphan • FSU • Credentials • Career Goals</span>
+        
+        <div className="w-px h-6 bg-border mx-2" />
+        
+        <div className="font-medium text-muted-foreground">Educational Bands:</div>
+        <span className="text-xs">Foundations → Lower Division → Upper Division → Credential → Career</span>
       </div>
     </div>
   );

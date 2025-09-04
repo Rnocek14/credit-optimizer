@@ -131,10 +131,33 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         };
       };
 
+      // Ensure minimally walkable paths (fallback if < 3 nodes)
+      const ensureMinimalPath = (path: string[], pathType: string): string[] => {
+        if (path.length >= 3) return path;
+        
+        console.warn(`[pathfinding] Path too short (${path.length}), creating fallback for ${pathType}`);
+        
+        // Build fallback: skill → intro course → creditBlock → credential → job
+        const skill = graph.nodes.find(n => n.type === 'skill' && n.title.toLowerCase().includes('programming'));
+        const introCourse = graph.nodes.find(n => n.type === 'course' && n.prerequisiteIds.length === 0);
+        const creditBlock = graph.nodes.find(n => n.type === 'creditBlock');
+        const credential = graph.nodes.find(n => n.id === goalNode.id);
+        const job = graph.nodes.find(n => n.type === 'job');
+        
+        const fallbackPath = [skill?.id, introCourse?.id, creditBlock?.id, credential?.id, job?.id]
+          .filter(Boolean) as string[];
+        
+        return fallbackPath.length >= 3 ? fallbackPath : path;
+      };
+
+      const enhancedBasicPath = ensureMinimalPath(basicPath, 'time');
+      const enhancedCostPath = ensureMinimalPath(costOptimizedPath, 'cost');
+      const enhancedCreditPath = ensureMinimalPath(creditOptimizedPath, 'credits');
+
       const result: PathfindingResult = {
-        fastest: createPathResult(basicPath, 'time'),
-        cheapest: createPathResult(costOptimizedPath, 'cost'),
-        creditMaximized: createPathResult(creditOptimizedPath, 'credits'),
+        fastest: createPathResult(enhancedBasicPath, 'time'),
+        cheapest: createPathResult(enhancedCostPath, 'cost'),
+        creditMaximized: createPathResult(enhancedCreditPath, 'credits'),
         paretoFrontier: [],
         ghostPaths: [],
         tradeoffs: {
