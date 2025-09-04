@@ -24,9 +24,14 @@ import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodeP
 import { Eye, EyeOff, Zap, DollarSign, BookOpen, BarChart3 } from 'lucide-react';
 
 // ---------- SAFE RENDER MODE (turn off once stable) ----------
-const SAFE_RENDER = true;            // keep true for now
-const SAFE_SHOW_GHOSTS = true;       // show alternatives; never hide
-const SAFE_DISABLE_FILTERING = true; // render all nodes; no discipline filter
+const SAFE_RENDER = true;            // Phase A: keep true for now
+const SAFE_SHOW_GHOSTS = true;       // Phase B: show alternatives; never hide
+const SAFE_DISABLE_FILTERING = true; // Phase C: render all nodes; no discipline filter
+
+// 🔄 PHASE TRANSITION PLAN:
+// Phase A: SAFE_DISABLE_FILTERING = false (re-enable filtering)
+// Phase B: SAFE_RENDER = false (re-enable normal render)  
+// Phase C: SAFE_SHOW_GHOSTS = false (allow ghost hiding)
 
 const nodeTypes = {
   lifePathNode: LifePathNodeComponent,
