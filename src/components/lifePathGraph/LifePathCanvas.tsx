@@ -249,9 +249,10 @@ export default function LifePathCanvas({
   // Telemetry
   useEffect(() => {
     console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
-    console.info('[life-path] activePath len:', safeActivePath.nodeIds.length);
-    console.info('[life-path] baseNodes len:', baseNodes.length, '(SAFE_DISABLE_FILTERING=', SAFE_DISABLE_FILTERING_FLAG, ')');
-  }, [graph.nodes.length, graph.edges.length, safeActivePath.nodeIds.length, baseNodes.length]);
+    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
+    console.info('[life-path] baseNodes length:', baseNodes.length);
+    console.info('[life-path] preset:', activePreset, 'activeGoal:', activeGoal);
+  }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length, baseNodes.length, activePreset, activeGoal]);
 
   // Nodes → React Flow
   const reactFlowNodes: Node[] = useMemo(() => {
@@ -282,7 +283,7 @@ export default function LifePathCanvas({
           isSelected: selectedNode?.id === node.id,
           isInPath: isInMainPath,
           isMainPath: isInMainPath,
-          stepNumber,
+          stepNumber: isInMainPath ? safeActivePath.nodeIds.indexOf(node.id) + 1 : undefined,
           showGhost: false,
           ghostReason: undefined,
         },
@@ -385,7 +386,10 @@ export default function LifePathCanvas({
           <Button
             variant={activePreset === 'fastest' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActivePreset('fastest')}
+            onClick={() => {
+              setActivePreset('fastest');
+              if (findPaths && activeGoal) findPaths(activeGoal);
+            }}
             data-testid="lp-preset-fastest"
           >
             <Zap className="w-4 h-4 mr-1" />
@@ -394,7 +398,10 @@ export default function LifePathCanvas({
           <Button
             variant={activePreset === 'cheapest' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActivePreset('cheapest')}
+            onClick={() => {
+              setActivePreset('cheapest');
+              if (findPaths && activeGoal) findPaths(activeGoal);
+            }}
             data-testid="lp-preset-cheapest"
           >
             <DollarSign className="w-4 h-4 mr-1" />
@@ -403,7 +410,10 @@ export default function LifePathCanvas({
           <Button
             variant={activePreset === 'creditMaximized' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActivePreset('creditMaximized')}
+            onClick={() => {
+              setActivePreset('creditMaximized');
+              if (findPaths && activeGoal) findPaths(activeGoal);
+            }}
             data-testid="lp-preset-creditMaximized"
           >
             <BookOpen className="w-4 h-4 mr-1" />
@@ -412,7 +422,10 @@ export default function LifePathCanvas({
           <Button
             variant={activePreset === 'balanced' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setActivePreset('balanced')}
+            onClick={() => {
+              setActivePreset('balanced');
+              if (findPaths && activeGoal) findPaths(activeGoal);
+            }}
             data-testid="lp-preset-balanced"
           >
             <BarChart3 className="w-4 h-4 mr-1" />

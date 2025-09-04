@@ -51,6 +51,13 @@ export default function SkillTree3() {
     }
   }, [activeGoal, findPaths]);
 
+  // Pick a default goal if one isn't chosen yet (first node tagged as a goal/career target)
+  const defaultGoalId =
+    graph?.nodes?.find(n =>
+      (n.type && n.type.toLowerCase() === 'goal') ||
+      (n.tags && n.tags.some(t => /goal|career/i.test(t)))
+    )?.id ?? graph?.nodes?.[graph.nodes.length - 1]?.id;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -168,7 +175,7 @@ export default function SkillTree3() {
                       onNodeClick={handleNodeClick}
                       selectedNode={selectedNode}
                       findPaths={findPaths}
-                      activeGoal={activeGoal}
+                      activeGoal={activeGoal ?? defaultGoalId}
                     />
                   </CardContent>
                 </Card>
