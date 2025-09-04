@@ -1,0 +1,114 @@
+{
+  "templates": {
+    "bachelor-cs": {
+      "id": "bachelor-cs",
+      "title": "Bachelor's in Computer Science",
+      "level": "bachelor",
+      "totalCredits": 120,
+      "residencyCredits": 30,
+      "maxTransferCredits": 60,
+      "examCap": 30,
+      "blocks": [
+        {
+          "id": "gen-ed-core",
+          "title": "General Education Core",
+          "credits": 36,
+          "areas": ["humanities", "social-sciences", "natural-sciences", "mathematics"],
+          "requirements": [
+            "English Composition I & II (6cr)",
+            "College Algebra or higher (3cr)",
+            "Natural Sciences with lab (8cr)",
+            "Humanities (6cr)",
+            "Social Sciences (6cr)",
+            "Fine Arts (3cr)",
+            "Physical Education (2cr)",
+            "Electives (2cr)"
+          ]
+        },
+        {
+          "id": "cs-prerequisites",
+          "title": "CS Prerequisites", 
+          "credits": 21,
+          "courses": [
+            "Calculus I (4cr)",
+            "Calculus II (4cr)", 
+            "Discrete Mathematics (3cr)",
+            "Physics I with lab (4cr)",
+            "Statistics (3cr)",
+            "Technical Writing (3cr)"
+          ]
+        },
+        {
+          "id": "cs-core",
+          "title": "Computer Science Core",
+          "credits": 42,
+          "courses": [
+            "Programming Fundamentals (3cr)",
+            "Object-Oriented Programming (3cr)",
+            "Data Structures & Algorithms (4cr)",
+            "Computer Architecture (3cr)",
+            "Operating Systems (3cr)",
+            "Database Systems (3cr)",
+            "Software Engineering (3cr)",
+            "Computer Networks (3cr)",
+            "Programming Languages (3cr)",
+            "Computer Graphics OR AI (3cr)",
+            "Senior Capstone I (3cr)",
+            "Senior Capstone II (3cr)",
+            "CS Electives (9cr)"
+          ]
+        },
+        {
+          "id": "cs-electives",
+          "title": "CS Electives & Free Electives",
+          "credits": 21,
+          "description": "Choose from advanced CS courses and free electives"
+        }
+      ]
+    },
+    "associate-nursing": {
+      "id": "associate-nursing", 
+      "title": "Associate Degree in Nursing",
+      "level": "associate",
+      "totalCredits": 64,
+      "residencyCredits": 32,
+      "maxTransferCredits": 32,
+      "examCap": 6,
+      "blocks": [
+        {
+          "id": "nursing-prerequisites",
+          "title": "Nursing Prerequisites",
+          "credits": 30,
+          "courses": [
+            "English Composition I (3cr)",
+            "English Composition II (3cr)", 
+            "College Algebra (3cr)",
+            "Statistics (3cr)",
+            "Anatomy & Physiology I with lab (4cr)",
+            "Anatomy & Physiology II with lab (4cr)",
+            "Microbiology with lab (4cr)",
+            "General Psychology (3cr)",
+            "Developmental Psychology (3cr)"
+          ]
+        },
+        {
+          "id": "nursing-core",
+          "title": "Nursing Program Core",
+          "credits": 34,
+          "courses": [
+            "Fundamentals of Nursing (5cr)",
+            "Health Assessment (3cr)",
+            "Pharmacology (3cr)",
+            "Medical-Surgical Nursing I (5cr)",
+            "Medical-Surgical Nursing II (5cr)",
+            "Maternity Nursing (4cr)",
+            "Pediatric Nursing (4cr)",
+            "Mental Health Nursing (3cr)",
+            "Nursing Leadership (2cr)"
+          ],
+          "clinicalHours": 800
+        }
+      ]
+    }
+  }
+}

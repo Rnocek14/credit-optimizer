@@ -1,0 +1,77 @@
+{
+  "canonicalCourses": {
+    "MATH-ALGEBRA-101": {
+      "id": "MATH-ALGEBRA-101",
+      "title": "College Algebra",
+      "subject": "Mathematics",
+      "credits": 3,
+      "description": "Algebraic functions, equations, and graphing",
+      "learningOutcomes": ["algebra", "functions", "graphing", "problem-solving"],
+      "prerequisites": ["high-school-math"],
+      "commonNumbers": ["MAC1105", "MATH1314", "ALG1103"]
+    },
+    "MATH-CALCULUS-201": {
+      "id": "MATH-CALCULUS-201", 
+      "title": "Calculus I",
+      "subject": "Mathematics",
+      "credits": 4,
+      "description": "Limits, derivatives, and applications",
+      "learningOutcomes": ["calculus", "derivatives", "limits", "applications"],
+      "prerequisites": ["MATH-ALGEBRA-101", "MATH-TRIGONOMETRY-102"],
+      "commonNumbers": ["MAC2311", "MATH2413", "CALC2043"]
+    },
+    "CS-INTRO-101": {
+      "id": "CS-INTRO-101",
+      "title": "Introduction to Computer Science",
+      "subject": "Computer Science", 
+      "credits": 3,
+      "description": "Programming fundamentals and computational thinking",
+      "learningOutcomes": ["programming", "algorithms", "problem-solving", "debugging"],
+      "prerequisites": ["MATH-ALGEBRA-101"],
+      "commonNumbers": ["COP1000", "CS1301", "COMP1010"]
+    },
+    "CS-DATA-STRUCTURES-301": {
+      "id": "CS-DATA-STRUCTURES-301",
+      "title": "Data Structures & Algorithms",
+      "subject": "Computer Science",
+      "credits": 4,
+      "description": "Advanced data structures and algorithm design",
+      "learningOutcomes": ["data-structures", "algorithms", "complexity-analysis", "optimization"],
+      "prerequisites": ["CS-INTRO-101", "MATH-CALCULUS-201"],
+      "commonNumbers": ["COP3530", "CS1332", "COMP2230"]
+    },
+    "BIO-ANATOMY-201": {
+      "id": "BIO-ANATOMY-201",
+      "title": "Anatomy & Physiology I",
+      "subject": "Biology",
+      "credits": 4,
+      "description": "Human body systems and physiological processes",
+      "learningOutcomes": ["anatomy", "physiology", "body-systems", "medical-terminology"],
+      "prerequisites": ["high-school-biology"],
+      "commonNumbers": ["BSC2085", "BIOL2401", "ANAT2010"],
+      "labRequired": true
+    },
+    "BIO-ANATOMY-202": {
+      "id": "BIO-ANATOMY-202", 
+      "title": "Anatomy & Physiology II",
+      "subject": "Biology",
+      "credits": 4,
+      "description": "Continuation of human body systems",
+      "learningOutcomes": ["advanced-anatomy", "physiology", "integrative-systems"],
+      "prerequisites": ["BIO-ANATOMY-201"],
+      "commonNumbers": ["BSC2086", "BIOL2402", "ANAT2020"],
+      "labRequired": true
+    },
+    "BIO-MICROBIOLOGY-301": {
+      "id": "BIO-MICROBIOLOGY-301",
+      "title": "Microbiology",
+      "subject": "Biology", 
+      "credits": 4,
+      "description": "Microorganisms and their role in disease and health",
+      "learningOutcomes": ["microbiology", "pathogens", "infection-control", "lab-techniques"],
+      "prerequisites": ["BIO-ANATOMY-201"],
+      "commonNumbers": ["BSC2023", "BIOL2421", "MICR2050"],
+      "labRequired": true
+    }
+  }
+}

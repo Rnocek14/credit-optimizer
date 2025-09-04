@@ -1,0 +1,66 @@
+{
+  "transferRules": [
+    {
+      "id": "florida-articulation-aa-to-bachelor",
+      "name": "Florida AA to Bachelor Transfer",
+      "scope": "program",
+      "sourceLevel": "associate",
+      "targetLevel": "bachelor",
+      "region": "US-FL",
+      "maxCredits": 60,
+      "transferRate": 1.0,
+      "conditions": [
+        "Must have completed AA degree",
+        "Must meet lower-division requirements",
+        "GPA >= 2.0"
+      ],
+      "source": "florida_articulation",
+      "confidence": 0.95
+    },
+    {
+      "id": "fcc-to-fsu-individual-courses",
+      "name": "FCC to FSU Course Transfer",
+      "scope": "course",
+      "sourceInstitution": "fcc",
+      "targetInstitution": "fsu", 
+      "region": "US-FL",
+      "transferRate": 1.0,
+      "conditions": [
+        "Grade of C or better",
+        "Course taken within 7 years for science/math"
+      ],
+      "source": "state_articulation",
+      "confidence": 0.9
+    },
+    {
+      "id": "clep-exam-credit",
+      "name": "CLEP Examination Credit",
+      "scope": "exam",
+      "maxCredits": 30,
+      "capCategory": "exam",
+      "transferRate": 1.0,
+      "conditions": [
+        "Score meets institutional minimum",
+        "Subject area alignment verified"
+      ],
+      "source": "ace",
+      "confidence": 0.8
+    },
+    {
+      "id": "nursing-program-block-transfer",
+      "name": "Nursing Prerequisites Block Transfer",
+      "scope": "block", 
+      "sourceProgram": "nursing-prerequisites",
+      "targetProgram": "bachelor-nursing",
+      "maxCredits": 30,
+      "transferRate": 0.9,
+      "conditions": [
+        "All prerequisite courses completed",
+        "GPA >= 3.0 in science courses",
+        "Courses completed within 5 years"
+      ],
+      "source": "program_articulation",
+      "confidence": 0.85
+    }
+  ]
+}

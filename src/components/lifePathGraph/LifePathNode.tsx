@@ -15,12 +15,25 @@ import {
   DollarSign,
   MapPin
 } from 'lucide-react';
+import { StepBadge } from './StepBadge';
+import { CapMeter } from './CapMeter';
+import { GhostReasonChip } from './GhostReasonChip';
+import { OverlapIndicator } from './OverlapIndicator';
 
 interface LifePathNodeData {
   node: GraphNode;
   isSelected: boolean;
   isInPath: boolean;
+  isMainPath?: boolean;
+  stepNumber?: number;
   pathType?: string;
+  showGhost?: boolean;
+  ghostReason?: string;
+  overlapCount?: number;
+  overlapGoals?: string[];
+  transferUsed?: number;
+  examUsed?: number;
+  residencyMet?: number;
 }
 
 interface LifePathNodeProps {
@@ -28,7 +41,21 @@ interface LifePathNodeProps {
 }
 
 export function LifePathNodeComponent({ data }: LifePathNodeProps) {
-  const { node, isSelected, isInPath, pathType } = data;
+  const { 
+    node, 
+    isSelected, 
+    isInPath, 
+    isMainPath, 
+    stepNumber, 
+    pathType, 
+    showGhost, 
+    ghostReason,
+    overlapCount,
+    overlapGoals,
+    transferUsed = 0,
+    examUsed = 0,
+    residencyMet = 0
+  } = data;
 
   const getNodeIcon = () => {
     switch (node.type) {
@@ -36,8 +63,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       case 'course': return <BookOpen className="w-4 h-4" />;
       case 'job': return <Briefcase className="w-4 h-4" />;
       case 'certification': return <Award className="w-4 h-4" />;
+      case 'credential': return <GraduationCap className="w-4 h-4" />;
+      case 'creditBlock': return <BookOpen className="w-4 h-4" />;
       case 'project': return <Code className="w-4 h-4" />;
-      case 'step': return <GraduationCap className="w-4 h-4" />;
       case 'exam': return <FileText className="w-4 h-4" />;
       default: return <Target className="w-4 h-4" />;
     }
@@ -81,8 +109,15 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
         className="w-3 h-3 !bg-muted-foreground"
       />
       
-      <Card className={`w-64 cursor-pointer transition-all hover:shadow-md ${getNodeColor()}`}>
-        <CardContent className="p-4">
+      <div className="relative">
+        {/* Step Number Badge */}
+        <StepBadge stepNumber={stepNumber || 0} isMainPath={isMainPath} />
+        
+        {/* Overlap Indicator */}
+        <OverlapIndicator count={overlapCount || 1} goals={overlapGoals} />
+        
+        <Card className={`w-64 cursor-pointer transition-all hover:shadow-md ${getNodeColor()}`}>
+          <CardContent className="p-4">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               {getNodeIcon()}
@@ -155,8 +190,28 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
               Level {node.difficulty}
             </span>
           </div>
+          
+          {/* Cap Meter for Credentials */}
+          {node.type === 'credential' && node.policy && (
+            <CapMeter
+              transferUsed={transferUsed}
+              transferCap={node.policy.maxTransferCredits || 60}
+              examUsed={examUsed}
+              examCap={node.policy.examCap || 0}
+              residencyRequired={node.policy.residencyCredits || 30}
+              residencyMet={residencyMet}
+            />
+          )}
+          
+          {/* Ghost Reason Chip */}
+          {showGhost && ghostReason && (
+            <div className="mt-2">
+              <GhostReasonChip reason={ghostReason} />
+            </div>
+          )}
         </CardContent>
       </Card>
+      </div>
       
       <Handle
         type="source"

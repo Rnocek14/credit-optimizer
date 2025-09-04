@@ -401,6 +401,30 @@ export function generateEnhancedMockGraph(): LifePathGraph {
       metadata: {}
     },
 
+    // BuildsSkill edges from courses to skills
+    {
+      id: 'algebra-builds-math-skills',
+      sourceId: 'course-cc-algebra',
+      targetId: 'skill-math-fundamentals',
+      type: 'buildsSkill',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.1 },
+      confidence: 0.9,
+      source: 'curriculum_analysis',
+      validated: true,
+      metadata: {}
+    },
+    {
+      id: 'intro-cs-builds-programming',
+      sourceId: 'course-cc-intro-cs',
+      targetId: 'skill-programming-basics',
+      type: 'buildsSkill',
+      weights: { time: 0, cost: 0, creditLoss: 0, difficulty: 0, roi: 1.2 },
+      confidence: 0.9,
+      source: 'curriculum_analysis',
+      validated: true,
+      metadata: {}
+    },
+
     // Credential to job qualification
     {
       id: 'bachelor-qualifies-for-swe',

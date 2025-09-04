@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Node,
@@ -14,6 +14,9 @@ import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathfindingResult } from '@/types/lifePathGraph';
 import { LifePathNodeComponent } from './LifePathNode';
 import { LifePathEdgeComponent } from './LifePathEdge';
+import { BranchDecisionCard } from './BranchDecisionCard';
+import { InstitutionLane } from './InstitutionLane';
+import { CALM_LANES } from '@/components/calm/LaneBackground';
 import { MetricsPill } from '@/components/ui/metrics-pill';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +46,34 @@ export default function LifePathCanvas({
 }: LifePathCanvasProps) {
   const [showGhosts, setShowGhosts] = useState(false);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
+  const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
+  const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
+
+  // Calculate overlap counts for nodes used in multiple paths
+  const calculateOverlapCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!pathfindingResult) return counts;
+    
+    // Count usage across all paths
+    const paths = [
+      pathfindingResult.fastest,
+      pathfindingResult.cheapest, 
+      pathfindingResult.creditMaximized,
+      pathfindingResult.recommendations?.primary
+    ].filter(Boolean);
+    
+    paths.forEach(path => {
+      path?.nodeIds.forEach(nodeId => {
+        counts[nodeId] = (counts[nodeId] || 0) + 1;
+      });
+    });
+    
+    return counts;
+  }, [pathfindingResult]);
+
+  useEffect(() => {
+    setOverlapCounts(calculateOverlapCounts);
+  }, [calculateOverlapCounts]);
 
   // Get current active path
   const activePath = useMemo(() => {
@@ -61,11 +92,29 @@ export default function LifePathCanvas({
     return graph.nodes.map((node, index) => {
       const isInMainPath = activePath?.nodeIds.includes(node.id) || false;
       const stepNumber = isInMainPath ? (activePath?.nodeIds.indexOf(node.id) ?? -1) + 1 : undefined;
+      const overlapCount = overlapCounts[node.id] || 1;
+      
+      // Ghost detection logic
+      const isGhost = !showGhosts && !isInMainPath && node.type !== 'job';
+      let ghostReason = '';
+      if (isGhost) {
+        if (node.type === 'exam' && node.tags.includes('clep')) {
+          ghostReason = 'Toggle alternatives to unlock';
+        } else if (node.type === 'course' && !activePath?.nodeIds.includes(node.id)) {
+          ghostReason = 'Not in optimal path';
+        }
+      }
+      
+      // Enhanced positioning with lane support
+      let institutionLane = 0;
+      if (node.institutionId === 'fsu') institutionLane = 1;
+      else if (node.institutionId === 'fcc') institutionLane = 0;
+      else if (!node.institutionId || node.institutionId === 'orphan') institutionLane = 2; // orphan lane
       
       const position = node.position || calculateNodePosition(
         index, 
         node.attributes?.depth ?? 0,
-        node.institutionId === 'fsu' ? 1 : 0
+        institutionLane
       );
 
       return {
@@ -79,15 +128,22 @@ export default function LifePathCanvas({
           isMainPath: isInMainPath,
           stepNumber,
           pathType: getNodePathType(node.id, pathfindingResult),
-          showGhost: showGhosts
+          showGhost: isGhost,
+          ghostReason,
+          overlapCount,
+          overlapGoals: ['CS', 'Nursing'], // TODO: Make dynamic based on active goals
+          transferUsed: 42, // TODO: Calculate from actual transfer data
+          examUsed: 6,      // TODO: Calculate from actual exam data  
+          residencyMet: 30  // TODO: Calculate from actual residency data
         },
         style: {
-          opacity: isInMainPath ? 1 : showGhosts ? 0.6 : 0.4,
+          opacity: isInMainPath ? 1 : (showGhosts || !isGhost) ? 0.6 : 0.3,
           zIndex: isInMainPath ? 10 : 1,
-        }
+        },
+        hidden: isGhost && !showGhosts
       };
     });
-  }, [graph.nodes, selectedNode, pathfindingResult, activePath, showGhosts]);
+  }, [graph.nodes, selectedNode, pathfindingResult, activePath, showGhosts, overlapCounts]);
 
   // Convert graph edges to React Flow edges
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -213,8 +269,24 @@ export default function LifePathCanvas({
         />
       )}
 
-      {/* Graph Canvas */}
-      <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+      {/* Graph Canvas with Institution Lanes */}
+      <div className="relative w-full h-[600px] border rounded-lg overflow-hidden">
+        {/* Institution Lane Backgrounds */}
+        <div className="absolute inset-0 z-0">
+          {CALM_LANES.map((lane) => (
+            <InstitutionLane
+              key={lane.id}
+              id={lane.id}
+              title={lane.title}
+              color={lane.color}
+              x={lane.x}
+              width={lane.width}
+              height={600}
+              isOrphan={lane.id === 'jobs'} // Make jobs lane the orphan lane
+            />
+          ))}
+        </div>
+        
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -236,7 +308,7 @@ export default function LifePathCanvas({
         </ReactFlow>
       </div>
       
-      {/* Legend */}
+      {/* Enhanced Legend */}
       <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg text-sm">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
@@ -253,6 +325,23 @@ export default function LifePathCanvas({
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border-2 border-destructive bg-destructive/10" />
           <span>Jobs</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded border-2 border-orange-300 bg-orange-50" />
+          <span>Exams</span>
+        </div>
+        <div className="w-px h-6 bg-border mx-2" />
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-px bg-primary" />
+          <span>Required</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-px bg-secondary border-dashed" style={{ borderTopStyle: 'dashed', borderTopWidth: '2px' }} />
+          <span>Alternative</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-px bg-purple-500" />
+          <span>Transfer</span>
         </div>
       </div>
     </div>

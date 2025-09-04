@@ -71,9 +71,15 @@ export function LifePathEdgeComponent({
       case 'substitutes':
         return 'Alt';
       case 'creditTransfersTo':
-        return `${Math.round((edge.creditTransferRate || 1) * 100)}%`;
+        // Enhanced transfer rate display
+        const transferRate = edge.creditTransferRate || (1 - (edge.weights.creditLoss / (edge.weights.creditLoss + 3))) || 1;
+        return `${Math.round(transferRate * 100)}% transfer`;
       case 'ghost':
         return 'Ghost';
+      case 'equivalentTo':
+        return 'Equivalent';
+      case 'buildsSkill':
+        return 'Builds';
       default:
         return null;
     }
@@ -82,13 +88,24 @@ export function LifePathEdgeComponent({
   const getLabelColor = () => {
     switch (edge.type) {
       case 'substitutes':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200';
+        return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200';
       case 'creditTransfersTo':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200';
+        const transferRate = edge.creditTransferRate || (1 - (edge.weights.creditLoss / (edge.weights.creditLoss + 3))) || 1;
+        if (transferRate === 1) {
+          return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-200';
+        } else if (transferRate >= 0.8) {
+          return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-200';
+        } else {
+          return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-200';
+        }
       case 'ghost':
-        return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200';
+        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-200';
+      case 'equivalentTo':
+        return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-200';
+      case 'buildsSkill':
+        return 'bg-cyan-100 text-cyan-800 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-200';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-950 dark:text-gray-200';
     }
   };
 
@@ -113,7 +130,7 @@ export function LifePathEdgeComponent({
           >
             <Badge 
               variant="outline" 
-              className={`text-xs px-1.5 py-0.5 border-0 ${getLabelColor()}`}
+              className={`text-xs px-2 py-1 border font-medium shadow-sm ${getLabelColor()}`}
             >
               {label}
             </Badge>

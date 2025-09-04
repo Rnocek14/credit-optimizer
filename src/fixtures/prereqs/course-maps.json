@@ -1,0 +1,65 @@
+{
+  "courseMaps": {
+    "FCC": {
+      "institutionId": "fcc",
+      "name": "Florida Community College",
+      "mappings": {
+        "MATH-ALGEBRA-101": {
+          "localCourseId": "course-cc-algebra",
+          "courseNumber": "MAC1105",
+          "title": "College Algebra",
+          "credits": 3,
+          "confidence": 1.0
+        },
+        "CS-INTRO-101": {
+          "localCourseId": "course-cc-intro-cs",
+          "courseNumber": "COP1000", 
+          "title": "Introduction to Computer Science",
+          "credits": 3,
+          "confidence": 1.0
+        },
+        "BIO-ANATOMY-201": {
+          "localCourseId": "course-cc-anatomy1",
+          "courseNumber": "BSC2085",
+          "title": "Anatomy & Physiology I",
+          "credits": 4,
+          "confidence": 1.0
+        },
+        "BIO-ANATOMY-202": {
+          "localCourseId": "course-cc-anatomy2", 
+          "courseNumber": "BSC2086",
+          "title": "Anatomy & Physiology II",
+          "credits": 4,
+          "confidence": 1.0
+        },
+        "BIO-MICROBIOLOGY-301": {
+          "localCourseId": "course-cc-microbiology",
+          "courseNumber": "BSC2023",
+          "title": "Microbiology",
+          "credits": 4,
+          "confidence": 1.0
+        }
+      }
+    },
+    "FSU": {
+      "institutionId": "fsu",
+      "name": "Florida State University",
+      "mappings": {
+        "MATH-CALCULUS-201": {
+          "localCourseId": "course-univ-calculus",
+          "courseNumber": "MAC2311",
+          "title": "Calculus I", 
+          "credits": 4,
+          "confidence": 1.0
+        },
+        "CS-DATA-STRUCTURES-301": {
+          "localCourseId": "course-univ-data-structures",
+          "courseNumber": "COP3530",
+          "title": "Data Structures & Algorithms",
+          "credits": 4,
+          "confidence": 1.0
+        }
+      }
+    }
+  }
+}
