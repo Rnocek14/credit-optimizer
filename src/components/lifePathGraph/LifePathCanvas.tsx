@@ -63,7 +63,18 @@ export default function LifePathCanvas({
   const [auditRunning, setAuditRunning] = React.useState(false);
   const [auditLog, setAuditLog] = React.useState<string>('');
   const [auditReport, setAuditReport] = React.useState<any>(null);
-  const [phase, setPhase] = React.useState<AuditPhase>('S');
+  
+  // Smart phase defaulting: C in production, S in dev (unless ?audit=1)
+  const getDefaultPhase = (): AuditPhase => {
+    if (typeof window === 'undefined') return 'S';
+    const searchParams = new URLSearchParams(window.location.search);
+    if (process.env.NODE_ENV === 'production' && !searchParams.has('audit')) {
+      return 'C';
+    }
+    return 'S';
+  };
+  
+  const [phase, setPhase] = React.useState<AuditPhase>(getDefaultPhase());
 
   // Expose safe flags via state so we can flip them from the panel.
   // IMPORTANT: wire these into the booleans you currently use (SAFE_RENDER, SAFE_SHOW_GHOSTS, SAFE_DISABLE_FILTERING)
@@ -85,9 +96,21 @@ export default function LifePathCanvas({
       nodes: countByTestId('lp-node'),
       edges: countByTestId('lp-edge'),
       stepBadges: countByTestId('lp-step-badge'),
-      transferLabels: Array.from(document.querySelectorAll('body *'))
-        .filter(el => (el.textContent || '').includes('% transfer')).length,
+      transferLabels: countByTestId('lp-edge-label'), // Precise edge label counting
     };
+  }
+
+  function exportAuditJSON() {
+    if (!auditReport) return;
+    const blob = new Blob([JSON.stringify(auditReport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skilltree3-audit-phase-${phase}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   async function clickPreset(p: PresetKey) {
@@ -157,12 +180,16 @@ export default function LifePathCanvas({
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
   const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
 
-  // Auto-trigger pathfinding when preset changes or on initial load
+  // Auto-trigger pathfinding when preset changes or on initial load (debounced)
   useEffect(() => {
-    if (findPaths && activeGoal && graph.nodes.length > 0) {
+    if (!findPaths || !activeGoal || graph.nodes.length === 0) return;
+    
+    const timeoutId = setTimeout(() => {
       console.log(`[LifePathCanvas] Auto-triggering pathfinding for preset: ${activePreset}, goal: ${activeGoal}`);
       findPaths(activeGoal);
-    }
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(timeoutId);
   }, [activePreset, activeGoal, findPaths, graph.nodes.length]);
 
   // Calculate overlap counts for nodes used in multiple paths
@@ -246,12 +273,17 @@ export default function LifePathCanvas({
     return filtered.length ? filtered : graph.nodes;
   }, [graph.nodes, isPathEmpty, pathfindingResult]);
 
-  // Telemetry
+  // Telemetry (concise in production)
   useEffect(() => {
-    console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
-    console.info('[life-path] activePath length:', activePath?.nodeIds?.length || 0);
-    console.info('[life-path] baseNodes length:', baseNodes.length);
-    console.info('[life-path] preset:', activePreset, 'activeGoal:', activeGoal);
+    const activePathLen = activePath?.nodeIds?.length || 0;
+    if (process.env.NODE_ENV === 'production') {
+      console.info(`[life-path] nodes=${graph.nodes.length} edges=${graph.edges.length} preset=${activePreset} activeGoal=${activeGoal} activePathLen=${activePathLen}`);
+    } else {
+      console.info('[life-path] nodes:', graph.nodes.length, 'edges:', graph.edges.length);
+      console.info('[life-path] activePath length:', activePathLen);
+      console.info('[life-path] baseNodes length:', baseNodes.length);
+      console.info('[life-path] preset:', activePreset, 'activeGoal:', activeGoal);
+    }
   }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length, baseNodes.length, activePreset, activeGoal]);
 
   // Nodes → React Flow
@@ -446,6 +478,7 @@ export default function LifePathCanvas({
       </div>
 
 {/* RUNTIME AUDIT PANEL – BEGIN */}
+{((process.env.NODE_ENV !== 'production') || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('audit'))) && (
 <div className="mt-4 rounded-xl border p-3 bg-white/70 dark:bg-neutral-900/70">
   <div className="font-semibold mb-2">Runtime Visual Audit</div>
 
@@ -459,6 +492,12 @@ export default function LifePathCanvas({
     <button className="ml-auto px-3 py-1 rounded border" onClick={runAudit} disabled={auditRunning}>
       {auditRunning ? 'Running…' : 'Run Audit'}
     </button>
+    
+    {process.env.NODE_ENV !== 'production' && auditReport && (
+      <button className="ml-2 px-3 py-1 rounded border" onClick={exportAuditJSON}>
+        Export JSON
+      </button>
+    )}
   </div>
 
   <div className="text-xs opacity-70 mb-2">
@@ -482,6 +521,7 @@ export default function LifePathCanvas({
     </pre>
   </div>
 </div>
+)}
 {/* RUNTIME AUDIT PANEL – END */}
       
         {/* Metrics Pill */}

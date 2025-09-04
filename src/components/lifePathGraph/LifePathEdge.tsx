@@ -119,6 +119,7 @@ export function LifePathEdgeComponent({
             <Badge 
               variant="outline" 
               className={`text-xs px-2 py-1 border font-medium shadow-sm ${getLabelColor()}`}
+              data-testid="lp-edge-label"
             >
               {label}
             </Badge>
