@@ -136,10 +136,10 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       }
 
       // Ensure minimal paths for all computed results
-      const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
-      const enhancedBasicPath = ensureMinimal({ nodeIds: basicPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
-      const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
-      const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, nodeMap, targetGoalId).nodeIds;
+      const pathNodeMap = new Map(graph.nodes.map(n => [n.id, n]));
+      const enhancedBasicPath = ensureMinimal({ nodeIds: basicPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
+      const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
+      const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
 
       // Create path results with enhanced metrics
       const createPathResult = (path: string[], optimizedFor: string): PathResult => {
@@ -173,9 +173,9 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
 
       const result: PathfindingResult = {
-        fastest: createPathResult(enhancedBasicPathResult.nodeIds, 'time'),
-        cheapest: createPathResult(enhancedCostPathResult.nodeIds, 'cost'),
-        creditMaximized: createPathResult(enhancedCreditPathResult.nodeIds, 'credits'),
+        fastest: createPathResult(enhancedBasicPath, 'time'),
+        cheapest: createPathResult(enhancedCostPath, 'cost'),
+        creditMaximized: createPathResult(enhancedCreditPath, 'credits'),
         paretoFrontier: [],
         ghostPaths: [],
         tradeoffs: {
@@ -183,7 +183,7 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
           costVsCredits: { correlation: 0.3, alternatives: [] }
         },
         recommendations: {
-          primary: createPathResult(enhancedBasicPathResult.nodeIds, 'balanced'),
+          primary: createPathResult(enhancedBasicPath, 'balanced'),
           alternatives: [],
           reasoning: 'This path offers the best balance of time and cost efficiency for your current skill level.'
         }

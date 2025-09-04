@@ -10,6 +10,7 @@ import {
   useEdgesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { determineNodeGhostStatus } from '@/lib/pathfinding/ghosting';
 import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathfindingResult } from '@/types/lifePathGraph';
 import { LifePathNodeComponent } from './LifePathNode';
@@ -173,7 +174,49 @@ export default function LifePathCanvas({
         hidden: false
       };
     });
-  }, [graph.nodes, selectedNode, pathfindingResult, activePath, showGhosts, overlapCounts, isPathEmpty]);
+  }, [filteredNodes, selectedNode, pathfindingResult, activePath, showGhosts, isPathEmpty]);
+
+  // Branch decision detection (Algebra vs CLEP vs Univ)
+  type BranchOption = {
+    id: string;
+    title: string;
+    type: string;
+    time?: number;
+    cost?: number;
+    credits?: number;
+    isRecommended?: boolean;
+    preset?: string;
+  };
+
+  const branchPoints = useMemo(() => {
+    if (!activePath?.nodeIds?.length) return [];
+    const points: { anchorNodeId: string; options: BranchOption[] }[] = [];
+
+    // Simple heuristic: find nodes at depth 1 that share skill outcomes or equivalency
+    const algebraLike = filteredNodes.filter(n =>
+      n.type === "course" &&
+      (n.title.toLowerCase().includes("algebra") || n.tags?.includes("math")) &&
+      (n.attributes?.depth === 1)
+    );
+
+    if (algebraLike.length >= 2) {
+      points.push({
+        anchorNodeId: algebraLike[0].id,
+        options: algebraLike.slice(0, 3).map(n => ({
+          id: n.id,
+          title: n.title,
+          type: n.type,
+          time: Math.ceil((n.estimatedHours || 120) / 40),
+          cost: n.cost || 0,
+          credits: n.credits || 0,
+          isRecommended: activePath.nodeIds.includes(n.id),
+          preset: isPathEmpty ? "balanced" : "active",
+        }))
+      });
+    }
+
+    return points;
+  }, [filteredNodes, activePath, isPathEmpty]);
 
   // Convert graph edges to React Flow edges
   const reactFlowEdges: Edge[] = useMemo(() => {
