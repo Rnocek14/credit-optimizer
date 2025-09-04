@@ -197,7 +197,6 @@ export default function LifePathCanvas({
   const [showGhosts, setShowGhosts] = useState(SAFE_SHOW_GHOSTS_FLAG);
   const [activePreset, setActivePreset] = useState<'fastest' | 'cheapest' | 'creditMaximized' | 'balanced'>('fastest');
   const [branchDecisions, setBranchDecisions] = useState<any[]>([]);
-  const [overlapCounts, setOverlapCounts] = useState<Record<string, number>>({});
   const [previousPath, setPreviousPath] = useState<string[]>([]);
   const [showPreviousPath, setShowPreviousPath] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -215,7 +214,7 @@ export default function LifePathCanvas({
   }, [activePreset, activeGoal, findPaths, graph.nodes.length]);
 
   // Calculate overlap counts for nodes used in multiple paths
-  const calculateOverlapCounts = useMemo(() => {
+  const overlapCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     if (!pathfindingResult) return counts;
     
@@ -235,10 +234,6 @@ export default function LifePathCanvas({
     
     return counts;
   }, [pathfindingResult]);
-
-  useEffect(() => {
-    setOverlapCounts(calculateOverlapCounts);
-  }, [calculateOverlapCounts]);
 
   // Get current active path
   const activePath = useMemo(() => {
@@ -324,6 +319,12 @@ export default function LifePathCanvas({
     }
   }, [graph.nodes.length, graph.edges.length, activePath?.nodeIds?.length, baseNodes.length, activePreset, activeGoal]);
 
+  // Create stable path string for memoization
+  const activePathString = useMemo(() => 
+    safeActivePath.nodeIds.join(','), 
+    [safeActivePath.nodeIds]
+  );
+
   // Nodes → React Flow
   const reactFlowNodes: Node[] = useMemo(() => {
     const nodesSource = baseNodes; // in safe mode we always use baseNodes
@@ -377,9 +378,8 @@ export default function LifePathCanvas({
         hidden: false, // SAFE: never hide
       };
     });
-  }, [baseNodes, selectedNode, safeActivePath.nodeIds.join(',')]);
+  }, [baseNodes, selectedNode, activePathString, hoveredNode, showPreviousPath, previousPath.join(','), LP_VISUAL_V2]);
   
-  console.log('[LifePathCanvas] Generated nodes:', reactFlowNodes.length);
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
   type BranchOption = {
