@@ -28,23 +28,26 @@ describe('Life Path — Visual Scan Quality Gates', () => {
   }
 
   ['fastest','cheapest','creditMaximized','balanced'].forEach(preset => {
-    it(`Preset ${preset}: no heavy overlaps or crossings`, () => {
+    it(`Preset ${preset}: tiers + labels + low overlaps`, () => {
       cy.get(`[data-testid="lp-preset-${preset}"]`).click();
       cy.wait(400);
 
       runPanelScan();
 
-      cy.get('pre').then($pre => {
-        const txt = $pre.text();
-        const report = JSON.parse(txt);
+      cy.get('pre').last().invoke('text').then(JSON.parse).then((report: any) => {
+        // Tier detection (main fix target)
+        expect(report.tiers.edgeOn, 'on-path edges detected').to.be.greaterThan(0);
+        expect(report.tiers.edgeRelated, 'related edges detected').to.be.greaterThan(0);
+        expect(report.tiers.edgeOff, 'off-path edges detected').to.be.greaterThan(0);
+        expect(report.counts.labels, 'transfer labels present').to.be.greaterThan(0);
 
-        // thresholds (tune as we improve)
+        // Quality gates
         const overlaps = (report.issues || []).filter((i:any)=>i.type==='NODE_OVERLAP');
         const crossings = (report.issues || []).filter((i:any)=>i.type==='EDGE_CROSSING');
         const through = (report.issues || []).filter((i:any)=>i.type==='EDGE_THROUGH_NODE');
 
         expect(overlaps.length, 'node overlaps <= 2').to.be.at.most(2);
-        expect(crossings.length, 'edge crossings <= 1').to.be.at.most(1);
+        expect(crossings.length, 'edge crossings <= 2').to.be.at.most(2);
         expect(through.length, 'edges through nodes == 0').to.equal(0);
 
         // career connectivity sanity

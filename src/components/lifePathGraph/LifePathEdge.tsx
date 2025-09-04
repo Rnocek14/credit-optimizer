@@ -169,15 +169,19 @@ export function LifePathEdgeComponent({
 
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        className={tierClass} // Apply tier class directly to the path element
-        style={getEdgeStyle()}
+      {/* Wrapper g element with tier class and data attributes for scanner */}
+      <g
         data-testid="lp-edge"
         data-id={id}
-        data-edge-type={edge.type}
-        markerEnd={markerEnd}
-      />
+        data-edge-type={edge?.type || ''}
+        className={tierClass}
+      >
+        <BaseEdge
+          path={edgePath}
+          style={getEdgeStyle()}
+          markerEnd={markerEnd}
+        />
+      </g>
       
       {displayLabel && (
         <EdgeLabelRenderer>

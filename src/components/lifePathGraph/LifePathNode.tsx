@@ -138,24 +138,39 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       <Handle
         type="target"
         position={LP_VISUAL_V2 ? Position.Left : Position.Top}
-        className="w-3 h-3 !bg-muted-foreground"
+        id="target"
+        style={{
+          background: 'hsl(var(--primary))',
+          border: '2px solid hsl(var(--background))',
+          width: 12,
+          height: 12,
+        }}
       />
-      
-      <div 
-        className={`relative lifepath-node ${tierClass} ${getNodeColor()}`}
+       
+      <Card 
+        className={`
+          w-64 cursor-pointer
+          ${getNodeColor()}
+          ${tierClass}
+          transition-all duration-200 ease-in-out
+          shadow-sm hover:shadow-md
+        `}
+        style={{
+          minWidth: 'var(--lp-node-min-width, 280px)',
+          maxWidth: 'var(--lp-node-max-width, 350px)',
+        }}
         data-testid="lp-node"
         data-id={node.id}
       >
-        {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
-        {data.isMainPath && typeof data.stepNumber === "number" && data.stepNumber > 0 && (
-          <StepBadge stepNumber={data.stepNumber} isMainPath />
-        )}
-        
-        {/* Overlap Indicator */}
-        <OverlapIndicator count={overlapCount || 1} goals={overlapGoals} />
-        
-        <Card className="w-64 cursor-pointer transition-all hover:shadow-md">
-          <CardContent className="p-4">
+        <CardContent className="p-4">
+          {/* Step Number Badge – show whenever node is in main path and stepNumber >= 1 */}
+          {isMainPath && typeof stepNumber === "number" && stepNumber > 0 && (
+            <StepBadge stepNumber={stepNumber} isMainPath />
+          )}
+          
+          {/* Overlap Indicator */}
+          <OverlapIndicator count={overlapCount || 1} goals={overlapGoals} />
+          
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               {getNodeIcon()}
@@ -242,17 +257,22 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
           )}
           
           {/* Ghost Reason Chip – only when node is ghosted and we're not showing alternatives */}
-          {data.showGhost && data.ghostReason && (
-            <GhostReasonChip reason={data.ghostReason} />
+          {showGhost && ghostReason && (
+            <GhostReasonChip reason={ghostReason} />
           )}
         </CardContent>
       </Card>
-      </div>
-      
+
       <Handle
         type="source"
         position={LP_VISUAL_V2 ? Position.Right : Position.Bottom}
-        className="w-3 h-3 !bg-muted-foreground"
+        id="source"
+        style={{
+          background: 'hsl(var(--primary))',
+          border: '2px solid hsl(var(--background))',
+          width: 12,
+          height: 12,
+        }}
       />
     </>
   );

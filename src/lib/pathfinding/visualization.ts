@@ -195,10 +195,17 @@ export function determineEdgeTier(
   // On-path: both nodes are in the active path
   if (sourceInPath && targetInPath) return 'on-path';
   
-  // Related: touches at least one node in the active path
+  // Related: exactly one endpoint in active path OR bridges one-hop neighbors
   if (sourceInPath || targetInPath) return 'related';
   
-  return 'off-path';
+  // One-hop neighbor of any path node -> related
+  const pathSet = new Set(activePathNodeIds);
+  const neighborOfPath = allEdges.some(e => 
+    (pathSet.has(e.sourceId) && (e.targetId === edge.sourceId || e.targetId === edge.targetId)) ||
+    (pathSet.has(e.targetId) && (e.sourceId === edge.sourceId || e.sourceId === edge.targetId))
+  );
+  
+  return neighborOfPath ? 'related' : 'off-path';
 }
 
 export function determineNodeTier(
