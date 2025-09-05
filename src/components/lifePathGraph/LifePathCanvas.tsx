@@ -68,7 +68,9 @@ export default function LifePathCanvas({
   findPaths,
   activeGoal 
 }: LifePathCanvasProps) {
+  console.log('🔧 LifePathCanvas: Attempting to use useReactFlow hook');
   const reactFlowInstance = useReactFlow();
+  console.log('✅ LifePathCanvas: useReactFlow hook successful', { reactFlowInstance });
   /* RUNTIME AUDIT PANEL – BEGIN */
   const [auditRunning, setAuditRunning] = React.useState(false);
   const [auditLog, setAuditLog] = React.useState<string>('');

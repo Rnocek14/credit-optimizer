@@ -18,6 +18,8 @@ interface ReactFlowWrapperProps {
  * This ensures useReactFlow() hook works properly in LifePathCanvas
  */
 export default function ReactFlowWrapper(props: ReactFlowWrapperProps) {
+  console.log('🔧 ReactFlowWrapper: Rendering with ReactFlowProvider');
+  
   return (
     <ReactFlowProvider>
       <LifePathCanvas {...props} />

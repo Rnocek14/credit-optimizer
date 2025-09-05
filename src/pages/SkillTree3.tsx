@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ReactFlowWrapper from '@/components/lifePathGraph/ReactFlowWrapper';
+import LifePathCanvas from '@/components/lifePathGraph/LifePathCanvas';
+import { ReactFlowProvider } from '@xyflow/react';
 import PathComparison from '@/components/lifePathGraph/PathComparison';
 import PathfindingControls from '@/components/lifePathGraph/PathfindingControls';
 import { useLifePathGraph } from '@/hooks/useLifePathGraph';
@@ -169,14 +170,16 @@ export default function SkillTree3() {
               <TabsContent value="graph" className="mt-6">
                 <Card>
                   <CardContent className="p-0">
-                    <ReactFlowWrapper
-                      graph={graph}
-                      pathfindingResult={pathfindingResult}
-                      onNodeClick={handleNodeClick}
-                      selectedNode={selectedNode}
-                      findPaths={findPaths}
-                      activeGoal={activeGoal ?? defaultGoalId}
-                    />
+                    <ReactFlowProvider>
+                      <LifePathCanvas
+                        graph={graph}
+                        pathfindingResult={pathfindingResult}
+                        onNodeClick={handleNodeClick}
+                        selectedNode={selectedNode}
+                        findPaths={findPaths}
+                        activeGoal={activeGoal ?? defaultGoalId}
+                      />
+                    </ReactFlowProvider>
                   </CardContent>
                 </Card>
               </TabsContent>
