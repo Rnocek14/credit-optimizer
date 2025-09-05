@@ -1,98 +1,106 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { runVisualScan, VisualScanSnapshot } from '@/dev/visualScan';
 import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { PathfindingResult } from '@/types/lifePathGraph';
+import { Edge } from '@xyflow/react';
+import { layoutAndScan, type Graph as LayoutGraph } from '@/lib/layout/unifiedLayoutV3';
 
 interface VisualScannerProps {
   graph: LifePathGraph;
   pathfindingResult?: PathfindingResult | null;
   activePreset: 'fastest' | 'cheapest' | 'creditMaximized' | 'balanced';
-  reactFlowEdges: any[]; // Pass edges directly for accurate tier counting
+  reactFlowEdges: any[];
+}
+
+interface VisualScanReport {
+  counts: {
+    nodes: number;
+    edges: number;
+    labels: number;
+  };
+  tiers: {
+    edgeOn: number;
+    edgeRelated: number;
+    edgeOff: number;
+  };
+  issues: Array<{
+    type: 'NODE_OVERLAP' | 'EDGE_CROSSING' | 'EDGE_THROUGH_NODE';
+    aId?: string;
+    bId?: string;
+    edgeId?: string;
+    nodeId?: string;
+  }>;
 }
 
 export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlowEdges }: VisualScannerProps) {
-  // Always visible for debugging - DEV check removed
   const [scanRunning, setScanRunning] = useState(false);
-  const [scanReport, setScanReport] = useState<VisualScanSnapshot | null>(null);
+  const [scanReport, setScanReport] = useState<VisualScanReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const runVisualScanNow = async () => {
-    if (scanRunning) return;
     setScanRunning(true);
     setError(null);
-    
     try {
-      const report = await runVisualScan({
-        graph,
-        pathfindingResult,
-        activePreset,
-        reactFlowEdges // Pass edges directly for accurate tier counting
-      });
+      console.log('🔍 Running visual scan...');
+      
+      // Map to layout format for scanning
+      const graphV3: LayoutGraph = {
+        nodes: (graph.nodes || []).map(n => ({
+          id: String(n.id),
+          label: n.title || String(n.id),
+          lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
+          width: 220,
+          height: 88,
+          data: n,
+        })),
+        edges: (graph.edges || []).map(e => ({
+          id: String(e.id),
+          source: String(e.sourceId),
+          target: String(e.targetId),
+          kind: 'related',
+          data: e,
+        })),
+      };
+
+      // Use the new layout + scan system
+      const { scan } = layoutAndScan(
+        graphV3,
+        { hGap: 320, vGap: 28, laneOrder: ['Core', 'Electives', 'Transfer', 'Orphan'] },
+        []
+      );
+      
+      // Convert scan results to expected format
+      const report: VisualScanReport = {
+        counts: {
+          nodes: graphV3.nodes.length,
+          edges: graphV3.edges.length,
+          labels: reactFlowEdges?.filter(e => e.data?.edgeLabel).length || 0,
+        },
+        tiers: {
+          edgeOn: reactFlowEdges?.filter(e => e.data?.tier === 'on-path').length || 0,
+          edgeRelated: reactFlowEdges?.filter(e => e.data?.tier === 'related').length || 0,
+          edgeOff: reactFlowEdges?.filter(e => e.data?.tier === 'off-path').length || 0,
+        },
+        issues: [
+          ...scan.nodeOverlaps.map(({a, b}) => ({ type: 'NODE_OVERLAP' as const, aId: a, bId: b })),
+          ...scan.edgeCrossings.map(({a, b}) => ({ type: 'EDGE_CROSSING' as const, aId: a, bId: b })),
+          ...scan.throughNodes.map(({edge, node}) => ({ type: 'EDGE_THROUGH_NODE' as const, edgeId: edge, nodeId: node })),
+        ],
+      };
+      
       setScanReport(report);
-      markIssues(report);
       
-      // Log acceptance gate status
-      const totalTiers = (report.tiers?.edgeOn || 0) + (report.tiers?.edgeRelated || 0) + (report.tiers?.edgeOff || 0);
-      const throughNodes = report.issues.filter(i => i.type === 'EDGE_THROUGH_NODE').length;
-      const overlaps = report.issues.filter(i => i.type === 'NODE_OVERLAP').length;
-      const crossings = report.issues.filter(i => i.type === 'EDGE_CROSSING').length;
-      const missingLabels = report.issues.filter(i => i.type === 'MISSING_LABEL').length;
+      if (import.meta.env.DEV) {
+        console.log('[SCAN SUMMARY]', scan.summary, scan);
+      }
       
-      console.info('[visual-scan] Acceptance Gates:', {
-        tiersDetected: totalTiers > 0 ? '✅' : '❌',
-        noThroughNodes: throughNodes <= 1 ? '✅' : '❌',
-        lowOverlaps: overlaps <= 2 ? '✅' : '❌', 
-        lowCrossings: crossings <= 2 ? '✅' : '❌',
-        hasLabels: report.counts.labels > 0 && missingLabels === 0 ? '✅' : '❌'
-      });
-      
-      console.info('[visual-scan]', report);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('Visual scan failed:', errorMessage);
+      console.error('Visual scan failed:', err);
+      setError(err instanceof Error ? err.message : 'Scan failed');
     } finally {
       setScanRunning(false);
     }
   };
-
-  const markIssues = (report: VisualScanSnapshot | null) => {
-    if (!report) return;
-    
-    // Clear previous markings
-    document.querySelectorAll('.visual-scan-highlight').forEach(el => {
-      el.classList.remove('visual-scan-highlight');
-      (el as HTMLElement).style.border = '';
-    });
-
-    // Mark nodes with overlaps or edge-through-node issues
-    report.issues.forEach(issue => {
-      if (issue.type === 'NODE_OVERLAP') {
-        const nodeA = document.querySelector(`[data-testid="lp-node"][data-id="${issue.aId}"]`);
-        const nodeB = document.querySelector(`[data-testid="lp-node"][data-id="${issue.bId}"]`);
-        if (nodeA) {
-          nodeA.classList.add('visual-scan-highlight');
-          (nodeA as HTMLElement).style.border = '2px solid red';
-        }
-        if (nodeB) {
-          nodeB.classList.add('visual-scan-highlight');
-          (nodeB as HTMLElement).style.border = '2px solid red';
-        }
-      } else if (issue.type === 'EDGE_THROUGH_NODE') {
-        const node = document.querySelector(`[data-testid="lp-node"][data-id="${issue.nodeId}"]`);
-        if (node) {
-          node.classList.add('visual-scan-highlight');
-          (node as HTMLElement).style.border = '2px solid orange';
-        }
-      }
-    });
-  };
-
-  const overlaps = scanReport?.issues?.filter(i => i.type === 'NODE_OVERLAP')?.length || 0;
-  const crossings = scanReport?.issues?.filter(i => i.type === 'EDGE_CROSSING')?.length || 0;
-  const throughNodes = scanReport?.issues?.filter(i => i.type === 'EDGE_THROUGH_NODE')?.length || 0;
-  const missingLabels = scanReport?.issues?.filter(i => i.type === 'MISSING_LABEL')?.length || 0;
 
   return (
     <div className="p-4 border rounded-lg bg-background">
@@ -105,15 +113,6 @@ export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlo
         >
           {scanRunning ? 'Scanning…' : 'Run Visual Scan'}
         </Button>
-        {scanReport && (
-          <Button
-            onClick={() => markIssues(scanReport)}
-            variant="ghost"
-            size="sm"
-          >
-            Highlight Issues
-          </Button>
-        )}
       </div>
 
       {error && (
@@ -124,7 +123,6 @@ export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlo
 
       {scanReport && (
         <div className="space-y-4">
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <div className="font-medium">Nodes</div>
@@ -140,7 +138,6 @@ export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlo
             </div>
           </div>
 
-          {/* V2 Tiers */}
           {scanReport.tiers && (
             <div className="border rounded p-3">
               <div className="font-medium mb-2">V2 Tiers</div>
@@ -152,47 +149,18 @@ export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlo
             </div>
           )}
 
-          {/* Issues Summary */}
           <div className="border rounded p-3">
             <div className="font-medium mb-2">Issues ({scanReport.issues.length})</div>
             {scanReport.issues.length === 0 ? (
               <div className="text-green-600">No issues found!</div>
             ) : (
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>Overlaps: {overlaps}</div>
-                <div>Crossings: {crossings}</div>
-                <div>Through Nodes: {throughNodes}</div>
-                <div>Missing Labels: {missingLabels}</div>
+                <div>Overlaps: {scanReport.issues.filter(i => i.type === 'NODE_OVERLAP').length}</div>
+                <div>Crossings: {scanReport.issues.filter(i => i.type === 'EDGE_CROSSING').length}</div>
+                <div>Through Nodes: {scanReport.issues.filter(i => i.type === 'EDGE_THROUGH_NODE').length}</div>
               </div>
             )}
           </div>
-
-          {/* First few issues */}
-          {scanReport.issues.length > 0 && (
-            <div className="border rounded p-3">
-              <div className="font-medium mb-2">Issue Details</div>
-              <div className="space-y-1 text-sm">
-                {scanReport.issues.slice(0, 5).map((issue, i) => (
-                  <div key={i} className="font-mono text-xs">
-                    {issue.type}: {JSON.stringify(issue).slice(0, 80)}...
-                  </div>
-                ))}
-                {scanReport.issues.length > 5 && (
-                  <div className="text-muted-foreground">
-                    ...and {scanReport.issues.length - 5} more
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Full JSON (collapsible) */}
-          <details className="border rounded p-3">
-            <summary className="font-medium cursor-pointer">Full Report JSON</summary>
-            <pre className="text-xs mt-2 p-2 bg-muted rounded overflow-auto">
-              {JSON.stringify(scanReport, null, 2)}
-            </pre>
-          </details>
         </div>
       )}
     </div>

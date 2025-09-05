@@ -24,6 +24,7 @@ import { MetricsPill } from '@/components/ui/metrics-pill';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { styleEdge, getNodeColorByType, getNodeBorderColorByType, calculateNodePosition, determineEdgeTier, determineNodeTier } from '@/lib/pathfinding/visualization';
+import { applyUnifiedLayoutV3, layoutAndScan, assertTierEdgeParity, type Graph as LayoutGraph } from '@/lib/layout/unifiedLayoutV3';
 import { Eye, EyeOff, Zap, DollarSign, BookOpen, BarChart3 } from 'lucide-react';
 
 /* RUNTIME AUDIT PANEL – BEGIN */
@@ -343,36 +344,56 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Nodes → React Flow with ID consistency and grid snapping
+  // Nodes → React Flow with unified layout system
   const reactFlowNodes: Node[] = useMemo(() => {
-    return graph.nodes.map(n => {
+    if (!graph?.nodes?.length) return [];
+    
+    // Map to layout format
+    const graphV3: LayoutGraph = {
+      nodes: (graph.nodes || []).map(n => ({
+        id: String(n.id),
+        label: n.title || String(n.id),
+        lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
+        width: 220,
+        height: 88,
+        data: n,
+      })),
+      edges: (graph.edges || []).map(e => ({
+        id: String(e.id),
+        source: String(e.sourceId),
+        target: String(e.targetId),
+        kind:
+          e.type === 'requires' ? 'requires' :
+          e.type === 'enables' ? 'teaches' :
+          e.type === 'creditTransfersTo' ? 'credit_transfer' :
+          'related',
+        credit: e.type === 'creditTransfersTo' ? {
+          source: 'ACE' as const,
+          units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
+          institution: undefined
+        } : undefined,
+        data: e,
+      })),
+    };
+
+    // Run layout + scan
+    const { graph: laidGraph } = layoutAndScan(
+      graphV3,
+      { hGap: 320, vGap: 28, laneOrder: ['Core', 'Electives', 'Transfer', 'Orphan'] },
+      activePath?.edgeIds || []
+    );
+
+    return laidGraph.nodes.map(n => {
       const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
       const isInMainPath = safeActivePath.nodeIds.includes(n.id);
       const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(n.id) + 1 : undefined;
-      
-      let institutionLane = 2;
-      if (n.institutionId === 'fcc') institutionLane = 0;
-      else if (n.institutionId === 'fsu') institutionLane = 1;
-
-      const basePosition = n.position || calculateNodePosition(
-        graph.nodes.indexOf(n),
-        n.attributes?.depth ?? 0,
-        institutionLane
-      );
-      
-      // Apply grid snapping for consistent layout
-      const position = {
-        x: Math.round(basePosition.x / 16) * 16,
-        y: Math.round(basePosition.y / 16) * 16
-      };
 
       return {
-        id: n.id,                   // Equals graph node id exactly
-        type: 'lifePathNode',
-        position,
+        id: n.id,
+        position: { x: n.x!, y: n.y! }, // Use computed position
         data: { 
-          ...n,                     // Keep all node data
-          node: n,
+          ...n.data,
+          node: n.data,
           isSelected: selectedNode?.id === n.id,
           isInPath: isInMainPath,
           isMainPath: isInMainPath,
@@ -381,6 +402,7 @@ export default function LifePathCanvas({
           isHovered: hoveredNode === n.id,
           showPreviousPath: showPreviousPath && previousPath.includes(n.id) && !safeActivePath.nodeIds.includes(n.id),
         },
+        type: 'lifePathNode',
         style: {
           opacity: 1,
           zIndex: isInMainPath ? 10 : 1,
@@ -389,11 +411,10 @@ export default function LifePathCanvas({
         sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
         targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
         hidden: false,
+        draggable: false,
       };
     });
-
-    // Note: Layout intelligence (C1) will be applied after we get the basic nodes working
-  }, [graph.nodes, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2]);
+  }, [graph?.nodes, graph?.edges, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2, activePath?.edgeIds]);
   
 
   // Branch decision detection (Algebra vs CLEP vs Univ)
@@ -440,101 +461,97 @@ export default function LifePathCanvas({
 
   // tierOfEdge now comes from hook for consistency
 
-  // Edges → React Flow (with ID consistency and render-time tiering)
+  // Edges → React Flow with layout-computed positions and tiers
   const reactFlowEdges: Edge[] = useMemo(() => {
-    const visible = new Set(reactFlowNodes.map(n => n.id));
-    const edges = graph.edges.filter(e => visible.has(e.sourceId) && visible.has(e.targetId));
+    if (!graph?.edges?.length) return [];
     
-    // Pre-flight logging
-    console.log('[RF edges]', edges.map(e => e.id));
-    
-    // Runtime invariants for debugging
-    const norm = (s: any) => String(s ?? '').trim();
-    const pathLen = activePath?.nodeIds?.length || 0;
-    const edgeIdsLen = activePath?.edgeIds?.length || 0;
-    const materializedLen = (activePath as any)?.metadata?.materializedNodes?.length || 0;
-    
-    console.log('[PF INVARIANTS]', {
-      nodeCount: graph.nodes?.length,
-      edgeCount: graph.edges?.length,
-      pathNodeIds: activePath?.nodeIds?.slice(0, 8),
-      pathLen,
-      edgeIdsLen,
-      materializedLen
-    });
+    // Map to layout format (same as nodes)
+    const graphV3: LayoutGraph = {
+      nodes: (graph.nodes || []).map(n => ({
+        id: String(n.id),
+        label: n.title || String(n.id),
+        lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
+        width: 220,
+        height: 88,
+        data: n,
+      })),
+      edges: (graph.edges || []).map(e => ({
+        id: String(e.id),
+        source: String(e.sourceId),
+        target: String(e.targetId),
+        kind:
+          e.type === 'requires' ? 'requires' :
+          e.type === 'enables' ? 'teaches' :
+          e.type === 'creditTransfersTo' ? 'credit_transfer' :
+          'related',
+        credit: e.type === 'creditTransfersTo' ? {
+          source: 'ACE' as const,
+          units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
+          institution: undefined
+        } : undefined,
+        data: e,
+      })),
+    };
 
-    // Assert expected invariants
-    if (pathLen >= 2 && edgeIdsLen === 0) {
-      console.warn('[PF] Zero edges for valid path - stitching failed');
-    }
-    
-    if (edgeIdsLen > 0) {
-      const edgeSet = new Set((graph.edges||[]).map(e => norm(e.id)));
-      const missing = (activePath?.edgeIds||[]).filter(id => !edgeSet.has(norm(id)));
-      if (missing.length) {
-        console.warn('[PF] Missing edgeIds in graph:', missing.slice(0, 3));
-      }
-    }
+    const { graph: laidGraph } = layoutAndScan(
+      graphV3,
+      { hGap: 320, vGap: 28, laneOrder: ['Core', 'Electives', 'Transfer', 'Orphan'] },
+      activePath?.edgeIds || []
+    );
 
-    return edges
-      .map(e => {
-        // Apply tier classification at render time (ALWAYS set data.tier - no LP_VISUAL_V2 gate)
+    const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
+    
+    return laidGraph.edges
+      .filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+      .map(edge => {
+        // ALWAYS compute tier during mapping - no feature flag gates
         const tier = tierOfEdge(
-          { id: String(e.id), source: String(e.sourceId), target: String(e.targetId) },
+          { id: edge.id, source: edge.source, target: edge.target },
           activePath
         );
-        
-        // Debug logging for tier verification (first edge only)
-        if (e.id === edges[0]?.id) {
-          console.log('[ACTIVE]', activePreset, activePath?.nodeIds?.length, activePath?.edgeIds?.length);
-        }
 
-        const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
+        const isRelatedToHovered = !!hoveredNode && (edge.source === hoveredNode || edge.target === hoveredNode);
 
         // Always compute transfer labels to prevent MISSING_LABEL
-        const label = e.type === 'creditTransfersTo'
-          ? `${Math.round((e.creditTransferRate ?? 1) * 100)}% transfer`
-          : undefined;
+        const label = edge.kind === 'credit_transfer'
+          ? (edge.badge?.text || edge.data?.label || 'Transfer')
+          : edge.data?.label;
 
-        const rfEdge: Edge = {
-          id: String(e.id),         // Ensure string ID
-          source: String(e.sourceId), // Ensure string source
-          target: String(e.targetId), // Ensure string target
+        return {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
           type: 'lifePathEdge',
           data: {
-            ...e,                   // Keep ids in data too for debugging
-            sourceId: e.sourceId,
-            targetId: e.targetId,
-            isHighlighted: false,
-            tier,                   // ✅ ALWAYS set tier here (no LP_VISUAL_V2 gate)
+            ...edge.data,
+            tier, // Always set tier in data
+            edgeLabel: label,
             isRelatedToHovered,
-            label,
-            showAsFlow: false,
-            sourceNode: baseNodes.find(n => n.id === e.sourceId),
-            targetNode: baseNodes.find(n => n.id === e.targetId),
-            showPreviousPath:
-              showPreviousPath &&
-              previousPath.some(id => [e.sourceId, e.targetId].includes(id)) &&
-              !safeActivePath.nodeIds.some(id => [e.sourceId, e.targetId].includes(id)),
+            showPreviousPath: showPreviousPath &&
+              previousPath.some(id => [edge.source, edge.target].includes(id)) &&
+              !safeActivePath.nodeIds.some(id => [edge.source, edge.target].includes(id)),
+            badge: edge.badge, // { text, tone }
+            points: edge.points, // polyline points from router
           },
+          className: tier ? `lp-edge-${tier}` : undefined, // Also set className for CSS
           style: {
-            ...styleEdge(e.type as any),
-            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode)) ? 1 : 0.8,
+            ...styleEdge(
+              edge.kind === 'requires' ? 'requires' :
+              edge.kind === 'teaches' ? 'enables' :
+              edge.kind === 'credit_transfer' ? 'creditTransfersTo' :
+              'enables'
+            ),
+            ...(edge.style || {}), // respect dashed credit edges
+            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (edge.source === hoveredNode || edge.target === hoveredNode)) ? 1 : 0.8,
             strokeWidth: tier === 'on-path' ? 3 : (tier === 'related' ? 2 : 1),
             stroke: tier === 'on-path'
               ? 'hsl(var(--primary) / 0.9)'
               : (tier === 'related' ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted-foreground) / 0.4)'),
           },
-          // Class is nice for CSS, but the COUNTER uses data.tier
-          className: tier ? `lp-edge-${tier}` : '',
         };
-
-        return rfEdge;
       });
-    
-    // B2: bulletproof tier recomputation deps
   }, [
-    graph.edges,
+    graph?.edges,
     reactFlowNodes,
     hoveredNode,
     showPreviousPath,
@@ -542,7 +559,7 @@ export default function LifePathCanvas({
     tierOfEdge,
     // FORCE recompute on any activePath change:
     activePath?.id,
-    (activePath?.edgeIds || []).join(','),   // unique, deduped list from fix A
+    (activePath?.edgeIds || []).join(','),   // unique, deduped list
     (activePath?.metadata?.materializedNodes || activePath?.nodeIds || []).join(',')
   ]);
 
