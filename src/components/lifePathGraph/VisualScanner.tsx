@@ -11,10 +11,7 @@ interface VisualScannerProps {
 }
 
 export function VisualScanner({ graph, pathfindingResult, activePreset }: VisualScannerProps) {
-  // Gate the panel only by import.meta.env.DEV (not the URL)
-  if (!import.meta.env.DEV) {
-    return null;
-  }
+  // Always visible for debugging - DEV check removed
   const [scanRunning, setScanRunning] = useState(false);
   const [scanReport, setScanReport] = useState<VisualScanSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
