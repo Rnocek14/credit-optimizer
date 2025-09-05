@@ -499,16 +499,11 @@ export default function LifePathCanvas({
               e.kind === 'teaches'  ? 'enables' :
               e.kind === 'credit_transfer' ? 'creditTransfersTo' : 'enables'
             ),
-            ...(e.style || {}), // keep dashed for credit
-            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (e.source === hoveredNode || e.target === hoveredNode)) ? 1 : 0.8,
-            strokeWidth: tier === 'on-path' ? 3 : (tier === 'related' ? 2 : 1),
-            stroke: tier === 'on-path'
-              ? 'hsl(var(--primary) / 0.9)'
-              : (tier === 'related' ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted-foreground) / 0.4)'),
+            ...(e.style || {}),
           },
         };
       });
-  }, [laidGraphMemo, reactFlowNodes, activePath?.id, (activePath?.edgeIds||[]).join(','), hoveredNode, showPreviousPath, previousPath.join(','), tierOfEdge, safeActivePath.nodeIds]);
+  }, [laidGraphMemo, reactFlowNodes, activePath?.id, hoveredNode, showPreviousPath, previousPath, safeActivePath.nodeIds]);
 
   // Debug logging for tier counts
   useEffect(() => {
@@ -744,7 +739,7 @@ export default function LifePathCanvas({
         )}
         
         {/* Educational Bands */}
-        <EducationalBands height={600} />
+        {/* <EducationalBands height={600} /> */}
         
         {/* Institution Lane Backgrounds */}
         <div className="absolute inset-0 z-0">
@@ -846,19 +841,4 @@ export default function LifePathCanvas({
       </div>
     </div>
   );
-}
-
-// Helper functions
-function getNodePathType(nodeId: string, result?: PathfindingResult | null): string | undefined {
-  if (!result) return undefined;
-  
-  if (result.fastest?.nodeIds.includes(nodeId)) return 'fastest';
-  if (result.cheapest?.nodeIds.includes(nodeId)) return 'cheapest';
-  if (result.creditMaximized?.nodeIds.includes(nodeId)) return 'credit-max';
-  
-  return undefined;
-}
-
-function getEdgePathType(edgeId: string, result?: PathfindingResult | null): string | undefined {
-  return undefined;
 }
