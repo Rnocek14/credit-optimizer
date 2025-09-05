@@ -149,43 +149,43 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
       const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
 
-      // Build edge index for robust edge ID derivation (bidirectional + undirected fallback)
-      const buildEdgeIndex = (edges: Array<{id:string; sourceId:string; targetId:string}>) => {
-        const dir = new Map<string,string[]>();   // "a→b" -> [edgeIds]
-        const undir = new Map<string,string[]>(); // "a—b"(sorted) -> [edgeIds]
-        for (const e of edges) {
-          const f = `${e.sourceId}→${e.targetId}`;
-          const b = `${e.targetId}→${e.sourceId}`;
-          const u = [e.sourceId, e.targetId].sort().join('—');
-          (dir.get(f) || dir.set(f, []).get(f)!).push(e.id);
-          (dir.get(b) || dir.set(b, []).get(b)!).push(e.id);
-          (undir.get(u) || undir.set(u, []).get(u)!).push(e.id);
+      // Helper for consecutive pair detection
+      const buildConsecutivePairSet = (nodeIds: string[]) => {
+        const s = new Set<string>();
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          const a = String(nodeIds[i]).trim();
+          const b = String(nodeIds[i + 1]).trim();
+          s.add(`${a}→${b}`);
+          s.add(`${b}→${a}`); // allow reversed traversal
         }
-        return { dir, undir };
+        return s;
       };
 
-      const derivePathEdgeIds = (nodeIds: string[], edges: any[]) => {
-        const { dir, undir } = buildEdgeIndex(edges);
+      // Enhanced edge derivation with normalization and robust index
+      const derivePathEdgeIds = (nodeIds: string[], edges: Array<{id:string; sourceId:string; targetId:string}>) => {
+        const norm = (s: any) => String(s ?? '').trim();
+        
+        const dir = new Map<string, string[]>();   // "a→b" -> [edgeIds]
+        const undir = new Map<string, string[]>(); // "a—b" sorted -> [edgeIds]
+        
+        for (const e of edges) {
+          const a = norm(e.sourceId), b = norm(e.targetId), id = norm(e.id);
+          const f = `${a}→${b}`, r = `${b}→${a}`, u = [a,b].sort().join('—');
+          (dir.get(f) || dir.set(f, []).get(f)!).push(id);
+          (dir.get(r) || dir.set(r, []).get(r)!).push(id);
+          (undir.get(u) || undir.set(u, []).get(u)!).push(id);
+        }
+        
+        const idsNorm = (nodeIds || []).map(norm);
         const edgeIds: string[] = [];
         const virtual: Array<{source:string;target:string}> = [];
-        for (let i = 0; i < nodeIds.length - 1; i++) {
-          const a = nodeIds[i], b = nodeIds[i+1];
-          
-          // B1: Enhanced logging for derivation debugging
-          const forward = dir.get(`${a}→${b}`);
-          const backward = dir.get(`${b}→${a}`);
-          const undirected = undir.get([a,b].sort().join('—'));
-          
-          if (i < 3) { // Log first 3 hops for debugging
-            console.log('[PF MATCH]', a, b, {
-              forward: !!forward, backward: !!backward, undirected: !!undirected,
-              foundIds: forward || backward || undirected || []
-            });
-          }
-          
-          const ids = forward || backward || undirected || [];
-          if (ids.length) edgeIds.push(ids[0]); else virtual.push({ source:a, target:b });
+        
+        for (let i = 0; i < idsNorm.length - 1; i++) {
+          const a = idsNorm[i], b = idsNorm[i+1];
+          const found = dir.get(`${a}→${b}`) || dir.get(`${b}→${a}`) || undir.get([a,b].sort().join('—')) || [];
+          if (found.length) edgeIds.push(found[0]); else virtual.push({ source: a, target: b });
         }
+        
         return { edgeIds, virtual };
       };
 
@@ -268,6 +268,15 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
             console.warn('[PF] missing edgeIds in graph:', missing);
           }
         }
+        
+        // Add invariants logging once per goal
+        console.log('[PF INVARIANTS]', {
+          nodeCount: graph.nodes?.length,
+          edgeCount: graph.edges?.length,
+          pathNodeIds: fallback?.nodeIds?.slice(0, 8),
+          pathLen: fallback?.nodeIds?.length,
+          edgeIdsLen: fallback?.edgeIds?.length
+        });
       }
       console.log('✅ Pathfinding complete:', result);
       
@@ -331,12 +340,50 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
     };
   }, []);
 
+  // Helper for consecutive pair detection (exported for use in Canvas)
+  const buildConsecutivePairSet = useCallback((nodeIds: string[]) => {
+    const s = new Set<string>();
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const a = String(nodeIds[i]).trim();
+      const b = String(nodeIds[i + 1]).trim();
+      s.add(`${a}→${b}`);
+      s.add(`${b}→${a}`); // allow reversed traversal
+    }
+    return s;
+  }, []);
+
+  // Enhanced tier classification with consecutive-pair fallback (exported for use in Canvas)
+  const tierOfEdge = useCallback((
+    e: { id: string; source: string; target: string },
+    activePath?: { edgeIds?: string[]; nodeIds?: string[] }
+  ) => {
+    if (!activePath) return undefined;
+    const edgeIds = new Set((activePath.edgeIds || []).map(x => String(x).trim()));
+    const pathNodeIds = (activePath.nodeIds || []).map(x => String(x).trim());
+    const pairSet = buildConsecutivePairSet(pathNodeIds);
+
+    const src = String(e.source).trim();
+    const tgt = String(e.target).trim();
+
+    // 1) Preferred: edgeIds match
+    if (edgeIds.size && edgeIds.has(String(e.id).trim())) return 'on-path';
+
+    // 2) Fallback: consecutive-pair match
+    if (pairSet.has(`${src}→${tgt}`)) return 'on-path';
+
+    // 3) Related: touches any path node
+    if (pathNodeIds.includes(src) || pathNodeIds.includes(tgt)) return 'related';
+
+    return 'off-path';
+  }, [buildConsecutivePairSet]);
+
   return {
     graph,
     pathfindingResult,
     loading,
     error,
     findPaths,
-    calculateCreditTransfer
+    calculateCreditTransfer,
+    tierOfEdge // Export for use in Canvas
   };
 }

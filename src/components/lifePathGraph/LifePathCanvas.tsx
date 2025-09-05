@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import '@/styles/lifePath.css';
 import { determineNodeGhostStatus } from '@/lib/pathfinding/ghosting';
-import { LifePathGraph } from '@/hooks/useLifePathGraph';
+import { LifePathGraph, useLifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathfindingResult } from '@/types/lifePathGraph';
 import { LifePathNodeComponent } from './LifePathNode';
 import { LifePathEdgeComponent } from './LifePathEdge';
@@ -73,6 +73,9 @@ export default function LifePathCanvas({
   console.log('🔧 LifePathCanvas: Attempting to use useReactFlow hook');
   const reactFlowInstance = useReactFlow();
   console.log('✅ LifePathCanvas: useReactFlow hook successful', { reactFlowInstance });
+  
+  // Get tierOfEdge from hook for consistency
+  const { tierOfEdge } = useLifePathGraph();
   /* RUNTIME AUDIT PANEL – BEGIN */
   const [auditRunning, setAuditRunning] = React.useState(false);
   const [auditLog, setAuditLog] = React.useState<string>('');
@@ -435,21 +438,7 @@ export default function LifePathCanvas({
     return points;
   }, [baseNodes, safeActivePath, isPathEmpty]);
 
-  // Helper function to determine edge tier
-  const tierOfEdge = useCallback((edge: {id:string; source:string; target:string}, activePath?: {edgeIds?: string[]; nodeIds?: string[]}) => {
-    if (!activePath) return undefined;
-    const edgeIds = new Set(activePath.edgeIds || []);
-    const nodeIds = new Set(activePath.nodeIds || []);
-    if (edgeIds.size > 0) {
-      return edgeIds.has(edge.id)
-        ? 'on-path'
-        : (nodeIds.has(edge.source) || nodeIds.has(edge.target)) ? 'related' : 'off-path';
-    }
-    // Fallback when edgeIds haven't populated yet
-    return (nodeIds.has(edge.source) && nodeIds.has(edge.target)) ? 'on-path'
-         : (nodeIds.has(edge.source) || nodeIds.has(edge.target)) ? 'related'
-         : 'off-path';
-  }, []);
+  // tierOfEdge now comes from hook for consistency
 
   // Edges → React Flow (with ID consistency and render-time tiering)
   const reactFlowEdges: Edge[] = useMemo(() => {
@@ -458,12 +447,6 @@ export default function LifePathCanvas({
     
     // Pre-flight logging
     console.log('[RF edges]', edges.map(e => e.id));
-    
-    // Expose edges to scanner for accurate tier counting
-    (window as any).__reactFlowEdges = edges.map(e => ({
-      id: e.id,
-      data: { tier: tierOfEdge({ id: e.id, source: e.sourceId, target: e.targetId }, activePath) }
-    }));
     
     return edges
       .map(e => {
@@ -734,6 +717,7 @@ export default function LifePathCanvas({
   graph={graph}
   pathfindingResult={pathfindingResult}
   activePreset={activePreset}
+  reactFlowEdges={reactFlowEdges}
 />
       
         {/* Metrics Pill */}

@@ -8,9 +8,10 @@ interface VisualScannerProps {
   graph: LifePathGraph;
   pathfindingResult?: PathfindingResult | null;
   activePreset: 'fastest' | 'cheapest' | 'creditMaximized' | 'balanced';
+  reactFlowEdges: any[]; // Pass edges directly for accurate tier counting
 }
 
-export function VisualScanner({ graph, pathfindingResult, activePreset }: VisualScannerProps) {
+export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlowEdges }: VisualScannerProps) {
   // Always visible for debugging - DEV check removed
   const [scanRunning, setScanRunning] = useState(false);
   const [scanReport, setScanReport] = useState<VisualScanSnapshot | null>(null);
@@ -26,7 +27,7 @@ export function VisualScanner({ graph, pathfindingResult, activePreset }: Visual
         graph,
         pathfindingResult,
         activePreset,
-        reactFlowEdges: (window as any).__reactFlowEdges || [] // Pass edges for accurate tier counting
+        reactFlowEdges // Pass edges directly for accurate tier counting
       });
       setScanReport(report);
       markIssues(report);
