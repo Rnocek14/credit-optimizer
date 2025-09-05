@@ -198,7 +198,7 @@ function barycentricSweeps(graph: Graph, sweeps = 4) {
 // --------------------------- Tier Packing (ordered) -------------------------------
 function packTiers(graph: Graph, opts: LayoutOptions = {}) {
   const hGap = opts.hGap ?? 320;
-  const vGap = opts.vGap ?? 28;
+  const vGap = opts.vGap ?? 40;  // Use >= 40 for proper spacing
   const margin = opts.margin ?? 16;
 
   const tiers = barycentricSweeps(graph, opts.maxSweeps ?? 4);
@@ -223,7 +223,7 @@ function packTiers(graph: Graph, opts: LayoutOptions = {}) {
         bumped = false;
         for (const p of placed) {
           const A = { x1: n.x!, y1: n.y!, x2: n.x! + width, y2: n.y! + height };
-          const B = bbox(p);
+          const B = { x1: p.x!, y1: p.y!, x2: p.x! + (p.width ?? 260), y2: p.y! + (p.height ?? 120) };
           if (rectsOverlap(A,B)) { n.y = B.y2 + vGap; bumped = true; }
         }
       }

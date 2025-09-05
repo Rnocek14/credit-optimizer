@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useLayoutEffect } from 'react';
 import {
   ReactFlow,
   Node,
@@ -344,14 +344,14 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Build LayoutGraph once with proper type normalization
+  // Build normalized layoutInput once with conservative defaults
   const layoutInput: LayoutGraph = useMemo(() => ({
     nodes: (graph.nodes || []).map(n => ({
       id: String(n.id),
       label: (n as any).label || n.title || String(n.id),
       lane: (n as any).lane ?? (n.type?.toLowerCase() === 'creditblock' ? 'Transfer' : 'Core'),
       width: (n as any).width ?? 260,
-      height: (n as any).height ?? 120,
+      height: (n as any).height ?? 120,   // default; will be updated with measured pass
       data: n,
     })),
     edges: (graph.edges || []).map(e => ({
@@ -365,48 +365,89 @@ export default function LifePathCanvas({
         'related',
       credit: e.type === 'creditTransfersTo' ? {
         source: ((e as any).creditSource as any) ?? 'ACE',
-        units: (e as any).units || ((e as any).creditTransferRate ? Math.round((e as any).creditTransferRate * 100) : undefined),
-        institution: (e as any).institution || e.metadata?.institution
+        units: (e as any).units ?? ((e as any).creditTransferRate ? Math.round((e as any).creditTransferRate * 100) : undefined),
+        institution: (e as any).institution ?? e.metadata?.institution
       } : undefined,
       data: e,
     })),
   }), [graph.nodes, graph.edges]);
 
-  // Run layout ONCE with proper error handling
-  const laidGraphMemo = useMemo(() => {
-    // DEV banner
-    if (import.meta.env.DEV) {
-      console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
-    }
-    
+  // State for two-pass layout
+  const [laidGraph, setLaidGraph] = useState<LayoutGraph | null>(null);
+  const [didMeasurePass, setDidMeasurePass] = useState(false);
+  const rf = useReactFlow();
+
+  // First pass (assumed sizes)
+  const laidPass1 = useMemo(() => {
     const { graph: laid, scan } = layoutAndScan(
       layoutInput,
       { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
       activePath?.edgeIds || []
     );
-    
-    // DEV assertions
     if (import.meta.env.DEV) {
-      console.log('[LAYOUT V3 ACTIVE]', { 
-        nodes: laid.nodes.length, 
-        edges: laid.edges.length, 
-        tiers: new Set(laid.nodes.map(n => n.tier)).size 
-      });
-      console.log('[SCAN SUMMARY]', scan.summary, 'crossings:', scan.summary.crossings, 'through:', scan.summary.through);
-      
-      const missing = laid.nodes.filter(n => !Number.isFinite(n.x!) || !Number.isFinite(n.y!));
-      if (missing.length) throw new Error('[Canvas] Missing positions for: ' + missing.map(n=>n.id).join(','));
-      
-      if (laid.edges.every(e => !e.points?.length)) {
-        console.warn('[Canvas] No edge points computed - layout may not be applied properly');
-      }
-      
-      if (scan.summary.crossings > 0) console.debug('[CROSSINGS sample]', scan.edgeCrossings.slice(0,5));
-      if (scan.summary.through > 0) console.debug('[THROUGH sample]', scan.throughNodes.slice(0,5));
+      console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
+      console.log('[SCAN PASS1]', scan.summary);
     }
-    
     return laid;
   }, [layoutInput, activePath?.edgeIds?.join(',')]);
+
+  // Measure actual node DOM heights after pass 1 renders, then re-run layout once
+  useLayoutEffect(() => {
+    if (didMeasurePass || !laidPass1) return;
+
+    // Wait for nodes to mount
+    requestAnimationFrame(() => {
+      const zoom = rf.getZoom?.() ?? 1;
+      const measured = new Map<string, number>();
+
+      document.querySelectorAll<HTMLElement>('.react-flow__node[data-id]').forEach(el => {
+        const id = el.getAttribute('data-id') || '';
+        const rect = el.getBoundingClientRect();
+        // Convert CSS pixels to flow units by dividing by zoom
+        const h = Math.ceil(rect.height / Math.max(zoom, 0.001));
+        if (id) measured.set(id, h);
+      });
+
+      // If nothing measured, just keep pass 1
+      if (measured.size === 0) {
+        setLaidGraph(laidPass1);
+        setDidMeasurePass(true);
+        return;
+      }
+
+      // Build a second layoutInput with measured heights (with small padding)
+      const input2: LayoutGraph = {
+        nodes: laidPass1.nodes.map(n => ({
+          ...n,
+          height: Math.max(n.height ?? 120, (measured.get(n.id) ?? (n.height ?? 120)) + 8),
+        })),
+        edges: laidPass1.edges.map(e => ({ ...e })), // same edges
+      };
+
+      const { graph: laid2, scan } = layoutAndScan(
+        input2,
+        { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
+        activePath?.edgeIds || []
+      );
+
+      if (import.meta.env.DEV) console.log('[SCAN PASS2]', scan.summary);
+
+      setLaidGraph(laid2);
+      setDidMeasurePass(true);
+    });
+  }, [laidPass1, didMeasurePass, rf, activePath?.edgeIds]);
+
+  // Choose which graph to render
+  const laidGraphMemo = laidGraph ?? laidPass1;
+
+  // DEV hard-fails
+  if (import.meta.env.DEV) {
+    const missing = laidGraphMemo.nodes.filter(n => !Number.isFinite(n.x!) || !Number.isFinite(n.y!));
+    if (missing.length) throw new Error('[Canvas] Missing positions for: ' + missing.map(n=>n.id).join(','));
+    if (laidGraphMemo.edges.every(e => !e.points?.length)) {
+      console.warn('[Canvas] No edge points computed - router not applied');
+    }
+  }
 
   // Use laidGraphMemo for nodes
   const reactFlowNodes: Node[] = useMemo(() => laidGraphMemo.nodes.map(n => {
@@ -441,7 +482,7 @@ export default function LifePathCanvas({
     };
   }), [laidGraphMemo, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2, graph.edges]);
 
-  // Use laidGraphMemo for edges
+  // Use laidGraphMemo for edges with proper data flow
   const reactFlowEdges: Edge[] = useMemo(() => {
     const visible = new Set(reactFlowNodes.map(n => n.id));
     return laidGraphMemo.edges

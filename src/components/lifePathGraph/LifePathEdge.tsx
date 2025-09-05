@@ -33,75 +33,22 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
 
-  // Use precomputed points from layout system if available, otherwise fallback
-  const points = data?.points as {x:number;y:number}[] | undefined;
+  // 1) Prefer layout-computed geometry with validation
+  const points = (data?.points as {x:number;y:number}[] | undefined)?.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
   
-  const finalEdgePath = points && points.length ? (() => {
-    // If 4 points: cubic Bezier (curved), else polyline
-    if (points.length === 4) {
-      return `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`;
-    } else {
-      return `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
-    }
-  })() : (() => {
-    // Fallback to old routing logic when points not available
-    const pad = LP_VISUAL_V2 ? 28 : 0;
-    const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
-    const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
-
-    if (LP_VISUAL_V2) {
-      const obstacles: Rect[] = [];
-      const nodes = Array.from(document.querySelectorAll('.react-flow__node[data-id]'));
-      nodes.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const container = document.querySelector('.react-flow__viewport');
-        const containerRect = container?.getBoundingClientRect() || { left: 0, top: 0 };
-        
-        obstacles.push({
-          x: rect.left - containerRect.left,
-          y: rect.top - containerRect.top,
-          width: rect.width,
-          height: rect.height,
-          id: el.getAttribute('data-id') || ''
-        });
-      });
-
-      const source = { x: adjustedSourceX, y: sourceY };
-      const target = { x: adjustedTargetX, y: targetY };
-      
-      const waypoints = routeWithDetours(source, target, {
-        sourcePos: sourcePosition,
-        targetPos: targetPosition,
-        obstacles,
-        padding: pad,
-        laneOffsets: DEFAULT_LANE_OFFSETS
-      });
-      
-      if (waypoints.length > 2) {
-        return waypointsToPath(waypoints);
-      }
-      
-      return getSmoothStepPath({
-        sourceX: adjustedSourceX,
-        sourceY,
-        sourcePosition,
-        targetX: adjustedTargetX,
-        targetY,
-        targetPosition,
-        borderRadius: 12,
-      })[0];
-    } else {
-      return getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-        borderRadius: 12,
-      })[0];
-    }
-  })();
+  let finalEdgePath: string;
+  if (points && points.length >= 2) {
+    finalEdgePath = 
+      points.length === 4
+        ? `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
+        : `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
+  } else {
+    // 2) Fallback only when layout points truly unavailable
+    const [fallback] = getSmoothStepPath({ 
+      sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 12 
+    });
+    finalEdgePath = fallback;
+  }
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
   const dataTier = tier || '';
