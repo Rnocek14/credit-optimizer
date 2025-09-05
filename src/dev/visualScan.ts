@@ -270,6 +270,16 @@ export async function runVisualScan(opts: {
   // Scanner must receive reactFlowEdges array as parameter instead of building from DOM
   const reactFlowEdgesFromParam = (opts as any).reactFlowEdges || [];
   
+  // Debug logging to see what we're getting
+  console.info('[visual-scan] Edge data sample:', reactFlowEdgesFromParam.slice(0, 3).map(e => ({
+    id: e.id,
+    source: e.source, 
+    target: e.target,
+    tier: e.data?.tier,
+    hasData: !!e.data,
+    dataKeys: e.data ? Object.keys(e.data) : []
+  })));
+  
   const tiers = reactFlowEdgesFromParam.reduce((acc: any, e: any) => {
     const t = (e.data?.tier) as 'on-path'|'related'|'off-path'|undefined;
     if (t === 'on-path') acc.edgeOn++;
