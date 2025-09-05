@@ -505,7 +505,8 @@ export default function LifePathCanvas({
       });
   }, [laidGraphMemo, reactFlowNodes, activePath?.id, hoveredNode, showPreviousPath, previousPath, safeActivePath.nodeIds]);
 
-  // Debug logging for tier counts
+  // Debug logging for tier counts (temporarily disabled)
+  /*
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const totals = reactFlowEdges.reduce((a, e) => {
@@ -516,13 +517,15 @@ export default function LifePathCanvas({
       return a;
     }, { on: 0, rel: 0, off: 0 });
     console.log('[TIERS]', totals, 'edges:', reactFlowEdges.length,
-                'expectedOn≈', activePath?.edgeIds?.length ?? 0);
+                'expectedOn≈', (activePath?.edgeIds?.length ?? 0));
     if ((activePath?.edgeIds?.length ?? 0) && totals.on !== activePath!.edgeIds!.length) {
       console.warn('[TIER MISMATCH] expected on:', activePath!.edgeIds!.length, 'actual:', totals.on);
     }
-  }, [reactFlowEdges, activePath?.edgeIds?.join(','), activePath?.metadata?.materializedNodes?.join('|')]);
+  }, [reactFlowEdges, activePath?.edgeIds?.join(','), (activePath?.metadata?.materializedNodes?.join('|') || '')]);
+  */
 
-  // Output final acceptance gate status
+  // Output final acceptance gate status (temporarily disabled)
+  /*
   useEffect(() => {
     if (import.meta.env.DEV && LP_VISUAL_V2 && pathfindingResult) {
       const timer = setTimeout(() => {
@@ -552,6 +555,7 @@ export default function LifePathCanvas({
       return () => clearTimeout(timer);
     }
   }, [activePreset, pathfindingResult, LP_VISUAL_V2]);
+  */
 
   // Click handler
   const handleNodeClick = useCallback((_, node: Node) => {
