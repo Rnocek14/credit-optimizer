@@ -205,6 +205,13 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
       setPathfindingResult(result);
       console.log('✅ Pathfinding complete:', result);
+      
+      // Log path info for debugging
+      console.log('[V2] activePath', {
+        nodes: result.fastest?.nodeIds?.length ?? 0,
+        edges: result.fastest?.edgeIds?.length ?? 0,
+        sampleEdges: (result.fastest?.edgeIds ?? []).slice(0,5)
+      });
 
     } catch (err) {
       console.error('❌ Error in pathfinding:', err);
@@ -213,6 +220,13 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       setLoading(false);
     }
   }, [graph]);
+  
+  // Auto-run pathfinding deterministically
+  useEffect(() => {
+    if (!findPaths || !goalId || !graph.nodes?.length) return;
+    const t = setTimeout(() => findPaths(goalId), 150);
+    return () => clearTimeout(t);
+  }, [findPaths, goalId, graph.nodes?.length]);
 
   // Calculate credit transfers
   const calculateCreditTransfer = useCallback(async (

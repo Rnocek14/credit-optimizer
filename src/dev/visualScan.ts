@@ -144,15 +144,43 @@ function edgeThroughNode(edgeSegs: LineSegment[], node: Rect) {
   return false;
 }
 
-export function runVisualScan(opts: {
+// Helper to wait for DOM stability
+async function rAF2() { 
+  return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); 
+}
+
+export async function runVisualScan(opts: {
   graph: any; // LifePathGraph
   pathfindingResult?: any|null;
   activePreset: 'fastest'|'cheapest'|'creditMaximized'|'balanced';
   careerSelector?: (n:any)=>boolean; // default: node.type==='job' || tags include 'career'
-}): VisualScanSnapshot {
+}): Promise<VisualScanSnapshot> {
+  // Wait for DOM stability
+  await rAF2();
+  
   const nodes = getNodeRects();
   const edges = getEdgeSegments();
   const issues: VisualScanIssue[] = [];
+  
+  // Check if we have a real path to analyze
+  const pf = opts.pathfindingResult;
+  const presetMap = pf ? {
+    fastest: pf.fastest, 
+    cheapest: pf.cheapest, 
+    creditMaximized: pf.creditMaximized, 
+    balanced: pf.recommendations?.primary || pf.balanced
+  } : null;
+  const activePath = presetMap ? presetMap[opts.activePreset] : null;
+  const okToScan = (activePath?.nodeIds?.length ?? 0) > 1;
+  
+  if (!okToScan) {
+    return {
+      counts: { nodes: nodes.length, edges: edges.length, labels: 0 },
+      tiers: { edgeOn: 0, edgeRelated: 0, edgeOff: 0 },
+      issues: [],
+      careers: []
+    };
+  }
 
   // Find node overlaps (avoid self-overlaps and duplicates)
   for (let i = 0; i < nodes.length; i++) {
@@ -190,15 +218,7 @@ export function runVisualScan(opts: {
     }
   }
 
-  // Per-career connection map (active preset)
-  const pf = opts.pathfindingResult;
-  const presetMap = pf ? {
-    fastest: pf.fastest, 
-    cheapest: pf.cheapest, 
-    creditMaximized: pf.creditMaximized, 
-    balanced: pf.recommendations?.primary || pf.balanced
-  } : null;
-  const activePath = presetMap ? presetMap[opts.activePreset] : null;
+  // Per-career connection map (already computed above)
 
   const isCareer = opts.careerSelector || ((n:any) =>
     (n.type && n.type.toLowerCase()==='job') ||
