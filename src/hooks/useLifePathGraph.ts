@@ -271,51 +271,54 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         return { edgeIds, virtual };
       };
 
-      // Create path results with enhanced metrics and edge ID guards
-      const createPathResult = (path: string[], optimizedFor: string): PathResult => {
-        const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
-        const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
+  // Create path results with enhanced metrics and edge ID guards
+  const createPathResult = (path: string[], optimizedFor: string): PathResult => {
+    const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
+    const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
-        // Use stitched edge ID derivation to handle junction nodes
-        const { edgeIds: pathEdgeIds, virtual, materializedNodes } = derivePathEdgeIdsStitched(path, graph.edges || []);
-        
-        // B1: Enhanced edge ID guards
-        if (pathEdgeIds.length === 0) {
-          console.warn('[PF] derived edgeIds is empty. First 5 path nodes:', path.slice(0,5));
-          console.warn('[PF] sample graph edges:', (graph.edges || []).slice(0,5));
-          console.warn('[PF] graph node IDs sample:', (graph.edges || []).slice(0,3).map(e => `${e.sourceId}→${e.targetId}`));
-        }
+    // Use stitched edge ID derivation to handle junction nodes
+    const { edgeIds: pathEdgeIds, virtual, materializedNodes } = derivePathEdgeIdsStitched(path, graph.edges || []);
+    
+    // Dedup while preserving order
+    const uniqueEdgeIds = Array.from(new Set(pathEdgeIds));
+    
+    // B1: Enhanced edge ID guards
+    if (uniqueEdgeIds.length === 0) {
+      console.warn('[PF] derived edgeIds is empty. First 5 path nodes:', path.slice(0,5));
+      console.warn('[PF] sample graph edges:', (graph.edges || []).slice(0,5));
+      console.warn('[PF] graph node IDs sample:', (graph.edges || []).slice(0,3).map(e => `${e.sourceId}→${e.targetId}`));
+    }
 
-        // Filter path nodes to only include those that exist in graph
-        const nodeIdSet = new Set(graph.nodes.map(n => n.id));
-        const cleanedNodeIds = path.filter(id => nodeIdSet.has(id));
+    // Filter path nodes to only include those that exist in graph
+    const nodeIdSet = new Set(graph.nodes.map(n => n.id));
+    const cleanedNodeIds = path.filter(id => nodeIdSet.has(id));
 
-        return {
-          id: `path-${optimizedFor}-${Date.now()}`,
-          name: `${optimizedFor.charAt(0).toUpperCase() + optimizedFor.slice(1)} Optimized Path`,
-          description: `Path optimized for ${optimizedFor}`,
-          nodeIds: cleanedNodeIds,
-          edgeIds: pathEdgeIds,
-          totalTime: metrics.totalTime,
-          totalCost: metrics.totalCost,
-          totalCredits: metrics.totalCredits,
-          creditLoss: metrics.creditLoss,
-          difficultyScore: pathNodes.reduce((sum, node) => sum + node.difficulty, 0) / pathNodes.length,
-          roiScore: 75, // Mock ROI score
-          optimizedFor: [optimizedFor as any],
-          hasGhostNodes: false,
-          missingPrerequisites: [],
-          suggestedAlternatives: [],
-          feasible: true,
-          warnings: [],
-          metadata: {
-            institutionsCount: metrics.institutionsCount,
-            prerequisitesSatisfied: metrics.prerequisitesSatisfied,
-            virtualHops: virtual, // Store virtual hops for debugging
-            materializedNodes // Store stitched path nodes
-          }
-        };
-      };
+    return {
+      id: `path-${optimizedFor}-${Date.now()}`,
+      name: `${optimizedFor.charAt(0).toUpperCase() + optimizedFor.slice(1)} Optimized Path`,
+      description: `Path optimized for ${optimizedFor}`,
+      nodeIds: cleanedNodeIds,
+      edgeIds: uniqueEdgeIds, // Use deduped edges
+      totalTime: metrics.totalTime,
+      totalCost: metrics.totalCost,
+      totalCredits: metrics.totalCredits,
+      creditLoss: metrics.creditLoss,
+      difficultyScore: pathNodes.reduce((sum, node) => sum + node.difficulty, 0) / pathNodes.length,
+      roiScore: 75, // Mock ROI score
+      optimizedFor: [optimizedFor as any],
+      hasGhostNodes: false,
+      missingPrerequisites: [],
+      suggestedAlternatives: [],
+      feasible: true,
+      warnings: [],
+      metadata: {
+        institutionsCount: metrics.institutionsCount,
+        prerequisitesSatisfied: metrics.prerequisitesSatisfied,
+        virtualHops: virtual, // Store virtual hops for debugging
+        materializedNodes // Store stitched path nodes
+      }
+    };
+  };
 
 
       const result: PathfindingResult = {
@@ -343,36 +346,21 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       // B3: Set default activePath with stitched, deduped edges
       const fallback = result.fastest || result.recommendations?.primary || result.cheapest || result.creditMaximized;
       if (fallback) {
-        // Apply stitching and deduplication to the active path
-        const stitched = derivePathEdgeIdsStitched(fallback.nodeIds, graph.edges);
-        
-        // IMPORTANT: dedup and persist stitched edges
-        const uniqueEdgeIds = Array.from(new Set(stitched.edgeIds));
-        
-        const enhancedActivePath = {
-          ...fallback,
-          edgeIds: uniqueEdgeIds,
-          metadata: {
-            ...(fallback.metadata || {}),
-            materializedNodes: stitched.materializedNodes,
-            virtualHops: stitched.virtual
-          },
-        };
-        
-        setActivePath(enhancedActivePath);
+        // The createPathResult already applies stitching and deduplication
+        setActivePath(fallback);
         
         // Post-stitch assertions
         console.log('[PF ASSERT]', {
-          pathNodes: enhancedActivePath.nodeIds.length,
-          stitchedUniqueEdges: enhancedActivePath.edgeIds.length,
-          materializedNodes: enhancedActivePath.metadata?.materializedNodes?.length ?? 0,
-          virtualHops: stitched.virtual.length
+          pathNodes: fallback.nodeIds.length,
+          stitchedUniqueEdges: fallback.edgeIds.length,
+          materializedNodes: fallback.metadata?.materializedNodes?.length ?? 0,
+          virtualHops: fallback.metadata?.virtualHops?.length ?? 0
         });
         
         // B4: Edge-ID alignment guardrail
-        if (enhancedActivePath.edgeIds.length) {
-          const edgeSet = new Set((graph.edges||[]).map(e => e.id));
-          const missing = enhancedActivePath.edgeIds.filter(id => !edgeSet.has(id));
+        if (fallback.edgeIds.length) {
+          const edgeSet = new Set((graph.edges||[]).map(e => norm(e.id)));
+          const missing = fallback.edgeIds.filter(id => !edgeSet.has(norm(id)));
           if (missing.length) {
             console.warn('[PF] missing edgeIds in graph:', missing);
           }
@@ -490,6 +478,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
     error,
     findPaths,
     calculateCreditTransfer,
+    assignDepthToMainPath,
+    calculatePathMetrics,
     tierOfEdge, // Export for use in Canvas
     activePath  // Export activePath
   };

@@ -497,9 +497,9 @@ export default function LifePathCanvas({
           : undefined;
 
         const rfEdge: Edge = {
-          id: e.id,                 // A3: Must be graph edge id
-          source: e.sourceId,       // A3: Exactly graph sourceId
-          target: e.targetId,       // A3: Exactly graph targetId
+          id: String(e.id),         // Ensure string ID
+          source: String(e.sourceId), // Ensure string source
+          target: String(e.targetId), // Ensure string target
           type: 'lifePathEdge',
           data: {
             ...e,                   // Keep ids in data too for debugging
@@ -519,18 +519,20 @@ export default function LifePathCanvas({
           },
           style: {
             ...styleEdge(e.type as any),
-            opacity: tier === 'off-path' ? 0.3 : (isRelatedToHovered ? 1 : 0.8),
+            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode)) ? 1 : 0.8,
             strokeWidth: tier === 'on-path' ? 3 : (tier === 'related' ? 2 : 1),
             stroke: tier === 'on-path'
               ? 'hsl(var(--primary) / 0.9)'
               : (tier === 'related' ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted-foreground) / 0.4)'),
           },
-          className: LP_VISUAL_V2 && tier ? `lp-edge-${tier}` : '', // A3: One class per logical edge
+          // Class is nice for CSS, but the COUNTER uses data.tier
+          className: tier ? `lp-edge-${tier}` : '',
         };
 
         return rfEdge;
       });
-    // FORCE recompute on any activePath change (bulletproof dependencies)
+    
+    // B2: bulletproof tier recomputation deps
   }, [
     graph.edges,
     reactFlowNodes,
@@ -538,9 +540,9 @@ export default function LifePathCanvas({
     showPreviousPath,
     previousPath.join(','),
     tierOfEdge,
-    // Critical: Force recompute on any activePath change
+    // FORCE recompute on any activePath change:
     activePath?.id,
-    (activePath?.edgeIds || []).join(','),   // unique, deduped list
+    (activePath?.edgeIds || []).join(','),   // unique, deduped list from fix A
     (activePath?.metadata?.materializedNodes || activePath?.nodeIds || []).join(',')
   ]);
 
