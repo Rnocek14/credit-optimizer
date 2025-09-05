@@ -626,14 +626,12 @@ export default function LifePathCanvas({
 )}
 {/* RUNTIME AUDIT PANEL – END */}
 
-{/* INDEPENDENT VISUAL SCANNER */}
-{import.meta.env.DEV && (
-  <VisualScanner 
-    graph={graph}
-    pathfindingResult={pathfindingResult}
-    activePreset={activePreset}
-  />
-)}
+{/* INDEPENDENT VISUAL SCANNER - Always visible for debugging */}
+<VisualScanner 
+  graph={graph}
+  pathfindingResult={pathfindingResult}
+  activePreset={activePreset}
+/>
       
         {/* Metrics Pill */}
       <div className="flex items-center gap-4">
