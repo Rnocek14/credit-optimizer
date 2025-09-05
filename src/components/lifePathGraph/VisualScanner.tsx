@@ -28,6 +28,22 @@ export function VisualScanner({ graph, pathfindingResult, activePreset }: Visual
       });
       setScanReport(report);
       markIssues(report);
+      
+      // Log acceptance gate status
+      const totalTiers = (report.tiers?.edgeOn || 0) + (report.tiers?.edgeRelated || 0) + (report.tiers?.edgeOff || 0);
+      const throughNodes = report.issues.filter(i => i.type === 'EDGE_THROUGH_NODE').length;
+      const overlaps = report.issues.filter(i => i.type === 'NODE_OVERLAP').length;
+      const crossings = report.issues.filter(i => i.type === 'EDGE_CROSSING').length;
+      const missingLabels = report.issues.filter(i => i.type === 'MISSING_LABEL').length;
+      
+      console.info('[visual-scan] Acceptance Gates:', {
+        tiersDetected: totalTiers > 0 ? '✅' : '❌',
+        noThroughNodes: throughNodes <= 1 ? '✅' : '❌',
+        lowOverlaps: overlaps <= 2 ? '✅' : '❌', 
+        lowCrossings: crossings <= 2 ? '✅' : '❌',
+        hasLabels: report.counts.labels > 0 && missingLabels === 0 ? '✅' : '❌'
+      });
+      
       console.info('[visual-scan]', report);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';

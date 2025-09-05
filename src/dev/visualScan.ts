@@ -31,6 +31,9 @@ type LineSegment = { x1: number; y1: number; x2: number; y2: number };
 const $all = (sel: string, root: Document | HTMLElement = document) =>
   Array.from(root.querySelectorAll(sel)) as HTMLElement[];
 
+/**
+ * Gets all node rectangles with improved deduplication
+ */
 function getNodeRects(): Rect[] {
   // Query both test IDs and react-flow nodes to ensure deduplication
   const selectors = ['[data-testid="lp-node"]', '.react-flow__node[data-id]'];
@@ -255,6 +258,19 @@ export function runVisualScan(opts: {
   };
 
   const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;
+
+  // Enhanced logging for debugging
+  console.info('[visual-scan]', {
+    tiers: `${tiers.edgeOn}/${tiers.edgeRelated}/${tiers.edgeOff}`,
+    issues: issues.length,
+    breakdown: {
+      overlaps: issues.filter(i => i.type === 'NODE_OVERLAP').length,
+      crossings: issues.filter(i => i.type === 'EDGE_CROSSING').length,
+      throughNodes: issues.filter(i => i.type === 'EDGE_THROUGH_NODE').length,
+      missingLabels: issues.filter(i => i.type === 'MISSING_LABEL').length
+    },
+    labels
+  });
 
   return {
     counts: { nodes: nodes.length, edges: edges.length, labels },

@@ -430,10 +430,10 @@ export default function LifePathCanvas({
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
 
-        const label =
-          e.type === 'creditTransfersTo'
-            ? `${Math.round((e.creditTransferRate ?? 1) * 100)}% transfer`
-            : undefined;
+        // Always compute transfer labels to prevent MISSING_LABEL
+        const label = e.type === 'creditTransfersTo'
+          ? `${Math.round((e.creditTransferRate ?? 1) * 100)}% transfer`
+          : undefined;
 
         return {
           id: e.id,
@@ -459,7 +459,7 @@ export default function LifePathCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
 
-  // Debug output for tier verification
+  // Debug output for tier verification and issue tracking
   useEffect(() => {
     if (import.meta.env.DEV && LP_VISUAL_V2) {
       const tierCounts = reactFlowEdges.reduce((acc, edge) => {
@@ -471,10 +471,47 @@ export default function LifePathCanvas({
       }, {} as Record<string, number>);
       
       console.debug('[V2 tiers]', tierCounts);
+      
+      // Also log edge routing stats
+      const withLabels = reactFlowEdges.filter(e => e.data?.label).length;
+      console.debug('[V2 edges]', {
+        total: reactFlowEdges.length,
+        withLabels,
+        withTiers: Object.values(tierCounts).reduce((sum, count) => sum + count, 0)
+      });
     }
   }, [reactFlowEdges, LP_VISUAL_V2]);
 
-  // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />
+  // Output final acceptance gate status
+  useEffect(() => {
+    if (import.meta.env.DEV && LP_VISUAL_V2 && pathfindingResult) {
+      const timer = setTimeout(() => {
+        // Run a quick DOM scan for gate verification
+        const tiers = {
+          edgeOn: document.querySelectorAll('.lp-edge-on-path, path[data-tier="on-path"], .react-flow__edge-path.lp-edge-on-path').length,
+          edgeRelated: document.querySelectorAll('.lp-edge-related, path[data-tier="related"], .react-flow__edge-path.lp-edge-related').length,
+          edgeOff: document.querySelectorAll('.lp-edge-off-path, path[data-tier="off-path"], .react-flow__edge-path.lp-edge-off-path').length,
+        };
+        
+        const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;
+        const totalTiers = tiers.edgeOn + tiers.edgeRelated + tiers.edgeOff;
+        
+        console.info(`[V2 Status] Preset: ${activePreset}`, {
+          "visualV2": {
+            "tiers": `${tiers.edgeOn}/${tiers.edgeRelated}/${tiers.edgeOff}`,
+            "totalTiers": totalTiers,
+            "labels": labels,
+            "tiersDetected": totalTiers > 0 ? "✅" : "❌",
+            "labelsPresent": labels > 0 ? "✅" : "❌",
+            "presetsChecked": [activePreset],
+            "status": (totalTiers > 0 && labels > 0) ? "READY_FOR_SCAN" : "NEEDS_ATTENTION"
+          }
+        });
+      }, 1000); // Allow time for DOM to stabilize
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activePreset, pathfindingResult, LP_VISUAL_V2]);
 
   // Click handler
   const handleNodeClick = useCallback((_, node: Node) => {

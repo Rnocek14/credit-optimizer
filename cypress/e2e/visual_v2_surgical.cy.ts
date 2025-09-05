@@ -86,6 +86,12 @@ describe('Visual V2 — Surgical Quality Gates', () => {
         const missingLabels = (report.issues || []).filter((i:any)=>i.type==='MISSING_LABEL');
         expect(missingLabels.length, `${preset}: missing labels`).to.equal(0);
 
+        // DOM sanity: at least one path with data-tier exists
+        cy.get('body').then($body => {
+          const tierPaths = $body.find('path[data-tier], .react-flow__edge-path[class*="lp-edge-"]').length;
+          expect(tierPaths, `${preset}: tier paths in DOM`).to.be.greaterThan(0);
+        });
+
         // Career connectivity sanity
         (report.careers || []).forEach((c:any)=>{
           expect(c.pathNodes.length, `${c.careerLabel} has path nodes`).to.be.greaterThan(0);

@@ -2,6 +2,7 @@ import React from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
 import { GraphEdge } from '@/types/lifePathGraph';
 import { LP_VISUAL_V2 } from '@/lib/flags';
+import { routeWithDetours, waypointsToPath, DEFAULT_LANE_OFFSETS, type Rect } from '@/lib/pathfinding/edgeRouting';
 
 interface LifePathEdgeData {
   edge: GraphEdge;
@@ -30,31 +31,69 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
 
-  // V2: Higher padding to avoid node rects
+  // V2: Advanced routing with detours to avoid node collisions
   const pad = LP_VISUAL_V2 ? 28 : 0;
   const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
   const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
 
-  // Use SmoothStep with proper coordinates
-  const finalEdgePath = LP_VISUAL_V2
-    ? getSmoothStepPath({
-        sourceX: adjustedSourceX,
-        sourceY,
-        sourcePosition,
-        targetX: adjustedTargetX,
-        targetY,
-        targetPosition,
-        borderRadius: 12,
-      })[0]
-    : getSmoothStepPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-        borderRadius: 12,
-      })[0];
+  // Get obstacle nodes for collision detection
+  const getObstacles = (): Rect[] => {
+    if (!LP_VISUAL_V2) return [];
+    
+    const nodes = Array.from(document.querySelectorAll('.react-flow__node[data-id]'));
+    return nodes.map(el => {
+      const rect = el.getBoundingClientRect();
+      const container = document.querySelector('.react-flow__viewport');
+      const containerRect = container?.getBoundingClientRect() || { left: 0, top: 0 };
+      
+      return {
+        x: rect.left - containerRect.left,
+        y: rect.top - containerRect.top,
+        width: rect.width,
+        height: rect.height,
+        id: el.getAttribute('data-id') || ''
+      };
+    });
+  };
+
+  // Route with detours if V2 enabled
+  const finalEdgePath = LP_VISUAL_V2 ? (() => {
+    const obstacles = getObstacles();
+    const source = { x: adjustedSourceX, y: sourceY };
+    const target = { x: adjustedTargetX, y: targetY };
+    
+    const waypoints = routeWithDetours(source, target, {
+      sourcePos: sourcePosition,
+      targetPos: targetPosition,
+      obstacles,
+      padding: pad,
+      laneOffsets: DEFAULT_LANE_OFFSETS
+    });
+    
+    // If we have waypoints, create a polyline path
+    if (waypoints.length > 2) {
+      return waypointsToPath(waypoints);
+    }
+    
+    // Fallback to SmoothStep
+    return getSmoothStepPath({
+      sourceX: adjustedSourceX,
+      sourceY,
+      sourcePosition,
+      targetX: adjustedTargetX,
+      targetY,
+      targetPosition,
+      borderRadius: 12,
+    })[0];
+  })() : getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 12,
+  })[0];
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
   const dataTier = tier || '';
@@ -97,7 +136,7 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
           data-testid="lp-edge-label"
           width={120}
           height={28}
-          x={(sourceX + targetX) / 2 - 60}
+          x={(adjustedSourceX + adjustedTargetX) / 2 - 60}
           y={(sourceY + targetY) / 2 - 14}
           className="pointer-events-none"
         >
