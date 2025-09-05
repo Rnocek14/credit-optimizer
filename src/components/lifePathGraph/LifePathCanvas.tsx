@@ -344,205 +344,112 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Nodes → React Flow with unified layout system
-  const reactFlowNodes: Node[] = useMemo(() => {
-    if (!graph?.nodes?.length) return [];
-    
-    // Map to layout format
-    const graphV3: LayoutGraph = {
-      nodes: (graph.nodes || []).map(n => ({
-        id: String(n.id),
-        label: n.title || String(n.id),
-        lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
-        width: 220,
-        height: 88,
-        data: n,
-      })),
-      edges: (graph.edges || []).map(e => ({
-        id: String(e.id),
-        source: String(e.sourceId),
-        target: String(e.targetId),
-        kind:
-          e.type === 'requires' ? 'requires' :
-          e.type === 'enables' ? 'teaches' :
-          e.type === 'creditTransfersTo' ? 'credit_transfer' :
-          'related',
-        credit: e.type === 'creditTransfersTo' ? {
-          source: 'ACE' as const,
-          units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
-          institution: undefined
-        } : undefined,
-        data: e,
-      })),
-    };
+  // Build LayoutGraph once
+  const layoutInput: LayoutGraph = useMemo(() => ({
+    nodes: (graph.nodes || []).map(n => ({
+      id: String(n.id),
+      label: n.title || String(n.id),
+      lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
+      width: 220,
+      height: 88,
+      data: n,
+    })),
+    edges: (graph.edges || []).map(e => ({
+      id: String(e.id),
+      source: String(e.sourceId),
+      target: String(e.targetId),
+      kind:
+        e.type === 'requires' ? 'requires' :
+        e.type === 'enables'  ? 'teaches'  :
+        e.type === 'creditTransfersTo' ? 'credit_transfer' :
+        'related',
+      credit: e.type === 'creditTransfersTo' ? {
+        source: 'ACE' as any,
+        units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
+        institution: e.metadata?.institution
+      } : undefined,
+      data: e,
+    })),
+  }), [graph.nodes, graph.edges]);
 
-    // Run layout + scan
-    const { graph: laidGraph } = layoutAndScan(
-      graphV3,
-      { hGap: 320, vGap: 28, laneOrder: ['Core', 'Electives', 'Transfer', 'Orphan'] },
+  // Run layout ONCE
+  const laidGraphMemo = useMemo(() => {
+    const { graph: laid, scan } = layoutAndScan(
+      layoutInput,
+      { hGap: 320, vGap: 28, laneOrder: ['Core','Electives','Transfer','Orphan'] },
       activePath?.edgeIds || []
     );
+    if (import.meta.env.DEV) console.log('[SCAN SUMMARY]', scan.summary);
+    return laid;
+  }, [layoutInput, activePath?.edgeIds?.join(',')]);
 
-    return laidGraph.nodes.map(n => {
-      const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
-      const isInMainPath = safeActivePath.nodeIds.includes(n.id);
-      const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(n.id) + 1 : undefined;
+  // Use laidGraphMemo for nodes
+  const reactFlowNodes: Node[] = useMemo(() => laidGraphMemo.nodes.map(n => {
+    const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
+    const isInMainPath = safeActivePath.nodeIds.includes(n.id);
+    const stepNumber = isInMainPath ? safeActivePath.nodeIds.indexOf(n.id) + 1 : undefined;
 
-      return {
-        id: n.id,
-        position: { x: n.x!, y: n.y! }, // Use computed position
-        data: { 
-          ...n.data,
-          node: n.data,
-          isSelected: selectedNode?.id === n.id,
-          isInPath: isInMainPath,
-          isMainPath: isInMainPath,
-          stepNumber,
-          tier: nodeTier,
-          isHovered: hoveredNode === n.id,
-          showPreviousPath: showPreviousPath && previousPath.includes(n.id) && !safeActivePath.nodeIds.includes(n.id),
-        },
-        type: 'lifePathNode',
-        style: {
-          opacity: 1,
-          zIndex: isInMainPath ? 10 : 1,
-        },
-        className: LP_VISUAL_V2 && nodeTier ? `lp-node-${nodeTier}` : '',
-        sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
-        targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
-        hidden: false,
-        draggable: false,
-      };
-    });
-  }, [graph?.nodes, graph?.edges, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2, activePath?.edgeIds]);
-  
+    return {
+      id: n.id,
+      position: { x: n.x!, y: n.y! },
+      data: { 
+        ...n.data,
+        node: n.data,
+        isSelected: selectedNode?.id === n.id,
+        isInPath: isInMainPath,
+        isMainPath: isInMainPath,
+        stepNumber,
+        tier: nodeTier,
+        isHovered: hoveredNode === n.id,
+        showPreviousPath: showPreviousPath && previousPath.includes(n.id) && !safeActivePath.nodeIds.includes(n.id),
+      },
+      type: 'lifePathNode',
+      style: {
+        opacity: 1,
+        zIndex: isInMainPath ? 10 : 1,
+      },
+      className: LP_VISUAL_V2 && nodeTier ? `lp-node-${nodeTier}` : '',
+      sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
+      targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
+      hidden: false,
+      draggable: false,
+    };
+  }), [laidGraphMemo, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2, graph.edges]);
 
-  // Branch decision detection (Algebra vs CLEP vs Univ)
-  type BranchOption = {
-    id: string;
-    title: string;
-    type: string;
-    time?: number;
-    cost?: number;
-    credits?: number;
-    isRecommended?: boolean;
-    preset?: string;
-  };
-
-  const branchPoints = useMemo(() => {
-    if (!safeActivePath?.nodeIds?.length) return [];
-    const points: { anchorNodeId: string; options: BranchOption[] }[] = [];
-
-    // Simple heuristic: find nodes at depth 1 that share skill outcomes or equivalency
-    const algebraLike = baseNodes.filter(n =>
-      n.type === "course" &&
-      (n.title.toLowerCase().includes("algebra") || n.tags?.includes("math")) &&
-      (n.attributes?.depth === 1)
-    );
-
-    if (algebraLike.length >= 2) {
-      points.push({
-        anchorNodeId: algebraLike[0].id,
-        options: algebraLike.slice(0, 3).map(n => ({
-          id: n.id,
-          title: n.title,
-          type: n.type,
-          time: Math.ceil((n.estimatedHours || 120) / 40),
-          cost: n.cost || 0,
-          credits: n.credits || 0,
-          isRecommended: safeActivePath.nodeIds.includes(n.id),
-          preset: isPathEmpty ? "balanced" : "active",
-        }))
-      });
-    }
-
-    return points;
-  }, [baseNodes, safeActivePath, isPathEmpty]);
-
-  // tierOfEdge now comes from hook for consistency
-
-  // Edges → React Flow with layout-computed positions and tiers
+  // Use laidGraphMemo for edges
   const reactFlowEdges: Edge[] = useMemo(() => {
-    if (!graph?.edges?.length) return [];
-    
-    // Map to layout format (same as nodes)
-    const graphV3: LayoutGraph = {
-      nodes: (graph.nodes || []).map(n => ({
-        id: String(n.id),
-        label: n.title || String(n.id),
-        lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
-        width: 220,
-        height: 88,
-        data: n,
-      })),
-      edges: (graph.edges || []).map(e => ({
-        id: String(e.id),
-        source: String(e.sourceId),
-        target: String(e.targetId),
-        kind:
-          e.type === 'requires' ? 'requires' :
-          e.type === 'enables' ? 'teaches' :
-          e.type === 'creditTransfersTo' ? 'credit_transfer' :
-          'related',
-        credit: e.type === 'creditTransfersTo' ? {
-          source: 'ACE' as const,
-          units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
-          institution: undefined
-        } : undefined,
-        data: e,
-      })),
-    };
-
-    const { graph: laidGraph } = layoutAndScan(
-      graphV3,
-      { hGap: 320, vGap: 28, laneOrder: ['Core', 'Electives', 'Transfer', 'Orphan'] },
-      activePath?.edgeIds || []
-    );
-
-    const visibleNodeIds = new Set(reactFlowNodes.map(n => n.id));
-    
-    return laidGraph.edges
-      .filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
-      .map(edge => {
-        // ALWAYS compute tier during mapping - no feature flag gates
-        const tier = tierOfEdge(
-          { id: edge.id, source: edge.source, target: edge.target },
-          activePath
-        );
-
-        const isRelatedToHovered = !!hoveredNode && (edge.source === hoveredNode || edge.target === hoveredNode);
-
-        // Always compute transfer labels to prevent MISSING_LABEL
-        const label = edge.kind === 'credit_transfer'
-          ? (edge.badge?.text || edge.data?.label || 'Transfer')
-          : edge.data?.label;
-
+    const visible = new Set(reactFlowNodes.map(n => n.id));
+    return laidGraphMemo.edges
+      .filter(e => visible.has(e.source) && visible.has(e.target))
+      .map(e => {
+        const tier = tierOfEdge({ id: e.id, source: e.source, target: e.target }, activePath);
+        const isRelatedToHovered = !!hoveredNode && (e.source === hoveredNode || e.target === hoveredNode);
+        
         return {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
+          id: e.id,
+          source: e.source,
+          target: e.target,
           type: 'lifePathEdge',
           data: {
-            ...edge.data,
-            tier, // Always set tier in data
-            edgeLabel: label,
+            ...e.data,
+            tier,
+            edgeLabel: e.kind === 'credit_transfer' ? (e.badge?.text || e.data?.label || 'Transfer') : e.data?.label,
+            badge: e.badge,
+            points: e.points, // polyline from router
             isRelatedToHovered,
             showPreviousPath: showPreviousPath &&
-              previousPath.some(id => [edge.source, edge.target].includes(id)) &&
-              !safeActivePath.nodeIds.some(id => [edge.source, edge.target].includes(id)),
-            badge: edge.badge, // { text, tone }
-            points: edge.points, // polyline points from router
+              previousPath.some(id => [e.source, e.target].includes(id)) &&
+              !safeActivePath.nodeIds.some(id => [e.source, e.target].includes(id)),
           },
-          className: tier ? `lp-edge-${tier}` : undefined, // Also set className for CSS
+          className: tier ? `lp-edge-${tier}` : undefined,
           style: {
             ...styleEdge(
-              edge.kind === 'requires' ? 'requires' :
-              edge.kind === 'teaches' ? 'enables' :
-              edge.kind === 'credit_transfer' ? 'creditTransfersTo' :
-              'enables'
+              e.kind === 'requires' ? 'requires' :
+              e.kind === 'teaches'  ? 'enables' :
+              e.kind === 'credit_transfer' ? 'creditTransfersTo' : 'enables'
             ),
-            ...(edge.style || {}), // respect dashed credit edges
-            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (edge.source === hoveredNode || edge.target === hoveredNode)) ? 1 : 0.8,
+            ...(e.style || {}), // keep dashed for credit
+            opacity: tier === 'off-path' ? 0.3 : (hoveredNode && (e.source === hoveredNode || e.target === hoveredNode)) ? 1 : 0.8,
             strokeWidth: tier === 'on-path' ? 3 : (tier === 'related' ? 2 : 1),
             stroke: tier === 'on-path'
               ? 'hsl(var(--primary) / 0.9)'
@@ -550,48 +457,24 @@ export default function LifePathCanvas({
           },
         };
       });
-  }, [
-    graph?.edges,
-    reactFlowNodes,
-    hoveredNode,
-    showPreviousPath,
-    previousPath.join(','),
-    tierOfEdge,
-    // FORCE recompute on any activePath change:
-    activePath?.id,
-    (activePath?.edgeIds || []).join(','),   // unique, deduped list
-    (activePath?.metadata?.materializedNodes || activePath?.nodeIds || []).join(',')
-  ]);
+  }, [laidGraphMemo, reactFlowNodes, activePath?.id, (activePath?.edgeIds||[]).join(','), hoveredNode, showPreviousPath, previousPath.join(','), tierOfEdge, safeActivePath.nodeIds]);
 
-  // Debug output for tier verification and acceptance gate tracking
+  // Debug logging for tier counts
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      const counts = reactFlowEdges.reduce((a, e) => {
-        const t = e.data?.tier;
-        if (t === 'on-path') a.on++;
-        else if (t === 'related') a.rel++;
-        else if (t === 'off-path') a.off++;
-        return a;
-      }, { on:0, rel:0, off:0 });
-      
-      // Key assertion: counts should match expectations
-      console.log('[TIERS]', counts, 'edges:', reactFlowEdges.length,
-                  'expectedOn≈', activePath?.edgeIds?.length ?? 0);
-      
-      // Verify we have the expected counts
-      if (activePath?.edgeIds?.length && counts.on !== activePath.edgeIds.length) {
-        console.warn('[TIER MISMATCH] Expected On:', activePath.edgeIds.length, 'Actual:', counts.on);
-      }
-      
-      // Also log edge routing stats
-      const withLabels = reactFlowEdges.filter(e => e.data?.label).length;
-      console.debug('[V2 edges]', {
-        total: reactFlowEdges.length,
-        withLabels,
-        withTiers: counts.on + counts.rel + counts.off
-      });
+    if (!import.meta.env.DEV) return;
+    const totals = reactFlowEdges.reduce((a, e) => {
+      const t = e.data?.tier;
+      if (t === 'on-path') a.on++;
+      else if (t === 'related') a.rel++;
+      else if (t === 'off-path') a.off++;
+      return a;
+    }, { on: 0, rel: 0, off: 0 });
+    console.log('[TIERS]', totals, 'edges:', reactFlowEdges.length,
+                'expectedOn≈', activePath?.edgeIds?.length ?? 0);
+    if ((activePath?.edgeIds?.length ?? 0) && totals.on !== activePath!.edgeIds!.length) {
+      console.warn('[TIER MISMATCH] expected on:', activePath!.edgeIds!.length, 'actual:', totals.on);
     }
-  }, [reactFlowEdges, LP_VISUAL_V2]);
+  }, [reactFlowEdges, activePath?.edgeIds?.join(','), activePath?.metadata?.materializedNodes?.join('|')]);
 
   // Output final acceptance gate status
   useEffect(() => {

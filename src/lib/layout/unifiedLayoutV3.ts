@@ -40,6 +40,9 @@ interface LayoutOptions {
   hGap?: number;
   vGap?: number;
   laneOrder?: string[];
+  margin?: number;
+  avoidRadius?: number;
+  maxSweeps?: number;
 }
 
 const norm = (s: any) => String(s ?? '').trim();
@@ -47,50 +50,77 @@ const norm = (s: any) => String(s ?? '').trim();
 // --------------------------- SCC Tiering -------------------------------
 function assignTiersWithSCC(graph: Graph) {
   const nodes = graph.nodes;
-  const edges = graph.edges.filter(e => e.kind !== 'credit_transfer'); // exclude credit edges from tiering
-  
+  const byId = new Map(nodes.map(n => [n.id, n]));
+
+  // build adjacency excluding credit_transfer
   const adj = new Map<Id, Id[]>();
   nodes.forEach(n => adj.set(n.id, []));
-  edges.forEach(e => {
-    if (adj.has(e.source) && adj.has(e.target)) {
-      adj.get(e.source)!.push(e.target);
-    }
+  graph.edges.forEach(e => {
+    if (e.kind === 'credit_transfer') return;
+    if (adj.has(e.source) && adj.has(e.target)) adj.get(e.source)!.push(e.target);
   });
 
-  // Simple topological sort with cycle detection
-  const visited = new Set<Id>();
-  const visiting = new Set<Id>();
-  const tiers = new Map<Id, number>();
-  
-  function visit(nodeId: Id): number {
-    if (tiers.has(nodeId)) return tiers.get(nodeId)!;
-    if (visiting.has(nodeId)) return 0; // cycle detected, assign tier 0
-    
-    visiting.add(nodeId);
-    let maxTier = 0;
-    
-    for (const neighbor of adj.get(nodeId) || []) {
-      maxTier = Math.max(maxTier, visit(neighbor) + 1);
+  // Tarjan
+  let idx = 0;
+  const I: Record<string, number> = {};
+  const L: Record<string, number> = {};
+  const S: Id[] = [];
+  const onS = new Set<Id>();
+  const comps: Id[][] = [];
+
+  function strong(v: Id) {
+    I[v] = L[v] = idx++;
+    S.push(v); onS.add(v);
+    for (const w of adj.get(v) || []) {
+      if (I[w] === undefined) { strong(w); L[v] = Math.min(L[v], L[w]); }
+      else if (onS.has(w))   { L[v] = Math.min(L[v], I[w]); }
     }
-    
-    visiting.delete(nodeId);
-    visited.add(nodeId);
-    tiers.set(nodeId, maxTier);
-    return maxTier;
+    if (L[v] === I[v]) {
+      const comp: Id[] = [];
+      while (true) {
+        const w = S.pop()!; onS.delete(w); comp.push(w);
+        if (w === v) break;
+      }
+      comps.push(comp);
+    }
+  }
+  nodes.forEach(n => { if (I[n.id] === undefined) strong(n.id); });
+
+  // component index per node
+  const compOf: Record<Id, number> = {};
+  comps.forEach((c, i) => c.forEach(id => compOf[id] = i));
+
+  // condensation DAG
+  const dag = new Map<number, Set<number>>();
+  comps.forEach((_, i) => dag.set(i, new Set()));
+  graph.edges.forEach(e => {
+    if (e.kind === 'credit_transfer') return;
+    const a = compOf[e.source], b = compOf[e.target];
+    if (a !== undefined && b !== undefined && a !== b) dag.get(a)!.add(b);
+  });
+
+  // Kahn topo + longest depth
+  const indeg = new Map<number, number>();
+  comps.forEach((_, i) => indeg.set(i, 0));
+  dag.forEach((to, i) => to.forEach(j => indeg.set(j, (indeg.get(j) || 0) + 1)));
+  const Q: number[] = [];
+  indeg.forEach((d, i) => { if (d === 0) Q.push(i); });
+  const order: number[] = [];
+  while (Q.length) {
+    const i = Q.shift()!;
+    order.push(i);
+    dag.get(i)!.forEach(j => { indeg.set(j, indeg.get(j)! - 1); if (indeg.get(j) === 0) Q.push(j); });
   }
 
-  nodes.forEach(n => {
-    if (!visited.has(n.id)) {
-      visit(n.id);
-    }
+  const depth = new Map<number, number>();
+  order.forEach(i => depth.set(i, 0));
+  order.forEach(i => {
+    const d = depth.get(i)!;
+    dag.get(i)!.forEach(j => depth.set(j, Math.max(depth.get(j)!, d + 1)));
   });
 
-  // Assign tiers to nodes
-  nodes.forEach(n => {
-    n.tier = tiers.get(n.id) || 0;
-  });
-
-  return { comps: Array.from(new Set(tiers.values())).length };
+  nodes.forEach(n => (n.tier = depth.get(compOf[n.id]) || 0));
+  return { comps, compOf };
 }
 
 // --------------------------- Crossing Minimization -------------------------------
@@ -119,62 +149,86 @@ function minimizeCrossings(graph: Graph, opts: LayoutOptions = {}) {
 
 // --------------------------- Tier Packing -------------------------------
 function packTiers(graph: Graph, opts: LayoutOptions = {}) {
-  const hGap = opts.hGap || 320;
-  const vGap = opts.vGap || 28;
-  
-  const tierGroups = new Map<number, Node[]>();
-  graph.nodes.forEach(n => {
-    const tier = n.tier || 0;
-    if (!tierGroups.has(tier)) tierGroups.set(tier, []);
-    tierGroups.get(tier)!.push(n);
-  });
+  const hGap = opts.hGap ?? 320;
+  const vGap = opts.vGap ?? 28;
+  const margin = (opts as any).margin ?? 16;
 
-  const tiers = Array.from(tierGroups.keys()).sort((a, b) => a - b);
-  
-  tiers.forEach(tierNum => {
-    const nodes = tierGroups.get(tierNum)!;
-    const x = tierNum * hGap;
-    
-    let y = 0;
-    nodes.forEach(node => {
-      node.x = x;
-      node.y = y;
-      y += node.height + vGap;
-    });
-  });
+  const tiers = new Map<number, Node[]>();
+  for (const n of graph.nodes) {
+    const t = n.tier || 0;
+    if (!tiers.has(t)) tiers.set(t, []);
+    tiers.get(t)!.push(n);
+  }
+
+  const maxT = Math.max(...[...tiers.keys()]);
+  for (let t = 0; t <= maxT; t++) {
+    const col = (tiers.get(t) || []).sort((a,b) => ((a as any).__rank||0) - ((b as any).__rank||0));
+    let y = margin;
+    const placed: Node[] = [];
+    for (const n of col) {
+      n.x = margin + t * hGap;
+      n.y = y;
+      // bump until no overlap with already placed in the same tier
+      let bumped = true, guard = 0;
+      while (bumped && guard++ < 50) {
+        bumped = false;
+        for (const p of placed) {
+          const A = bbox(n), B = bbox(p);
+          if (rectsOverlap(A, B)) { 
+            n.y = B.y2 + vGap; 
+            bumped = true; 
+          }
+        }
+      }
+      placed.push(n);
+      y = bbox(n).y2 + vGap;
+    }
+  }
 }
 
 // --------------------------- Edge Routing -------------------------------
 function routeEdges(graph: Graph, opts: LayoutOptions = {}) {
-  const nodeMap = new Map<Id, Node>();
-  graph.nodes.forEach(n => nodeMap.set(n.id, n));
+  const avoid = ((opts as any).avoidRadius ?? 12) + 6;
+  const boxes = new Map(graph.nodes.map(n => [n.id, bbox(n)]));
 
-  graph.edges.forEach(edge => {
-    const source = nodeMap.get(edge.source);
-    const target = nodeMap.get(edge.target);
-    
-    if (!source || !target) return;
+  function ortho(a: Node, b: Node) {
+    const A = boxes.get(a.id)!, B = boxes.get(b.id)!;
+    const start = { x: A.x2 + 4, y: (A.y1 + A.y2)/2 };
+    const end   = { x: B.x1 - 4, y: (B.y1 + B.y2)/2 };
+    const pts = [start, { x: (start.x + end.x)/2, y: start.y }, { x: (start.x + end.x)/2, y: end.y }, end];
 
-    // Simple direct routing with basic obstacle avoidance
-    const sx = (source.x || 0) + source.width;
-    const sy = (source.y || 0) + source.height / 2;
-    const tx = target.x || 0;
-    const ty = (target.y || 0) + target.height / 2;
+    // detour if any segment intersects any box (except endpoints)
+    const hitRect = (s:{x:number;y:number}, t:{x:number;y:number}, R:{x1:number;y1:number;x2:number;y2:number}) => {
+      const rx1 = Math.min(s.x,t.x), rx2 = Math.max(s.x,t.x);
+      const ry1 = Math.min(s.y,t.y), ry2 = Math.max(s.y,t.y);
+      return !(rx2 < R.x1 - avoid || rx1 > R.x2 + avoid || ry2 < R.y1 - avoid || ry1 > R.y2 + avoid);
+    };
+    const detour = (i:number, dir:1|-1) => {
+      const s = pts[i], t = pts[i+1];
+      const y = s.y + dir * (avoid + 12);
+      pts.splice(i+1, 0, { x: s.x, y }, { x: t.x, y });
+    };
 
-    // Create waypoints for routing
-    const points: Point[] = [];
-    points.push({ x: sx, y: sy });
-    
-    // Add intermediate waypoint if nodes are far apart
-    if (Math.abs(tx - sx) > 200) {
-      const midX = sx + (tx - sx) * 0.7;
-      points.push({ x: midX, y: sy });
-      points.push({ x: midX, y: ty });
+    let changed = true, guard = 0;
+    while (changed && guard++ < 20) {
+      changed = false;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const s = pts[i], t = pts[i+1];
+        for (const [id,R] of boxes) {
+          if (id === a.id || id === b.id) continue;
+          if (hitRect(s,t,R)) { detour(i, (i%2===0?1:-1)); changed = true; break; }
+        }
+        if (changed) break;
+      }
     }
-    
-    points.push({ x: tx, y: ty });
-    edge.points = points;
-  });
+    return pts;
+  }
+
+  for (const e of graph.edges) {
+    const s = graph.nodes.find(n => n.id === e.source)!;
+    const t = graph.nodes.find(n => n.id === e.target)!;
+    e.points = ortho(s, t);
+  }
 }
 
 // --------------------------- Credit Edge Decoration -------------------------------

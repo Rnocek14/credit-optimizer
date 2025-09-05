@@ -43,7 +43,32 @@ export function VisualScanner({ graph, pathfindingResult, activePreset, reactFlo
     try {
       console.log('🔍 Running visual scan...');
       
-      // Map to layout format for scanning
+      // Use the reactFlowEdges passed from the canvas if available
+      if (reactFlowEdges && reactFlowEdges.length > 0) {
+        const tierCounts = reactFlowEdges.reduce((acc, e) => {
+          const tier = e.data?.tier;
+          if (tier === 'on-path') acc.edgeOn++;
+          else if (tier === 'related') acc.edgeRelated++;
+          else if (tier === 'off-path') acc.edgeOff++;
+          return acc;
+        }, { edgeOn: 0, edgeRelated: 0, edgeOff: 0 });
+        
+        // Simple report from React Flow data
+        const report: VisualScanReport = {
+          counts: {
+            nodes: graph.nodes?.length || 0,
+            edges: reactFlowEdges.length,
+            labels: reactFlowEdges.filter(e => e.data?.edgeLabel).length,
+          },
+          tiers: tierCounts,
+          issues: [], // No layout issues when using React Flow data directly
+        };
+        
+        setScanReport(report);
+        return;
+      }
+
+      // Fallback: Map to layout format for scanning
       const graphV3: LayoutGraph = {
         nodes: (graph.nodes || []).map(n => ({
           id: String(n.id),
