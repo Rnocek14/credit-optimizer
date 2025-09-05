@@ -180,7 +180,7 @@ function barycentricSweeps(graph: Graph, sweeps = 4) {
       const arr = tiers.get(t)!; arr.forEach((n,i)=>pos.set(n.id, i));
       const bc = barycenter(graph, t, t-1, pos);
       arr.sort((a,b)=> (bc.get(a.id)! - bc.get(b.id)!));
-      arr.forEach((n,i)=>pos.set(n.id,i));
+      arr.forEach((n,i)=>{ pos.set(n.id,i); (n as any).__rank = i; }); // Write back rank
     }
     // bottom-up
     const keysDesc = [...tiers.keys()].sort((a,b)=>b-a);
@@ -189,7 +189,7 @@ function barycentricSweeps(graph: Graph, sweeps = 4) {
       const arr = tiers.get(t)!; arr.forEach((n,i)=>pos.set(n.id, i));
       const bc = barycenter(graph, t, t+1, pos);
       arr.sort((a,b)=> (bc.get(a.id)! - bc.get(b.id)!));
-      arr.forEach((n,i)=>pos.set(n.id,i));
+      arr.forEach((n,i)=>{ pos.set(n.id,i); (n as any).__rank = i; }); // Write back rank
     }
   }
   return tiers;
@@ -204,23 +204,31 @@ function packTiers(graph: Graph, opts: LayoutOptions = {}) {
   const tiers = barycentricSweeps(graph, opts.maxSweeps ?? 4);
   const maxTier = Math.max(...[...tiers.keys()]);
   for (let t=0; t<=maxTier; t++) {
-    const col = (tiers.get(t) || []);
+    const laneOrder = opts.laneOrder ?? ['Core','Electives','Transfer','Orphan'];
+    const laneIndex = (n:Node)=> Math.max(0, laneOrder.indexOf(n.lane ?? 'Core'));
+    const col = (tiers.get(t) || []).sort((a,b) => 
+      laneIndex(a) - laneIndex(b) || ((a as any).__rank ?? 0) - ((b as any).__rank ?? 0)
+    );
     let y = margin;
     const placed: Node[] = [];
     for (const n of col) {
       n.x = margin + t * hGap;
       n.y = y;
+      // Use proper node dimensions
+      const width = n.width ?? 260;
+      const height = n.height ?? 120;
       // bump down while overlapping within the column
       let bumped = true, guard = 0;
       while (bumped && guard++ < 60) {
         bumped = false;
         for (const p of placed) {
-          const A = bbox(n), B = bbox(p);
+          const A = { x1: n.x!, y1: n.y!, x2: n.x! + width, y2: n.y! + height };
+          const B = bbox(p);
           if (rectsOverlap(A,B)) { n.y = B.y2 + vGap; bumped = true; }
         }
       }
       placed.push(n);
-      y = bbox(n).y2 + vGap;
+      y = (n.y! + height) + vGap;
     }
   }
 }

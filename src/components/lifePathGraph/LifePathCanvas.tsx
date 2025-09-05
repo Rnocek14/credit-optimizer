@@ -344,14 +344,14 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Build LayoutGraph once
+  // Build LayoutGraph once with proper type normalization
   const layoutInput: LayoutGraph = useMemo(() => ({
     nodes: (graph.nodes || []).map(n => ({
       id: String(n.id),
-      label: n.title || String(n.id),
-      lane: n.type === 'creditBlock' ? 'Transfer' : 'Core',
-      width: 220,
-      height: 88,
+      label: (n as any).label || n.title || String(n.id),
+      lane: (n as any).lane ?? (n.type?.toLowerCase() === 'creditblock' ? 'Transfer' : 'Core'),
+      width: (n as any).width ?? 260,
+      height: (n as any).height ?? 120,
       data: n,
     })),
     edges: (graph.edges || []).map(e => ({
@@ -360,26 +360,51 @@ export default function LifePathCanvas({
       target: String(e.targetId),
       kind:
         e.type === 'requires' ? 'requires' :
-        e.type === 'enables'  ? 'teaches'  :
+        e.type === 'buildsSkill' || e.type === 'qualifiesFor' ? 'teaches' :
         e.type === 'creditTransfersTo' ? 'credit_transfer' :
         'related',
       credit: e.type === 'creditTransfersTo' ? {
-        source: 'ACE' as any,
-        units: e.creditTransferRate ? Math.round(e.creditTransferRate * 100) : undefined,
-        institution: e.metadata?.institution
+        source: ((e as any).creditSource as any) ?? 'ACE',
+        units: (e as any).units || ((e as any).creditTransferRate ? Math.round((e as any).creditTransferRate * 100) : undefined),
+        institution: (e as any).institution || e.metadata?.institution
       } : undefined,
       data: e,
     })),
   }), [graph.nodes, graph.edges]);
 
-  // Run layout ONCE
+  // Run layout ONCE with proper error handling
   const laidGraphMemo = useMemo(() => {
+    // DEV banner
+    if (import.meta.env.DEV) {
+      console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
+    }
+    
     const { graph: laid, scan } = layoutAndScan(
       layoutInput,
-      { hGap: 320, vGap: 28, laneOrder: ['Core','Electives','Transfer','Orphan'] },
+      { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
       activePath?.edgeIds || []
     );
-    if (import.meta.env.DEV) console.log('[SCAN SUMMARY]', scan.summary);
+    
+    // DEV assertions
+    if (import.meta.env.DEV) {
+      console.log('[LAYOUT V3 ACTIVE]', { 
+        nodes: laid.nodes.length, 
+        edges: laid.edges.length, 
+        tiers: new Set(laid.nodes.map(n => n.tier)).size 
+      });
+      console.log('[SCAN SUMMARY]', scan.summary, 'crossings:', scan.summary.crossings, 'through:', scan.summary.through);
+      
+      const missing = laid.nodes.filter(n => !Number.isFinite(n.x!) || !Number.isFinite(n.y!));
+      if (missing.length) throw new Error('[Canvas] Missing positions for: ' + missing.map(n=>n.id).join(','));
+      
+      if (laid.edges.every(e => !e.points?.length)) {
+        console.warn('[Canvas] No edge points computed - layout may not be applied properly');
+      }
+      
+      if (scan.summary.crossings > 0) console.debug('[CROSSINGS sample]', scan.edgeCrossings.slice(0,5));
+      if (scan.summary.through > 0) console.debug('[THROUGH sample]', scan.throughNodes.slice(0,5));
+    }
+    
     return laid;
   }, [layoutInput, activePath?.edgeIds?.join(',')]);
 
