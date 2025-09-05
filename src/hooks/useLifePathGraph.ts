@@ -66,10 +66,18 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
       console.log('🔍 Finding paths to goal:', targetGoalId);
 
-      // Find goal node
-      const goalNode = graph.nodes.find(n => n.id === targetGoalId || n.title.toLowerCase().includes(targetGoalId.toLowerCase()));
+      // Find goal node - ensure we have a valid goal
+      let goalNode = graph.nodes.find(n => n.id === targetGoalId);
       if (!goalNode) {
-        throw new Error(`Goal node not found: ${targetGoalId}`);
+        // Fallback to searching by title
+        goalNode = graph.nodes.find(n => n.title.toLowerCase().includes(targetGoalId.toLowerCase()));
+      }
+      if (!goalNode) {
+        // Use a default job node if no specific goal found
+        goalNode = graph.nodes.find(n => n.type === 'job') || graph.nodes.find(n => n.type === 'credential');
+      }
+      if (!goalNode) {
+        throw new Error(`No valid goal node found for: ${targetGoalId}`);
       }
 
       // Enhanced pathfinding - Phase 1 implementation with mock completed nodes
@@ -141,10 +149,10 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
       const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
 
-      // Build edge index for robust edge ID derivation
+      // Build edge index for robust edge ID derivation (bidirectional + undirected fallback)
       const buildEdgeIndex = (edges: Array<{id:string; sourceId:string; targetId:string}>) => {
-        const dir = new Map<string,string[]>();          // a→b
-        const undir = new Map<string,string[]>();        // a—b sorted
+        const dir = new Map<string,string[]>();   // "a→b" -> [edgeIds]
+        const undir = new Map<string,string[]>(); // "a—b"(sorted) -> [edgeIds]
         for (const e of edges) {
           const f = `${e.sourceId}→${e.targetId}`;
           const b = `${e.targetId}→${e.sourceId}`;
@@ -162,8 +170,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         const virtual: Array<{source:string;target:string}> = [];
         for (let i = 0; i < nodeIds.length - 1; i++) {
           const a = nodeIds[i], b = nodeIds[i+1];
-          let ids = dir.get(`${a}→${b}`) || dir.get(`${b}→${a}`) || undir.get([a,b].sort().join('—')) || [];
-          if (ids.length) edgeIds.push(ids[0]); else virtual.push({source:a, target:b});
+          const ids = dir.get(`${a}→${b}`) || dir.get(`${b}→${a}`) || undir.get([a,b].sort().join('—')) || [];
+          if (ids.length) edgeIds.push(ids[0]); else virtual.push({ source:a, target:b });
         }
         return { edgeIds, virtual };
       };
@@ -226,11 +234,11 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       setPathfindingResult(result);
       console.log('✅ Pathfinding complete:', result);
       
-      // Pre-flight logging
-      console.log('[PF] fastest:', result.fastest);
-      console.log('[PF] cheapest:', result.cheapest);
-      console.log('[PF] creditMaximized:', result.creditMaximized);
-      console.log('[PF] balanced:', result.recommendations?.primary);
+      // Pre-flight logging - detailed edge ID tracking
+      console.log('[PF] fastest:', result.fastest?.nodeIds, result.fastest?.edgeIds);
+      console.log('[PF] cheapest:', result.cheapest?.nodeIds, result.cheapest?.edgeIds);
+      console.log('[PF] creditMaximized:', result.creditMaximized?.nodeIds, result.creditMaximized?.edgeIds);
+      console.log('[PF] balanced:', result.recommendations?.primary?.nodeIds, result.recommendations?.primary?.edgeIds);
       
       // Log path info for debugging
       console.log('[V2] activePath', {

@@ -13,9 +13,9 @@ interface TierClassManagerProps {
 export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClassManagerProps) {
   
   useEffect(() => {
-    // Pre-flight logging
-    console.log('[Tiers] activePath nodeIds:', activePath?.nodeIds);
-    console.log('[Tiers] activePath edgeIds:', activePath?.edgeIds);
+    // Pre-flight logging - critical for debugging tier issues
+    console.log('[Tiers] path nodeIds:', activePath?.nodeIds);
+    console.log('[Tiers] path edgeIds:', activePath?.edgeIds);
     
     // Use double requestAnimationFrame to ensure React Flow has flushed to DOM
     const applyTierClasses = () => {
@@ -35,9 +35,11 @@ export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClas
             : (pathNodeIds.has(edge.source) || pathNodeIds.has(edge.target)) ? 'related' : 'off-path';
         };
         
-        // Apply tier classes to edge paths with improved selectors
-        const edgeElements = document.querySelectorAll('[data-id^="reactflow__edge-"], [data-id^="rf__edge-"], g[class*="react-flow__edge"]');
-        edgeElements.forEach((edgeEl) => {
+        // Apply tier classes to edge paths with robust selectors
+        const edgeGroups = document.querySelectorAll(
+          '[data-id^="reactflow__edge-"], [data-id^="rf__edge-"], g[class*="react-flow__edge"]'
+        );
+        edgeGroups.forEach((edgeEl) => {
           const pathEl = edgeEl.querySelector('path.react-flow__edge-path') as SVGPathElement | null;
           if (!pathEl) return;
           
@@ -51,9 +53,14 @@ export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClas
           if (!matchingEdge) return;
           
           // Determine and apply tier
-          const tier = tierForEdge(matchingEdge);
-          pathEl.classList.add(`lp-edge-${tier}`);
+          const tier = hasRealEdges
+            ? (pathEdgeIds.has(matchingEdge.id) ? 'on-path'
+               : (pathNodeIds.has(matchingEdge.source) || pathNodeIds.has(matchingEdge.target)) ? 'related' : 'off-path')
+            : ((pathNodeIds.has(matchingEdge.source) && pathNodeIds.has(matchingEdge.target)) ? 'on-path'
+               : (pathNodeIds.has(matchingEdge.source) || pathNodeIds.has(matchingEdge.target)) ? 'related' : 'off-path');
+          
           pathEl.setAttribute('data-tier', tier);
+          pathEl.classList.add(`lp-edge-${tier}`);
         });
         
         // Apply tier classes to nodes
@@ -66,7 +73,7 @@ export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClas
           nodeElement.setAttribute('data-tier', 'on-path');
         });
         
-        // Log tier counts for debugging
+        // Log tier counts for debugging - critical for acceptance testing
         setTimeout(() => {
           const on = document.querySelectorAll('path.react-flow__edge-path.lp-edge-on-path').length;
           const rel = document.querySelectorAll('path.react-flow__edge-path.lp-edge-related').length;
@@ -77,7 +84,7 @@ export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClas
     };
     
     applyTierClasses();
-  }, [reactFlowEdges, activePath?.id, activePath?.edgeIds?.join(','), activePath?.nodeIds?.join(',')]);
+  }, [activePath?.id, JSON.stringify(activePath?.edgeIds||[]), JSON.stringify(activePath?.nodeIds||[]), reactFlowEdges.length]);
 
   return null; // This component only handles side effects
 }
