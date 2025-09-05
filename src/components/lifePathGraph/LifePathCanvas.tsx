@@ -338,7 +338,7 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Nodes → React Flow with grid snapping and live dimensions
+  // Nodes → React Flow with ID consistency and grid snapping
   const reactFlowNodes: Node[] = useMemo(() => {
     return graph.nodes.map(n => {
       const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
@@ -359,10 +359,11 @@ export default function LifePathCanvas({
       const position = snapToGrid(basePosition, 16);
 
       return {
-        id: n.id,
+        id: n.id,                   // Equals graph node id exactly
         type: 'lifePathNode',
         position,
         data: { 
+          ...n,                     // Keep all node data
           node: n,
           isSelected: selectedNode?.id === n.id,
           isInPath: isInMainPath,
@@ -427,7 +428,23 @@ export default function LifePathCanvas({
     return points;
   }, [baseNodes, safeActivePath, isPathEmpty]);
 
-  // Edges → React Flow (visible edges only)
+  // Helper function to determine edge tier
+  const tierOfEdge = useCallback((edge: {id:string; source:string; target:string}, activePath?: {edgeIds?: string[]; nodeIds?: string[]}) => {
+    if (!activePath) return undefined;
+    const edgeIds = new Set(activePath.edgeIds || []);
+    const nodeIds = new Set(activePath.nodeIds || []);
+    if (edgeIds.size > 0) {
+      return edgeIds.has(edge.id)
+        ? 'on-path'
+        : (nodeIds.has(edge.source) || nodeIds.has(edge.target)) ? 'related' : 'off-path';
+    }
+    // Fallback when edgeIds haven't populated yet
+    return (nodeIds.has(edge.source) && nodeIds.has(edge.target)) ? 'on-path'
+         : (nodeIds.has(edge.source) || nodeIds.has(edge.target)) ? 'related'
+         : 'off-path';
+  }, []);
+
+  // Edges → React Flow (with ID consistency and render-time tiering)
   const reactFlowEdges: Edge[] = useMemo(() => {
     const visible = new Set(reactFlowNodes.map(n => n.id));
     const edges = graph.edges.filter(e => visible.has(e.sourceId) && visible.has(e.targetId));
@@ -437,15 +454,11 @@ export default function LifePathCanvas({
     
     return edges
       .map(e => {
-        // Deterministic edge tiering using pathEdgeIds
-        const tier = LP_VISUAL_V2 && activePath ? (() => {
-          const pathEdgeIds = new Set(activePath.edgeIds || []);
-          const pathNodeIds = new Set(activePath.nodeIds || []);
-          
-          if (pathEdgeIds.has(e.id)) return 'on-path';
-          if (pathNodeIds.has(e.sourceId) || pathNodeIds.has(e.targetId)) return 'related';
-          return 'off-path';
-        })() : undefined;
+        // Apply tier classification at render time
+        const tier = LP_VISUAL_V2 ? tierOfEdge(
+          { id: e.id, source: e.sourceId, target: e.targetId },
+          activePath
+        ) : undefined;
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
 
@@ -454,26 +467,39 @@ export default function LifePathCanvas({
           ? `${Math.round((e.creditTransferRate ?? 1) * 100)}% transfer`
           : undefined;
 
-        return {
-          id: e.id,
-          source: e.sourceId,
-          target: e.targetId,
+        const rfEdge: Edge = {
+          id: e.id,                 // Must be graph edge id
+          source: e.sourceId,       // Exactly graph sourceId
+          target: e.targetId,       // Exactly graph targetId
           type: 'lifePathEdge',
-          sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
-          targetPosition: LP_VISUAL_V2 ? Position.Left  : Position.Top,
           data: {
-            edge: e,
+            ...e,                   // Keep ids in data too for debugging
+            sourceId: e.sourceId,
+            targetId: e.targetId,
             isHighlighted: false,
             tier,
             isRelatedToHovered,
             label,
+            showAsFlow: false,
+            sourceNode: baseNodes.find(n => n.id === e.sourceId),
+            targetNode: baseNodes.find(n => n.id === e.targetId),
             showPreviousPath:
               showPreviousPath &&
               previousPath.some(id => [e.sourceId, e.targetId].includes(id)) &&
               !safeActivePath.nodeIds.some(id => [e.sourceId, e.targetId].includes(id)),
           },
+          style: {
+            ...styleEdge(e.type as any),
+            opacity: tier === 'off-path' ? 0.3 : (isRelatedToHovered ? 1 : 0.8),
+            strokeWidth: tier === 'on-path' ? 3 : (tier === 'related' ? 2 : 1),
+            stroke: tier === 'on-path'
+              ? 'hsl(var(--primary) / 0.9)'
+              : (tier === 'related' ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted-foreground) / 0.4)'),
+          },
           className: LP_VISUAL_V2 && tier ? `lp-edge-${tier}` : '',
         };
+
+        return rfEdge;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);

@@ -176,19 +176,29 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         return { edgeIds, virtual };
       };
 
-      // Create path results with enhanced metrics
+      // Create path results with enhanced metrics and edge ID guards
       const createPathResult = (path: string[], optimizedFor: string): PathResult => {
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
         const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
         // Use robust edge ID derivation with bi-directional and undirected fallback
         const { edgeIds: pathEdgeIds, virtual } = derivePathEdgeIds(path, graph.edges || []);
+        
+        // Guard against empty edgeIds
+        if (pathEdgeIds.length === 0) {
+          console.warn('[PF] derived edgeIds is empty. First 5 path nodes:', path.slice(0,5));
+          console.warn('[PF] sample graph edges:', (graph.edges || []).slice(0,5));
+        }
+
+        // Filter path nodes to only include those that exist in graph
+        const nodeIdSet = new Set(graph.nodes.map(n => n.id));
+        const cleanedNodeIds = path.filter(id => nodeIdSet.has(id));
 
         return {
           id: `path-${optimizedFor}-${Date.now()}`,
           name: `${optimizedFor.charAt(0).toUpperCase() + optimizedFor.slice(1)} Optimized Path`,
           description: `Path optimized for ${optimizedFor}`,
-          nodeIds: path,
+          nodeIds: cleanedNodeIds,
           edgeIds: pathEdgeIds,
           totalTime: metrics.totalTime,
           totalCost: metrics.totalCost,
@@ -234,18 +244,24 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       setPathfindingResult(result);
       console.log('✅ Pathfinding complete:', result);
       
-      // Pre-flight logging - detailed edge ID tracking
+      // Enhanced pre-flight logging for debugging tier issues
       console.log('[PF] fastest:', result.fastest?.nodeIds, result.fastest?.edgeIds);
       console.log('[PF] cheapest:', result.cheapest?.nodeIds, result.cheapest?.edgeIds);
       console.log('[PF] creditMaximized:', result.creditMaximized?.nodeIds, result.creditMaximized?.edgeIds);
       console.log('[PF] balanced:', result.recommendations?.primary?.nodeIds, result.recommendations?.primary?.edgeIds);
       
       // Log path info for debugging
-      console.log('[V2] activePath', {
+      console.log('[V2] activePath fastest', {
         nodes: result.fastest?.nodeIds?.length ?? 0,
         edges: result.fastest?.edgeIds?.length ?? 0,
         sampleEdges: (result.fastest?.edgeIds ?? []).slice(0,5)
       });
+      
+      // Verify ID consistency with graph
+      const sampleGraphEdge = (graph.edges || [])[0];
+      if (sampleGraphEdge) {
+        console.log('[PF] sample graph edge:', { id: sampleGraphEdge.id, sourceId: sampleGraphEdge.sourceId, targetId: sampleGraphEdge.targetId });
+      }
 
     } catch (err) {
       console.error('❌ Error in pathfinding:', err);
