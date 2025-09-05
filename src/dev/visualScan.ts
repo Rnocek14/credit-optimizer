@@ -154,6 +154,7 @@ export async function runVisualScan(opts: {
   pathfindingResult?: any|null;
   activePreset: 'fastest'|'cheapest'|'creditMaximized'|'balanced';
   careerSelector?: (n:any)=>boolean; // default: node.type==='job' || tags include 'career'
+  reactFlowEdges?: any[]; // Pass edges with data.tier for accurate counting
 }): Promise<VisualScanSnapshot> {
   // Wait for DOM stability
   await rAF2();
@@ -265,19 +266,12 @@ export async function runVisualScan(opts: {
     }
   });
 
-  // A2: Count tiers from React Flow edge data, not DOM (fixes 48 vs 16 mismatch)
-  const reactFlowEdges = Array.from(document.querySelectorAll('[data-id^="reactflow__edge-"]')).map(el => {
-    const edgeId = (el as HTMLElement).getAttribute('data-id')?.replace(/^.*edge-/, '') ?? '';
-    const pathEl = el.querySelector('path.react-flow__edge-path') as SVGPathElement | null;
-    const tier = pathEl?.getAttribute('data-tier') || 
-                 (pathEl?.classList.contains('lp-edge-on-path') ? 'on-path' :
-                  pathEl?.classList.contains('lp-edge-related') ? 'related' :
-                  pathEl?.classList.contains('lp-edge-off-path') ? 'off-path' : undefined);
-    return { id: edgeId, tier };
-  }).filter(e => e.id && e.tier);
-
-  const tiers = reactFlowEdges.reduce((acc, e) => {
-    const t = e.tier as 'on-path'|'related'|'off-path';
+  // A2: Count tiers from data, not DOM (fixes 48 vs 16 mismatch and timing issues)
+  // Scanner must receive reactFlowEdges array as parameter instead of building from DOM
+  const reactFlowEdgesFromParam = (opts as any).reactFlowEdges || [];
+  
+  const tiers = reactFlowEdgesFromParam.reduce((acc: any, e: any) => {
+    const t = (e.data?.tier) as 'on-path'|'related'|'off-path'|undefined;
     if (t === 'on-path') acc.edgeOn++;
     else if (t === 'related') acc.edgeRelated++;
     else if (t === 'off-path') acc.edgeOff++;

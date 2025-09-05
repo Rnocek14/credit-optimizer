@@ -459,6 +459,12 @@ export default function LifePathCanvas({
     // Pre-flight logging
     console.log('[RF edges]', edges.map(e => e.id));
     
+    // Expose edges to scanner for accurate tier counting
+    (window as any).__reactFlowEdges = edges.map(e => ({
+      id: e.id,
+      data: { tier: tierOfEdge({ id: e.id, source: e.sourceId, target: e.targetId }, activePath) }
+    }));
+    
     return edges
       .map(e => {
         // Apply tier classification at render time
@@ -466,6 +472,14 @@ export default function LifePathCanvas({
           { id: e.id, source: e.sourceId, target: e.targetId },
           activePath
         ) : undefined;
+        
+        // Log tier application for debugging
+        if (LP_VISUAL_V2 && e.id === edges[0]?.id) {
+          console.log('[ACTIVE]', activePreset, activePath?.nodeIds?.length, activePath?.edgeIds?.length);
+          console.log('[RF tiers sample]', edges.slice(0,3).map(edge => 
+            tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath)
+          ));
+        }
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
 

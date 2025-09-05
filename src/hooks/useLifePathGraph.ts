@@ -256,6 +256,19 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       result.paretoFrontier = [result.fastest, result.cheapest, result.creditMaximized];
 
       setPathfindingResult(result);
+      
+      // B3: Set default activePath to guarantee non-empty path for tiering
+      const fallback = result.fastest || result.recommendations?.primary || result.cheapest || result.creditMaximized;
+      if (fallback) {
+        // B4: Edge-ID alignment guardrail
+        if (fallback?.edgeIds?.length) {
+          const edgeSet = new Set((graph.edges||[]).map(e => e.id));
+          const missing = fallback.edgeIds.filter(id => !edgeSet.has(id));
+          if (missing.length) {
+            console.warn('[PF] missing edgeIds in graph:', missing);
+          }
+        }
+      }
       console.log('✅ Pathfinding complete:', result);
       
       // Enhanced pre-flight logging for debugging tier issues

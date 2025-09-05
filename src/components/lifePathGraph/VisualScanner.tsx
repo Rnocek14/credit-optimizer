@@ -26,6 +26,7 @@ export function VisualScanner({ graph, pathfindingResult, activePreset }: Visual
         graph,
         pathfindingResult,
         activePreset,
+        reactFlowEdges: (window as any).__reactFlowEdges || [] // Pass edges for accurate tier counting
       });
       setScanReport(report);
       markIssues(report);
