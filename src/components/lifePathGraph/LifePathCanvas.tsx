@@ -587,13 +587,8 @@ export default function LifePathCanvas({
     setHoveredNode(null);
   }, []);
 
-  // Safety UI if something goes wrong
-  if (!reactFlowNodes.length) {
-    console.warn('[life-path] No nodes to render — showing fallback note.');
-    return <div className="p-6 text-sm text-amber-700 bg-amber-50 rounded">
-      No nodes available to display (Safe Render Mode). Check console for details.
-    </div>;
-  }
+  // Check if layout is ready (no blocking early return)
+  const ready = (reactFlowNodes?.length ?? 0) > 0 && (reactFlowEdges?.length ?? 0) > 0;
 
   return (
     <div className="w-full space-y-4">
@@ -754,6 +749,15 @@ export default function LifePathCanvas({
 
       {/* Graph Canvas with Institution Lanes */}
       <div className="relative w-full h-[600px] border rounded-lg overflow-hidden">
+        {/* Loading overlay when not ready */}
+        {!ready && (
+          <div className="absolute inset-0 grid place-items-center pointer-events-none z-50">
+            <div className="rounded-xl px-4 py-2 text-sm bg-background/70 border">
+              Laying out graph…
+            </div>
+          </div>
+        )}
+        
         {/* Educational Bands */}
         <EducationalBands height={600} />
         
