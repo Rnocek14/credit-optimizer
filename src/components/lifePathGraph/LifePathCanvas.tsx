@@ -75,7 +75,7 @@ export default function LifePathCanvas({
   console.log('✅ LifePathCanvas: useReactFlow hook successful', { reactFlowInstance });
   
   // Get tierOfEdge from hook for consistency
-  const { tierOfEdge } = useLifePathGraph();
+  const { tierOfEdge, activePath: hookActivePath } = useLifePathGraph();
   /* RUNTIME AUDIT PANEL – BEGIN */
   const [auditRunning, setAuditRunning] = React.useState(false);
   const [auditLog, setAuditLog] = React.useState<string>('');
@@ -480,20 +480,13 @@ export default function LifePathCanvas({
       .map(e => {
         // Apply tier classification at render time (ALWAYS set data.tier - no LP_VISUAL_V2 gate)
         const tier = tierOfEdge(
-          { id: e.id, source: e.sourceId, target: e.targetId },
+          { id: String(e.id), source: String(e.sourceId), target: String(e.targetId) },
           activePath
         );
         
-        // Debug logging for tier verification
+        // Debug logging for tier verification (first edge only)
         if (e.id === edges[0]?.id) {
           console.log('[ACTIVE]', activePreset, activePath?.nodeIds?.length, activePath?.edgeIds?.length);
-          
-          // Tier debug table
-          console.table(edges.slice(0, 5).map(edge => ({
-            id: edge.id,
-            tier: tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath),
-            onPath: tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath) === 'on-path',
-          })));
         }
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
@@ -537,31 +530,23 @@ export default function LifePathCanvas({
 
         return rfEdge;
       });
-    // Include activePath deps for tier recomputation
+    // FORCE recompute on any activePath change (bulletproof dependencies)
   }, [
     graph.edges,
     reactFlowNodes,
-    safeActivePath.nodeIds.join(','),
     hoveredNode,
     showPreviousPath,
     previousPath.join(','),
     tierOfEdge,
+    // Critical: Force recompute on any activePath change
     activePath?.id,
-    activePath?.edgeIds?.join(','),
-    activePath?.nodeIds?.join(','),
+    (activePath?.edgeIds || []).join(','),   // unique, deduped list
+    (activePath?.metadata?.materializedNodes || activePath?.nodeIds || []).join(',')
   ]);
 
   // Debug output for tier verification and acceptance gate tracking
   useEffect(() => {
     if (import.meta.env.DEV) {
-      const tierCounts = reactFlowEdges.reduce((acc, edge) => {
-        const tier = edge.data?.tier as string;
-        if (tier && typeof tier === 'string') {
-          acc[tier] = (acc[tier] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      
       const counts = reactFlowEdges.reduce((a, e) => {
         const t = e.data?.tier;
         if (t === 'on-path') a.on++;
@@ -570,15 +555,21 @@ export default function LifePathCanvas({
         return a;
       }, { on:0, rel:0, off:0 });
       
-      console.log('[TIER COUNTS]', counts, 'edges:', reactFlowEdges.length);
-      console.debug('[V2 tiers]', tierCounts);
+      // Key assertion: counts should match expectations
+      console.log('[TIERS]', counts, 'edges:', reactFlowEdges.length,
+                  'expectedOn≈', activePath?.edgeIds?.length ?? 0);
+      
+      // Verify we have the expected counts
+      if (activePath?.edgeIds?.length && counts.on !== activePath.edgeIds.length) {
+        console.warn('[TIER MISMATCH] Expected On:', activePath.edgeIds.length, 'Actual:', counts.on);
+      }
       
       // Also log edge routing stats
       const withLabels = reactFlowEdges.filter(e => e.data?.label).length;
       console.debug('[V2 edges]', {
         total: reactFlowEdges.length,
         withLabels,
-        withTiers: Object.values(tierCounts).reduce((sum, count) => sum + count, 0)
+        withTiers: counts.on + counts.rel + counts.off
       });
     }
   }, [reactFlowEdges, LP_VISUAL_V2]);

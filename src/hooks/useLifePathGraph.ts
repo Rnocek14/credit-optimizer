@@ -340,26 +340,43 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
       setPathfindingResult(result);
       
-      // B3: Set default activePath to guarantee non-empty path for tiering
+      // B3: Set default activePath with stitched, deduped edges
       const fallback = result.fastest || result.recommendations?.primary || result.cheapest || result.creditMaximized;
       if (fallback) {
+        // Apply stitching and deduplication to the active path
+        const stitched = derivePathEdgeIdsStitched(fallback.nodeIds, graph.edges);
+        
+        // IMPORTANT: dedup and persist stitched edges
+        const uniqueEdgeIds = Array.from(new Set(stitched.edgeIds));
+        
+        const enhancedActivePath = {
+          ...fallback,
+          edgeIds: uniqueEdgeIds,
+          metadata: {
+            ...(fallback.metadata || {}),
+            materializedNodes: stitched.materializedNodes,
+            virtualHops: stitched.virtual
+          },
+        };
+        
+        setActivePath(enhancedActivePath);
+        
+        // Post-stitch assertions
+        console.log('[PF ASSERT]', {
+          pathNodes: enhancedActivePath.nodeIds.length,
+          stitchedUniqueEdges: enhancedActivePath.edgeIds.length,
+          materializedNodes: enhancedActivePath.metadata?.materializedNodes?.length ?? 0,
+          virtualHops: stitched.virtual.length
+        });
+        
         // B4: Edge-ID alignment guardrail
-        if (fallback?.edgeIds?.length) {
+        if (enhancedActivePath.edgeIds.length) {
           const edgeSet = new Set((graph.edges||[]).map(e => e.id));
-          const missing = fallback.edgeIds.filter(id => !edgeSet.has(id));
+          const missing = enhancedActivePath.edgeIds.filter(id => !edgeSet.has(id));
           if (missing.length) {
             console.warn('[PF] missing edgeIds in graph:', missing);
           }
         }
-        
-        // Add invariants logging once per goal
-        console.log('[PF INVARIANTS]', {
-          nodeCount: graph.nodes?.length,
-          edgeCount: graph.edges?.length,
-          pathNodeIds: fallback?.nodeIds?.slice(0, 8),
-          pathLen: fallback?.nodeIds?.length,
-          edgeIdsLen: fallback?.edgeIds?.length
-        });
       }
       console.log('✅ Pathfinding complete:', result);
       
@@ -436,6 +453,9 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
     return s;
   }, []);
 
+  // Add state for activePath
+  const [activePath, setActivePath] = useState<any>(null);
+
   // Enhanced tier classification with consecutive-pair fallback (exported for use in Canvas)
   const tierOfEdge = useCallback((
     e: { id: string; source: string; target: string },
@@ -470,6 +490,7 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
     error,
     findPaths,
     calculateCreditTransfer,
-    tierOfEdge // Export for use in Canvas
+    tierOfEdge, // Export for use in Canvas
+    activePath  // Export activePath
   };
 }
