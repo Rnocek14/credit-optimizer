@@ -2,16 +2,21 @@ import { useEffect } from 'react';
 
 interface TierClassManagerProps {
   edges: any[];
-  activePath: { edgeIds?: string[]; nodeIds?: string[] } | null;
+  reactFlowEdges: any[];
+  activePath: { id?: string; edgeIds?: string[]; nodeIds?: string[] } | null;
 }
 
 /**
  * Component that handles mount-safe tier class application
  * Must be rendered inside ReactFlow to access DOM elements
  */
-export function TierClassManager({ edges, activePath }: TierClassManagerProps) {
+export function TierClassManager({ edges, reactFlowEdges, activePath }: TierClassManagerProps) {
   
   useEffect(() => {
+    // Pre-flight logging
+    console.log('[Tiers] activePath nodeIds:', activePath?.nodeIds);
+    console.log('[Tiers] activePath edgeIds:', activePath?.edgeIds);
+    
     // Use double requestAnimationFrame to ensure React Flow has flushed to DOM
     const applyTierClasses = () => {
       requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -42,7 +47,7 @@ export function TierClassManager({ edges, activePath }: TierClassManagerProps) {
           
           // Find matching edge by ID
           const edgeId = (edgeEl as HTMLElement).getAttribute('data-id')?.replace(/^.*edge-/, '') ?? '';
-          const matchingEdge = edges.find(e => e.id === edgeId);
+          const matchingEdge = reactFlowEdges.find(e => e.id === edgeId);
           if (!matchingEdge) return;
           
           // Determine and apply tier
@@ -66,13 +71,13 @@ export function TierClassManager({ edges, activePath }: TierClassManagerProps) {
           const on = document.querySelectorAll('path.react-flow__edge-path.lp-edge-on-path').length;
           const rel = document.querySelectorAll('path.react-flow__edge-path.lp-edge-related').length;
           const off = document.querySelectorAll('path.react-flow__edge-path.lp-edge-off-path').length;
-          console.log('[V2] tiers', { on, rel, off, hasRealEdges, edgeCount: edges.length });
+          console.log('[V2 tiers]', { on, rel, off, edges: reactFlowEdges.length });
         }, 100);
       }));
     };
     
     applyTierClasses();
-  }, [edges, activePath?.edgeIds, activePath?.nodeIds]);
+  }, [reactFlowEdges, activePath?.id, activePath?.edgeIds?.join(','), activePath?.nodeIds?.join(',')]);
 
   return null; // This component only handles side effects
 }

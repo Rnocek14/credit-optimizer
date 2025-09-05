@@ -141,21 +141,40 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
       const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
 
+      // Build edge index for robust edge ID derivation
+      const buildEdgeIndex = (edges: Array<{id:string; sourceId:string; targetId:string}>) => {
+        const dir = new Map<string,string[]>();          // a→b
+        const undir = new Map<string,string[]>();        // a—b sorted
+        for (const e of edges) {
+          const f = `${e.sourceId}→${e.targetId}`;
+          const b = `${e.targetId}→${e.sourceId}`;
+          const u = [e.sourceId, e.targetId].sort().join('—');
+          (dir.get(f) || dir.set(f, []).get(f)!).push(e.id);
+          (dir.get(b) || dir.set(b, []).get(b)!).push(e.id);
+          (undir.get(u) || undir.set(u, []).get(u)!).push(e.id);
+        }
+        return { dir, undir };
+      };
+
+      const derivePathEdgeIds = (nodeIds: string[], edges: any[]) => {
+        const { dir, undir } = buildEdgeIndex(edges);
+        const edgeIds: string[] = [];
+        const virtual: Array<{source:string;target:string}> = [];
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          const a = nodeIds[i], b = nodeIds[i+1];
+          let ids = dir.get(`${a}→${b}`) || dir.get(`${b}→${a}`) || undir.get([a,b].sort().join('—')) || [];
+          if (ids.length) edgeIds.push(ids[0]); else virtual.push({source:a, target:b});
+        }
+        return { edgeIds, virtual };
+      };
+
       // Create path results with enhanced metrics
       const createPathResult = (path: string[], optimizedFor: string): PathResult => {
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
         const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
-        // Derive pathEdgeIds from consecutive pathNodeIds pairs
-        const pathEdgeIds: string[] = [];
-        for (let i = 0; i < path.length - 1; i++) {
-          const sourceId = path[i];
-          const targetId = path[i + 1];
-          const edge = graph.edges.find(e => e.sourceId === sourceId && e.targetId === targetId);
-          if (edge) {
-            pathEdgeIds.push(edge.id);
-          }
-        }
+        // Use robust edge ID derivation with bi-directional and undirected fallback
+        const { edgeIds: pathEdgeIds, virtual } = derivePathEdgeIds(path, graph.edges || []);
 
         return {
           id: `path-${optimizedFor}-${Date.now()}`,
@@ -177,7 +196,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
           warnings: [],
           metadata: {
             institutionsCount: metrics.institutionsCount,
-            prerequisitesSatisfied: metrics.prerequisitesSatisfied
+            prerequisitesSatisfied: metrics.prerequisitesSatisfied,
+            virtualHops: virtual // Store virtual hops for debugging
           }
         };
       };
@@ -205,6 +225,12 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
       setPathfindingResult(result);
       console.log('✅ Pathfinding complete:', result);
+      
+      // Pre-flight logging
+      console.log('[PF] fastest:', result.fastest);
+      console.log('[PF] cheapest:', result.cheapest);
+      console.log('[PF] creditMaximized:', result.creditMaximized);
+      console.log('[PF] balanced:', result.recommendations?.primary);
       
       // Log path info for debugging
       console.log('[V2] activePath', {

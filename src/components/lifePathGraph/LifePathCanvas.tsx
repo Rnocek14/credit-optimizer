@@ -430,8 +430,12 @@ export default function LifePathCanvas({
   // Edges → React Flow (visible edges only)
   const reactFlowEdges: Edge[] = useMemo(() => {
     const visible = new Set(reactFlowNodes.map(n => n.id));
-    return graph.edges
-      .filter(e => visible.has(e.sourceId) && visible.has(e.targetId))
+    const edges = graph.edges.filter(e => visible.has(e.sourceId) && visible.has(e.targetId));
+    
+    // Pre-flight logging
+    console.log('[RF edges]', edges.map(e => e.id));
+    
+    return edges
       .map(e => {
         // Deterministic edge tiering using pathEdgeIds
         const tier = LP_VISUAL_V2 && activePath ? (() => {
@@ -747,6 +751,15 @@ export default function LifePathCanvas({
             nodeColor="#f3f4f6"
             nodeBorderRadius={8}
           />
+          
+          {/* V2: Tier Class Manager - applies tier classes after React Flow DOM updates */}
+          {LP_VISUAL_V2 && (
+            <TierClassManager 
+              edges={graph.edges}
+              reactFlowEdges={reactFlowEdges}
+              activePath={activePath}
+            />
+          )}
         </ReactFlow>
       </div>
       
