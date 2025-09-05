@@ -40,6 +40,8 @@ import { LP_VISUAL_V2 } from '@/lib/flags';
 import { VisualScanner } from './VisualScanner';
 import { TierClassManager } from './TierClassManager';
 import { getLiveNodeBoxes, snapToGrid } from '@/lib/pathfinding/coordinateHelpers';
+import { snapToLanes, nudgeOverlaps } from '@/lib/pathfinding/layoutHelpers';
+import { findClearMidColumn } from '@/lib/pathfinding/midColumnUtils';
 
 // ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
@@ -356,7 +358,10 @@ export default function LifePathCanvas({
       );
       
       // Apply grid snapping for consistent layout
-      const position = snapToGrid(basePosition, 16);
+      const position = {
+        x: Math.round(basePosition.x / 16) * 16,
+        y: Math.round(basePosition.y / 16) * 16
+      };
 
       return {
         id: n.id,                   // Equals graph node id exactly
@@ -383,6 +388,8 @@ export default function LifePathCanvas({
         hidden: false,
       };
     });
+
+    // Note: Layout intelligence (C1) will be applied after we get the basic nodes working
   }, [graph.nodes, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2]);
   
 
@@ -468,16 +475,16 @@ export default function LifePathCanvas({
           : undefined;
 
         const rfEdge: Edge = {
-          id: e.id,                 // Must be graph edge id
-          source: e.sourceId,       // Exactly graph sourceId
-          target: e.targetId,       // Exactly graph targetId
+          id: e.id,                 // A3: Must be graph edge id
+          source: e.sourceId,       // A3: Exactly graph sourceId
+          target: e.targetId,       // A3: Exactly graph targetId
           type: 'lifePathEdge',
           data: {
             ...e,                   // Keep ids in data too for debugging
             sourceId: e.sourceId,
             targetId: e.targetId,
             isHighlighted: false,
-            tier,
+            tier,                   // A2: Store for data-based counting
             isRelatedToHovered,
             label,
             showAsFlow: false,
@@ -496,7 +503,7 @@ export default function LifePathCanvas({
               ? 'hsl(var(--primary) / 0.9)'
               : (tier === 'related' ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted-foreground) / 0.4)'),
           },
-          className: LP_VISUAL_V2 && tier ? `lp-edge-${tier}` : '',
+          className: LP_VISUAL_V2 && tier ? `lp-edge-${tier}` : '', // A3: One class per logical edge
         };
 
         return rfEdge;

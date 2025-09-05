@@ -265,17 +265,24 @@ export async function runVisualScan(opts: {
     }
   });
 
-  const tiers = {
-    edgeOn: document.querySelectorAll(
-      '.lp-edge-on-path, path[data-tier="on-path"], .react-flow__edge-path.lp-edge-on-path'
-    ).length,
-    edgeRelated: document.querySelectorAll(
-      '.lp-edge-related, path[data-tier="related"], .react-flow__edge-path.lp-edge-related'
-    ).length,
-    edgeOff: document.querySelectorAll(
-      '.lp-edge-off-path, path[data-tier="off-path"], .react-flow__edge-path.lp-edge-off-path'
-    ).length,
-  };
+  // A2: Count tiers from React Flow edge data, not DOM (fixes 48 vs 16 mismatch)
+  const reactFlowEdges = Array.from(document.querySelectorAll('[data-id^="reactflow__edge-"]')).map(el => {
+    const edgeId = (el as HTMLElement).getAttribute('data-id')?.replace(/^.*edge-/, '') ?? '';
+    const pathEl = el.querySelector('path.react-flow__edge-path') as SVGPathElement | null;
+    const tier = pathEl?.getAttribute('data-tier') || 
+                 (pathEl?.classList.contains('lp-edge-on-path') ? 'on-path' :
+                  pathEl?.classList.contains('lp-edge-related') ? 'related' :
+                  pathEl?.classList.contains('lp-edge-off-path') ? 'off-path' : undefined);
+    return { id: edgeId, tier };
+  }).filter(e => e.id && e.tier);
+
+  const tiers = reactFlowEdges.reduce((acc, e) => {
+    const t = e.tier as 'on-path'|'related'|'off-path';
+    if (t === 'on-path') acc.edgeOn++;
+    else if (t === 'related') acc.edgeRelated++;
+    else if (t === 'off-path') acc.edgeOff++;
+    return acc;
+  }, { edgeOn: 0, edgeRelated: 0, edgeOff: 0 });
 
   const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;
 
@@ -297,5 +304,5 @@ export async function runVisualScan(opts: {
     tiers,
     issues,
     careers: connections
-  };
+  } as VisualScanSnapshot;
 }

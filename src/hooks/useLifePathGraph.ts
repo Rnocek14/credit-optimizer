@@ -170,7 +170,20 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         const virtual: Array<{source:string;target:string}> = [];
         for (let i = 0; i < nodeIds.length - 1; i++) {
           const a = nodeIds[i], b = nodeIds[i+1];
-          const ids = dir.get(`${a}→${b}`) || dir.get(`${b}→${a}`) || undir.get([a,b].sort().join('—')) || [];
+          
+          // B1: Enhanced logging for derivation debugging
+          const forward = dir.get(`${a}→${b}`);
+          const backward = dir.get(`${b}→${a}`);
+          const undirected = undir.get([a,b].sort().join('—'));
+          
+          if (i < 3) { // Log first 3 hops for debugging
+            console.log('[PF MATCH]', a, b, {
+              forward: !!forward, backward: !!backward, undirected: !!undirected,
+              foundIds: forward || backward || undirected || []
+            });
+          }
+          
+          const ids = forward || backward || undirected || [];
           if (ids.length) edgeIds.push(ids[0]); else virtual.push({ source:a, target:b });
         }
         return { edgeIds, virtual };
@@ -184,10 +197,11 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         // Use robust edge ID derivation with bi-directional and undirected fallback
         const { edgeIds: pathEdgeIds, virtual } = derivePathEdgeIds(path, graph.edges || []);
         
-        // Guard against empty edgeIds
+        // B1: Enhanced edge ID guards
         if (pathEdgeIds.length === 0) {
           console.warn('[PF] derived edgeIds is empty. First 5 path nodes:', path.slice(0,5));
           console.warn('[PF] sample graph edges:', (graph.edges || []).slice(0,5));
+          console.warn('[PF] graph node IDs sample:', (graph.edges || []).slice(0,3).map(e => `${e.sourceId}→${e.targetId}`));
         }
 
         // Filter path nodes to only include those that exist in graph
