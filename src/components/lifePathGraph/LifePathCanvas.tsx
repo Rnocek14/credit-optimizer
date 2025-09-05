@@ -448,6 +448,34 @@ export default function LifePathCanvas({
     // Pre-flight logging
     console.log('[RF edges]', edges.map(e => e.id));
     
+    // Runtime invariants for debugging
+    const norm = (s: any) => String(s ?? '').trim();
+    const pathLen = activePath?.nodeIds?.length || 0;
+    const edgeIdsLen = activePath?.edgeIds?.length || 0;
+    const materializedLen = (activePath as any)?.metadata?.materializedNodes?.length || 0;
+    
+    console.log('[PF INVARIANTS]', {
+      nodeCount: graph.nodes?.length,
+      edgeCount: graph.edges?.length,
+      pathNodeIds: activePath?.nodeIds?.slice(0, 8),
+      pathLen,
+      edgeIdsLen,
+      materializedLen
+    });
+
+    // Assert expected invariants
+    if (pathLen >= 2 && edgeIdsLen === 0) {
+      console.warn('[PF] Zero edges for valid path - stitching failed');
+    }
+    
+    if (edgeIdsLen > 0) {
+      const edgeSet = new Set((graph.edges||[]).map(e => norm(e.id)));
+      const missing = (activePath?.edgeIds||[]).filter(id => !edgeSet.has(norm(id)));
+      if (missing.length) {
+        console.warn('[PF] Missing edgeIds in graph:', missing.slice(0, 3));
+      }
+    }
+
     return edges
       .map(e => {
         // Apply tier classification at render time

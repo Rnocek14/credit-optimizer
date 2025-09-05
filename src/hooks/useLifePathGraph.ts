@@ -149,21 +149,103 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       const enhancedCostPath = ensureMinimal({ nodeIds: costOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
       const enhancedCreditPath = ensureMinimal({ nodeIds: creditOptimizedPath, totalTime: 0, totalCost: 0, totalCredits: 0, creditLoss: 0 }, pathNodeMap, targetGoalId).nodeIds;
 
+      // Utility functions
+      const norm = (s: any) => String(s ?? '').trim();
+
       // Helper for consecutive pair detection
       const buildConsecutivePairSet = (nodeIds: string[]) => {
         const s = new Set<string>();
         for (let i = 0; i < nodeIds.length - 1; i++) {
-          const a = String(nodeIds[i]).trim();
-          const b = String(nodeIds[i + 1]).trim();
-          s.add(`${a}→${b}`);
-          s.add(`${b}→${a}`); // allow reversed traversal
+          const a = norm(nodeIds[i]);
+          const b = norm(nodeIds[i + 1]);
+          s.add(`${a}|${b}`);
+          s.add(`${b}|${a}`); // allow reversed traversal
         }
         return s;
       };
 
-      // Enhanced edge derivation with normalization and robust index
+      // Enhanced edge derivation with stitching for junction nodes
+      type GEdge = { id: string; sourceId: string; targetId: string };
+
+      function buildAdj(edges: GEdge[]) {
+        const adj = new Map<string, Array<{ to: string; edgeId: string }>>();
+        for (const e of edges) {
+          const a = norm(e.sourceId), b = norm(e.targetId), id = norm(e.id);
+          (adj.get(a) || adj.set(a, []).get(a)!).push({ to: b, edgeId: id });
+          (adj.get(b) || adj.set(b, []).get(b)!).push({ to: a, edgeId: id }); // treat as undirected for viz
+        }
+        return adj;
+      }
+
+      function shortestEdgePath(adj: Map<string, Array<{to:string;edgeId:string}>>, src: string, dst: string, maxDepth = 6) {
+        src = norm(src); dst = norm(dst);
+        if (src === dst) return { nodes: [src], edges: [] as string[] };
+        const q: Array<{ node: string; depth: number }> = [{ node: src, depth: 0 }];
+        const seen = new Set([src]);
+        const parent = new Map<string, { prev: string; viaEdge: string }>();
+
+        let found: string | null = null;
+        while (q.length) {
+          const cur = q.shift()!;
+          if (cur.depth >= maxDepth) continue;
+          
+          for (const nxt of adj.get(cur.node) || []) {
+            if (seen.has(nxt.to)) continue;
+            seen.add(nxt.to);
+            parent.set(nxt.to, { prev: cur.node, viaEdge: nxt.edgeId });
+            if (nxt.to === dst) { found = dst; break; }
+            q.push({ node: nxt.to, depth: cur.depth + 1 });
+          }
+          if (found) break;
+        }
+
+        if (!found) return null;
+
+        const edges: string[] = [];
+        const nodes: string[] = [dst];
+        let cur = dst;
+        while (cur !== src) {
+          const p = parent.get(cur)!;
+          edges.push(p.viaEdge);
+          nodes.push(p.prev);
+          cur = p.prev;
+        }
+        edges.reverse();
+        nodes.reverse();
+        return { nodes, edges };
+      }
+
+      const derivePathEdgeIdsStitched = (nodeIds: string[], edges: GEdge[]) => {
+        const adj = buildAdj(edges);
+        const edgeIds: string[] = [];
+        const virtual: Array<{ source: string; target: string }> = [];
+        const materializedNodes: string[] = [norm(nodeIds[0])];
+
+        for (let i = 0; i < nodeIds.length - 1; i++) {
+          const a = norm(nodeIds[i]), b = norm(nodeIds[i+1]);
+          // quick direct try
+          const direct = shortestEdgePath(adj, a, b, 1);
+          if (direct && direct.edges.length === 1) {
+            edgeIds.push(direct.edges[0]);
+            if (direct.nodes.length > 1) materializedNodes.push(...direct.nodes.slice(1));
+            continue;
+          }
+          // stitched BFS
+          const stitched = shortestEdgePath(adj, a, b, 6);
+          if (stitched) {
+            edgeIds.push(...stitched.edges);
+            // include intermediate nodes so node-tiering is consistent
+            materializedNodes.push(...stitched.nodes.slice(1));
+          } else {
+            virtual.push({ source: a, target: b });
+            console.warn('[PF] no path between pair', a, '→', b);
+            materializedNodes.push(b); // keep logical progression even if no edge found
+          }
+        }
+        return { edgeIds, virtual, materializedNodes };
+      };
+
       const derivePathEdgeIds = (nodeIds: string[], edges: Array<{id:string; sourceId:string; targetId:string}>) => {
-        const norm = (s: any) => String(s ?? '').trim();
         
         const dir = new Map<string, string[]>();   // "a→b" -> [edgeIds]
         const undir = new Map<string, string[]>(); // "a—b" sorted -> [edgeIds]
@@ -194,8 +276,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
         const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
-        // Use robust edge ID derivation with bi-directional and undirected fallback
-        const { edgeIds: pathEdgeIds, virtual } = derivePathEdgeIds(path, graph.edges || []);
+        // Use stitched edge ID derivation to handle junction nodes
+        const { edgeIds: pathEdgeIds, virtual, materializedNodes } = derivePathEdgeIdsStitched(path, graph.edges || []);
         
         // B1: Enhanced edge ID guards
         if (pathEdgeIds.length === 0) {
@@ -229,7 +311,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
           metadata: {
             institutionsCount: metrics.institutionsCount,
             prerequisitesSatisfied: metrics.prerequisitesSatisfied,
-            virtualHops: virtual // Store virtual hops for debugging
+            virtualHops: virtual, // Store virtual hops for debugging
+            materializedNodes // Store stitched path nodes
           }
         };
       };
@@ -342,12 +425,13 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
 
   // Helper for consecutive pair detection (exported for use in Canvas)
   const buildConsecutivePairSet = useCallback((nodeIds: string[]) => {
+    const norm = (s: any) => String(s ?? '').trim();
     const s = new Set<string>();
     for (let i = 0; i < nodeIds.length - 1; i++) {
-      const a = String(nodeIds[i]).trim();
-      const b = String(nodeIds[i + 1]).trim();
-      s.add(`${a}→${b}`);
-      s.add(`${b}→${a}`); // allow reversed traversal
+      const a = norm(nodeIds[i]);
+      const b = norm(nodeIds[i + 1]);
+      s.add(`${a}|${b}`);
+      s.add(`${b}|${a}`); // allow reversed traversal
     }
     return s;
   }, []);
@@ -355,21 +439,23 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
   // Enhanced tier classification with consecutive-pair fallback (exported for use in Canvas)
   const tierOfEdge = useCallback((
     e: { id: string; source: string; target: string },
-    activePath?: { edgeIds?: string[]; nodeIds?: string[] }
+    activePath?: { edgeIds?: string[]; nodeIds?: string[]; metadata?: { materializedNodes?: string[] } }
   ) => {
     if (!activePath) return undefined;
-    const edgeIds = new Set((activePath.edgeIds || []).map(x => String(x).trim()));
-    const pathNodeIds = (activePath.nodeIds || []).map(x => String(x).trim());
+    const norm = (s: any) => String(s ?? '').trim();
+    const edgeIds = new Set((activePath.edgeIds || []).map(x => norm(x)));
+    // Use materialized nodes (post-stitch) for more accurate pairing
+    const pathNodeIds = ((activePath.metadata?.materializedNodes || activePath.nodeIds) || []).map(x => norm(x));
     const pairSet = buildConsecutivePairSet(pathNodeIds);
 
-    const src = String(e.source).trim();
-    const tgt = String(e.target).trim();
+    const src = norm(e.source);
+    const tgt = norm(e.target);
 
     // 1) Preferred: edgeIds match
-    if (edgeIds.size && edgeIds.has(String(e.id).trim())) return 'on-path';
+    if (edgeIds.size && edgeIds.has(norm(e.id))) return 'on-path';
 
     // 2) Fallback: consecutive-pair match
-    if (pairSet.has(`${src}→${tgt}`)) return 'on-path';
+    if (pairSet.has(`${src}|${tgt}`) || pairSet.has(`${tgt}|${src}`)) return 'on-path';
 
     // 3) Related: touches any path node
     if (pathNodeIds.includes(src) || pathNodeIds.includes(tgt)) return 'related';
