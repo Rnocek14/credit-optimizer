@@ -459,6 +459,21 @@ export default function LifePathCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
 
+  // Debug output for tier verification
+  useEffect(() => {
+    if (import.meta.env.DEV && LP_VISUAL_V2) {
+      const tierCounts = reactFlowEdges.reduce((acc, edge) => {
+        const tier = edge.data?.tier as string;
+        if (tier && typeof tier === 'string') {
+          acc[tier] = (acc[tier] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      console.debug('[V2 tiers]', tierCounts);
+    }
+  }, [reactFlowEdges, LP_VISUAL_V2]);
+
   // SAFE: do NOT mirror into local state; pass arrays directly to <ReactFlow />
 
   // Click handler

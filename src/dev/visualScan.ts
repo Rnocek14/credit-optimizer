@@ -32,15 +32,23 @@ const $all = (sel: string, root: Document | HTMLElement = document) =>
   Array.from(root.querySelectorAll(sel)) as HTMLElement[];
 
 function getNodeRects(): Rect[] {
-  const nodes = Array.from(document.querySelectorAll('.react-flow__node[data-id]')) as HTMLElement[];
+  // Query both test IDs and react-flow nodes to ensure deduplication
+  const selectors = ['[data-testid="lp-node"]', '.react-flow__node[data-id]'];
+  const allNodes = new Set<HTMLElement>();
+  
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => allNodes.add(el as HTMLElement));
+  });
+
   const byId = new Map<string, Rect>();
 
-  for (const el of nodes) {
+  for (const el of allNodes) {
     const id = el.getAttribute('data-id') || '';
     if (!id) continue;
     const r = el.getBoundingClientRect();
     const rect = { id, x: r.left, y: r.top, w: r.width, h: r.height };
     const prev = byId.get(id);
+    // Keep largest rect if duplicate IDs exist
     if (!prev || (rect.w * rect.h) > (prev.w * prev.h)) byId.set(id, rect);
   }
   return Array.from(byId.values()).filter(r => r.w > 0 && r.h > 0);
@@ -149,7 +157,7 @@ export function runVisualScan(opts: {
       const a = nodes[i], b = nodes[j];
       if (a.id === b.id) continue; // no self-overlap
       const area = overlapArea(a, b);
-      if (area > 12) { // OVERLAP_MIN_AREA was 6 — avoids noise
+      if (area > 12) { // Threshold raised from 6 to reduce noise
         issues.push({
           type: 'NODE_OVERLAP',
           aId: a.id,
@@ -235,9 +243,15 @@ export function runVisualScan(opts: {
   });
 
   const tiers = {
-    edgeOn: document.querySelectorAll('.react-flow__edges .react-flow__edge-path.lp-edge-on-path,[data-tier="on-path"]').length,
-    edgeRelated: document.querySelectorAll('.react-flow__edges .react-flow__edge-path.lp-edge-related,[data-tier="related"]').length,
-    edgeOff: document.querySelectorAll('.react-flow__edges .react-flow__edge-path.lp-edge-off-path,[data-tier="off-path"]').length,
+    edgeOn: document.querySelectorAll(
+      '.lp-edge-on-path, path[data-tier="on-path"], .react-flow__edge-path.lp-edge-on-path'
+    ).length,
+    edgeRelated: document.querySelectorAll(
+      '.lp-edge-related, path[data-tier="related"], .react-flow__edge-path.lp-edge-related'
+    ).length,
+    edgeOff: document.querySelectorAll(
+      '.lp-edge-off-path, path[data-tier="off-path"], .react-flow__edge-path.lp-edge-off-path'
+    ).length,
   };
 
   const labels = document.querySelectorAll('[data-testid="lp-edge-label"]').length;

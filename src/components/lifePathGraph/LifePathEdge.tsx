@@ -30,12 +30,12 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
 
-  // V2: Slightly higher padding to avoid node rects
-  const pad = LP_VISUAL_V2 ? 24 : 0;
+  // V2: Higher padding to avoid node rects
+  const pad = LP_VISUAL_V2 ? 28 : 0;
   const adjustedSourceX = sourcePosition === 'right' ? sourceX + pad : sourceX - pad;
   const adjustedTargetX = targetPosition === 'left' ? targetX - pad : targetX + pad;
 
-  // If you use SmoothStep, feed adjusted coords
+  // Use SmoothStep with proper coordinates
   const finalEdgePath = LP_VISUAL_V2
     ? getSmoothStepPath({
         sourceX: adjustedSourceX,
@@ -64,7 +64,7 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
   const hoverBoost = isRelatedToHovered ? 0.4 : 0;
   const strokeWidth = tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1;
 
-  // Prefer semantic tokens but keep a safe fallback
+  // Use semantic tokens for stroke color
   const stroke = tier === 'on-path' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
 
   const computedStyle = {
