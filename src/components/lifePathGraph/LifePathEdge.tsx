@@ -31,25 +31,19 @@ export function LifePathEdgeComponent(props: EducationalEdgeProps) {
   } = props;
   const { edge, tier, isRelatedToHovered, label } = data || {};
 
-  // Use layout-computed points with validation (educational layout provides clean routing)
+  // Prefer layout-computed geometry with validation
   const points = (data?.points as {x:number;y:number}[] | undefined)
     ?.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
-  
+
   let finalEdgePath: string;
   if (points && points.length >= 2) {
-    // Educational layout provides optimized routing
-    if (points.length === 4) {
-      // Curved path for credit transfers (Bezier curve)
-      finalEdgePath = `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`;
-    } else {
-      // Straight line for educational progression
-      finalEdgePath = `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
-    }
+    finalEdgePath =
+      points.length === 4
+        ? `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
+        : `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
   } else {
-    // Simple fallback - should rarely be used with educational layout
-    if (import.meta.env.DEV) {
-      console.debug('[EDGE] Using fallback path - educational layout should provide points', { id });
-    }
+    // Fallback only when layout points truly unavailable
+    if (import.meta.env.DEV) console.debug('[EDGE] fallback path (no layout points)', { id });
     finalEdgePath = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
   }
 

@@ -378,78 +378,25 @@ export default function LifePathCanvas({
   const [didMeasurePass, setDidMeasurePass] = useState(false);
   const rf = useReactFlow();
 
-  // Educational Layout V4 - Simple, performance-focused approach
-  const useEducationalLayout = true; // Feature flag for educational layout
+  // TEMP: force stable V3 layout - flip to true only for local experiments
+  const USE_EDUCATIONAL_LAYOUT = false;
   
-  // First pass (assumed sizes)
-  const laidPass1 = useMemo(() => {
-    if (useEducationalLayout) {
-      // Use educational layout - single pass, no complex scanning
-      const educationalGraph = {
-        nodes: layoutInput.nodes.map(n => ({
-          ...n,
-          type: n.data?.type || 'lower', // Map to semantic lanes
-          label: n.label || n.data?.title || n.id,
-        })),
-        edges: layoutInput.edges.map(e => ({
-          ...e,
-          kind: (e.data?.type === 'creditTransfersTo' ? 'credit_transfer' : 
-                 e.data?.type === 'requires' ? 'requires' : 'teaches') as 'requires' | 'teaches' | 'credit_transfer' | 'related',
-        }))
-      };
-      
-      const laidOut = educationalLayoutV4(educationalGraph, {
-        nodeWidth: 260,
-        nodeHeight: 120,
-        hGap: 80,
-        vGap: 40,
-        laneWidth: 340,
-        margin: 20
-      });
-      
-      if (import.meta.env.DEV) {
-        console.info('%cEducational Layout V4 ENABLED','background:#059669;color:white;padding:2px 6px;border-radius:4px;');
-        console.log('[EDUCATIONAL-LAYOUT] nodes:', laidOut.nodes.length, 'edges:', laidOut.edges.length);
-      }
-      
-      return {
-        nodes: laidOut.nodes.map(n => ({ 
-          ...n, 
-          data: layoutInput.nodes.find(orig => orig.id === n.id)?.data,
-          lane: n.type, // Map semantic type to lane
-        })),
-        edges: laidOut.edges.map(e => ({ 
-          ...e, 
-          data: layoutInput.edges.find(orig => orig.id === e.id)?.data,
-          badge: layoutInput.edges.find(orig => orig.id === e.id)?.badge,
-          style: layoutInput.edges.find(orig => orig.id === e.id)?.style,
-        }))
-      };
-    } else {
-      // Use V3 layout (existing complex system)
-      const { graph: laid, scan } = layoutAndScan(
-        layoutInput,
-        { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
-        activePath?.edgeIds || []
-      );
-      if (import.meta.env.DEV) {
-        console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
-        console.log('[SCAN PASS1]', scan.summary);
-      }
-      return laid;
+  // Stable pass (V3) - single source of truth
+  const laidGraphMemo = useMemo(() => {
+    const { graph: laid, scan } = layoutAndScan(
+      layoutInput,
+      { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
+      activePath?.edgeIds || []
+    );
+    if (import.meta.env.DEV) {
+      console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
+      console.log('[SCAN]', scan.summary);
     }
-  }, [layoutInput, activePath?.edgeIds?.join(','), useEducationalLayout]);
+    return laid;
+  }, [layoutInput, activePath?.edgeIds?.join(',')]);
 
-  // Measure actual node DOM heights after pass 1 renders, then re-run layout once (only for V3)
-  useLayoutEffect(() => {
-    if (didMeasurePass || !laidPass1 || useEducationalLayout) {
-      // Educational layout uses fixed dimensions, no second pass needed
-      if (useEducationalLayout) {
-        setLaidGraph(laidPass1);
-        setDidMeasurePass(true);
-      }
-      return;
-    }
+  // Skip two-pass measurement for now - use single-pass V3 layout
+  // (Educational V4 will use fixed dimensions when enabled)
 
     // Wait for nodes to mount
     requestAnimationFrame(() => {
@@ -480,21 +427,10 @@ export default function LifePathCanvas({
         edges: laidPass1.edges.map(e => ({ ...e })), // same edges
       };
 
-      const { graph: laid2, scan } = layoutAndScan(
-        input2,
-        { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
-        activePath?.edgeIds || []
-      );
+  // Skip two-pass measurement for now - use single-pass V3 layout
+  // (Educational V4 will use fixed dimensions when enabled)
 
-      if (import.meta.env.DEV) console.log('[SCAN PASS2]', scan.summary);
-
-      setLaidGraph(laid2);
-      setDidMeasurePass(true);
-    });
-  }, [laidPass1, didMeasurePass, rf, activePath?.edgeIds]);
-
-  // Choose which graph to render
-  const laidGraphMemo = laidGraph ?? laidPass1;
+  // Use single-pass V3 graph as source of truth
 
   // DEV hard-fails
   if (import.meta.env.DEV) {
@@ -505,7 +441,7 @@ export default function LifePathCanvas({
     }
   }
 
-  // Use laidGraphMemo for nodes
+  // React Flow nodes from laidGraphMemo only
   const reactFlowNodes: Node[] = useMemo(() => laidGraphMemo.nodes.map(n => {
     const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
     const isInMainPath = safeActivePath.nodeIds.includes(n.id);
@@ -513,6 +449,7 @@ export default function LifePathCanvas({
 
     return {
       id: n.id,
+      type: 'lifePathNode',
       position: { x: n.x!, y: n.y! },
       data: { 
         ...n.data,
@@ -522,18 +459,10 @@ export default function LifePathCanvas({
         isMainPath: isInMainPath,
         stepNumber,
         tier: nodeTier,
+        lane: n.lane,
         isHovered: hoveredNode === n.id,
         showPreviousPath: showPreviousPath && previousPath.includes(n.id) && !safeActivePath.nodeIds.includes(n.id),
       },
-      type: 'lifePathNode',
-      style: {
-        opacity: 1,
-        zIndex: isInMainPath ? 10 : 1,
-      },
-      className: LP_VISUAL_V2 && nodeTier ? `lp-node-${nodeTier}` : '',
-      sourcePosition: LP_VISUAL_V2 ? Position.Right : Position.Bottom,
-      targetPosition: LP_VISUAL_V2 ? Position.Left : Position.Top,
-      hidden: false,
       draggable: false,
     };
   }), [laidGraphMemo, safeActivePath.nodeIds, selectedNode, hoveredNode, showPreviousPath, previousPath, LP_VISUAL_V2, graph.edges]);
