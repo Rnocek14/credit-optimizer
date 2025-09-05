@@ -478,18 +478,22 @@ export default function LifePathCanvas({
 
     return edges
       .map(e => {
-        // Apply tier classification at render time
-        const tier = LP_VISUAL_V2 ? tierOfEdge(
+        // Apply tier classification at render time (ALWAYS set data.tier - no LP_VISUAL_V2 gate)
+        const tier = tierOfEdge(
           { id: e.id, source: e.sourceId, target: e.targetId },
           activePath
-        ) : undefined;
+        );
         
-        // Log tier application for debugging
-        if (LP_VISUAL_V2 && e.id === edges[0]?.id) {
+        // Debug logging for tier verification
+        if (e.id === edges[0]?.id) {
           console.log('[ACTIVE]', activePreset, activePath?.nodeIds?.length, activePath?.edgeIds?.length);
-          console.log('[RF tiers sample]', edges.slice(0,3).map(edge => 
-            tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath)
-          ));
+          
+          // Tier debug table
+          console.table(edges.slice(0, 5).map(edge => ({
+            id: edge.id,
+            tier: tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath),
+            onPath: tierOfEdge({ id: edge.id, source: edge.sourceId, target: edge.targetId }, activePath) === 'on-path',
+          })));
         }
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
@@ -509,7 +513,7 @@ export default function LifePathCanvas({
             sourceId: e.sourceId,
             targetId: e.targetId,
             isHighlighted: false,
-            tier,                   // A2: Store for data-based counting
+            tier,                   // ✅ ALWAYS set tier here (no LP_VISUAL_V2 gate)
             isRelatedToHovered,
             label,
             showAsFlow: false,
@@ -533,12 +537,23 @@ export default function LifePathCanvas({
 
         return rfEdge;
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
+    // Include activePath deps for tier recomputation
+  }, [
+    graph.edges,
+    reactFlowNodes,
+    safeActivePath.nodeIds.join(','),
+    hoveredNode,
+    showPreviousPath,
+    previousPath.join(','),
+    tierOfEdge,
+    activePath?.id,
+    activePath?.edgeIds?.join(','),
+    activePath?.nodeIds?.join(','),
+  ]);
 
   // Debug output for tier verification and acceptance gate tracking
   useEffect(() => {
-    if (import.meta.env.DEV && LP_VISUAL_V2) {
+    if (import.meta.env.DEV) {
       const tierCounts = reactFlowEdges.reduce((acc, edge) => {
         const tier = edge.data?.tier as string;
         if (tier && typeof tier === 'string') {
@@ -547,6 +562,15 @@ export default function LifePathCanvas({
         return acc;
       }, {} as Record<string, number>);
       
+      const counts = reactFlowEdges.reduce((a, e) => {
+        const t = e.data?.tier;
+        if (t === 'on-path') a.on++;
+        else if (t === 'related') a.rel++;
+        else if (t === 'off-path') a.off++;
+        return a;
+      }, { on:0, rel:0, off:0 });
+      
+      console.log('[TIER COUNTS]', counts, 'edges:', reactFlowEdges.length);
       console.debug('[V2 tiers]', tierCounts);
       
       // Also log edge routing stats

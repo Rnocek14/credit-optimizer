@@ -152,17 +152,17 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
       // Utility functions
       const norm = (s: any) => String(s ?? '').trim();
 
-      // Helper for consecutive pair detection
-      const buildConsecutivePairSet = (nodeIds: string[]) => {
-        const s = new Set<string>();
-        for (let i = 0; i < nodeIds.length - 1; i++) {
-          const a = norm(nodeIds[i]);
-          const b = norm(nodeIds[i + 1]);
-          s.add(`${a}|${b}`);
-          s.add(`${b}|${a}`); // allow reversed traversal
-        }
-        return s;
-      };
+  // Helper for consecutive pair detection (using | delimiter consistently)
+  const buildConsecutivePairSet = (nodeIds: string[]) => {
+    const s = new Set<string>();
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const a = norm(nodeIds[i]);
+      const b = norm(nodeIds[i + 1]);
+      s.add(`${a}|${b}`);
+      s.add(`${b}|${a}`); // allow reversed traversal
+    }
+    return s;
+  };
 
       // Enhanced edge derivation with stitching for junction nodes
       type GEdge = { id: string; sourceId: string; targetId: string };
