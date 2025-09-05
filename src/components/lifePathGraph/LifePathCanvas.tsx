@@ -13,6 +13,7 @@ import '@xyflow/react/dist/style.css';
 import '@/styles/lifePath.css';
 import { determineNodeGhostStatus } from '@/lib/pathfinding/ghosting';
 import { LifePathGraph, useLifePathGraph } from '@/hooks/useLifePathGraph';
+import { educationalLayoutV4 } from '@/lib/layout/educationalLayoutV4';
 import { GraphNode, PathfindingResult } from '@/types/lifePathGraph';
 import { LifePathNodeComponent } from './LifePathNode';
 import { LifePathEdgeComponent } from './LifePathEdge';
@@ -377,23 +378,78 @@ export default function LifePathCanvas({
   const [didMeasurePass, setDidMeasurePass] = useState(false);
   const rf = useReactFlow();
 
+  // Educational Layout V4 - Simple, performance-focused approach
+  const useEducationalLayout = true; // Feature flag for educational layout
+  
   // First pass (assumed sizes)
   const laidPass1 = useMemo(() => {
-    const { graph: laid, scan } = layoutAndScan(
-      layoutInput,
-      { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
-      activePath?.edgeIds || []
-    );
-    if (import.meta.env.DEV) {
-      console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
-      console.log('[SCAN PASS1]', scan.summary);
+    if (useEducationalLayout) {
+      // Use educational layout - single pass, no complex scanning
+      const educationalGraph = {
+        nodes: layoutInput.nodes.map(n => ({
+          ...n,
+          type: n.data?.type || 'lower', // Map to semantic lanes
+          label: n.label || n.data?.title || n.id,
+        })),
+        edges: layoutInput.edges.map(e => ({
+          ...e,
+          kind: (e.data?.type === 'creditTransfersTo' ? 'credit_transfer' : 
+                 e.data?.type === 'requires' ? 'requires' : 'teaches') as 'requires' | 'teaches' | 'credit_transfer' | 'related',
+        }))
+      };
+      
+      const laidOut = educationalLayoutV4(educationalGraph, {
+        nodeWidth: 260,
+        nodeHeight: 120,
+        hGap: 80,
+        vGap: 40,
+        laneWidth: 340,
+        margin: 20
+      });
+      
+      if (import.meta.env.DEV) {
+        console.info('%cEducational Layout V4 ENABLED','background:#059669;color:white;padding:2px 6px;border-radius:4px;');
+        console.log('[EDUCATIONAL-LAYOUT] nodes:', laidOut.nodes.length, 'edges:', laidOut.edges.length);
+      }
+      
+      return {
+        nodes: laidOut.nodes.map(n => ({ 
+          ...n, 
+          data: layoutInput.nodes.find(orig => orig.id === n.id)?.data,
+          lane: n.type, // Map semantic type to lane
+        })),
+        edges: laidOut.edges.map(e => ({ 
+          ...e, 
+          data: layoutInput.edges.find(orig => orig.id === e.id)?.data,
+          badge: layoutInput.edges.find(orig => orig.id === e.id)?.badge,
+          style: layoutInput.edges.find(orig => orig.id === e.id)?.style,
+        }))
+      };
+    } else {
+      // Use V3 layout (existing complex system)
+      const { graph: laid, scan } = layoutAndScan(
+        layoutInput,
+        { hGap: 320, vGap: 40, laneOrder: ['Core','Electives','Transfer','Orphan'], margin: 16, avoidRadius: 12, maxSweeps: 4 },
+        activePath?.edgeIds || []
+      );
+      if (import.meta.env.DEV) {
+        console.info('%cLifePath Layout V3 ENABLED','background:#1d4ed8;color:white;padding:2px 6px;border-radius:4px;');
+        console.log('[SCAN PASS1]', scan.summary);
+      }
+      return laid;
     }
-    return laid;
-  }, [layoutInput, activePath?.edgeIds?.join(',')]);
+  }, [layoutInput, activePath?.edgeIds?.join(','), useEducationalLayout]);
 
-  // Measure actual node DOM heights after pass 1 renders, then re-run layout once
+  // Measure actual node DOM heights after pass 1 renders, then re-run layout once (only for V3)
   useLayoutEffect(() => {
-    if (didMeasurePass || !laidPass1) return;
+    if (didMeasurePass || !laidPass1 || useEducationalLayout) {
+      // Educational layout uses fixed dimensions, no second pass needed
+      if (useEducationalLayout) {
+        setLaidGraph(laidPass1);
+        setDidMeasurePass(true);
+      }
+      return;
+    }
 
     // Wait for nodes to mount
     requestAnimationFrame(() => {

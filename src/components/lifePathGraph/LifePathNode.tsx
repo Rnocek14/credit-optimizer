@@ -20,6 +20,7 @@ import { StepBadge } from './StepBadge';
 import { CapMeter } from './CapMeter';
 import { GhostReasonChip } from './GhostReasonChip';
 import { OverlapIndicator } from './OverlapIndicator';
+import { TrustSignals } from './TrustSignals';
 
 interface LifePathNodeData {
   node: GraphNode;
@@ -186,6 +187,11 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
                 ACE
               </Badge>
             )}
+          </div>
+          
+          {/* Trust Signals - Critical decision-making information */}
+          <div className="mb-3">
+            <TrustSignals node={node} compact />
           </div>
           
           <h3 className="font-semibold text-sm mb-2 line-clamp-2">

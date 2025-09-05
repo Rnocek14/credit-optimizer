@@ -1,21 +1,19 @@
+// Simplified Educational Edge Component - Clear, straight-line routing
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer } from '@xyflow/react';
 import { GraphEdge } from '@/types/lifePathGraph';
-import { LP_VISUAL_V2 } from '@/lib/flags';
-import { routeWithDetours, waypointsToPath, DEFAULT_LANE_OFFSETS, type Rect } from '@/lib/pathfinding/edgeRouting';
 
-interface LifePathEdgeData {
+interface EducationalEdgeData {
   edge: GraphEdge;
   isHighlighted: boolean;
   tier?: 'on-path' | 'related' | 'off-path';
   isRelatedToHovered?: boolean;
-  showPreviousPath?: boolean;
   label?: string;
   points?: {x: number; y: number}[];
   badge?: {text: string; tone: string};
 }
 
-interface LifePathEdgeProps {
+interface EducationalEdgeProps {
   id: string;
   sourceX: number;
   sourceY: number;
@@ -23,50 +21,51 @@ interface LifePathEdgeProps {
   targetY: number;
   sourcePosition: any;
   targetPosition: any;
-  data: LifePathEdgeData;
+  data: EducationalEdgeData;
   markerEnd?: string;
 }
 
-export function LifePathEdgeComponent(props: LifePathEdgeProps) {
+export function LifePathEdgeComponent(props: EducationalEdgeProps) {
   const {
-    id, data, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, markerEnd
+    id, data, sourceX, sourceY, targetX, targetY, markerEnd
   } = props;
-  const { edge, tier, isRelatedToHovered, label, showPreviousPath } = data || {};
+  const { edge, tier, isRelatedToHovered, label } = data || {};
 
-  // 1) Prefer layout-computed geometry with validation
-  const points = (data?.points as {x:number;y:number}[] | undefined)?.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  // Use layout-computed points with validation (educational layout provides clean routing)
+  const points = (data?.points as {x:number;y:number}[] | undefined)
+    ?.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
   
   let finalEdgePath: string;
   if (points && points.length >= 2) {
-    finalEdgePath = 
-      points.length === 4
-        ? `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
-        : `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
+    // Educational layout provides optimized routing
+    if (points.length === 4) {
+      // Curved path for credit transfers (Bezier curve)
+      finalEdgePath = `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`;
+    } else {
+      // Straight line for educational progression
+      finalEdgePath = `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
+    }
   } else {
-    // 2) Fallback only when layout points truly unavailable
-    const [fallback] = getSmoothStepPath({ 
-      sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 12 
-    });
-    finalEdgePath = fallback;
+    // Simple fallback - should rarely be used with educational layout
+    if (import.meta.env.DEV) {
+      console.debug('[EDGE] Using fallback path - educational layout should provide points', { id });
+    }
+    finalEdgePath = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
   }
+
+  // Dynamic styling based on tier and edge type
+  const computedStyle = {
+    opacity: tier === 'off-path' ? 0.3 : isRelatedToHovered ? 0.6 : 1,
+    stroke: tier === 'on-path' ? 'hsl(var(--primary))' : 
+            tier === 'related' ? 'hsl(var(--secondary))' : 
+            'hsl(var(--muted-foreground))',
+    strokeWidth: tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1,
+    strokeDasharray: edge?.type === 'creditTransfersTo' ? '6 6' : undefined,
+  };
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
   const dataTier = tier || '';
   const dataEdgeType = edge?.type || '';
-
-  const baseOpacity = showPreviousPath ? 0.3 : tier === 'on-path' ? 1 : tier === 'related' ? 0.6 : 0.25;
-  const hoverBoost = isRelatedToHovered ? 0.4 : 0;
-  const strokeWidth = tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1;
-
-  // Use semantic tokens for stroke color
-  const stroke = tier === 'on-path' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
-
-  const computedStyle = {
-    opacity: Math.min(1, baseOpacity + hoverBoost),
-    stroke,
-    strokeWidth,
-    fill: 'none'
-  };
 
   return (
     <g
@@ -74,18 +73,22 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
       data-testid="lp-edge"
       data-id={id}
       data-edge-type={dataEdgeType}
+      style={{ pointerEvents: 'none' }}
     >
       <path
-        className={`react-flow__edge-path ${tierClass}`.trim()}
+        id={id}
         d={finalEdgePath}
-        style={computedStyle}
         fill="none"
+        className={`react-flow__edge-path ${tierClass}`.trim()}
+        style={computedStyle}
         markerEnd={markerEnd}
         data-id={id}
         data-testid="lp-edge-path"
         data-tier={dataTier}
         data-edge-type={dataEdgeType}
       />
+      
+      {/* Edge Label for Credit Transfers */}
       {label && (
         <foreignObject
           data-testid="lp-edge-label"
