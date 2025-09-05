@@ -146,12 +146,23 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         const pathNodes = path.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean) as GraphNode[];
         const metrics = calculatePathMetrics(path, nodeMap, edgeMap);
 
+        // Derive pathEdgeIds from consecutive pathNodeIds pairs
+        const pathEdgeIds: string[] = [];
+        for (let i = 0; i < path.length - 1; i++) {
+          const sourceId = path[i];
+          const targetId = path[i + 1];
+          const edge = graph.edges.find(e => e.sourceId === sourceId && e.targetId === targetId);
+          if (edge) {
+            pathEdgeIds.push(edge.id);
+          }
+        }
+
         return {
           id: `path-${optimizedFor}-${Date.now()}`,
           name: `${optimizedFor.charAt(0).toUpperCase() + optimizedFor.slice(1)} Optimized Path`,
           description: `Path optimized for ${optimizedFor}`,
           nodeIds: path,
-          edgeIds: [], // TODO: Calculate actual edge IDs
+          edgeIds: pathEdgeIds,
           totalTime: metrics.totalTime,
           totalCost: metrics.totalCost,
           totalCredits: metrics.totalCredits,

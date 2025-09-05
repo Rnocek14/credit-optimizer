@@ -7,6 +7,7 @@ import {
   Background,
   MiniMap,
   Position,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import '@/styles/lifePath.css';
@@ -37,6 +38,8 @@ function toJSON(v: any) {
 // ---------- VISUAL V2 FEATURE FLAG ----------
 import { LP_VISUAL_V2 } from '@/lib/flags';
 import { VisualScanner } from './VisualScanner';
+import { TierClassManager } from './TierClassManager';
+import { getLiveNodeBoxes, snapToGrid } from '@/lib/pathfinding/coordinateHelpers';
 
 // ---------- SAFE RENDER MODE (now dynamic via audit panel) ----------
 
@@ -65,6 +68,7 @@ export default function LifePathCanvas({
   findPaths,
   activeGoal 
 }: LifePathCanvasProps) {
+  const reactFlowInstance = useReactFlow();
   /* RUNTIME AUDIT PANEL – BEGIN */
   const [auditRunning, setAuditRunning] = React.useState(false);
   const [auditLog, setAuditLog] = React.useState<string>('');
@@ -242,7 +246,7 @@ export default function LifePathCanvas({
     return counts;
   }, [pathfindingResult]);
 
-  // Get current active path
+  // Get current active path with edge IDs
   const activePath = useMemo(() => {
     if (!pathfindingResult) return null;
     switch (activePreset) {
@@ -332,7 +336,7 @@ export default function LifePathCanvas({
     [safeActivePath.nodeIds]
   );
 
-  // Nodes → React Flow
+  // Nodes → React Flow with grid snapping and live dimensions
   const reactFlowNodes: Node[] = useMemo(() => {
     return graph.nodes.map(n => {
       const nodeTier = LP_VISUAL_V2 ? determineNodeTier(n.id, safeActivePath.nodeIds, graph.edges) : undefined;
@@ -343,11 +347,14 @@ export default function LifePathCanvas({
       if (n.institutionId === 'fcc') institutionLane = 0;
       else if (n.institutionId === 'fsu') institutionLane = 1;
 
-      const position = n.position || calculateNodePosition(
+      const basePosition = n.position || calculateNodePosition(
         graph.nodes.indexOf(n),
         n.attributes?.depth ?? 0,
         institutionLane
       );
+      
+      // Apply grid snapping for consistent layout
+      const position = snapToGrid(basePosition, 16);
 
       return {
         id: n.id,
@@ -424,9 +431,15 @@ export default function LifePathCanvas({
     return graph.edges
       .filter(e => visible.has(e.sourceId) && visible.has(e.targetId))
       .map(e => {
-        const tier = LP_VISUAL_V2
-          ? determineEdgeTier(e.id, safeActivePath.nodeIds, graph.nodes, graph.edges)
-          : undefined;
+        // Deterministic edge tiering using pathEdgeIds
+        const tier = LP_VISUAL_V2 && activePath ? (() => {
+          const pathEdgeIds = new Set(activePath.edgeIds || []);
+          const pathNodeIds = new Set(activePath.nodeIds || []);
+          
+          if (pathEdgeIds.has(e.id)) return 'on-path';
+          if (pathNodeIds.has(e.sourceId) || pathNodeIds.has(e.targetId)) return 'related';
+          return 'off-path';
+        })() : undefined;
 
         const isRelatedToHovered = !!hoveredNode && (e.sourceId === hoveredNode || e.targetId === hoveredNode);
 
@@ -459,7 +472,7 @@ export default function LifePathCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph.edges, reactFlowNodes, safeActivePath.nodeIds.join(','), hoveredNode, showPreviousPath, previousPath.join(',')]);
 
-  // Debug output for tier verification and issue tracking
+  // Debug output for tier verification and acceptance gate tracking
   useEffect(() => {
     if (import.meta.env.DEV && LP_VISUAL_V2) {
       const tierCounts = reactFlowEdges.reduce((acc, edge) => {
