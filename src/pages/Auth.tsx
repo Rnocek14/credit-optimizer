@@ -14,6 +14,8 @@ import { Loader2, Target, ArrowLeft, Linkedin, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { enableDevAuth } from "@/lib/security";
 import { setupDevUser } from "@/lib/devUserSetup";
+import { MobileLayout, MobileContainer } from "@/components/ui/mobile";
+import { isMobileApp, getMobileAuthRedirectUrl } from "@/lib/mobile";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -133,7 +135,7 @@ export default function Auth() {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+          emailRedirectTo: getMobileAuthRedirectUrl(),
         },
       });
 
@@ -180,7 +182,7 @@ export default function Auth() {
         provider: 'linkedin_oidc',
         options: {
           scopes: 'r_liteprofile r_emailaddress',
-          redirectTo: `${window.location.origin}/auth/callback?import=linkedin`
+          redirectTo: getMobileAuthRedirectUrl()
         }
       });
 
@@ -223,8 +225,8 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <MobileLayout>
+      <MobileContainer className="space-y-6">
         <div className="text-center space-y-2">
           <Link to="/" className="inline-flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
@@ -235,7 +237,9 @@ export default function Auth() {
             </span>
           </Link>
           <h1 className="text-2xl font-bold">Welcome</h1>
-          <p className="text-muted-foreground">Sign in to access your career roadmap</p>
+          <p className="text-muted-foreground">
+            {isMobileApp() ? "Sign in to access your career roadmap" : "Sign in to access your career roadmap"}
+          </p>
         </div>
 
         <Card>
@@ -409,7 +413,7 @@ export default function Auth() {
             </Link>
           </Button>
         </div>
-      </div>
-    </div>
+      </MobileContainer>
+    </MobileLayout>
   );
 }

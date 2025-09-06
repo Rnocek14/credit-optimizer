@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSecureAuth } from "@/hooks/useSecureAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import SecurityMonitor from "@/components/SecurityMonitor";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,7 +23,7 @@ export default function ProtectedRoute({
   const [hasProfile, setHasProfile] = useState(false);
   const location = useLocation();
   const { toast } = useToast();
-  const { user, role: userRole, isLoading, hasPermission } = useSecureAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     // Check onboarding status when user changes
@@ -72,11 +72,8 @@ export default function ProtectedRoute({
 
   // If user is logged in but trying to access auth page
   if (!requireAuth && user && location.pathname === "/auth") {
-    // Redirect admins to moderation, others to dashboard
-    if (userRole === "admin") {
-      return <Navigate to="/admin/moderation" replace />;
-    }
-    return <Navigate to={hasProfile ? "/dashboard" : "/onboarding"} replace />;
+    // Redirect to dashboard
+    return <Navigate to={hasProfile ? "/today" : "/onboarding"} replace />;
   }
 
   // If onboarding is required but user hasn't completed it (skip for dev users)
@@ -90,10 +87,10 @@ export default function ProtectedRoute({
   }
 
   // Secure admin role check for admin routes
-  if (location.pathname.startsWith("/admin") && !hasPermission("admin")) {
+  if (location.pathname.startsWith("/admin") && user?.role !== "admin") {
     console.warn("SECURITY: Unauthorized admin access attempt", {
       userId: user?.id,
-      userRole,
+      userRole: user?.role,
       path: location.pathname,
       timestamp: new Date().toISOString()
     });
@@ -103,14 +100,14 @@ export default function ProtectedRoute({
       description: "You need admin privileges to access this page.",
       variant: "destructive",
     });
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/today" replace />;
   }
 
   // Secure mentor role check for teach route
-  if (location.pathname === "/teach" && !hasPermission("mentor") && !hasPermission("admin")) {
+  if (location.pathname === "/teach" && user?.role !== "mentor" && user?.role !== "admin") {
     console.warn("SECURITY: Unauthorized mentor access attempt", {
       userId: user?.id,
-      userRole,
+      userRole: user?.role,
       path: location.pathname,
       timestamp: new Date().toISOString()
     });
@@ -120,7 +117,7 @@ export default function ProtectedRoute({
       description: "You need mentor privileges to access this page.",
       variant: "destructive",
     });
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/today" replace />;
   }
 
   return (

@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "./contexts/AuthContext";
 import { UserJourneyProvider } from "./contexts/UserJourneyContext";
 import { UnifiedDataProvider } from "./contexts/UnifiedDataContext";
 import TutorialProvider from "./tutorial/TutorialProvider";
@@ -142,7 +143,8 @@ const App = () => {
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <TooltipProvider>
               <TutorialProvider>
-                <UserJourneyProvider>
+                <AuthProvider>
+                  <UserJourneyProvider>
                   <UnifiedDataProvider>
                 <EnhancedErrorBoundary
                   onError={(error) => {
@@ -788,7 +790,8 @@ const App = () => {
               </BrowserRouter>
              </EnhancedErrorBoundary>
                    </UnifiedDataProvider>
-                 </UserJourneyProvider>
+                  </UserJourneyProvider>
+                </AuthProvider>
                </TutorialProvider>
              </TooltipProvider>
            </ThemeProvider>

@@ -11,5 +11,6 @@
  */
 export const LP_VISUAL_V2 =
   (typeof window !== 'undefined' && localStorage.getItem('LP_VISUAL_V2') === '1') ||
-  (typeof process !== 'undefined' && process.env?.LP_VISUAL_V2 === '1') ||
+  (typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env?.LP_VISUAL_V2 === '1') ||
+  (import.meta.env?.LP_VISUAL_V2 === '1') ||
   false;
