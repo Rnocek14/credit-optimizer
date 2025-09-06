@@ -31,7 +31,6 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { RecoBundle } from '@/types/course-intelligence';
-import { setupDevUser } from '@/lib/devUserSetup';
 
 interface MayaLiveInsightsProps {
   userName?: string;
@@ -91,13 +90,7 @@ export function MayaLiveInsights({
   const { toast } = useToast();
   const pendingUndos = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  // Setup dev user if needed
-  useEffect(() => {
-    // Auto-setup Mateo for testing
-    if (!user?.id) {
-      setupDevUser('mateo');
-    }
-  }, [user?.id]);
+  // Note: Dev user setup is handled by the auth system
 
   // Auto-generate insights on mount if needed
   useEffect(() => {
