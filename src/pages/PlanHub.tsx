@@ -240,15 +240,17 @@ export default function PlanHub() {
 
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
-              <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-              <TabsTrigger value="goals" data-testid="tab-goals">Goals</TabsTrigger>
-              <TabsTrigger value="roadmap" data-testid="tab-roadmap">Roadmap</TabsTrigger>
-              <TabsTrigger value="gaps" data-testid="tab-gaps">Skill Gaps</TabsTrigger>
-              <TabsTrigger value="workflows" data-testid="tab-workflows">Workflows</TabsTrigger>
-              <TabsTrigger value="proof" data-testid="tab-proof">Proof Projects</TabsTrigger>
-              <TabsTrigger value="switch" data-testid="tab-switch">Career Switch</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-2 mb-4">
+              <TabsList className="inline-flex w-max min-w-full justify-start space-x-1 bg-muted p-1 h-auto">
+                <TabsTrigger value="overview" data-testid="tab-overview" className="whitespace-nowrap">Overview</TabsTrigger>
+                <TabsTrigger value="goals" data-testid="tab-goals" className="whitespace-nowrap">Goals</TabsTrigger>
+                <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="whitespace-nowrap">Roadmap</TabsTrigger>
+                <TabsTrigger value="gaps" data-testid="tab-gaps" className="whitespace-nowrap">Skill Gaps</TabsTrigger>
+                <TabsTrigger value="workflows" data-testid="tab-workflows" className="whitespace-nowrap">Workflows</TabsTrigger>
+                <TabsTrigger value="proof" data-testid="tab-proof" className="whitespace-nowrap">Proof Projects</TabsTrigger>
+                <TabsTrigger value="switch" data-testid="tab-switch" className="whitespace-nowrap">Career Switch</TabsTrigger>
+              </TabsList>
+            </div>
 
               <TabsContent value="overview" className="mt-6">
                 {/* Career Profile Card */}
