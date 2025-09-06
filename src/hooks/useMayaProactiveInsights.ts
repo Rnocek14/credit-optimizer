@@ -25,21 +25,32 @@ export function useMayaProactiveInsights(userId?: string) {
   const { toast } = useToast();
 
   const fetchInsights = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('[Maya] No userId provided, skipping fetch');
+      return;
+    }
     
+    console.log('[Maya] Starting fetchInsights for userId:', userId);
     setLoading(true);
     setError(null);
     
     try {
       // Debug logging for development
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[Maya] fetchInsights (view) query params', {
-          userId,
-          source: 'maya_visible_insights', // canonical view
-        });
-      }
+      console.log('[Maya] fetchInsights query params', {
+        userId,
+        source: 'maya_proactive_insights',
+      });
 
-      // Use direct table query first as fallback, then try view
+      // First, let's see all insights for this user (including dismissed ones) for debugging
+      const { data: allInsights, error: debugError } = await supabase
+        .from('maya_proactive_insights')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      console.log('[Maya] ALL insights for user (including dismissed):', allInsights?.length, allInsights);
+
+      // Now get only non-dismissed insights
       const { data, error: fetchError } = await supabase
         .from('maya_proactive_insights')
         .select('*')
@@ -50,13 +61,10 @@ export function useMayaProactiveInsights(userId?: string) {
 
       if (fetchError) throw fetchError;
 
+      console.log('[Maya] Non-dismissed insights result:', data?.length, data);
+
       setInsights(data || []);
       setLastFetchedAt(new Date().toISOString());
-
-      // Debug logging for development
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[Maya] fetchInsights (view) result', data?.length, data?.slice(0, 3));
-      }
 
       // Show urgent insights as toast notifications
       const urgentInsights = data?.filter(

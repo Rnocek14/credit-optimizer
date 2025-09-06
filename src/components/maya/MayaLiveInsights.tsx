@@ -275,6 +275,11 @@ export function MayaLiveInsights({
           </div>
         ) : insights.length > 0 && currentInsight ? (
           <div className="space-y-4">
+            {/* Debug info */}
+            <div className="text-xs text-muted-foreground p-2 bg-muted/20 rounded">
+              Debug: {insights.length} insights loaded, current index: {currentInsightIndex}
+            </div>
+            
             {/* Insight Navigation */}
             {insights.length > 1 && (
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
@@ -393,6 +398,9 @@ export function MayaLiveInsights({
               <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                 Maya will analyze your profile and learning patterns to provide personalized career insights.
               </p>
+              <div className="text-xs text-muted-foreground mb-2">
+                Debug: insights.length = {insights.length}, loading = {loading.toString()}, userId = {user?.id}
+              </div>
             </div>
             <Button 
               onClick={() => generateInsights('daily')}
