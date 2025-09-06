@@ -1,19 +1,19 @@
-// Simplified Educational Edge Component - Clear, straight-line routing
+// Simplified V3-aware Edge Component — uses layout-computed points when present.
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer } from '@xyflow/react';
+import { BaseEdge } from '@xyflow/react';
 import { GraphEdge } from '@/types/lifePathGraph';
 
-interface EducationalEdgeData {
-  edge: GraphEdge;
-  isHighlighted: boolean;
+interface LifePathEdgeData {
+  edge?: GraphEdge;
+  isHighlighted?: boolean;
   tier?: 'on-path' | 'related' | 'off-path';
   isRelatedToHovered?: boolean;
   label?: string;
-  points?: {x: number; y: number}[];
-  badge?: {text: string; tone: string};
+  points?: { x: number; y: number }[];
+  badge?: { text: string; tone: string };
 }
 
-interface EducationalEdgeProps {
+interface LifePathEdgeProps {
   id: string;
   sourceX: number;
   sourceY: number;
@@ -21,41 +21,42 @@ interface EducationalEdgeProps {
   targetY: number;
   sourcePosition: any;
   targetPosition: any;
-  data: EducationalEdgeData;
+  data: LifePathEdgeData;
   markerEnd?: string;
 }
 
-export function LifePathEdgeComponent(props: EducationalEdgeProps) {
-  const {
-    id, data, sourceX, sourceY, targetX, targetY, markerEnd
-  } = props;
+export function LifePathEdgeComponent(props: LifePathEdgeProps) {
+  const { id, data, sourceX, sourceY, targetX, targetY, markerEnd } = props;
   const { edge, tier, isRelatedToHovered, label } = data || {};
 
-  // Prefer layout-computed geometry with validation
-  const points = (data?.points as {x:number;y:number}[] | undefined)
-    ?.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  // Prefer layout-computed geometry
+  const points = (data?.points || []).filter(
+    (p) => Number.isFinite(p.x) && Number.isFinite(p.y)
+  );
 
-  let finalEdgePath: string;
-  if (points && points.length >= 2) {
-    finalEdgePath =
+  let d: string;
+  if (points.length >= 2) {
+    d =
       points.length === 4
         ? `M ${points[0].x},${points[0].y} C ${points[1].x},${points[1].y} ${points[2].x},${points[2].y} ${points[3].x},${points[3].y}`
-        : `M ${points[0].x},${points[0].y} ` + points.slice(1).map(p => `L ${p.x},${p.y}`).join(' ');
+        : `M ${points[0].x},${points[0].y} ` +
+          points.slice(1).map((p) => `L ${p.x},${p.y}`).join(' ');
   } else {
-    // Fallback only when layout points truly unavailable
     if (import.meta.env.DEV) console.debug('[EDGE] fallback path (no layout points)', { id });
-    finalEdgePath = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
+    d = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
   }
 
-  // Dynamic styling based on tier and edge type
-  const computedStyle = {
+  const style = {
     opacity: tier === 'off-path' ? 0.3 : isRelatedToHovered ? 0.6 : 1,
-    stroke: tier === 'on-path' ? 'hsl(var(--primary))' : 
-            tier === 'related' ? 'hsl(var(--secondary))' : 
-            'hsl(var(--muted-foreground))',
+    stroke:
+      tier === 'on-path'
+        ? 'hsl(var(--primary))'
+        : tier === 'related'
+        ? 'hsl(var(--secondary))'
+        : 'hsl(var(--muted-foreground))',
     strokeWidth: tier === 'on-path' ? 3 : tier === 'related' ? 2 : 1,
     strokeDasharray: edge?.type === 'creditTransfersTo' ? '6 6' : undefined,
-  };
+  } as React.CSSProperties;
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
   const dataTier = tier || '';
@@ -71,24 +72,22 @@ export function LifePathEdgeComponent(props: EducationalEdgeProps) {
     >
       <path
         id={id}
-        d={finalEdgePath}
+        d={d}
         fill="none"
         className={`react-flow__edge-path ${tierClass}`.trim()}
-        style={computedStyle}
+        style={style}
         markerEnd={markerEnd}
         data-id={id}
         data-testid="lp-edge-path"
         data-tier={dataTier}
         data-edge-type={dataEdgeType}
       />
-      
-      {/* Edge Label for Credit Transfers */}
       {label && (
         <foreignObject
           data-testid="lp-edge-label"
-          width={120}
+          width={140}
           height={28}
-          x={(sourceX + targetX) / 2 - 60}
+          x={(sourceX + targetX) / 2 - 70}
           y={(sourceY + targetY) / 2 - 14}
           className="pointer-events-none"
         >
