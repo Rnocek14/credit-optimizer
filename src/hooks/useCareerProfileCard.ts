@@ -44,13 +44,26 @@ export const useCareerProfileCard = (trackId?: string) => {
       
       console.log('[useCareerProfileCard] User authenticated:', user.id);
 
-      // Get track details
+      // Get track details - first get profile ID
+      console.log('[useCareerProfileCard] Fetching profile ID for user:', user.id);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        console.error('[useCareerProfileCard] No profile found for user');
+        throw new Error('Profile not found');
+      }
+
+      console.log('[useCareerProfileCard] Profile ID:', profile.id);
       console.log('[useCareerProfileCard] Fetching track details for:', trackId);
       const { data: track, error: trackError } = await supabase
         .from('career_tracks')
         .select('*')
         .eq('id', trackId)
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .single();
 
       if (trackError || !track) {
@@ -77,11 +90,11 @@ export const useCareerProfileCard = (trackId?: string) => {
 
       console.log('[useCareerProfileCard] riskData', riskData);
 
-      // Get all tracks for ranking calculation
+      // Get all tracks for ranking calculation - use profile ID
       const { data: allTracks } = await supabase
         .from('career_tracks')
         .select('roi_score')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .not('roi_score', 'is', null);
 
       console.log('[useCareerProfileCard] allTracks length', allTracks?.length);
