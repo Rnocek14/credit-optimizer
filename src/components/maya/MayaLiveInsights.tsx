@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { RecoBundle } from '@/types/course-intelligence';
+import { setupDevUser } from '@/lib/devUserSetup';
 
 interface MayaLiveInsightsProps {
   userName?: string;
@@ -55,6 +56,14 @@ export function MayaLiveInsights({
     queryKey: ['current-user'],
     queryFn: getCurrentUser,
     staleTime: 1000 * 60 * 5,
+  });
+  
+  // Debug logging for user data
+  console.log('[Maya Component] User data:', { 
+    user: user, 
+    userId: user?.id, 
+    isDevUser: user?.isDevUser,
+    name: user?.name 
   });
   
   const { 
@@ -82,9 +91,25 @@ export function MayaLiveInsights({
   const { toast } = useToast();
   const pendingUndos = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Setup dev user if needed
+  useEffect(() => {
+    // Auto-setup Mateo for testing
+    if (!user?.id) {
+      setupDevUser('mateo');
+    }
+  }, [user?.id]);
+
   // Auto-generate insights on mount if needed
   useEffect(() => {
+    console.log('[Maya Component] Effect check:', {
+      userId: user?.id,
+      insightsLength: insights.length,
+      loading,
+      hasTriedAutoGeneration
+    });
+    
     if (user?.id && insights.length === 0 && !loading && !hasTriedAutoGeneration) {
+      console.log('[Maya Component] Auto-generating insights...');
       setHasTriedAutoGeneration(true);
       generateInsights('daily', true);
     }
@@ -402,14 +427,26 @@ export function MayaLiveInsights({
                 Debug: insights.length = {insights.length}, loading = {loading.toString()}, userId = {user?.id}
               </div>
             </div>
-            <Button 
-              onClick={() => generateInsights('daily')}
-              disabled={loading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Generate Insights
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button 
+                onClick={() => generateInsights('daily')}
+                disabled={loading}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Generate Insights
+              </Button>
+              <Button 
+                onClick={() => {
+                  console.log('[Maya] Manual fetch triggered');
+                  fetchInsights();
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Force Refresh
+              </Button>
+            </div>
           </div>
         )}
 
