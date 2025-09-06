@@ -20,10 +20,26 @@ export function useTracks() {
         console.log('[useTracks] No user found, returning empty array');
         return [];
       }
+
+      // First get the profile ID for this auth user
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        console.log('[useTracks] No profile found for user, returning empty array');
+        return [];
+      }
+
+      console.log('[useTracks] Profile ID:', profile.id);
+
+      // Now fetch tracks using the profile ID
       const { data, error } = await supabase
         .from('career_tracks')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .order('archived', { ascending: true })
         .order('order_index', { ascending: true })
         .order('created_at', { ascending: true });
