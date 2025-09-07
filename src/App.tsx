@@ -124,6 +124,7 @@ import { EnhancedErrorBoundary } from "./components/enhanced/EnhancedErrorBounda
 import { ProductionErrorBoundary } from "./components/enhanced/ProductionErrorBoundary";
 import { useCircuitBreakerClient } from "./hooks/useCircuitBreakerClient";
 import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
+import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -785,6 +786,7 @@ const App = () => {
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
                 </Routes>
+                <MobileNavigation />
                 <XPCelebrationOverlay />
                 {process.env.NODE_ENV !== 'production' && <DevMenu />}
               </BrowserRouter>
