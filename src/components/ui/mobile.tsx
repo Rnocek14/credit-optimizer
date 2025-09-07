@@ -18,7 +18,7 @@ export function MobileLayout({
   return (
     <div 
       className={cn(
-        'min-h-screen bg-background',
+        'min-h-screen bg-background text-foreground transition-colors duration-200',
         {
           // iOS safe areas
           'pt-safe-top pb-safe-bottom': safeArea && isIOS(),
@@ -84,7 +84,7 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   return (
     <header className={cn(
-      'w-full border-b bg-background/95 backdrop-blur',
+      'w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-colors duration-200',
       {
         'sticky top-0 z-50': sticky
       },
@@ -117,9 +117,9 @@ export function MobileButton({
   const baseClasses = 'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 touch-manipulation';
   
   const variantClasses = {
-    primary: 'bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary',
-    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 focus:ring-secondary',
-    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:ring-accent'
+    primary: 'bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-primary shadow-soft dark:shadow-elevation transition-all duration-200',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary-hover focus:ring-secondary shadow-soft transition-all duration-200',
+    outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground focus:ring-accent transition-all duration-200'
   };
 
   const sizeClasses = {
