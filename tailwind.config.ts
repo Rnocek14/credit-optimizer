@@ -336,15 +336,45 @@ export default {
 		// Plugin to ensure OKLCH utilities are always available
 		({ addUtilities }) => {
 			addUtilities({
-				'.bg-accent-cyan': { 'background': 'oklch(var(--accent-cyan))', 'color': 'oklch(0.22 0.03 203)' },
-				'.bg-accent-gold': { 'background': 'oklch(var(--accent-gold))', 'color': 'oklch(0.20 0.03 84)' },
-				'.bg-accent-lime': { 'background': 'oklch(var(--accent-lime))', 'color': 'oklch(0.20 0.03 135)' },
-				'.bg-risk-low': { 'background': 'oklch(var(--risk-low))', 'color': 'oklch(0.18 0.03 135)' },
-				'.bg-risk-medium': { 'background': 'oklch(var(--risk-medium))', 'color': 'oklch(0.18 0.03 95)' },
-				'.bg-risk-high': { 'background': 'oklch(var(--risk-high))', 'color': 'oklch(0.95 0.00 0)' },
-				'.bg-risk-critical': { 'background': 'oklch(var(--risk-critical))', 'color': 'oklch(0.95 0.00 0)' },
+				// Brand utilities
+				'.bg-brand-primary': { 
+					'background': 'oklch(var(--brand-primary))', 
+					'color': 'oklch(var(--brand-primary-foreground))' 
+				},
+				'.bg-brand-primary-hover': { 
+					'background': 'oklch(var(--brand-primary-hover))', 
+					'color': 'oklch(var(--brand-primary-foreground))' 
+				},
+				
+				// AI/Maya accent utilities
+				'.bg-accent-cyan': { 
+					'background': 'oklch(var(--accent-cyan))', 
+					'color': 'oklch(var(--accent-cyan-foreground))' 
+				},
+				'.bg-accent-cyan-hover': { 
+					'background': 'oklch(var(--accent-cyan-hover))', 
+					'color': 'oklch(var(--accent-cyan-foreground))' 
+				},
+				
+				// Supporting accents
+				'.bg-accent-gold': { 
+					'background': 'oklch(var(--accent-gold))', 
+					'color': 'oklch(var(--accent-gold-foreground))' 
+				},
+				'.bg-accent-lime': { 
+					'background': 'oklch(var(--accent-lime))', 
+					'color': 'oklch(var(--accent-lime-foreground))' 
+				},
+				
+				// Risk matrix
+				'.bg-risk-low': { 'background': 'oklch(var(--risk-low))', 'color': 'white' },
+				'.bg-risk-medium': { 'background': 'oklch(var(--risk-medium))', 'color': 'black' },
+				'.bg-risk-high': { 'background': 'oklch(var(--risk-high))', 'color': 'white' },
+				'.bg-risk-critical': { 'background': 'oklch(var(--risk-critical))', 'color': 'white' },
+				
+				// Gradient
 				'.gradient-primary': { 
-					'background-image': 'linear-gradient(135deg, oklch(var(--gradient-primary)), oklch(var(--gradient-primary-hover)))' 
+					'background-image': 'linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)))' 
 				}
 			})
 		}

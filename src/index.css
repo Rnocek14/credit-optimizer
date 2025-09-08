@@ -88,15 +88,19 @@
     --background: 0 0% 100%;
     --foreground: 222 84% 5%;
 
-    /* OKLCH semantic accents (NOTE: use oklch(), not hsl()) - Fixed for WCAG */
-    --accent-cyan: 0.77 0.09 203;
-    --accent-cyan-foreground: 0.26 0.03 203;
-
+    /* Refined color system - Brand purple + AI cyan + supporting accents */
+    --brand-primary: 0.55 0.22 280;
+    --brand-primary-hover: 0.50 0.24 280;
+    --brand-primary-foreground: 0.95 0.02 280;
+    
+    --accent-cyan: 0.75 0.15 200;
+    --accent-cyan-foreground: 0.20 0.03 200;
+    
     --accent-gold: 0.78 0.13 84;
-    --accent-gold-foreground: 0.25 0.03 84;
-
+    --accent-gold-foreground: 0.20 0.03 84;
+    
     --accent-lime: 0.82 0.11 135;
-    --accent-lime-foreground: 0.24 0.03 135;
+    --accent-lime-foreground: 0.20 0.03 135;
 
     /* Risk matrix - WCAG AA compliant */
     --risk-low: 0.82 0.11 135;        /* lime */
@@ -116,9 +120,9 @@
     --popover: oklch(0.99 0.00 0);
     --popover-foreground: oklch(0.23 0.00 0);
 
-    /* Brand colors - OKLCH for perceptual uniformity - Updated to use accent-cyan for better visibility */
-    --primary: oklch(var(--accent-cyan));
-    --primary-foreground: oklch(var(--accent-cyan-foreground));
+    /* Brand colors - Purple as core identity */
+    --primary: oklch(0.55 0.22 280);
+    --primary-foreground: oklch(0.95 0.02 280);
     
     /* Success color with improved contrast - fixes 3.84:1 ratio */
     --success: oklch(0.77 0.12 142);
@@ -176,15 +180,15 @@
     --accent: oklch(0.80 0.10 340); /* Pink/magenta for design category */
     --accent-foreground: oklch(0.99 0.00 0);
     
-    /* WCAG-compliant accent palette */
-    --accent-cyan: oklch(0.75 0.15 200); /* Cyan/teal for overlays */
-    --accent-cyan-foreground: oklch(0.15 0.00 0);
+    /* WCAG-compliant accent palette - refined system */
+    --accent-cyan: 0.75 0.15 200;
+    --accent-cyan-foreground: 0.20 0.03 200;
     
-    --accent-gold: oklch(0.85 0.12 85); /* Gold for highlights */
-    --accent-gold-foreground: oklch(0.25 0.00 0);
+    --accent-gold: 0.78 0.13 84;
+    --accent-gold-foreground: 0.20 0.03 84;
     
-    --accent-lime: oklch(0.78 0.18 130); /* Lime for success states */
-    --accent-lime-foreground: oklch(0.20 0.00 0);
+    --accent-lime: 0.82 0.11 135;
+    --accent-lime-foreground: 0.20 0.03 135;
     
     /* Risk matrix colors - WCAG AA compliant */
     --risk-low: oklch(0.75 0.12 142); /* Green - same as success */
@@ -215,11 +219,10 @@
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
     --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
 
-    /* ---- Life Path: OKLCH Accent & Risk Tokens ---- */
-    /* accents */
-    --accent-cyan: 0.77 0.09 203;      /* #00B5AD-ish, boosted for dark */
-    --accent-gold: 0.78 0.13 84;       /* amber/gold */
-    --accent-lime: 0.82 0.11 135;      /* accessible lime */
+    /* Refined accent colors */
+    --accent-cyan: 0.75 0.15 200;
+    --accent-gold: 0.78 0.13 84;
+    --accent-lime: 0.82 0.11 135;
 
     /* risk matrix */
     --risk-low:       0.85 0.07 140;
@@ -306,8 +309,8 @@
     --background: 222 84% 5%;
     --foreground: 0 0% 98%;
 
-    /* Dark mode tweaks (if you use .dark selector) */
-    --accent-cyan: 0.78 0.10 203;
+    /* Dark mode accent colors - adjusted for visibility */
+    --accent-cyan: 0.77 0.16 200;
     --accent-gold: 0.80 0.14 84;
     --accent-lime: 0.84 0.12 135;
 
@@ -326,9 +329,9 @@
     --popover: oklch(0.15 0.00 0);
     --popover-foreground: oklch(0.92 0.00 0);
 
-    /* Reduced chroma brand colors for dark mode comfort - Updated to use accent-cyan */
-    --primary: oklch(var(--accent-cyan));
-    --primary-foreground: oklch(var(--on-accent));
+    /* Dark mode brand colors - reduced chroma for comfort */
+    --primary: oklch(0.60 0.18 280);
+    --primary-foreground: oklch(0.95 0.02 280);
     --primary-hover: oklch(0.82 0.08 270);
     --primary-light: oklch(0.25 0.04 270);
 
