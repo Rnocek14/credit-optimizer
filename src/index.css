@@ -515,6 +515,11 @@
     @apply min-h-12 min-w-12;
   }
   
+  /* Icon buttons specifically for 48px touch targets */
+  .touch-target-icon {
+    @apply h-12 w-12 flex items-center justify-center;
+  }
+  
   /* Focus Ring Variants */
   .focus-ring {
     @apply focus:outline-none focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2;

@@ -424,7 +424,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
               variant="outline"
               size="sm"
               onClick={zoomIn}
-              className="h-8 w-8 p-0"
+              className="h-12 w-12 p-0"
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
@@ -432,7 +432,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
               variant="outline"
               size="sm"
               onClick={zoomOut}
-              className="h-8 w-8 p-0"
+              className="h-12 w-12 p-0"
             >
               <ZoomOut className="h-4 w-4" />
             </Button>
@@ -440,7 +440,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
               variant="outline"
               size="sm"
               onClick={resetView}
-              className="h-8 w-8 p-0"
+              className="h-12 w-12 p-0"
             >
               <RotateCcw className="h-4 w-4" />
             </Button>
@@ -453,7 +453,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
               variant={showMinimap ? "default" : "outline"}
               size="sm"
               onClick={() => setShowMinimap(!showMinimap)}
-              className="h-8 w-8 p-0"
+              className="h-12 w-12 p-0"
             >
               {showMinimap ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
@@ -461,7 +461,7 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
               variant={showPathAnimation ? "default" : "outline"}
               size="sm"
               onClick={() => setShowPathAnimation(!showPathAnimation)}
-              className="h-8 w-8 p-0"
+              className="h-12 w-12 p-0"
             >
               {showPathAnimation ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             </Button>
