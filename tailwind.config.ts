@@ -8,6 +8,13 @@ export default {
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
 	],
+	safelist: [
+		'bg-accent-cyan','text-accent-cyan-foreground',
+		'bg-accent-gold','text-accent-gold-foreground', 
+		'bg-accent-lime','text-accent-lime-foreground',
+		'bg-risk-low','bg-risk-medium','bg-risk-high','bg-risk-critical',
+		'gradient-primary', 'lp-swatch', 'lp-grid'
+	],
 	prefix: "",
 	theme: {
 		container: {
@@ -324,5 +331,22 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		// Plugin to ensure OKLCH utilities are always available
+		({ addUtilities }) => {
+			addUtilities({
+				'.bg-accent-cyan': { 'background': 'oklch(var(--accent-cyan))', 'color': 'oklch(0.22 0.03 203)' },
+				'.bg-accent-gold': { 'background': 'oklch(var(--accent-gold))', 'color': 'oklch(0.20 0.03 84)' },
+				'.bg-accent-lime': { 'background': 'oklch(var(--accent-lime))', 'color': 'oklch(0.20 0.03 135)' },
+				'.bg-risk-low': { 'background': 'oklch(var(--risk-low))', 'color': 'oklch(0.18 0.03 135)' },
+				'.bg-risk-medium': { 'background': 'oklch(var(--risk-medium))', 'color': 'oklch(0.18 0.03 95)' },
+				'.bg-risk-high': { 'background': 'oklch(var(--risk-high))', 'color': 'oklch(0.95 0.00 0)' },
+				'.bg-risk-critical': { 'background': 'oklch(var(--risk-critical))', 'color': 'oklch(0.95 0.00 0)' },
+				'.gradient-primary': { 
+					'background-image': 'linear-gradient(135deg, oklch(var(--gradient-primary)), oklch(var(--gradient-primary-hover)))' 
+				}
+			})
+		}
+	],
 } satisfies Config;

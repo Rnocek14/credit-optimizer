@@ -11,6 +11,7 @@ import { AuthDebugPanel } from '@/components/debug/AuthDebugPanel';
 import { FunctionalityTester } from '@/components/debug/FunctionalityTester';
 import TutorialTip from '@/tutorial/TutorialTip';
 import { TIPS } from '@/tutorial/tutorial-map';
+import { OKLCHColorDemo } from '@/components/OKLCHColorDemo';
 
 interface FeaturedProfile {
   id: string;
@@ -132,6 +133,12 @@ export default function Discover() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <AuthDebugPanel />
       <FunctionalityTester />
+      
+      {/* OKLCH Color Demo - Immediate visibility test */}
+      <div className="container mx-auto px-4 pt-4">
+        <OKLCHColorDemo />
+      </div>
+      
       <Helmet>
         <title>Discover Talent - PathfindAI</title>
         <meta name="description" content="Browse verified AI-reviewed resumes from rising professionals and top mentors." />
