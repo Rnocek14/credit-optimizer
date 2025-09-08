@@ -83,7 +83,7 @@ export default function ProtectedRoute({
 
   // If trying to access onboarding but already completed (skip for dev users)
   if (redirectIfComplete && user && !user.isDevUser && hasProfile) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/today" replace />;
   }
 
   // Secure admin role check for admin routes

@@ -51,7 +51,7 @@ export default function Auth() {
           // Handle LinkedIn import after OAuth
           navigate('/onboarding?step=import&source=linkedin');
         } else {
-          navigate('/dashboard');
+          navigate('/today');
         }
       }
     };
