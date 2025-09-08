@@ -154,7 +154,7 @@ export function HubNavigation() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowTrackManager(true)}
-                  className="h-6 px-2 text-readable-xs text-muted-foreground hover:text-foreground"
+                  className="h-6 px-2 text-ui-small text-muted-foreground hover:text-foreground"
                 >
                   <Settings className="w-3 h-3 mr-1" />
                   Change

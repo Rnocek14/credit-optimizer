@@ -183,9 +183,9 @@
     --popover: 222.2 50% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 262 60% 70%;
+    --primary: 262 55% 65%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --primary-hover: 262 60% 75%;
+    --primary-hover: 262 55% 70%;
     --primary-light: 262 60% 15%;
 
     --secondary: 217.2 32.6% 22%;
@@ -193,7 +193,7 @@
     --secondary-hover: 217.2 32.6% 28%;
 
     --muted: 217.2 32.6% 22%;
-    --muted-foreground: 215 20.2% 80%;
+    --muted-foreground: 215 20.2% 85%;
 
     --accent: 217.2 32.6% 25%;
     --accent-foreground: 210 40% 98%;
@@ -328,6 +328,17 @@
     line-height: 1.4;
   }
 
+  /* UI Component Typography - Minimum 14px for all interactive elements */
+  .text-ui-label {
+    @apply text-sm font-medium;
+    line-height: 1.4;
+  }
+
+  .text-ui-small {
+    @apply text-sm;
+    line-height: 1.5;
+  }
+
   /* Mobile-first typography enhancements */
   .text-mobile-h1 {
     @apply text-2xl md:text-4xl font-bold tracking-tight;
@@ -353,6 +364,24 @@
   .text-readable-xs {
     @apply text-sm;
     line-height: 1.4;
+  }
+
+  /* Motion Design Tokens */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    
+    .animate-pulse,
+    .animate-spin,
+    .animate-bounce {
+      animation: none !important;
+    }
   }
 }
 

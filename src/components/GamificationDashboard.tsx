@@ -102,16 +102,16 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
         </Card>
 
         <Card className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10" />
           <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Recent Celebrations</CardTitle>
-            <Star className="h-4 w-4 text-purple-500" />
+            <Star className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent className="relative">
             <div className="text-2xl font-bold">
               {unreadCelebrations.length}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-ui-small text-muted-foreground">
               New achievements unlocked
             </p>
           </CardContent>
@@ -287,10 +287,10 @@ export function GamificationDashboard({ userId }: GamificationDashboardProps) {
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Maya Collaboration</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-primary">
                   {Math.round(metrics.maya_collaboration_score * 100)}%
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-ui-small text-muted-foreground">
                   Response rate
                 </p>
               </div>

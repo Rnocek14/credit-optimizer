@@ -97,7 +97,7 @@ export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
         {/* Career Title */}
         <div>
           <h3 className="font-semibold text-base">{careerPath.title}</h3>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-ui-small">
             {careerPath.industry} • {careerPath.level}
           </Badge>
         </div>
@@ -143,19 +143,19 @@ export const CareerROIPanel: React.FC<CareerROIPanelProps> = ({
         </div>
 
         {/* ROI Score */}
-        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+        <div className="flex items-center justify-between p-3 bg-primary-light rounded-lg">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-medium">ROI Score</span>
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="text-ui-label">ROI Score</span>
           </div>
-          <span className="font-bold text-purple-600">
+          <span className="font-bold text-primary">
             {roiMultiplier.toFixed(1)}× Return
           </span>
         </div>
 
         {/* Skills Summary */}
         <div className="pt-2 border-t">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-ui-small text-muted-foreground">
             {skillCount} skills in learning path • Based on {locationLabel} averages
           </p>
         </div>
