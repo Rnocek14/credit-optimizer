@@ -25,11 +25,11 @@ const buttonVariants = cva(
         premium: "bg-gradient-primary text-primary-foreground shadow-colored hover:shadow-floating hover:-translate-y-0.5 transition-all duration-200",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3 text-xs",
-        lg: "h-11 rounded-lg px-8 text-base",
-        icon: "h-10 w-10",
-        xl: "h-12 rounded-lg px-10 text-lg",
+        default: "h-11 px-4 py-2 md:h-10",
+        sm: "h-10 rounded-md px-3 text-sm md:h-9 md:text-xs",
+        lg: "h-12 rounded-lg px-8 text-base md:h-11",
+        icon: "h-11 w-11 md:h-10 md:w-10",
+        xl: "h-14 rounded-lg px-10 text-lg md:h-12",
       },
     },
     defaultVariants: {
