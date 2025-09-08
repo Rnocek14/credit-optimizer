@@ -512,7 +512,7 @@
   }
   
   .touch-target-generous {
-    @apply min-h-13 min-w-13;
+    @apply min-h-12 min-w-12;
   }
   
   /* Focus Ring Variants */
