@@ -45,8 +45,8 @@ export const AnalysisLoadingState: React.FC<AnalysisLoadingStateProps> = ({
         return {
           title: 'Processing Insights',
           description: 'Generating AI-powered recommendations...',
-          icon: <Zap className="h-5 w-5 text-purple-500" />,
-          color: 'bg-purple-50 border-purple-200'
+          icon: <Zap className="h-5 w-5 text-primary" />,
+          color: 'bg-primary-light border-primary/20'
         };
       case 'finalizing':
         return {
@@ -131,7 +131,7 @@ export const AnalysisLoadingState: React.FC<AnalysisLoadingStateProps> = ({
 
             <div className="flex items-center gap-3 p-3 border rounded-lg bg-card/50">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                progress >= 90 ? 'bg-purple-100 text-purple-600' : 'bg-muted text-muted-foreground'
+                progress >= 90 ? 'bg-primary-light text-primary' : 'bg-muted text-muted-foreground'
               }`}>
                 <Brain className="h-4 w-4" />
               </div>

@@ -45,7 +45,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
               )}
             >
               <Icon className="h-6 w-6 mb-1" />
-              <span className="text-xs font-medium leading-tight">{item.label}</span>
+              <span className="text-readable-xs font-medium leading-tight">{item.label}</span>
             </NavLink>
           );
         })}
@@ -53,7 +53,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
         {/* Theme Toggle in Navigation */}
         <div className="flex flex-col items-center justify-center p-3 min-w-[56px] min-h-[56px] rounded-xl hover:bg-muted/50 transition-all duration-200">
           <MobileThemeToggle className="w-6 h-6" />
-          <span className="text-xs font-medium text-muted-foreground mt-1 leading-tight">Theme</span>
+          <span className="text-readable-xs font-medium text-muted-foreground mt-1 leading-tight">Theme</span>
         </div>
       </div>
     </nav>

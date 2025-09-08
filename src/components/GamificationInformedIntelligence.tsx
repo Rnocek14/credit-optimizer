@@ -107,7 +107,7 @@ export function GamificationInformedIntelligence() {
       case 'streak_boost': return <Flame className="w-4 h-4 text-orange-500" />;
       case 'timing_optimal': return <Clock className="w-4 h-4 text-blue-500" />;
       case 'difficulty_match': return <Target className="w-4 h-4 text-green-500" />;
-      case 'motivation_peak': return <Star className="w-4 h-4 text-purple-500" />;
+      case 'motivation_peak': return <Star className="w-4 h-4 text-primary" />;
       default: return <Brain className="w-4 h-4 text-gray-500" />;
     }
   };

@@ -278,7 +278,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
     <div className="space-y-6">
       {/* Debug Banner for Alternative Courses - Only show with ?alt_debug=1 */}
       {showDebugBanner && debugModeActive && (
-        <div className="mb-2 rounded-md border border-dashed p-2 text-xs bg-primary/5 border-primary/20">
+        <div className="mb-2 rounded-md border border-dashed p-2 text-readable-xs bg-primary/5 border-primary/20">
           <span className="font-medium text-primary">Dev Flags →</span>{' '}
           alt_courses:{String(altCoursesEnabled)} | skill_fallback:{String(skillTreeForceTagsFallback)}
         </div>

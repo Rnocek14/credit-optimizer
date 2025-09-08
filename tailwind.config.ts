@@ -75,6 +75,14 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+        purple: {
+          DEFAULT: 'hsl(var(--purple-primary))',
+          foreground: 'hsl(var(--purple-primary-foreground))',
+          secondary: 'hsl(var(--purple-secondary))',
+          'secondary-foreground': 'hsl(var(--purple-secondary-foreground))',
+          muted: 'hsl(var(--purple-muted))',
+          'muted-foreground': 'hsl(var(--purple-muted-foreground))'
+        },
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

@@ -33,7 +33,7 @@ const difficultyColors = {
   'Beginner': 'bg-green-100 text-green-800',
   'Intermediate': 'bg-yellow-100 text-yellow-800',
   'Advanced': 'bg-red-100 text-red-800',
-  'Expert': 'bg-purple-100 text-purple-800'
+  'Expert': 'bg-primary-light text-primary'
 };
 
 export const CourseCard: React.FC<CourseCardProps> = ({ 

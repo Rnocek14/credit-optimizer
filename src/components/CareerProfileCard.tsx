@@ -70,7 +70,7 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
 
   const getCRIColor = (level: string) => {
     switch (level) {
-      case 'Expert': return 'text-purple-600 bg-purple-50 border-purple-200';
+      case 'Expert': return 'text-primary bg-primary-light border-primary/20';
       case 'Advanced': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'Intermediate': return 'text-green-600 bg-green-50 border-green-200';
       case 'Developing': return 'text-yellow-600 bg-yellow-50 border-yellow-200';

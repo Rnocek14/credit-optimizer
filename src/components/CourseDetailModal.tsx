@@ -80,7 +80,7 @@ export function CourseDetailModal({ course, isOpen, onClose }: CourseDetailModal
       case 'beginner': return 'bg-green-100 text-green-800';
       case 'intermediate': return 'bg-yellow-100 text-yellow-800';
       case 'advanced': return 'bg-red-100 text-red-800';
-      case 'expert': return 'bg-purple-100 text-purple-800';
+      case 'expert': return 'bg-primary-light text-primary';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
