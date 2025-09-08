@@ -49,6 +49,7 @@ export default {
 				// Touch target compliance
 				'11': '2.75rem',    // 44px minimum touch target
 				'13': '3.25rem',    // 52px generous touch target
+				'13': '3.25rem',    // 52px generous touch target
 			},
 			
 			/* Motion System Tokens */
