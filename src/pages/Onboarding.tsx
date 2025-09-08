@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -40,8 +40,43 @@ type FormData = z.infer<typeof formSchema>;
 export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if user has already completed onboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          // If no user, redirect to auth
+          navigate("/");
+          return;
+        }
+
+        // Check if user already has a profile (indicates completed onboarding)
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile) {
+          // User has already completed onboarding, redirect to dashboard
+          navigate("/today");
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error);
+        // Continue with onboarding if there's an error or no profile found
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [navigate]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -152,6 +187,14 @@ export default function Onboarding() {
       setIsLoading(false);
     }
   };
+
+  if (checkingOnboarding) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (showConfirmation) {
     return <OnboardingConfirmation onContinue={() => navigate("/dashboard")} />;
