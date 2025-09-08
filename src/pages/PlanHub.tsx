@@ -207,20 +207,22 @@ export default function PlanHub() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <HubNavigation />
       
-      <div className="px-4 py-6 max-w-full overflow-hidden">
+      <div className="w-full px-4 py-6 overflow-x-hidden">
         {/* Header with Track Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Plan Your Career Journey</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 w-full min-w-0">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 truncate">Plan Your Career Journey</h1>
             <p className="text-muted-foreground text-sm sm:text-base">
               Create strategic plans, set goals, and get AI-powered recommendations
             </p>
           </div>
-          <div className="flex items-center gap-4 shrink-0">
-            <TrackSelector className="text-foreground" />
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <div className="min-w-0">
+              <TrackSelector className="text-foreground" />
+            </div>
             {/* Build Tracks CTA (desktop/tablet) */}
             <div className="hidden sm:flex">
               <Button asChild variant="default" className="gap-2">
@@ -234,22 +236,26 @@ export default function PlanHub() {
         </div>
 
         {/* Track Display - Shows active track information */}
-        <TrackDisplay className="mb-6" />
+        <div className="w-full min-w-0 mb-6">
+          <TrackDisplay className="w-full" />
+        </div>
 
         {/* Today Dashboard - Now integrated in Overview tab */}
 
-        <div className="w-full max-w-full">
+        <div className="w-full min-w-0 overflow-x-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <div className="w-full mb-4">
-              <TabsList className="flex w-full justify-start bg-muted p-1 h-auto min-h-[44px] overflow-x-auto">
-                <TabsTrigger value="overview" data-testid="tab-overview" className="whitespace-nowrap px-3 py-2 text-sm">Overview</TabsTrigger>
-                <TabsTrigger value="goals" data-testid="tab-goals" className="whitespace-nowrap px-3 py-2 text-sm">Goals</TabsTrigger>
-                <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="whitespace-nowrap px-3 py-2 text-sm">Roadmap</TabsTrigger>
-                <TabsTrigger value="gaps" data-testid="tab-gaps" className="whitespace-nowrap px-3 py-2 text-sm">Gaps</TabsTrigger>
-                <TabsTrigger value="workflows" data-testid="tab-workflows" className="whitespace-nowrap px-3 py-2 text-sm">Workflows</TabsTrigger>
-                <TabsTrigger value="proof" data-testid="tab-proof" className="whitespace-nowrap px-3 py-2 text-sm">Projects</TabsTrigger>
-                <TabsTrigger value="switch" data-testid="tab-switch" className="whitespace-nowrap px-3 py-2 text-sm">Switch</TabsTrigger>
-              </TabsList>
+            <div className="w-full mb-4 overflow-x-hidden">
+              <div className="w-full overflow-x-auto pb-2">
+                <TabsList className="flex w-max min-w-full bg-muted p-1 h-auto min-h-[44px]">
+                  <TabsTrigger value="overview" data-testid="tab-overview" className="whitespace-nowrap px-3 py-2 text-sm">Overview</TabsTrigger>
+                  <TabsTrigger value="goals" data-testid="tab-goals" className="whitespace-nowrap px-3 py-2 text-sm">Goals</TabsTrigger>
+                  <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="whitespace-nowrap px-3 py-2 text-sm">Roadmap</TabsTrigger>
+                  <TabsTrigger value="gaps" data-testid="tab-gaps" className="whitespace-nowrap px-3 py-2 text-sm">Gaps</TabsTrigger>
+                  <TabsTrigger value="workflows" data-testid="tab-workflows" className="whitespace-nowrap px-3 py-2 text-sm">Workflows</TabsTrigger>
+                  <TabsTrigger value="proof" data-testid="tab-proof" className="whitespace-nowrap px-3 py-2 text-sm">Projects</TabsTrigger>
+                  <TabsTrigger value="switch" data-testid="tab-switch" className="whitespace-nowrap px-3 py-2 text-sm">Switch</TabsTrigger>
+                </TabsList>
+              </div>
             </div>
 
               <TabsContent value="overview" className="mt-6">

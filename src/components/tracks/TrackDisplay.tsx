@@ -113,34 +113,34 @@ export const TrackDisplay: React.FC<TrackDisplayProps> = ({ className }) => {
               {displayedTrack.archived && <span className="text-warning font-medium">(Archived)</span>}
             </CardDescription>
           </div>
-          <div className="text-xs text-muted-foreground bg-muted/80 px-2 py-1 rounded border">
-            ID: {displayedTrack.id.slice(-8)}
+          <div className="text-xs text-muted-foreground bg-muted/80 px-2 py-1 rounded border max-w-20 sm:max-w-none">
+            <span className="truncate block">ID: {displayedTrack.id.slice(-8)}</span>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative">
+      <CardContent className="relative overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
-            <Calendar className="w-5 h-5 text-primary" />
-            <div className="flex flex-col">
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5 min-w-0">
+            <Calendar className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex flex-col min-w-0">
               <span className="text-muted-foreground text-xs font-medium">Started</span>
-              <span className="font-semibold">{new Date(displayedTrack.created_at).toLocaleDateString()}</span>
+              <span className="font-semibold truncate">{new Date(displayedTrack.created_at).toLocaleDateString()}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <div className="flex flex-col">
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5 min-w-0">
+            <TrendingUp className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex flex-col min-w-0">
               <span className="text-muted-foreground text-xs font-medium">Status</span>
-              <span className={`font-semibold ${displayedTrack.archived ? 'text-warning' : 'text-success'}`}>
+              <span className={`font-semibold truncate ${displayedTrack.archived ? 'text-warning' : 'text-success'}`}>
                 {displayedTrack.archived ? '📁 Archived' : '🚀 Active'}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5">
-            <Target className="w-5 h-5 text-primary" />
-            <div className="flex flex-col">
+          <div className="flex items-center gap-3 text-sm p-3 bg-card/50 rounded-lg border border-primary/10 transition-all duration-200 hover:bg-primary/5 min-w-0">
+            <Target className="w-5 h-5 text-primary flex-shrink-0" />
+            <div className="flex flex-col min-w-0">
               <span className="text-muted-foreground text-xs font-medium">Focus</span>
-              <span className="font-semibold">🎯 Career Growth</span>
+              <span className="font-semibold truncate">🎯 Career Growth</span>
             </div>
           </div>
         </div>
