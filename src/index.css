@@ -84,8 +84,6 @@
     --touch-target-generous-width: 52px;
     --touch-target-generous-height: 52px;
 
-@layer base {
-  :root {
     /* OKLCH Color System - Phase 2 Implementation */
     /* Surfaces */
     --background: oklch(0.99 0.00 0);
