@@ -43,20 +43,46 @@
   animation: arrow-flow 1s linear infinite;
 }
 
-  /* Typography - Mobile-first readable sizes - WCAG compliant minimum 14px */
-  --text-readable-xs: 0.875rem; /* 14px - WCAG minimum for all text */
-  --text-readable-sm: 0.9375rem; /* 15px - Comfortable reading size */
-  --text-readable-base: 1rem; /* 16px - Body text minimum */
-  --text-readable-lg: 1.125rem; /* 18px - Enhanced readability */
-  
-  /* Enhanced Typography Scale following Material Design roles */
-  --text-display: 4rem; /* 64px - Large displays */
-  --text-headline-1: 3rem; /* 48px - Primary headings */
-  --text-headline-2: 2.25rem; /* 36px - Secondary headings */
-  --text-headline-3: 1.875rem; /* 30px - Tertiary headings */
-  --text-body: 1rem; /* 16px - Body text */
-  --text-body-sm: 0.875rem; /* 14px - Small body text */
-  --text-label: 0.875rem; /* 14px - UI labels and captions */
+@layer base {
+  :root {
+    /* PHASE 3: Motion & Interaction Tokens */
+    /* Motion System Variables */
+    --motion-instant: 0ms;
+    --motion-fast: 100ms;
+    --motion-normal: 200ms;
+    --motion-slow: 300ms;
+    --motion-slower: 500ms;
+    --motion-slowest: 800ms;
+    
+    /* Easing Curves */
+    --ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+    --ease-accelerate: cubic-bezier(0.4, 0.0, 1, 1);
+    --ease-sharp: cubic-bezier(0.4, 0.0, 0.6, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* Interactive State Tokens */
+    --hover-overlay: 0.02 0.00 0;
+    --hover-opacity: 0.08;
+    --hover-scale: 1.01;
+    --hover-translateY: -1px;
+    
+    --active-overlay: 0.04 0.00 0;
+    --active-opacity: 0.12;
+    --active-scale: 0.98;
+    --active-translateY: 0px;
+    
+    --focus-ring-color: var(--primary-500);
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    
+    --disabled-opacity: 0.5;
+    
+    /* Touch Target Compliance */
+    --touch-target-width: 44px;
+    --touch-target-height: 44px;
+    --touch-target-generous-width: 52px;
+    --touch-target-generous-height: 52px;
 
 @layer base {
   :root {
@@ -472,6 +498,67 @@
 
 /* Enhanced Utility Classes and Animations */
 @layer utilities {
+  /* Phase 3: Interactive State Utilities */
+  .interactive {
+    @apply cursor-pointer select-none transition-all duration-fast ease-standard;
+  }
+  
+  .interactive:disabled,
+  .interactive[aria-disabled="true"] {
+    @apply opacity-50 cursor-not-allowed pointer-events-none;
+  }
+  
+  /* Touch Target Compliance */
+  .touch-target {
+    @apply min-h-11 min-w-11 flex items-center justify-center;
+  }
+  
+  .touch-target-generous {
+    @apply min-h-13 min-w-13;
+  }
+  
+  /* Focus Ring Variants */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2;
+  }
+  
+  .focus-ring-inset {
+    @apply focus:outline-none focus-visible:shadow-[0_0_0_2px_var(--primary)];
+  }
+  
+  /* Hover Effects */
+  .hover-overlay {
+    @apply relative;
+  }
+  
+  .hover-overlay::before {
+    @apply content-[''] absolute inset-0 rounded-[inherit] opacity-0 pointer-events-none;
+    background-color: oklch(var(--hover-overlay));
+    transition: opacity var(--motion-fast) var(--ease-standard);
+  }
+  
+  .hover-overlay:hover::before {
+    opacity: var(--hover-opacity);
+  }
+  
+  .hover-lift {
+    @apply transition-transform duration-fast ease-standard;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(var(--hover-translateY)) scale(var(--hover-scale));
+  }
+  
+  .hover-lift:active {
+    transform: translateY(var(--active-translateY)) scale(var(--active-scale));
+  }
+  
+  /* Motion Safe Utilities */
+  .motion-safe {
+    @media (prefers-reduced-motion: no-preference) {
+      /* Animations only when motion is safe */
+    }
+  }
   /* Enhanced Shadow System */
   .shadow-soft {
     box-shadow: var(--shadow-md);

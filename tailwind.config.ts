@@ -21,6 +21,53 @@ export default {
 			fontFamily: {
 				'inter': ['Inter', 'sans-serif'],
 			},
+			
+			/* PHASE 3: Spacing System - 8pt Grid + Safe Areas */
+			spacing: {
+				'0': '0rem',        // 0px
+				'1': '0.25rem',     // 4px - half step
+				'2': '0.5rem',      // 8px - base unit
+				'3': '0.75rem',     // 12px - half step  
+				'4': '1rem',        // 16px - double base
+				'5': '1.25rem',     // 20px - golden ratio
+				'6': '1.5rem',      // 24px - triple base
+				'8': '2rem',        // 32px - quad base
+				'10': '2.5rem',     // 40px - 5x base
+				'12': '3rem',       // 48px - 6x base
+				'16': '4rem',       // 64px - 8x base
+				'20': '5rem',       // 80px - 10x base
+				'24': '6rem',       // 96px - 12x base
+				'32': '8rem',       // 128px - 16x base
+				'40': '10rem',      // 160px - 20x base
+				'48': '12rem',      // 192px - 24x base
+				
+				// Legacy spacing (maintain compatibility)
+				'18': '4.5rem',
+				'88': '22rem', 
+				'128': '32rem',
+				
+				// Touch target compliance
+				'11': '2.75rem',    // 44px minimum touch target
+				'13': '3.25rem',    // 52px generous touch target
+			},
+			
+			/* Motion System Tokens */
+			transitionDuration: {
+				'instant': '0ms',
+				'fast': '100ms',    // Micro-interactions
+				'normal': '200ms',  // Standard transitions
+				'slow': '300ms',    // Layout changes
+				'slower': '500ms',  // Page transitions
+				'slowest': '800ms', // Dramatic reveals
+			},
+			
+			transitionTimingFunction: {
+				'standard': 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+				'decelerate': 'cubic-bezier(0.0, 0.0, 0.2, 1)', 
+				'accelerate': 'cubic-bezier(0.4, 0.0, 1, 1)',
+				'sharp': 'cubic-bezier(0.4, 0.0, 0.6, 1)',
+				'bounce': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+			},
 			colors: {
 				/* OKLCH Color System Integration */
 				border: 'var(--border)',
@@ -177,43 +224,85 @@ export default {
 						height: '0'
 					}
 				},
-				shimmer: {
-					'100%': {
-						transform: 'translateX(100%)'
-					}
-				},
+				
+				/* Phase 3 Motion Keyframes */
 				'fade-in-up': {
-					from: {
+					'0%': {
 						opacity: '0',
-						transform: 'translateY(20px)'
+						transform: 'translateY(8px)'
 					},
-					to: {
+					'100%': {
 						opacity: '1',
 						transform: 'translateY(0)'
 					}
 				},
-				'scale-in': {
-					from: {
+				
+				'fade-in-scale': {
+					'0%': {
 						opacity: '0',
-						transform: 'scale(0.9)'
+						transform: 'scale(0.96)'
 					},
-					to: {
+					'100%': {
 						opacity: '1',
 						transform: 'scale(1)'
 					}
 				},
+				
+				'slide-in-left': {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(0)' }
+				},
+				
+				'slide-in-right': {
+					'0%': { transform: 'translateX(100%)' },
+					'100%': { transform: 'translateX(0)' }
+				},
+				
+				'lift-hover': {
+					'0%': { 
+						transform: 'translateY(0) scale(1)',
+						boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+					},
+					'100%': { 
+						transform: 'translateY(-2px) scale(1.01)',
+						boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+					}
+				},
+				
+				shimmer: {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(200%)' }
+				},
+				
 				'gentle-bounce': {
 					'0%, 100%': { transform: 'translateY(0)' },
 					'50%': { transform: 'translateY(-2px)' }
+				},
+				
+				'gentle-pulse': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.7' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
-				'scale-in': 'scale-in 0.3s ease-out forwards',
-				'gentle-bounce': 'gentle-bounce 2s ease-in-out infinite',
-				'pulse-soft': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+				
+				/* Phase 3 Enhanced Animations */
+				'fade-in-up': 'fade-in-up 0.3s cubic-bezier(0.0, 0.0, 0.2, 1) forwards',
+				'fade-in-scale': 'fade-in-scale 0.2s cubic-bezier(0.0, 0.0, 0.2, 1) forwards',
+				'scale-in': 'fade-in-scale 0.2s cubic-bezier(0.0, 0.0, 0.2, 1) forwards',
+				
+				'slide-in-left': 'slide-in-left 0.3s cubic-bezier(0.0, 0.0, 0.2, 1)',
+				'slide-in-right': 'slide-in-right 0.3s cubic-bezier(0.0, 0.0, 0.2, 1)',
+				
+				'lift-hover': 'lift-hover 0.2s cubic-bezier(0.4, 0.0, 0.2, 1) forwards',
+				'shimmer': 'shimmer 1.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite',
+				'gentle-bounce': 'gentle-bounce 2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite',
+				'gentle-pulse': 'gentle-pulse 2s cubic-bezier(0.4, 0.0, 0.2, 1) infinite',
+				
+				// Legacy support
+				'pulse-soft': 'gentle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
 			}
 		}
 	},
