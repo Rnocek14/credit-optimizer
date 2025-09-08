@@ -159,20 +159,20 @@ export function MayaLiveInsights({
     switch (priority) {
       case 'urgent': 
         return {
-          card: 'border-l-red-500 bg-gradient-to-br from-red-50 to-background',
-          badge: 'bg-red-100 text-red-700 border-red-200',
+          card: 'border-l-red-500 bg-gradient-to-br from-red-500/10 to-background',
+          badge: 'bg-red-500/10 text-red-500 border-red-500/20',
           accent: 'bg-red-500'
         };
       case 'high': 
         return {
-          card: 'border-l-orange-500 bg-gradient-to-br from-orange-50 to-background',
-          badge: 'bg-orange-100 text-orange-700 border-orange-200',
+          card: 'border-l-orange-500 bg-gradient-to-br from-orange-500/10 to-background',
+          badge: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
           accent: 'bg-orange-500'
         };
       case 'medium': 
         return {
-          card: 'border-l-blue-500 bg-gradient-to-br from-blue-50 to-background',
-          badge: 'bg-blue-100 text-blue-700 border-blue-200',
+          card: 'border-l-blue-500 bg-gradient-to-br from-blue-500/10 to-background',
+          badge: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
           accent: 'bg-blue-500'
         };
       default: 
