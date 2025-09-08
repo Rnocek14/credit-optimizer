@@ -9,9 +9,9 @@ interface MobileNavigationProps {
 
 const navigationItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Target, label: "Goals", path: "/goals" },
+  { icon: Target, label: "Plan", path: "/plan" },
   { icon: Compass, label: "Discover", path: "/discover" },
-  { icon: User, label: "Profile", path: "/profile" },
+  { icon: User, label: "Progress", path: "/progress" },
 ];
 
 export function MobileNavigation({ className }: MobileNavigationProps) {

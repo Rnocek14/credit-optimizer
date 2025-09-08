@@ -155,6 +155,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
+                <div className="pb-20 md:pb-0">
                 <Routes>
           {/* Core Routes */}
           <Route path="/" element={<Index />} />
@@ -786,7 +787,8 @@ const App = () => {
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
                 </Routes>
-                <MobileNavigation />
+                </div>
+                <MobileNavigation className="block md:hidden" />
                 <XPCelebrationOverlay />
                 {process.env.NODE_ENV !== 'production' && <DevMenu />}
               </BrowserRouter>
