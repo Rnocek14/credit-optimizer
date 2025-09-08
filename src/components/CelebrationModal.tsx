@@ -42,11 +42,11 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
   const getCelebrationIcon = () => {
     switch (celebration_type) {
       case 'level_up':
-        return <Star className="h-8 w-8 text-yellow-500" />;
+        return <Star className="h-12 w-12 text-warning" />;
       case 'streak':
-        return <Zap className="h-8 w-8 text-orange-500" />;
+        return <Zap className="h-12 w-12 text-warning" />;
       case 'badge':
-        return <Trophy className="h-8 w-8 text-purple-500" />;
+        return <Trophy className="h-12 w-12 text-primary" />;
       case 'milestone':
         return <Target className="h-8 w-8 text-green-500" />;
       case 'track_milestone':
