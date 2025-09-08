@@ -48,11 +48,11 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
       case 'badge':
         return <Trophy className="h-12 w-12 text-primary" />;
       case 'milestone':
-        return <Target className="h-8 w-8 text-green-500" />;
+        return <Target className="h-12 w-12 text-success" />;
       case 'track_milestone':
-        return <MapPin className="h-8 w-8 text-blue-500" />;
+        return <MapPin className="h-12 w-12 text-info" />;
       default:
-        return <Trophy className="h-8 w-8 text-primary" />;
+        return <Trophy className="h-12 w-12 text-primary" />;
     }
   };
 
@@ -135,8 +135,8 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
           </p>
 
           {celebration_type === 'streak' && trigger_data?.streak_days && (
-            <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-lg p-4">
-              <div className="text-2xl font-bold text-orange-600">
+            <div className="bg-gradient-to-r from-warning/10 to-destructive/10 rounded-lg p-4">
+              <div className="text-2xl font-bold text-warning">
                 🔥 {trigger_data.streak_days} Day Streak!
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -146,8 +146,8 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
           )}
 
           {celebration_type === 'level_up' && trigger_data?.new_level && (
-            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg p-4">
-              <div className="text-2xl font-bold text-yellow-600">
+            <div className="bg-gradient-to-r from-warning/10 to-warning/5 rounded-lg p-4">
+              <div className="text-2xl font-bold text-warning">
                 ⭐ Level {trigger_data.new_level}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -157,8 +157,8 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
           )}
 
           {celebration_type === 'track_milestone' && (
-            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="bg-gradient-to-r from-info/10 to-primary/10 rounded-lg p-4">
+              <div className="text-2xl font-bold text-info">
                 🗺️ {trigger_data?.milestone_name || 'Track Milestone'}
               </div>
               <div className="text-sm text-muted-foreground mt-1">

@@ -161,21 +161,21 @@ export const EnhancedSkillTreeCanvas: React.FC<EnhancedSkillTreeCanvasProps> = (
     setIsAnimating(true);
   }, []);
 
-  // Category color mapping
+  // Category color mapping using design tokens
   const getCategoryColor = useCallback((category: string) => {
     const colors: Record<string, string> = {
-      Programming: '#3b82f6',
-      Framework: '#f59e0b', 
-      Backend: '#10b981',
-      Design: '#ec4899',
-      API: '#6366f1',
-      Cloud: '#06b6d4',
-      DevOps: '#f97316',
-      Quality: '#84cc16',
-      Styling: '#ef4444',
-      Markup: '#eab308'
+      Programming: 'hsl(var(--primary))',
+      Framework: 'hsl(var(--warning))', 
+      Backend: 'hsl(var(--success))',
+      Design: 'hsl(var(--accent))',
+      API: 'hsl(var(--primary))',
+      Cloud: 'hsl(var(--info))',
+      DevOps: 'hsl(var(--warning))',
+      Quality: 'hsl(var(--success))',
+      Styling: 'hsl(var(--destructive))',
+      Markup: 'hsl(var(--warning))'
     };
-    return colors[category] || '#9ca3af';
+    return colors[category] || 'hsl(var(--muted-foreground))';
   }, []);
 
   const focusOnSkill = useCallback((skillId: string) => {

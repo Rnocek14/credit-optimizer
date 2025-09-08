@@ -4,7 +4,7 @@ import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/rendere
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'hsl(var(--background))',
     fontFamily: 'Helvetica',
   },
   header: {
@@ -14,13 +14,13 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: 'hsl(var(--primary))',
     marginBottom: 10,
   },
   certificateTitle: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: 'hsl(var(--muted-foreground))',
     marginBottom: 20,
     textAlign: 'center',
   },

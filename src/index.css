@@ -98,6 +98,10 @@
     /* Brand colors - OKLCH for perceptual uniformity */
     --primary: oklch(0.75 0.12 270);
     --primary-foreground: oklch(0.99 0.00 0);
+    
+    /* Success color with improved contrast - fixes 3.84:1 ratio */
+    --success: oklch(0.77 0.12 142);
+    --success-foreground: oklch(0.32 0.05 142); /* ~#15803d equivalent for AA compliance */
     --primary-hover: oklch(0.70 0.13 270);
     --primary-light: oklch(0.96 0.02 270);
 
@@ -131,8 +135,9 @@
     --destructive-light: oklch(0.97 0.02 30);
     --destructive-700: oklch(0.55 0.14 30);
 
-    --success: oklch(0.80 0.11 140);
-    --success-foreground: oklch(0.99 0.00 0);
+    /* Updated success color - improved contrast for AA compliance */
+    --success: oklch(0.77 0.12 142);
+    --success-foreground: oklch(0.32 0.05 142); /* ~#15803d equivalent */
     --success-light: oklch(0.97 0.02 140);
     --success-700: oklch(0.63 0.09 140);
 
@@ -144,6 +149,11 @@
     --info: oklch(0.75 0.10 240);
     --info-foreground: oklch(0.99 0.00 0);
     --info-light: oklch(0.97 0.02 240);
+    --info-700: oklch(0.63 0.08 240);
+    
+    /* Accent for design elements */
+    --accent: oklch(0.80 0.10 340); /* Pink/magenta for design category */
+    --accent-foreground: oklch(0.99 0.00 0);
     --info-700: oklch(0.60 0.09 240);
 
     --border: oklch(0.87 0.00 0);
@@ -515,9 +525,21 @@
     @apply min-h-12 min-w-12;
   }
   
-  /* Icon buttons specifically for 48px touch targets */
+  /* Enhanced touch target utilities with focus rings */
   .touch-target-icon {
-    @apply h-12 w-12 flex items-center justify-center;
+    @apply h-12 w-12 min-h-12 min-w-12 inline-flex items-center justify-center;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    @apply transition-colors hover:bg-secondary/60;
+  }
+  
+  /* Focus ring utility for all interactive elements */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+  
+  /* Hover effects */
+  .hover-lift {
+    @apply transition-transform hover:scale-105;
   }
   
   /* Focus Ring Variants */
