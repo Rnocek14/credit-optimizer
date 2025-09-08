@@ -171,7 +171,7 @@ export default function ProgressHub() {
                   <p className="text-sm text-muted-foreground">Total XP</p>
                   <p className="text-2xl font-bold">{overallStats.totalXP}</p>
                 </div>
-                <Star className="h-8 w-8 text-yellow-500" />
+                <Star className="h-8 w-8 text-warning-muted" />
               </div>
             </CardContent>
           </Card>
@@ -193,7 +193,7 @@ export default function ProgressHub() {
                   <p className="text-sm text-muted-foreground">Completed</p>
                   <p className="text-2xl font-bold">{overallStats.coursesCompleted}</p>
                 </div>
-                <BookOpen className="h-8 w-8 text-green-500" />
+                <BookOpen className="h-8 w-8 text-success-muted" />
               </div>
             </CardContent>
           </Card>
@@ -204,7 +204,7 @@ export default function ProgressHub() {
                   <p className="text-sm text-muted-foreground">Study Streak</p>
                   <p className="text-2xl font-bold">{overallStats.studyStreak} days</p>
                 </div>
-                <Target className="h-8 w-8 text-orange-500" />
+                <Target className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -256,10 +256,10 @@ export default function ProgressHub() {
                           <h4 className="font-medium">{item.title}</h4>
                           <Badge variant="outline">{item.type}</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-readable-sm text-muted-foreground mt-1">
                           {item.provider} • {item.duration} • +{item.xpEarned} XP
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-readable-xs text-muted-foreground">
                           Completed on {new Date(item.completedAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -299,7 +299,7 @@ export default function ProgressHub() {
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-medium">{project.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-readable-sm text-muted-foreground mt-1">
                             {project.description}
                           </p>
                         </div>
@@ -310,11 +310,11 @@ export default function ProgressHub() {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-3">
-                        {project.technologies.map((tech, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {tech}
-                          </Badge>
-                        ))}
+                         {project.technologies.map((tech, i) => (
+                           <Badge key={i} variant="outline" size="sm">
+                             {tech}
+                           </Badge>
+                         ))}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button asChild variant="outline" size="sm" data-testid="add-to-resume">
@@ -378,7 +378,7 @@ export default function ProgressHub() {
                           <div>
                             <h4 className="font-medium">{credential.title}</h4>
                             {credential.issuer && (
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-readable-sm text-muted-foreground">
                                 {credential.issuer}
                               </p>
                             )}
@@ -389,12 +389,12 @@ export default function ProgressHub() {
                         </Badge>
                       </div>
                       {credential.description && (
-                        <p className="text-sm text-muted-foreground mb-2">
+                        <p className="text-readable-sm text-muted-foreground mb-2">
                           {credential.description}
                         </p>
                       )}
                       <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-readable-xs text-muted-foreground">
                           {credential.issuedAt ? 
                             `Issued: ${new Date(credential.issuedAt).toLocaleDateString()}` :
                             `Earned: ${new Date(credential.earnedAt).toLocaleDateString()}`

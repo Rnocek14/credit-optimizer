@@ -242,7 +242,7 @@ export default function Discover() {
                         {truncateText(profile.role_title, 35)}
                       </p>
                       
-                      <div className="flex items-center justify-center text-sm text-muted-foreground">
+                      <div className="flex items-center justify-center text-readable-sm text-muted-foreground">
                         <MapPin className="h-4 w-4 mr-1" />
                         {truncateText(profile.location, 20)}
                       </div>
@@ -251,9 +251,9 @@ export default function Discover() {
                     {/* AI Score */}
                     {score > 0 && (
                       <div className="text-center mb-6">
-                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 px-4 py-2 rounded-full border border-yellow-200 dark:border-yellow-800">
-                          <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                          <span className="font-bold text-yellow-700 dark:text-yellow-300">
+                        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-warning-light to-warning-light/80 px-4 py-2 rounded-full border border-warning/20">
+                          <Star className="h-4 w-4 text-warning-muted" />
+                          <span className="font-bold text-warning-foreground">
                             {score}/100 AI Score
                           </span>
                         </div>
@@ -267,7 +267,8 @@ export default function Discover() {
                           <Badge
                             key={badge.id}
                             variant="secondary"
-                            className="text-xs px-3 py-1 font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            size="default"
+                            className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           >
                             <span className="mr-1">{badge.badge.emoji}</span>
                             {badge.badge.name}
@@ -277,7 +278,7 @@ export default function Discover() {
                     )}
 
                     {/* Stats */}
-                    <div className="flex items-center justify-center text-sm text-muted-foreground mb-6">
+                    <div className="flex items-center justify-center text-readable-sm text-muted-foreground mb-6">
                       <Eye className="h-4 w-4 mr-1" />
                       <span>{profile.view_count} profile views</span>
                     </div>
