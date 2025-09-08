@@ -58,11 +58,8 @@ export default function SkillTree3() {
   const [showFloridaPaths, setShowFloridaPaths] = useState(false);
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
 
-  // Convert PathResult to ParetoPoint for the frontend
-  const paretoFrontier = useMemo(() => {
-    if (!enhancedResult?.paretoFrontier) return [];
-    return enhancedResult.paretoFrontier;
-  }, [enhancedResult]);
+  // Pareto frontier is already ParetoPoint[] from enhanceWithParetoFrontier
+  const paretoFrontier = enhancedResult?.paretoFrontier || [];
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode(node);
@@ -224,9 +221,9 @@ export default function SkillTree3() {
               </TabsContent>
 
               <TabsContent value="pareto" className="mt-6">
-                {paretoFrontier.length > 0 && (
+                {paretoFrontier && paretoFrontier.length > 0 && (
                   <ParetoFrontierPanel
-                    frontier={paretoFrontier}
+                    frontier={paretoFrontier as any}
                     selectedPathId={selectedPathId}
                     onSelectPath={(path) => setSelectedPathId(path.id)}
                   />
@@ -241,8 +238,10 @@ export default function SkillTree3() {
                     completedNodeIds: [],
                     inProgressNodeIds: [],
                     preferences: {},
-                    currentPath: null,
-                    checkpoints: checkpoints
+                    existingCredits: [],
+                    currentPlan: null,
+                    checkpoints: checkpoints,
+                    lastUpdated: new Date().toISOString()
                   }}
                   onRestoreCheckpoint={(cp) => console.log('Restore checkpoint:', cp)}
                   onCreateBranch={(cp) => console.log('Create branch:', cp)}
