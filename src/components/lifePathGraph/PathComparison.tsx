@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { LifePathGraph } from '@/hooks/useLifePathGraph';
 import { PathfindingResult } from '@/types/lifePathGraph';
 import { Clock, DollarSign, BookOpen, TrendingUp, ArrowRight } from 'lucide-react';
+import { mergeSharedSubgraph } from '@/lib/pathfinding/comparison';
 
 interface PathComparisonProps {
   result: PathfindingResult;
@@ -24,6 +25,16 @@ export default function PathComparison({ result, graph }: PathComparisonProps) {
     const path = paths[pathType as keyof typeof paths];
     return path.nodeIds.map(id => graph.nodes.find(n => n.id === id)).filter(Boolean);
   };
+
+  // Use comparison de-duplication for selected paths
+  const mergedComparison = React.useMemo(() => {
+    if (selectedPaths.length >= 2) {
+      const pathA = paths[selectedPaths[0] as keyof typeof paths];
+      const pathB = paths[selectedPaths[1] as keyof typeof paths];
+      return mergeSharedSubgraph(pathA, pathB);
+    }
+    return null;
+  }, [selectedPaths, paths]);
 
   const getPathColor = (pathType: string) => {
     switch (pathType) {
@@ -192,6 +203,35 @@ export default function PathComparison({ result, graph }: PathComparisonProps) {
           );
         })}
       </div>
+
+      {/* Shared Subgraph Analysis */}
+      {mergedComparison && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Shared Path Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Shared nodes:</strong> {mergedComparison.sharedSubgraph.sharedNodes.length} common steps
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Unique to path A:</strong> {Object.keys(mergedComparison.uniqueSegments).length} segments
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Unique to path B:</strong> {mergedComparison.comparisonMetrics.divergencePoints.length} divergence points
+                </p>
+              </div>
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground">
+                  Shared nodes represent common foundation steps between paths
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Trade-offs Analysis */}
       {result.tradeoffs && (

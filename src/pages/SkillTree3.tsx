@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,12 @@ import PathfindingControls from '@/components/lifePathGraph/PathfindingControls'
 import { useLifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathResult, ScoringConfig } from '@/types/lifePathGraph';
 import { Route, MapPin, Clock, DollarSign, BookOpen, Target, TestTube } from 'lucide-react';
+
+// Integration: New modules
+import { enhanceWithParetoFrontier } from '@/lib/pathfinding/pareto-frontier';
+import { ParetoFrontierPanel } from '@/components/ui/pareto-frontier-panel';
+import { CheckpointTimeline } from '@/components/ui/checkpoint-timeline';
+import { FloridaArticulationFilter } from '@/components/ui/florida-articulation-filter';
 
 export default function SkillTree3() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -41,6 +47,22 @@ export default function SkillTree3() {
     findPaths,
     calculateCreditTransfer
   } = useLifePathGraph(activeGoal, scoringConfig);
+
+  // Enhanced pathfinding result with Pareto frontier
+  const enhancedResult = useMemo(() => {
+    return pathfindingResult ? enhanceWithParetoFrontier(pathfindingResult) : null;
+  }, [pathfindingResult]);
+
+  // States for new features
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null);
+  const [showFloridaPaths, setShowFloridaPaths] = useState(false);
+  const [checkpoints, setCheckpoints] = useState<any[]>([]);
+
+  // Convert PathResult to ParetoPoint for the frontend
+  const paretoFrontier = useMemo(() => {
+    if (!enhancedResult?.paretoFrontier) return [];
+    return enhancedResult.paretoFrontier;
+  }, [enhancedResult]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNode(node);
@@ -118,6 +140,12 @@ export default function SkillTree3() {
                   config={scoringConfig}
                   onChange={setScoringConfig}
                 />
+
+                <FloridaArticulationFilter
+                  onFilterChange={(filters) => console.log('Florida filters:', filters)}
+                  showFloridaPaths={showFloridaPaths}
+                  onToggleFloridaPaths={setShowFloridaPaths}
+                />
               </CardContent>
             </Card>
 
@@ -161,9 +189,11 @@ export default function SkillTree3() {
           {/* Main Content Area */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="graph" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="graph">Path Graph</TabsTrigger>
                 <TabsTrigger value="comparison">Path Comparison</TabsTrigger>
+                <TabsTrigger value="pareto">Trade-offs</TabsTrigger>
+                <TabsTrigger value="checkpoints">Timeline</TabsTrigger>
                 <TabsTrigger value="analysis">Analysis</TabsTrigger>
               </TabsList>
 
@@ -185,12 +215,48 @@ export default function SkillTree3() {
               </TabsContent>
 
               <TabsContent value="comparison" className="mt-6">
-                {pathfindingResult && (
+                {enhancedResult && (
                   <PathComparison
-                    result={pathfindingResult}
+                    result={enhancedResult}
                     graph={graph}
                   />
                 )}
+              </TabsContent>
+
+              <TabsContent value="pareto" className="mt-6">
+                {paretoFrontier.length > 0 && (
+                  <ParetoFrontierPanel
+                    frontier={paretoFrontier}
+                    selectedPathId={selectedPathId}
+                    onSelectPath={(path) => setSelectedPathId(path.id)}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="checkpoints" className="mt-6">
+                <CheckpointTimeline
+                  checkpoints={checkpoints}
+                  currentUserState={{
+                    userId: 'demo-user',
+                    completedNodeIds: [],
+                    inProgressNodeIds: [],
+                    preferences: {},
+                    currentPath: null,
+                    checkpoints: checkpoints
+                  }}
+                  onRestoreCheckpoint={(cp) => console.log('Restore checkpoint:', cp)}
+                  onCreateBranch={(cp) => console.log('Create branch:', cp)}
+                  onCreateCheckpoint={() => {
+                    const newCheckpoint = {
+                      id: Date.now().toString(),
+                      timestamp: new Date(),
+                      name: `Checkpoint ${checkpoints.length + 1}`,
+                      userState: { currentGoal: activeGoal, config: scoringConfig },
+                      changes: [`Goal: ${activeGoal}`, `Modified scoring config`],
+                    };
+                    setCheckpoints(prev => [...prev, newCheckpoint]);
+                  }}
+                />
               </TabsContent>
 
               <TabsContent value="analysis" className="mt-6">

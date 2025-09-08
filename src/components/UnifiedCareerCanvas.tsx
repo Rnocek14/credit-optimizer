@@ -20,6 +20,11 @@ import type { GraphNode, GraphEdge, NodeType } from '@/lib/careerGraph';
 import { GraphLayoutEngine, type LayoutConfig } from '@/lib/graphLayout';
 import { calculateEnhancedSkillTreeLayout, type LayoutNode, type LayoutEdge } from '@/lib/enhancedSkillTreeLayout';
 
+// Integration: Ghost paths and overlays
+import { getGhostNodeStyle, getGhostEdgeStyle, GhostPathToggle, GhostPathLegend } from '@/components/ui/ghost-path-visuals';
+import { OverlayTogglePanel, OverlayLegend, useOverlayRegistry } from '@/components/ui/overlay-registry';
+import { motionGuards } from '@/lib/motion/guards';
+
 // Extended edge interface to handle the transformed edges
 interface ExtendedGraphEdge extends GraphEdge {
   source?: string;
