@@ -116,9 +116,9 @@
     --popover: oklch(0.99 0.00 0);
     --popover-foreground: oklch(0.23 0.00 0);
 
-    /* Brand colors - OKLCH for perceptual uniformity */
-    --primary: oklch(0.75 0.12 270);
-    --primary-foreground: oklch(0.99 0.00 0);
+    /* Brand colors - OKLCH for perceptual uniformity - Updated to use accent-cyan for better visibility */
+    --primary: oklch(var(--accent-cyan));
+    --primary-foreground: oklch(var(--accent-cyan-foreground));
     
     /* Success color with improved contrast - fixes 3.84:1 ratio */
     --success: oklch(0.77 0.12 142);
@@ -326,9 +326,9 @@
     --popover: oklch(0.15 0.00 0);
     --popover-foreground: oklch(0.92 0.00 0);
 
-    /* Reduced chroma brand colors for dark mode comfort */
-    --primary: oklch(0.78 0.07 270);
-    --primary-foreground: oklch(0.15 0.00 0);
+    /* Reduced chroma brand colors for dark mode comfort - Updated to use accent-cyan */
+    --primary: oklch(var(--accent-cyan));
+    --primary-foreground: oklch(var(--on-accent));
     --primary-hover: oklch(0.82 0.08 270);
     --primary-light: oklch(0.25 0.04 270);
 

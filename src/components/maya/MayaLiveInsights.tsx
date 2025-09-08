@@ -424,7 +424,7 @@ export function MayaLiveInsights({
               <Button 
                 onClick={() => generateInsights('daily')}
                 disabled={loading}
-                className="bg-primary hover:bg-primary/90"
+                className="bg-accent-cyan text-accent-cyan-foreground hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent-cyan focus-visible:ring-offset-2"
               >
                 <Zap className="h-4 w-4 mr-2" />
                 Generate Insights
