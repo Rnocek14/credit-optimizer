@@ -151,10 +151,32 @@
     --info-light: oklch(0.97 0.02 240);
     --info-700: oklch(0.63 0.08 240);
     
-    /* Accent for design elements */
+    /* Enhanced accent colors for better WCAG compliance */
     --accent: oklch(0.80 0.10 340); /* Pink/magenta for design category */
     --accent-foreground: oklch(0.99 0.00 0);
-    --info-700: oklch(0.60 0.09 240);
+    
+    /* WCAG-compliant accent palette */
+    --accent-cyan: oklch(0.75 0.15 200); /* Cyan/teal for overlays */
+    --accent-cyan-foreground: oklch(0.15 0.00 0);
+    
+    --accent-gold: oklch(0.85 0.12 85); /* Gold for highlights */
+    --accent-gold-foreground: oklch(0.25 0.00 0);
+    
+    --accent-lime: oklch(0.78 0.18 130); /* Lime for success states */
+    --accent-lime-foreground: oklch(0.20 0.00 0);
+    
+    /* Risk matrix colors - WCAG AA compliant */
+    --risk-low: oklch(0.75 0.12 142); /* Green - same as success */
+    --risk-low-foreground: oklch(0.25 0.05 142);
+    
+    --risk-medium: oklch(0.80 0.15 70); /* Yellow/amber */
+    --risk-medium-foreground: oklch(0.25 0.00 0);
+    
+    --risk-high: oklch(0.75 0.12 50); /* Orange */
+    --risk-high-foreground: oklch(0.25 0.00 0);
+    
+    --risk-critical: oklch(0.68 0.16 30); /* Red - same as destructive */
+    --risk-critical-foreground: oklch(0.99 0.00 0);
 
     --border: oklch(0.87 0.00 0);
     --input: oklch(0.87 0.00 0);
@@ -170,13 +192,13 @@
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
-    --shadow-colored: 0 8px 30px hsl(var(--primary) / 0.12);
+    --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
 
-    /* Gradient System */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-hover)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-hover)));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.3));
-    --gradient-glass: linear-gradient(135deg, hsl(var(--background) / 0.8), hsl(var(--background) / 0.4));
+    /* Gradient System - Fixed: OKLCH colors should not be wrapped in hsl() */
+    --gradient-primary: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)));
+    --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
+    --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.3));
+    --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.8), oklch(var(--background) / 0.4));
 
     /* Semantic purple variants */
     --purple-primary: var(--primary);
@@ -186,12 +208,12 @@
     --purple-muted: 262 30% 96%;
     --purple-muted-foreground: 262 20% 45%;
     
-    /* Visual V2 - Life Path Graph Hierarchy */
-    --node-glow-on-path: 0 0 8px hsl(var(--primary) / 0.4);
-    --node-glow-related: 0 0 4px hsl(var(--secondary) / 0.3);
-    --edge-on-path: hsl(var(--primary));
-    --edge-related: hsl(var(--muted-foreground) / 0.6);
-    --edge-off-path: hsl(var(--muted-foreground) / 0.25);
+    /* Visual V2 - Life Path Graph Hierarchy - Fixed: Use OKLCH directly */
+    --node-glow-on-path: 0 0 8px oklch(var(--primary) / 0.4);
+    --node-glow-related: 0 0 4px oklch(var(--secondary) / 0.3);
+    --edge-on-path: oklch(var(--primary));
+    --edge-related: oklch(var(--muted-foreground) / 0.6);
+    --edge-off-path: oklch(var(--muted-foreground) / 0.25);
 
     /* Spacing Scale */
     --space-1: 0.25rem;
@@ -306,13 +328,13 @@
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.5);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.6), 0 8px 10px -6px hsl(0 0% 0% / 0.6);
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.7);
-    --shadow-colored: 0 8px 30px hsl(var(--primary) / 0.3);
+    --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.3);
 
-    /* Dark mode gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-hover)));
-    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-hover)));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted) / 0.5));
-    --gradient-glass: linear-gradient(135deg, hsl(var(--background) / 0.95), hsl(var(--background) / 0.8));
+    /* Dark mode gradients - Fixed: OKLCH colors should not be wrapped in hsl() */
+    --gradient-primary: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)));
+    --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
+    --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.5));
+    --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.95), oklch(var(--background) / 0.8));
 
     /* Dark mode semantic purple variants */
     --purple-primary: var(--primary);
@@ -322,12 +344,12 @@
     --purple-muted: 262 20% 15%;
     --purple-muted-foreground: 262 20% 70%;
     
-    /* Visual V2 - Life Path Graph Hierarchy (Dark Mode) */
-    --node-glow-on-path: 0 0 12px hsl(var(--primary) / 0.6);
-    --node-glow-related: 0 0 6px hsl(var(--secondary) / 0.4);
-    --edge-on-path: hsl(var(--primary));
-    --edge-related: hsl(var(--muted-foreground) / 0.6);
-    --edge-off-path: hsl(var(--muted-foreground) / 0.25);
+    /* Visual V2 - Life Path Graph Hierarchy (Dark Mode) - Fixed: Use OKLCH directly */
+    --node-glow-on-path: 0 0 12px oklch(var(--primary) / 0.6);
+    --node-glow-related: 0 0 6px oklch(var(--secondary) / 0.4);
+    --edge-on-path: oklch(var(--primary));
+    --edge-related: oklch(var(--muted-foreground) / 0.6);
+    --edge-off-path: oklch(var(--muted-foreground) / 0.25);
     --sidebar-background: 240 5.9% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

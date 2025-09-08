@@ -138,7 +138,25 @@ export default {
 				accent: {
 					DEFAULT: 'var(--accent)',
 					foreground: 'var(--accent-foreground)',
-					hover: 'var(--accent-hover)'
+					hover: 'var(--accent-hover)',
+					cyan: 'var(--accent-cyan)',
+					'cyan-foreground': 'var(--accent-cyan-foreground)',
+					gold: 'var(--accent-gold)',
+					'gold-foreground': 'var(--accent-gold-foreground)', 
+					lime: 'var(--accent-lime)',
+					'lime-foreground': 'var(--accent-lime-foreground)'
+				},
+				
+				/* Risk matrix semantic colors */
+				risk: {
+					low: 'var(--risk-low)',
+					'low-foreground': 'var(--risk-low-foreground)',
+					medium: 'var(--risk-medium)',
+					'medium-foreground': 'var(--risk-medium-foreground)',
+					high: 'var(--risk-high)',
+					'high-foreground': 'var(--risk-high-foreground)',
+					critical: 'var(--risk-critical)',
+					'critical-foreground': 'var(--risk-critical-foreground)'
 				},
 				
 				popover: {
