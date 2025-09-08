@@ -24,6 +24,14 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // Block undersized touch targets in interactive elements
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/\\b(min-h|h)-(8|9|10|11)\\b/]",
+          message: "Interactive targets must be ≥48px (use h-12/min-h-12)."
+        }
+      ]
     },
   }
 );

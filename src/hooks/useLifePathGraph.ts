@@ -338,8 +338,8 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
         }
       };
 
-      // Add Pareto frontier (simplified for Phase 0)
-      result.paretoFrontier = [result.fastest, result.cheapest, result.creditMaximized];
+      // Add Pareto frontier (simplified for Phase 0) - leave empty, will be populated by enhanceWithParetoFrontier
+      result.paretoFrontier = [];
 
       setPathfindingResult(result);
       

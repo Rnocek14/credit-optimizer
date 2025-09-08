@@ -175,7 +175,5 @@ const motionGuardsPlugin = {
   }
 };
 
-// Export the plugin for use in ESLint config
-module.exports.plugins = {
-  'motion-guards': motionGuardsPlugin
-};
+// Export as a standard ESLint plugin
+module.exports = motionGuardsPlugin;

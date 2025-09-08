@@ -192,7 +192,7 @@ function runPhase3Validation() {
   console.log(`   • Touch targets found: ${scanResults.totalTouchTargets}`);
   console.log(`   • Focus implementations: ${scanResults.totalFocusRings}`);
   console.log(`   • Motion-safe animations: ${scanResults.totalMotionSafe}`);
-  Console.log(`   • Files scanned: ${scanResults.totalFiles}`);
+  console.log(`   • Files scanned: ${scanResults.totalFiles}`);
   
   return overallScore >= 90;
 }

@@ -1,6 +1,9 @@
 // Life Path Unified Career Graph - Core Type Definitions
 // Based on comprehensive research for multi-objective pathfinding with credit transfer
 
+// Import ParetoPoint from pareto-frontier module
+import type { ParetoPoint } from '@/lib/pathfinding/pareto-frontier';
+
 export type NodeType = 'skill' | 'job' | 'jobGoal' | 'course' | 'project' | 'certification' | 'credential' | 'creditBlock' | 'step' | 'exam';
 
 export type EdgeType = 
@@ -235,9 +238,9 @@ export interface ScoringConfig {
 // Pathfinding algorithm results
 export interface PathfindingResult {
   fastest: PathResult;
-  cheapest: PathResult;
+  cheapest: PathResult;  
   creditMaximized: PathResult;
-  paretoFrontier: PathResult[];
+  paretoFrontier?: ParetoPoint[];
   ghostPaths: PathResult[];
   
   // Comparison metrics

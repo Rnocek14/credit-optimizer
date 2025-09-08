@@ -223,7 +223,7 @@ export default function SkillTree3() {
               <TabsContent value="pareto" className="mt-6">
                 {paretoFrontier && paretoFrontier.length > 0 && (
                   <ParetoFrontierPanel
-                    frontier={paretoFrontier as any}
+                    frontier={paretoFrontier}
                     selectedPathId={selectedPathId}
                     onSelectPath={(path) => setSelectedPathId(path.id)}
                   />
