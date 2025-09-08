@@ -348,11 +348,11 @@ const ResumeGallery = () => {
               const score = reviewData?.overall_score || 0;
 
               return (
-                <Card key={profile.id} className="group hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/30 hover:scale-[1.02]">
+                <Card key={profile.id} className="hover-quiet transition-all duration-300 border-2 hover:border-primary/30">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
+                        <h3 className="font-semibold text-lg transition-colors">
                           {truncateText(profile.name, 20)}
                         </h3>
                         <p className="text-muted-foreground text-sm">

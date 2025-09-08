@@ -96,7 +96,7 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
       }
       
       if (isSelected) baseColor += ' ring-2 ring-primary';
-      if (isHovered) baseColor += ' ring-1 ring-primary/50 soft-hover transition-all duration-200';
+      if (isHovered) baseColor += ' ring-1 ring-primary/50 hover-quiet transition-all duration-200';
       if (showPreviousPath) baseColor += ' opacity-40 transition-opacity duration-1000';
       return baseColor;
     }

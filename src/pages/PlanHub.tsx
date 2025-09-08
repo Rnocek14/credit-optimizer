@@ -245,7 +245,8 @@ export default function PlanHub() {
         <div className="w-full min-w-0 overflow-x-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="w-full mb-4">
-              <TabsList className="w-full grid grid-cols-7 bg-card border border-border rounded-xl p-1 h-auto min-h-[48px] dark:bg-card dark:border-border">
+              <div className="rounded-xl bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 border border-border/50 p-2">
+                <TabsList className="w-full grid grid-cols-7 bg-transparent border-0 p-1 h-auto min-h-[48px]">
                 <TabsTrigger value="overview" data-testid="tab-overview" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Overview</TabsTrigger>
                 <TabsTrigger value="goals" data-testid="tab-goals" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Goals</TabsTrigger>
                 <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Roadmap</TabsTrigger>
@@ -253,7 +254,8 @@ export default function PlanHub() {
                 <TabsTrigger value="workflows" data-testid="tab-workflows" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Workflows</TabsTrigger>
                 <TabsTrigger value="proof" data-testid="tab-proof" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Projects</TabsTrigger>
                 <TabsTrigger value="switch" data-testid="tab-switch" className="text-sm px-3 py-2.5 min-h-[40px] data-[state=active]:bg-brand-primary data-[state=active]:text-[oklch(var(--brand-primary-foreground))] data-[state=active]:shadow-sm rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">Switch</TabsTrigger>
-              </TabsList>
+                </TabsList>
+              </div>
             </div>
 
               <TabsContent value="overview" className="mt-6">
