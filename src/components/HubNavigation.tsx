@@ -100,10 +100,10 @@ export function HubNavigation() {
   ];
 
   return (
-    <nav data-testid="hub-nav" data-stage={stage} className="bg-glass border-b sticky top-0 z-50">
+    <nav data-testid="hub-nav" data-stage={stage} className="hidden md:block bg-glass border-b sticky top-0 z-50">
       <div className="container-xl">
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-2 py-4">
+        <div className="flex items-center gap-2 py-4">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity mr-8">
             <div className="w-9 h-9 bg-gradient-primary rounded-lg flex items-center justify-center shadow-colored">
@@ -229,46 +229,6 @@ export function HubNavigation() {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-glass border-t z-50 shadow-floating">
-          <div className="flex items-center justify-around py-3">
-            {visibleHubs.map((hub) => {
-              const Icon = hub.icon;
-              return (
-                <Link
-                  key={hub.id}
-                  to={hub.href}
-                  className={cn(
-                    "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium interactive rounded-lg",
-                    isActive(hub.href) 
-                      ? "text-primary bg-primary-light" 
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  data-testid={`nav-${hub.id}`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {hub.label}
-                </Link>
-              );
-            })}
-            
-            {showContribute && (
-              <Link
-                to="/contribute"
-                className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium interactive rounded-lg",
-                  location.pathname.startsWith("/contribute")
-                    ? "text-primary bg-primary-light"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                data-testid="nav-contribute"
-              >
-                <Settings className="h-5 w-5" />
-                MORE
-              </Link>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Track Manager Dialog */}
