@@ -94,6 +94,12 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			fontSize: {
+				'readable-xs': 'var(--text-readable-xs)',
+				'readable-sm': 'var(--text-readable-sm)', 
+				'readable-base': 'var(--text-readable-base)',
+				'readable-lg': 'var(--text-readable-lg)',
+			},
 			borderRadius: {
 				lg: 'var(--radius-lg)',
 				md: 'var(--radius)',

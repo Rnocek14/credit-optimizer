@@ -63,15 +63,15 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <p className="text-xs text-muted-foreground mt-1">{course.platform}</p>
               <div className="flex items-center gap-2 mt-2">
                 {course.difficulty && (
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${difficultyColors[course.difficulty as keyof typeof difficultyColors] || 'bg-gray-100 text-gray-800'}`}
-                  >
+                   <Badge 
+                     variant="outline" 
+                     className={`text-readable-xs ${difficultyColors[course.difficulty as keyof typeof difficultyColors] || 'bg-gray-100 text-gray-800'}`}
+                   >
                     {course.difficulty}
                   </Badge>
                 )}
                 {course.cost && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 text-readable-xs text-muted-foreground">
                     <DollarSign className="h-3 w-3" />
                     {course.cost}
                   </div>
@@ -134,16 +134,16 @@ export const CourseCard: React.FC<CourseCardProps> = ({
 
         {course.skill_tags && course.skill_tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
-            {course.skill_tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {course.skill_tags.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{course.skill_tags.length - 3} more
-              </Badge>
-            )}
+             {course.skill_tags.slice(0, 3).map((tag, index) => (
+               <Badge key={index} variant="secondary" className="text-readable-xs">
+                 {tag}
+               </Badge>
+             ))}
+             {course.skill_tags.length > 3 && (
+               <Badge variant="secondary" className="text-readable-xs">
+                 +{course.skill_tags.length - 3} more
+               </Badge>
+             )}
           </div>
         )}
 

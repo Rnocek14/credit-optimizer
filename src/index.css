@@ -43,9 +43,11 @@
   animation: arrow-flow 1s linear infinite;
 }
 
-/* Enhanced Design System - Comprehensive color palette, spacing, and visual effects
-All colors MUST be HSL for consistent theming.
-*/
+  /* Typography - Mobile-first readable sizes */
+  --text-readable-xs: 0.875rem; /* 14px - Minimum readable size for UI elements */
+  --text-readable-sm: 0.9375rem; /* 15px - Comfortable reading size */
+  --text-readable-base: 1rem; /* 16px - Body text minimum */
+  --text-readable-lg: 1.125rem; /* 18px - Enhanced readability */
 
 @layer base {
   :root {
@@ -78,19 +80,19 @@ All colors MUST be HSL for consistent theming.
     --destructive-foreground: 210 40% 98%;
     --destructive-hover: 0 70% 45%;
 
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
-    --success-light: 142 76% 96%;
+    --success: 142 71% 45%;
+    --success-foreground: 138 84% 97%;
+    --success-light: 142 76% 94%;
     --success-muted: 142 76% 45%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 210 40% 98%;
-    --warning-light: 38 92% 96%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 21 92% 14%;
+    --warning-light: 43 96% 95%;
     --warning-muted: 38 92% 60%;
 
-    --info: 217 91% 60%;
+    --info: 221 83% 53%;
     --info-foreground: 210 40% 98%;
-    --info-light: 217 91% 96%;
+    --info-light: 221 83% 95%;
     --info-muted: 217 91% 70%;
 
     --border: 214.3 31.8% 91.4%;

@@ -432,7 +432,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                 <div key={skill.name} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
                   <div>
                     <p className="font-medium text-sm">{skill.name}</p>
-                    <p className="text-xs text-muted-foreground">{skill.level}</p>
+                    <p className="text-readable-xs text-muted-foreground">{skill.level}</p>
                   </div>
                    <div className="text-right">
                      <p className="text-sm font-medium">{skill.progress}%</p>
