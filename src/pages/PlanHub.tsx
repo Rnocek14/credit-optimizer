@@ -244,18 +244,16 @@ export default function PlanHub() {
 
         <div className="w-full min-w-0 overflow-x-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <div className="w-full mb-4 overflow-x-hidden">
-              <div className="w-full overflow-x-auto pb-2">
-                <TabsList className="flex w-max min-w-full bg-muted p-1 h-auto min-h-[44px]">
-                  <TabsTrigger value="overview" data-testid="tab-overview" className="whitespace-nowrap px-3 py-2 text-sm">Overview</TabsTrigger>
-                  <TabsTrigger value="goals" data-testid="tab-goals" className="whitespace-nowrap px-3 py-2 text-sm">Goals</TabsTrigger>
-                  <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="whitespace-nowrap px-3 py-2 text-sm">Roadmap</TabsTrigger>
-                  <TabsTrigger value="gaps" data-testid="tab-gaps" className="whitespace-nowrap px-3 py-2 text-sm">Gaps</TabsTrigger>
-                  <TabsTrigger value="workflows" data-testid="tab-workflows" className="whitespace-nowrap px-3 py-2 text-sm">Workflows</TabsTrigger>
-                  <TabsTrigger value="proof" data-testid="tab-proof" className="whitespace-nowrap px-3 py-2 text-sm">Projects</TabsTrigger>
-                  <TabsTrigger value="switch" data-testid="tab-switch" className="whitespace-nowrap px-3 py-2 text-sm">Switch</TabsTrigger>
-                </TabsList>
-              </div>
+            <div className="w-full mb-4">
+              <TabsList className="w-full grid grid-cols-7 bg-muted p-1 h-auto min-h-[44px]">
+                <TabsTrigger value="overview" data-testid="tab-overview" className="text-xs px-2 py-2">Overview</TabsTrigger>
+                <TabsTrigger value="goals" data-testid="tab-goals" className="text-xs px-2 py-2">Goals</TabsTrigger>
+                <TabsTrigger value="roadmap" data-testid="tab-roadmap" className="text-xs px-2 py-2">Roadmap</TabsTrigger>
+                <TabsTrigger value="gaps" data-testid="tab-gaps" className="text-xs px-2 py-2">Gaps</TabsTrigger>
+                <TabsTrigger value="workflows" data-testid="tab-workflows" className="text-xs px-2 py-2">Workflows</TabsTrigger>
+                <TabsTrigger value="proof" data-testid="tab-proof" className="text-xs px-2 py-2">Projects</TabsTrigger>
+                <TabsTrigger value="switch" data-testid="tab-switch" className="text-xs px-2 py-2">Switch</TabsTrigger>
+              </TabsList>
             </div>
 
               <TabsContent value="overview" className="mt-6">
