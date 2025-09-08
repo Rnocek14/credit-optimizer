@@ -197,234 +197,283 @@ export default function Plan() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-4 h-auto">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:text-foreground">📋 Overview</TabsTrigger>
-            <TabsTrigger value="planning" className="data-[state=active]:bg-background data-[state=active]:text-foreground">🎯 Planning</TabsTrigger>
-            <TabsTrigger value="roadmap" className="data-[state=active]:bg-background data-[state=active]:text-foreground">🗺️ Roadmap</TabsTrigger>
-            <TabsTrigger value="goals" className="data-[state=active]:bg-background data-[state=active]:text-foreground">🎯 Micro Goals</TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-2xl font-bold">{planItems.length}</p>
-                      <p className="text-sm text-muted-foreground">Total Items</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {planItems.filter(item => item.status === 'in_progress').length}
-                      </p>
-                      <p className="text-sm text-muted-foreground">In Progress</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {planItems.filter(item => item.status === 'completed').length}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Completed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* Custom Tabs */}
+        <div className="w-full">
+          <div className="w-full bg-muted rounded-md p-1 mb-6">
+            <div className="grid grid-cols-4 w-full gap-1">
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={`px-3 py-2 text-sm font-medium rounded-sm transition-all ${
+                  activeTab === "overview" 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📋 Overview
+              </button>
+              <button
+                onClick={() => setActiveTab("planning")}
+                className={`px-3 py-2 text-sm font-medium rounded-sm transition-all ${
+                  activeTab === "planning" 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🎯 Planning
+              </button>
+              <button
+                onClick={() => setActiveTab("roadmap")}
+                className={`px-3 py-2 text-sm font-medium rounded-sm transition-all ${
+                  activeTab === "roadmap" 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🗺️ Roadmap
+              </button>
+              <button
+                onClick={() => setActiveTab("goals")}
+                className={`px-3 py-2 text-sm font-medium rounded-sm transition-all ${
+                  activeTab === "goals" 
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🎯 Micro Goals
+              </button>
             </div>
+          </div>
 
-            {/* Plan Items */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Your Plan Items</h2>
-              
-              {isLoadingPlan ? (
+          {/* Tab Content */}
+          <div className="w-full">
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-2xl font-bold">{planItems.length}</p>
+                          <p className="text-sm text-muted-foreground">Total Items</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-green-500" />
+                        <div>
+                          <p className="text-2xl font-bold">
+                            {planItems.filter(item => item.status === 'in_progress').length}
+                          </p>
+                          <p className="text-sm text-muted-foreground">In Progress</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="text-2xl font-bold">
+                            {planItems.filter(item => item.status === 'completed').length}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Completed</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Plan Items */}
                 <div className="space-y-4">
-                  {[1, 2, 3].map(i => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-4">
-                        <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-muted rounded w-1/2"></div>
+                  <h2 className="text-xl font-semibold">Your Plan Items</h2>
+                  
+                  {isLoadingPlan ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map(i => (
+                        <Card key={i} className="animate-pulse">
+                          <CardContent className="p-4">
+                            <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                            <div className="h-3 bg-muted rounded w-1/2"></div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : planItems.length === 0 ? (
+                    <Card>
+                      <CardContent className="text-center py-8">
+                        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No items in your plan yet</h3>
+                        <p className="text-muted-foreground mb-4">
+                          Start exploring courses and save items to build your learning plan
+                        </p>
+                        <Button onClick={() => window.location.href = '/explore'}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Explore Courses
+                        </Button>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              ) : planItems.length === 0 ? (
-                <Card>
-                  <CardContent className="text-center py-8">
-                    <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No items in your plan yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Start exploring courses and save items to build your learning plan
-                    </p>
-                    <Button onClick={() => window.location.href = '/explore'}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Explore Courses
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {planItems.map((item) => (
-                    <Card key={item.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            {getItemIcon(item.item_type)}
-                            <div className="flex-1">
-                              <h3 className="font-semibold mb-1">{item.title}</h3>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {item.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-2 text-xs">
-                                <Badge variant="outline" className={getPriorityColor(item.priority)}>
-                                  {item.priority}
-                                </Badge>
-                                <Badge variant="outline">
-                                  {item.item_type}
-                                </Badge>
-                                <span className={getStatusColor(item.status)}>
-                                  {item.status.replace('_', ' ')}
-                                </span>
-                                {item.estimated_time_to_complete && (
-                                  <span className="text-muted-foreground">
-                                    ⏱️ {item.estimated_time_to_complete}
-                                  </span>
-                                )}
-                                {item.cri_boost_score && item.cri_boost_score > 0 && (
-                                  <span className="text-green-600">
-                                    ⚡ +{Math.round(item.cri_boost_score)}% CRI
-                                  </span>
+                  ) : (
+                    <div className="space-y-4">
+                      {planItems.map((item) => (
+                        <Card key={item.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                {getItemIcon(item.item_type)}
+                                <div className="flex-1">
+                                  <h3 className="font-semibold mb-1">{item.title}</h3>
+                                  {item.description && (
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                      {item.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <Badge variant="outline" className={getPriorityColor(item.priority)}>
+                                      {item.priority}
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {item.item_type}
+                                    </Badge>
+                                    <span className={getStatusColor(item.status)}>
+                                      {item.status.replace('_', ' ')}
+                                    </span>
+                                    {item.estimated_time_to_complete && (
+                                      <span className="text-muted-foreground">
+                                        ⏱️ {item.estimated_time_to_complete}
+                                      </span>
+                                    )}
+                                    {item.cri_boost_score && item.cri_boost_score > 0 && (
+                                      <span className="text-green-600">
+                                        ⚡ +{Math.round(item.cri_boost_score)}% CRI
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {item.status !== 'completed' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateItemStatus.mutate({
+                                      itemId: item.id,
+                                      status: item.status === 'pending' ? 'in_progress' : 'completed'
+                                    })}
+                                  >
+                                    {item.status === 'pending' ? 'Start' : 'Complete'}
+                                  </Button>
                                 )}
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {item.status !== 'completed' && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => updateItemStatus.mutate({
-                                  itemId: item.id,
-                                  status: item.status === 'pending' ? 'in_progress' : 'completed'
-                                })}
-                              >
-                                {item.status === 'pending' ? 'Start' : 'Complete'}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </TabsContent>
+              </div>
+            )}
 
-          {/* Planning Tab */}
-          <TabsContent value="planning" className="space-y-6">
-            <TrackPlanningView />
-          </TabsContent>
+            {/* Planning Tab */}
+            {activeTab === "planning" && (
+              <div className="space-y-6">
+                <TrackPlanningView />
+              </div>
+            )}
 
-          {/* Roadmap Tab */}
-          <TabsContent value="roadmap" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Learning Roadmap</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Visual roadmap view coming soon - track your learning journey with interactive timelines and milestones.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Micro Goals Tab */}
-          <TabsContent value="goals" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Micro Goals</h2>
-              
-              {isLoadingGoals ? (
-                <div className="space-y-4">
-                  {[1, 2].map(i => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-4">
-                        <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-muted rounded w-1/2"></div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : microGoals.length === 0 ? (
+            {/* Roadmap Tab */}
+            {activeTab === "roadmap" && (
+              <div className="space-y-6">
                 <Card>
-                  <CardContent className="text-center py-8">
-                    <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No micro goals yet</h3>
+                  <CardHeader>
+                    <CardTitle>Learning Roadmap</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <p className="text-muted-foreground">
-                      Micro goals are automatically created when you save items to your plan
+                      Visual roadmap view coming soon - track your learning journey with interactive timelines and milestones.
                     </p>
                   </CardContent>
                 </Card>
-              ) : (
+              </div>
+            )}
+
+            {/* Micro Goals Tab */}
+            {activeTab === "goals" && (
+              <div className="space-y-6">
                 <div className="space-y-4">
-                  {microGoals.map((goal) => (
-                    <Card key={goal.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <CheckCircle className={`h-5 w-5 ${goal.completed_at ? 'text-green-600' : 'text-muted-foreground'}`} />
-                            <div className="flex-1">
-                              <h3 className={`font-semibold ${goal.completed_at ? 'line-through text-muted-foreground' : ''}`}>
-                                {goal.title}
-                              </h3>
-                              {goal.description && (
-                                <p className="text-sm text-muted-foreground">
-                                  {goal.description}
-                                </p>
-                              )}
-                              {goal.target_date && (
-                                <p className="text-xs text-muted-foreground">
-                                  Target: {new Date(goal.target_date).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {!goal.completed_at && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => completeMicroGoal.mutate(goal.id)}
-                            >
-                              Complete
-                            </Button>
-                          )}
-                        </div>
+                  <h2 className="text-xl font-semibold">Micro Goals</h2>
+                  
+                  {isLoadingGoals ? (
+                    <div className="space-y-4">
+                      {[1, 2].map(i => (
+                        <Card key={i} className="animate-pulse">
+                          <CardContent className="p-4">
+                            <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                            <div className="h-3 bg-muted rounded w-1/2"></div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : microGoals.length === 0 ? (
+                    <Card>
+                      <CardContent className="text-center py-8">
+                        <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No micro goals yet</h3>
+                        <p className="text-muted-foreground">
+                          Micro goals are automatically created when you save items to your plan
+                        </p>
                       </CardContent>
                     </Card>
-                  ))}
+                  ) : (
+                    <div className="space-y-4">
+                      {microGoals.map((goal) => (
+                        <Card key={goal.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <CheckCircle className={`h-5 w-5 ${goal.completed_at ? 'text-green-600' : 'text-muted-foreground'}`} />
+                                <div className="flex-1">
+                                  <h3 className={`font-semibold ${goal.completed_at ? 'line-through text-muted-foreground' : ''}`}>
+                                    {goal.title}
+                                  </h3>
+                                  {goal.description && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {goal.description}
+                                    </p>
+                                  )}
+                                  {goal.target_date && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Target: {new Date(goal.target_date).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {!goal.completed_at && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => completeMicroGoal.mutate(goal.id)}
+                                >
+                                  Complete
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
