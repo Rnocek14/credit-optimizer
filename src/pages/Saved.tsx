@@ -250,7 +250,7 @@ export default function Saved() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {savedCourses.map((saved) => (
-                <Card key={saved.id} className="hover:scale-105 transition-all duration-300 hover:shadow-lg">
+                <Card key={saved.id} className="soft-hover transition-all duration-300 hover:shadow-lg">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">

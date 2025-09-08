@@ -128,7 +128,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all duration-300 shadow-sm min-w-[200px] justify-between hover:scale-105 ${
+            className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all duration-300 shadow-sm min-w-[200px] justify-between soft-hover ${
               active 
                 ? 'bg-gradient-to-r from-primary/10 to-primary/5 border-primary/40 hover:bg-primary/15 shadow-lg ring-2 ring-primary/20' 
                 : 'bg-background hover:bg-muted/80 border-border'
@@ -198,7 +198,7 @@ export const TrackSelector: React.FC<TrackSelectorProps> = ({ className }) => {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleCreate}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-md border-2 hover:bg-primary/10 hover:border-primary text-sm font-medium transition-all duration-200 hover:scale-105"
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-md border-2 hover:bg-primary/10 hover:border-primary text-sm font-medium transition-all duration-200 soft-hover"
               data-testid="create-track"
             >
               <Plus className="w-4 h-4" /> Create New

@@ -53,7 +53,7 @@ export function StarRating({
           type="button"
           className={cn(
             "transition-colors",
-            readonly ? "cursor-default" : "cursor-pointer hover:scale-110",
+            readonly ? "cursor-default" : "cursor-pointer soft-hover",
             sizeClasses[size]
           )}
           onClick={() => handleClick(star)}

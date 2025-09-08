@@ -59,7 +59,7 @@ export function FeatureCard({
             <div className={cn(
               "p-3 rounded-lg transition-colors",
               iconColor,
-              !disabled && "group-hover:scale-105 transition-transform"
+              !disabled && "soft-hover transition-transform"
             )}>
               <Icon className="h-6 w-6" />
             </div>

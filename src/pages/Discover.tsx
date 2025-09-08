@@ -230,12 +230,12 @@ export default function Discover() {
               return (
                 <Card 
                   key={profile.id} 
-                  className="group hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl border-2 hover:border-primary/30 bg-card/80 backdrop-blur-sm"
+                  className="group soft-hover transition-all duration-300 shadow-lg hover:shadow-2xl border-2 hover:border-primary/30 bg-card/80 backdrop-blur-sm"
                 >
                   <CardContent className="p-8">
                     {/* Header */}
                     <div className="text-center mb-6">
-                      <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                      <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-4 transition-transform">
                         <span className="text-2xl font-bold text-primary-foreground">
                           {profile.name?.charAt(0) || '?'}
                         </span>

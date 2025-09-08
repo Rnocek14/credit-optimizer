@@ -89,7 +89,7 @@ export const CareerStepNode: React.FC<CareerStepNodeProps> = ({
         ...stepStyle
       }}
       onClick={handleClick}
-      className="hover:scale-110 transition-transform"
+      className="soft-hover transition-transform cursor-pointer"
     >
       <div className="text-xs font-medium mb-1">
         {step.is_terminal && '🎯 '}
