@@ -199,11 +199,11 @@ export default function Plan() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">📋 Overview</TabsTrigger>
-            <TabsTrigger value="planning">🎯 Planning</TabsTrigger>
-            <TabsTrigger value="roadmap">🗺️ Roadmap</TabsTrigger>
-            <TabsTrigger value="goals">🎯 Micro Goals</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
+            <TabsTrigger value="overview" className="text-sm md:text-base">📋 Overview</TabsTrigger>
+            <TabsTrigger value="planning" className="text-sm md:text-base">🎯 Planning</TabsTrigger>
+            <TabsTrigger value="roadmap" className="text-sm md:text-base">🗺️ Roadmap</TabsTrigger>
+            <TabsTrigger value="goals" className="text-sm md:text-base">🎯 Micro Goals</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
