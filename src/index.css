@@ -84,11 +84,32 @@
     --touch-target-generous-width: 52px;
     --touch-target-generous-height: 52px;
 
+    /* Base surfaces */
+    --background: 0 0% 100%;
+    --foreground: 222 84% 5%;
+
+    /* OKLCH semantic accents (NOTE: use oklch(), not hsl()) - Fixed for WCAG */
+    --accent-cyan: 0.77 0.09 203;
+    --accent-cyan-foreground: 0.26 0.03 203;
+
+    --accent-gold: 0.78 0.13 84;
+    --accent-gold-foreground: 0.25 0.03 84;
+
+    --accent-lime: 0.82 0.11 135;
+    --accent-lime-foreground: 0.24 0.03 135;
+
+    /* Risk matrix - WCAG AA compliant */
+    --risk-low: 0.82 0.11 135;        /* lime */
+    --risk-low-foreground: 0.24 0.03 135;
+    --risk-medium: 0.84 0.10 95;      /* yellow-green */
+    --risk-medium-foreground: 0.26 0.03 95;
+    --risk-high: 0.72 0.16 45;        /* orange */
+    --risk-high-foreground: 0.20 0.03 45;
+    --risk-critical: 0.65 0.20 28;    /* red-orange */
+    --risk-critical-foreground: 0.20 0.03 28;
+
     /* OKLCH Color System - Phase 2 Implementation */
     /* Surfaces */
-    --background: oklch(0.99 0.00 0);
-    --foreground: oklch(0.23 0.00 0);
-
     --card: oklch(0.96 0.00 0);
     --card-foreground: oklch(0.23 0.00 0);
 
@@ -194,8 +215,12 @@
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
     --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
 
-    /* Gradient System - Fixed: OKLCH colors should not be wrapped in hsl() */
-    --gradient-primary: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary-hover)));
+    /* Gradients must use OKLCH explicitly (don't wrap OKLCH vars in hsl()) */
+    --gradient-primary: linear-gradient(
+      135deg,
+      oklch(var(--accent-cyan)) 0%,
+      oklch(var(--accent-gold)) 100%
+    );
     --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
     --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.3));
     --gradient-glass: linear-gradient(135deg, oklch(var(--background) / 0.8), oklch(var(--background) / 0.4));
@@ -257,10 +282,20 @@
   }
 
   .dark {
-    /* Dark mode OKLCH - Reduced chroma for eye comfort */
-    --background: oklch(0.09 0.00 0);
-    --foreground: oklch(0.92 0.00 0);
+    /* Dark mode enhanced - boosted accents for visibility */
+    --background: 222 84% 5%;
+    --foreground: 0 0% 98%;
 
+    /* boost accents a bit in dark to pop against near-black */
+    --accent-cyan: 0.78 0.10 203;
+    --accent-gold: 0.80 0.14 84;
+    --accent-lime: 0.84 0.12 135;
+
+    --risk-medium: 0.86 0.11 95;
+    --risk-high: 0.70 0.18 45;
+    --risk-critical: 0.60 0.22 28;
+
+    /* Dark mode OKLCH - Reduced chroma for eye comfort */
     --card: oklch(0.15 0.00 0);
     --card-foreground: oklch(0.92 0.00 0);
 
@@ -789,3 +824,32 @@
     100% { transform: translateY(-32px); opacity: 0 } 
   }
 }
+
+/* === OKLCH UTILITY CLASSES - Make tokens immediately usable === */
+
+/* Accent utilities */
+.bg-accent-cyan { background-color: oklch(var(--accent-cyan)); }
+.text-accent-cyan-foreground { color: oklch(var(--accent-cyan-foreground)); }
+
+.bg-accent-gold { background-color: oklch(var(--accent-gold)); }
+.text-accent-gold-foreground { color: oklch(var(--accent-gold-foreground)); }
+
+.bg-accent-lime { background-color: oklch(var(--accent-lime)); }
+.text-accent-lime-foreground { color: oklch(var(--accent-lime-foreground)); }
+
+/* Risk utilities */
+.bg-risk-low { background-color: oklch(var(--risk-low)); }
+.text-risk-low-foreground { color: oklch(var(--risk-low-foreground)); }
+
+.bg-risk-medium { background-color: oklch(var(--risk-medium)); }
+.text-risk-medium-foreground { color: oklch(var(--risk-medium-foreground)); }
+
+.bg-risk-high { background-color: oklch(var(--risk-high)); }
+.text-risk-high-foreground { color: oklch(var(--risk-high-foreground)); }
+
+.bg-risk-critical { background-color: oklch(var(--risk-critical)); }
+.text-risk-critical-foreground { color: oklch(var(--risk-critical-foreground)); }
+
+/* Enhanced surface utilities */
+.bg-surface { background-color: oklch(var(--background)); }
+.text-surface { color: oklch(var(--foreground)); }

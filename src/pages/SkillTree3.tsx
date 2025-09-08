@@ -16,6 +16,7 @@ import { enhanceWithParetoFrontier } from '@/lib/pathfinding/pareto-frontier';
 import { ParetoFrontierPanel } from '@/components/ui/pareto-frontier-panel';
 import { CheckpointTimeline } from '@/components/ui/checkpoint-timeline';
 import { FloridaArticulationFilter } from '@/components/ui/florida-articulation-filter';
+import { OKLCHColorDemo } from '@/components/OKLCHColorDemo';
 
 export default function SkillTree3() {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -108,6 +109,9 @@ export default function SkillTree3() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
+        {/* Immediately visible OKLCH color demo */}
+        <OKLCHColorDemo />
+        
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls Sidebar */}
           <div className="lg:col-span-1">
