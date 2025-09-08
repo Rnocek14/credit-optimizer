@@ -35,7 +35,7 @@ export const SkillTreeSkillNode: React.FC<SkillTreeSkillNodeProps> = memo(({ dat
       
       <div className={`
         w-40 p-3 rounded-lg border border-border bg-background/80 backdrop-blur-sm
-        transition-all duration-200 hover:shadow-md hover-quiet
+        transition-all duration-200 hover:shadow-md hover-gentle
         flex flex-col items-center text-center
       `}>
         {/* Icon */}

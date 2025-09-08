@@ -76,7 +76,7 @@ export const SkillTreeNode: React.FC<SkillTreeNodeProps> = memo(({
 
   return (
     <div
-      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover-quiet touch-manipulation ${statusRing} ${pathHighlight} ${goalHighlight} ${checkpointHighlight}`}
+      className={`absolute bg-white border-2 shadow-lg rounded-lg p-3 text-xs transition-all duration-200 cursor-pointer hover:shadow-xl hover-gentle touch-manipulation ${statusRing} ${pathHighlight} ${goalHighlight} ${checkpointHighlight}`}
       style={{
         left: position.x,
         top: position.y,

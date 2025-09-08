@@ -34,7 +34,7 @@ export function CelebrationModal({ isOpen, onClose, celebration }: CelebrationMo
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#1E90FF']
+        colors: ['oklch(var(--accent-gold))', 'oklch(var(--accent-cyan))', 'oklch(var(--primary))', 'oklch(var(--success))', 'oklch(var(--info))']
       });
     }
   }, [isOpen, celebration_data.confetti]);

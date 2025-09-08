@@ -86,7 +86,7 @@ export const CareerProfileCard: React.FC<CareerProfileCardProps> = ({
             {profile.trackIcon && (
               <div 
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
-                style={{ backgroundColor: profile.trackColor || '#f3f4f6' }}
+                style={{ backgroundColor: profile.trackColor || 'hsl(var(--muted))' }}
               >
                 {profile.trackIcon}
               </div>

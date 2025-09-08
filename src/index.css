@@ -112,6 +112,36 @@
   transform: none !important;
 }
 
+@layer utilities {
+  /* Replace scale-on-hover with a gentle lift + subtle shadow */
+  .hover-gentle {
+    @apply motion-safe:transition-all motion-safe:duration-150
+           motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-sm;
+  }
+
+  /* Kill all hover scaling at the container level */
+  .no-hover-scale :where(.group, .card, .container, .panel) {
+    @apply motion-safe:hover:scale-100 motion-safe:hover:translate-y-0;
+  }
+
+  /* Safety net: neutralize any stray hover:scale-* */
+  .force-no-scale {
+    transform: translateZ(0) !important;
+  }
+  .force-no-scale:hover {
+    transform: translateZ(0) !important;
+  }
+}
+
+@layer components {
+  .tab-surface {
+    @apply bg-card text-card-foreground border border-border rounded-xl;
+  }
+  :root.dark .tab-surface {
+    @apply bg-card/60 backdrop-blur-sm; /* keeps a visible panel in dark */
+  }
+}
+
 @layer base {
   :root {
     /* PHASE 3: Motion & Interaction Tokens */
