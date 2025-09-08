@@ -432,7 +432,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                 <div key={skill.name} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
                   <div>
                     <p className="font-medium text-sm">{skill.name}</p>
-                    <p className="text-readable-xs text-muted-foreground">{skill.level}</p>
+          <p className="text-readable-xs text-muted-foreground">{skill.level}</p>
                   </div>
                    <div className="text-right">
                      <p className="text-sm font-medium">{skill.progress}%</p>
@@ -476,8 +476,8 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                            />
                          )}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{win.description}</p>
-                      <p className="text-xs text-muted-foreground">{win.timeEstimate}</p>
+                       <p className="text-readable-xs text-muted-foreground line-clamp-1">{win.description}</p>
+                       <p className="text-readable-xs text-muted-foreground">{win.timeEstimate}</p>
                     </div>
                      <Button 
                        size="sm" 
@@ -504,7 +504,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
          <Card data-testid="learning-streak">
            <CardHeader>
              <CardTitle className="flex items-center gap-2">
-               <Award className="h-5 w-5 text-purple-500" />
+               <Award className="h-5 w-5 text-primary" />
                Progress
              </CardTitle>
            </CardHeader>
@@ -515,14 +515,14 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                    <Flame className="h-5 w-5 text-orange-500" data-testid="streak-icon" />
                  </div>
                  <p className="text-2xl font-bold">{currentStreak} day streak</p>
-                 <p className="text-xs text-muted-foreground">Consistent Learner</p>
+                 <p className="text-readable-xs text-muted-foreground">Consistent Learner</p>
                </div>
               <div className="text-center">
                 <div className="flex items-center justify-center mb-2">
                   <TrendingUp className="h-5 w-5 text-green-500" />
                 </div>
                 <p className="text-2xl font-bold">3</p>
-                <p className="text-xs text-muted-foreground">Level</p>
+                <p className="text-readable-xs text-muted-foreground">Level</p>
               </div>
             </div>
             
@@ -554,9 +554,9 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                 <span>75%</span>
               </div>
               <Progress value={75} className="h-2" />
-              <p className="text-xs text-muted-foreground text-center">
-                2 more sessions this week
-              </p>
+               <p className="text-readable-xs text-muted-foreground text-center">
+                 2 more sessions this week
+               </p>
             </div>
 
         {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
@@ -643,7 +643,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-purple-500" />
+                <BookOpen className="h-5 w-5 text-primary" />
                 Alternative Learning Paths
               </CardTitle>
               <CardDescription>

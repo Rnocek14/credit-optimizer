@@ -95,10 +95,21 @@ export default {
 				}
 			},
 			fontSize: {
+				// Deprecated text-xs - replaced with sm for WCAG compliance
+				'xs': '0.875rem', // 14px - No longer 12px for accessibility
+				// Enhanced typography scale
 				'readable-xs': 'var(--text-readable-xs)',
 				'readable-sm': 'var(--text-readable-sm)', 
 				'readable-base': 'var(--text-readable-base)',
 				'readable-lg': 'var(--text-readable-lg)',
+				// Semantic typography
+				'display': 'var(--text-display)',
+				'h1': 'var(--text-headline-1)',
+				'h2': 'var(--text-headline-2)',
+				'h3': 'var(--text-headline-3)',
+				'body': 'var(--text-body)',
+				'body-sm': 'var(--text-body-sm)',
+				'label': 'var(--text-label)',
 			},
 			borderRadius: {
 				lg: 'var(--radius-lg)',

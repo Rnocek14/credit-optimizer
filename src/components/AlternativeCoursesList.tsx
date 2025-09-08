@@ -599,7 +599,7 @@ function CourseCard({
   
   const providerColors: Record<Provider, string> = {
     youtube: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-    udemy: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    udemy: 'bg-purple-secondary text-purple-secondary-foreground dark:bg-purple-muted dark:text-purple-muted-foreground',
     coursera: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     edx: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     masterclass: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',

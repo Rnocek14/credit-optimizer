@@ -43,11 +43,20 @@
   animation: arrow-flow 1s linear infinite;
 }
 
-  /* Typography - Mobile-first readable sizes */
-  --text-readable-xs: 0.875rem; /* 14px - Minimum readable size for UI elements */
+  /* Typography - Mobile-first readable sizes - WCAG compliant minimum 14px */
+  --text-readable-xs: 0.875rem; /* 14px - WCAG minimum for all text */
   --text-readable-sm: 0.9375rem; /* 15px - Comfortable reading size */
   --text-readable-base: 1rem; /* 16px - Body text minimum */
   --text-readable-lg: 1.125rem; /* 18px - Enhanced readability */
+  
+  /* Enhanced Typography Scale following Material Design roles */
+  --text-display: 4rem; /* 64px - Large displays */
+  --text-headline-1: 3rem; /* 48px - Primary headings */
+  --text-headline-2: 2.25rem; /* 36px - Secondary headings */
+  --text-headline-3: 1.875rem; /* 30px - Tertiary headings */
+  --text-body: 1rem; /* 16px - Body text */
+  --text-body-sm: 0.875rem; /* 14px - Small body text */
+  --text-label: 0.875rem; /* 14px - UI labels and captions */
 
 @layer base {
   :root {
@@ -183,9 +192,9 @@
     --popover: 222.2 50% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 262 55% 65%;
+    --primary: 262 60% 65%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --primary-hover: 262 55% 70%;
+    --primary-hover: 262 60% 70%;
     --primary-light: 262 60% 15%;
 
     --secondary: 217.2 32.6% 22%;
@@ -355,15 +364,24 @@
     line-height: 1.3;
   }
 
-  /* Enhanced readability classes */
+  /* Enhanced readability classes - WCAG AA compliant */
   .text-readable-sm {
     @apply text-sm md:text-base;
     line-height: 1.5;
   }
 
   .text-readable-xs {
-    @apply text-sm;
+    @apply text-sm; /* Always 14px minimum for accessibility */
     line-height: 1.4;
+  }
+  
+  /* Touch Target Accessibility - Minimum 44px */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  .touch-target-icon {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
   }
 
   /* Motion Design Tokens */

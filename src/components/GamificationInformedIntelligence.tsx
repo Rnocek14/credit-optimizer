@@ -137,11 +137,11 @@ export function GamificationInformedIntelligence() {
               <p className="text-xs text-orange-600">days</p>
             </div>
 
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <Trophy className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-purple-800">Longest Streak</p>
-              <p className="text-xl font-bold text-purple-600">{longestStreak}</p>
-              <p className="text-xs text-purple-600">days</p>
+            <div className="text-center p-3 bg-purple-secondary rounded-lg">
+              <Trophy className="w-6 h-6 text-primary mx-auto mb-2" />
+              <p className="text-readable-sm font-medium text-purple-secondary-foreground">Longest Streak</p>
+              <p className="text-xl font-bold text-primary">{longestStreak}</p>
+              <p className="text-readable-xs text-primary">days</p>
             </div>
 
             <div className="text-center p-3 bg-blue-50 rounded-lg">
