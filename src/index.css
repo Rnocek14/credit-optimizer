@@ -215,11 +215,31 @@
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
     --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
 
+    /* ---- Life Path: OKLCH Accent & Risk Tokens ---- */
+    /* accents */
+    --accent-cyan: 0.77 0.09 203;      /* #00B5AD-ish, boosted for dark */
+    --accent-gold: 0.78 0.13 84;       /* amber/gold */
+    --accent-lime: 0.82 0.11 135;      /* accessible lime */
+
+    /* risk matrix */
+    --risk-low:       0.85 0.07 140;
+    --risk-medium:    0.83 0.10 95;
+    --risk-high:      0.75 0.13 55;
+    --risk-critical:  0.70 0.16 30;
+
+    /* gradient stops */
+    --gradient-primary: 0.78 0.10 250;
+    --gradient-primary-hover: 0.72 0.12 260;
+
+    /* foreground pairing (on-color text) */
+    --on-accent: 0.22 0.03 250;       /* deep slate */
+    --on-risk:   0.18 0.03 250;       /* deep slate */
+
     /* Gradients must use OKLCH explicitly (don't wrap OKLCH vars in hsl()) */
     --gradient-primary: linear-gradient(
       135deg,
-      oklch(var(--accent-cyan)) 0%,
-      oklch(var(--accent-gold)) 100%
+      oklch(var(--gradient-primary)) 0%,
+      oklch(var(--gradient-primary-hover)) 100%
     );
     --gradient-secondary: linear-gradient(135deg, oklch(var(--secondary)), oklch(var(--secondary-hover)));
     --gradient-subtle: linear-gradient(180deg, oklch(var(--background)), oklch(var(--muted) / 0.3));
@@ -286,14 +306,18 @@
     --background: 222 84% 5%;
     --foreground: 0 0% 98%;
 
-    /* boost accents a bit in dark to pop against near-black */
+    /* Dark mode tweaks (if you use .dark selector) */
     --accent-cyan: 0.78 0.10 203;
     --accent-gold: 0.80 0.14 84;
     --accent-lime: 0.84 0.12 135;
 
-    --risk-medium: 0.86 0.11 95;
-    --risk-high: 0.70 0.18 45;
-    --risk-critical: 0.60 0.22 28;
+    --risk-low:       0.88 0.08 140;
+    --risk-medium:    0.86 0.11 95;
+    --risk-high:      0.78 0.15 55;
+    --risk-critical:  0.72 0.18 30;
+
+    --on-accent: 0.20 0.03 250;
+    --on-risk:   0.16 0.03 250;
 
     /* Dark mode OKLCH - Reduced chroma for eye comfort */
     --card: oklch(0.15 0.00 0);
@@ -825,30 +849,29 @@
   }
 }
 
-/* === OKLCH UTILITY CLASSES - Make tokens immediately usable === */
+/* ---- Life Path: OKLCH Accent & Risk Tokens ---- */
+/* Enhanced OKLCH utilities (no Tailwind config needed) */
+.bg-accent-cyan         { background: oklch(var(--accent-cyan));        color: oklch(var(--on-accent)); }
+.bg-accent-gold         { background: oklch(var(--accent-gold));        color: oklch(var(--on-accent)); }
+.bg-accent-lime         { background: oklch(var(--accent-lime));        color: oklch(var(--on-accent)); }
 
-/* Accent utilities */
-.bg-accent-cyan { background-color: oklch(var(--accent-cyan)); }
-.text-accent-cyan-foreground { color: oklch(var(--accent-cyan-foreground)); }
+.bg-risk-low            { background: oklch(var(--risk-low));           color: oklch(var(--on-risk)); }
+.bg-risk-medium         { background: oklch(var(--risk-medium));        color: oklch(var(--on-risk)); }
+.bg-risk-high           { background: oklch(var(--risk-high));          color: oklch(var(--on-risk)); }
+.bg-risk-critical       { background: oklch(var(--risk-critical));      color: oklch(var(--on-risk)); }
 
-.bg-accent-gold { background-color: oklch(var(--accent-gold)); }
-.text-accent-gold-foreground { color: oklch(var(--accent-gold-foreground)); }
+.gradient-primary {
+  background: linear-gradient(
+    135deg,
+    oklch(var(--gradient-primary)),
+    oklch(var(--gradient-primary-hover))
+  );
+}
 
-.bg-accent-lime { background-color: oklch(var(--accent-lime)); }
-.text-accent-lime-foreground { color: oklch(var(--accent-lime-foreground)); }
-
-/* Risk utilities */
-.bg-risk-low { background-color: oklch(var(--risk-low)); }
-.text-risk-low-foreground { color: oklch(var(--risk-low-foreground)); }
-
-.bg-risk-medium { background-color: oklch(var(--risk-medium)); }
-.text-risk-medium-foreground { color: oklch(var(--risk-medium-foreground)); }
-
-.bg-risk-high { background-color: oklch(var(--risk-high)); }
-.text-risk-high-foreground { color: oklch(var(--risk-high-foreground)); }
-
-.bg-risk-critical { background-color: oklch(var(--risk-critical)); }
-.text-risk-critical-foreground { color: oklch(var(--risk-critical-foreground)); }
+/* Swatch helpers for the demo */
+.lp-swatch { padding: .5rem .75rem; border-radius: .5rem; display:inline-flex; align-items:center; gap:.5rem; }
+.lp-grid   { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:.75rem; }
+@media (min-width: 768px) { .lp-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
 
 /* Enhanced surface utilities */
 .bg-surface { background-color: oklch(var(--background)); }

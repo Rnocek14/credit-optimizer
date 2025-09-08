@@ -11,60 +11,29 @@ export function OKLCHColorDemo() {
         </p>
       </CardHeader>
       <CardContent>
-        {/* Color swatches to immediately show the fix */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-          <div className="p-3 rounded bg-accent-cyan text-accent-cyan-foreground text-center text-sm font-medium">
-            Cyan Overlay
-          </div>
-          <div className="p-3 rounded bg-accent-gold text-accent-gold-foreground text-center text-sm font-medium">
-            Gold Highlight
-          </div>
-          <div className="p-3 rounded bg-accent-lime text-accent-lime-foreground text-center text-sm font-medium">
-            Lime Success
-          </div>
-          <div 
-            className="p-3 rounded text-center text-sm font-medium text-foreground"
-            style={{ background: 'var(--gradient-primary)' }}
-          >
-            Gradient
-          </div>
-        </div>
-
-        {/* Risk matrix colors */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Risk Matrix (Credit Transfer)</h4>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded px-3 py-1 bg-risk-low text-risk-low-foreground text-xs font-medium">
-              Low Risk
-            </span>
-            <span className="rounded px-3 py-1 bg-risk-medium text-risk-medium-foreground text-xs font-medium">
-              Medium Risk
-            </span>
-            <span className="rounded px-3 py-1 bg-risk-high text-risk-high-foreground text-xs font-medium">
-              High Risk
-            </span>
-            <span className="rounded px-3 py-1 bg-risk-critical text-risk-critical-foreground text-xs font-medium">
-              Critical Risk
-            </span>
+        {/* Immediate OKLCH color demo */}
+        <div className="space-y-3">
+          <div className="text-sm opacity-80">OKLCH Color System Demo (toggle dark mode)</div>
+          <div className="lp-grid">
+            <div className="lp-swatch bg-accent-cyan">Cyan Overlay</div>
+            <div className="lp-swatch bg-accent-gold">Gold Highlight</div>
+            <div className="lp-swatch bg-accent-lime">Lime Success</div>
+            <div className="lp-swatch gradient-primary">Primary Gradient</div>
+            <div className="lp-swatch bg-risk-low">Risk: Low</div>
+            <div className="lp-swatch bg-risk-medium">Risk: Medium</div>
+            <div className="lp-swatch bg-risk-high">Risk: High</div>
+            <div className="lp-swatch bg-risk-critical">Risk: Critical</div>
           </div>
         </div>
 
         {/* Overlay legend example */}
         <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-medium">Path Overlays</h4>
+          <h4 className="text-sm font-medium">Live Path Overlays</h4>
           <div className="flex flex-wrap gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-accent-cyan text-accent-cyan-foreground text-xs">
-              <div className="w-2 h-2 rounded-full bg-current opacity-70"></div>
-              Fastest Path
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-accent-gold text-accent-gold-foreground text-xs">
-              <div className="w-2 h-2 rounded-full bg-current opacity-70"></div>
-              Cheapest Path
-            </div>  
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-accent-lime text-accent-lime-foreground text-xs">
-              <div className="w-2 h-2 rounded-full bg-current opacity-70"></div>
-              Max Credits
-            </div>
+            <span className="lp-swatch bg-accent-cyan">Overlay: Fastest</span>
+            <span className="lp-swatch bg-accent-gold">Overlay: Cheapest</span>
+            <span className="lp-swatch bg-accent-lime">Overlay: Credits</span>
+            <span className="lp-swatch bg-risk-high">High Risk</span>
           </div>
         </div>
       </CardContent>
