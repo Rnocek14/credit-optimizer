@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   ReactFlow, 
@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
+import { resolveColumnCollisions, LayoutManager } from '@/lib/layout/layoutLifecycle';
+import { useFeatureFlags } from '@/lib/featureFlags';
 import { 
   EduCourse, 
   RequirementBlock, 
@@ -47,10 +49,14 @@ const DEV = import.meta.env.DEV;
 type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
+  const flags = useFeatureFlags();
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
+  
+  // Layout manager for debounced re-layouts
+  const layoutManagerRef = useRef<LayoutManager | null>(null);
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
@@ -217,15 +223,19 @@ function EduTreeCanvasInner() {
         id: String(gateEdge.id),
         source,
         target,
-        type: 'smoothstep',
+        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
           stroke: 'hsl(var(--primary))',
           strokeWidth: 2,
+          opacity: 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
           color: 'hsl(var(--primary))',
         },
+        ...(flags.eduTreeLayoutV2 && {
+          pathOptions: { offset: 12 }
+        }),
       } : null;
     }).filter(Boolean) as Edge[] : [];
 
@@ -257,7 +267,12 @@ function EduTreeCanvasInner() {
     if (viewMode === 'flow') {
       layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
         if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
-        setNodes(layoutedNodes);
+        
+        // Apply post-layout collision resolution if layoutV2 enabled
+        const finalNodes = flags.eduTreeLayoutV2 ? 
+          resolveColumnCollisions(layoutedNodes) : layoutedNodes;
+          
+        setNodes(finalNodes);
         setEdges(flowEdges);
       }).catch(error => {
         console.error('[EduTree] ELK failed, fallback', error);
@@ -275,7 +290,33 @@ function EduTreeCanvasInner() {
       setNodes(gridNodes);
       setEdges([]); // No edges in board mode
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges]);
+  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2]);
+  
+  // Listen for node resize events and trigger debounced re-layout
+  useEffect(() => {
+    if (!flags.eduTreeLayoutV2) return;
+    
+    const handleNodeResize = () => {
+      if (!layoutManagerRef.current) {
+        layoutManagerRef.current = new LayoutManager(() => {
+          if (viewMode === 'flow' && flowNodes.length > 0) {
+            layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
+              const finalNodes = resolveColumnCollisions(layoutedNodes);
+              setNodes(finalNodes);
+            });
+          }
+        });
+      }
+      layoutManagerRef.current.triggerLayout();
+    };
+
+    window.addEventListener('node:resized', handleNodeResize);
+    
+    return () => {
+      window.removeEventListener('node:resized', handleNodeResize);
+      layoutManagerRef.current?.cleanup();
+    };
+  }, [flags.eduTreeLayoutV2, viewMode, flowNodes, flowEdges, setNodes]);
 
   // Handle fitView through ReactFlow's onInit callback
   const onInit = useCallback((reactFlowInstance: any) => {

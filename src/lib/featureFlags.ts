@@ -15,6 +15,12 @@ interface FeatureFlags {
   altCoursesEnabled: boolean;
   skillTreeForceTagsFallback: boolean;
   eduTree: boolean; // Education-first skill tree
+  
+  // EduTree Layout Enhancement Flags
+  eduTreeLayoutV2: boolean;    // Layout lifecycle + fixed ports
+  eduTreeSubblocks: boolean;   // Sub-blocks + lane scaffolds  
+  eduTreeLanes: boolean;       // Lane positioning system
+  eduTreeOutcomes: boolean;    // Outcomes panel + intelligent lenses
 }
 
 /**
@@ -73,6 +79,12 @@ export function getFeatureFlags(): FeatureFlags {
     
     // Education-first skill tree - enabled by default
     eduTree: toBool(getFlagValue('eduTree', 'edu-tree', 'true')),
+    
+    // EduTree Layout Enhancement Flags - Progressive rollout
+    eduTreeLayoutV2: toBool(getFlagValue('eduTreeLayoutV2', 'edu-tree-layout-v2', 'true')),
+    eduTreeSubblocks: toBool(getFlagValue('eduTreeSubblocks', 'edu-tree-subblocks', 'false')),
+    eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'false')), 
+    eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'false')),
   };
   
   // Single consolidated debug log (only once per session)

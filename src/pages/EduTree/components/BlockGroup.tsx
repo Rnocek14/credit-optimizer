@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Lock, CheckCircle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { BlockWithCourses, getBlockProgressText, isBlockComplete, AltCreditOption } from '@/lib/types/eduTree';
 import { CourseNode } from './CourseNode';
+import { useNodeResize } from '@/hooks/useNodeResize';
+import { useFeatureFlags } from '@/lib/featureFlags';
 
 export function BlockGroup(props: NodeProps) {
+  const flags = useFeatureFlags();
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const { attachResizeObserver, detachResizeObserver } = useNodeResize(props.id);
+  
   const { 
     block, 
     completedCourseIds, 
@@ -39,13 +45,22 @@ export function BlockGroup(props: NodeProps) {
   const hasSubBlocks = subBlocks.length > 0;
   const hasAltCredits = altCreditOptions.length > 0;
 
+  // Attach resize observer when layoutV2 is enabled
+  useEffect(() => {
+    if (flags.eduTreeLayoutV2 && nodeRef.current) {
+      attachResizeObserver(nodeRef.current);
+      return () => detachResizeObserver();
+    }
+  }, [flags.eduTreeLayoutV2, attachResizeObserver, detachResizeObserver]);
+
   return (
-    <div className="relative">
-      {/* Input handle for edges */}
+    <div className="relative" ref={nodeRef}>
+      {/* Fixed connection handles for better edge routing */}
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3 h-3 bg-muted-foreground"
+        className="w-3 h-3 bg-primary border-2 border-background"
+        style={{ left: -6 }}
       />
 
       <Card className={`
@@ -165,8 +180,14 @@ export function BlockGroup(props: NodeProps) {
             </div>
           )}
 
-          {/* Course grid */}
-          <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto">
+          {/* Course grid with improved layout */}
+          <div className={`
+            ${flags.eduTreeLayoutV2 ? 
+              'grid grid-cols-2 gap-2 auto-rows-[minmax(72px,auto)]' : 
+              'grid grid-cols-1 gap-2'
+            } 
+            max-h-[300px] overflow-y-auto
+          `}>
             {block.courses.map((course) => (
               <CourseNode
                 key={course.id}
@@ -188,7 +209,8 @@ export function BlockGroup(props: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 bg-primary"
+        className="w-3 h-3 bg-primary border-2 border-background"
+        style={{ right: -6 }}
       />
     </div>
   );

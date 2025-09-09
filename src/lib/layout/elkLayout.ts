@@ -7,12 +7,14 @@ interface ElkNode {
   height?: number;
   x?: number;
   y?: number;
+  layoutOptions?: { [key: string]: any };
 }
 
 interface ElkEdge {
   id: string;
   sources: string[];
   targets: string[];
+  layoutOptions?: { [key: string]: any };
 }
 
 export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[]> {
@@ -23,22 +25,29 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'RIGHT',
-      'elk.layered.crossingMinimization.strategy': 'INTERACTIVE',
-      'elk.spacing.nodeNode': '40',
-      'elk.spacing.edgeNode': '20',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+      'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.padding': '[top=20,left=20,bottom=20,right=20]'
+      'elk.spacing.nodeNode': '56',                // Increased from 40
+      'elk.spacing.nodeNodeBetweenLayers': '96',   // Increased from 80
+      'elk.spacing.edgeNode': '28',                // Increased from 20
+      'elk.padding': '[top=24,left=24,bottom=24,right=24]'
     },
     children: nodes.map((node): ElkNode => ({
       id: node.id,
-      width: node.measured?.width ?? (node.type === 'blockGroup' ? 300 : 200), // Fix: check for 'blockGroup'
-      height: node.measured?.height ?? (node.type === 'blockGroup' ? 180 : 100)
+      width: node.measured?.width ?? (node.type === 'blockGroup' ? 320 : 200),
+      height: node.measured?.height ?? (node.type === 'blockGroup' ? 200 : 100),
+      layoutOptions: {
+        'elk.portConstraints': 'FIXED_SIDE'
+      }
     })),
     edges: edges.map((edge): ElkEdge => ({
       id: edge.id,
       sources: [edge.source],
-      targets: [edge.target]
+      targets: [edge.target],
+      layoutOptions: { 
+        'elk.edge.type': 'ORTHOGONAL' 
+      }
     }))
   };
 
