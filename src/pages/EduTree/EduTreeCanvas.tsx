@@ -618,11 +618,11 @@ function EduTreeCanvasInner() {
       }
     } else if (viewMode === 'board') {
       // Board mode: arrange nodes in a grid
-      const gridNodes = layoutAsGrid(flowNodes);
+      const gridNodes = layoutAsGrid(flowNodes, 'board');
       
       // Apply lane snapping if lanes enabled
       const finalNodes = flags.eduTreeLanes ? 
-        snapToLanes(gridNodes, layoutMemoryRef.current, DEFAULT_LANE_SCAFFOLD) : 
+        snapToLanes(gridNodes, DEFAULT_LANE_SCAFFOLD) : 
         gridNodes;
         
       setNodes(finalNodes);
