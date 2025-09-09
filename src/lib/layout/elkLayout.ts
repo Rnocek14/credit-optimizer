@@ -45,7 +45,7 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
   try {
     const result = await elk.layout(graph);
     const positionMap = new Map(
-      result.children?.map((child: any) => [child.id, { x: child.x ?? 0, y: child.y ?? 0 }])
+      result.children?.map((child: any) => [child.id, { x: child.x ?? 0, y: child.y ?? 0 }]) ?? []
     );
 
     return nodes.map(node => ({
@@ -57,7 +57,7 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
     // Return nodes with fallback positions
     return nodes.map((node, index) => ({
       ...node,
-      position: node.position ?? { x: index * 320, y: 0 }
+      position: node.position ?? { x: (index % 3) * 320, y: Math.floor(index / 3) * 220 }
     }));
   }
 }
@@ -70,15 +70,15 @@ export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
   const areaRows = ['foundation', 'core', 'specialization', 'software_engineering', 'capstone'];
   
   const columnWidth = 320;
-  const rowHeight = 200;
+  const rowHeight = 220;
   const padding = 20;
 
   return nodes.map(node => {
     if (node.type !== 'blockGroup') return node; // Fix: check for 'blockGroup' not 'group'
     
-    const data = node.data as any;
-    const yearIndex = Math.max(0, yearColumns.indexOf(data.level_year as number));
-    const areaIndex = Math.max(0, areaRows.indexOf(data.area as string));
+    const data: any = node.data;
+    const yearIndex = Math.max(0, yearColumns.indexOf(data.level_year));
+    const areaIndex = Math.max(0, areaRows.indexOf(data.area));
 
     return {
       ...node,

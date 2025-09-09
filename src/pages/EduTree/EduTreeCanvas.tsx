@@ -8,6 +8,7 @@ import {
   Background, 
   useNodesState, 
   useEdgesState,
+  useReactFlow,
   BackgroundVariant,
   MarkerType 
 } from '@xyflow/react';
@@ -29,6 +30,7 @@ import {
   isBlockComplete 
 } from '@/lib/types/eduTree';
 import { BlockGroup } from './components/BlockGroup';
+import { CourseNode } from './components/CourseNode';
 import { SeedDataButton } from './components/SeedDataButton';
 
 // Node types for React Flow
@@ -36,11 +38,14 @@ const nodeTypes = {
   blockGroup: BlockGroup,
 };
 
+const DEV = import.meta.env.DEV;
+
 type ViewMode = 'flow' | 'board';
 
 export function EduTreeCanvas() {
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
+  const rf = useReactFlow();
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
@@ -175,7 +180,7 @@ export function EduTreeCanvas() {
       };
 
       return {
-        id: block.id,
+        id: String(block.id), // Ensure string ID
         type: 'blockGroup', // This must match nodeTypes key
         position: { x: block.level_year * 320, y: index * 200 }, // Initial grid position
         data: {
@@ -189,21 +194,24 @@ export function EduTreeCanvas() {
       };
     });
 
-    console.log('Generated nodes:', { 
-      nodeCount: nodes.length, 
-      firstNode: nodes[0],
-      nodeTypes: Object.keys(nodeTypes)
-    });
+    if (DEV) {
+      console.log('[EduTree] Generated nodes:', { 
+        nodeCount: nodes.length, 
+        firstNode: nodes[0],
+        nodeTypes: Object.keys(nodeTypes)
+      });
+    }
 
     // Create React Flow edges (only between blocks)
     const edges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
       const sourceBlock = blocksWithCourses.find(b => b.gate?.id === gateEdge.source_gate_id);
-      const targetBlockId = gateEdge.target_block_id;
+      const source = sourceBlock?.id ? String(sourceBlock.id) : null;
+      const target = String(gateEdge.target_block_id);
       
-      return {
-        id: gateEdge.id,
-        source: sourceBlock?.id || '',
-        target: targetBlockId,
+      return source ? {
+        id: String(gateEdge.id),
+        source,
+        target,
         type: 'smoothstep',
         style: {
           stroke: 'hsl(var(--primary))',
@@ -213,8 +221,8 @@ export function EduTreeCanvas() {
           type: MarkerType.Arrow,
           color: 'hsl(var(--primary))',
         },
-      };
-    }).filter(edge => edge.source && edge.target) : [];
+      } : null;
+    }).filter(Boolean) as Edge[] : [];
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode]);
@@ -222,34 +230,56 @@ export function EduTreeCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
+  // DEV logging for data debugging
+  useEffect(() => {
+    if (DEV) {
+      console.log('[EduTree] data-counts', {
+        blocks: blocks.length,
+        courses: courses.length,
+        blockMembers: blockMembers.length,
+        gates: gates.length,
+        gateEdges: gateEdges.length,
+      });
+    }
+  }, [blocks, courses, blockMembers, gates, gateEdges]);
+
   // Apply layout when data changes
   useEffect(() => {
     if (flowNodes.length === 0) return;
 
-    console.log('Applying layout:', { mode: viewMode, nodeCount: flowNodes.length });
+    if (DEV) console.log('[EduTree] applying layout', { mode: viewMode, nodeCount: flowNodes.length });
 
     if (viewMode === 'flow') {
       layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
-        console.log('ELK layout complete:', layoutedNodes.length);
+        if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
         setNodes(layoutedNodes);
         setEdges(flowEdges);
       }).catch(error => {
-        console.error('Layout failed, using fallback:', error);
+        console.error('[EduTree] ELK failed, fallback', error);
         // Fallback to simple grid if ELK fails
         const fallbackNodes = flowNodes.map((node, index) => ({
           ...node,
-          position: { x: (index % 3) * 320, y: Math.floor(index / 3) * 200 }
+          position: { x: (index % 3) * 320, y: Math.floor(index / 3) * 220 }
         }));
         setNodes(fallbackNodes);
         setEdges(flowEdges);
       });
     } else {
       const gridNodes = layoutAsGrid(flowNodes, 'board');
-      console.log('Grid layout complete:', gridNodes.length);
+      if (DEV) console.log('[EduTree] grid done', gridNodes.length);
       setNodes(gridNodes);
       setEdges([]); // No edges in board mode
     }
   }, [flowNodes, flowEdges, viewMode, setNodes, setEdges]);
+
+  // FitView after nodes are set
+  useEffect(() => {
+    if (!nodes.length) return;
+    const timeoutId = setTimeout(() => {
+      rf.fitView({ padding: 0.2, duration: 300 });
+    }, 0);
+    return () => clearTimeout(timeoutId);
+  }, [nodes, rf]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -328,7 +358,7 @@ export function EduTreeCanvas() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.1, duration: 300 }}
+          fitViewOptions={{ padding: 0.2, duration: 300 }}
           minZoom={0.3}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
