@@ -21,6 +21,7 @@ interface FeatureFlags {
   eduTreeSubblocks: boolean;   // Sub-blocks + lane scaffolds  
   eduTreeLanes: boolean;       // Lane positioning system
   eduTreeOutcomes: boolean;    // Outcomes panel + intelligent lenses
+  eduTreePlaceholders: boolean; // Requirement placeholder nodes
 }
 
 /**
@@ -85,6 +86,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeSubblocks: toBool(getFlagValue('eduTreeSubblocks', 'edu-tree-subblocks', 'false')),
     eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'false')), 
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'false')),
+    eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
   };
   
   // Single consolidated debug log (only once per session)

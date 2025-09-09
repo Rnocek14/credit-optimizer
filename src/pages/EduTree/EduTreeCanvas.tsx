@@ -42,12 +42,16 @@ import { toast } from '@/hooks/use-toast';
 import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
 import { CourseNode } from './components/CourseNode';
+import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
+import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
+import { SkeletonNode } from './components/SkeletonNode';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
+  skeleton: SkeletonNode,
 };
 
 const DEV = import.meta.env.DEV;
@@ -60,6 +64,8 @@ function EduTreeCanvasInner() {
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
+  const [isLayouting, setIsLayouting] = useState(false);
+  const [showSkeletons, setShowSkeletons] = useState(false);
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
@@ -167,12 +173,17 @@ function EduTreeCanvasInner() {
       gate: gates.find(g => g.block_id === block.id)
     }));
 
+    // Apply topological sorting for stable Year-3 ordering
+    const sortedBlocks = flags.eduTreeLayoutV2 ? 
+      sortBlocksForLayout(blocksWithCourses, gateEdges) : 
+      blocksWithCourses;
+
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
     
     // Find blocks with no prerequisites (starting blocks)
     const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    blocks.forEach(block => {
+    sortedBlocks.forEach(block => {
       if (!blocksWithPrereqs.has(block.id)) {
         unlockedBlocks.add(block.id);
       }
@@ -185,7 +196,7 @@ function EduTreeCanvasInner() {
       gateEdges.forEach(edge => {
         if (unlockedBlocks.has(edge.target_block_id)) return;
         
-        const sourceBlock = blocksWithCourses.find(b => b.gate?.id === edge.source_gate_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
         if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
           unlockedBlocks.add(edge.target_block_id);
           changed = true;
@@ -193,7 +204,7 @@ function EduTreeCanvasInner() {
       });
     }
 
-    const nodes: Node[] = blocksWithCourses.map((block, index) => {
+    const nodes: Node[] = sortedBlocks.map((block, index) => {
       const progress = {
         completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
         required: block.rule_type === 'ALL' ? block.courses.length : 
@@ -230,7 +241,7 @@ function EduTreeCanvasInner() {
 
     // Create React Flow edges (only between blocks)
     const edges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
-      const sourceBlock = blocksWithCourses.find(b => b.gate?.id === gateEdge.source_gate_id);
+      const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
       
@@ -275,24 +286,43 @@ function EduTreeCanvasInner() {
     }
   }, [blocks, courses, blockMembers, gates, gateEdges]);
 
-  // Apply layout when data changes
+  // Apply layout when data changes with skeleton → measure → layout → delayed edges pipeline
   useEffect(() => {
     if (flowNodes.length === 0) return;
 
     if (DEV) console.log('[EduTree] applying layout', { mode: viewMode, nodeCount: flowNodes.length });
 
     if (viewMode === 'flow') {
-      // Try to restore previous positions first
-      let nodesToLayout = flowNodes;
-      if (flags.eduTreeLanes) {
-        nodesToLayout = layoutMemoryRef.current.restorePositions(flowNodes, 'flow');
-        if (nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0)) {
-          // No saved positions, use scaffolding
-          nodesToLayout = snapToLanes(flowNodes, DEFAULT_LANE_SCAFFOLD);
-        }
+      // Step 1: Show skeletons first if layoutV2 enabled
+      if (flags.eduTreeLayoutV2 && !isLayouting) {
+        setIsLayouting(true);
+        setShowSkeletons(true);
+        
+        // Short delay to render skeletons, then proceed with layout
+        setTimeout(() => {
+          setShowSkeletons(false);
+          performFlowLayout();
+        }, 100);
+      } else {
+        performFlowLayout();
       }
-      
-      layoutWithElk(nodesToLayout, flowEdges).then(layoutedNodes => {
+    } else {
+      performBoardLayout();
+    }
+
+    async function performFlowLayout() {
+      try {
+        // Try to restore previous positions first
+        let nodesToLayout = flowNodes;
+        if (flags.eduTreeLanes) {
+          nodesToLayout = layoutMemoryRef.current.restorePositions(flowNodes, 'flow');
+          if (nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0)) {
+            // No saved positions, use scaffolding
+            nodesToLayout = snapToLanes(flowNodes, DEFAULT_LANE_SCAFFOLD);
+          }
+        }
+        
+        const layoutedNodes = await layoutWithElk(nodesToLayout, flowEdges);
         if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
         
         // Apply post-layout collision resolution if layoutV2 enabled
@@ -300,13 +330,22 @@ function EduTreeCanvasInner() {
           resolveColumnCollisions(layoutedNodes) : layoutedNodes;
           
         setNodes(finalNodes);
-        setEdges(flowEdges);
+        
+        // Step 3: Delayed edge fade-in for layoutV2
+        if (flags.eduTreeLayoutV2) {
+          setTimeout(() => {
+            setEdges(flowEdges);
+            setIsLayouting(false);
+          }, 250);
+        } else {
+          setEdges(flowEdges);
+        }
         
         // Save positions for mode switching
         if (flags.eduTreeLanes) {
           layoutMemoryRef.current.savePositions(finalNodes, 'flow');
         }
-      }).catch(error => {
+      } catch (error) {
         console.error('[EduTree] ELK failed, fallback', error);
         // Fallback to simple grid if ELK fails
         const fallbackNodes = flowNodes.map((node, index) => ({
@@ -315,8 +354,11 @@ function EduTreeCanvasInner() {
         }));
         setNodes(fallbackNodes);
         setEdges(flowEdges);
-      });
-    } else {
+        setIsLayouting(false);
+      }
+    }
+
+    function performBoardLayout() {
       const gridNodes = layoutAsGrid(flowNodes, 'board');
       if (DEV) console.log('[EduTree] grid done', gridNodes.length);
       setNodes(gridNodes);
@@ -327,7 +369,7 @@ function EduTreeCanvasInner() {
         layoutMemoryRef.current.savePositions(gridNodes, 'board');
       }
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes]);
+  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes, isLayouting]);
 
   // Update path highlighting when lens changes
   useEffect(() => {
@@ -418,6 +460,20 @@ function EduTreeCanvasInner() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      {/* Degree Outcome Banner */}
+      {flags.eduTreeOutcomes && (
+        <DegreeOutcomeBanner
+          targetCredits={120}
+          completedCredits={stats.completedCredits}
+          totalCourses={stats.totalCourses}
+          completedCourses={stats.completedCourses}
+          estimatedMonths={outcomeSummary.estimatedMonths}
+          estimatedCost={outcomeSummary.estimatedCost}
+          planIssues={outcomeSummary.issues}
+          selectedLens={selectedLens}
+        />
+      )}
+
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
