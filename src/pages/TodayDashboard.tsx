@@ -3,6 +3,7 @@ import { TodayDashboard } from "@/components/TodayDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Route } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
 export default function TodayDashboardPage() {
@@ -33,16 +34,16 @@ export default function TodayDashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button className="justify-start" asChild>
-                <a href="/education-tree">
+                <Link to="/education-tree">
                   <BookOpen className="mr-2 h-4 w-4" />
                   Education Tree (New!)
-                </a>
+                </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>
-                <a href="/skilltree3">
+                <Link to="/skilltree3">
                   <Route className="mr-2 h-4 w-4" />
                   Life Path Graph
-                </a>
+                </Link>
               </Button>
             </div>
           </CardContent>
