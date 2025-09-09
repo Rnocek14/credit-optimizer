@@ -1,6 +1,10 @@
 import { HubNavigation } from "@/components/HubNavigation";
 import { TodayDashboard } from "@/components/TodayDashboard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BookOpen, Route } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+
 export default function TodayDashboardPage() {
   return (
     <>
@@ -17,6 +21,32 @@ export default function TodayDashboardPage() {
             Your personalized daily recommendations and progress
           </p>
         </div>
+        
+        {/* New Career Planning Tools */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              Career Planning Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button className="justify-start" asChild>
+                <a href="/education-tree">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Education Tree (New!)
+                </a>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <a href="/skilltree3">
+                  <Route className="mr-2 h-4 w-4" />
+                  Life Path Graph
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         
         <TodayDashboard />
       </div>

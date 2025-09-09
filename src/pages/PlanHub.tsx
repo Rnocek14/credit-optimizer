@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator, Wrench } from "lucide-react";
+import { Target, Calendar, TrendingUp, Map, Users, FileText, CheckSquare, Brain, Calculator, Wrench, BookOpen, Route, BarChart } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { TrackSelector } from "@/components/tracks/TrackSelector";
 import { TrackDisplay } from "@/components/tracks/TrackDisplay";
