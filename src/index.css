@@ -138,7 +138,8 @@
     @apply bg-card text-card-foreground border border-border rounded-xl;
   }
   :root.dark .tab-surface {
-    @apply bg-card/60 backdrop-blur-sm; /* keeps a visible panel in dark */
+    background-color: hsl(var(--card) / 0.6);
+    @apply backdrop-blur-sm;
   }
 }
 
