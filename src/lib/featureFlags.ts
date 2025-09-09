@@ -88,7 +88,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'false')), 
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'false')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
-    eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'false')),
+    eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
   };
   
   // Single consolidated debug log (only once per session)
