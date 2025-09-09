@@ -8,7 +8,7 @@ import {
   Background, 
   useNodesState, 
   useEdgesState,
-  useReactFlow,
+  ReactFlowProvider,
   BackgroundVariant,
   MarkerType 
 } from '@xyflow/react';
@@ -42,10 +42,9 @@ const DEV = import.meta.env.DEV;
 
 type ViewMode = 'flow' | 'board';
 
-export function EduTreeCanvas() {
+function EduTreeCanvasInner() {
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
-  const rf = useReactFlow();
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
@@ -272,14 +271,14 @@ export function EduTreeCanvas() {
     }
   }, [flowNodes, flowEdges, viewMode, setNodes, setEdges]);
 
-  // FitView after nodes are set
-  useEffect(() => {
-    if (!nodes.length) return;
-    const timeoutId = setTimeout(() => {
-      rf.fitView({ padding: 0.2, duration: 300 });
-    }, 0);
-    return () => clearTimeout(timeoutId);
-  }, [nodes, rf]);
+  // Handle fitView through ReactFlow's onInit callback
+  const onInit = useCallback((reactFlowInstance: any) => {
+    if (nodes.length > 0) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+      }, 0);
+    }
+  }, [nodes]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -357,6 +356,7 @@ export function EduTreeCanvas() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
+          onInit={onInit}
           fitView
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           minZoom={0.3}
@@ -384,5 +384,13 @@ export function EduTreeCanvas() {
         </div>
       )}
     </div>
+  );
+}
+
+export function EduTreeCanvas() {
+  return (
+    <ReactFlowProvider>
+      <EduTreeCanvasInner />
+    </ReactFlowProvider>
   );
 }
