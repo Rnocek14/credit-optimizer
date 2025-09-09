@@ -493,7 +493,10 @@ function EduTreeCanvasInner() {
       });
     }
     
-    const edges: Edge[] = viewMode === 'flow' && edgesVisible ? [...blockEdges, ...terminalEdges] : [];
+    // V2 system handles edge filtering, legacy system uses edgesVisible gate
+    const edges: Edge[] = viewMode === 'flow' ? 
+      (flags.eduTreeStaggeredEdgesV2 ? [...blockEdges, ...terminalEdges] : 
+       (edgesVisible ? [...blockEdges, ...terminalEdges] : [])) : [];
 
     // Add diagnostic logging for development
     if (DEV && edges.length > 0) {
@@ -554,16 +557,17 @@ function EduTreeCanvasInner() {
             // Handle different API signatures between v1 and v2
             if (flags.eduTreeStaggeredEdgesV2) {
               console.log('[EduTree] Using V2 staggered edges with', flowEdges.length, 'edges and', finalNodes.length, 'nodes');
-              // V2 API: needs nodes parameter
-              (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
-                setEdges(flowEdges);
-                setEdgesVisible(true);
+              // V2 API: Let V2 system handle edge filtering directly
+              const batches = (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
                 setIsLayouting(false);
                 layoutTransition.endTransition();
               });
+              
+              // V2 system manages edge visibility through filtering - no need to set edgesVisible
+              console.log('[EduTree] V2 batched edges into', batches?.length || 0, 'columns');
             } else {
               console.log('[EduTree] Using legacy staggered edges with', flowEdges.length, 'edges');
-              // Legacy API: no nodes parameter
+              // Legacy API: use edgesVisible gate
               (edgeReveal as any).revealEdgesInBatches(flowEdges, () => {
                 setEdges(flowEdges);
                 setEdgesVisible(true);
@@ -742,6 +746,14 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
+  // Filter edges for V2 staggered system
+  const visibleEdges = useMemo(() => {
+    if (flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow') {
+      return edges.filter(edge => (edgeReveal as any).shouldShowEdge?.(edge, nodes) ?? true);
+    }
+    return edges;
+  }, [edges, nodes, flags.eduTreeStaggeredEdgesV2, viewMode, edgeReveal]);
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Degree Outcome Banner */}
@@ -866,7 +878,7 @@ function EduTreeCanvasInner() {
       >
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
