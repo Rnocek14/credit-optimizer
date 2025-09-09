@@ -13,6 +13,7 @@ import {
   MarkerType 
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import './styles/drag-animations.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -21,7 +22,12 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 import { resolveColumnCollisions, LayoutManager } from '@/lib/layout/layoutLifecycle';
+import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
+import { findOptimalPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
+import { useDragGuard } from '@/components/ui/drag-guard';
+import { OutcomePanel, PlanValidationSummary } from './components/OutcomePanel';
+import { EduTreeMiniMap } from '@/components/ui/minimap';
 import { 
   EduCourse, 
   RequirementBlock, 
@@ -57,6 +63,11 @@ function EduTreeCanvasInner() {
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
+  const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
+  const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
+  
+  // State for path highlighting
+  const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
@@ -190,6 +201,8 @@ function EduTreeCanvasInner() {
                  Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
       };
 
+      const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
+
       return {
         id: String(block.id), // Ensure string ID
         type: 'blockGroup', // This must match nodeTypes key
@@ -200,7 +213,9 @@ function EduTreeCanvasInner() {
           isUnlocked: unlockedBlocks.has(block.id),
           progress,
           level_year: block.level_year,
-          area: block.area
+          area: block.area,
+          isHighlighted,
+          planningLens: isHighlighted ? selectedLens : null
         }
       };
     });
@@ -219,19 +234,21 @@ function EduTreeCanvasInner() {
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
       
+      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
+      
       return source ? {
         id: String(gateEdge.id),
         source,
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: 'hsl(var(--primary))',
-          strokeWidth: 2,
-          opacity: 0.65
+          stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+          strokeWidth: isHighlighted ? 3 : 2,
+          opacity: isHighlighted ? 1 : 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: 'hsl(var(--primary))',
+          color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -240,7 +257,7 @@ function EduTreeCanvasInner() {
     }).filter(Boolean) as Edge[] : [];
 
     return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode]);
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
@@ -265,7 +282,17 @@ function EduTreeCanvasInner() {
     if (DEV) console.log('[EduTree] applying layout', { mode: viewMode, nodeCount: flowNodes.length });
 
     if (viewMode === 'flow') {
-      layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
+      // Try to restore previous positions first
+      let nodesToLayout = flowNodes;
+      if (flags.eduTreeLanes) {
+        nodesToLayout = layoutMemoryRef.current.restorePositions(flowNodes, 'flow');
+        if (nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0)) {
+          // No saved positions, use scaffolding
+          nodesToLayout = snapToLanes(flowNodes, DEFAULT_LANE_SCAFFOLD);
+        }
+      }
+      
+      layoutWithElk(nodesToLayout, flowEdges).then(layoutedNodes => {
         if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
         
         // Apply post-layout collision resolution if layoutV2 enabled
@@ -274,6 +301,11 @@ function EduTreeCanvasInner() {
           
         setNodes(finalNodes);
         setEdges(flowEdges);
+        
+        // Save positions for mode switching
+        if (flags.eduTreeLanes) {
+          layoutMemoryRef.current.savePositions(finalNodes, 'flow');
+        }
       }).catch(error => {
         console.error('[EduTree] ELK failed, fallback', error);
         // Fallback to simple grid if ELK fails
@@ -289,9 +321,51 @@ function EduTreeCanvasInner() {
       if (DEV) console.log('[EduTree] grid done', gridNodes.length);
       setNodes(gridNodes);
       setEdges([]); // No edges in board mode
+      
+      // Save board positions
+      if (flags.eduTreeLanes) {
+        layoutMemoryRef.current.savePositions(gridNodes, 'board');
+      }
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2]);
-  
+  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes]);
+
+  // Update path highlighting when lens changes
+  useEffect(() => {
+    if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
+      const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
+      setHighlightedPath({
+        nodes: new Set(optimalPath.nodes),
+        edges: new Set(optimalPath.edges)
+      });
+    }
+  }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
+
+  // Calculate outcome panel summary
+  const outcomeSummary: PlanValidationSummary = useMemo(() => {
+    const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
+    const completedCredits = courses
+      .filter(c => completedCourseIds.has(c.id))
+      .reduce((sum, c) => sum + c.credits, 0);
+    
+    // Simple estimates - in real app these would be more sophisticated
+    const estimatedMonths = Math.max(24, Math.ceil((totalCredits - completedCredits) / 15 * 4));
+    const estimatedCost = (totalCredits - completedCredits) * 500; // $500 per credit estimate
+    
+    const issues: string[] = [];
+    if (completedCredits < totalCredits * 0.25) {
+      issues.push('No foundation courses completed');
+    }
+    
+    return {
+      totalCredits,
+      completedCredits,
+      estimatedMonths,
+      estimatedCost,
+      planValid: issues.length === 0,
+      issues
+    };
+  }, [courses, completedCourseIds]);
+
   // Listen for node resize events and trigger debounced re-layout
   useEffect(() => {
     if (!flags.eduTreeLayoutV2) return;
@@ -385,6 +459,14 @@ function EduTreeCanvasInner() {
             <Badge variant="outline" className="text-xs">
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
+            
+            {/* Lens Selector */}
+            {flags.eduTreeOutcomes && (
+              <LensSelector 
+                selectedLens={selectedLens}
+                onLensChange={setSelectedLens}
+              />
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -417,8 +499,19 @@ function EduTreeCanvasInner() {
             size={1}
             color="hsl(var(--muted-foreground))"
           />
+          {/* Mini-map for large tree navigation */}
+          {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
         </ReactFlow>
       </div>
+
+      {/* Outcome Panel */}
+      {flags.eduTreeOutcomes && (
+        <OutcomePanel
+          summary={outcomeSummary}
+          selectedLens={selectedLens}
+          isVisible={showOutcomePanel}
+        />
+      )}
 
       {/* Year labels for flow mode */}
       {viewMode === 'flow' && (
