@@ -14,6 +14,7 @@ interface FeatureFlags {
   growthLayerEnabled: boolean;
   altCoursesEnabled: boolean;
   skillTreeForceTagsFallback: boolean;
+  eduTree: boolean; // Education-first skill tree
 }
 
 /**
@@ -69,6 +70,9 @@ export function getFeatureFlags(): FeatureFlags {
     
     // Skill Tree fallback - FLEXIBLE parameter names (skill_fallback, skill-fallback) with boolean coercion
     skillTreeForceTagsFallback: toBool(getFlagValue('skill_fallback', 'skill-fallback', 'true')),
+    
+    // Education-first skill tree - controlled via query param ?eduTree=true
+    eduTree: toBool(getFlagValue('eduTree', 'edu-tree')),
   };
   
   // Single consolidated debug log (only once per session)

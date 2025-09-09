@@ -127,6 +127,8 @@ import { useCircuitBreakerClient } from "./hooks/useCircuitBreakerClient";
 import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
+import EduTree from "./pages/EduTree";
+import { isFeatureEnabled } from "./lib/featureFlags";
 
 const queryClient = new QueryClient();
 
@@ -263,6 +265,17 @@ const App = () => {
               </ProtectedRoute>
             } 
           />
+          {/* Education-First Skill Tree (Feature Flagged) */}
+          {isFeatureEnabled('eduTree') && (
+            <Route 
+              path="/edu-tree" 
+              element={
+                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                  <EduTree />
+                </ProtectedRoute>
+              } 
+            />
+          )}
           <Route 
             path="/compare" 
             element={
