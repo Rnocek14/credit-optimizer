@@ -32,8 +32,8 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
     },
     children: nodes.map((node): ElkNode => ({
       id: node.id,
-      width: node.measured?.width ?? (node.type === 'group' ? 300 : 200),
-      height: node.measured?.height ?? (node.type === 'group' ? 180 : 100)
+      width: node.measured?.width ?? (node.type === 'blockGroup' ? 300 : 200), // Fix: check for 'blockGroup'
+      height: node.measured?.height ?? (node.type === 'blockGroup' ? 180 : 100)
     })),
     edges: edges.map((edge): ElkEdge => ({
       id: edge.id,
@@ -45,16 +45,20 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
   try {
     const result = await elk.layout(graph);
     const positionMap = new Map(
-      result.children?.map((child: any) => [child.id, { x: child.x, y: child.y }])
+      result.children?.map((child: any) => [child.id, { x: child.x ?? 0, y: child.y ?? 0 }])
     );
 
     return nodes.map(node => ({
       ...node,
-      position: positionMap.get(node.id) ?? node.position
+      position: positionMap.get(node.id) ?? node.position ?? { x: 0, y: 0 }
     }));
   } catch (error) {
     console.error('ELK layout failed:', error);
-    return nodes; // Return original nodes if layout fails
+    // Return nodes with fallback positions
+    return nodes.map((node, index) => ({
+      ...node,
+      position: node.position ?? { x: index * 320, y: 0 }
+    }));
   }
 }
 
@@ -70,11 +74,11 @@ export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
   const padding = 20;
 
   return nodes.map(node => {
-    if (node.type !== 'group') return node;
+    if (node.type !== 'blockGroup') return node; // Fix: check for 'blockGroup' not 'group'
     
     const data = node.data as any;
-    const yearIndex = yearColumns.indexOf(data.level_year as number) ?? 0;
-    const areaIndex = areaRows.indexOf(data.area as string) ?? 0;
+    const yearIndex = Math.max(0, yearColumns.indexOf(data.level_year as number));
+    const areaIndex = Math.max(0, areaRows.indexOf(data.area as string));
 
     return {
       ...node,

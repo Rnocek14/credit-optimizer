@@ -2,31 +2,31 @@ import { supabase } from '@/integrations/supabase/client';
 
 const seedData = {
   courses: [
-    { code: "CS-181", title: "Programming Fundamentals I", credits: 3, area: "programming", level_year: 1, is_core: true },
-    { code: "ENG-101", title: "English Composition I", credits: 3, area: "general_education", level_year: 1, is_core: true },
-    { code: "MATH-101", title: "College Algebra", credits: 3, area: "mathematics", level_year: 1, is_core: true },
-    { code: "PSY-101", title: "General Psychology", credits: 3, area: "general_education", level_year: 1 },
+    { code: "CS-181", title: "Programming Fundamentals I", credits: 3, area: "programming", level_year: 1, is_core: true, is_capstone: false },
+    { code: "ENG-101", title: "English Composition I", credits: 3, area: "general_education", level_year: 1, is_core: true, is_capstone: false },
+    { code: "MATH-101", title: "College Algebra", credits: 3, area: "mathematics", level_year: 1, is_core: true, is_capstone: false },
+    { code: "PSY-101", title: "General Psychology", credits: 3, area: "general_education", level_year: 1, is_core: false, is_capstone: false },
 
-    { code: "CS-182", title: "Programming Fundamentals II", credits: 3, area: "programming", level_year: 2, is_core: true },
-    { code: "CS-281", title: "Data Structures and Algorithms", credits: 3, area: "programming", level_year: 2, is_core: true },
-    { code: "MATH-210", title: "Discrete Mathematics", credits: 3, area: "mathematics", level_year: 2, is_core: true },
-    { code: "ENG-102", title: "English Composition II", credits: 3, area: "general_education", level_year: 2 },
+    { code: "CS-182", title: "Programming Fundamentals II", credits: 3, area: "programming", level_year: 2, is_core: true, is_capstone: false },
+    { code: "CS-281", title: "Data Structures and Algorithms", credits: 3, area: "programming", level_year: 2, is_core: true, is_capstone: false },
+    { code: "MATH-210", title: "Discrete Mathematics", credits: 3, area: "mathematics", level_year: 2, is_core: true, is_capstone: false },
+    { code: "ENG-102", title: "English Composition II", credits: 3, area: "general_education", level_year: 2, is_core: false, is_capstone: false },
 
-    { code: "CS-301", title: "Operating Systems", credits: 3, area: "systems", level_year: 3, is_core: true },
-    { code: "CS-285", title: "Computer Architecture", credits: 3, area: "systems", level_year: 3, is_core: true },
-    { code: "CS-318", title: "Software Engineering Principles", credits: 3, area: "software_engineering", level_year: 3, is_core: true },
-    { code: "CS-385", title: "Database Management Systems", credits: 3, area: "data", level_year: 3, is_core: true },
+    { code: "CS-301", title: "Operating Systems", credits: 3, area: "systems", level_year: 3, is_core: true, is_capstone: false },
+    { code: "CS-285", title: "Computer Architecture", credits: 3, area: "systems", level_year: 3, is_core: true, is_capstone: false },
+    { code: "CS-318", title: "Software Engineering Principles", credits: 3, area: "software_engineering", level_year: 3, is_core: true, is_capstone: false },
+    { code: "CS-385", title: "Database Management Systems", credits: 3, area: "data", level_year: 3, is_core: true, is_capstone: false },
 
-    { code: "CS-328", title: "Web Development", credits: 3, area: "programming", level_year: 3 },
-    { code: "CS-388", title: "Game Development", credits: 3, area: "programming", level_year: 3 },
-    { code: "CS-358", title: "Mobile App Development", credits: 3, area: "programming", level_year: 3 },
-    { code: "CS-368", title: "Cybersecurity Fundamentals", credits: 3, area: "security", level_year: 3 },
-    { code: "CS-378", title: "Cloud Computing", credits: 3, area: "systems", level_year: 3 },
-    { code: "CS-346", title: "Machine Learning Fundamentals", credits: 3, area: "data", level_year: 3 },
-    { code: "CS-315", title: "Computer Networks", credits: 3, area: "systems", level_year: 3 },
+    { code: "CS-328", title: "Web Development", credits: 3, area: "programming", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-388", title: "Game Development", credits: 3, area: "programming", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-358", title: "Mobile App Development", credits: 3, area: "programming", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-368", title: "Cybersecurity Fundamentals", credits: 3, area: "security", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-378", title: "Cloud Computing", credits: 3, area: "systems", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-346", title: "Machine Learning Fundamentals", credits: 3, area: "data", level_year: 3, is_core: false, is_capstone: false },
+    { code: "CS-315", title: "Computer Networks", credits: 3, area: "systems", level_year: 3, is_core: false, is_capstone: false },
 
-    { code: "CS-410", title: "Software Architecture & Design", credits: 3, area: "software_engineering", level_year: 4 },
-    { code: "CS-499", title: "Software Engineering Capstone", credits: 6, area: "capstone", level_year: 4, is_capstone: true }
+    { code: "CS-410", title: "Software Architecture & Design", credits: 3, area: "software_engineering", level_year: 4, is_core: false, is_capstone: false },
+    { code: "CS-499", title: "Software Engineering Capstone", credits: 6, area: "capstone", level_year: 4, is_core: false, is_capstone: true }
   ],
 
   blocks: [

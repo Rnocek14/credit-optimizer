@@ -109,6 +109,14 @@ export function EduTreeCanvas() {
 
   // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+    console.log('Data check:', { 
+      blocksLength: blocks.length, 
+      coursesLength: courses.length, 
+      blockMembersLength: blockMembers.length,
+      gatesLength: gates.length,
+      gateEdgesLength: gateEdges.length 
+    });
+
     if (!blocks.length || !courses.length) {
       return { nodes: [], edges: [] };
     }
@@ -158,7 +166,6 @@ export function EduTreeCanvas() {
       });
     }
 
-    // Create React Flow nodes
     const nodes: Node[] = blocksWithCourses.map((block, index) => {
       const progress = {
         completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
@@ -169,7 +176,7 @@ export function EduTreeCanvas() {
 
       return {
         id: block.id,
-        type: 'blockGroup',
+        type: 'blockGroup', // This must match nodeTypes key
         position: { x: block.level_year * 320, y: index * 200 }, // Initial grid position
         data: {
           block,
@@ -180,6 +187,12 @@ export function EduTreeCanvas() {
           area: block.area
         }
       };
+    });
+
+    console.log('Generated nodes:', { 
+      nodeCount: nodes.length, 
+      firstNode: nodes[0],
+      nodeTypes: Object.keys(nodeTypes)
     });
 
     // Create React Flow edges (only between blocks)
@@ -213,13 +226,26 @@ export function EduTreeCanvas() {
   useEffect(() => {
     if (flowNodes.length === 0) return;
 
+    console.log('Applying layout:', { mode: viewMode, nodeCount: flowNodes.length });
+
     if (viewMode === 'flow') {
       layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
+        console.log('ELK layout complete:', layoutedNodes.length);
         setNodes(layoutedNodes);
+        setEdges(flowEdges);
+      }).catch(error => {
+        console.error('Layout failed, using fallback:', error);
+        // Fallback to simple grid if ELK fails
+        const fallbackNodes = flowNodes.map((node, index) => ({
+          ...node,
+          position: { x: (index % 3) * 320, y: Math.floor(index / 3) * 200 }
+        }));
+        setNodes(fallbackNodes);
         setEdges(flowEdges);
       });
     } else {
       const gridNodes = layoutAsGrid(flowNodes, 'board');
+      console.log('Grid layout complete:', gridNodes.length);
       setNodes(gridNodes);
       setEdges([]); // No edges in board mode
     }
@@ -294,7 +320,7 @@ export function EduTreeCanvas() {
       </div>
 
       {/* React Flow Canvas */}
-      <div className="flex-1">
+      <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -302,9 +328,10 @@ export function EduTreeCanvas() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.1 }}
-          minZoom={0.5}
+          fitViewOptions={{ padding: 0.1, duration: 300 }}
+          minZoom={0.3}
           maxZoom={1.5}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
           <Controls />
           <Background 
