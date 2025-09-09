@@ -21,6 +21,7 @@ export interface RequirementBlock {
   credits_needed?: number | null;
   level_year: number;
   area: string;
+  parent_block_id?: string | null;
 }
 
 export interface BlockMember {
@@ -53,6 +54,41 @@ export interface BlockProgress {
   isComplete: boolean;
   isUnlocked: boolean;
 }
+
+// New interfaces for enhanced features
+export interface Skill {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+}
+
+export interface AltCreditOption {
+  id: string;
+  provider: string;
+  provider_course_name: string;
+  cost_estimate?: number;
+  estimated_hours?: number;
+  proctoring_required: boolean;
+}
+
+export interface EntryRole {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  avg_salary_range?: string;
+}
+
+export interface PortfolioProject {
+  id: string;
+  name: string;
+  description?: string;
+  estimated_hours?: number;
+  difficulty_level: number;
+}
+
+export type PlanningLens = 'fastest' | 'cheapest' | 'roi';
 
 // Block completion logic
 export function isBlockComplete(

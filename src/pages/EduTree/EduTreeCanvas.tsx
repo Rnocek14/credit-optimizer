@@ -27,11 +27,15 @@ import {
   BlockGate, 
   GateEdge,
   BlockWithCourses,
-  isBlockComplete 
+  isBlockComplete,
+  PlanningLens 
 } from '@/lib/types/eduTree';
+import { toast } from '@/hooks/use-toast';
+import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
 import { CourseNode } from './components/CourseNode';
-import { SeedDataButton } from './components/SeedDataButton';
+import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
+import { LensSelector } from './components/LensSelector';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -45,6 +49,8 @@ type ViewMode = 'flow' | 'board';
 function EduTreeCanvasInner() {
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
+  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
+  const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
