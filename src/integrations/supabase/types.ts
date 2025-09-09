@@ -639,6 +639,53 @@ export type Database = {
           },
         ]
       }
+      alt_credit_options: {
+        Row: {
+          acceptance_rate: number | null
+          cost_estimate: number | null
+          course_id: string | null
+          created_at: string | null
+          estimated_hours: number | null
+          id: string
+          proctoring_required: boolean | null
+          provider: string
+          provider_course_id: string | null
+          provider_course_name: string
+        }
+        Insert: {
+          acceptance_rate?: number | null
+          cost_estimate?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          estimated_hours?: number | null
+          id?: string
+          proctoring_required?: boolean | null
+          provider: string
+          provider_course_id?: string | null
+          provider_course_name: string
+        }
+        Update: {
+          acceptance_rate?: number | null
+          cost_estimate?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          estimated_hours?: number | null
+          id?: string
+          proctoring_required?: boolean | null
+          provider?: string
+          provider_course_id?: string | null
+          provider_course_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alt_credit_options_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alternative_courses: {
         Row: {
           created_at: string | null
@@ -1025,6 +1072,42 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      block_outcomes: {
+        Row: {
+          block_id: string
+          created_at: string | null
+          skill_id: string
+          weight: number | null
+        }
+        Insert: {
+          block_id: string
+          created_at?: string | null
+          skill_id: string
+          weight?: number | null
+        }
+        Update: {
+          block_id?: string
+          created_at?: string | null
+          skill_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_outcomes_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "block_outcomes_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
             referencedColumns: ["id"]
           },
         ]
@@ -3097,6 +3180,42 @@ export type Database = {
           },
         ]
       }
+      course_skills: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          skill_id: string
+          weight: number | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          skill_id: string
+          weight?: number | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          skill_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_skills_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_submissions: {
         Row: {
           cost: number | null
@@ -3644,6 +3763,33 @@ export type Database = {
           skill_assessments?: Json | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      entry_roles: {
+        Row: {
+          avg_salary_range: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          avg_salary_range?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          avg_salary_range?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
         }
         Relationships: []
       }
@@ -6048,6 +6194,36 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_rules: {
+        Row: {
+          created_at: string | null
+          id: string
+          max_alt_credit: number | null
+          max_transfer_credits: number | null
+          partner: string
+          residency_credits: number | null
+          upper_division_min: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          max_alt_credit?: number | null
+          max_transfer_credits?: number | null
+          partner: string
+          residency_credits?: number | null
+          upper_division_min?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          max_alt_credit?: number | null
+          max_transfer_credits?: number | null
+          partner?: string
+          residency_credits?: number | null
+          upper_division_min?: number | null
+        }
+        Relationships: []
+      }
       path_edges: {
         Row: {
           created_at: string | null
@@ -6608,6 +6784,47 @@ export type Database = {
           },
         ]
       }
+      portfolio_projects: {
+        Row: {
+          block_id: string | null
+          created_at: string | null
+          description: string | null
+          difficulty_level: number | null
+          estimated_hours: number | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          block_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_hours?: number | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          block_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_hours?: number | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_projects_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       predictive_analysis_results: {
         Row: {
           accuracy_score: number | null
@@ -6794,6 +7011,30 @@ export type Database = {
           willing_to_relocate?: boolean | null
           work_preferences?: string | null
           years_experience?: number | null
+        }
+        Relationships: []
+      }
+      program_outcomes: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          outcome_slug: string
+          program_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          outcome_slug: string
+          program_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          outcome_slug?: string
+          program_id?: string
         }
         Relationships: []
       }
@@ -7151,6 +7392,7 @@ export type Database = {
           id: string
           k: number | null
           level_year: number
+          parent_block_id: string | null
           rule_type: string
           title: string
           updated_at: string | null
@@ -7162,6 +7404,7 @@ export type Database = {
           id?: string
           k?: number | null
           level_year: number
+          parent_block_id?: string | null
           rule_type: string
           title: string
           updated_at?: string | null
@@ -7173,11 +7416,20 @@ export type Database = {
           id?: string
           k?: number | null
           level_year?: number
+          parent_block_id?: string | null
           rule_type?: string
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "requirement_blocks_parent_block_id_fkey"
+            columns: ["parent_block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resume_events: {
         Row: {
@@ -7395,6 +7647,45 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_transcript_health"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      role_requirements: {
+        Row: {
+          created_at: string | null
+          role_id: string
+          skill_id: string
+          threshold: number | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          role_id: string
+          skill_id: string
+          threshold?: number | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          role_id?: string
+          skill_id?: string
+          threshold?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_requirements_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "entry_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_requirements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
           },
         ]
       }
