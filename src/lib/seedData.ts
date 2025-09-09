@@ -70,26 +70,62 @@ const seedData = {
 
 export async function seedEduTreeData() {
   try {
-    console.log('Starting edu tree data seeding...');
+    // Idempotent: clean previous seed blocks by title
+    const seedBlockTitles = seedData.blocks.map(b => b.title);
+    const { data: existingBlocks } = await supabase
+      .from('requirement_blocks')
+      .select('id, title')
+      .in('title', seedBlockTitles);
 
-    // Insert courses
-    const { data: insertedCourses, error: coursesError } = await supabase
-      .from('edu_courses')
-      .insert(seedData.courses)
-      .select();
-
-    if (coursesError) {
-      console.error('Error inserting courses:', coursesError);
-      return;
+    if (existingBlocks && existingBlocks.length) {
+      const blockIds = existingBlocks.map(b => b.id);
+      // Delete edges referencing these blocks/gates
+      const { data: gatesForBlocks } = await supabase
+        .from('block_gates')
+        .select('id')
+        .in('block_id', blockIds);
+      const gateIds = gatesForBlocks?.map(g => g.id) ?? [];
+      if (gateIds.length) {
+        await supabase.from('prereq_to_block').delete().in('source_gate_id', gateIds);
+      }
+      await supabase.from('prereq_to_block').delete().in('target_block_id', blockIds);
+      await supabase.from('block_members').delete().in('block_id', blockIds);
+      await supabase.from('block_gates').delete().in('block_id', blockIds);
+      await supabase.from('requirement_blocks').delete().in('id', blockIds);
+      console.log(`Removed previous seed blocks: ${existingBlocks.length}`);
     }
 
-    // Create mappings and insert blocks, members, gates, edges
-    const courseCodeToId = new Map(insertedCourses?.map(course => [course.code, course.id]) || []);
+    // Insert courses only if missing (by code)
+    const courseCodes = seedData.courses.map(c => c.code);
+    const { data: existingCourses } = await supabase
+      .from('edu_courses')
+      .select('id, code')
+      .in('code', courseCodes);
+
+    const existingCodeSet = new Set((existingCourses ?? []).map(c => c.code));
+    const coursesToInsert = seedData.courses.filter(c => !existingCodeSet.has(c.code));
+
+    let insertedCourses: any[] = [];
+    if (coursesToInsert.length) {
+      const { data: newCourses, error: coursesError } = await supabase
+        .from('edu_courses')
+        .insert(coursesToInsert)
+        .select();
+      if (coursesError) {
+        console.error('Error inserting courses:', coursesError);
+        return;
+      }
+      insertedCourses = newCourses ?? [];
+    }
+
+    // Create code->id map from existing + inserted
+    const allCourses = [ ...(existingCourses ?? []), ...insertedCourses ];
+    const courseCodeToId = new Map(allCourses.map(course => [course.code, course.id]));
 
     const blocksToInsert = seedData.blocks.map(block => ({
       title: block.title,
       rule_type: block.rule_type,
-      k: block.k || null,
+      k: (block as any).k ?? null,
       credits_needed: null,
       level_year: block.level_year,
       area: block.area
