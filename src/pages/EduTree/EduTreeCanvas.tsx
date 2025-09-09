@@ -14,6 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
+import './styles/locked-blocks.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -75,6 +76,8 @@ function EduTreeCanvasInner() {
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const [showSkeletons, setShowSkeletons] = useState(false);
+  const [isFirstLayout, setIsFirstLayout] = useState(true);
+  const [edgesVisible, setEdgesVisible] = useState(false);
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
@@ -440,7 +443,7 @@ function EduTreeCanvasInner() {
         style: {
           stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
           strokeWidth: isHighlighted ? 4 : 2,
-          opacity: isHighlighted ? 1 : 0.2 // Much stronger dimming for non-path edges
+          opacity: isHighlighted ? 1 : 0.15 // Stronger dimming for better lens contrast
         },
         markerEnd: {
           type: MarkerType.Arrow,
@@ -477,7 +480,7 @@ function EduTreeCanvasInner() {
       });
     }
     
-    const edges: Edge[] = viewMode === 'flow' ? [...blockEdges, ...terminalEdges] : [];
+    const edges: Edge[] = viewMode === 'flow' && edgesVisible ? [...blockEdges, ...terminalEdges] : [];
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
@@ -549,7 +552,7 @@ function EduTreeCanvasInner() {
           setTimeout(() => {
             setEdges(flowEdges);
             setIsLayouting(false);
-          }, isFirstLayout ? 400 : 300); // Longer delay for first layout
+          }, isFirstLayout ? 500 : 300); // Increased delay for better first-paint stability
         } else {
           setEdges(flowEdges);
         }
@@ -651,7 +654,7 @@ function EduTreeCanvasInner() {
   const onInit = useCallback((reactFlowInstance: any) => {
     if (nodes.length > 0) {
       setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+        reactFlowInstance.fitView({ padding: 0.3, duration: 300 }); // Increased padding for terminal visibility
       }, 0);
     }
   }, [nodes]);

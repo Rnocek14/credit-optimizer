@@ -75,11 +75,11 @@ export function BlockGroup(props: NodeProps) {
 
       <Card className={`
         min-w-[280px] max-w-[320px] 
-        ${!isUnlocked ? 'opacity-30' : ''} /* Stronger dimming for locked blocks */
+        ${!isUnlocked ? 'locked-block' : ''} /* Better locked styling */
         ${isComplete ? 'border-primary bg-primary/5' : 'border-border'}
         ${isHighlighted ? 'ring-4 ring-primary shadow-2xl ring-opacity-60' : ''} /* Enhanced glow */
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
-        ${!isHighlighted && planningLens ? 'opacity-20' : ''} /* Strong dimming for non-path when lens active */
+        ${!isHighlighted && planningLens ? 'opacity-15' : ''} /* Stronger dimming for non-path when lens active */
         transition-all duration-300
       `}>
         <CardHeader className="pb-2">

@@ -94,7 +94,7 @@ function estimateNodeHeight(node: Node): number {
  */
 function anchorNodesUnderPrerequisites(nodes: Node[], edges: Edge[]): Node[] {
   const nodeMap = new Map(nodes.map(node => [node.id, { ...node }]));
-  const MIN_GAP = 32;
+  const MIN_GAP = 40; // Increased gap for better Year-3 positioning
   
   // Build prerequisite relationships
   const prerequisites = new Map<string, string[]>();

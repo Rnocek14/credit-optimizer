@@ -8,20 +8,27 @@ import { useUpdateNodeInternals } from '@xyflow/react';
 export function useNodeResize(nodeId: string) {
   const updateNodeInternals = useUpdateNodeInternals();
   const observerRef = useRef<ResizeObserver | null>(null);
+  const rafRef = useRef<number | null>(null);
   
   const attachResizeObserver = useCallback((element: HTMLElement) => {
     if (!element || observerRef.current) return;
 
     observerRef.current = new ResizeObserver(() => {
-      // Debounce the update to prevent excessive re-layouts
-      setTimeout(() => {
+      // Cancel any pending frame
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      
+      // Batch updates using requestAnimationFrame to prevent jitter
+      rafRef.current = requestAnimationFrame(() => {
         updateNodeInternals(nodeId);
         
         // Emit event for canvas to trigger re-layout
         window.dispatchEvent(new CustomEvent('node:resized', {
           detail: { nodeId }
         }));
-      }, 50);
+        rafRef.current = null;
+      });
     });
 
     observerRef.current.observe(element);
@@ -31,6 +38,10 @@ export function useNodeResize(nodeId: string) {
     if (observerRef.current) {
       observerRef.current.disconnect();
       observerRef.current = null;
+    }
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
   }, []);
 

@@ -1,0 +1,36 @@
+/* Locked block styling for better readability */
+.locked-block {
+  background: hsl(var(--card) / 0.65) !important;
+  border: 1px dashed hsl(var(--border)) !important;
+  filter: grayscale(25%);
+}
+
+.locked-block .card-header,
+.locked-block .card-content,
+.locked-block .card-title {
+  opacity: 0.9 !important;
+}
+
+.locked-block .text-muted-foreground {
+  opacity: 0.8 !important;
+}
+
+/* Lock badge styling */
+.locked-block .lock-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: hsl(var(--muted));
+  border: 2px solid hsl(var(--background));
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Utility class for stronger non-path dimming */
+.opacity-15 {
+  opacity: 0.15 !important;
+}
