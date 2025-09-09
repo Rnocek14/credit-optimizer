@@ -24,6 +24,31 @@ export interface RequirementBlock {
   parent_block_id?: string | null;
 }
 
+export interface RequirementPlaceholder {
+  id: string;
+  title: string;
+  rule_type: RuleType;
+  k?: number | null;
+  credits_needed?: number | null;
+  area: string;
+  level_year?: number | null;
+  parent_block_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlaceholderMember {
+  id: string;
+  placeholder_id: string;
+  course_id: string;
+  created_at: string;
+}
+
+export interface PlaceholderWithCourses extends RequirementPlaceholder {
+  courses: EduCourse[];
+  children?: PlaceholderWithCourses[];
+}
+
 export interface BlockMember {
   id: string;
   block_id: string;
@@ -116,6 +141,31 @@ export function isBlockComplete(
   return false;
 }
 
+export function isPlaceholderComplete(
+  placeholder: RequirementPlaceholder, 
+  memberCourses: EduCourse[], 
+  completedCourseIds: Set<string>
+): boolean {
+  const doneCount = memberCourses.filter(c => completedCourseIds.has(c.id)).length;
+  
+  if (placeholder.rule_type === 'ALL') {
+    return doneCount === memberCourses.length;
+  }
+  
+  if (placeholder.rule_type === 'K_OF_N') {
+    return (placeholder.k ?? 0) <= doneCount;
+  }
+  
+  if (placeholder.rule_type === 'CREDITS') {
+    const earned = memberCourses
+      .filter(c => completedCourseIds.has(c.id))
+      .reduce((sum, c) => sum + c.credits, 0);
+    return (placeholder.credits_needed ?? 0) <= earned;
+  }
+  
+  return false;
+}
+
 export function getBlockProgressText(block: RequirementBlock, memberCourses: EduCourse[]): string {
   if (block.rule_type === 'ALL') {
     return 'All';
@@ -127,6 +177,22 @@ export function getBlockProgressText(block: RequirementBlock, memberCourses: Edu
   
   if (block.rule_type === 'CREDITS') {
     return `${block.credits_needed} credits`;
+  }
+  
+  return 'Complete';
+}
+
+export function getPlaceholderProgressText(placeholder: RequirementPlaceholder, memberCourses: EduCourse[]): string {
+  if (placeholder.rule_type === 'ALL') {
+    return 'All';
+  }
+  
+  if (placeholder.rule_type === 'K_OF_N') {
+    return `Any ${placeholder.k} of ${memberCourses.length}`;
+  }
+  
+  if (placeholder.rule_type === 'CREDITS') {
+    return `${placeholder.credits_needed} credits`;
   }
   
   return 'Complete';

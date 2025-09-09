@@ -31,11 +31,15 @@ import { EduTreeMiniMap } from '@/components/ui/minimap';
 import { 
   EduCourse, 
   RequirementBlock, 
+  RequirementPlaceholder,
+  PlaceholderMember,
+  PlaceholderWithCourses,
   BlockMember, 
   BlockGate, 
   GateEdge,
   BlockWithCourses,
   isBlockComplete,
+  isPlaceholderComplete,
   PlanningLens 
 } from '@/lib/types/eduTree';
 import { toast } from '@/hooks/use-toast';
@@ -45,6 +49,7 @@ import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { SkeletonNode } from './components/SkeletonNode';
+import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 
@@ -52,6 +57,7 @@ import { LensSelector } from './components/LensSelector';
 const nodeTypes = {
   blockGroup: BlockGroup,
   skeleton: SkeletonNode,
+  placeholderGroup: PlaceholderGroup,
 };
 
 const DEV = import.meta.env.DEV;
@@ -140,14 +146,45 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Transform data for React Flow
+  // Fetch placeholder data
+  const { data: placeholders = [] } = useQuery({
+    queryKey: ['requirement-placeholders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('requirement_placeholders')
+        .select('*')
+        .order('level_year', { ascending: true })
+        .order('title', { ascending: true });
+      
+      if (error) throw error;
+      return data as RequirementPlaceholder[];
+    },
+    enabled: flags.eduTreePlaceholders,
+  });
+
+  const { data: placeholderMembers = [] } = useQuery({
+    queryKey: ['placeholder-members'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('placeholder_members')
+        .select('*');
+      
+      if (error) throw error;
+      return data as PlaceholderMember[];
+    },
+    enabled: flags.eduTreePlaceholders,
+  });
+
+  // Transform data for React Flow with placeholders support
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     console.log('Data check:', { 
       blocksLength: blocks.length, 
       coursesLength: courses.length, 
       blockMembersLength: blockMembers.length,
       gatesLength: gates.length,
-      gateEdgesLength: gateEdges.length 
+      gateEdgesLength: gateEdges.length,
+      placeholdersLength: placeholders.length,
+      placeholderMembersLength: placeholderMembers.length
     });
 
     if (!blocks.length || !courses.length) {
@@ -166,12 +203,59 @@ function EduTreeCanvasInner() {
       }
     });
 
-    // Create block nodes with courses
+    // Group courses by placeholder (if placeholders enabled)
+    const coursesByPlaceholder = new Map<string, EduCourse[]>();
+    if (flags.eduTreePlaceholders) {
+      placeholderMembers.forEach(member => {
+        const course = courses.find(c => c.id === member.course_id);
+        if (course) {
+          if (!coursesByPlaceholder.has(member.placeholder_id)) {
+            coursesByPlaceholder.set(member.placeholder_id, []);
+          }
+          coursesByPlaceholder.get(member.placeholder_id)!.push(course);
+        }
+      });
+    }
+
+    // Create blocks with courses
     const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
       ...block,
       courses: coursesByBlock.get(block.id) || [],
       gate: gates.find(g => g.block_id === block.id)
     }));
+
+    // Create placeholders with courses (if enabled)
+    const placeholdersWithCourses: PlaceholderWithCourses[] = [];
+    if (flags.eduTreePlaceholders) {
+      // Group placeholders by parent
+      const parentPlaceholders = placeholders.filter(p => !p.parent_block_id);
+      const childrenByParent = new Map<string, RequirementPlaceholder[]>();
+      
+      placeholders.forEach(p => {
+        if (p.parent_block_id) {
+          if (!childrenByParent.has(p.parent_block_id)) {
+            childrenByParent.set(p.parent_block_id, []);
+          }
+          childrenByParent.get(p.parent_block_id)!.push(p);
+        }
+      });
+
+      // Build hierarchy
+      parentPlaceholders.forEach(placeholder => {
+        const children: PlaceholderWithCourses[] = (childrenByParent.get(placeholder.id) || [])
+          .map(child => ({
+            ...child,
+            courses: coursesByPlaceholder.get(child.id) || [],
+            children: []
+          }));
+
+        placeholdersWithCourses.push({
+          ...placeholder,
+          courses: coursesByPlaceholder.get(placeholder.id) || [],
+          children
+        });
+      });
+    }
 
     // Apply topological sorting for stable Year-3 ordering
     const sortedBlocks = flags.eduTreeLayoutV2 ? 
@@ -204,32 +288,66 @@ function EduTreeCanvasInner() {
       });
     }
 
-    const nodes: Node[] = sortedBlocks.map((block, index) => {
-      const progress = {
-        completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
-        required: block.rule_type === 'ALL' ? block.courses.length : 
-                 block.rule_type === 'K_OF_N' ? (block.k || 0) :
-                 Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
-      };
+    const nodes: Node[] = [
+      // Block nodes
+      ...sortedBlocks.map((block, index) => {
+        const progress = {
+          completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
+          required: block.rule_type === 'ALL' ? block.courses.length : 
+                    block.rule_type === 'K_OF_N' ? (block.k || 0) :
+                    Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
+        };
 
-      const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
+        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
 
-      return {
-        id: String(block.id), // Ensure string ID
-        type: 'blockGroup', // This must match nodeTypes key
-        position: { x: block.level_year * 320, y: index * 200 }, // Initial grid position
-        data: {
-          block,
-          completedCourseIds,
-          isUnlocked: unlockedBlocks.has(block.id),
-          progress,
-          level_year: block.level_year,
-          area: block.area,
-          isHighlighted,
-          planningLens: isHighlighted ? selectedLens : null
-        }
-      };
-    });
+        return {
+          id: String(block.id), // Ensure string ID
+          type: 'blockGroup', // This must match nodeTypes key
+          position: { x: block.level_year * 320, y: index * 200 }, // Initial grid position
+          data: {
+            block,
+            completedCourseIds,
+            isUnlocked: unlockedBlocks.has(block.id),
+            progress,
+            level_year: block.level_year,
+            area: block.area,
+            isHighlighted,
+            planningLens: isHighlighted ? selectedLens : null
+          }
+        };
+      }),
+      
+      // Placeholder nodes (if enabled)
+      ...(flags.eduTreePlaceholders ? placeholdersWithCourses.map((placeholder, index) => {
+        const progress = {
+          completed: placeholder.courses.filter(c => completedCourseIds.has(c.id)).length,
+          required: placeholder.rule_type === 'ALL' ? placeholder.courses.length : 
+                    placeholder.rule_type === 'K_OF_N' ? (placeholder.k || 0) :
+                    Math.ceil((placeholder.credits_needed || 0) / 3)
+        };
+
+        const isHighlighted = highlightedPath?.nodes.has(`placeholder-${placeholder.id}`) || false;
+
+        return {
+          id: `placeholder-${placeholder.id}`,
+          type: 'placeholderGroup',
+          position: { 
+            x: (placeholder.level_year || 1) * 320, 
+            y: (sortedBlocks.length + index) * 220 
+          },
+          data: {
+            placeholder,
+            completedCourseIds,
+            isUnlocked: true, // Placeholders are always unlocked
+            progress,
+            level_year: placeholder.level_year || 1,
+            area: placeholder.area,
+            isHighlighted,
+            planningLens: isHighlighted ? selectedLens : null
+          }
+        };
+      }) : [])
+    ];
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
