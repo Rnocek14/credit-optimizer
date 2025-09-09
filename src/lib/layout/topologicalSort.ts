@@ -46,8 +46,30 @@ export function sortBlocksWithinYear(blocks: BlockWithCourses[], edges: GateEdge
 }
 
 /**
- * Sort blocks by year, then by topological prerequisites, then by area
- * This ensures stable Year-3 ordering with Foundation/Core above Specialization
+ * Calculate prerequisite depth for cross-year anchoring
+ */
+function calculatePrereqDepth(blockId: string, blocks: BlockWithCourses[], edges: GateEdge[], visited = new Set<string>()): number {
+  if (visited.has(blockId)) return 0;
+  visited.add(blockId);
+  
+  const incomingEdges = edges.filter(e => e.target_block_id === blockId);
+  if (incomingEdges.length === 0) return 0;
+  
+  let maxDepth = 0;
+  for (const edge of incomingEdges) {
+    const sourceBlock = blocks.find(b => b.gate?.id === edge.source_gate_id);
+    if (sourceBlock) {
+      const depth = calculatePrereqDepth(String(sourceBlock.id), blocks, edges, new Set(visited));
+      maxDepth = Math.max(maxDepth, depth + 1);
+    }
+  }
+  
+  return maxDepth;
+}
+
+/**
+ * Sort blocks by year, then by topological prerequisites with cross-year anchoring
+ * Enhanced to fix Year-3 ordering drift by considering prerequisite depth
  */
 export function sortBlocksForLayout(blocks: BlockWithCourses[], edges: GateEdge[]): BlockWithCourses[] {
   // Area ordering priority - Foundation/Core above Specialization; Capstone last
@@ -61,6 +83,12 @@ export function sortBlocksForLayout(blocks: BlockWithCourses[], edges: GateEdge[
     'capstone'
   ];
 
+  // Calculate prerequisite depths for all blocks
+  const prereqDepths = new Map<string, number>();
+  blocks.forEach(block => {
+    prereqDepths.set(String(block.id), calculatePrereqDepth(String(block.id), blocks, edges));
+  });
+
   // Group by level_year
   const blocksByYear = new Map<number, BlockWithCourses[]>();
   blocks.forEach(block => {
@@ -71,7 +99,7 @@ export function sortBlocksForLayout(blocks: BlockWithCourses[], edges: GateEdge[
     blocksByYear.get(year)!.push(block);
   });
 
-  // Sort each year group
+  // Sort each year group with enhanced cross-year awareness
   const sortedBlocks: BlockWithCourses[] = [];
   
   Array.from(blocksByYear.keys()).sort().forEach(year => {
@@ -80,13 +108,20 @@ export function sortBlocksForLayout(blocks: BlockWithCourses[], edges: GateEdge[
     // Apply topological sort within year
     const sortedIds = sortBlocksWithinYear(yearBlocks, edges);
     
-    // Convert back to blocks and apply secondary sort by area
+    // Convert back to blocks and apply enhanced sorting
     const blockMap = new Map(yearBlocks.map(b => [String(b.id), b]));
     const yearSorted = sortedIds
       .map(id => blockMap.get(id)!)
       .filter(Boolean)
       .sort((a, b) => {
-        // Secondary sort by area if same prerequisite level
+        // Primary sort by prerequisite depth (deeper chains first for Year 3+)
+        if (year >= 3) {
+          const aDepth = prereqDepths.get(String(a.id)) || 0;
+          const bDepth = prereqDepths.get(String(b.id)) || 0;
+          if (aDepth !== bDepth) return bDepth - aDepth; // Deeper first
+        }
+        
+        // Secondary sort by area (Foundation/Core above Specialization)
         const aIndex = areaOrder.indexOf(a.area || '');
         const bIndex = areaOrder.indexOf(b.area || '');
         if (aIndex !== bIndex) return aIndex - bIndex;

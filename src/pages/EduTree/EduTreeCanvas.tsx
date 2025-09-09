@@ -53,11 +53,14 @@ import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 
+import { TerminalNode } from './components/TerminalNode';
+
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
   skeleton: SkeletonNode,
   placeholderGroup: PlaceholderGroup,
+  terminal: TerminalNode,
 };
 
 const DEV = import.meta.env.DEV;
@@ -288,6 +291,25 @@ function EduTreeCanvasInner() {
       });
     }
 
+    // Calculate graduation eligibility
+    const totalCredits = 120; // Standard BS degree
+    const completedCredits = Array.from(completedCourseIds).length * 3; // Estimate
+    const coreComplete = sortedBlocks.filter(b => b.area === 'core').every(b => 
+      isBlockComplete(b, b.courses, completedCourseIds)
+    );
+    const mathComplete = sortedBlocks.filter(b => b.area === 'mathematics').every(b => 
+      isBlockComplete(b, b.courses, completedCourseIds)
+    );
+    const genedComplete = sortedBlocks.filter(b => b.area === 'general_education').every(b => 
+      isBlockComplete(b, b.courses, completedCourseIds)
+    );
+    const capstoneComplete = sortedBlocks.filter(b => b.area === 'capstone').every(b => 
+      isBlockComplete(b, b.courses, completedCourseIds)
+    );
+    
+    const graduationEligible = completedCredits >= totalCredits && 
+                              coreComplete && mathComplete && genedComplete && capstoneComplete;
+
     const nodes: Node[] = [
       // Block nodes
       ...sortedBlocks.map((block, index) => {
@@ -312,7 +334,9 @@ function EduTreeCanvasInner() {
             level_year: block.level_year,
             area: block.area,
             isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null
+            planningLens: isHighlighted ? selectedLens : null,
+            // Add estimated height for better first-paint layout
+            measuredHeight: 180 + (block.courses.length * 18) // Rough estimate
           }
         };
       }),
@@ -343,10 +367,53 @@ function EduTreeCanvasInner() {
             level_year: placeholder.level_year || 1,
             area: placeholder.area,
             isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null
+            planningLens: isHighlighted ? selectedLens : null,
+            measuredHeight: 220 // Estimated height for placeholders
           }
         };
-      }) : [])
+      }) : []),
+      
+      // Terminal graduation node
+      {
+        id: 'graduation-terminal',
+        type: 'terminal',
+        position: { x: 5 * 320, y: 100 }, // Rightmost position
+        data: {
+          title: 'B.S. Software Engineering',
+          isEligible: graduationEligible,
+          requirements: [
+            {
+              label: 'Total Credits ≥ 120',
+              met: completedCredits >= totalCredits,
+              details: `${completedCredits}/${totalCredits} credits completed`
+            },
+            {
+              label: 'Core Requirements Complete',
+              met: coreComplete,
+              details: 'All core computer science courses'
+            },
+            {
+              label: 'Mathematics Requirements',
+              met: mathComplete,
+              details: 'Calculus, Statistics, Discrete Math'
+            },
+            {
+              label: 'General Education Complete',
+              met: genedComplete,
+              details: 'Liberal arts and sciences courses'
+            },
+            {
+              label: 'Capstone Project',
+              met: capstoneComplete,
+              details: 'Senior capstone or project course'
+            }
+          ],
+          totalCredits,
+          completedCredits,
+          isHighlighted: highlightedPath?.nodes.has('graduation-terminal') || false,
+          planningLens: highlightedPath?.nodes.has('graduation-terminal') ? selectedLens : null
+        }
+      }
     ];
 
     if (DEV) {
@@ -357,8 +424,8 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create React Flow edges (only between blocks)
-    const edges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
+    // Create React Flow edges (blocks + terminal connections)
+    const blockEdges = gateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
@@ -371,19 +438,46 @@ function EduTreeCanvasInner() {
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
-          strokeWidth: isHighlighted ? 3 : 2,
-          opacity: isHighlighted ? 1 : 0.65
+          stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+          strokeWidth: isHighlighted ? 4 : 2,
+          opacity: isHighlighted ? 1 : 0.2 // Much stronger dimming for non-path edges
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+          color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
         }),
       } : null;
-    }).filter(Boolean) as Edge[] : [];
+    }).filter(Boolean) as Edge[];
+    
+    // Terminal edges (connect completion requirements to graduation)
+    const terminalEdges: Edge[] = [];
+    if (viewMode === 'flow') {
+      // Connect capstone to graduation
+      const capstoneBlocks = sortedBlocks.filter(b => b.area === 'capstone');
+      capstoneBlocks.forEach(block => {
+        terminalEdges.push({
+          id: `terminal-${block.id}`,
+          source: String(block.id),
+          target: 'graduation-terminal',
+          type: 'step',
+          style: {
+            stroke: 'hsl(var(--accent))',
+            strokeWidth: 2,
+            strokeDasharray: '5,5',
+            opacity: 0.7
+          },
+          markerEnd: {
+            type: MarkerType.Arrow,
+            color: 'hsl(var(--accent))',
+          }
+        });
+      });
+    }
+    
+    const edges: Edge[] = viewMode === 'flow' ? [...blockEdges, ...terminalEdges] : [];
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
@@ -440,21 +534,22 @@ function EduTreeCanvasInner() {
           }
         }
         
-        const layoutedNodes = await layoutWithElk(nodesToLayout, flowEdges);
+        const isFirstLayout = nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0);
+        const layoutedNodes = await layoutWithElk(nodesToLayout, flowEdges, isFirstLayout);
         if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
         
-        // Apply post-layout collision resolution if layoutV2 enabled
+        // Apply enhanced post-layout collision resolution if layoutV2 enabled
         const finalNodes = flags.eduTreeLayoutV2 ? 
-          resolveColumnCollisions(layoutedNodes) : layoutedNodes;
+          resolveColumnCollisions(layoutedNodes, flowEdges) : layoutedNodes;
           
         setNodes(finalNodes);
         
-        // Step 3: Delayed edge fade-in for layoutV2
+        // Step 3: Enhanced delayed edge fade-in for layoutV2 (longer delay for stability)
         if (flags.eduTreeLayoutV2) {
           setTimeout(() => {
             setEdges(flowEdges);
             setIsLayouting(false);
-          }, 250);
+          }, isFirstLayout ? 400 : 300); // Longer delay for first layout
         } else {
           setEdges(flowEdges);
         }
