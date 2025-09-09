@@ -66,15 +66,24 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
 export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
   if (mode !== 'board') return nodes;
 
+  // Updated area mapping to include new areas from enhanced seed data
   const yearColumns = [1, 2, 3, 4];
-  const areaRows = ['foundation', 'core', 'specialization', 'software_engineering', 'capstone'];
+  const areaRows = [
+    'foundation', 
+    'mathematics', 
+    'general_education', 
+    'core', 
+    'specialization', 
+    'software_engineering', 
+    'capstone'
+  ];
   
   const columnWidth = 320;
-  const rowHeight = 220;
+  const rowHeight = 200; // Reduced to fit more rows
   const padding = 20;
 
   return nodes.map(node => {
-    if (node.type !== 'blockGroup') return node; // Fix: check for 'blockGroup' not 'group'
+    if (node.type !== 'blockGroup') return node;
     
     const data: any = node.data;
     const yearIndex = Math.max(0, yearColumns.indexOf(data.level_year));
