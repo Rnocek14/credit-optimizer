@@ -71,8 +71,8 @@ export function getFeatureFlags(): FeatureFlags {
     // Skill Tree fallback - FLEXIBLE parameter names (skill_fallback, skill-fallback) with boolean coercion
     skillTreeForceTagsFallback: toBool(getFlagValue('skill_fallback', 'skill-fallback', 'true')),
     
-    // Education-first skill tree - controlled via query param ?eduTree=true
-    eduTree: toBool(getFlagValue('eduTree', 'edu-tree')),
+    // Education-first skill tree - enabled by default
+    eduTree: toBool(getFlagValue('eduTree', 'edu-tree', 'true')),
   };
   
   // Single consolidated debug log (only once per session)
