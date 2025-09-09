@@ -23,6 +23,7 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
   const [pathfindingResult, setPathfindingResult] = useState<PathfindingResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activePath, setActivePath] = useState<any>(null);
 
   // Load graph data
   useEffect(() => {
@@ -441,8 +442,6 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
     return s;
   }, []);
 
-  // Add state for activePath
-  const [activePath, setActivePath] = useState<any>(null);
 
   // Enhanced tier classification with consecutive-pair fallback (exported for use in Canvas)
   const tierOfEdge = useCallback((
