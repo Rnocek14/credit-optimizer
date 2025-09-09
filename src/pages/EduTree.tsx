@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { useFeatureFlags } from '@/lib/featureFlags';
 
 interface EduCourse {
   id: string;
@@ -92,6 +93,21 @@ const nodeTypes = {
 };
 
 export default function EduTree() {
+  const { eduTree } = useFeatureFlags();
+  
+  if (!eduTree) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md text-center p-6">
+          <h1 className="text-2xl font-bold mb-4">Education-First Skill Tree</h1>
+          <p className="text-muted-foreground mb-4">
+            This feature is currently disabled. Enable it by adding <code className="bg-muted px-2 py-1 rounded text-sm">?eduTree=true</code> to the URL.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [showSkills, setShowSkills] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
   const [showAltCredit, setShowAltCredit] = useState(true);

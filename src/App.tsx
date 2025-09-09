@@ -265,17 +265,15 @@ const App = () => {
               </ProtectedRoute>
             } 
           />
-          {/* Education-First Skill Tree (Feature Flagged) */}
-          {isFeatureEnabled('eduTree') && (
-            <Route 
-              path="/edu-tree" 
-              element={
-                <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                  <EduTree />
-                </ProtectedRoute>
-              } 
-            />
-          )}
+          {/* Education-First Skill Tree */}
+          <Route 
+            path="/edu-tree" 
+            element={
+              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
+                <EduTree />
+              </ProtectedRoute>
+            } 
+          />
           <Route 
             path="/compare" 
             element={
