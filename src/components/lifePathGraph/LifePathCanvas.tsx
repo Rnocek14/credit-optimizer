@@ -39,8 +39,20 @@ export default function LifePathCanvas({
   onNodeClick,
   selectedNode,
 }: LifePathCanvasProps) {
-  // React Flow instance (for fitView)
-  const rf = useReactFlow();
+  console.log('🎨 LifePathCanvas render:', {
+    hasGraph: !!graph,
+    nodeCount: graph?.nodes?.length || 0,
+    edgeCount: graph?.edges?.length || 0,
+    hasPathfindingResult: !!pathfindingResult
+  });
+
+  // React Flow instance (for fitView) - with error handling
+  let rf: any = null;
+  try {
+    rf = useReactFlow();
+  } catch (error) {
+    console.warn('⚠️ useReactFlow not available, fitView will be disabled:', error);
+  }
 
   // Keep tiering consistent with the app
   const { tierOfEdge, activePath: hookActivePath } = useLifePathGraph();
@@ -250,7 +262,12 @@ export default function LifePathCanvas({
         <div className="ml-auto flex items-center gap-2">
           <Badge variant={crossings ? 'destructive' : 'secondary'}>Crossings: {crossings}</Badge>
           <Badge variant={through ? 'destructive' : 'secondary'}>Through-nodes: {through}</Badge>
-          <Button size="sm" variant="outline" onClick={() => rf.fitView?.({ padding: 0.1, duration: 400 })}>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => rf?.fitView?.({ padding: 0.1, duration: 400 })}
+            disabled={!rf}
+          >
             Fit view
           </Button>
         </div>

@@ -29,14 +29,20 @@ export function useLifePathGraph(goalId?: string, scoringConfig?: ScoringConfig)
   useEffect(() => {
     const loadGraph = async () => {
       try {
+        console.log('📊 Loading Life Path Graph data...');
         setLoading(true);
         setError(null);
 
         // For Phase 1, use enhanced mock data
         const mockGraph = generateEnhancedMockGraph();
+        console.log('📊 Generated mock graph:', {
+          nodes: mockGraph.nodes.length,
+          edges: mockGraph.edges.length
+        });
         
         // Validate graph integrity
         validateGraphIntegrity(mockGraph.nodes, mockGraph.edges);
+        console.log('✅ Graph validation passed');
         
         setGraph(mockGraph);
 

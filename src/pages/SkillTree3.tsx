@@ -10,6 +10,8 @@ import PathfindingControls from '@/components/lifePathGraph/PathfindingControls'
 import { useLifePathGraph } from '@/hooks/useLifePathGraph';
 import { GraphNode, PathResult, ScoringConfig } from '@/types/lifePathGraph';
 import { Route, MapPin, Clock, DollarSign, BookOpen, Target, TestTube } from 'lucide-react';
+import { ErrorBoundaryWithDetails } from '@/components/ErrorBoundaryWithDetails';
+import { SimpleFallback } from '@/components/lifePathGraph/SimpleFallback';
 
 // Integration: New modules
 import { enhanceWithParetoFrontier } from '@/lib/pathfinding/pareto-frontier';
@@ -19,6 +21,8 @@ import { FloridaArticulationFilter } from '@/components/ui/florida-articulation-
 import { OKLCHColorDemo } from '@/components/OKLCHColorDemo';
 
 export default function SkillTree3() {
+  console.log('🚀 SkillTree3 component mounting');
+  
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [activeGoal, setActiveGoal] = useState<string>('credential-bachelor-cs');
   const [scoringConfig, setScoringConfig] = useState<ScoringConfig>({
@@ -49,6 +53,15 @@ export default function SkillTree3() {
     calculateCreditTransfer
   } = useLifePathGraph(activeGoal, scoringConfig);
 
+  console.log('🔍 SkillTree3 state:', {
+    hasGraph: !!graph,
+    nodeCount: graph?.nodes?.length || 0,
+    edgeCount: graph?.edges?.length || 0,
+    loading,
+    error,
+    activeGoal
+  });
+
   // Enhanced pathfinding result with Pareto frontier
   const enhancedResult = useMemo(() => {
     return pathfindingResult ? enhanceWithParetoFrontier(pathfindingResult) : null;
@@ -78,6 +91,35 @@ export default function SkillTree3() {
       (n.type && n.type.toLowerCase() === 'goal') ||
       (n.tags && n.tags.some(t => /goal|career/i.test(t)))
     )?.id ?? graph?.nodes?.[graph.nodes.length - 1]?.id;
+
+  // Show loading or error states
+  if (loading) {
+    console.log('📊 SkillTree3 showing loading state');
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading Life Path Graph...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error('❌ SkillTree3 error:', error);
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-2">⚠️</div>
+          <p className="text-foreground font-semibold mb-2">Error Loading Graph</p>
+          <p className="text-muted-foreground text-sm">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,67 +241,88 @@ export default function SkillTree3() {
               </TabsList>
 
               <TabsContent value="graph" className="mt-6">
-                <Card>
-                  <CardContent className="p-0">
-                    <ReactFlowProvider>
-                      <LifePathCanvas
-                        graph={graph}
-                        pathfindingResult={pathfindingResult}
-                        onNodeClick={handleNodeClick}
-                        selectedNode={selectedNode}
-                        findPaths={findPaths}
-                        activeGoal={activeGoal ?? defaultGoalId}
-                      />
-                    </ReactFlowProvider>
-                  </CardContent>
-                </Card>
+                <ErrorBoundaryWithDetails name="LifePathCanvas">
+                  <Card>
+                    <CardContent className="p-0">
+                      <ReactFlowProvider>
+                        <LifePathCanvas
+                          graph={graph}
+                          pathfindingResult={pathfindingResult}
+                          onNodeClick={handleNodeClick}
+                          selectedNode={selectedNode}
+                          findPaths={findPaths}
+                          activeGoal={activeGoal ?? defaultGoalId}
+                        />
+                      </ReactFlowProvider>
+                    </CardContent>
+                  </Card>
+                </ErrorBoundaryWithDetails>
               </TabsContent>
 
               <TabsContent value="comparison" className="mt-6">
-                {enhancedResult && (
-                  <PathComparison
-                    result={enhancedResult}
-                    graph={graph}
-                  />
-                )}
+                <ErrorBoundaryWithDetails 
+                  name="PathComparison"
+                  fallback={<SimpleFallback title="Path Comparison" description="Path comparison component failed to load." />}
+                >
+                  {enhancedResult ? (
+                    <PathComparison
+                      result={enhancedResult}
+                      graph={graph}
+                    />
+                  ) : (
+                    <SimpleFallback title="Path Comparison" description="Run pathfinding to see path comparison." />
+                  )}
+                </ErrorBoundaryWithDetails>
               </TabsContent>
 
               <TabsContent value="pareto" className="mt-6">
-                {paretoFrontier && paretoFrontier.length > 0 && (
-                  <ParetoFrontierPanel
-                    frontier={paretoFrontier}
-                    selectedPathId={selectedPathId}
-                    onSelectPath={(path) => setSelectedPathId(path.id)}
-                  />
-                )}
+                <ErrorBoundaryWithDetails 
+                  name="ParetoFrontierPanel"
+                  fallback={<SimpleFallback title="Trade-offs Analysis" description="Pareto frontier component failed to load." />}
+                >
+                  {paretoFrontier && paretoFrontier.length > 0 ? (
+                    <ParetoFrontierPanel
+                      frontier={paretoFrontier}
+                      selectedPathId={selectedPathId}
+                      onSelectPath={(path) => setSelectedPathId(path.id)}
+                    />
+                  ) : (
+                    <SimpleFallback title="Trade-offs Analysis" description="No Pareto frontier data available yet." />
+                  )}
+                </ErrorBoundaryWithDetails>
               </TabsContent>
 
               <TabsContent value="checkpoints" className="mt-6">
-                <CheckpointTimeline
-                  checkpoints={checkpoints}
-                  currentUserState={{
-                    userId: 'demo-user',
-                    completedNodeIds: [],
-                    inProgressNodeIds: [],
-                    preferences: {},
-                    existingCredits: [],
-                    currentPlan: null,
-                    checkpoints: checkpoints,
-                    lastUpdated: new Date().toISOString()
-                  }}
-                  onRestoreCheckpoint={(cp) => console.log('Restore checkpoint:', cp)}
-                  onCreateBranch={(cp) => console.log('Create branch:', cp)}
-                  onCreateCheckpoint={() => {
-                    const newCheckpoint = {
-                      id: Date.now().toString(),
-                      timestamp: new Date(),
-                      name: `Checkpoint ${checkpoints.length + 1}`,
-                      userState: { currentGoal: activeGoal, config: scoringConfig },
-                      changes: [`Goal: ${activeGoal}`, `Modified scoring config`],
-                    };
-                    setCheckpoints(prev => [...prev, newCheckpoint]);
-                  }}
-                />
+                <ErrorBoundaryWithDetails 
+                  name="CheckpointTimeline"
+                  fallback={<SimpleFallback title="Checkpoint Timeline" description="Timeline component failed to load." />}
+                >
+                  <CheckpointTimeline
+                    checkpoints={checkpoints}
+                    currentUserState={{
+                      userId: 'demo-user',
+                      completedNodeIds: [],
+                      inProgressNodeIds: [],
+                      preferences: {},
+                      existingCredits: [],
+                      currentPlan: null,
+                      checkpoints: checkpoints,
+                      lastUpdated: new Date().toISOString()
+                    }}
+                    onRestoreCheckpoint={(cp) => console.log('Restore checkpoint:', cp)}
+                    onCreateBranch={(cp) => console.log('Create branch:', cp)}
+                    onCreateCheckpoint={() => {
+                      const newCheckpoint = {
+                        id: Date.now().toString(),
+                        timestamp: new Date(),
+                        name: `Checkpoint ${checkpoints.length + 1}`,
+                        userState: { currentGoal: activeGoal, config: scoringConfig },
+                        changes: [`Goal: ${activeGoal}`, `Modified scoring config`],
+                      };
+                      setCheckpoints(prev => [...prev, newCheckpoint]);
+                    }}
+                  />
+                </ErrorBoundaryWithDetails>
               </TabsContent>
 
               <TabsContent value="analysis" className="mt-6">
