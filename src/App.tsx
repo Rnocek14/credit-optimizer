@@ -1,4 +1,5 @@
 
+import React from 'react';
 import './utils/triggerCourseSeeding';
 import { XPCelebrationOverlay } from '@/components/XPCelebrationOverlay';
 import { Toaster } from "@/components/ui/toaster";
@@ -128,6 +129,8 @@ import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
 import EduTree from "./pages/EduTree";
+import { EduTreeError } from "./components/EduTreeError";
+import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
 
 const queryClient = new QueryClient();
@@ -268,7 +271,16 @@ const App = () => {
           {/* Education-First Skill Tree */}
           <Route 
             path="/edu-tree" 
-            element={<EduTree />} 
+            element={
+              <EnhancedErrorBoundary 
+                fallback={<EduTreeError />}
+                onError={(error) => console.error('EduTree error:', error)}
+              >
+                <React.Suspense fallback={<PageLoader message="Loading education tree..." />}>
+                  <EduTree />
+                </React.Suspense>
+              </EnhancedErrorBoundary>
+            }
           />
           <Route 
             path="/compare" 
