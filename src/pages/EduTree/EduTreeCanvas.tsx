@@ -54,6 +54,9 @@ import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 
+import { LaneRails } from './components/LaneRails';
+import { useStaggeredEdges } from './hooks/useStaggeredEdges';
+
 import { TerminalNode } from './components/TerminalNode';
 
 // Node types for React Flow
@@ -78,6 +81,10 @@ function EduTreeCanvasInner() {
   const [showSkeletons, setShowSkeletons] = useState(false);
   const [isFirstLayout, setIsFirstLayout] = useState(true);
   const [edgesVisible, setEdgesVisible] = useState(false);
+  const [layoutTransitioning, setLayoutTransitioning] = useState(false);
+  
+  // Staggered edge reveal hook
+  const { revealEdgesInBatches, shouldShowEdge, reset: resetStaggeredEdges } = useStaggeredEdges();
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
@@ -511,6 +518,7 @@ function EduTreeCanvasInner() {
       // Step 1: Show skeletons first if layoutV2 enabled
       if (flags.eduTreeLayoutV2 && !isLayouting) {
         setIsLayouting(true);
+        setLayoutTransitioning(true);
         setShowSkeletons(true);
         
         // Short delay to render skeletons, then proceed with layout
@@ -547,14 +555,19 @@ function EduTreeCanvasInner() {
           
         setNodes(finalNodes);
         
-        // Step 3: Enhanced delayed edge fade-in for layoutV2 (longer delay for stability)
+        // Step 3: Staggered edge reveal for better visual experience
         if (flags.eduTreeLayoutV2) {
           setTimeout(() => {
-            setEdges(flowEdges);
-            setIsLayouting(false);
-          }, isFirstLayout ? 500 : 300); // Increased delay for better first-paint stability
+            resetStaggeredEdges();
+            revealEdgesInBatches(flowEdges, () => {
+              setEdges(flowEdges);
+              setIsLayouting(false);
+              setLayoutTransitioning(false);
+            });
+          }, isFirstLayout ? 500 : 300);
         } else {
           setEdges(flowEdges);
+          setLayoutTransitioning(false);
         }
         
         // Save positions for mode switching
@@ -571,6 +584,7 @@ function EduTreeCanvasInner() {
         setNodes(fallbackNodes);
         setEdges(flowEdges);
         setIsLayouting(false);
+        setLayoutTransitioning(false);
       }
     }
 
@@ -750,7 +764,14 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* React Flow Canvas */}
-      <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
+      <div 
+        className="flex-1 relative" 
+        style={{ 
+          height: 'calc(100vh - 140px)', 
+          minHeight: '400px',
+          pointerEvents: layoutTransitioning ? 'none' : 'auto' // Prevent interactions during layout
+        }}
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -764,6 +785,8 @@ function EduTreeCanvasInner() {
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
+          {/* Lane rails for visual guidance */}
+          <LaneRails visible={flags.eduTreeLanes && viewMode === 'flow'} />
           <Controls />
           <Background 
             variant={BackgroundVariant.Dots} 

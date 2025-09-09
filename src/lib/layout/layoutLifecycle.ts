@@ -23,6 +23,7 @@ export function resolveColumnCollisions(nodes: Node[], edges: Edge[] = []): Node
   const prerequisiteAnchoredNodes = anchorNodesUnderPrerequisites(nodes, edges);
   
   // Double-pass collision resolution for first-paint stability
+  let finalNodes = prerequisiteAnchoredNodes;
   for (let pass = 0; pass < 2; pass++) {
     // Process each column to remove overlaps
     columnGroups.forEach((nodesInColumn) => {
@@ -52,7 +53,7 @@ export function resolveColumnCollisions(nodes: Node[], edges: Edge[] = []): Node
     // Rebuild column groups for second pass if needed
     if (pass === 0) {
       columnGroups.clear();
-      prerequisiteAnchoredNodes.forEach(node => {
+      finalNodes.forEach(node => {
         const columnKey = Math.round(node.position.x / COL_W) * COL_W;
         if (!columnGroups.has(columnKey)) {
           columnGroups.set(columnKey, []);
@@ -62,7 +63,22 @@ export function resolveColumnCollisions(nodes: Node[], edges: Edge[] = []): Node
     }
   }
 
-  return prerequisiteAnchoredNodes;
+  // Third micro-pass safety check for first paint only
+  if (nodes.some(n => n.position.x === 0 && n.position.y === 0)) {
+    columnGroups.forEach((nodesInColumn) => {
+      for (let i = 1; i < nodesInColumn.length; i++) {
+        const prevNode = nodesInColumn[i - 1];
+        const currNode = nodesInColumn[i];
+        
+        const prevHeight = estimateNodeHeight(prevNode);
+        if (currNode.position.y < prevNode.position.y + prevHeight + 8) {
+          currNode.position.y = prevNode.position.y + prevHeight + 16;
+        }
+      }
+    });
+  }
+
+  return finalNodes;
 }
 
 /**

@@ -80,8 +80,13 @@ export function BlockGroup(props: NodeProps) {
         ${isHighlighted ? 'ring-4 ring-primary shadow-2xl ring-opacity-60' : ''} /* Enhanced glow */
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         ${!isHighlighted && planningLens ? 'opacity-15' : ''} /* Stronger dimming for non-path when lens active */
-        transition-all duration-300
+        transition-all duration-300 relative
       `}>
+        {!isUnlocked && (
+          <div className="lock-badge">
+            <Lock className="w-3 h-3 text-muted-foreground" />
+          </div>
+        )}
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
