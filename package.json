@@ -61,6 +61,7 @@
     "d3": "^7.9.0",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.1",
+    "elkjs": "^0.10.0",
     "embla-carousel-react": "^8.3.0",
     "glob": "^11.0.3",
     "html-to-image": "^1.11.13",

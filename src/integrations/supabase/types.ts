@@ -967,6 +967,68 @@ export type Database = {
         }
         Relationships: []
       }
+      block_gates: {
+        Row: {
+          block_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_gates_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: true
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      block_members: {
+        Row: {
+          block_id: string
+          course_id: string
+          created_at: string | null
+          id: string
+        }
+        Insert: {
+          block_id: string
+          course_id: string
+          created_at?: string | null
+          id?: string
+        }
+        Update: {
+          block_id?: string
+          course_id?: string
+          created_at?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_members_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "block_members_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_goals: {
         Row: {
           active: boolean | null
@@ -6594,6 +6656,42 @@ export type Database = {
         }
         Relationships: []
       }
+      prereq_to_block: {
+        Row: {
+          created_at: string | null
+          id: string
+          source_gate_id: string
+          target_block_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          source_gate_id: string
+          target_block_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          source_gate_id?: string
+          target_block_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prereq_to_block_source_gate_id_fkey"
+            columns: ["source_gate_id"]
+            isOneToOne: false
+            referencedRelation: "block_gates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prereq_to_block_target_block_id_fkey"
+            columns: ["target_block_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_reviewed_at: string | null
@@ -7042,6 +7140,42 @@ export type Database = {
           referral_code?: string | null
           signups?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      requirement_blocks: {
+        Row: {
+          area: string
+          created_at: string | null
+          credits_needed: number | null
+          id: string
+          k: number | null
+          level_year: number
+          rule_type: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          area: string
+          created_at?: string | null
+          credits_needed?: number | null
+          id?: string
+          k?: number | null
+          level_year: number
+          rule_type: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          area?: string
+          created_at?: string | null
+          credits_needed?: number | null
+          id?: string
+          k?: number | null
+          level_year?: number
+          rule_type?: string
+          title?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
