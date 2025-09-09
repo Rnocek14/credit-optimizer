@@ -53,18 +53,17 @@ import { SkeletonNode } from './components/SkeletonNode';
 import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
-
 import { LaneRails } from './components/LaneRails';
 import { useStaggeredEdges } from './hooks/useStaggeredEdges';
 import { useStaggeredEdgesV2 } from './hooks/useStaggeredEdgesV2';
-
+import { useLayoutTransition } from './hooks/useLayoutTransition';
 import { TerminalNode } from './components/TerminalNode';
 
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
   skeleton: SkeletonNode,
-  placeholderGroup: PlaceholderGroup,
+  placeholderGroup: React.lazy(() => import('./components/PlaceholderGroup').then(m => ({ default: m.PlaceholderGroup }))),
   terminal: TerminalNode,
 };
 
@@ -82,7 +81,9 @@ function EduTreeCanvasInner() {
   const [showSkeletons, setShowSkeletons] = useState(false);
   const [isFirstLayout, setIsFirstLayout] = useState(true);
   const [edgesVisible, setEdgesVisible] = useState(false);
-  const [layoutTransitioning, setLayoutTransitioning] = useState(false);
+  
+  // Bulletproof layout transition management
+  const layoutTransition = useLayoutTransition();
   
   // Staggered edge reveal hooks
   const legacyEdgeReveal = useStaggeredEdges();
@@ -499,28 +500,99 @@ function EduTreeCanvasInner() {
       const nodeIds = new Set(nodes.map(n => n.id));
       const dangling = edges.filter(e => !nodeIds.has(e.source) || !nodeIds.has(e.target));
       if (dangling.length) {
-        console.warn('[EduTree] Dangling edges detected:', dangling.map(e => e.id));
+        console.warn('[EduTree] Dangling edges detected:', dangling.map(e => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceExists: nodeIds.has(e.source),
+          targetExists: nodeIds.has(e.target)
+        })));
+      }
+      
+      // Verify node types are registered
+      const unregisteredTypes = new Set(nodes.map(n => n.type).filter(type => !nodeTypes[type as keyof typeof nodeTypes]));
+      if (unregisteredTypes.size > 0) {
+        console.error('[EduTree] Unregistered node types:', Array.from(unregisteredTypes));
+      }
+      
+      if (viewMode !== 'flow' && edges.length > 0) {
+        console.warn('[EduTree] Edges hidden because viewMode=', viewMode);
       }
     }
 
     return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
+  }, [
+    blocks, courses, blockMembers, gates, gateEdges, placeholders, placeholderMembers,
+    completedCourseIds, highlightedPath, selectedLens, viewMode, edgesVisible, flags
+  ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // DEV logging for data debugging
-  useEffect(() => {
-    if (DEV) {
-      console.log('[EduTree] data-counts', {
-        blocks: blocks.length,
-        courses: courses.length,
-        blockMembers: blockMembers.length,
-        gates: gates.length,
-        gateEdges: gateEdges.length,
-      });
+  // Perform flow layout with ELK and collision resolution
+  const performFlowLayout = useCallback(async () => {
+    if (flowNodes.length === 0) return;
+
+    try {
+      // Step 2: Apply ELK layout
+      const layoutedNodes = await layoutWithElk(flowNodes, flowEdges);
+      
+      if (DEV) console.log('[EduTree] layouted nodes count:', layoutedNodes.length);
+      
+      // Apply enhanced post-layout collision resolution if layoutV2 enabled
+      const finalNodes = flags.eduTreeLayoutV2 ? 
+        resolveColumnCollisions(layoutedNodes, flowEdges) : layoutedNodes;
+        
+      setNodes(finalNodes);
+      
+      // Step 3: Staggered edge reveal for better visual experience
+      if (flags.eduTreeLayoutV2) {
+        setTimeout(() => {
+          try {
+            edgeReveal.reset();
+            
+            // Handle different API signatures between v1 and v2
+            if (flags.eduTreeStaggeredEdgesV2) {
+              console.log('[EduTree] Using V2 staggered edges with', flowEdges.length, 'edges and', finalNodes.length, 'nodes');
+              // V2 API: needs nodes parameter
+              (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
+                setEdges(flowEdges);
+                setEdgesVisible(true);
+                setIsLayouting(false);
+                layoutTransition.endTransition();
+              });
+            } else {
+              console.log('[EduTree] Using legacy staggered edges with', flowEdges.length, 'edges');
+              // Legacy API: no nodes parameter
+              (edgeReveal as any).revealEdgesInBatches(flowEdges, () => {
+                setEdges(flowEdges);
+                setEdgesVisible(true);
+                setIsLayouting(false);
+                layoutTransition.endTransition();
+              });
+            }
+          } catch (error) {
+            console.error('[EduTree] Edge reveal error, showing all edges immediately:', error);
+            setEdges(flowEdges);
+            setEdgesVisible(true);
+            setIsLayouting(false);
+            layoutTransition.endTransition();
+          }
+        }, isFirstLayout ? 500 : 300);
+      } else {
+        setEdges(flowEdges);
+        setEdgesVisible(true);
+        layoutTransition.endTransition();
+      }
+      
+      setIsFirstLayout(false);
+      
+    } catch (error) {
+      console.error('[EduTree] Layout error:', error);
+      setIsLayouting(false);
+      layoutTransition.endTransition();
     }
-  }, [blocks, courses, blockMembers, gates, gateEdges]);
+  }, [flowNodes, flowEdges, flags, setNodes, setEdges, edgeReveal, isFirstLayout, layoutTransition]);
 
   // Apply layout when data changes with skeleton → measure → layout → delayed edges pipeline
   useEffect(() => {
@@ -531,9 +603,9 @@ function EduTreeCanvasInner() {
     if (viewMode === 'flow') {
       // Step 1: Show skeletons first if layoutV2 enabled
       if (flags.eduTreeLayoutV2 && !isLayouting) {
-          setIsLayouting(true);
-          setEdgesVisible(false); // Hide edges during layout
-        setLayoutTransitioning(true);
+        setIsLayouting(true);
+        setEdgesVisible(false); // Hide edges during layout
+        layoutTransition.startTransition();
         setShowSkeletons(true);
         
         // Short delay to render skeletons, then proceed with layout
@@ -544,94 +616,16 @@ function EduTreeCanvasInner() {
       } else {
         performFlowLayout();
       }
-    } else {
-      performBoardLayout();
-    }
-
-    async function performFlowLayout() {
-      try {
-        // Try to restore previous positions first
-        let nodesToLayout = flowNodes;
-        if (flags.eduTreeLanes) {
-          nodesToLayout = layoutMemoryRef.current.restorePositions(flowNodes, 'flow');
-          if (nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0)) {
-            // No saved positions, use scaffolding
-            nodesToLayout = snapToLanes(flowNodes, DEFAULT_LANE_SCAFFOLD);
-          }
-        }
+    } else if (viewMode === 'board') {
+      // Board mode: arrange nodes in a grid
+      const gridNodes = layoutAsGrid(flowNodes);
+      
+      // Apply lane snapping if lanes enabled
+      const finalNodes = flags.eduTreeLanes ? 
+        snapToLanes(gridNodes, layoutMemoryRef.current, DEFAULT_LANE_SCAFFOLD) : 
+        gridNodes;
         
-        const isFirstLayout = nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0);
-        const layoutedNodes = await layoutWithElk(nodesToLayout, flowEdges, isFirstLayout);
-        if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
-        
-        // Apply enhanced post-layout collision resolution if layoutV2 enabled
-        const finalNodes = flags.eduTreeLayoutV2 ? 
-          resolveColumnCollisions(layoutedNodes, flowEdges) : layoutedNodes;
-          
-        setNodes(finalNodes);
-        
-        // Step 3: Staggered edge reveal for better visual experience
-        if (flags.eduTreeLayoutV2) {
-          setTimeout(() => {
-            try {
-              edgeReveal.reset();
-              
-              // Handle different API signatures between v1 and v2
-              if (flags.eduTreeStaggeredEdgesV2) {
-                console.log('[EduTree] Using V2 staggered edges with', flowEdges.length, 'edges and', finalNodes.length, 'nodes');
-                // V2 API: needs nodes parameter
-                (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
-                  setEdges(flowEdges);
-                  setEdgesVisible(true);
-                  setIsLayouting(false);
-                  setLayoutTransitioning(false);
-                });
-              } else {
-                console.log('[EduTree] Using legacy staggered edges with', flowEdges.length, 'edges');
-                // Legacy API: no nodes parameter
-                (edgeReveal as any).revealEdgesInBatches(flowEdges, () => {
-                  setEdges(flowEdges);
-                  setEdgesVisible(true);
-                  setIsLayouting(false);
-                  setLayoutTransitioning(false);
-                });
-              }
-            } catch (error) {
-              console.error('[EduTree] Edge reveal error, showing all edges immediately:', error);
-              setEdges(flowEdges);
-              setEdgesVisible(true);
-              setIsLayouting(false);
-              setLayoutTransitioning(false);
-            }
-          }, isFirstLayout ? 500 : 300);
-        } else {
-          setEdges(flowEdges);
-          setEdgesVisible(true);
-          setLayoutTransitioning(false);
-        }
-        
-        // Save positions for mode switching
-        if (flags.eduTreeLanes) {
-          layoutMemoryRef.current.savePositions(finalNodes, 'flow');
-        }
-      } catch (error) {
-        console.error('[EduTree] ELK failed, fallback', error);
-        // Fallback to simple grid if ELK fails
-        const fallbackNodes = flowNodes.map((node, index) => ({
-          ...node,
-          position: { x: (index % 3) * 320, y: Math.floor(index / 3) * 220 }
-        }));
-        setNodes(fallbackNodes);
-        setEdges(flowEdges);
-        setIsLayouting(false);
-        setLayoutTransitioning(false);
-      }
-    }
-
-    function performBoardLayout() {
-      const gridNodes = layoutAsGrid(flowNodes, 'board');
-      if (DEV) console.log('[EduTree] grid done', gridNodes.length);
-      setNodes(gridNodes);
+      setNodes(finalNodes);
       setEdges([]); // No edges in board mode
       
       // Save board positions
@@ -678,13 +672,15 @@ function EduTreeCanvasInner() {
     };
   }, [courses, completedCourseIds]);
 
-  // Cleanup edge reveal on unmount
+  // Cleanup edge reveal on unmount and transition safety
   useEffect(() => {
     return () => {
       edgeReveal.reset();
-      setLayoutTransitioning(false);
+      layoutTransition.forceEnd();
     };
-  }, [edgeReveal]);
+  }, [edgeReveal, layoutTransition]);
+
+  // Listen for node resize events and trigger debounced re-layout
   useEffect(() => {
     if (!flags.eduTreeLayoutV2) return;
     
@@ -693,7 +689,7 @@ function EduTreeCanvasInner() {
         layoutManagerRef.current = new LayoutManager(() => {
           if (viewMode === 'flow' && flowNodes.length > 0) {
             layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
-              const finalNodes = resolveColumnCollisions(layoutedNodes);
+              const finalNodes = resolveColumnCollisions(layoutedNodes, flowEdges);
               setNodes(finalNodes);
             });
           }
@@ -710,11 +706,23 @@ function EduTreeCanvasInner() {
     };
   }, [flags.eduTreeLayoutV2, viewMode, flowNodes, flowEdges, setNodes]);
 
-  // Handle fitView through ReactFlow's onInit callback
+  // Handle fitView through ReactFlow's onInit callback with terminal focus
   const onInit = useCallback((reactFlowInstance: any) => {
     if (nodes.length > 0) {
       setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.3, duration: 300 }); // Increased padding for terminal visibility
+        // Ensure terminal node is always visible with extra padding
+        const terminalNode = nodes.find(n => n.id === 'graduation-terminal');
+        if (terminalNode) {
+          reactFlowInstance.fitView({ 
+            padding: 0.3, 
+            duration: 300,
+            includeHiddenNodes: true,
+            minZoom: 0.1,
+            maxZoom: 1.5
+          });
+        } else {
+          reactFlowInstance.fitView({ padding: 0.3, duration: 300 });
+        }
       }, 0);
     }
   }, [nodes]);
@@ -827,20 +835,33 @@ function EduTreeCanvasInner() {
           </div>
 
           <div className="flex gap-2">
+            {/* Focus Terminal Button */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                // Simple focus terminal - find and scroll to terminal node
+                const terminalElement = document.querySelector('[data-id="graduation-terminal"]');
+                if (terminalElement) {
+                  terminalElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+            >
+              🎯 Focus Terminal
+            </Button>
             <SeedDataButton />
             <Button variant="outline" size="sm">Export Plan</Button>
-            <Button variant="outline" size="sm">Share</Button>
           </div>
         </div>
       </div>
 
-      {/* React Flow Canvas */}
+      {/* React Flow Canvas with improved error boundaries */}
       <div 
         className="flex-1 relative" 
         style={{ 
           height: 'calc(100vh - 140px)', 
           minHeight: '400px',
-          pointerEvents: layoutTransitioning ? 'none' : 'auto' // Prevent interactions during layout
+          pointerEvents: layoutTransition.isTransitioning ? 'none' : 'auto'
         }}
       >
         <ReactFlow
@@ -851,22 +872,34 @@ function EduTreeCanvasInner() {
           nodeTypes={nodeTypes}
           onInit={onInit}
           fitView
-          fitViewOptions={{ padding: 0.2, duration: 300 }}
-          minZoom={0.3}
-          maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          fitViewOptions={{ padding: 0.3 }}
+          attributionPosition="bottom-left"
+          proOptions={{ hideAttribution: true }}
+          nodesDraggable={!layoutTransition.isTransitioning && !isDragging}
+          nodesConnectable={false}
+          elementsSelectable={!layoutTransition.isTransitioning}
+          panOnDrag={!layoutTransition.isTransitioning}
+          zoomOnScroll={!layoutTransition.isTransitioning}
+          preventScrolling={layoutTransition.isTransitioning}
+          className="bg-background"
+          onError={(id, message) => {
+            console.error('[ReactFlow] Error:', { id, message });
+            // Attempt recovery by showing all edges
+            if (!edgesVisible) {
+              console.log('[ReactFlow] Attempting edge recovery...');
+              setEdgesVisible(true);
+              layoutTransition.endTransition();
+            }
+          }}
         >
+          <Background variant={BackgroundVariant.Dots} />
+          <Controls position="top-right" />
+          <EduTreeMiniMap />
+          
           {/* Lane rails for visual guidance */}
-          <LaneRails visible={flags.eduTreeLanes && viewMode === 'flow'} />
-          <Controls />
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={20} 
-            size={1}
-            color="hsl(var(--muted-foreground))"
-          />
-          {/* Mini-map for large tree navigation */}
-          {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
+          {viewMode === 'flow' && flags.eduTreeLanes && (
+            <LaneRails visible={true} />
+          )}
         </ReactFlow>
       </div>
 
@@ -900,3 +933,5 @@ export function EduTreeCanvas() {
     </ReactFlowProvider>
   );
 }
+
+export default EduTreeCanvas;
