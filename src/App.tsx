@@ -268,11 +268,7 @@ const App = () => {
           {/* Education-First Skill Tree */}
           <Route 
             path="/edu-tree" 
-            element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <EduTree />
-              </ProtectedRoute>
-            } 
+            element={<EduTree />} 
           />
           <Route 
             path="/compare" 
