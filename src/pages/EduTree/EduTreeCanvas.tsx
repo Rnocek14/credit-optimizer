@@ -557,15 +557,24 @@ function EduTreeCanvasInner() {
              if (viewMode === 'flow' && edges.length > 0) {
                console.log(`[EduTree] Revealing edges: ${flags.eduTreeStaggeredEdgesV2 ? 'V2' : 'Legacy'} system with ${flowEdges.length} edges`);
                
-               // Handle different API signatures between v1 and v2
-               if (flags.eduTreeStaggeredEdgesV2) {
-                 // V2 API: Let V2 system handle edge filtering directly
-                 const batches = (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
-                   setIsLayouting(false);
-                   layoutTransition.endTransition();
-                 });
-                 console.log('[EduTree] V2: Batched edges into', batches?.length || 0, 'columns');
-               } else {
+                // Handle different API signatures between v1 and v2
+                if (flags.eduTreeStaggeredEdgesV2) {
+                  // V2 API: Let V2 system handle edge filtering directly with correct post-layout positions
+                  console.log('[EduTree] V2: Starting edge reveal with nodes:', finalNodes.length, 'edges:', flowEdges.length);
+                  const batches = (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
+                    console.log('[EduTree] V2: Edge reveal complete');
+                    setIsLayouting(false);
+                    layoutTransition.endTransition();
+                  });
+                  console.log('[EduTree] V2: Batched edges into', batches?.length || 0, 'columns');
+                  
+                  // Debug: Log node positions for first few nodes
+                  if (DEV && finalNodes.length > 0) {
+                    console.log('[EduTree] V2: Node positions sample:', finalNodes.slice(0, 3).map(n => ({
+                      id: n.id, x: n.position.x, y: n.position.y 
+                    })));
+                  }
+                } else {
                  // Legacy API: use edgesVisible gate with proper callback
                  (edgeReveal as any).revealEdgesInBatches(flowEdges, () => {
                    console.log('[EduTree] Legacy: Revealing', flowEdges.length, 'edges');
@@ -576,26 +585,36 @@ function EduTreeCanvasInner() {
                  });
                }
                
-               // Emergency fallback: if edges aren't visible after 2 seconds, show them all
-               setTimeout(() => {
-                 if (flags.eduTreeStaggeredEdgesV2) {
-                   // V2 system should be filtering edges by now
-                   const hasVisibleEdges = edges.some(edge => (edgeReveal as any).shouldShowEdge?.(edge, finalNodes) ?? true);
-                   if (!hasVisibleEdges && edges.length > 0) {
-                     console.warn('[EduTree] Emergency: V2 system failed, forcing edge visibility');
-                     // Force reset and show all edges
-                     (edgeReveal as any).reset?.();
-                   }
-                 } else {
-                   // Legacy system should have set edgesVisible by now
-                   if (!edgesVisible && edges.length > 0) {
-                     console.warn('[EduTree] Emergency: Legacy system failed, forcing edge visibility');
-                     setEdgesVisible(true);
-                     setIsLayouting(false);
-                     layoutTransition.endTransition();
-                   }
-                 }
-               }, 2000);
+                // Emergency fallback: if edges aren't visible after 2 seconds, show them all
+                setTimeout(() => {
+                  if (flags.eduTreeStaggeredEdgesV2) {
+                    // V2 system should be filtering edges by now - check with current React Flow nodes
+                    const currentNodes = nodes; // Use React Flow state
+                    const hasVisibleEdges = edges.some(edge => (edgeReveal as any).shouldShowEdge?.(edge, currentNodes) ?? true);
+                    console.log('[EduTree] Emergency check:', {
+                      totalEdges: edges.length,
+                      hasVisibleEdges,
+                      nodeCount: currentNodes.length,
+                      sampleNodePositions: currentNodes.slice(0, 2).map(n => ({ id: n.id, x: n.position.x }))
+                    });
+                    
+                    if (!hasVisibleEdges && edges.length > 0) {
+                      console.warn('[EduTree] EMERGENCY: V2 system failed completely, forcing all edges visible');
+                      // Force reset V2 system and bypass filtering
+                      (edgeReveal as any).reset?.();
+                      // Force trigger a re-render to bypass filtering
+                      setNodes([...nodes]);
+                    }
+                  } else {
+                    // Legacy system should have set edgesVisible by now
+                    if (!edgesVisible && edges.length > 0) {
+                      console.warn('[EduTree] Emergency: Legacy system failed, forcing edge visibility');
+                      setEdgesVisible(true);
+                      setIsLayouting(false);
+                      layoutTransition.endTransition();
+                    }
+                  }
+                }, 2000);
              } else {
                // No edges to reveal or not in flow mode
                setIsLayouting(false);
@@ -772,10 +791,32 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Filter edges for V2 staggered system
+  // Filter edges for V2 staggered system - CRITICAL FIX: Use React Flow nodes state, not initial nodes
   const visibleEdges = useMemo(() => {
     if (flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow') {
-      return edges.filter(edge => (edgeReveal as any).shouldShowEdge?.(edge, nodes) ?? true);
+      // FIXED: Use React Flow nodes state (with correct post-layout positions)
+      const filteredEdges = edges.filter(edge => {
+        const shouldShow = (edgeReveal as any).shouldShowEdge?.(edge, nodes) ?? true;
+        return shouldShow;
+      });
+      
+      // Debug logging for edge filtering
+      if (DEV && edges.length !== filteredEdges.length) {
+        console.log('[EduTree] V2 Edge filtering:', {
+          total: edges.length,
+          visible: filteredEdges.length,
+          hidden: edges.length - filteredEdges.length,
+          nodePositions: nodes.slice(0, 3).map(n => ({ id: n.id, x: n.position.x, y: n.position.y }))
+        });
+      }
+      
+      // Emergency safeguard: if all edges are filtered out but we have edges, something is wrong
+      if (filteredEdges.length === 0 && edges.length > 0) {
+        console.warn('[EduTree] SAFEGUARD: All edges filtered out, bypassing V2 filtering');
+        return edges; // Show all edges as fallback
+      }
+      
+      return filteredEdges;
     }
     return edges;
   }, [edges, nodes, flags.eduTreeStaggeredEdgesV2, viewMode, edgeReveal]);
