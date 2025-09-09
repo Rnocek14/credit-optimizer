@@ -56,6 +56,7 @@ import { LensSelector } from './components/LensSelector';
 
 import { LaneRails } from './components/LaneRails';
 import { useStaggeredEdges } from './hooks/useStaggeredEdges';
+import { useStaggeredEdgesV2 } from './hooks/useStaggeredEdgesV2';
 
 import { TerminalNode } from './components/TerminalNode';
 
@@ -83,8 +84,12 @@ function EduTreeCanvasInner() {
   const [edgesVisible, setEdgesVisible] = useState(false);
   const [layoutTransitioning, setLayoutTransitioning] = useState(false);
   
-  // Staggered edge reveal hook
-  const { revealEdgesInBatches, shouldShowEdge, reset: resetStaggeredEdges } = useStaggeredEdges();
+  // Staggered edge reveal hooks
+  const legacyEdgeReveal = useStaggeredEdges();
+  const v2EdgeReveal = useStaggeredEdgesV2();
+  
+  // Choose which edge reveal system to use
+  const edgeReveal = flags.eduTreeStaggeredEdgesV2 ? v2EdgeReveal : legacyEdgeReveal;
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
@@ -489,6 +494,15 @@ function EduTreeCanvasInner() {
     
     const edges: Edge[] = viewMode === 'flow' && edgesVisible ? [...blockEdges, ...terminalEdges] : [];
 
+    // Add diagnostic logging for development
+    if (DEV && edges.length > 0) {
+      const nodeIds = new Set(nodes.map(n => n.id));
+      const dangling = edges.filter(e => !nodeIds.has(e.source) || !nodeIds.has(e.target));
+      if (dangling.length) {
+        console.warn('[EduTree] Dangling edges detected:', dangling.map(e => e.id));
+      }
+    }
+
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
 
@@ -517,7 +531,8 @@ function EduTreeCanvasInner() {
     if (viewMode === 'flow') {
       // Step 1: Show skeletons first if layoutV2 enabled
       if (flags.eduTreeLayoutV2 && !isLayouting) {
-        setIsLayouting(true);
+          setIsLayouting(true);
+          setEdgesVisible(false); // Hide edges during layout
         setLayoutTransitioning(true);
         setShowSkeletons(true);
         
@@ -558,15 +573,40 @@ function EduTreeCanvasInner() {
         // Step 3: Staggered edge reveal for better visual experience
         if (flags.eduTreeLayoutV2) {
           setTimeout(() => {
-            resetStaggeredEdges();
-            revealEdgesInBatches(flowEdges, () => {
+            try {
+              edgeReveal.reset();
+              
+              // Handle different API signatures between v1 and v2
+              if (flags.eduTreeStaggeredEdgesV2) {
+                console.log('[EduTree] Using V2 staggered edges with', flowEdges.length, 'edges and', finalNodes.length, 'nodes');
+                // V2 API: needs nodes parameter
+                (edgeReveal as any).revealEdgesInBatches(flowEdges, finalNodes, () => {
+                  setEdges(flowEdges);
+                  setEdgesVisible(true);
+                  setIsLayouting(false);
+                  setLayoutTransitioning(false);
+                });
+              } else {
+                console.log('[EduTree] Using legacy staggered edges with', flowEdges.length, 'edges');
+                // Legacy API: no nodes parameter
+                (edgeReveal as any).revealEdgesInBatches(flowEdges, () => {
+                  setEdges(flowEdges);
+                  setEdgesVisible(true);
+                  setIsLayouting(false);
+                  setLayoutTransitioning(false);
+                });
+              }
+            } catch (error) {
+              console.error('[EduTree] Edge reveal error, showing all edges immediately:', error);
               setEdges(flowEdges);
+              setEdgesVisible(true);
               setIsLayouting(false);
               setLayoutTransitioning(false);
-            });
+            }
           }, isFirstLayout ? 500 : 300);
         } else {
           setEdges(flowEdges);
+          setEdgesVisible(true);
           setLayoutTransitioning(false);
         }
         
@@ -638,7 +678,13 @@ function EduTreeCanvasInner() {
     };
   }, [courses, completedCourseIds]);
 
-  // Listen for node resize events and trigger debounced re-layout
+  // Cleanup edge reveal on unmount
+  useEffect(() => {
+    return () => {
+      edgeReveal.reset();
+      setLayoutTransitioning(false);
+    };
+  }, [edgeReveal]);
   useEffect(() => {
     if (!flags.eduTreeLayoutV2) return;
     
@@ -742,9 +788,34 @@ function EduTreeCanvasInner() {
               </Label>
             </div>
             
+            {/* V2 Staggered Edges Toggle */}
+            {DEV && (
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="staggered-edges-v2" 
+                  checked={flags.eduTreeStaggeredEdgesV2}
+                  onCheckedChange={(checked) => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('eduTreeStaggeredEdgesV2', String(checked));
+                    window.location.href = url.toString();
+                  }}
+                />
+                <Label htmlFor="staggered-edges-v2" className="text-sm">
+                  Staggered Edges V2
+                </Label>
+              </div>
+            )}
+            
             <Badge variant="outline" className="text-xs">
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
+            
+            {/* Edge reveal status indicator */}
+            {DEV && flags.eduTreeStaggeredEdgesV2 && (
+              <Badge variant="secondary" className="text-xs">
+                V2 Edges
+              </Badge>
+            )}
             
             {/* Lens Selector */}
             {flags.eduTreeOutcomes && (

@@ -22,6 +22,7 @@ interface FeatureFlags {
   eduTreeLanes: boolean;       // Lane positioning system
   eduTreeOutcomes: boolean;    // Outcomes panel + intelligent lenses
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
+  eduTreeStaggeredEdgesV2: boolean; // Position-based edge batching with fallbacks
 }
 
 /**
@@ -87,6 +88,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'false')), 
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'false')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
+    eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'false')),
   };
   
   // Single consolidated debug log (only once per session)
