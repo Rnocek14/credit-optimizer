@@ -3285,6 +3285,225 @@ export type Database = {
         }
         Relationships: []
       }
+      edu_courses: {
+        Row: {
+          area: string | null
+          code: string
+          created_at: string
+          credits: number
+          description: string | null
+          id: string
+          is_capstone: boolean
+          is_core: boolean
+          learning_outcomes: string[] | null
+          level_year: number
+          term: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          code: string
+          created_at?: string
+          credits?: number
+          description?: string | null
+          id?: string
+          is_capstone?: boolean
+          is_core?: boolean
+          learning_outcomes?: string[] | null
+          level_year?: number
+          term?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          code?: string
+          created_at?: string
+          credits?: number
+          description?: string | null
+          id?: string
+          is_capstone?: boolean
+          is_core?: boolean
+          learning_outcomes?: string[] | null
+          level_year?: number
+          term?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      edu_equivalencies: {
+        Row: {
+          cost_estimate: number | null
+          course_id: string | null
+          created_at: string
+          credits: number
+          external_ref: string
+          id: string
+          notes: string | null
+          provider: string
+          requirement_id: string | null
+          source: string
+          time_estimate_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          cost_estimate?: number | null
+          course_id?: string | null
+          created_at?: string
+          credits?: number
+          external_ref: string
+          id?: string
+          notes?: string | null
+          provider: string
+          requirement_id?: string | null
+          source: string
+          time_estimate_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cost_estimate?: number | null
+          course_id?: string | null
+          created_at?: string
+          credits?: number
+          external_ref?: string
+          id?: string
+          notes?: string | null
+          provider?: string
+          requirement_id?: string | null
+          source?: string
+          time_estimate_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edu_equivalencies_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edu_equivalencies_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "edu_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edu_prereqs: {
+        Row: {
+          child_course_id: string
+          created_at: string
+          id: string
+          parent_course_id: string
+          prereq_type: string
+        }
+        Insert: {
+          child_course_id: string
+          created_at?: string
+          id?: string
+          parent_course_id: string
+          prereq_type?: string
+        }
+        Update: {
+          child_course_id?: string
+          created_at?: string
+          id?: string
+          parent_course_id?: string
+          prereq_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edu_prereqs_child_course_id_fkey"
+            columns: ["child_course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edu_prereqs_parent_course_id_fkey"
+            columns: ["parent_course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edu_requirement_options: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          requirement_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          requirement_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edu_requirement_options_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edu_requirement_options_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "edu_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edu_requirements: {
+        Row: {
+          created_at: string
+          credits_required: number
+          description: string | null
+          id: string
+          kind: string
+          level_year: number | null
+          program_area: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits_required?: number
+          description?: string | null
+          id?: string
+          kind: string
+          level_year?: number | null
+          program_area?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits_required?: number
+          description?: string | null
+          id?: string
+          kind?: string
+          level_year?: number | null
+          program_area?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       educator_profiles: {
         Row: {
           average_cri_score: number | null
@@ -5728,6 +5947,42 @@ export type Database = {
           timezone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      partner_policies: {
+        Row: {
+          created_at: string
+          id: string
+          max_alt_credits: number
+          min_residency_credits: number
+          notes: string | null
+          partner_code: string
+          partner_name: string
+          updated_at: string
+          upper_division_min: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_alt_credits?: number
+          min_residency_credits?: number
+          notes?: string | null
+          partner_code: string
+          partner_name: string
+          updated_at?: string
+          upper_division_min?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_alt_credits?: number
+          min_residency_credits?: number
+          notes?: string | null
+          partner_code?: string
+          partner_name?: string
+          updated_at?: string
+          upper_division_min?: number
         }
         Relationships: []
       }
@@ -8422,6 +8677,73 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_academic_progress: {
+        Row: {
+          completed_at: string | null
+          course_id: string | null
+          created_at: string
+          earned_credits: number | null
+          equivalency_id: string | null
+          evidence_url: string | null
+          id: string
+          requirement_id: string | null
+          source: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          earned_credits?: number | null
+          equivalency_id?: string | null
+          evidence_url?: string | null
+          id?: string
+          requirement_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          earned_credits?: number | null
+          equivalency_id?: string | null
+          evidence_url?: string | null
+          id?: string
+          requirement_id?: string | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_academic_progress_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "edu_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_academic_progress_equivalency_id_fkey"
+            columns: ["equivalency_id"]
+            isOneToOne: false
+            referencedRelation: "edu_equivalencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_academic_progress_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "edu_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_achievements: {
         Row: {
