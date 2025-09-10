@@ -15,7 +15,7 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
   const { 
     loading, 
     errors, 
-    criticalDataLoaded, 
+    isCriticalDataReady, 
     allDataLoaded,
     queries
   } = useEduTreeQueries();
@@ -76,7 +76,7 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
   }
 
   // Show loading state while critical data is loading
-  if (!criticalDataLoaded) {
+  if (!isCriticalDataReady) {
     if (showDetailedProgress) {
       return (
         <div className="min-h-[600px] flex items-center justify-center p-4">
@@ -139,7 +139,7 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
   }
 
   // Show partial content with remaining loading states
-  if (!allDataLoaded && criticalDataLoaded) {
+  if (!allDataLoaded && isCriticalDataReady) {
     return (
       <div className="relative">
         <div className="absolute top-4 right-4 z-10">
