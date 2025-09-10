@@ -28,22 +28,53 @@ export const DEFAULT_LANE_SCAFFOLD: LaneScaffold = {
 };
 
 /**
- * Apply lane scaffolding intelligently - only adjust X positions, preserve ELK's Y layout
+ * Apply lane scaffolding intelligently with collision awareness
  */
 export function applyLaneScaffolding(nodes: Node[], scaffold: LaneScaffold = DEFAULT_LANE_SCAFFOLD): Node[] {
+  // Group nodes by year for lane distribution
+  const nodesByYear = new Map<number, Node[]>();
+  
+  nodes.forEach(node => {
+    const data = node.data as any;
+    const year = data.level_year ?? 1;
+    
+    if (!nodesByYear.has(year)) {
+      nodesByYear.set(year, []);
+    }
+    nodesByYear.get(year)!.push(node);
+  });
+  
   return nodes.map(node => {
     const data = node.data as any;
-    const yearLane = scaffold.yearLanes[data.level_year];
+    const year = data.level_year ?? 1;
+    const yearLane = scaffold.yearLanes[year];
     
-    // Only apply X positioning if we have a defined lane
     if (yearLane !== undefined) {
-      return {
-        ...node,
-        position: {
-          x: yearLane - 160, // Center the 320px wide node on the lane
-          y: node.position.y  // Preserve ELK's Y positioning
-        }
-      };
+      const nodesInYear = nodesByYear.get(year) || [];
+      
+      // If multiple nodes in the same year, distribute them horizontally
+      if (nodesInYear.length > 1) {
+        const nodeIndex = nodesInYear.findIndex(n => n.id === node.id);
+        const totalWidth = nodesInYear.length * 320 + (nodesInYear.length - 1) * 40; // 40px spacing
+        const startX = yearLane - totalWidth / 2;
+        
+        return {
+          ...node,
+          position: {
+            x: startX + nodeIndex * 360, // 320px width + 40px spacing
+            y: node.position.y  // Preserve ELK's Y positioning
+          }
+        };
+      } else {
+        // Single node in year, center it
+        return {
+          ...node,
+          position: {
+            x: yearLane - 160, // Center the 320px wide node on the lane
+            y: node.position.y  // Preserve ELK's Y positioning
+          }
+        };
+      }
     }
     
     return node;

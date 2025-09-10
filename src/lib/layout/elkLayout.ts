@@ -1,4 +1,3 @@
-import ELK from 'elkjs/lib/elk.bundled.js';
 import { Node, Edge } from '@xyflow/react';
 
 interface ElkNode {
@@ -18,60 +17,84 @@ interface ElkEdge {
 }
 
 export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions?: Map<string, any>): Promise<Node[]> {
+  // Import ELK dynamically for better performance
+  const ELK = (await import('elkjs')).default;
   const elk = new ELK();
-  
+
+  // Convert React Flow nodes to ELK format with accurate dimensions
+  const elkNodes = nodes.map(node => {
+    const dimensions = nodeDimensions?.get(node.id);
+    const width = dimensions?.width ?? (node.type === 'blockGroup' ? 320 : 200);
+    const height = dimensions?.height ?? estimateNodeHeight(node);
+    
+    return {
+      id: node.id,
+      width,
+      height,
+      // Store original node data for reference
+      layoutOptions: {
+        'elk.padding': '[top=8,left=8,bottom=8,right=8]'
+      }
+    };
+  });
+
+  // Convert React Flow edges to ELK format
+  const elkEdges = edges.map(edge => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target]
+  }));
+
   const graph = {
-    id: 'root',
+    id: "root",
     layoutOptions: {
       'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
-      'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
+      'elk.direction': 'DOWN',
+      'elk.spacing.nodeNode': '48', // Increased node spacing
+      'elk.layered.spacing.nodeNodeBetweenLayers': '120', // Increased layer spacing
+      'elk.spacing.edgeNode': '32',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.spacing.nodeNode': '32',                 // Reduced - collision resolver will handle spacing
-      'elk.spacing.nodeNodeBetweenLayers': '80',    // Reduced for tighter initial layout
-      'elk.spacing.edgeNode': '24',                 // Adequate edge clearance
-      'elk.padding': '[top=24,left=24,bottom=24,right=24]'
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX', // Better placement
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.separateConnectedComponents': 'false',
+      'elk.padding': '[top=20,left=20,bottom=20,right=20]'
     },
-    children: nodes.map((node): ElkNode => {
-      const dimensions = nodeDimensions?.get(node.id);
-      const estimatedHeight = estimateNodeHeight(node);
-      
-      return {
-        id: node.id,
-        width: dimensions?.width ?? node.measured?.width ?? (node.type === 'blockGroup' ? 320 : 200),
-        height: dimensions?.height ?? node.measured?.height ?? estimatedHeight,
-        layoutOptions: {
-          'elk.portConstraints': 'FIXED_SIDE'
-        }
-      };
-    }),
-    edges: edges.map((edge): ElkEdge => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-      layoutOptions: { 
-        'elk.edge.type': 'ORTHOGONAL' 
-      }
-    }))
+    children: elkNodes,
+    edges: elkEdges
   };
 
   try {
-    const result = await elk.layout(graph);
-    const positionMap = new Map(
-      result.children?.map((child: any) => [child.id, { x: child.x ?? 0, y: child.y ?? 0 }]) ?? []
-    );
-
-    return nodes.map(node => ({
-      ...node,
-      position: positionMap.get(node.id) ?? node.position ?? { x: 0, y: 0 }
-    }));
+    const layouted = await elk.layout(graph);
+    
+    return nodes.map(node => {
+      const elkNode = layouted.children?.find(n => n.id === node.id);
+      
+      if (elkNode) {
+        return {
+          ...node,
+          position: { 
+            x: elkNode.x ?? node.position.x, 
+            y: elkNode.y ?? node.position.y 
+          },
+          // Store measured dimensions for collision detection
+          measured: {
+            width: elkNode.width,
+            height: elkNode.height
+          }
+        };
+      }
+      
+      return node;
+    });
   } catch (error) {
     console.error('ELK layout failed:', error);
-    // Return nodes with fallback positions
+    // Return nodes with improved fallback positions
     return nodes.map((node, index) => ({
       ...node,
-      position: node.position ?? { x: (index % 3) * 320, y: Math.floor(index / 3) * 220 }
+      position: { 
+        x: (index % 3) * 360 + 40, 
+        y: Math.floor(index / 3) * 280 + 40 
+      }
     }));
   }
 }

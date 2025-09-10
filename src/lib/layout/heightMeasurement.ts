@@ -1,4 +1,6 @@
 import { Node } from '@xyflow/react';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
 interface NodeDimensions {
   id: string;
@@ -7,8 +9,7 @@ interface NodeDimensions {
 }
 
 /**
- * Pre-measures node heights by rendering them in a hidden container
- * This gives ELK accurate dimensions to work with
+ * Real component-based height measurement for accurate ELK input
  */
 export async function measureNodeHeights(nodes: Node[]): Promise<Map<string, NodeDimensions>> {
   const measurements = new Map<string, NodeDimensions>();
@@ -28,18 +29,12 @@ export async function measureNodeHeights(nodes: Node[]): Promise<Map<string, Nod
   try {
     for (const node of nodes) {
       if (node.type === 'blockGroup') {
-        const mockElement = createMockBlockGroup(node.data);
-        measurementContainer.appendChild(mockElement);
-        
-        // Force layout calculation
-        const rect = mockElement.getBoundingClientRect();
+        const height = await measureBlockGroupHeight(node.data, measurementContainer);
         measurements.set(node.id, {
           id: node.id,
-          width: Math.max(320, rect.width),
-          height: Math.max(200, rect.height)
+          width: 320,
+          height: Math.max(200, height)
         });
-        
-        measurementContainer.removeChild(mockElement);
       } else {
         // Fallback for other node types
         measurements.set(node.id, {
@@ -54,6 +49,63 @@ export async function measureNodeHeights(nodes: Node[]): Promise<Map<string, Nod
   }
 
   return measurements;
+}
+
+/**
+ * Measure actual BlockGroup component height by rendering it
+ */
+async function measureBlockGroupHeight(data: any, container: HTMLElement): Promise<number> {
+  return new Promise((resolve) => {
+    const tempDiv = document.createElement('div');
+    tempDiv.style.width = '320px';
+    container.appendChild(tempDiv);
+    
+    const root = createRoot(tempDiv);
+    
+    // Create a simplified BlockGroup structure for measurement
+    const MeasurementComponent = () => {
+      const block = data.block;
+      const courses = block?.courses || [];
+      const subBlocks = data.subBlocks || [];
+      
+      // Calculate estimated height based on content
+      const baseHeight = 120; // Header + progress
+      const courseHeight = courses.length * 60;
+      const subBlockHeight = subBlocks.length * 80;
+      const padding = 24;
+      
+      const estimatedHeight = baseHeight + courseHeight + subBlockHeight + padding;
+      
+      return React.createElement('div', {
+        style: { 
+          width: '320px', 
+          minHeight: `${estimatedHeight}px`,
+          padding: '16px',
+          border: '1px solid #ccc',
+          borderRadius: '8px'
+        }
+      }, [
+        React.createElement('div', { key: 'header', style: { height: '60px' } }, block?.title || 'Block'),
+        React.createElement('div', { key: 'progress', style: { height: '40px' } }, 'Progress bar'),
+        ...courses.map((_, i) => 
+          React.createElement('div', { key: `course-${i}`, style: { height: '60px', marginBottom: '8px' } }, `Course ${i + 1}`)
+        ),
+        ...subBlocks.map((_, i) => 
+          React.createElement('div', { key: `sub-${i}`, style: { height: '80px', marginBottom: '8px' } }, `Sub-block ${i + 1}`)
+        )
+      ]);
+    };
+    
+    root.render(React.createElement(MeasurementComponent));
+    
+    // Wait for render and measure
+    setTimeout(() => {
+      const rect = tempDiv.getBoundingClientRect();
+      root.unmount();
+      container.removeChild(tempDiv);
+      resolve(rect.height);
+    }, 0);
+  });
 }
 
 /**

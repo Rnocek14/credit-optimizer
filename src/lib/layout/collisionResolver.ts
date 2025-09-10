@@ -2,8 +2,8 @@ import { Node } from '@xyflow/react';
 import { detectCollisions } from './heightMeasurement';
 
 /**
- * Multi-pass collision resolution system
- * Guarantees no overlaps by iteratively resolving conflicts
+ * Lane-aware multi-pass collision resolution system
+ * Resolves collisions while respecting lane assignments
  */
 export function resolveAllCollisions(nodes: Node[], maxPasses = 5): Node[] {
   let resolvedNodes = [...nodes];
@@ -18,7 +18,7 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 5): Node[] {
     }
     
     console.log(`🔄 Pass ${pass + 1}: Resolving ${collisions.length} collisions`);
-    resolvedNodes = resolveSinglePass(resolvedNodes, collisions);
+    resolvedNodes = resolveSinglePassWithLanes(resolvedNodes, collisions);
     pass++;
   }
   
@@ -32,11 +32,21 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 5): Node[] {
 }
 
 /**
- * Resolve collisions in a single pass
+ * Lane-aware collision resolution in a single pass
  */
-function resolveSinglePass(nodes: Node[], collisions: any[]): Node[] {
+function resolveSinglePassWithLanes(nodes: Node[], collisions: any[]): Node[] {
   const resolvedNodes = [...nodes];
   const nodeMap = new Map(resolvedNodes.map(node => [node.id, node]));
+  
+  // Group nodes by lane (X position) for lane-aware resolution
+  const nodesByLane = new Map<number, Node[]>();
+  resolvedNodes.forEach(node => {
+    const laneX = Math.round(node.position.x / 400) * 400; // Group by ~400px lanes
+    if (!nodesByLane.has(laneX)) {
+      nodesByLane.set(laneX, []);
+    }
+    nodesByLane.get(laneX)!.push(node);
+  });
   
   // Sort collisions by overlap (resolve biggest overlaps first)
   const sortedCollisions = collisions.sort((a, b) => b.overlap - a.overlap);
@@ -45,14 +55,38 @@ function resolveSinglePass(nodes: Node[], collisions: any[]): Node[] {
     const currentNode1 = nodeMap.get(node1.id)!;
     const currentNode2 = nodeMap.get(node2.id)!;
     
-    // Calculate separation distance needed
     const separation = calculateSeparationDistance(currentNode1, currentNode2);
     
-    // Move the lower node down (prefer moving down over moving sideways)
-    if (currentNode2.position.y >= currentNode1.position.y) {
-      currentNode2.position.y = currentNode1.position.y + separation.y;
+    // Check if nodes are in the same lane
+    const lane1X = Math.round(currentNode1.position.x / 400) * 400;
+    const lane2X = Math.round(currentNode2.position.x / 400) * 400;
+    
+    if (Math.abs(lane1X - lane2X) < 200) {
+      // Same lane: stack vertically with better spacing
+      if (currentNode2.position.y >= currentNode1.position.y) {
+        currentNode2.position.y = currentNode1.position.y + separation.y + 24;
+      } else {
+        currentNode1.position.y = currentNode2.position.y + separation.y + 24;
+      }
     } else {
-      currentNode1.position.y = currentNode2.position.y + separation.y;
+      // Different lanes: adjust horizontally if needed, then vertically
+      const horizontalGap = Math.abs(currentNode1.position.x - currentNode2.position.x);
+      if (horizontalGap < 340) {
+        // Too close horizontally, move one node
+        if (currentNode1.position.x < currentNode2.position.x) {
+          currentNode2.position.x = currentNode1.position.x + 340;
+        } else {
+          currentNode1.position.x = currentNode2.position.x + 340;
+        }
+      }
+      // Still stack vertically if needed
+      if (Math.abs(currentNode1.position.y - currentNode2.position.y) < separation.y) {
+        if (currentNode2.position.y >= currentNode1.position.y) {
+          currentNode2.position.y = currentNode1.position.y + separation.y + 16;
+        } else {
+          currentNode1.position.y = currentNode2.position.y + separation.y + 16;
+        }
+      }
     }
   });
   
@@ -63,15 +97,26 @@ function resolveSinglePass(nodes: Node[], collisions: any[]): Node[] {
  * Calculate the minimum distance needed to separate two nodes
  */
 function calculateSeparationDistance(node1: Node, node2: Node) {
-  const height1 = node1.measured?.height ?? estimateNodeHeight(node1);
-  const height2 = node2.measured?.height ?? estimateNodeHeight(node2);
+  const height1 = getNodeHeight(node1);
+  const height2 = getNodeHeight(node2);
   
-  const padding = 24; // 8pt rhythm * 3
+  const padding = 32; // Increased padding for better spacing
   
   return {
     x: Math.max(320, node1.measured?.width ?? 320) + padding,
-    y: height1 + padding
+    y: Math.max(height1, height2) + padding
   };
+}
+
+/**
+ * Get accurate node height from multiple sources
+ */
+function getNodeHeight(node: Node): number {
+  // Priority: measured height > data height > estimated height
+  if (node.measured?.height) return node.measured.height;
+  const data = node.data as any;
+  if (data?.measuredHeight) return data.measuredHeight;
+  return estimateNodeHeight(node);
 }
 
 /**
