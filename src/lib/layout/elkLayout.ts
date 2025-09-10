@@ -64,8 +64,8 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'DOWN',
-      'elk.spacing.nodeNode': '60',  // Generous horizontal spacing
-      'elk.layered.spacing.nodeNodeBetweenLayers': '140', // Generous vertical spacing
+      'elk.spacing.nodeNode': '80',  // More horizontal spacing
+      'elk.layered.spacing.nodeNodeBetweenLayers': '200', // Much more vertical spacing for tall BlockGroups
       'elk.spacing.edgeNode': '40',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF', // Better for column alignment
@@ -156,16 +156,39 @@ export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
 }
 
 /**
- * Simple and reliable height estimation
+ * Accurate height estimation based on BlockGroup structure
  */
 function estimateNodeHeight(node: Node): number {
   if (node.type === 'blockGroup') {
     const data = node.data as any;
-    const baseHeight = 140; // Header + progress + padding
-    const courseCount = data.block?.courses?.length || 3;
-    const subBlockCount = data.subBlocks?.length || 0;
+    const block = data.block;
+    const subBlocks = data.subBlocks || [];
+    const altCreditOptions = data.altCreditOptions || [];
     
-    return baseHeight + (courseCount * 56) + (subBlockCount * 72);
+    // Base card structure (header + progress + padding)
+    let totalHeight = 180; // Card header (100px) + progress section (40px) + padding (40px)
+    
+    // Specializations section (when present)
+    if (subBlocks.length > 0) {
+      totalHeight += 40; // Collapsible trigger button
+      // Assume expanded - each sub-block takes ~80px (title + 4 courses in 2x2 grid)
+      totalHeight += subBlocks.length * 80;
+    }
+    
+    // Alt credit options (when visible)
+    if (altCreditOptions.length > 0) {
+      totalHeight += 60; // Header + 3 options
+    }
+    
+    // Course grid - single column layout with gaps
+    const courseCount = block?.courses?.length || 3;
+    totalHeight += courseCount * 75; // Each CourseNode ~60px + 15px gap/padding
+    
+    // Additional padding for scroll area and unlock message
+    totalHeight += 40;
+    
+    // Minimum safe height with generous buffer
+    return Math.max(totalHeight, 400);
   }
   return 120;
 }
@@ -189,8 +212,8 @@ function resolveSimpleCollisions(nodes: Node[]): Node[] {
       const rect2 = getNodeBounds(node2);
       
       if (hasOverlap(rect1, rect2)) {
-        // Move the lower node down to avoid overlap
-        const clearanceY = rect1.y + rect1.height + 24; // 24px spacing
+        // Move the lower node down to avoid overlap with generous spacing
+        const clearanceY = rect1.y + rect1.height + 80; // 80px generous spacing
         if (node2.position.y < clearanceY) {
           node2.position.y = clearanceY;
         }
@@ -253,7 +276,7 @@ function createYearBasedFallback(nodes: Node[]): Node[] {
       ...node,
       position: {
         x: yearColumns[year - 1] ?? 80,
-        y: nodeIndex * 200 + 40 // Stack vertically with spacing
+        y: nodeIndex * 500 + 40 // Much more vertical spacing to prevent overlaps
       }
     };
   });
