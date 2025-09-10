@@ -180,34 +180,30 @@ function EduTreeCanvasInner() {
     // Separate specialization tracks instead of filtering them out
     console.log('🔍 Processing blocks for track separation:', blocksWithCourses.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
     
-    // Separate Web and Mobile specialization blocks
+    // Include specialization blocks as regular Year 3 blocks (no separation)
     const webBlocks = blocksWithCourses.filter(block => block.title === 'Web Development');
     const mobileBlocks = blocksWithCourses.filter(block => block.title === 'Mobile Development');
     
-    // Keep core blocks and remove the old "Specializations" parent block
-    const coreBlocks = blocksWithCourses.filter(block => 
-      block.title !== 'Web Development' && 
-      block.title !== 'Mobile Development' && 
-      block.title !== 'Specializations'
-    );
+    // All blocks except the old "Specializations" parent block
+    const allBlocks = blocksWithCourses.filter(block => block.title !== 'Specializations');
     
-    console.log('✅ Track separation:', {
-      core: coreBlocks.length,
+    console.log('✅ Block processing:', {
+      total: allBlocks.length,
       web: webBlocks.length, 
       mobile: mobileBlocks.length
     });
 
-    // Apply topological sorting for stable Year-3 ordering on core blocks
-    const sortedCoreBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(coreBlocks, gateEdges) : 
-      coreBlocks;
+    // Apply topological sorting for stable ordering on all blocks
+    const sortedBlocks = flags.eduTreeLayoutV2 ? 
+      sortBlocksForLayout(allBlocks, gateEdges) : 
+      allBlocks;
 
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
     
     // Find blocks with no prerequisites (starting blocks) 
     const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks].forEach(block => {
+    sortedBlocks.forEach(block => {
       if (!blocksWithPrereqs.has(block.id)) {
         unlockedBlocks.add(block.id);
       }
@@ -220,8 +216,7 @@ function EduTreeCanvasInner() {
       gateEdges.forEach(edge => {
         if (unlockedBlocks.has(edge.target_block_id)) return;
         
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const sourceBlock = allBlocks.find(b => b.gate?.id === edge.source_gate_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
         if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
           unlockedBlocks.add(edge.target_block_id);
           changed = true;
@@ -229,12 +224,23 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create nodes with improved layout positioning
-    const coreNodes: Node[] = sortedCoreBlocks
-      .map((block, index) => {
+    // Create nodes with year-based positioning (including specializations in Year 3)
+    const blocksByYear = new Map<number, BlockWithCourses[]>();
+    sortedBlocks.forEach(block => {
+      const year = block.level_year || 0;
+      if (!blocksByYear.has(year)) {
+        blocksByYear.set(year, []);
+      }
+      blocksByYear.get(year)!.push(block);
+    });
+
+    const allNodes: Node[] = [];
+    
+    blocksByYear.forEach((yearBlocks, year) => {
+      yearBlocks.forEach((block, indexInYear) => {
         if (!block || !block.id) {
           console.warn('[EduTree] Invalid block data:', block);
-          return null;
+          return;
         }
 
         const progress = {
@@ -245,74 +251,38 @@ function EduTreeCanvasInner() {
         };
 
         const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
+        
+        // Special styling for specialization blocks
+        const isSpecialization = block.title === 'Web Development' || block.title === 'Mobile Development';
+        const specializationStyle = isSpecialization ? {
+          backgroundColor: block.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))',
+          borderColor: block.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'
+        } : {};
 
-        return {
+        allNodes.push({
           id: String(block.id),
           type: 'blockGroup',
-          // Horizontal layout: year-based columns, better spacing
           position: { 
-            x: (block.level_year || 0) * 380, 
-            y: index * 180 
+            x: year * 380, 
+            y: indexInYear * 200 
           },
           data: {
             block,
             completedCourseIds,
             isUnlocked: unlockedBlocks.has(block.id),
             progress,
-            level_year: block.level_year || 0,
+            level_year: year,
             area: block.area || 'unknown',
             isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null
-          }
-        };
-      })
-      .filter(Boolean) as Node[];
-
-    // Create specialized track nodes  
-    const trackNodes: Node[] = [];
-    
-    // Only show tracks based on focus mode
-    const shouldShowTracks = focusState.mode === 'overview' || 
-                           focusState.mode === 'compare-tracks' ||
-                           focusState.mode === 'web-track' ||
-                           focusState.mode === 'mobile-track';
-
-    if (shouldShowTracks && (webBlocks.length > 0 || mobileBlocks.length > 0)) {
-      // Web track node
-      if (webBlocks.length > 0 && (focusState.mode !== 'mobile-track')) {
-        trackNodes.push({
-          id: 'web-track',
-          type: 'specializationTrack',
-          position: { x: 3 * 380, y: focusState.mode === 'compare-tracks' ? 0 : 200 },
-          data: {
-            track: 'web',
-            blocks: webBlocks,
-            completedCourseIds,
-            isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
+            planningLens: isHighlighted ? selectedLens : null,
+            isSpecialization,
+            specializationStyle
           }
         });
-      }
+      });
+    });
 
-      // Mobile track node  
-      if (mobileBlocks.length > 0 && (focusState.mode !== 'web-track')) {
-        trackNodes.push({
-          id: 'mobile-track', 
-          type: 'specializationTrack',
-          position: { 
-            x: 3 * 380, 
-            y: focusState.mode === 'compare-tracks' ? 450 : 200 + (webBlocks.length > 0 ? 500 : 0)
-          },
-          data: {
-            track: 'mobile',
-            blocks: mobileBlocks,
-            completedCourseIds,
-            isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
-          }
-        });
-      }
-    }
-
-    const nodes = [...coreNodes, ...trackNodes];
+    const nodes = allNodes;
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
@@ -322,28 +292,27 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create React Flow edges between core blocks and to tracks
-    const gateBasedEdges: Edge[] = viewMode === 'flow' ? gateEdges
+    // Create React Flow edges between all blocks (including specializations)
+    const blockEdges: Edge[] = viewMode === 'flow' ? gateEdges
       .filter(gateEdge => {
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
-        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
         return targetBlock && sourceBlock;
       })
       .map(gateEdge => {
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
         
         let source = sourceBlock?.id ? String(sourceBlock.id) : null;
         let target = String(gateEdge.target_block_id);
         
-        // Route edges to track nodes if target is a specialization block
-        if (targetBlock && (webBlocks.includes(targetBlock) || mobileBlocks.includes(targetBlock))) {
-          target = webBlocks.includes(targetBlock) ? 'web-track' : 'mobile-track';
-        }
-        
         const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
+        
+        // Special styling for specialization edges
+        const isSpecializationEdge = targetBlock && (targetBlock.title === 'Web Development' || targetBlock.title === 'Mobile Development');
+        const edgeColor = isSpecializationEdge ? 
+          (targetBlock.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))') : 
+          'hsl(var(--muted-foreground))';
         
         return source ? {
           id: String(gateEdge.id),
@@ -351,13 +320,13 @@ function EduTreeCanvasInner() {
           target,
           type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
           style: {
-            stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+            stroke: isHighlighted ? 'hsl(var(--primary))' : edgeColor,
             strokeWidth: isHighlighted ? 3 : 2,
-            opacity: isHighlighted ? 1 : 0.65
+            opacity: isHighlighted ? 1 : 0.7
           },
           markerEnd: {
             type: MarkerType.Arrow,
-            color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+            color: isHighlighted ? 'hsl(var(--primary))' : edgeColor,
           },
           ...(flags.eduTreeLayoutV2 && {
             pathOptions: { offset: 12 }
@@ -365,61 +334,7 @@ function EduTreeCanvasInner() {
         } : null;
       }).filter(Boolean) as Edge[] : [];
 
-    // Add direct connections from core blocks to specialization tracks
-    const trackConnectionEdges: Edge[] = [];
-    
-    if (viewMode === 'flow') {
-      // Find the last core block that should connect to tracks
-      const lastCoreBlock = sortedCoreBlocks[sortedCoreBlocks.length - 1];
-      
-      if (lastCoreBlock) {
-        // Connect to web track if it exists
-        if (webBlocks.length > 0 && trackNodes.find(n => n.id === 'web-track')) {
-          trackConnectionEdges.push({
-            id: `${lastCoreBlock.id}-to-web-track`,
-            source: String(lastCoreBlock.id),
-            target: 'web-track',
-            type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-            style: {
-              stroke: 'hsl(var(--primary))',
-              strokeWidth: 2,
-              opacity: 0.7
-            },
-            markerEnd: {
-              type: MarkerType.Arrow,
-              color: 'hsl(var(--primary))',
-            },
-            ...(flags.eduTreeLayoutV2 && {
-              pathOptions: { offset: 12 }
-            }),
-          });
-        }
-        
-        // Connect to mobile track if it exists
-        if (mobileBlocks.length > 0 && trackNodes.find(n => n.id === 'mobile-track')) {
-          trackConnectionEdges.push({
-            id: `${lastCoreBlock.id}-to-mobile-track`,
-            source: String(lastCoreBlock.id),
-            target: 'mobile-track',
-            type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-            style: {
-              stroke: 'hsl(var(--accent))',
-              strokeWidth: 2,
-              opacity: 0.7
-            },
-            markerEnd: {
-              type: MarkerType.Arrow,
-              color: 'hsl(var(--accent))',
-            },
-            ...(flags.eduTreeLayoutV2 && {
-              pathOptions: { offset: 12 }
-            }),
-          });
-        }
-      }
-    }
-
-    const edges = [...gateBasedEdges, ...trackConnectionEdges];
+    const edges = blockEdges;
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
