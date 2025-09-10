@@ -48,10 +48,12 @@ import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
+import { EduBackground } from './components/EduBackground';
 import { FocusProvider, useFocus } from './contexts/FocusContext';
 import { SpecializationTrack } from './components/SpecializationTrack';
 import { FocusToolbar } from './components/FocusToolbar';
-import { EduBackground } from './components/EduBackground';
+import { FocusTransitions } from './components/FocusTransitions';
+import { LayoutDebugger } from './components/LayoutDebugger';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -253,10 +255,10 @@ function EduTreeCanvasInner() {
           id: String(block.id),
           type: 'blockGroup',
           // Natural horizontal layout: wider year-based columns with better vertical spread
-          position: { 
+          position: getNodePosition({ 
             x: (block.level_year || 0) * 450, 
             y: index * 220 
-          },
+          }, String(block.id), 'blockGroup'),
           data: {
             block,
             completedCourseIds,
@@ -285,10 +287,10 @@ function EduTreeCanvasInner() {
     const transitionNode: Node = {
       id: 'transition-block',
       type: 'transitionBlock',
-      position: { 
+      position: getNodePosition({ 
         x: transitionX,
         y: transitionY
-      },
+      }, 'transition-block', 'transitionBlock'),
       data: {
         title: 'Choose Your Specialization',
         description: 'Select a track to focus your final year',
@@ -330,10 +332,10 @@ function EduTreeCanvasInner() {
           trackNodes.push({
             id: 'web-track',
             type: 'specializationTrack',
-            position: { 
+            position: getNodePosition({ 
               x: trackX,
               y: transitionY - (trackSpacing / 2) // Above transition center
-            },
+            }, 'web-track', 'specializationTrack'),
             data: {
               track: 'web',
               blocks: webBlocks,
@@ -355,10 +357,10 @@ function EduTreeCanvasInner() {
           trackNodes.push({
             id: 'mobile-track', 
             type: 'specializationTrack',
-            position: { 
+            position: getNodePosition({ 
               x: trackX,
               y: transitionY + (trackSpacing / 2) // Below transition center
-            },
+            }, 'mobile-track', 'specializationTrack'),
             data: {
               track: 'mobile',
               blocks: mobileBlocks,
@@ -483,56 +485,19 @@ function EduTreeCanvasInner() {
     const allEdges = [...edges, ...transitionEdges];
 
     return { nodes, edges: allEdges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
-  // REMOVED highlightedPath dependency to prevent infinite loop
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode, selectedLens]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
+  // Apply natural positioning from computed flow data
   useEffect(() => {
     if (flowNodes.length > 0) {
-      const applyEmergencyLayout = async () => {
-        try {
-          console.log('[EduTree] EMERGENCY: Applying fail-safe layout to', flowNodes.length, 'nodes');
-          
-          // EMERGENCY: Use the collision-resistant layout system
-          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-          const result = await layoutNodes(flowNodes, flowEdges);
-          
-          if (result.hasOverlaps) {
-            console.error('⚠️ EMERGENCY: Layout STILL has overlaps! Using ultra-safe fallback');
-            // Ultra-safe fallback - guarantee no overlaps with multi-column grid
-            const safeNodes = flowNodes.map((node, index) => ({
-              ...node,
-              position: { 
-                x: (index % 2) * 600, // 2 columns, 600px apart
-                y: Math.floor(index / 2) * 500 // 500px vertical spacing
-              }
-            }));
-            setNodes(safeNodes);
-          } else {
-            console.log('✅ EMERGENCY: Layout validated - no overlaps');
-            setNodes(result.nodes);
-          }
-          
-          setEdges(viewMode === 'flow' ? flowEdges : []);
-          
-        } catch (error) {
-          console.error('[EduTree] EMERGENCY: All layouts failed, using absolute fallback:', error);
-          // ABSOLUTE LAST RESORT: Simple grid with massive spacing
-          const fallbackNodes = flowNodes.map((node, index) => ({
-            ...node,
-            position: { x: (index % 2) * 700, y: Math.floor(index / 2) * 600 }
-          }));
-          setNodes(fallbackNodes);
-          setEdges([]);
-        }
-      };
-      
-      applyEmergencyLayout();
+      console.log('[EduTree] Applying natural educational flow layout to', flowNodes.length, 'nodes');
+      setNodes(flowNodes);
+      setEdges(flowEdges);
     }
-  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
+  }, [flowNodes, flowEdges, setNodes, setEdges]);
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -552,42 +517,21 @@ function EduTreeCanvasInner() {
     }
   }, [blocks, courses, blockMembers, gates, gateEdges]);
 
-  // Simplified layout management 
-  const applyLayout = useCallback(async (mode: 'flow' | 'board', nodes: Node[], edges: Edge[]) => {
-    if (mode === 'board') {
-      return layoutAsGrid(nodes, mode);
+  // Enhanced positioning system for focus modes
+  const getNodePosition = useCallback((basePosition: { x: number; y: number }, nodeId: string, nodeType: string) => {
+    // Apply focus mode transformations
+    if (focusState.mode === 'web-track' && nodeType === 'specializationTrack' && nodeId === 'mobile-track') {
+      return { x: basePosition.x, y: basePosition.y + 600 }; // Move mobile track down when focusing on web
     }
-
-    try {
-      // Use the new simplified layout system
-      const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-      const result = await layoutNodes(nodes, edges);
-      
-      if (result.hasOverlaps) {
-        console.warn('⚠️ Layout has overlaps, but proceeding');
-      }
-      
-      return result.nodes;
-    } catch (error) {
-      console.error('Layout failed, using fallback:', error);
-      // Fallback to ELK without post-processing
-      try {
-        return await layoutWithElk(nodes, edges);
-      } catch (elkError) {
-        console.error('ELK fallback failed:', elkError);
-        return layoutAsGrid(nodes, 'board');
-      }
+    if (focusState.mode === 'mobile-track' && nodeType === 'specializationTrack' && nodeId === 'web-track') {
+      return { x: basePosition.x, y: basePosition.y - 600 }; // Move web track up when focusing on mobile
     }
-  }, []);
+    
+    // Apply responsive spacing based on viewport
+    return basePosition;
+  }, [focusState.mode]);
 
-  // EMERGENCY FIX: Remove all complex layout logic that was causing infinite loops
-  // Use simple positioning only to get preview working
-
-  // EMERGENCY FIX: Removed complex layout - using inline logic above
-
-  // EMERGENCY FIX: Temporarily disabled path highlighting to prevent infinite loop
-  // This was causing flowNodes/flowEdges to update → highlightedPath → useMemo → flowNodes/flowEdges → infinite loop
-  /*
+  // Restore path highlighting with proper dependency management
   useEffect(() => {
     if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
       const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
@@ -596,8 +540,7 @@ function EduTreeCanvasInner() {
         edges: new Set(optimalPath.edges)
       });
     }
-  }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
-  */
+  }, [selectedLens, completedCourseIds, flags.eduTreeOutcomes, flowNodes.length, flowEdges.length]);
 
   // Calculate outcome panel summary
   const outcomeSummary: PlanValidationSummary = useMemo(() => {
@@ -738,36 +681,47 @@ function EduTreeCanvasInner() {
         </div>
       </div>
 
-      {/* React Flow Canvas */}
+      {/* React Flow Canvas with Focus Transitions */}
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
-        <ReactFlow
-          key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          onInit={onInit}
-          fitView
-          fitViewOptions={{ padding: 0.2, duration: 300 }}
-          minZoom={0.3}
-          maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        >
-          {/* Enhanced Educational Background */}
-          <EduBackground width={2400} height={1200} />
-          
-          <Controls />
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={24} 
-            size={1}
-            color="hsl(var(--muted-foreground)/0.3)"
-          />
-          {/* Mini-map for large tree navigation */}
-          {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
-        </ReactFlow>
+        <FocusTransitions nodes={nodes}>
+          <ReactFlow
+            key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            onInit={onInit}
+            fitView
+            fitViewOptions={{ padding: 0.2, duration: 300 }}
+            minZoom={0.3}
+            maxZoom={1.5}
+            defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          >
+            {/* Enhanced Educational Background */}
+            <EduBackground width={2400} height={1200} nodes={nodes} />
+            
+            <Controls />
+            <Background 
+              variant={BackgroundVariant.Dots} 
+              gap={24} 
+              size={1}
+              color="hsl(var(--muted-foreground)/0.3)"
+            />
+            {/* Mini-map for large tree navigation */}
+            {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
+          </ReactFlow>
+        </FocusTransitions>
       </div>
+
+      {/* Layout Debugger (DEV only) */}
+      {DEV && (
+        <LayoutDebugger 
+          nodes={nodes} 
+          edges={edges} 
+          enabled={true}
+        />
+      )}
 
       {/* Outcome Panel */}
       {flags.eduTreeOutcomes && (

@@ -3,17 +3,40 @@ import React from 'react';
 interface EduBackgroundProps {
   width: number;
   height: number;
+  nodes?: Array<{ position: { x: number; y: number }; data: { level_year?: number } }>;
 }
 
-export function EduBackground({ width, height }: EduBackgroundProps) {
+export function EduBackground({ width, height, nodes = [] }: EduBackgroundProps) {
+  // Calculate actual node positions for dynamic background alignment
+  const yearPositions = nodes.reduce((acc, node) => {
+    const year = node.data.level_year;
+    if (year && year >= 1 && year <= 4) {
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(node.position.x);
+    }
+    return acc;
+  }, {} as Record<number, number[]>);
+
+  // Calculate average positions for each year, fallback to standard spacing
+  const getYearPosition = (year: number) => {
+    const positions = yearPositions[year];
+    return positions && positions.length > 0 
+      ? positions.reduce((sum, x) => sum + x, 0) / positions.length
+      : year * 450; // fallback to standard spacing
+  };
+
+  const year3Pos = getYearPosition(3);
+  const transitionPos = year3Pos + 200;
+  const specializationPos = transitionPos + 100;
+
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {/* Core Years Background Zone */}
+      {/* Core Years Background Zone - Dynamic width based on actual Year 3 position */}
       <div 
         className="absolute top-0 bg-gradient-to-r from-background via-muted/20 to-muted/40 border-r border-dashed border-border/30"
         style={{
           left: 0,
-          width: 3.5 * 450, // Up to transition point
+          width: transitionPos,
           height: '100%'
         }}
       >
@@ -27,12 +50,12 @@ export function EduBackground({ width, height }: EduBackgroundProps) {
         </div>
       </div>
 
-      {/* Transition Zone */}
+      {/* Transition Zone - Positioned relative to actual transition block */}
       <div 
-        className="absolute top-0 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5"
+        className="absolute top-0 bg-gradient-to-r from-primary/5 via-primary/15 to-primary/5 border-x border-dashed border-primary/30"
         style={{
-          left: 3.3 * 450,
-          width: 0.4 * 450,
+          left: transitionPos - 50,
+          width: 150,
           height: '100%'
         }}
       >
@@ -43,12 +66,12 @@ export function EduBackground({ width, height }: EduBackgroundProps) {
         </div>
       </div>
 
-      {/* Specialization Zone */}
+      {/* Specialization Zone - Dynamic positioning */}
       <div 
         className="absolute top-0 bg-gradient-to-r from-accent/10 via-accent/20 to-accent/10"
         style={{
-          left: 3.7 * 450,
-          width: width - 3.7 * 450,
+          left: specializationPos,
+          width: width - specializationPos,
           height: '100%'
         }}
       >
@@ -62,23 +85,26 @@ export function EduBackground({ width, height }: EduBackgroundProps) {
         </div>
       </div>
 
-      {/* Year Markers */}
-      {[1, 2, 3, 4].map((year) => (
-        <div
-          key={year}
-          className="absolute top-0 border-l border-dashed border-border/20"
-          style={{
-            left: year * 450,
-            height: '100%'
-          }}
-        >
-          <div className="absolute -top-2 -left-6 bg-background px-2 py-1 rounded text-xs font-medium text-muted-foreground border">
-            Year {year}
+      {/* Dynamic Year Markers - Aligned with actual node positions */}
+      {[1, 2, 3, 4].map((year) => {
+        const yearPos = getYearPosition(year);
+        return (
+          <div
+            key={year}
+            className="absolute top-0 border-l border-dashed border-border/20"
+            style={{
+              left: yearPos,
+              height: '100%'
+            }}
+          >
+            <div className="absolute -top-2 -left-6 bg-background px-2 py-1 rounded text-xs font-medium text-muted-foreground border">
+              Year {year}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
-      {/* Flow Path Indicators */}
+      {/* Enhanced Flow Path Indicators - Curved paths between actual positions */}
       <svg 
         className="absolute inset-0 w-full h-full"
         style={{ zIndex: 1 }}
@@ -92,37 +118,53 @@ export function EduBackground({ width, height }: EduBackgroundProps) {
             refY="3"
             orient="auto"
             fill="hsl(var(--primary))"
-            opacity="0.3"
+            opacity="0.4"
+          >
+            <polygon points="0 0, 8 3, 0 6" />
+          </marker>
+          <marker
+            id="specialization-arrow"
+            markerWidth="8"
+            markerHeight="6"
+            refX="8"
+            refY="3"
+            orient="auto"
+            fill="hsl(var(--accent))"
+            opacity="0.4"
           >
             <polygon points="0 0, 8 3, 0 6" />
           </marker>
         </defs>
         
-        {/* Subtle flow indicators */}
+        {/* Progressive flow from Year 1-3 */}
         <path
-          d={`M ${1.5 * 450} 200 Q ${2.5 * 450} 180 ${3.5 * 450} 200`}
+          d={`M ${getYearPosition(1) + 100} 200 Q ${getYearPosition(2)} 180 ${getYearPosition(3) - 50} 200`}
           stroke="hsl(var(--primary))"
           strokeWidth="2"
           fill="none"
-          opacity="0.2"
-          strokeDasharray="5,5"
+          opacity="0.3"
+          strokeDasharray="8,4"
           markerEnd="url(#flow-arrow)"
         />
+        
+        {/* Transition to specializations */}
         <path
-          d={`M ${3.7 * 450} 300 Q ${4.2 * 450} 200 ${4.5 * 450} 150`}
+          d={`M ${transitionPos} 180 Q ${specializationPos - 50} 150 ${specializationPos + 50} 120`}
           stroke="hsl(var(--accent))"
           strokeWidth="2"
           fill="none"
-          opacity="0.2"
-          strokeDasharray="5,5"
+          opacity="0.3"
+          strokeDasharray="8,4"
+          markerEnd="url(#specialization-arrow)"
         />
         <path
-          d={`M ${3.7 * 450} 300 Q ${4.2 * 450} 400 ${4.5 * 450} 600`}
+          d={`M ${transitionPos} 220 Q ${specializationPos - 50} 250 ${specializationPos + 50} 280`}
           stroke="hsl(var(--accent))"
           strokeWidth="2"
           fill="none"
-          opacity="0.2"
-          strokeDasharray="5,5"
+          opacity="0.3"
+          strokeDasharray="8,4"
+          markerEnd="url(#specialization-arrow)"
         />
       </svg>
     </div>
