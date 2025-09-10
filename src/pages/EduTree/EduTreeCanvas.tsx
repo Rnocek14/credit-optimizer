@@ -353,6 +353,10 @@ function EduTreeCanvasInner() {
       const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
                                     highlightedComparison?.edges.has(String(gateEdge.id)) || false;
       
+      // Edge style precedence: primary > comparison > default
+      const isInBothPaths = isHighlighted && isComparisonHighlighted;
+      const finalHighlighted = isHighlighted || isComparisonHighlighted;
+      
       return source ? {
         id: String(gateEdge.id),
         source,
@@ -360,17 +364,22 @@ function EduTreeCanvasInner() {
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
           stroke: isHighlighted ? 'var(--primary)' : 
-                  isComparisonHighlighted ? 'hsl(var(--amber-500))' : 'var(--primary)',
+                  isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
           strokeWidth: isHighlighted ? 3 : isComparisonHighlighted ? 2 : 2,
-          strokeDasharray: isComparisonHighlighted ? '6 4' : undefined,
-          opacity: isHighlighted ? 1 : isComparisonHighlighted ? 0.8 : 0.65
+          strokeDasharray: isComparisonHighlighted && !isHighlighted ? '6 4' : undefined,
+          opacity: finalHighlighted ? (isHighlighted ? 1 : 0.8) : 0.3,
+          filter: isInBothPaths ? 'drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 1px oklch(var(--amber-500)))' : 
+                  isHighlighted ? 'drop-shadow(0 0 2px var(--primary))' :
+                  isComparisonHighlighted ? 'drop-shadow(0 0 2px oklch(var(--amber-500)))' : undefined
         },
         markerEnd: {
           type: MarkerType.Arrow,
           color: isHighlighted ? 'var(--primary)' : 
-                 isComparisonHighlighted ? 'hsl(var(--amber-500))' : 'var(--primary)',
+                 isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
         },
-        className: isComparisonHighlighted ? 'edge--comparison' : isHighlighted ? 'edge--primary' : undefined,
+        className: isInBothPaths ? 'edge--both-paths' :
+                   isHighlighted ? 'edge--primary' : 
+                   isComparisonHighlighted ? 'edge--comparison' : undefined,
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
         }),
@@ -500,11 +509,20 @@ function EduTreeCanvasInner() {
         // Performance cap: max 250 combined elements
         const totalElements = primaryPath.nodes.length + primaryPath.edges.length;
         if (totalElements > 250) {
-          toast({
-            title: "Path too large",
-            description: "Showing primary path only due to size.",
-          });
+          // Show warning toast only once per session
+          const sessionKey = 'multipath_perf_warning_shown';
+          if (!sessionStorage.getItem(sessionKey)) {
+            sessionStorage.setItem(sessionKey, 'true');
+            toast({
+              title: "Path too large",
+              description: "Showing primary path only due to size.",
+            });
+          }
           return;
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Multipath] Primary path: ${primaryPath.nodes.length} nodes, ${primaryPath.edges.length} edges (${totalElements} total)`);
         }
         
         setHighlightedPrimary({
@@ -533,6 +551,10 @@ function EduTreeCanvasInner() {
       const key = JSON.stringify({ n: comparisonPath.nodes, e: comparisonPath.edges });
       if (key !== lastComparisonRef.current) {
         lastComparisonRef.current = key;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Multipath] Comparison path: ${comparisonPath.nodes.length} nodes, ${comparisonPath.edges.length} edges`);
+        }
         
         setHighlightedComparison({
           nodes: new Set(comparisonPath.nodes),

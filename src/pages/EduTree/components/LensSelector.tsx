@@ -74,9 +74,24 @@ export function LensSelector({
           <span className="text-sm font-medium text-muted-foreground">Compare:</span>
           <Select
             value={comparisonLens || 'none'}
-            onValueChange={(value) => onComparisonLensChange?.(value === 'none' ? null : value as PlanningLens)}
+            onValueChange={(value) => {
+              const newLens = value === 'none' ? null : value as PlanningLens;
+              onComparisonLensChange?.(newLens);
+              
+              // Update URL parameter
+              const url = new URL(window.location.href);
+              if (newLens) {
+                url.searchParams.set('compare', newLens);
+              } else {
+                url.searchParams.delete('compare');
+              }
+              window.history.replaceState({}, '', url.toString());
+            }}
           >
-            <SelectTrigger className="w-28 h-8 bg-background border border-border">
+            <SelectTrigger 
+              className="w-28 h-8 bg-background border border-border"
+              aria-label="Select comparison planning lens"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-background border border-border z-50">
@@ -88,19 +103,23 @@ export function LensSelector({
           </Select>
         </div>
 
-        {/* Path Legend */}
-        <div className="flex items-center gap-3 ml-4 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-4 h-0.5 bg-primary"></div>
-            <span className="text-muted-foreground">Primary</span>
-          </div>
-          {comparisonLens && (
+        {/* Path Legend - only show when comparison is active */}
+        {comparisonLens && (
+          <div className="flex items-center gap-3 ml-4 text-xs" role="group" aria-label="Path legend">
             <div className="flex items-center gap-1">
-              <div className="w-4 h-0.5 border-b-2 border-dashed border-amber-500 opacity-80"></div>
-              <span className="text-muted-foreground">Comparison</span>
+              <div className="w-4 h-0.5 bg-primary" aria-hidden="true"></div>
+              <span className="text-muted-foreground">Primary (solid)</span>
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-1">
+              <div 
+                className="w-4 h-0.5 border-b-2 border-dashed opacity-80" 
+                style={{ borderColor: 'oklch(var(--amber-500))' }}
+                aria-hidden="true"
+              ></div>
+              <span className="text-muted-foreground">Comparison (dashed)</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

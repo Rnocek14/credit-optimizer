@@ -7,19 +7,24 @@
 
 /* Comparison path styling */
 .edge--comparison {
-  filter: drop-shadow(0 0 2px hsl(var(--amber-500) / 0.3));
+  filter: drop-shadow(0 0 2px oklch(var(--amber-500) / 0.3));
+}
+
+/* Both paths styling - primary wins with amber accent */
+.edge--both-paths {
+  filter: drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 1px oklch(var(--amber-500) / 0.5));
 }
 
 /* Node comparison highlighting */
 .node--comparison {
-  box-shadow: 0 0 0 2px hsl(var(--amber-500) / 0.6) inset;
+  box-shadow: 0 0 0 2px oklch(var(--amber-500) / 0.6) inset;
 }
 
-/* Dimmed elements when comparison is active */
-.multipath-active .react-flow__edge:not(.edge--primary):not(.edge--comparison) {
+/* Dimmed elements when multipath is active */
+.multipath-active .react-flow__edge:not(.edge--primary):not(.edge--comparison):not(.edge--both-paths) {
   opacity: 0.2 !important;
 }
 
-.multipath-active .react-flow__node:not(.node--primary):not(.node--comparison) {
-  opacity: 0.3 !important;
+.multipath-active .react-flow__node:not([data-highlighted="true"]) {
+  opacity: 0.4 !important;
 }
