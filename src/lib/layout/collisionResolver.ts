@@ -44,11 +44,11 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // Optimal collision resolution spacing
-    const baseSpacing = 120; // Clean separation for readability
+    // EMERGENCY FIX: Massive spacing to guarantee no overlaps
+    const baseSpacing = 400; // MASSIVE increase for absolute safety
     const largerNodeHeight = Math.max(rect1.height, rect2.height);
-    const contentSpacing = largerNodeHeight * 0.3; // Reasonable multiplier
-    const finalSpacing = Math.max(baseSpacing + contentSpacing, 150); // Minimum clean spacing
+    const contentSpacing = largerNodeHeight * 0.6; // Higher multiplier
+    const finalSpacing = Math.max(baseSpacing + contentSpacing, 500); // Ensure minimum 500px
     
     // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
@@ -195,7 +195,7 @@ function detectCollisions(nodes: Node[]): { node1: Node; node2: Node; overlap: n
  * Check if two rectangles overlap with buffer to prevent touching nodes
  */
 function hasOverlap(rect1: any, rect2: any): boolean {
-  const buffer = 40; // Clean buffer for optimal spacing
+  const buffer = 100; // MASSIVE buffer - nodes must be 100px apart minimum
   return !(rect1.x + rect1.width + buffer <= rect2.x || 
            rect2.x + rect2.width + buffer <= rect1.x || 
            rect1.y + rect1.height + buffer <= rect2.y || 
