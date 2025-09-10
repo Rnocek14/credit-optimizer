@@ -441,8 +441,11 @@ function EduTreeCanvasInner() {
   useEffect(() => {
     if (flags.eduTreeStaggeredEdgesV2) {
       setEdges(visibleEdges);
+    } else {
+      // fall back to allEdges to avoid empty graph when flag is off
+      setEdges(allEdges);
     }
-  }, [visibleEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
+  }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
   
   // Re-enable path highlighting safely with stable dependencies
   useEffect(() => {
@@ -755,7 +758,7 @@ function EduTreeCanvasInner() {
           {process.env.NODE_ENV === 'development' && (
             <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2">
               <div className="text-xs text-muted-foreground">
-                Edges: {visibleEdges.length}/{edges.length}
+                Edges: {visibleEdges.length}/{allEdges.length}
                 {isRevealing && <span className="ml-2 text-primary">Revealing...</span>}
               </div>
               <button
