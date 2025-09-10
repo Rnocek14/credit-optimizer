@@ -180,30 +180,34 @@ function EduTreeCanvasInner() {
     // Separate specialization tracks instead of filtering them out
     console.log('🔍 Processing blocks for track separation:', blocksWithCourses.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
     
-    // Include specialization blocks as regular Year 3 blocks (no separation)
+    // Separate Web and Mobile specialization blocks
     const webBlocks = blocksWithCourses.filter(block => block.title === 'Web Development');
     const mobileBlocks = blocksWithCourses.filter(block => block.title === 'Mobile Development');
     
-    // All blocks except the old "Specializations" parent block
-    const allBlocks = blocksWithCourses.filter(block => block.title !== 'Specializations');
+    // Keep core blocks and remove the old "Specializations" parent block
+    const coreBlocks = blocksWithCourses.filter(block => 
+      block.title !== 'Web Development' && 
+      block.title !== 'Mobile Development' && 
+      block.title !== 'Specializations'
+    );
     
-    console.log('✅ Block processing:', {
-      total: allBlocks.length,
+    console.log('✅ Track separation:', {
+      core: coreBlocks.length,
       web: webBlocks.length, 
       mobile: mobileBlocks.length
     });
 
-    // Apply topological sorting for stable ordering on all blocks
-    const sortedBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(allBlocks, gateEdges) : 
-      allBlocks;
+    // Apply topological sorting for stable Year-3 ordering on core blocks
+    const sortedCoreBlocks = flags.eduTreeLayoutV2 ? 
+      sortBlocksForLayout(coreBlocks, gateEdges) : 
+      coreBlocks;
 
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
     
     // Find blocks with no prerequisites (starting blocks) 
     const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    sortedBlocks.forEach(block => {
+    [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks].forEach(block => {
       if (!blocksWithPrereqs.has(block.id)) {
         unlockedBlocks.add(block.id);
       }
@@ -216,7 +220,8 @@ function EduTreeCanvasInner() {
       gateEdges.forEach(edge => {
         if (unlockedBlocks.has(edge.target_block_id)) return;
         
-        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
+        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
+        const sourceBlock = allBlocks.find(b => b.gate?.id === edge.source_gate_id);
         if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
           unlockedBlocks.add(edge.target_block_id);
           changed = true;
@@ -224,23 +229,12 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create nodes with year-based positioning (including specializations in Year 3)
-    const blocksByYear = new Map<number, BlockWithCourses[]>();
-    sortedBlocks.forEach(block => {
-      const year = block.level_year || 0;
-      if (!blocksByYear.has(year)) {
-        blocksByYear.set(year, []);
-      }
-      blocksByYear.get(year)!.push(block);
-    });
-
-    const allNodes: Node[] = [];
-    
-    blocksByYear.forEach((yearBlocks, year) => {
-      yearBlocks.forEach((block, indexInYear) => {
+    // Create nodes with natural horizontal layout positioning
+    const coreNodes: Node[] = sortedCoreBlocks
+      .map((block, index) => {
         if (!block || !block.id) {
           console.warn('[EduTree] Invalid block data:', block);
-          return;
+          return null;
         }
 
         const progress = {
@@ -251,38 +245,84 @@ function EduTreeCanvasInner() {
         };
 
         const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
-        
-        // Special styling for specialization blocks
-        const isSpecialization = block.title === 'Web Development' || block.title === 'Mobile Development';
-        const specializationStyle = isSpecialization ? {
-          backgroundColor: block.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))',
-          borderColor: block.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))'
-        } : {};
 
-        allNodes.push({
+        return {
           id: String(block.id),
           type: 'blockGroup',
+          // Natural horizontal layout: wider year-based columns with better vertical spread
           position: { 
-            x: year * 380, 
-            y: indexInYear * 200 
+            x: (block.level_year || 0) * 450, 
+            y: index * 220 
           },
           data: {
             block,
             completedCourseIds,
             isUnlocked: unlockedBlocks.has(block.id),
             progress,
-            level_year: year,
+            level_year: block.level_year || 0,
             area: block.area || 'unknown',
             isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null,
-            isSpecialization,
-            specializationStyle
+            planningLens: isHighlighted ? selectedLens : null
           }
-        });
-      });
-    });
+        };
+      })
+      .filter(Boolean) as Node[];
 
-    const nodes = allNodes;
+    // Create specialized track nodes with natural horizontal spread
+    const trackNodes: Node[] = [];
+    
+    // Always show tracks in natural layout (focus enhances, doesn't hide)
+    if (webBlocks.length > 0 || mobileBlocks.length > 0) {
+      // Web track node - positioned at year 4, upper area
+      if (webBlocks.length > 0) {
+        const isVisible = focusState.mode === 'overview' || 
+                         focusState.mode === 'compare-tracks' ||
+                         focusState.mode === 'web-track';
+        
+        if (isVisible) {
+          trackNodes.push({
+            id: 'web-track',
+            type: 'specializationTrack',
+            position: { 
+              x: 4 * 450,  // Year 4 with new wider spacing
+              y: 100       // Upper position for web track
+            },
+            data: {
+              track: 'web',
+              blocks: webBlocks,
+              completedCourseIds,
+              isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
+            }
+          });
+        }
+      }
+
+      // Mobile track node - positioned at year 4, lower area  
+      if (mobileBlocks.length > 0) {
+        const isVisible = focusState.mode === 'overview' || 
+                         focusState.mode === 'compare-tracks' ||
+                         focusState.mode === 'mobile-track';
+        
+        if (isVisible) {
+          trackNodes.push({
+            id: 'mobile-track', 
+            type: 'specializationTrack',
+            position: { 
+              x: 4 * 450,  // Year 4 with new wider spacing
+              y: 600       // Lower position for mobile track (clear separation)
+            },
+            data: {
+              track: 'mobile',
+              blocks: mobileBlocks,
+              completedCourseIds,
+              isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
+            }
+          });
+        }
+      }
+    }
+
+    const nodes = [...coreNodes, ...trackNodes];
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
@@ -292,27 +332,28 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create React Flow edges between all blocks (including specializations)
-    const blockEdges: Edge[] = viewMode === 'flow' ? gateEdges
+    // Create React Flow edges between core blocks and to tracks
+    const edges: Edge[] = viewMode === 'flow' ? gateEdges
       .filter(gateEdge => {
-        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
-        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
+        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
+        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
         return targetBlock && sourceBlock;
       })
       .map(gateEdge => {
-        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
+        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
+        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
         
         let source = sourceBlock?.id ? String(sourceBlock.id) : null;
         let target = String(gateEdge.target_block_id);
         
-        const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
+        // Route edges to track nodes if target is a specialization block
+        if (targetBlock && (webBlocks.includes(targetBlock) || mobileBlocks.includes(targetBlock))) {
+          target = webBlocks.includes(targetBlock) ? 'web-track' : 'mobile-track';
+        }
         
-        // Special styling for specialization edges
-        const isSpecializationEdge = targetBlock && (targetBlock.title === 'Web Development' || targetBlock.title === 'Mobile Development');
-        const edgeColor = isSpecializationEdge ? 
-          (targetBlock.title === 'Web Development' ? 'hsl(var(--primary))' : 'hsl(var(--accent))') : 
-          'hsl(var(--muted-foreground))';
+        const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
         
         return source ? {
           id: String(gateEdge.id),
@@ -320,21 +361,19 @@ function EduTreeCanvasInner() {
           target,
           type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
           style: {
-            stroke: isHighlighted ? 'hsl(var(--primary))' : edgeColor,
+            stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
             strokeWidth: isHighlighted ? 3 : 2,
-            opacity: isHighlighted ? 1 : 0.7
+            opacity: isHighlighted ? 1 : 0.65
           },
           markerEnd: {
             type: MarkerType.Arrow,
-            color: isHighlighted ? 'hsl(var(--primary))' : edgeColor,
+            color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
           },
           ...(flags.eduTreeLayoutV2 && {
             pathOptions: { offset: 12 }
           }),
         } : null;
       }).filter(Boolean) as Edge[] : [];
-
-    const edges = blockEdges;
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
