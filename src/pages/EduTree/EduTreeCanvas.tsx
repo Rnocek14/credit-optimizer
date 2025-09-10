@@ -404,31 +404,7 @@ function EduTreeCanvasInner() {
     };
   }, [courses, completedCourseIds]);
 
-  // Listen for node resize events and trigger debounced re-layout
-  useEffect(() => {
-    if (!flags.eduTreeLayoutV2) return;
-    
-    const handleNodeResize = () => {
-      if (!layoutManagerRef.current) {
-        layoutManagerRef.current = new LayoutManager(() => {
-          if (viewMode === 'flow' && flowNodes.length > 0) {
-            layoutWithElk(flowNodes, flowEdges).then(layoutedNodes => {
-              const finalNodes = resolveColumnCollisions(layoutedNodes);
-              setNodes(finalNodes);
-            });
-          }
-        });
-      }
-      layoutManagerRef.current.triggerLayout();
-    };
-
-    window.addEventListener('node:resized', handleNodeResize);
-    
-    return () => {
-      window.removeEventListener('node:resized', handleNodeResize);
-      layoutManagerRef.current?.cleanup();
-    };
-  }, [flags.eduTreeLayoutV2, viewMode, flowNodes, flowEdges, setNodes]);
+  // Simplified layout system - no complex resize handling needed
 
   // Handle fitView through ReactFlow's onInit callback
   const onInit = useCallback((reactFlowInstance: any) => {
