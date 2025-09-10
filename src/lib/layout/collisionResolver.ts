@@ -24,79 +24,37 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 3): Node[] {
 }
 
 /**
- * Simple collision resolution - just move overlapping nodes down
+ * Enhanced collision resolution with better spacing
  */
 function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
   const resolvedNodes = [...nodes];
   
-  // Sort collisions by Y position to resolve from top to bottom
-  collisions.sort((a, b) => a.node1.position.y - b.node1.position.y);
+  // Sort collisions by overlap severity to resolve worst first
+  collisions.sort((a, b) => b.overlap - a.overlap);
   
   collisions.forEach(({ node1, node2 }) => {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // Move the lower positioned node down to clear the collision
+    // Move the lower positioned node down with proper spacing
+    const spacing = 64; // Increased spacing
     if (node2.position.y >= node1.position.y) {
-      node2.position.y = rect1.y + rect1.height + 32; // 32px spacing
+      node2.position.y = rect1.y + rect1.height + spacing;
     } else {
-      node1.position.y = rect2.y + rect2.height + 32;
+      node1.position.y = rect2.y + rect2.height + spacing;
     }
   });
   
   return resolvedNodes;
 }
 
-/**
- * Get node rectangle for collision detection
- */
-function getNodeRect(node: Node) {
-  const width = node.type === 'blockGroup' ? 320 : 200;
-  const height = estimateNodeHeight(node);
-  
-  return {
-    x: node.position.x,
-    y: node.position.y,
-    width,
-    height
-  };
-}
+import { getNodeBounds } from './heightCalculation';
 
 /**
- * Unified height estimation matching simpleLayout.ts
+ * Get node rectangle for collision detection (unified system)
  */
-function estimateNodeHeight(node: Node): number {
-  if (node.type === 'blockGroup') {
-    const data = node.data as any;
-    const block = data.block;
-    
-    // Base height: header + progress bar + padding
-    let height = 160;
-    
-    // Course list height (each course is ~52px including spacing)
-    const courseCount = block?.courses?.length || 0;
-    height += courseCount * 52;
-    
-    // Sub-block height (if expanded, each sub-block is ~80px)
-    const subBlockCount = data.subBlocks?.length || 0;
-    height += subBlockCount * 80;
-    
-    // Alt credits section (if present, ~40px)
-    if (block?.alt_credits && block.alt_credits > 0) {
-      height += 40;
-    }
-    
-    // Expansion state buffer (when content is expanded)
-    if (data.isExpanded) {
-      height += 20;
-    }
-    
-    // Safety margin for dynamic content
-    height += 24;
-    
-    return Math.max(height, 180); // Minimum height
-  }
-  return 120; // Default height for other node types
+function getNodeRect(node: Node) {
+  return getNodeBounds(node);
 }
 
 /**

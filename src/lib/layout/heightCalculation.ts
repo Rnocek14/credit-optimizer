@@ -14,12 +14,13 @@ export interface NodeDimensions {
 
 /**
  * Calculate accurate dimensions for a block group node
+ * Uses React Flow measured height when available, falls back to estimation
  */
 export function calculateNodeDimensions(node: Node): NodeDimensions {
   if (node.type !== 'blockGroup') {
     return {
       width: 200,
-      height: 120,
+      height: node.measured?.height || 120,
       minHeight: 120,
       contentHeight: 100
     };
@@ -28,45 +29,55 @@ export function calculateNodeDimensions(node: Node): NodeDimensions {
   const data = node.data as any;
   const block = data.block;
   
-  // Base dimensions
+  // Use measured height if available (real rendered height)
+  if (node.measured?.height && node.measured.height > 0) {
+    return {
+      width: node.measured.width || 320,
+      height: node.measured.height,
+      minHeight: 180,
+      contentHeight: node.measured.height - 24
+    };
+  }
+  
+  // Fall back to estimation for layout calculation
   const width = 320; // Fixed width for block groups
   let contentHeight = 0;
   
   // Header section (title, area badge, progress bar)
-  contentHeight += 80;
+  contentHeight += 100; // Increased from 80 for better accuracy
   
   // Course list section
   const courseCount = block?.courses?.length || 0;
   if (courseCount > 0) {
-    // Course header + course items
-    contentHeight += 32 + (courseCount * 52);
+    // Course header + course items (more accurate sizing)
+    contentHeight += 40 + (courseCount * 56);
   }
   
   // Sub-blocks section (if any)
   const subBlockCount = data.subBlocks?.length || 0;
   if (subBlockCount > 0) {
-    contentHeight += 24 + (subBlockCount * 80);
+    contentHeight += 32 + (subBlockCount * 84);
   }
   
   // Alt credits section
   if (block?.alt_credits && block.alt_credits > 0) {
-    contentHeight += 40;
+    contentHeight += 48;
   }
   
   // Action buttons section
-  contentHeight += 48;
+  contentHeight += 56;
   
   // Expansion state adjustments
   if (data.isExpanded) {
-    contentHeight += 20; // Extra padding when expanded
+    contentHeight += 32; // More padding when expanded
   }
   
   // Padding and borders
-  const padding = 24;
+  const padding = 32;
   const totalHeight = contentHeight + padding;
   
   // Minimum height constraint
-  const minHeight = 180;
+  const minHeight = 200; // Increased minimum
   const finalHeight = Math.max(totalHeight, minHeight);
   
   return {

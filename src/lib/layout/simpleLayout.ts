@@ -86,12 +86,12 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
       const prevDimensions = calculateNodeDimensions(prevNode);
       yPosition += prevDimensions.height;
       
-      // Add optimal spacing to next node
-      if (i < nodeIndex - 1) {
-        const currentNode = yearNodes[i + 1];
-        yPosition += calculateOptimalSpacing(prevNode, currentNode);
+      // Add optimal spacing between this node and the next
+      const nextNode = yearNodes[i + 1]; // This could be the current node or the one after
+      if (nextNode) {
+        yPosition += calculateOptimalSpacing(prevNode, nextNode);
       } else {
-        yPosition += 48; // Default spacing for current node
+        yPosition += 64; // Default spacing when no next node
       }
     }
     
@@ -117,11 +117,12 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
           const prevDimensions = calculateNodeDimensions(prevNode);
           yPosition += prevDimensions.height;
           
-          if (i < subColumnIndex - 1) {
-            const nextNode = subColumnNodes[i + 1];
+          // Add spacing between nodes
+          const nextNode = subColumnNodes[i + 1];
+          if (nextNode) {
             yPosition += calculateOptimalSpacing(prevNode, nextNode);
           } else {
-            yPosition += 48; // Default spacing
+            yPosition += 64; // Default spacing
           }
         }
       }
@@ -273,39 +274,4 @@ function hasOverlap(rect1: any, rect2: any): boolean {
            rect2.y + rect2.height + buffer < rect1.y);
 }
 
-/**
- * Unified height estimation for accurate collision calculations
- */
-function estimateNodeHeight(node: Node): number {
-  if (node.type === 'blockGroup') {
-    const data = node.data as any;
-    const block = data.block;
-    
-    // Base height: header + progress bar + padding
-    let height = 160;
-    
-    // Course list height (each course is ~52px including spacing)
-    const courseCount = block?.courses?.length || 0;
-    height += courseCount * 52;
-    
-    // Sub-block height (if expanded, each sub-block is ~80px)
-    const subBlockCount = data.subBlocks?.length || 0;
-    height += subBlockCount * 80;
-    
-    // Alt credits section (if present, ~40px)
-    if (block?.alt_credits && block.alt_credits > 0) {
-      height += 40;
-    }
-    
-    // Expansion state buffer (when content is expanded)
-    if (data.isExpanded) {
-      height += 20;
-    }
-    
-    // Safety margin for dynamic content
-    height += 24;
-    
-    return Math.max(height, 180); // Minimum height
-  }
-  return 120; // Default height for other node types
-}
+// Removed - now using unified calculateNodeDimensions from heightCalculation.ts
