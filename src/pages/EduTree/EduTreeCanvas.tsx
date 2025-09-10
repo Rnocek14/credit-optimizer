@@ -229,7 +229,7 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create nodes with natural horizontal layout positioning
+    // Create nodes with improved layout positioning
     const coreNodes: Node[] = sortedCoreBlocks
       .map((block, index) => {
         if (!block || !block.id) {
@@ -249,10 +249,10 @@ function EduTreeCanvasInner() {
         return {
           id: String(block.id),
           type: 'blockGroup',
-          // Natural horizontal layout: wider year-based columns with better vertical spread
+          // Horizontal layout: year-based columns, better spacing
           position: { 
-            x: (block.level_year || 0) * 450, 
-            y: index * 220 
+            x: (block.level_year || 0) * 380, 
+            y: index * 180 
           },
           data: {
             block,
@@ -268,57 +268,47 @@ function EduTreeCanvasInner() {
       })
       .filter(Boolean) as Node[];
 
-    // Create specialized track nodes with natural horizontal spread
+    // Create specialized track nodes  
     const trackNodes: Node[] = [];
     
-    // Always show tracks in natural layout (focus enhances, doesn't hide)
-    if (webBlocks.length > 0 || mobileBlocks.length > 0) {
-      // Web track node - positioned at year 4, upper area
-      if (webBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'web-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'web-track',
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 100       // Upper position for web track
-            },
-            data: {
-              track: 'web',
-              blocks: webBlocks,
-              completedCourseIds,
-              isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
+    // Only show tracks based on focus mode
+    const shouldShowTracks = focusState.mode === 'overview' || 
+                           focusState.mode === 'compare-tracks' ||
+                           focusState.mode === 'web-track' ||
+                           focusState.mode === 'mobile-track';
+
+    if (shouldShowTracks && (webBlocks.length > 0 || mobileBlocks.length > 0)) {
+      // Web track node
+      if (webBlocks.length > 0 && (focusState.mode !== 'mobile-track')) {
+        trackNodes.push({
+          id: 'web-track',
+          type: 'specializationTrack',
+          position: { x: 3 * 380, y: focusState.mode === 'compare-tracks' ? 0 : 200 },
+          data: {
+            track: 'web',
+            blocks: webBlocks,
+            completedCourseIds,
+            isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
+          }
+        });
       }
 
-      // Mobile track node - positioned at year 4, lower area  
-      if (mobileBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'mobile-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'mobile-track', 
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 600       // Lower position for mobile track (clear separation)
-            },
-            data: {
-              track: 'mobile',
-              blocks: mobileBlocks,
-              completedCourseIds,
-              isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
+      // Mobile track node  
+      if (mobileBlocks.length > 0 && (focusState.mode !== 'web-track')) {
+        trackNodes.push({
+          id: 'mobile-track', 
+          type: 'specializationTrack',
+          position: { 
+            x: 3 * 380, 
+            y: focusState.mode === 'compare-tracks' ? 450 : 200 + (webBlocks.length > 0 ? 500 : 0)
+          },
+          data: {
+            track: 'mobile',
+            blocks: mobileBlocks,
+            completedCourseIds,
+            isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
+          }
+        });
       }
     }
 
