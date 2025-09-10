@@ -25,6 +25,7 @@ import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
 import { findOptimalPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
+import { useStaggeredEdgesV2 } from '@/hooks/useStaggeredEdgesV2';
 import { useDragGuard } from '@/components/ui/drag-guard';
 import { OutcomePanel, PlanValidationSummary } from './components/OutcomePanel';
 import { EduTreeMiniMap } from '@/components/ui/minimap';
@@ -41,6 +42,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
+import { TerminalNode } from './components/TerminalNode';
 import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
@@ -52,6 +54,8 @@ import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
+  terminal: TerminalNode,
+  terminalNode: TerminalNode,
 };
 
 const DEV = import.meta.env.DEV;
@@ -291,9 +295,13 @@ function EduTreeCanvasInner() {
 
     const degreeNode: Node = {
       id: 'degree-completion',
-      type: 'blockGroup',
+      type: 'terminal',
       position: { x: 5 * 320, y: 0 }, // Position at Year 5
       data: {
+        label: 'B.S. Software Engineering',
+        isEligible: isDegreeUnlocked || false,
+        degreeType: 'Bachelor of Science',
+        credits: totalCourses * 3, // Approximate total credits
         block: {
           id: 'degree-completion',
           title: 'B.S. Software Engineering',
@@ -413,6 +421,17 @@ function EduTreeCanvasInner() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  // Staggered edges V2 system
+  const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
+    edges,
+    nodes,
+    {
+      enabled: flags.eduTreeStaggeredEdgesV2,
+      batchDelayMs: 800,
+      emergencyTimeoutMs: 2000,
+    }
+  );
   
   // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
   useEffect(() => {
@@ -665,7 +684,7 @@ function EduTreeCanvasInner() {
         <ReactFlow
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
-          edges={edges}
+          edges={visibleEdges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
@@ -693,6 +712,28 @@ function EduTreeCanvasInner() {
           />
           {/* Mini-map for large tree navigation */}
           {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
+          
+          {/* Development controls */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2">
+              <div className="text-xs text-muted-foreground">
+                Edges: {visibleEdges.length}/{edges.length}
+                {isRevealing && <span className="ml-2 text-primary">Revealing...</span>}
+              </div>
+              <button
+                onClick={forceRevealAll}
+                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
+              >
+                Show All Edges
+              </button>
+              <button
+                onClick={() => onInit?.({} as any)} // Trigger fitView again
+                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
+              >
+                Focus Terminal
+              </button>
+            </div>
+          )}
         </ReactFlow>
       </div>
 
