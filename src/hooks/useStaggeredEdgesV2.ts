@@ -27,6 +27,7 @@ export function useStaggeredEdgesV2(
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const emergencyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastLogKeyRef = useRef<string>('');
+  const scheduledKeyRef = useRef<string | null>(null);
 
   // RAF-aligned reveal to avoid jank
   const reveal = (edges: Edge[]) => {
@@ -93,6 +94,11 @@ export function useStaggeredEdgesV2(
   }, [allEdges, allNodes]);
 
   useEffect(() => {
+    // StrictMode guard - prevent duplicate scheduling
+    const key = `${sortedColumns.join(',')}|${allEdges.length}`;
+    if (scheduledKeyRef.current === key) return;
+    scheduledKeyRef.current = key;
+
     // Clear any existing timeouts
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
@@ -106,8 +112,6 @@ export function useStaggeredEdgesV2(
       setIsRevealing(false);
       return;
     }
-
-    // Allow staggering even on small graphs (removed threshold)
 
     setIsRevealing(true);
     setVisibleEdges([]);
@@ -129,15 +133,18 @@ export function useStaggeredEdgesV2(
       return;
     }
 
+    // Optimize delay for small graphs
+    const delay = batchesInOrder.length <= 2 ? Math.min(config.batchDelayMs, 450) : config.batchDelayMs;
+
     // Dynamically compute emergency timeout with minimum floor
-    const totalRevealMs = (batchesInOrder.length - 1) * config.batchDelayMs + 400;
+    const totalRevealMs = (batchesInOrder.length - 1) * delay + 400;
     const emergencyMs = Math.max(
       config.emergencyTimeoutMs ?? 2000,
       totalRevealMs,
       1200 // minimum safety
     );
 
-    // Set up emergency timeout with dynamic duration
+    // Set up emergency timeout with dynamic duration (only warn if it actually fires)
     emergencyTimeoutRef.current = setTimeout(() => {
       console.warn(`[StaggeredEdgesV2] Emergency timeout (${emergencyMs}ms) - revealing all ${allEdges.length} edges`);
       forceRevealAll();
@@ -160,12 +167,13 @@ export function useStaggeredEdgesV2(
             emergencyTimeoutRef.current = null;
           }
         }
-      }, index * config.batchDelayMs);
+      }, index * delay);
 
       timeoutsRef.current.push(timeout);
     });
 
     return () => {
+      scheduledKeyRef.current = null;
       timeoutsRef.current.forEach(clearTimeout);
       timeoutsRef.current = [];
       if (emergencyTimeoutRef.current) {

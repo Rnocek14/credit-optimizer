@@ -432,7 +432,7 @@ function EduTreeCanvasInner() {
     nodes,
     {
       enabled: flags.eduTreeStaggeredEdgesV2,
-      batchDelayMs: 800,
+      batchDelayMs: process.env.NODE_ENV === 'development' ? 800 : 650,
       emergencyTimeoutMs: 2000,
     }
   );
@@ -448,15 +448,21 @@ function EduTreeCanvasInner() {
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
   
   // Re-enable path highlighting safely with stable dependencies
+  const lastPathRef = useRef<string>('');
   useEffect(() => {
     if (!flags.eduTreeOutcomes) return;
     if (!flowNodes.length || !flowEdges.length) return;
 
     const optimal = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
-    setHighlightedPath({
-      nodes: new Set(optimal.nodes),
-      edges: new Set(optimal.edges),
-    });
+    const key = JSON.stringify({ n: optimal.nodes, e: optimal.edges });
+    
+    if (key !== lastPathRef.current) {
+      lastPathRef.current = key;
+      setHighlightedPath({
+        nodes: new Set(optimal.nodes),
+        edges: new Set(optimal.edges),
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
