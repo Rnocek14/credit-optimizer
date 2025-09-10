@@ -172,10 +172,23 @@ function EduTreeCanvasInner() {
       gate: gates.find(g => g.block_id === block.id)
     }));
 
-    // Apply topological sorting for stable Year-3 ordering
+    // Separate parent blocks from child blocks
+    const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
+    const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
+    
+    // Group child blocks by parent
+    const childBlocksByParent = new Map<string, BlockWithCourses[]>();
+    childBlocks.forEach(child => {
+      if (!childBlocksByParent.has(child.parent_block_id!)) {
+        childBlocksByParent.set(child.parent_block_id!, []);
+      }
+      childBlocksByParent.get(child.parent_block_id!)!.push(child);
+    });
+
+    // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
     const sortedBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(blocksWithCourses, gateEdges) : 
-      blocksWithCourses;
+      sortBlocksForLayout(parentBlocks, gateEdges) : 
+      parentBlocks;
 
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
@@ -211,9 +224,14 @@ function EduTreeCanvasInner() {
           return null;
         }
 
+        // Get sub-blocks for this parent block
+        const subBlocks = childBlocksByParent.get(block.id) || [];
+        
+        // Calculate progress including sub-blocks
+        const allCourses = [...block.courses, ...subBlocks.flatMap(sb => sb.courses)];
         const progress = {
-          completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
-          required: block.rule_type === 'ALL' ? block.courses.length : 
+          completed: allCourses.filter(c => completedCourseIds.has(c.id)).length,
+          required: block.rule_type === 'ALL' ? allCourses.length : 
                    block.rule_type === 'K_OF_N' ? (block.k || 0) :
                    Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
         };
@@ -229,6 +247,7 @@ function EduTreeCanvasInner() {
             completedCourseIds,
             isUnlocked: unlockedBlocks.has(block.id),
             progress,
+            subBlocks, // Include sub-blocks in the node data
             level_year: block.level_year || 0,
             area: block.area || 'unknown',
             isHighlighted,
