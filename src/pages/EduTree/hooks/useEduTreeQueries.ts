@@ -147,7 +147,7 @@ export function useEduTreeQueries() {
     // Convenience flags
     isLoading: coursesQuery.isLoading || blocksQuery.isLoading,
     hasError: coursesQuery.isError || blocksQuery.isError,
-    isCriticalDataReady: coursesQuery.isSuccess && blocksQuery.isSuccess,
+    isCriticalDataReady: (coursesQuery.data?.length || 0) > 0 && (blocksQuery.data?.length || 0) > 0,
     criticalDataLoaded: !coursesQuery.isLoading && !blocksQuery.isLoading,
     allDataLoaded: !coursesQuery.isLoading && !blocksQuery.isLoading && 
                    !blockMembersQuery.isLoading && !gatesQuery.isLoading && 

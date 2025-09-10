@@ -17,8 +17,19 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
     errors, 
     isCriticalDataReady, 
     allDataLoaded,
-    queries
+    queries,
+    courses,
+    blocks
   } = useEduTreeQueries();
+
+  // Debug logging
+  console.log('🔍 LoadingFallback Debug:', {
+    isCriticalDataReady,
+    coursesCount: courses?.length || 0,
+    blocksCount: blocks?.length || 0,
+    coursesLoading: loading.courses,
+    blocksLoading: loading.blocks
+  });
 
   // Calculate loading progress
   const totalSteps = 5;
