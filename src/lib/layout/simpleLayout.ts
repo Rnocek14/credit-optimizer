@@ -1,4 +1,6 @@
 import { Node, Edge } from '@xyflow/react';
+import { resolveAllCollisions, validateLayout } from './collisionResolver';
+import { measurementSystem, measureNodes } from './measurementSystem';
 import { 
   calculateNodeDimensions, 
   getNodeBounds as getNodeBoundsUnified,
@@ -19,40 +21,59 @@ export interface LayoutResult {
 }
 
 /**
- * Main layout function - simplified pipeline
+ * Main layout function with two-stage measurement and collision resolution
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
   
-  console.log(`🎯 Starting layout for ${nodes.length} nodes`);
+  console.log(`🎯 Starting two-stage layout for ${nodes.length} nodes`);
   
-  // Stage 1: Year-based column positioning
-  let layoutedNodes = applyYearBasedLayout(nodes);
+  if (nodes.length === 0) {
+    return {
+      nodes: [],
+      hasOverlaps: false,
+      layoutTime: performance.now() - startTime
+    };
+  }
+
+  // Stage 1: Get accurate measurements for all nodes
+  console.log('📏 Stage 1: Measuring node dimensions...');
+  const measurements = await measureNodes(nodes);
   
-  // Stage 2: Resolve any collisions
-  layoutedNodes = resolveCollisions(layoutedNodes);
+  // Stage 2: Apply year-based layout with accurate measurements
+  console.log('📐 Stage 2: Applying year-based layout...');
+  let layoutNodes = applyYearBasedLayoutWithMeasurements([...nodes], measurements);
   
-  // Stage 3: Validation
-  const hasOverlaps = detectOverlaps(layoutedNodes).length > 0;
+  // Stage 3: Enhanced collision resolution with multiple passes
+  console.log('🔧 Stage 3: Resolving collisions...');
+  layoutNodes = resolveAllCollisions(layoutNodes, 10);
+  
+  // Final validation
+  const hasOverlaps = !validateLayout(layoutNodes);
   const layoutTime = performance.now() - startTime;
   
-  console.log(`✅ Layout complete: ${hasOverlaps ? 'HAS OVERLAPS' : 'NO OVERLAPS'} (${layoutTime.toFixed(1)}ms)`);
+  console.log(hasOverlaps ? 
+    `❌ Layout complete with overlaps (${layoutTime.toFixed(1)}ms)` : 
+    `✅ Layout complete: NO OVERLAPS (${layoutTime.toFixed(1)}ms)`
+  );
   
   return {
-    nodes: layoutedNodes,
+    nodes: layoutNodes,
     hasOverlaps,
     layoutTime
   };
 }
 
 /**
- * Apply year-based column layout with smart vertical positioning
+ * Apply year-based layout with accurate measurements and proper spacing
  */
-function applyYearBasedLayout(nodes: Node[]): Node[] {
-  const yearColumns = [80, 440, 800, 1160]; // Year 1-4 columns (320px width + 120px spacing)
+function applyYearBasedLayoutWithMeasurements(
+  nodes: Node[], 
+  measurements: Map<string, { width: number; height: number }>
+): Node[] {
+  // Group nodes by year
   const nodesByYear = new Map<number, Node[]>();
   
-  // Group nodes by year
   nodes.forEach(node => {
     const data = node.data as any;
     const year = data.level_year ?? 1;
@@ -61,81 +82,125 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
     }
     nodesByYear.get(year)!.push(node);
   });
+
+  const sortedYears = Array.from(nodesByYear.keys()).sort((a, b) => a - b);
+  let currentX = 40; // Start position
   
-  // Sort nodes within each year by area/priority
-  nodesByYear.forEach(yearNodes => {
+  sortedYears.forEach(year => {
+    const yearNodes = nodesByYear.get(year)!;
+    
+    // Sort nodes within year
     yearNodes.sort((a, b) => {
       const aData = a.data as any;
       const bData = b.data as any;
       return (aData.sortOrder ?? 0) - (bData.sortOrder ?? 0);
     });
+
+    // Calculate total height needed for this year
+    const totalHeight = calculateYearColumnHeight(yearNodes, measurements);
+    const maxColumnHeight = 1000; // Increased from 800
+    
+    if (totalHeight > maxColumnHeight && yearNodes.length > 2) {
+      // Split into multiple columns with smart distribution
+      const columns = distributeNodesIntoColumns(yearNodes, measurements, maxColumnHeight);
+      
+      columns.forEach((columnNodes, columnIndex) => {
+        const columnX = currentX + (columnIndex * 360);
+        positionNodesInColumnWithMeasurements(columnNodes, columnX, 40, measurements);
+      });
+      
+      currentX += columns.length * 360;
+    } else {
+      // Single column
+      positionNodesInColumnWithMeasurements(yearNodes, currentX, 40, measurements);
+      currentX += 360;
+    }
+  });
+
+  return nodes;
+}
+
+/**
+ * Position nodes vertically with accurate measurements and generous spacing
+ */
+function positionNodesInColumnWithMeasurements(
+  nodes: Node[], 
+  x: number, 
+  startY: number, 
+  measurements: Map<string, { width: number; height: number }>
+): void {
+  let currentY = startY;
+  
+  nodes.forEach((node, index) => {
+    node.position = { x, y: currentY };
+    
+    // Get accurate height measurement
+    const dimensions = measurements.get(node.id) || { width: 320, height: 180 };
+    currentY += dimensions.height;
+    
+    // Add generous spacing between nodes (minimum 64px, more for larger nodes)
+    if (index < nodes.length - 1) {
+      const baseSpacing = 64;
+      const contentBasedSpacing = Math.max(baseSpacing, dimensions.height * 0.15);
+      currentY += Math.min(contentBasedSpacing, 120); // Cap at 120px
+    }
+  });
+}
+
+/**
+ * Calculate total height needed for a year column
+ */
+function calculateYearColumnHeight(
+  nodes: Node[], 
+  measurements: Map<string, { width: number; height: number }>
+): number {
+  let totalHeight = 40; // Initial padding
+  
+  nodes.forEach((node, index) => {
+    const dimensions = measurements.get(node.id) || { width: 320, height: 180 };
+    totalHeight += dimensions.height;
+    
+    if (index < nodes.length - 1) {
+      totalHeight += 64; // Minimum spacing
+    }
   });
   
-  // Calculate positions with smart vertical spacing
-  return nodes.map(node => {
-    const data = node.data as any;
-    const year = data.level_year ?? 1;
-    const yearNodes = nodesByYear.get(year) || [];
-    const nodeIndex = yearNodes.findIndex(n => n.id === node.id);
+  return totalHeight + 40; // Bottom padding
+}
+
+/**
+ * Intelligently distribute nodes into columns based on content height
+ */
+function distributeNodesIntoColumns(
+  nodes: Node[], 
+  measurements: Map<string, { width: number; height: number }>,
+  maxColumnHeight: number
+): Node[][] {
+  const columns: Node[][] = [];
+  let currentColumn: Node[] = [];
+  let currentColumnHeight = 40; // Initial padding
+  
+  nodes.forEach((node, index) => {
+    const dimensions = measurements.get(node.id) || { width: 320, height: 180 };
+    const nodeWithSpacing = dimensions.height + (index < nodes.length - 1 ? 64 : 0);
     
-    // Calculate cumulative height for proper vertical positioning
-    let yPosition = 40; // Starting Y position
-    
-    for (let i = 0; i < nodeIndex; i++) {
-      const prevNode = yearNodes[i];
-      const prevDimensions = calculateNodeDimensions(prevNode);
-      yPosition += prevDimensions.height;
-      
-      // Add optimal spacing between this node and the next
-      const nextNode = yearNodes[i + 1]; // This could be the current node or the one after
-      if (nextNode) {
-        yPosition += calculateOptimalSpacing(prevNode, nextNode);
-      } else {
-        yPosition += 64; // Default spacing when no next node
-      }
+    if (currentColumnHeight + nodeWithSpacing > maxColumnHeight && currentColumn.length > 0) {
+      // Start new column
+      columns.push(currentColumn);
+      currentColumn = [node];
+      currentColumnHeight = 40 + dimensions.height;
+    } else {
+      // Add to current column
+      currentColumn.push(node);
+      currentColumnHeight += nodeWithSpacing;
     }
-    
-    // Handle horizontal distribution when column is too tall
-    const maxColumnHeight = (typeof window !== 'undefined' && window.innerHeight) ? 
-      window.innerHeight - 200 : 800;
-    
-    let xPosition = yearColumns[year - 1] ?? 80;
-    
-    // Check if we need horizontal distribution
-    if (shouldDistributeHorizontally(yearNodes, maxColumnHeight)) {
-      const subColumn = Math.floor(nodeIndex / 4);
-      xPosition += subColumn * 360; // Offset horizontally (320px width + 40px spacing)
-      
-      // Recalculate Y position for sub-column
-      const subColumnIndex = nodeIndex % 4;
-      const subColumnNodes = yearNodes.slice(subColumn * 4, (subColumn + 1) * 4);
-      
-      yPosition = 40; // Reset to top of sub-column
-      for (let i = 0; i < subColumnIndex; i++) {
-        if (i < subColumnNodes.length) {
-          const prevNode = subColumnNodes[i];
-          const prevDimensions = calculateNodeDimensions(prevNode);
-          yPosition += prevDimensions.height;
-          
-          // Add spacing between nodes
-          const nextNode = subColumnNodes[i + 1];
-          if (nextNode) {
-            yPosition += calculateOptimalSpacing(prevNode, nextNode);
-          } else {
-            yPosition += 64; // Default spacing
-          }
-        }
-      }
-    }
-    
-    return {
-      ...node,
-      position: {
-        x: xPosition,
-        y: yPosition
-      }
-    };
   });
+  
+  if (currentColumn.length > 0) {
+    columns.push(currentColumn);
+  }
+  
+  return columns.length > 0 ? columns : [nodes];
 }
 
 /**

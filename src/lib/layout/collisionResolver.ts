@@ -24,7 +24,7 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 3): Node[] {
 }
 
 /**
- * Enhanced collision resolution with better spacing
+ * Enhanced collision resolution with intelligent spacing and horizontal distribution
  */
 function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
   const resolvedNodes = [...nodes];
@@ -36,16 +36,81 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // Move the lower positioned node down with proper spacing
-    const spacing = 64; // Increased spacing
+    // Calculate intelligent spacing based on node heights
+    const baseSpacing = 80; // Increased base spacing
+    const contentSpacing = Math.max(rect1.height, rect2.height) * 0.2;
+    const finalSpacing = Math.min(baseSpacing + contentSpacing, 150);
+    
+    // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
-      node2.position.y = rect1.y + rect1.height + spacing;
+      const newY = rect1.y + rect1.height + finalSpacing;
+      node2.position.y = newY;
+      
+      // Check if we should consider horizontal distribution
+      if (newY > 1200) { // If getting too low, try horizontal shift
+        const horizontalShift = findHorizontalSpace(nodes, node2, rect2.width);
+        if (horizontalShift !== null) {
+          node2.position.x = horizontalShift;
+          node2.position.y = Math.max(40, node2.position.y - 200); // Move back up
+        }
+      }
     } else {
-      node1.position.y = rect2.y + rect2.height + spacing;
+      const newY = rect2.y + rect2.height + finalSpacing;
+      node1.position.y = newY;
+      
+      if (newY > 1200) {
+        const horizontalShift = findHorizontalSpace(nodes, node1, rect1.width);
+        if (horizontalShift !== null) {
+          node1.position.x = horizontalShift;
+          node1.position.y = Math.max(40, node1.position.y - 200);
+        }
+      }
     }
   });
   
   return resolvedNodes;
+}
+
+/**
+ * Find available horizontal space for a node to avoid vertical crowding
+ */
+function findHorizontalSpace(nodes: Node[], targetNode: Node, nodeWidth: number): number | null {
+  const targetRect = getNodeRect(targetNode);
+  const possibleXPositions = [];
+  
+  // Check positions to the left and right of existing nodes
+  for (const node of nodes) {
+    if (node.id === targetNode.id) continue;
+    const rect = getNodeRect(node);
+    
+    // Try position to the right
+    possibleXPositions.push(rect.x + rect.width + 40);
+    // Try position to the left
+    possibleXPositions.push(rect.x - nodeWidth - 40);
+  }
+  
+  // Test each position for conflicts
+  for (const x of possibleXPositions) {
+    if (x < 0) continue; // Don't go off screen
+    
+    const testRect = { x, y: targetRect.y, width: nodeWidth, height: targetRect.height };
+    let hasConflict = false;
+    
+    for (const node of nodes) {
+      if (node.id === targetNode.id) continue;
+      const rect = getNodeRect(node);
+      if (hasOverlap(testRect, rect)) {
+        hasConflict = true;
+        break;
+      }
+    }
+    
+    if (!hasConflict) {
+      return x;
+    }
+  }
+  
+  return null;
 }
 
 import { getNodeBounds } from './heightCalculation';
