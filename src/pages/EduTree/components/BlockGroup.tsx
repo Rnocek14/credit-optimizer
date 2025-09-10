@@ -71,7 +71,7 @@ export function BlockGroup(props: NodeProps) {
 
       <Card className={`
         ${isDegreeNode ? 'min-w-[380px] max-w-[380px]' : 'min-w-[320px] max-w-[320px]'} 
-        ${!isUnlocked ? 'opacity-75' : ''}
+        ${!isUnlocked ? 'opacity-65' : ''} 
         ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' : 
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
@@ -82,11 +82,20 @@ export function BlockGroup(props: NodeProps) {
         <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              {!isUnlocked && !isDegreeNode && <Lock className="w-4 h-4 text-muted-foreground" />}
+              {!isUnlocked && !isDegreeNode && (
+                <Lock className="w-4 h-4 text-muted-foreground opacity-80" />
+              )}
               {isDegreeNode && <GraduationCap className={`w-5 h-5 ${isDegreeComplete ? 'text-accent-gold' : 'text-accent-gold/60'}`} />}
               {isComplete && !isDegreeNode && <CheckCircle className="w-4 h-4 text-primary" />}
               {isDegreeComplete && <CheckCircle className="w-4 h-4 text-accent-gold" />}
-              <span className={isDegreeNode ? 'text-accent-gold font-bold' : ''}>{block.title}</span>
+              <span 
+                className={`
+                  ${isDegreeNode ? 'text-accent-gold font-bold' : ''}
+                  ${!isUnlocked && !isDegreeNode ? 'text-foreground/90' : 'text-foreground'}
+                `}
+              >
+                {block.title}
+              </span>
             </CardTitle>
             
             <div className="flex items-center gap-2">

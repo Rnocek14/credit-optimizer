@@ -43,6 +43,7 @@ import { toast } from '@/hooks/use-toast';
 import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
 import { TerminalNode } from './components/TerminalNode';
+import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
@@ -56,6 +57,8 @@ const nodeTypes = {
   blockGroup: BlockGroup,
   terminal: TerminalNode,
   terminalNode: TerminalNode,
+  placeholder: PlaceholderGroup,
+  placeholderGroup: PlaceholderGroup,
 };
 
 const DEV = import.meta.env.DEV;
@@ -581,13 +584,20 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // EMERGENCY FIX: Simple React Flow initialization
+  // Enhanced onInit with terminal focus
   const onInit = useCallback((reactFlowInstance: any) => {
-    // Simple fit view only, no complex layout
+    const hasTerminal = nodes.some(node => 
+      node.type === 'terminal' || node.type === 'terminalNode' || 
+      node.id === 'degree-completion'
+    );
+    
+    // Use higher padding if terminal node exists
+    const padding = hasTerminal ? 0.4 : 0.2;
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+      reactFlowInstance.fitView({ padding, duration: 300 });
+      console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
     }, 100);
-  }, []);
+  }, [nodes]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -727,7 +737,13 @@ function EduTreeCanvasInner() {
                 Show All Edges
               </button>
               <button
-                onClick={() => onInit?.({} as any)} // Trigger fitView again
+                onClick={() => {
+                  const hasTerminal = nodes.some(node => 
+                    node.type === 'terminal' || node.id === 'degree-completion'
+                  );
+                  const padding = hasTerminal ? 0.4 : 0.2;
+                  onInit?.({ fitView: (opts: any) => console.log('Manual fitView triggered', opts) } as any);
+                }}
                 className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
               >
                 Focus Terminal
