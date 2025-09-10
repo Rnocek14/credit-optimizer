@@ -306,6 +306,11 @@ function EduTreeCanvasInner() {
   // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
   useEffect(() => {
     if (flowNodes.length > 0) {
+      console.log('[EduTree] Layout trigger:', { 
+        nodeCount: flowNodes.length, 
+        edgeCount: flowEdges.length, 
+        viewMode 
+      });
       const applyEmergencyLayout = async () => {
         try {
           console.log('[EduTree] EMERGENCY: Applying fail-safe layout to', flowNodes.length, 'nodes');
@@ -346,7 +351,7 @@ function EduTreeCanvasInner() {
       
       applyEmergencyLayout();
     }
-  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
+  }, [flowNodes.length, flowEdges.length, viewMode]); // Include edges and view mode dependencies
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
