@@ -1,11 +1,12 @@
 import { Node } from '@xyflow/react';
 
 /**
- * Simple collision resolution focused on vertical stacking
+ * Enhanced collision resolution with intelligent spacing and multiple strategies
  */
-export function resolveAllCollisions(nodes: Node[], maxPasses = 3): Node[] {
+export function resolveAllCollisions(nodes: Node[], maxPasses = 15): Node[] {
   let resolvedNodes = [...nodes];
   let pass = 0;
+  let lastCollisionCount = Infinity;
   
   while (pass < maxPasses) {
     const collisions = detectCollisions(resolvedNodes);
@@ -15,8 +16,15 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 3): Node[] {
       break;
     }
     
+    // Early termination if not improving
+    if (collisions.length >= lastCollisionCount && pass > 5) {
+      console.log(`🛑 Collision resolution plateaued at ${collisions.length} overlaps after ${pass} passes`);
+      break;
+    }
+    
     console.log(`🔄 Pass ${pass + 1}: Resolving ${collisions.length} collisions`);
     resolvedNodes = resolveCollisionsSimple(resolvedNodes, collisions);
+    lastCollisionCount = collisions.length;
     pass++;
   }
   
@@ -37,32 +45,33 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect2 = getNodeRect(node2);
     
     // Calculate intelligent spacing based on node heights
-    const baseSpacing = 80; // Increased base spacing
-    const contentSpacing = Math.max(rect1.height, rect2.height) * 0.2;
-    const finalSpacing = Math.min(baseSpacing + contentSpacing, 150);
+    const baseSpacing = 100; // Increased base spacing significantly
+    const largerNodeHeight = Math.max(rect1.height, rect2.height);
+    const contentSpacing = largerNodeHeight * 0.25; // Increased multiplier
+    const finalSpacing = Math.min(baseSpacing + contentSpacing, 180); // Increased cap
     
     // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
       const newY = rect1.y + rect1.height + finalSpacing;
       node2.position.y = newY;
       
-      // Check if we should consider horizontal distribution
-      if (newY > 1200) { // If getting too low, try horizontal shift
+      // Check if we should consider horizontal distribution for very tall layouts
+      if (newY > 1000) { // Reduced threshold for earlier horizontal distribution
         const horizontalShift = findHorizontalSpace(nodes, node2, rect2.width);
         if (horizontalShift !== null) {
           node2.position.x = horizontalShift;
-          node2.position.y = Math.max(40, node2.position.y - 200); // Move back up
+          node2.position.y = Math.max(40, rect1.y); // Position at same level as conflicting node
         }
       }
     } else {
       const newY = rect2.y + rect2.height + finalSpacing;
       node1.position.y = newY;
       
-      if (newY > 1200) {
+      if (newY > 1000) {
         const horizontalShift = findHorizontalSpace(nodes, node1, rect1.width);
         if (horizontalShift !== null) {
           node1.position.x = horizontalShift;
-          node1.position.y = Math.max(40, node1.position.y - 200);
+          node1.position.y = Math.max(40, rect2.y);
         }
       }
     }
@@ -147,13 +156,14 @@ function detectCollisions(nodes: Node[]): { node1: Node; node2: Node; overlap: n
 }
 
 /**
- * Check if two rectangles overlap
+ * Check if two rectangles overlap with buffer to prevent touching nodes
  */
 function hasOverlap(rect1: any, rect2: any): boolean {
-  return !(rect1.x + rect1.width < rect2.x || 
-           rect2.x + rect2.width < rect1.x || 
-           rect1.y + rect1.height < rect2.y || 
-           rect2.y + rect2.height < rect1.y);
+  const buffer = 12; // Increased buffer to prevent nodes from being too close
+  return !(rect1.x + rect1.width + buffer <= rect2.x || 
+           rect2.x + rect2.width + buffer <= rect1.x || 
+           rect1.y + rect1.height + buffer <= rect2.y || 
+           rect2.y + rect2.height + buffer <= rect1.y);
 }
 
 /**
