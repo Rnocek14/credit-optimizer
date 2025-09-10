@@ -289,15 +289,15 @@
     --accent: oklch(0.80 0.10 340); /* Pink/magenta for design category */
     --accent-foreground: oklch(0.99 0.00 0);
     
-    /* WCAG-compliant accent palette - refined system */
-    --accent-cyan: 0.75 0.15 200;
-    --accent-cyan-foreground: 0.20 0.03 200;
+    /* WCAG-compliant accent palette - use OKLCH format for consistency */
+    --accent-cyan: oklch(0.75 0.15 200);
+    --accent-cyan-foreground: oklch(0.20 0.03 200);
     
-    --accent-gold: 0.78 0.13 84;
-    --accent-gold-foreground: 0.20 0.03 84;
+    --accent-gold: oklch(0.78 0.13 84);
+    --accent-gold-foreground: oklch(0.20 0.03 84);
     
-    --accent-lime: 0.82 0.11 135;
-    --accent-lime-foreground: 0.20 0.03 135;
+    --accent-lime: oklch(0.82 0.11 135);
+    --accent-lime-foreground: oklch(0.20 0.03 135);
     
     /* Risk matrix colors - WCAG AA compliant */
     --risk-low: oklch(0.75 0.12 142); /* Green - same as success */
@@ -328,10 +328,7 @@
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.25);
     --shadow-colored: 0 8px 30px oklch(var(--primary) / 0.12);
 
-    /* Refined accent colors */
-    --accent-cyan: 0.75 0.15 200;
-    --accent-gold: 0.78 0.13 84;
-    --accent-lime: 0.82 0.11 135;
+    /* Refined accent colors - REMOVED DUPLICATE, using OKLCH definitions above */
 
     /* risk matrix */
     --risk-low:       0.85 0.07 140;

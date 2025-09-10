@@ -303,14 +303,6 @@ function EduTreeCanvasInner() {
 
     const nodes: Node[] = [...regularNodes, degreeNode];
 
-    if (DEV) {
-      console.log('[EduTree] Generated nodes:', { 
-        nodeCount: nodes.length, 
-        firstNode: nodes[0],
-        nodeTypes: Object.keys(nodeTypes)
-      });
-    }
-
     // Create React Flow edges (only between blocks)
     const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
@@ -325,13 +317,13 @@ function EduTreeCanvasInner() {
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+          stroke: isHighlighted ? 'oklch(var(--primary))' : 'oklch(var(--primary))',
           strokeWidth: isHighlighted ? 3 : 2,
           opacity: isHighlighted ? 1 : 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+          color: isHighlighted ? 'oklch(var(--primary))' : 'oklch(var(--primary))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -349,13 +341,13 @@ function EduTreeCanvasInner() {
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: 'hsl(var(--accent-gold))',
+          stroke: 'oklch(var(--accent-gold))',
           strokeWidth: 3,
           opacity: 0.8
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: 'hsl(var(--accent-gold))',
+          color: 'oklch(var(--accent-gold))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -369,13 +361,13 @@ function EduTreeCanvasInner() {
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: 'hsl(var(--accent-gold))',
+          stroke: 'oklch(var(--accent-gold))',
           strokeWidth: 3,
           opacity: 0.8
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: 'hsl(var(--accent-gold))',
+          color: 'oklch(var(--accent-gold))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -384,6 +376,18 @@ function EduTreeCanvasInner() {
     }
 
     const edges: Edge[] = [...regularEdges, ...degreeEdges];
+
+    if (DEV) {
+      console.log('[EduTree] Generated elements:', { 
+        nodeCount: nodes.length, 
+        edgeCount: edges.length,
+        firstNode: nodes[0],
+        firstEdge: edges[0],
+        regularEdges: regularEdges.length,
+        degreeEdges: degreeEdges.length,
+        nodeTypes: Object.keys(nodeTypes)
+      });
+    }
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
