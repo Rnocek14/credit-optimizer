@@ -323,7 +323,7 @@ function EduTreeCanvasInner() {
     }
 
     // Create React Flow edges between core blocks and to tracks
-    const edges: Edge[] = viewMode === 'flow' ? gateEdges
+    const gateBasedEdges: Edge[] = viewMode === 'flow' ? gateEdges
       .filter(gateEdge => {
         const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
         const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
@@ -364,6 +364,62 @@ function EduTreeCanvasInner() {
           }),
         } : null;
       }).filter(Boolean) as Edge[] : [];
+
+    // Add direct connections from core blocks to specialization tracks
+    const trackConnectionEdges: Edge[] = [];
+    
+    if (viewMode === 'flow') {
+      // Find the last core block that should connect to tracks
+      const lastCoreBlock = sortedCoreBlocks[sortedCoreBlocks.length - 1];
+      
+      if (lastCoreBlock) {
+        // Connect to web track if it exists
+        if (webBlocks.length > 0 && trackNodes.find(n => n.id === 'web-track')) {
+          trackConnectionEdges.push({
+            id: `${lastCoreBlock.id}-to-web-track`,
+            source: String(lastCoreBlock.id),
+            target: 'web-track',
+            type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+            style: {
+              stroke: 'hsl(var(--primary))',
+              strokeWidth: 2,
+              opacity: 0.7
+            },
+            markerEnd: {
+              type: MarkerType.Arrow,
+              color: 'hsl(var(--primary))',
+            },
+            ...(flags.eduTreeLayoutV2 && {
+              pathOptions: { offset: 12 }
+            }),
+          });
+        }
+        
+        // Connect to mobile track if it exists
+        if (mobileBlocks.length > 0 && trackNodes.find(n => n.id === 'mobile-track')) {
+          trackConnectionEdges.push({
+            id: `${lastCoreBlock.id}-to-mobile-track`,
+            source: String(lastCoreBlock.id),
+            target: 'mobile-track',
+            type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+            style: {
+              stroke: 'hsl(var(--accent))',
+              strokeWidth: 2,
+              opacity: 0.7
+            },
+            markerEnd: {
+              type: MarkerType.Arrow,
+              color: 'hsl(var(--accent))',
+            },
+            ...(flags.eduTreeLayoutV2 && {
+              pathOptions: { offset: 12 }
+            }),
+          });
+        }
+      }
+    }
+
+    const edges = [...gateBasedEdges, ...trackConnectionEdges];
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
