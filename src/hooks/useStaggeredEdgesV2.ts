@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Edge, Node } from '@xyflow/react';
 
 interface StaggeredEdgesConfig {
@@ -67,60 +67,64 @@ export function useStaggeredEdgesV2(
     setIsRevealing(true);
     setVisibleEdges([]);
 
-    // Create node position map for column-based batching
-    const nodePositionMap = new Map<string, { x: number; y: number }>();
-    allNodes.forEach(node => {
-      if (node.position) {
-        nodePositionMap.set(node.id, node.position);
-      }
-    });
+    // Memoize the column-batching step for stability
+    const { sortedColumns, edgeBatches, terminalEdges } = useMemo(() => {
+      const nodePositionMap = new Map(allNodes.map(n => [n.id, n.position]));
+      const batches = new Map<number, Edge[]>();
+      const terminals: Edge[] = [];
 
-    // Group edges by source node column (position-based, not ID parsing)
-    const edgeBatches = new Map<number, Edge[]>();
-    const terminalEdges: Edge[] = [];
+      for (const edge of allEdges) {
+        const pos = nodePositionMap.get(edge.source);
+        if (!pos) {
+          const batch = batches.get(0) || [];
+          batch.push(edge);
+          batches.set(0, batch);
+          continue;
+        }
+        
+        const isTerminal =
+          allNodes.find(n => n.id === edge.target)?.type?.toLowerCase().includes('terminal') ||
+          edge.target.includes('graduation') ||
+          edge.target.includes('terminal') ||
+          edge.target === 'degree-completion';
 
-    allEdges.forEach(edge => {
-      const sourcePos = nodePositionMap.get(edge.source);
-      if (!sourcePos) {
-        // No position found, put in first batch
-        const batch = edgeBatches.get(0) || [];
+        if (isTerminal) {
+          terminals.push(edge);
+          continue;
+        }
+
+        const col = Math.floor((pos.x ?? 0) / 500); // 500px per column
+        const batch = batches.get(col) || [];
         batch.push(edge);
-        edgeBatches.set(0, batch);
-        return;
+        batches.set(col, batch);
       }
 
-      // Check if this is a terminal/graduation edge
-      const targetNode = allNodes.find(n => n.id === edge.target);
-      if (targetNode?.type === 'terminal' || targetNode?.type === 'terminalNode' || 
-          edge.target.includes('graduation') || edge.target.includes('terminal')) {
-        terminalEdges.push(edge);
-        return;
+      // Put terminals in last batch
+      const cols = Array.from(batches.keys()).sort((a, b) => a - b);
+      if (terminals.length) {
+        const last = cols.length ? cols[cols.length - 1] : 0;
+        const batch = batches.get(last) || [];
+        batch.push(...terminals);
+        batches.set(last, batch);
+        if (!cols.length) cols.push(last);
       }
 
-      // Column-based batching using x position (500px per column)
-      const column = Math.floor(sourcePos.x / 500);
-      const batch = edgeBatches.get(column) || [];
-      batch.push(edge);
-      edgeBatches.set(column, batch);
-    });
-
-    // Sort columns and add terminal edges to the final batch
-    const sortedColumns = Array.from(edgeBatches.keys()).sort((a, b) => a - b);
-    if (terminalEdges.length > 0) {
-      const lastColumn = sortedColumns[sortedColumns.length - 1] || 0;
-      const finalBatch = edgeBatches.get(lastColumn) || [];
-      finalBatch.push(...terminalEdges);
-      edgeBatches.set(lastColumn, finalBatch);
-    }
+      return { sortedColumns: cols, edgeBatches: batches, terminalEdges: terminals };
+    }, [allEdges, allNodes]);
 
     console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
     console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
 
-    // Set up emergency timeout
+    // Dynamically compute emergency timeout based on batch count
+    const batchesCount = Math.max(1, sortedColumns.length);
+    const totalRevealMs = (batchesCount - 1) * config.batchDelayMs + 400; // 400ms buffer
+    const emergencyMs = Math.max(config.emergencyTimeoutMs ?? 2000, totalRevealMs);
+
+    // Set up emergency timeout with dynamic duration
     emergencyTimeoutRef.current = setTimeout(() => {
-      console.warn(`[StaggeredEdgesV2] Emergency timeout - revealing all ${allEdges.length} edges`);
+      console.warn(`[StaggeredEdgesV2] Emergency timeout (${emergencyMs}ms) - revealing all ${allEdges.length} edges`);
       forceRevealAll();
-    }, config.emergencyTimeoutMs);
+    }, emergencyMs);
 
     // Reveal batches sequentially
     let cumulativeEdges: Edge[] = [];

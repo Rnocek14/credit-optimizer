@@ -424,10 +424,11 @@ function EduTreeCanvasInner() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [allEdges, setAllEdges] = useState<Edge[]>([]);
   
   // Staggered edges V2 system
   const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
-    edges,
+    allEdges,
     nodes,
     {
       enabled: flags.eduTreeStaggeredEdgesV2,
@@ -436,7 +437,26 @@ function EduTreeCanvasInner() {
     }
   );
   
-  // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
+  // Update React Flow edges when visibleEdges change
+  useEffect(() => {
+    if (flags.eduTreeStaggeredEdgesV2) {
+      setEdges(visibleEdges);
+    }
+  }, [visibleEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
+  
+  // Re-enable path highlighting safely with stable dependencies
+  useEffect(() => {
+    if (!flags.eduTreeOutcomes) return;
+    if (!flowNodes.length || !flowEdges.length) return;
+
+    const optimal = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
+    setHighlightedPath({
+      nodes: new Set(optimal.nodes),
+      edges: new Set(optimal.edges),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+  
   useEffect(() => {
     if (flowNodes.length > 0) {
       const applyEmergencyLayout = async () => {
@@ -463,7 +483,11 @@ function EduTreeCanvasInner() {
             setNodes(result.nodes);
           }
           
-          setEdges(viewMode === 'flow' ? flowEdges : []);
+          if (flags.eduTreeStaggeredEdgesV2) {
+            setAllEdges(viewMode === 'flow' ? flowEdges : []);
+          } else {
+            setEdges(viewMode === 'flow' ? flowEdges : []);
+          }
           
         } catch (error) {
           console.error('[EduTree] EMERGENCY: All layouts failed, using absolute fallback:', error);
@@ -473,7 +497,11 @@ function EduTreeCanvasInner() {
             position: { x: (index % 2) * 700, y: Math.floor(index / 2) * 600 }
           }));
           setNodes(fallbackNodes);
-          setEdges([]);
+          if (flags.eduTreeStaggeredEdgesV2) {
+            setAllEdges([]);
+          } else {
+            setEdges([]);
+          }
         }
       };
       
