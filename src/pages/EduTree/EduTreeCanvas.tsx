@@ -271,67 +271,23 @@ function EduTreeCanvasInner() {
       })
       .filter(Boolean) as Node[];
 
-    // Create specialized track nodes with natural horizontal spread
-    const trackNodes: Node[] = [];
+    // Calculate Year 3 block positions for natural flow
+    const year3Blocks = sortedCoreBlocks.filter(block => block.level_year === 3);
+    const year3YPositions = year3Blocks.map((_, index) => index * 220);
+    const year3CenterY = year3YPositions.length > 0 ? 
+      (Math.min(...year3YPositions) + Math.max(...year3YPositions)) / 2 : 350;
     
-    // Always show tracks in natural layout (focus enhances, doesn't hide)
-    if (webBlocks.length > 0 || mobileBlocks.length > 0) {
-      // Web track node - positioned at year 4, upper area
-      if (webBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'web-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'web-track',
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 100       // Upper position for web track
-            },
-            data: {
-              track: 'web',
-              blocks: webBlocks,
-              completedCourseIds,
-              isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
-      }
-
-      // Mobile track node - positioned at year 4, lower area  
-      if (mobileBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'mobile-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'mobile-track', 
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 600       // Lower position for mobile track (clear separation)
-            },
-            data: {
-              track: 'mobile',
-              blocks: mobileBlocks,
-              completedCourseIds,
-              isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
-      }
-    }
-
+    // Position transition block as natural continuation from Year 3
+    const transitionX = 3 * 450 + 200; // Natural spacing from Year 3
+    const transitionY = year3CenterY;
+    
     // Add transition block - bridge between core and specialization
     const transitionNode: Node = {
       id: 'transition-block',
       type: 'transitionBlock',
       position: { 
-        x: 3.5 * 450,  // Between Year 3 and Year 4
-        y: 350          // Centered vertically
+        x: transitionX,
+        y: transitionY
       },
       data: {
         title: 'Choose Your Specialization',
@@ -352,6 +308,67 @@ function EduTreeCanvasInner() {
         ]
       }
     };
+
+    // Create specialized track nodes with dynamic positioning
+    const trackNodes: Node[] = [];
+    
+    // Position tracks as natural continuation from transition block
+    const trackX = transitionX + 300; // Natural spacing from transition
+    const trackSpacing = 280; // Consistent with core block spacing
+    
+    // Always show tracks in natural layout (focus enhances, doesn't hide)
+    if (webBlocks.length > 0 || mobileBlocks.length > 0) {
+      let trackIndex = 0;
+      
+      // Web track node - flows naturally from transition
+      if (webBlocks.length > 0) {
+        const isVisible = focusState.mode === 'overview' || 
+                         focusState.mode === 'compare-tracks' ||
+                         focusState.mode === 'web-track';
+        
+        if (isVisible) {
+          trackNodes.push({
+            id: 'web-track',
+            type: 'specializationTrack',
+            position: { 
+              x: trackX,
+              y: transitionY - (trackSpacing / 2) // Above transition center
+            },
+            data: {
+              track: 'web',
+              blocks: webBlocks,
+              completedCourseIds,
+              isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
+            }
+          });
+          trackIndex++;
+        }
+      }
+
+      // Mobile track node - flows naturally from transition  
+      if (mobileBlocks.length > 0) {
+        const isVisible = focusState.mode === 'overview' || 
+                         focusState.mode === 'compare-tracks' ||
+                         focusState.mode === 'mobile-track';
+        
+        if (isVisible) {
+          trackNodes.push({
+            id: 'mobile-track', 
+            type: 'specializationTrack',
+            position: { 
+              x: trackX,
+              y: transitionY + (trackSpacing / 2) // Below transition center
+            },
+            data: {
+              track: 'mobile',
+              blocks: mobileBlocks,
+              completedCourseIds,
+              isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
+            }
+          });
+        }
+      }
+    }
 
     const nodes = [...coreNodes, transitionNode, ...trackNodes];
 
@@ -408,7 +425,6 @@ function EduTreeCanvasInner() {
 
     // Add edges to transition block from Year 3 blocks
     const transitionEdges: Edge[] = [];
-    const year3Blocks = sortedCoreBlocks.filter(block => block.level_year === 3);
     year3Blocks.forEach(block => {
       transitionEdges.push({
         id: `${block.id}-to-transition`,
