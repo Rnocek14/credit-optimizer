@@ -101,9 +101,9 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
       return (aData.sortOrder ?? 0) - (bData.sortOrder ?? 0);
     });
 
-    // Position nodes in column with generous spacing
+    // Position nodes in column with massive spacing
     positionNodesInColumn(yearNodes, currentX);
-    currentX += 400; // Wide column spacing
+    currentX += 500; // MASSIVE column spacing to prevent any horizontal overlaps
   });
 
   return nodes;
@@ -121,8 +121,8 @@ function positionNodesInColumn(nodes: Node[], x: number): void {
     // Use React Flow measured height if available, otherwise generous fallback
     const nodeHeight = (node as any).measured?.height || getEstimatedHeight(node);
     
-    // Add MASSIVE spacing between nodes to prevent any overlaps
-    currentY += nodeHeight + 250; // 250px spacing between nodes
+    // EMERGENCY FIX: Even more massive spacing to guarantee no overlaps
+    currentY += nodeHeight + 400; // 400px spacing between nodes - absolutely massive
   });
 }
 

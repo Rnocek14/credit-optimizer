@@ -44,11 +44,11 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // Calculate generous spacing based on node heights
-    const baseSpacing = 200; // DRAMATIC increase for zero overlaps
+    // EMERGENCY FIX: Massive spacing to guarantee no overlaps
+    const baseSpacing = 400; // MASSIVE increase for absolute safety
     const largerNodeHeight = Math.max(rect1.height, rect2.height);
-    const contentSpacing = largerNodeHeight * 0.4; // Increased multiplier
-    const finalSpacing = Math.min(baseSpacing + contentSpacing, 300); // Much higher cap
+    const contentSpacing = largerNodeHeight * 0.6; // Higher multiplier
+    const finalSpacing = Math.max(baseSpacing + contentSpacing, 500); // Ensure minimum 500px
     
     // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
@@ -142,10 +142,29 @@ function getEstimatedNodeHeight(node: Node): number {
   
   if (data.block && data.block.courses) {
     const courseCount = data.block.courses.length;
-    return 200 + (courseCount * 60); // Base + courses
+    
+    // EMERGENCY FIX: Account for ALL BlockGroup content
+    let height = 160; // Base card height (title, progress, unlock status)
+    height += courseCount * 72; // Each course row (increased from 60)
+    
+    // Account for specializations (subBlocks) - these can add significant height
+    if (data.subBlocks && data.subBlocks.length > 0) {
+      height += 120; // Collapsible header
+      if (data.subBlocksExpanded) {
+        height += data.subBlocks.length * 80; // Each specialization
+      }
+    }
+    
+    // Account for alt credit options
+    if (data.altCreditOptions && data.altCreditOptions.length > 0) {
+      height += data.altCreditOptions.length * 60;
+    }
+    
+    // SAFETY: Minimum 400px height for complex blocks
+    return Math.max(height, 400);
   }
   
-  return 350; // Generous default
+  return 450; // Much more generous default for safety
 }
 
 /**
@@ -176,7 +195,7 @@ function detectCollisions(nodes: Node[]): { node1: Node; node2: Node; overlap: n
  * Check if two rectangles overlap with buffer to prevent touching nodes
  */
 function hasOverlap(rect1: any, rect2: any): boolean {
-  const buffer = 12; // Increased buffer to prevent nodes from being too close
+  const buffer = 100; // MASSIVE buffer - nodes must be 100px apart minimum
   return !(rect1.x + rect1.width + buffer <= rect2.x || 
            rect2.x + rect2.width + buffer <= rect1.x || 
            rect1.y + rect1.height + buffer <= rect2.y || 

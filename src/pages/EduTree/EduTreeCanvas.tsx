@@ -281,40 +281,50 @@ function EduTreeCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  // EMERGENCY FIX: Apply simple layout when flow data changes
+  // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
   useEffect(() => {
     if (flowNodes.length > 0) {
-      try {
-        const simpleNodes = flowNodes.map((node, index) => {
-          const yearColumn = Number(node.data.level_year || 0);
-          const nodesInYear = flowNodes.filter(n => n.data.level_year === yearColumn);
-          const yearIndex = nodesInYear.indexOf(node);
+      const applyEmergencyLayout = async () => {
+        try {
+          console.log('[EduTree] EMERGENCY: Applying fail-safe layout to', flowNodes.length, 'nodes');
           
-          return {
+          // EMERGENCY: Use the collision-resistant layout system
+          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+          const result = await layoutNodes(flowNodes, flowEdges);
+          
+          if (result.hasOverlaps) {
+            console.error('⚠️ EMERGENCY: Layout STILL has overlaps! Using ultra-safe fallback');
+            // Ultra-safe fallback - guarantee no overlaps with multi-column grid
+            const safeNodes = flowNodes.map((node, index) => ({
+              ...node,
+              position: { 
+                x: (index % 2) * 600, // 2 columns, 600px apart
+                y: Math.floor(index / 2) * 500 // 500px vertical spacing
+              }
+            }));
+            setNodes(safeNodes);
+          } else {
+            console.log('✅ EMERGENCY: Layout validated - no overlaps');
+            setNodes(result.nodes);
+          }
+          
+          setEdges(viewMode === 'flow' ? flowEdges : []);
+          
+        } catch (error) {
+          console.error('[EduTree] EMERGENCY: All layouts failed, using absolute fallback:', error);
+          // ABSOLUTE LAST RESORT: Simple grid with massive spacing
+          const fallbackNodes = flowNodes.map((node, index) => ({
             ...node,
-            position: { 
-              x: yearColumn * 400, 
-              y: yearIndex * 300 // Large spacing to prevent overlaps
-            }
-          };
-        });
-        
-        setNodes(simpleNodes);
-        setEdges(viewMode === 'flow' ? flowEdges : []);
-        
-        if (DEV) console.log('[EduTree] Simple layout applied', simpleNodes.length, 'nodes');
-      } catch (error) {
-        console.error('[EduTree] Simple layout failed:', error);
-        // Ultra-safe fallback
-        const fallbackNodes = flowNodes.map((node, index) => ({
-          ...node,
-          position: { x: (index % 3) * 400, y: Math.floor(index / 3) * 300 }
-        }));
-        setNodes(fallbackNodes);
-        setEdges([]);
-      }
+            position: { x: (index % 2) * 700, y: Math.floor(index / 2) * 600 }
+          }));
+          setNodes(fallbackNodes);
+          setEdges([]);
+        }
+      };
+      
+      applyEmergencyLayout();
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges]);
+  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
