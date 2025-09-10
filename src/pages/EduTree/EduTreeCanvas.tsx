@@ -55,6 +55,7 @@ import { LayoutDebugger } from './components/LayoutDebugger';
 import { EduTreeLoadingFallback } from './components/EduTreeLoadingFallback';
 import { EduTreeErrorBoundary } from './components/EduTreeErrorBoundary';
 import { useEduTreeQueries } from './hooks/useEduTreeQueries';
+import { EduTreeDebugPanel } from './components/DebugPanel';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -95,6 +96,16 @@ function EduTreeCanvasInner() {
     isCriticalDataReady 
   } = useEduTreeQueries();
 
+  // Debug logging for component state
+  console.log('🔍 [EduTree] Canvas component state:', {
+    isCriticalDataReady,
+    coursesCount: courses.length,
+    blocksCount: blocks.length,
+    focusMode: focusState.mode,
+    viewMode,
+    componentInitialized: true
+  });
+
   // Enhanced positioning system for focus modes
   const getNodePosition = useCallback((basePosition: { x: number; y: number }, nodeId: string, nodeType: string) => {
     // Apply focus mode transformations
@@ -109,17 +120,19 @@ function EduTreeCanvasInner() {
     return basePosition;
   }, [focusState.mode]);
 
-  // Transform data for React Flow
+  // Transform data for React Flow with comprehensive debugging
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('Data check:', { 
+    console.log('🔍 [EduTree] Data transformation start:', { 
       blocksLength: blocks.length, 
       coursesLength: courses.length, 
       blockMembersLength: blockMembers.length,
       gatesLength: gates.length,
-      gateEdgesLength: gateEdges.length 
+      gateEdgesLength: gateEdges.length,
+      isCriticalDataReady 
     });
 
     if (!blocks.length || !courses.length) {
+      console.log('🚫 [EduTree] Missing critical data - returning empty arrays');
       return { nodes: [], edges: [] };
     }
 
@@ -334,13 +347,16 @@ function EduTreeCanvasInner() {
 
     const nodes = [...coreNodes, transitionNode, ...trackNodes];
 
-    if (DEV) {
-      console.log('[EduTree] Generated nodes:', { 
-        nodeCount: nodes.length, 
-        firstNode: nodes[0],
-        nodeTypes: Object.keys(nodeTypes)
-      });
-    }
+    // Enhanced debug logging for node generation
+    console.log('✅ [EduTree] Generated nodes:', { 
+      nodeCount: nodes.length,
+      coreNodesCount: coreNodes.length,
+      transitionNodeExists: !!transitionNode,
+      trackNodesCount: trackNodes.length,
+      firstNode: nodes[0],
+      nodeTypes: Object.keys(nodeTypes),
+      nodesWithIds: nodes.map(n => ({ id: n.id, type: n.type }))
+    });
 
     // Create React Flow edges between core blocks and to tracks
     const edges: Edge[] = viewMode === 'flow' ? gateEdges
@@ -444,18 +460,42 @@ function EduTreeCanvasInner() {
 
     const allEdges = [...edges, ...transitionEdges];
 
+    console.log('🎯 [EduTree] Transformation complete:', { 
+      finalNodeCount: nodes.length, 
+      finalEdgeCount: allEdges.length,
+      ready: nodes.length > 0 
+    });
+
     return { nodes, edges: allEdges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode, selectedLens]);
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode, selectedLens, highlightedPath]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  // Apply natural positioning from computed flow data
+  // Enhanced node state management with comprehensive debugging
   useEffect(() => {
+    console.log('🔄 [EduTree] Node state update triggered:', {
+      flowNodesLength: flowNodes.length,
+      currentNodesLength: nodes.length,
+      flowEdgesLength: flowEdges.length,
+      currentEdgesLength: edges.length,
+      willUpdate: flowNodes.length > 0
+    });
+
     if (flowNodes.length > 0) {
-      console.log('[EduTree] Applying natural educational flow layout to', flowNodes.length, 'nodes');
+      console.log('✅ [EduTree] Applying nodes to ReactFlow:', {
+        nodeCount: flowNodes.length,
+        edgeCount: flowEdges.length,
+        firstNodeSample: flowNodes[0],
+        nodeIds: flowNodes.map(n => n.id)
+      });
+      
       setNodes(flowNodes);
       setEdges(flowEdges);
+      
+      console.log('🎉 [EduTree] Nodes successfully applied to ReactFlow state');
+    } else {
+      console.log('⚠️ [EduTree] No nodes to apply - flowNodes is empty');
     }
   }, [flowNodes, flowEdges, setNodes, setEdges]);
 
@@ -714,6 +754,8 @@ function EduTreeCanvasInner() {
 }
 
 export default function EduTreeCanvas() {
+  console.log('🚀 [EduTree] Canvas mounting with providers');
+  
   return (
     <EduTreeErrorBoundary>
       <ReactFlowProvider>

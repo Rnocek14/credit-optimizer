@@ -16,6 +16,14 @@ export function BlockGroup(props: NodeProps) {
   const nodeRef = useRef<HTMLDivElement>(null);
   const { attachResizeObserver, detachResizeObserver } = useNodeResize(props.id);
   
+  // Debug logging for BlockGroup component
+  console.log('🏗️ [BlockGroup] Rendering block:', {
+    nodeId: props.id,
+    hasData: !!props.data,
+    blockTitle: (props.data as any)?.block?.title,
+    courseCount: (props.data as any)?.block?.courses?.length || 0
+  });
+  
   const { 
     block, 
     completedCourseIds, 
