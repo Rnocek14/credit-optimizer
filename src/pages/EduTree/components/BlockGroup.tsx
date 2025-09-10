@@ -70,13 +70,12 @@ export function BlockGroup(props: NodeProps) {
       <Card className={`
         ${isDegreeNode ? 'min-w-[380px] max-w-[380px]' : 'min-w-[320px] max-w-[320px]'} 
         ${!isUnlocked ? 'opacity-75' : ''}
-        ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-xl' : 
+        ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' : 
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         transition-all duration-200
-        ${isDegreeNode ? 'animate-pulse' : ''}
       `}>
         <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
