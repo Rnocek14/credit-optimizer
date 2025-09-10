@@ -1,0 +1,25 @@
+/* Multipath overlay styles */
+
+/* Primary path styling */
+.edge--primary {
+  filter: drop-shadow(0 0 2px hsl(var(--primary) / 0.4));
+}
+
+/* Comparison path styling */
+.edge--comparison {
+  filter: drop-shadow(0 0 2px hsl(var(--amber-500) / 0.3));
+}
+
+/* Node comparison highlighting */
+.node--comparison {
+  box-shadow: 0 0 0 2px hsl(var(--amber-500) / 0.6) inset;
+}
+
+/* Dimmed elements when comparison is active */
+.multipath-active .react-flow__edge:not(.edge--primary):not(.edge--comparison) {
+  opacity: 0.2 !important;
+}
+
+.multipath-active .react-flow__node:not(.node--primary):not(.node--comparison) {
+  opacity: 0.3 !important;
+}

@@ -296,6 +296,9 @@
     --accent-gold: oklch(0.78 0.13 84);
     --accent-gold-foreground: oklch(0.20 0.03 84);
     
+    --amber-500: oklch(0.75 0.15 70);
+    --amber-foreground: oklch(0.20 0.03 70);
+    
     --accent-lime: oklch(0.82 0.11 135);
     --accent-lime-foreground: oklch(0.20 0.03 135);
     
@@ -423,6 +426,9 @@
     --accent-cyan: 0.77 0.16 200;
     --accent-gold: 0.80 0.14 84;
     --accent-lime: 0.84 0.12 135;
+    
+    --amber-500: oklch(0.77 0.16 70);
+    --amber-foreground: oklch(0.20 0.03 70);
 
     --risk-low:       0.88 0.08 140;
     --risk-medium:    0.86 0.11 95;

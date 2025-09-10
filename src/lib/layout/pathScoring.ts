@@ -54,7 +54,8 @@ export function findOptimalPath(
   nodes: Node[], 
   edges: Edge[], 
   lens: PlanningLens,
-  completedCourseIds: Set<string>
+  completedCourseIds: Set<string>,
+  constraints?: { maxCost?: number; maxMonths?: number; providerIds?: string[] }
 ): ScoredPath {
   const blockNodes = nodes.filter(node => node.type === 'blockGroup');
   

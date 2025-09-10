@@ -14,6 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
+import '../../../styles/multipath.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -85,6 +86,11 @@ function EduTreeCanvasInner() {
   
   // State for path highlighting
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
+  
+  // Multipath state
+  const [comparisonLens, setComparisonLens] = useState<PlanningLens | null>(null);
+  const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
+  const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
   // Handler for course click
   const handleCourseClick = useCallback((course: EduCourse) => {
@@ -260,7 +266,10 @@ function EduTreeCanvasInner() {
                    Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
         };
 
-        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
+        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || 
+                          highlightedPrimary?.nodes.has(String(block.id)) || false;
+        const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
+                                      highlightedComparison?.nodes.has(String(block.id)) || false;
 
         return {
           id: String(block.id), // Ensure string ID
@@ -275,6 +284,7 @@ function EduTreeCanvasInner() {
             level_year: block.level_year || 0,
             area: block.area || 'unknown',
             isHighlighted,
+            isComparisonHighlighted,
             planningLens: isHighlighted ? selectedLens : null,
             onCourseClick: handleCourseClick
           }
@@ -338,7 +348,10 @@ function EduTreeCanvasInner() {
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
       
-      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
+      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || 
+                        highlightedPrimary?.edges.has(String(gateEdge.id)) || false;
+      const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
+                                    highlightedComparison?.edges.has(String(gateEdge.id)) || false;
       
       return source ? {
         id: String(gateEdge.id),
@@ -346,14 +359,18 @@ function EduTreeCanvasInner() {
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: isHighlighted ? 'var(--primary)' : 'var(--primary)',
-          strokeWidth: isHighlighted ? 3 : 2,
-          opacity: isHighlighted ? 1 : 0.65
+          stroke: isHighlighted ? 'var(--primary)' : 
+                  isComparisonHighlighted ? 'hsl(var(--amber-500))' : 'var(--primary)',
+          strokeWidth: isHighlighted ? 3 : isComparisonHighlighted ? 2 : 2,
+          strokeDasharray: isComparisonHighlighted ? '6 4' : undefined,
+          opacity: isHighlighted ? 1 : isComparisonHighlighted ? 0.8 : 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: isHighlighted ? 'var(--primary)' : 'var(--primary)',
+          color: isHighlighted ? 'var(--primary)' : 
+                 isComparisonHighlighted ? 'hsl(var(--amber-500))' : 'var(--primary)',
         },
+        className: isComparisonHighlighted ? 'edge--comparison' : isHighlighted ? 'edge--primary' : undefined,
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
         }),
@@ -447,24 +464,85 @@ function EduTreeCanvasInner() {
     }
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
   
-  // Re-enable path highlighting safely with stable dependencies
-  const lastPathRef = useRef<string>('');
+  // URL parameter support for comparison lens
   useEffect(() => {
-    if (!flags.eduTreeOutcomes) return;
-    if (!flowNodes.length || !flowEdges.length) return;
-
-    const optimal = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
-    const key = JSON.stringify({ n: optimal.nodes, e: optimal.edges });
+    if (!flags.eduTreeMultiPathOverlay) return;
     
-    if (key !== lastPathRef.current) {
-      lastPathRef.current = key;
-      setHighlightedPath({
-        nodes: new Set(optimal.nodes),
-        edges: new Set(optimal.edges),
-      });
+    const searchParams = new URLSearchParams(window.location.search);
+    const compareParam = searchParams.get('compare');
+    
+    if (compareParam === 'fastest' || compareParam === 'cheapest' || compareParam === 'roi') {
+      setComparisonLens(compareParam);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flags.eduTreeMultiPathOverlay]);
+
+  // Compute primary and comparison paths
+  const primaryPath = useMemo(() => {
+    if (!flags.eduTreeOutcomes || !flowNodes.length || !flowEdges.length) return null;
+    return findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+
+  const comparisonPath = useMemo(() => {
+    if (!flags.eduTreeMultiPathOverlay || !comparisonLens || !flowNodes.length || !flowEdges.length) return null;
+    return findOptimalPath(flowNodes, flowEdges, comparisonLens, completedCourseIds);
+  }, [flags.eduTreeMultiPathOverlay, comparisonLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+
+  // Update highlighted paths with performance caps
+  const lastPrimaryRef = useRef<string>('');
+  const lastComparisonRef = useRef<string>('');
+  
+  useEffect(() => {
+    if (primaryPath) {
+      const key = JSON.stringify({ n: primaryPath.nodes, e: primaryPath.edges });
+      if (key !== lastPrimaryRef.current) {
+        lastPrimaryRef.current = key;
+        
+        // Performance cap: max 250 combined elements
+        const totalElements = primaryPath.nodes.length + primaryPath.edges.length;
+        if (totalElements > 250) {
+          toast({
+            title: "Path too large",
+            description: "Showing primary path only due to size.",
+          });
+          return;
+        }
+        
+        setHighlightedPrimary({
+          nodes: new Set(primaryPath.nodes),
+          edges: new Set(primaryPath.edges),
+        });
+        
+        // For backward compatibility with single-path mode
+        if (!flags.eduTreeMultiPathOverlay) {
+          setHighlightedPath({
+            nodes: new Set(primaryPath.nodes),
+            edges: new Set(primaryPath.edges),
+          });
+        }
+      }
+    } else {
+      setHighlightedPrimary(null);
+      if (!flags.eduTreeMultiPathOverlay) {
+        setHighlightedPath(null);
+      }
+    }
+  }, [primaryPath?.nodes?.length, primaryPath?.edges?.length, flags.eduTreeMultiPathOverlay]);
+
+  useEffect(() => {
+    if (comparisonPath && flags.eduTreeMultiPathOverlay) {
+      const key = JSON.stringify({ n: comparisonPath.nodes, e: comparisonPath.edges });
+      if (key !== lastComparisonRef.current) {
+        lastComparisonRef.current = key;
+        
+        setHighlightedComparison({
+          nodes: new Set(comparisonPath.nodes),
+          edges: new Set(comparisonPath.edges),
+        });
+      }
+    } else {
+      setHighlightedComparison(null);
+    }
+  }, [comparisonPath?.nodes?.length, comparisonPath?.edges?.length, flags.eduTreeMultiPathOverlay]);
   
   useEffect(() => {
     if (flowNodes.length > 0) {
@@ -723,6 +801,9 @@ function EduTreeCanvasInner() {
               <LensSelector 
                 selectedLens={selectedLens}
                 onLensChange={setSelectedLens}
+                multiPathEnabled={flags.eduTreeMultiPathOverlay}
+                comparisonLens={comparisonLens}
+                onComparisonLensChange={setComparisonLens}
               />
             )}
           </div>
@@ -736,7 +817,10 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* React Flow Canvas */}
-      <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
+      <div 
+        className={`flex-1 ${flags.eduTreeMultiPathOverlay && comparisonLens ? 'multipath-active' : ''}`}
+        style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
+      >
         <ReactFlow
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}

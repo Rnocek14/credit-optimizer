@@ -90,6 +90,24 @@ export interface PortfolioProject {
 
 export type PlanningLens = 'fastest' | 'cheapest' | 'roi';
 
+// Multipath comparison types
+export interface PathScenario {
+  lens: PlanningLens;
+  constraints?: {
+    maxCost?: number;
+    maxMonths?: number;
+    providerIds?: string[];
+  };
+  label?: string;
+  kind: 'primary' | 'comparison';
+}
+
+export interface PathResult {
+  nodes: string[];
+  edges: string[];
+  score?: number;
+}
+
 // Block completion logic
 export function isBlockComplete(
   block: RequirementBlock, 

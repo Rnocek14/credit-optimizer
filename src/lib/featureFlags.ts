@@ -23,6 +23,7 @@ interface FeatureFlags {
   eduTreeOutcomes: boolean;    // Outcomes panel + intelligent lenses
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
   eduTreeStaggeredEdgesV2: boolean; // V2 staggered edge system
+  eduTreeMultiPathOverlay: boolean; // Multipath comparison overlay
 }
 
 /**
@@ -89,6 +90,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
+    eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'false')),
   };
   
   // Single consolidated debug log (only once per session)
