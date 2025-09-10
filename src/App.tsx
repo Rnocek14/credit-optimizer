@@ -286,16 +286,14 @@ const App = () => {
           <Route 
             path="/edu-treemulti" 
             element={
-              <ProtectedRoute requireAuth={true} requireOnboarding={true}>
-                <EnhancedErrorBoundary 
-                  fallback={<EduTreeError />}
-                  onError={(error) => console.error('EduTree Multi error:', error)}
-                >
-                  <React.Suspense fallback={<PageLoader message="Loading multipath education tree..." />}>
-                    <EduTreeMulti />
-                  </React.Suspense>
-                </EnhancedErrorBoundary>
-              </ProtectedRoute>
+              <EnhancedErrorBoundary 
+                fallback={<EduTreeError />}
+                onError={(error) => console.error('EduTree Multi error:', error)}
+              >
+                <React.Suspense fallback={<PageLoader message="Loading multipath education tree..." />}>
+                  <EduTreeMulti />
+                </React.Suspense>
+              </EnhancedErrorBoundary>
             }
           />
           <Route 
