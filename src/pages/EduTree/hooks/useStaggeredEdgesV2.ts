@@ -136,6 +136,8 @@ export function useStaggeredEdgesV2() {
     revealEdgesInBatches,
     shouldShowEdge,
     reset,
-    batches: allBatches
+    batches: allBatches,
+    revealedBatches, // Expose the revealed batches state
+    isInitialized: revealedBatches.size > 0 // Track if system has started
   };
 }
