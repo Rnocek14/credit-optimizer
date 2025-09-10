@@ -44,7 +44,6 @@ import { BlockGroup } from './components/BlockGroup';
 import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
-import { SkeletonNode } from './components/SkeletonNode';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
@@ -52,7 +51,6 @@ import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackgroun
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
-  skeleton: SkeletonNode,
 };
 
 const DEV = import.meta.env.DEV;
@@ -66,7 +64,6 @@ function EduTreeCanvasInner() {
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
-  const [showSkeletons, setShowSkeletons] = useState(false);
   
   // Layout manager for debounced re-layouts
   const layoutManagerRef = useRef<LayoutManager | null>(null);
@@ -205,32 +202,40 @@ function EduTreeCanvasInner() {
       });
     }
 
-    const nodes: Node[] = sortedBlocks.map((block, index) => {
-      const progress = {
-        completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
-        required: block.rule_type === 'ALL' ? block.courses.length : 
-                 block.rule_type === 'K_OF_N' ? (block.k || 0) :
-                 Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
-      };
-
-      const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
-
-      return {
-        id: String(block.id), // Ensure string ID
-        type: 'blockGroup', // This must match nodeTypes key
-        position: { x: block.level_year * 320, y: index * 200 }, // Initial grid position
-        data: {
-          block,
-          completedCourseIds,
-          isUnlocked: unlockedBlocks.has(block.id),
-          progress,
-          level_year: block.level_year,
-          area: block.area,
-          isHighlighted,
-          planningLens: isHighlighted ? selectedLens : null
+    const nodes: Node[] = sortedBlocks
+      .map((block, index) => {
+        // Validate block data
+        if (!block || !block.id) {
+          console.warn('[EduTree] Invalid block data:', block);
+          return null;
         }
-      };
-    });
+
+        const progress = {
+          completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
+          required: block.rule_type === 'ALL' ? block.courses.length : 
+                   block.rule_type === 'K_OF_N' ? (block.k || 0) :
+                   Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
+        };
+
+        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
+
+        return {
+          id: String(block.id), // Ensure string ID
+          type: 'blockGroup', // This must match nodeTypes key
+          position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
+          data: {
+            block,
+            completedCourseIds,
+            isUnlocked: unlockedBlocks.has(block.id),
+            progress,
+            level_year: block.level_year || 0,
+            area: block.area || 'unknown',
+            isHighlighted,
+            planningLens: isHighlighted ? selectedLens : null
+          }
+        };
+      })
+      .filter(Boolean) as Node[]; // Remove any null nodes
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
@@ -294,19 +299,8 @@ function EduTreeCanvasInner() {
     if (DEV) console.log('[EduTree] applying layout', { mode: viewMode, nodeCount: flowNodes.length });
 
     if (viewMode === 'flow') {
-      // Step 1: Show skeletons first if layoutV2 enabled
-      if (flags.eduTreeLayoutV2 && !isLayouting) {
-        setIsLayouting(true);
-        setShowSkeletons(true);
-        
-        // Short delay to render skeletons, then proceed with layout
-        setTimeout(() => {
-          setShowSkeletons(false);
-          performFlowLayout();
-        }, 100);
-      } else {
-        performFlowLayout();
-      }
+      setIsLayouting(true);
+      performFlowLayout();
     } else {
       performBoardLayout();
     }
@@ -331,16 +325,8 @@ function EduTreeCanvasInner() {
           resolveColumnCollisions(layoutedNodes) : layoutedNodes;
           
         setNodes(finalNodes);
-        
-        // Step 3: Delayed edge fade-in for layoutV2
-        if (flags.eduTreeLayoutV2) {
-          setTimeout(() => {
-            setEdges(flowEdges);
-            setIsLayouting(false);
-          }, 250);
-        } else {
-          setEdges(flowEdges);
-        }
+        setEdges(flowEdges);
+        setIsLayouting(false);
         
         // Save positions for mode switching
         if (flags.eduTreeLanes) {
@@ -537,6 +523,7 @@ function EduTreeCanvasInner() {
       {/* React Flow Canvas */}
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
+          key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
