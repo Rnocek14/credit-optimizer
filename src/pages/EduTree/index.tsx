@@ -1,7 +1,7 @@
 import React from 'react';
 import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
-import EduTreeCanvas from './EduTreeCanvas';
+import { EduTreeCanvas } from './EduTreeCanvas';
 
 export default function EduTree() {
   const enabled = resolveEduTreeFlag();
