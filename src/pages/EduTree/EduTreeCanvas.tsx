@@ -174,13 +174,18 @@ function EduTreeCanvasInner() {
 
     // Filter out child specialization blocks to prevent duplicates
     // Keep only parent "Specializations" block, remove individual "Web Development" and "Mobile Development"
+    console.log('🔍 Before filtering - All blocks:', blocksWithCourses.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
+    
     const filteredBlocks = blocksWithCourses.filter(block => {
       // Remove child specialization blocks that duplicate courses
-      if (block.title === 'Web Development' || block.title === 'Mobile Development') {
-        return false;
+      const shouldRemove = block.title === 'Web Development' || block.title === 'Mobile Development';
+      if (shouldRemove) {
+        console.log('🚫 Filtering out duplicate block:', block.title, 'with', block.courses?.length || 0, 'courses');
       }
-      return true;
+      return !shouldRemove;
     });
+    
+    console.log('✅ After filtering - Remaining blocks:', filteredBlocks.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
 
     // Apply topological sorting for stable Year-3 ordering
     const sortedBlocks = flags.eduTreeLayoutV2 ? 
