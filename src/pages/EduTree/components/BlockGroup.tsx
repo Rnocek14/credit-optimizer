@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Lock, CheckCircle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Lock, CheckCircle, ChevronDown, ChevronRight, Sparkles, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -24,7 +24,9 @@ export function BlockGroup(props: NodeProps) {
     subBlocks = [], 
     altCreditOptions = [],
     isHighlighted = false,
-    planningLens = null
+    planningLens = null,
+    isDegreeNode = false,
+    isDegreeComplete = false
   } = props.data as {
     block: BlockWithCourses;
     completedCourseIds: Set<string>;
@@ -34,6 +36,8 @@ export function BlockGroup(props: NodeProps) {
     altCreditOptions?: AltCreditOption[];
     isHighlighted?: boolean;
     planningLens?: string | null;
+    isDegreeNode?: boolean;
+    isDegreeComplete?: boolean;
   };
   
   const [showAltCredits, setShowAltCredits] = useState(false);
@@ -64,24 +68,29 @@ export function BlockGroup(props: NodeProps) {
       />
 
       <Card className={`
-        min-w-[320px] max-w-[320px] 
-        ${!isUnlocked ? 'opacity-60' : ''}
-        ${isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
+        ${isDegreeNode ? 'min-w-[380px] max-w-[380px]' : 'min-w-[320px] max-w-[320px]'} 
+        ${!isUnlocked ? 'opacity-75' : ''}
+        ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-xl' : 
+          isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
+          isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         transition-all duration-200
+        ${isDegreeNode ? 'animate-pulse' : ''}
       `}>
         <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-              {isComplete && <CheckCircle className="w-4 h-4 text-primary" />}
-              {block.title}
+              {!isUnlocked && !isDegreeNode && <Lock className="w-4 h-4 text-muted-foreground" />}
+              {isDegreeNode && <GraduationCap className={`w-5 h-5 ${isDegreeComplete ? 'text-accent-gold' : 'text-accent-gold/60'}`} />}
+              {isComplete && !isDegreeNode && <CheckCircle className="w-4 h-4 text-primary" />}
+              {isDegreeComplete && <CheckCircle className="w-4 h-4 text-accent-gold" />}
+              <span className={isDegreeNode ? 'text-accent-gold font-bold' : ''}>{block.title}</span>
             </CardTitle>
             
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                Year {block.level_year}
+              <Badge variant="outline" className={`text-xs ${isDegreeNode ? 'border-accent-gold text-accent-gold' : ''}`}>
+                {isDegreeNode ? 'Degree' : `Year ${block.level_year}`}
               </Badge>
               {hasAltCredits && (
                 <Button
@@ -99,21 +108,32 @@ export function BlockGroup(props: NodeProps) {
                   {planningLens}
                 </Badge>
               )}
+              {isDegreeComplete && (
+                <Badge className="text-xs bg-accent-gold text-accent-gold-foreground">
+                  🎓 Complete
+                </Badge>
+              )}
             </div>
           </div>
           
           {/* Rule and progress */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <Badge variant="secondary" className="text-xs">
-                {progressText}
+              <Badge variant="secondary" className={`text-xs ${isDegreeNode ? 'bg-accent-gold/20 text-accent-gold-foreground' : ''}`}>
+                {isDegreeNode ? 'Total Program' : progressText}
               </Badge>
-              <span className="text-muted-foreground text-xs">
-                {progress.completed}/{progress.required}
+              <span className={`text-muted-foreground text-xs ${isDegreeNode ? 'font-semibold text-accent-gold' : ''}`}>
+                {progress.completed}/{progress.required} {isDegreeNode ? 'Courses' : ''}
               </span>
             </div>
             
-            <Progress value={progressPercent} className="h-3" />
+            <Progress 
+              value={progressPercent} 
+              className={`h-3 ${isDegreeNode ? 'bg-accent-gold/20' : ''}`}
+              style={isDegreeNode ? {
+                background: 'hsl(var(--accent-gold) / 0.2)'
+              } : {}}
+            />
           </div>
         </CardHeader>
 
@@ -181,19 +201,42 @@ export function BlockGroup(props: NodeProps) {
           )}
 
           {/* Course grid with single column layout for better readability */}
-          <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto">
-            {block.courses.map((course) => (
-              <CourseNode
-                key={course.id}
-                course={course}
-                isCompleted={completedCourseIds.has(course.id)}
-              />
-            ))}
-          </div>
+          {!isDegreeNode && (
+            <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto">
+              {block.courses.map((course) => (
+                <CourseNode
+                  key={course.id}
+                  course={course}
+                  isCompleted={completedCourseIds.has(course.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Degree completion message */}
+          {isDegreeNode && (
+            <div className="text-center py-6">
+              <div className={`text-lg font-semibold mb-2 ${isDegreeComplete ? 'text-accent-gold' : 'text-muted-foreground'}`}>
+                {isDegreeComplete ? '🎓 Congratulations!' : '🎯 Complete all requirements'}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isDegreeComplete 
+                  ? 'You have earned your Bachelor of Science in Software Engineering!'
+                  : 'Finish all courses to earn your degree'
+                }
+              </div>
+            </div>
+          )}
           
-          {!isUnlocked && (
+          {!isUnlocked && !isDegreeNode && (
             <div className="mt-3 p-2 bg-muted/50 rounded text-xs text-muted-foreground text-center">
               Complete prerequisites to unlock
+            </div>
+          )}
+
+          {isDegreeNode && !isUnlocked && (
+            <div className="mt-3 p-2 bg-accent-gold/10 border border-accent-gold/30 rounded text-xs text-accent-gold-foreground text-center">
+              Complete Capstone and Architecture blocks to unlock degree
             </div>
           )}
         </CardContent>
