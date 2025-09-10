@@ -1,4 +1,11 @@
 import { Node, Edge } from '@xyflow/react';
+import { 
+  calculateNodeDimensions, 
+  getNodeBounds as getNodeBoundsUnified,
+  calculateOptimalSpacing,
+  estimateColumnHeight,
+  shouldDistributeHorizontally 
+} from './heightCalculation';
 
 /**
  * Simplified layout system focused on eliminating overlaps
@@ -39,7 +46,7 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
 }
 
 /**
- * Apply year-based column layout
+ * Apply year-based column layout with smart vertical positioning
  */
 function applyYearBasedLayout(nodes: Node[]): Node[] {
   const yearColumns = [80, 440, 800, 1160]; // Year 1-4 columns (320px width + 120px spacing)
@@ -64,28 +71,78 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
     });
   });
   
+  // Calculate positions with smart vertical spacing
   return nodes.map(node => {
     const data = node.data as any;
     const year = data.level_year ?? 1;
     const yearNodes = nodesByYear.get(year) || [];
     const nodeIndex = yearNodes.findIndex(n => n.id === node.id);
     
+    // Calculate cumulative height for proper vertical positioning
+    let yPosition = 40; // Starting Y position
+    
+    for (let i = 0; i < nodeIndex; i++) {
+      const prevNode = yearNodes[i];
+      const prevDimensions = calculateNodeDimensions(prevNode);
+      yPosition += prevDimensions.height;
+      
+      // Add optimal spacing to next node
+      if (i < nodeIndex - 1) {
+        const currentNode = yearNodes[i + 1];
+        yPosition += calculateOptimalSpacing(prevNode, currentNode);
+      } else {
+        yPosition += 48; // Default spacing for current node
+      }
+    }
+    
+    // Handle horizontal distribution when column is too tall
+    const maxColumnHeight = (typeof window !== 'undefined' && window.innerHeight) ? 
+      window.innerHeight - 200 : 800;
+    
+    let xPosition = yearColumns[year - 1] ?? 80;
+    
+    // Check if we need horizontal distribution
+    if (shouldDistributeHorizontally(yearNodes, maxColumnHeight)) {
+      const subColumn = Math.floor(nodeIndex / 4);
+      xPosition += subColumn * 360; // Offset horizontally (320px width + 40px spacing)
+      
+      // Recalculate Y position for sub-column
+      const subColumnIndex = nodeIndex % 4;
+      const subColumnNodes = yearNodes.slice(subColumn * 4, (subColumn + 1) * 4);
+      
+      yPosition = 40; // Reset to top of sub-column
+      for (let i = 0; i < subColumnIndex; i++) {
+        if (i < subColumnNodes.length) {
+          const prevNode = subColumnNodes[i];
+          const prevDimensions = calculateNodeDimensions(prevNode);
+          yPosition += prevDimensions.height;
+          
+          if (i < subColumnIndex - 1) {
+            const nextNode = subColumnNodes[i + 1];
+            yPosition += calculateOptimalSpacing(prevNode, nextNode);
+          } else {
+            yPosition += 48; // Default spacing
+          }
+        }
+      }
+    }
+    
     return {
       ...node,
       position: {
-        x: yearColumns[year - 1] ?? 80,
-        y: nodeIndex * 180 + 40 // Stack vertically with generous spacing
+        x: xPosition,
+        y: yPosition
       }
     };
   });
 }
 
 /**
- * Simple collision resolution
+ * Enhanced collision resolution with smart positioning
  */
 function resolveCollisions(nodes: Node[]): Node[] {
   const resolvedNodes = [...nodes];
-  let maxPasses = 3;
+  let maxPasses = 5; // Increased passes for better resolution
   let pass = 0;
   
   while (pass < maxPasses) {
@@ -98,16 +155,61 @@ function resolveCollisions(nodes: Node[]): Node[] {
     
     console.log(`🔄 Pass ${pass + 1}: Resolving ${overlaps.length} overlaps`);
     
-    // Resolve each overlap by moving the lower node down
+    // Sort overlaps by severity (overlap area) to resolve worst first
+    overlaps.sort((a, b) => {
+      const aRect1 = getNodeBounds(a.node1);
+      const aRect2 = getNodeBounds(a.node2);
+      const bRect1 = getNodeBounds(b.node1);
+      const bRect2 = getNodeBounds(b.node2);
+      
+      const aOverlapArea = calculateOverlapArea(aRect1, aRect2);
+      const bOverlapArea = calculateOverlapArea(bRect1, bRect2);
+      
+      return bOverlapArea - aOverlapArea; // Largest overlaps first
+    });
+    
+    // Resolve each overlap intelligently
     overlaps.forEach(({ node1, node2 }) => {
       const rect1 = getNodeBounds(node1);
       const rect2 = getNodeBounds(node2);
       
-      // Move the lower positioned node down
-      if (node2.position.y >= node1.position.y) {
-        node2.position.y = rect1.y + rect1.height + 32; // 32px spacing
-      } else {
-        node1.position.y = rect2.y + rect2.height + 32;
+      // Determine which node to move based on position and flexibility
+      const moveNode2 = node2.position.y >= node1.position.y;
+      const nodeToMove = moveNode2 ? node2 : node1;
+      const staticRect = moveNode2 ? rect1 : rect2;
+      
+      // Calculate optimal spacing (48px minimum between nodes)
+      const optimalSpacing = 48;
+      const newY = staticRect.y + staticRect.height + optimalSpacing;
+      
+      // Apply the position change
+      nodeToMove.position.y = newY;
+      
+      // Check if moving this node horizontally might be better for dense areas
+      const sameColumnNodes = resolvedNodes.filter(n => 
+        Math.abs(n.position.x - nodeToMove.position.x) < 50 && n.id !== nodeToMove.id
+      );
+      
+      // If column is very dense (>4 nodes), try horizontal distribution
+      if (sameColumnNodes.length > 4 && pass > 1) {
+        const originalX = nodeToMove.position.x;
+        nodeToMove.position.x = originalX + 340; // Move to sub-column
+        
+        // Reset Y position for the new column
+        const newColumnNodes = resolvedNodes.filter(n => 
+          Math.abs(n.position.x - nodeToMove.position.x) < 50 && n.id !== nodeToMove.id
+        );
+        
+        if (newColumnNodes.length === 0) {
+          nodeToMove.position.y = 40; // Start of new column
+        } else {
+          // Stack below existing nodes in new column
+          const maxY = Math.max(...newColumnNodes.map(n => {
+            const bounds = getNodeBounds(n);
+            return bounds.y + bounds.height;
+          }));
+          nodeToMove.position.y = maxY + optimalSpacing;
+        }
       }
     });
     
@@ -115,10 +217,19 @@ function resolveCollisions(nodes: Node[]): Node[] {
   }
   
   if (pass >= maxPasses) {
-    console.warn('⚠️ Max collision resolution passes reached');
+    console.warn(`⚠️ Max collision resolution passes reached. ${detectOverlaps(resolvedNodes).length} overlaps remaining.`);
   }
   
   return resolvedNodes;
+}
+
+/**
+ * Calculate overlap area between two rectangles
+ */
+function calculateOverlapArea(rect1: any, rect2: any): number {
+  const xOverlap = Math.max(0, Math.min(rect1.x + rect1.width, rect2.x + rect2.width) - Math.max(rect1.x, rect2.x));
+  const yOverlap = Math.max(0, Math.min(rect1.y + rect1.height, rect2.y + rect2.height) - Math.max(rect1.y, rect2.y));
+  return xOverlap * yOverlap;
 }
 
 /**
@@ -145,18 +256,10 @@ function detectOverlaps(nodes: Node[]): { node1: Node; node2: Node }[] {
 }
 
 /**
- * Get node bounds for collision detection
+ * Get node bounds for collision detection (delegates to unified system)
  */
 function getNodeBounds(node: Node) {
-  const width = node.type === 'blockGroup' ? 320 : 200;
-  const height = estimateNodeHeight(node);
-  
-  return {
-    x: node.position.x,
-    y: node.position.y,
-    width,
-    height
-  };
+  return getNodeBoundsUnified(node);
 }
 
 /**
@@ -171,16 +274,38 @@ function hasOverlap(rect1: any, rect2: any): boolean {
 }
 
 /**
- * Estimate node height based on content
+ * Unified height estimation for accurate collision calculations
  */
 function estimateNodeHeight(node: Node): number {
   if (node.type === 'blockGroup') {
     const data = node.data as any;
-    const baseHeight = 140; // Header + progress + padding
-    const courseCount = data.block?.courses?.length || 3;
-    const subBlockCount = data.subBlocks?.length || 0;
+    const block = data.block;
     
-    return baseHeight + (courseCount * 56) + (subBlockCount * 72);
+    // Base height: header + progress bar + padding
+    let height = 160;
+    
+    // Course list height (each course is ~52px including spacing)
+    const courseCount = block?.courses?.length || 0;
+    height += courseCount * 52;
+    
+    // Sub-block height (if expanded, each sub-block is ~80px)
+    const subBlockCount = data.subBlocks?.length || 0;
+    height += subBlockCount * 80;
+    
+    // Alt credits section (if present, ~40px)
+    if (block?.alt_credits && block.alt_credits > 0) {
+      height += 40;
+    }
+    
+    // Expansion state buffer (when content is expanded)
+    if (data.isExpanded) {
+      height += 20;
+    }
+    
+    // Safety margin for dynamic content
+    height += 24;
+    
+    return Math.max(height, 180); // Minimum height
   }
-  return 120;
+  return 120; // Default height for other node types
 }

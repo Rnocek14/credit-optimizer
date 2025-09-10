@@ -63,18 +63,40 @@ function getNodeRect(node: Node) {
 }
 
 /**
- * Smart height estimation for collision calculations
+ * Unified height estimation matching simpleLayout.ts
  */
 function estimateNodeHeight(node: Node): number {
   if (node.type === 'blockGroup') {
     const data = node.data as any;
-    const baseHeight = 120;
-    const courseCount = data.block?.courses?.length || 3;
-    const subBlockCount = data.subBlocks?.length || 0;
+    const block = data.block;
     
-    return baseHeight + (courseCount * 60) + (subBlockCount * 80);
+    // Base height: header + progress bar + padding
+    let height = 160;
+    
+    // Course list height (each course is ~52px including spacing)
+    const courseCount = block?.courses?.length || 0;
+    height += courseCount * 52;
+    
+    // Sub-block height (if expanded, each sub-block is ~80px)
+    const subBlockCount = data.subBlocks?.length || 0;
+    height += subBlockCount * 80;
+    
+    // Alt credits section (if present, ~40px)
+    if (block?.alt_credits && block.alt_credits > 0) {
+      height += 40;
+    }
+    
+    // Expansion state buffer (when content is expanded)
+    if (data.isExpanded) {
+      height += 20;
+    }
+    
+    // Safety margin for dynamic content
+    height += 24;
+    
+    return Math.max(height, 180); // Minimum height
   }
-  return 100;
+  return 120; // Default height for other node types
 }
 
 /**
