@@ -96,6 +96,20 @@ function EduTreeCanvasInner() {
     isCriticalDataReady 
   } = useEduTreeQueries();
 
+  // Enhanced positioning system for focus modes
+  const getNodePosition = useCallback((basePosition: { x: number; y: number }, nodeId: string, nodeType: string) => {
+    // Apply focus mode transformations
+    if (focusState.mode === 'web-track' && nodeType === 'specializationTrack' && nodeId === 'mobile-track') {
+      return { x: basePosition.x, y: basePosition.y + 600 }; // Move mobile track down when focusing on web
+    }
+    if (focusState.mode === 'mobile-track' && nodeType === 'specializationTrack' && nodeId === 'web-track') {
+      return { x: basePosition.x, y: basePosition.y - 600 }; // Move web track up when focusing on mobile
+    }
+    
+    // Apply responsive spacing based on viewport
+    return basePosition;
+  }, [focusState.mode]);
+
   // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     console.log('Data check:', { 
@@ -463,20 +477,6 @@ function EduTreeCanvasInner() {
       });
     }
   }, [blocks, courses, blockMembers, gates, gateEdges]);
-
-  // Enhanced positioning system for focus modes
-  const getNodePosition = useCallback((basePosition: { x: number; y: number }, nodeId: string, nodeType: string) => {
-    // Apply focus mode transformations
-    if (focusState.mode === 'web-track' && nodeType === 'specializationTrack' && nodeId === 'mobile-track') {
-      return { x: basePosition.x, y: basePosition.y + 600 }; // Move mobile track down when focusing on web
-    }
-    if (focusState.mode === 'mobile-track' && nodeType === 'specializationTrack' && nodeId === 'web-track') {
-      return { x: basePosition.x, y: basePosition.y - 600 }; // Move web track up when focusing on mobile
-    }
-    
-    // Apply responsive spacing based on viewport
-    return basePosition;
-  }, [focusState.mode]);
 
   // Restore path highlighting with proper dependency management
   useEffect(() => {
