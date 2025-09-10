@@ -64,8 +64,8 @@ function EduTreeCanvasInner() {
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
-  const [layoutStage, setLayoutStage] = useState<'initial' | 'measuring' | 'final'>('initial');
-  const measurementTimeoutRef = useRef<NodeJS.Timeout>();
+  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
+  const layoutInProgressRef = useRef(false);
   
   // Removed layout manager - using simplified system
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
@@ -280,27 +280,10 @@ function EduTreeCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
-  // Handle node changes and detect measurements
+  // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
     onNodesChange(changes);
-    
-    // Check if we have measured nodes after initial layout
-    if (layoutStage === 'measuring') {
-      // Clear existing timeout
-      if (measurementTimeoutRef.current) {
-        clearTimeout(measurementTimeoutRef.current);
-      }
-      
-      // Debounce re-layout after measurements
-      measurementTimeoutRef.current = setTimeout(() => {
-        const hasMeasurements = nodes.some(node => (node as any).measured?.height);
-        if (hasMeasurements && layoutStage === 'measuring') {
-          console.log('🔄 Measurements detected, running final layout...');
-          setLayoutStage('final');
-        }
-      }, 100);
-    }
-  }, [onNodesChange, layoutStage, nodes]);
+  }, [onNodesChange]);
 
   // DEV logging for data debugging
   useEffect(() => {
@@ -343,85 +326,75 @@ function EduTreeCanvasInner() {
     }
   }, []);
 
-  // Apply layout when data changes with enhanced pipeline
-  useEffect(() => {
-    if (flowNodes.length === 0) return;
-
-    if (DEV) console.log('[EduTree] applying layout', { mode: viewMode, nodeCount: flowNodes.length });
-
-    if (viewMode === 'flow') {
-      setIsLayouting(true);
-      performFlowLayout();
-    } else {
-      performBoardLayout();
+  // Debounced layout function to prevent thrashing
+  const debouncedLayout = useCallback(async () => {
+    if (layoutInProgressRef.current || flowNodes.length === 0) {
+      return;
     }
 
-    async function performFlowLayout() {
-      try {
-        setLayoutStage('initial');
-        
-        // Stage 1: Initial layout without collision resolution for measurements
-        const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-        
-        // Apply initial positioning
-        const initialNodes = flowNodes.map((node, index) => {
-          const data = node.data as any;
-          const year = data.level_year ?? 1;
-          return {
-            ...node,
-            position: { 
-              x: year * 400 + 40, 
-              y: index * 200 + 50 
-            }
-          };
-        });
-        
-        setNodes(initialNodes);
-        setEdges(flowEdges);
-        setLayoutStage('measuring');
-        
-        // Stage 2: Wait a bit for React Flow to measure, then apply full layout
-        setTimeout(async () => {
-          try {
-            const result = await layoutNodes(initialNodes, flowEdges);
-            if (DEV) console.log('[EduTree] Final layout complete', result.nodes.length, 'overlaps:', result.hasOverlaps);
-            
-            setNodes(result.nodes);
-            setLayoutStage('final');
-            setIsLayouting(false);
-          } catch (finalError) {
-            console.error('[EduTree] Final layout failed:', finalError);
-            setIsLayouting(false);
-            setLayoutStage('final');
-          }
-        }, 200);
-        
-      } catch (error) {
-        console.error('[EduTree] Layout failed, using fallback', error);
-        // Fallback to simple grid if everything fails
-        const fallbackNodes = flowNodes.map((node, index) => ({
-          ...node,
-          position: { x: (index % 3) * 360, y: Math.floor(index / 3) * 220 }
-        }));
-        setNodes(fallbackNodes);
-        setEdges(flowEdges);
-        setIsLayouting(false);
-        setLayoutStage('final');
-      }
+    // Clear any existing timeout
+    if (layoutTimeoutRef.current) {
+      clearTimeout(layoutTimeoutRef.current);
     }
 
-    function performBoardLayout() {
-      const gridNodes = layoutAsGrid(flowNodes, 'board');
-      if (DEV) console.log('[EduTree] grid done', gridNodes.length);
-      setNodes(gridNodes);
-      setEdges([]); // No edges in board mode
+    // Debounce layout operations
+    layoutTimeoutRef.current = setTimeout(async () => {
+      if (layoutInProgressRef.current) return;
       
-      // Save board positions
-      if (flags.eduTreeLanes) {
-        layoutMemoryRef.current.savePositions(gridNodes, 'board');
+      layoutInProgressRef.current = true;
+      setIsLayouting(true);
+
+      try {
+        if (viewMode === 'flow') {
+          await performFlowLayout();
+        } else {
+          performBoardLayout();
+        }
+      } finally {
+        layoutInProgressRef.current = false;
+        setIsLayouting(false);
       }
+    }, 150); // 150ms debounce
+  }, [flowNodes, flowEdges, viewMode]);
+
+  // Apply layout when data changes
+  useEffect(() => {
+    debouncedLayout();
+  }, [debouncedLayout]);
+
+  // Layout implementations
+  async function performFlowLayout() {
+    try {
+      const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+      const result = await layoutNodes(flowNodes, flowEdges);
+      
+      if (DEV) console.log('[EduTree] Layout complete', result.nodes.length, 'overlaps:', result.hasOverlaps);
+      
+      setNodes(result.nodes);
+      setEdges(flowEdges);
+    } catch (error) {
+      console.error('[EduTree] Layout failed:', error);
+      // Fallback to simple positioning
+      const fallbackNodes = flowNodes.map((node, index) => ({
+        ...node,
+        position: { x: (index % 3) * 360, y: Math.floor(index / 3) * 220 }
+      }));
+      setNodes(fallbackNodes);
+      setEdges(flowEdges);
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes, isLayouting, applyLayout]);
+  }
+
+  function performBoardLayout() {
+    const gridNodes = layoutAsGrid(flowNodes, 'board');
+    if (DEV) console.log('[EduTree] Board layout complete', gridNodes.length);
+    setNodes(gridNodes);
+    setEdges([]); // No edges in board mode
+    
+    // Save board positions
+    if (flags.eduTreeLanes) {
+      layoutMemoryRef.current.savePositions(gridNodes, 'board');
+    }
+  }
 
   // Update path highlighting when lens changes
   useEffect(() => {
@@ -463,9 +436,10 @@ function EduTreeCanvasInner() {
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (measurementTimeoutRef.current) {
-        clearTimeout(measurementTimeoutRef.current);
+      if (layoutTimeoutRef.current) {
+        clearTimeout(layoutTimeoutRef.current);
       }
+      layoutInProgressRef.current = false;
     };
   }, []);
 

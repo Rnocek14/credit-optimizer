@@ -12,20 +12,38 @@ export interface LayoutResult {
 }
 
 /**
+ * Layout state tracking to prevent concurrent operations
+ */
+let isLayoutInProgress = false;
+
+/**
  * Main layout function with simple year-based positioning and collision resolution
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
   
-  console.log(`🎯 Simple layout for ${nodes.length} nodes`);
-  
-  if (nodes.length === 0) {
+  // Prevent concurrent layout operations
+  if (isLayoutInProgress) {
+    console.log('⏭️ Layout already in progress, skipping...');
     return {
-      nodes: [],
+      nodes: [...nodes], // Return a copy of current nodes
       hasOverlaps: false,
-      layoutTime: performance.now() - startTime
+      layoutTime: 0
     };
   }
+  
+  isLayoutInProgress = true;
+  
+  try {
+    console.log(`🎯 Simple layout for ${nodes.length} nodes`);
+    
+    if (nodes.length === 0) {
+      return {
+        nodes: [],
+        hasOverlaps: false,
+        layoutTime: performance.now() - startTime
+      };
+    }
 
   // Apply simple year-based layout with generous spacing
   let layoutedNodes = applyYearBasedLayout([...nodes]);
@@ -37,17 +55,21 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
   console.log('🔧 Resolving collisions...');
   layoutedNodes = resolveAllCollisions(layoutedNodes);
   
-  // Validate final layout
-  const hasOverlaps = !validateLayout(layoutedNodes);
-  
-  const layoutTime = performance.now() - startTime;
-  console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
-  
-  return {
-    nodes: layoutedNodes,
-    hasOverlaps,
-    layoutTime
-  };
+    // Validate final layout
+    const hasOverlaps = !validateLayout(layoutedNodes);
+    
+    const layoutTime = performance.now() - startTime;
+    console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
+    
+    return {
+      nodes: layoutedNodes,
+      hasOverlaps,
+      layoutTime
+    };
+  } finally {
+    // Always clear the lock
+    isLayoutInProgress = false;
+  }
 }
 
 /**
