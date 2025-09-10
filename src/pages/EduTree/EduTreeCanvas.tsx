@@ -42,6 +42,7 @@ import { toast } from '@/hooks/use-toast';
 import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
 import { CourseNode } from './components/CourseNode';
+import { TransitionBlock } from './components/TransitionBlock';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
@@ -50,11 +51,13 @@ import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackgroun
 import { FocusProvider, useFocus } from './contexts/FocusContext';
 import { SpecializationTrack } from './components/SpecializationTrack';
 import { FocusToolbar } from './components/FocusToolbar';
+import { EduBackground } from './components/EduBackground';
 
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
   specializationTrack: SpecializationTrack,
+  transitionBlock: TransitionBlock,
 };
 
 const DEV = import.meta.env.DEV;
@@ -322,7 +325,35 @@ function EduTreeCanvasInner() {
       }
     }
 
-    const nodes = [...coreNodes, ...trackNodes];
+    // Add transition block - bridge between core and specialization
+    const transitionNode: Node = {
+      id: 'transition-block',
+      type: 'transitionBlock',
+      position: { 
+        x: 3.5 * 450,  // Between Year 3 and Year 4
+        y: 350          // Centered vertically
+      },
+      data: {
+        title: 'Choose Your Specialization',
+        description: 'Select a track to focus your final year',
+        availableTracks: [
+          {
+            id: 'web',
+            title: 'Web Development',
+            color: 'hsl(var(--primary))',
+            isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
+          },
+          {
+            id: 'mobile',
+            title: 'Mobile Development', 
+            color: 'hsl(var(--accent))',
+            isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
+          }
+        ]
+      }
+    };
+
+    const nodes = [...coreNodes, transitionNode, ...trackNodes];
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
@@ -375,7 +406,67 @@ function EduTreeCanvasInner() {
         } : null;
       }).filter(Boolean) as Edge[] : [];
 
-    return { nodes, edges };
+    // Add edges to transition block from Year 3 blocks
+    const transitionEdges: Edge[] = [];
+    const year3Blocks = sortedCoreBlocks.filter(block => block.level_year === 3);
+    year3Blocks.forEach(block => {
+      transitionEdges.push({
+        id: `${block.id}-to-transition`,
+        source: String(block.id),
+        target: 'transition-block',
+        type: 'smoothstep',
+        style: {
+          stroke: 'hsl(var(--primary))',
+          strokeWidth: 2,
+          opacity: 0.6
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: 'hsl(var(--primary))',
+        }
+      });
+    });
+
+    // Add edges from transition block to specialization tracks
+    if (webBlocks.length > 0) {
+      transitionEdges.push({
+        id: 'transition-to-web',
+        source: 'transition-block', 
+        target: 'web-track',
+        type: 'smoothstep',
+        style: {
+          stroke: 'hsl(var(--primary))',
+          strokeWidth: 2,
+          opacity: 0.7
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: 'hsl(var(--primary))',
+        }
+      });
+    }
+
+    if (mobileBlocks.length > 0) {
+      transitionEdges.push({
+        id: 'transition-to-mobile',
+        source: 'transition-block',
+        target: 'mobile-track', 
+        type: 'smoothstep',
+        style: {
+          stroke: 'hsl(var(--accent))',
+          strokeWidth: 2,
+          opacity: 0.7
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: 'hsl(var(--accent))',
+        }
+      });
+    }
+
+    const allEdges = [...edges, ...transitionEdges];
+
+    return { nodes, edges: allEdges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
   // REMOVED highlightedPath dependency to prevent infinite loop
 
@@ -647,13 +738,8 @@ function EduTreeCanvasInner() {
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
-          {/* Lane Background for educational context */}
-          {flags.eduTreeLanes && viewMode === 'flow' && (
-            <EduLaneBackground 
-              lanes={EDU_YEAR_LANES} 
-              height={2000} 
-            />
-          )}
+          {/* Enhanced Educational Background */}
+          <EduBackground width={2400} height={1200} />
           
           <Controls />
           <Background 
