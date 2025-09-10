@@ -27,7 +27,24 @@ const seedData = {
     
     // Architecture and Capstone
     { code: 'CS-401', title: 'Software Architecture', credits: 3, area: 'software_engineering', level_year: 4, is_core: false, is_capstone: false },
-    { code: 'CS-499', title: 'Capstone Project', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true }
+    { code: 'CS-499', title: 'Capstone Project', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true },
+
+    // Web Development track
+    { code: 'WD-201', title: 'Frontend Foundations', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'WD-301', title: 'Full-Stack Development', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'WD-499', title: 'Web Capstone', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true },
+
+    // Data Science track
+    { code: 'MATH-210', title: 'Linear Algebra', credits: 3, area: 'mathematics', level_year: 2, is_core: false, is_capstone: false },
+    { code: 'DS-201', title: 'Intro to Data Science', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'DS-301', title: 'Machine Learning', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'DS-499', title: 'Data Science Capstone', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true },
+
+    // DevOps track
+    { code: 'DO-201', title: 'Cloud Fundamentals', credits: 3, area: 'software_engineering', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'DO-301', title: 'DevOps Tooling', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'CERT-101', title: 'Certification Prep (Linux+)', credits: 3, area: 'general_education', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'DO-499', title: 'DevOps Capstone', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true }
   ],
 
   blocks: [
@@ -40,7 +57,15 @@ const seedData = {
     { title: "Web Development", rule_type: "ALL", level_year: 3, area: "specialization" },
     { title: "Mobile Development", rule_type: "ALL", level_year: 3, area: "specialization" },
     { title: "Architecture", rule_type: "ALL", level_year: 4, area: "software_engineering" },
-    { title: "Capstone", rule_type: "ALL", level_year: 4, area: "capstone" }
+    { title: "Capstone", rule_type: "ALL", level_year: 4, area: "capstone" },
+
+    // New branching tracks for multipath demo
+    { title: "Track: Web Development", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
+    { title: "Track: Data Science", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
+    { title: "Track: DevOps Engineering", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
+    { title: "Capstone: Web", rule_type: "ALL", level_year: 4, area: "capstone" },
+    { title: "Capstone: Data Science", rule_type: "ALL", level_year: 4, area: "capstone" },
+    { title: "Capstone: DevOps", rule_type: "ALL", level_year: 4, area: "capstone" }
   ],
 
   blockCourseRelations: [
@@ -53,7 +78,15 @@ const seedData = {
     { blockTitle: 'Web Development', courseCodes: ['CS-351'] },
     { blockTitle: 'Mobile Development', courseCodes: ['CS-361'] },
     { blockTitle: 'Architecture', courseCodes: ['CS-401'] },
-    { blockTitle: 'Capstone', courseCodes: ['CS-499'] }
+    { blockTitle: 'Capstone', courseCodes: ['CS-499'] },
+
+    // New branching track mappings
+    { blockTitle: 'Track: Web Development', courseCodes: ['WD-201', 'WD-301'] },
+    { blockTitle: 'Track: Data Science', courseCodes: ['DS-201', 'DS-301', 'MATH-210'] },
+    { blockTitle: 'Track: DevOps Engineering', courseCodes: ['DO-201', 'DO-301', 'CERT-101'] },
+    { blockTitle: 'Capstone: Web', courseCodes: ['WD-499'] },
+    { blockTitle: 'Capstone: Data Science', courseCodes: ['DS-499'] },
+    { blockTitle: 'Capstone: DevOps', courseCodes: ['DO-499'] }
   ],
 
   edges: [
@@ -61,10 +94,22 @@ const seedData = {
     { from: "General Education", to: "Core I" },
     { from: "Foundations", to: "Core I" },
     { from: "Core I", to: "Core II" },
+
+    // Existing branches
     { from: "Core II", to: "Specializations" },
     { from: "Core II", to: "Architecture" },
     { from: "Specializations", to: "Capstone" },
-    { from: "Architecture", to: "Capstone" }
+    { from: "Architecture", to: "Capstone" },
+
+    // New branching to distinct tracks
+    { from: "Core II", to: "Track: Web Development" },
+    { from: "Core II", to: "Track: Data Science" },
+    { from: "Core II", to: "Track: DevOps Engineering" },
+
+    // Track-specific capstones
+    { from: "Track: Web Development", to: "Capstone: Web" },
+    { from: "Track: Data Science", to: "Capstone: Data Science" },
+    { from: "Track: DevOps Engineering", to: "Capstone: DevOps" }
   ]
 };
 
@@ -149,7 +194,13 @@ export async function seedEduTreeData() {
       await supabase
         .from('requirement_blocks')
         .update({ parent_block_id: specializationsBlockId })
-        .in('title', ['Web Development', 'Mobile Development']);
+        .in('title', [
+          'Web Development',
+          'Mobile Development',
+          'Track: Web Development',
+          'Track: Data Science',
+          'Track: DevOps Engineering'
+        ]);
     }
 
     // Insert block members, gates, and edges
