@@ -45,38 +45,38 @@ export const EduLaneBackground: React.FC<EduLaneBackgroundProps> = ({
   );
 };
 
-// Educational progression lanes based on academic years
+// Educational progression lanes optimized for clean layout
 export const EDU_YEAR_LANES = [
   {
     id: 'year-1',
     title: 'Year 1',
     subtitle: 'Foundations • 0-30 Credits',
     color: 'hsl(var(--primary))',
-    x: 0,
-    width: 400
+    x: 40,
+    width: 150
   },
   {
     id: 'year-2', 
     title: 'Year 2',
     subtitle: 'Lower Division • 30-60 Credits',
     color: 'hsl(var(--secondary))',
-    x: 400,
-    width: 400
+    x: 190,
+    width: 150
   },
   {
     id: 'year-3',
     title: 'Year 3',
     subtitle: 'Upper Division • 60-90 Credits',
     color: 'hsl(var(--accent))',
-    x: 800,
-    width: 400
+    x: 340,
+    width: 150
   },
   {
     id: 'year-4',
     title: 'Year 4',
     subtitle: 'Specialization • 90-120 Credits',
     color: 'hsl(var(--muted-foreground))',
-    x: 1200,
-    width: 400
+    x: 490,
+    width: 150
   }
 ];
