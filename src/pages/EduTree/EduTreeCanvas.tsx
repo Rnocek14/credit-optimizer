@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
-import { resolveColumnCollisions, LayoutManager } from '@/lib/layout/layoutLifecycle';
+// Layout lifecycle removed - using simplified system
 import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
 import { findOptimalPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
@@ -65,8 +65,7 @@ function EduTreeCanvasInner() {
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   
-  // Layout manager for debounced re-layouts
-  const layoutManagerRef = useRef<LayoutManager | null>(null);
+  // Removed layout manager - using simplified system
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
   const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
   

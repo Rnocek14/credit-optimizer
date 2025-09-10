@@ -122,13 +122,30 @@ function findHorizontalSpace(nodes: Node[], targetNode: Node, nodeWidth: number)
   return null;
 }
 
-import { getNodeBounds } from './heightCalculation';
-
 /**
- * Get node rectangle for collision detection (unified system)
+ * Get node rectangle for collision detection (simple version)
  */
 function getNodeRect(node: Node) {
-  return getNodeBounds(node);
+  const width = (node as any).measured?.width || 320;
+  const height = (node as any).measured?.height || getEstimatedNodeHeight(node);
+  
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    width,
+    height
+  };
+}
+
+function getEstimatedNodeHeight(node: Node): number {
+  const data = node.data as any;
+  
+  if (data.block && data.block.courses) {
+    const courseCount = data.block.courses.length;
+    return 200 + (courseCount * 60); // Base + courses
+  }
+  
+  return 350; // Generous default
 }
 
 /**

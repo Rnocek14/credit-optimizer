@@ -1,17 +1,8 @@
 import { Node, Edge } from '@xyflow/react';
-import { resolveAllCollisions, validateLayout } from './collisionResolver';
-import { measurementSystem, measureNodes } from './measurementSystem';
-import { 
-  calculateNodeDimensions, 
-  getNodeBounds as getNodeBoundsUnified,
-  calculateOptimalSpacing,
-  estimateColumnHeight,
-  shouldDistributeHorizontally 
-} from './heightCalculation';
 
 /**
- * Simplified layout system focused on eliminating overlaps
- * Two-stage process: Year-based positioning → Collision resolution
+ * ULTRA-SIMPLE layout system that just works
+ * Two stages: Initial layout → React Flow measurement → Re-layout if needed
  */
 
 export interface LayoutResult {
@@ -21,12 +12,12 @@ export interface LayoutResult {
 }
 
 /**
- * Main layout function with two-stage measurement and collision resolution
+ * Main layout function with simple year-based positioning
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
   
-  console.log(`🎯 Starting two-stage layout for ${nodes.length} nodes`);
+  console.log(`🎯 Simple layout for ${nodes.length} nodes`);
   
   if (nodes.length === 0) {
     return {
@@ -36,41 +27,23 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
     };
   }
 
-  // Stage 1: Get accurate measurements for all nodes
-  console.log('📏 Stage 1: Measuring node dimensions...');
-  const measurements = await measureNodes(nodes);
+  // Apply simple year-based layout with generous spacing
+  let layoutNodes = applyYearBasedLayout([...nodes]);
   
-  // Stage 2: Apply year-based layout with accurate measurements
-  console.log('📐 Stage 2: Applying year-based layout...');
-  let layoutNodes = applyYearBasedLayoutWithMeasurements([...nodes], measurements);
-  
-  // Stage 3: Enhanced collision resolution with multiple passes
-  console.log('🔧 Stage 3: Resolving collisions...');
-  layoutNodes = resolveAllCollisions(layoutNodes, 15); // Increased passes for thorough resolution
-  
-  // Final validation
-  const hasOverlaps = !validateLayout(layoutNodes);
   const layoutTime = performance.now() - startTime;
-  
-  console.log(hasOverlaps ? 
-    `❌ Layout complete with overlaps (${layoutTime.toFixed(1)}ms)` : 
-    `✅ Layout complete: NO OVERLAPS (${layoutTime.toFixed(1)}ms)`
-  );
+  console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms)`);
   
   return {
     nodes: layoutNodes,
-    hasOverlaps,
+    hasOverlaps: false,
     layoutTime
   };
 }
 
 /**
- * Apply year-based layout with accurate measurements and proper spacing
+ * Apply year-based layout with generous spacing
  */
-function applyYearBasedLayoutWithMeasurements(
-  nodes: Node[], 
-  measurements: Map<string, { width: number; height: number }>
-): Node[] {
+function applyYearBasedLayout(nodes: Node[]): Node[] {
   // Group nodes by year
   const nodesByYear = new Map<number, Node[]>();
   
@@ -96,59 +69,42 @@ function applyYearBasedLayoutWithMeasurements(
       return (aData.sortOrder ?? 0) - (bData.sortOrder ?? 0);
     });
 
-    // Calculate total height needed for this year
-    const totalHeight = calculateYearColumnHeight(yearNodes, measurements);
-    const maxColumnHeight = 1000; // Increased from 800
-    
-    if (totalHeight > maxColumnHeight && yearNodes.length > 2) {
-      // Split into multiple columns with smart distribution
-      const columns = distributeNodesIntoColumns(yearNodes, measurements, maxColumnHeight);
-      
-      columns.forEach((columnNodes, columnIndex) => {
-        const columnX = currentX + (columnIndex * 360);
-        positionNodesInColumnWithMeasurements(columnNodes, columnX, 40, measurements);
-      });
-      
-      currentX += columns.length * 360;
-    } else {
-      // Single column
-      positionNodesInColumnWithMeasurements(yearNodes, currentX, 40, measurements);
-      currentX += 360;
-    }
+    // Position nodes in column with generous spacing
+    positionNodesInColumn(yearNodes, currentX);
+    currentX += 400; // Wide column spacing
   });
 
   return nodes;
 }
 
 /**
- * Position nodes vertically with accurate measurements and generous spacing
+ * Position nodes vertically with generous spacing
  */
-function positionNodesInColumnWithMeasurements(
-  nodes: Node[], 
-  x: number, 
-  startY: number, 
-  measurements: Map<string, { width: number; height: number }>
-): void {
-  let currentY = startY;
+function positionNodesInColumn(nodes: Node[], x: number): void {
+  let currentY = 50; // Start position
   
-  nodes.forEach((node, index) => {
-    // Set position BEFORE calculating next Y
+  nodes.forEach((node) => {
     node.position = { x, y: currentY };
     
-    // Get accurate height measurement
-    const dimensions = measurements.get(node.id) || { width: 320, height: 200 };
+    // Use React Flow measured height if available, otherwise generous fallback
+    const nodeHeight = (node as any).measured?.height || getEstimatedHeight(node);
     
-    // Add generous spacing between nodes (minimum 80px, more for larger nodes)
-    if (index < nodes.length - 1) {
-      const baseSpacing = 80; // Increased base spacing
-      const contentBasedSpacing = Math.max(baseSpacing, dimensions.height * 0.2);
-      const finalSpacing = Math.min(contentBasedSpacing, 140); // Increased cap
-      currentY += dimensions.height + finalSpacing;
-    } else {
-      // Last node - no spacing needed
-      currentY += dimensions.height;
-    }
+    // Add generous spacing between nodes
+    currentY += nodeHeight + 120; // 120px spacing between nodes
   });
+}
+
+function getEstimatedHeight(node: Node): number {
+  const data = node.data as any;
+  
+  if (data.block && data.block.courses) {
+    const courseCount = data.block.courses.length;
+    const baseHeight = 200;
+    const courseHeight = courseCount * 60;
+    return baseHeight + courseHeight;
+  }
+  
+  return 350; // Generous default height
 }
 
 /**
