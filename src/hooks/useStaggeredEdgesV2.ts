@@ -26,6 +26,12 @@ export function useStaggeredEdgesV2(
   const [isRevealing, setIsRevealing] = useState(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const emergencyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLogKeyRef = useRef<string>('');
+
+  // RAF-aligned reveal to avoid jank
+  const reveal = (edges: Edge[]) => {
+    requestAnimationFrame(() => setVisibleEdges(edges));
+  };
 
   const forceRevealAll = () => {
     // Clear all pending timeouts
@@ -106,11 +112,30 @@ export function useStaggeredEdgesV2(
     setIsRevealing(true);
     setVisibleEdges([]);
 
+    // Create batch arrays for sequential reveal
+    const batchesInOrder: Edge[][] = sortedColumns.map(c => edgeBatches.get(c) || []);
 
-    // Dynamically compute emergency timeout based on batch count
-    const batchesCount = Math.max(1, sortedColumns.length);
-    const totalRevealMs = (batchesCount - 1) * config.batchDelayMs + 400; // 400ms buffer
-    const emergencyMs = Math.max(config.emergencyTimeoutMs ?? 2000, totalRevealMs);
+    // Sub-batch single column graphs to create animation waves
+    if (batchesInOrder.length === 1 && batchesInOrder[0].length > 1) {
+      const batch = batchesInOrder[0];
+      const mid = Math.ceil(batch.length / 2);
+      batchesInOrder.splice(0, 1, batch.slice(0, mid), batch.slice(mid));
+    }
+
+    // Guard against 0 batches
+    if (batchesInOrder.length === 0) {
+      setVisibleEdges(allEdges);
+      setIsRevealing(false);
+      return;
+    }
+
+    // Dynamically compute emergency timeout with minimum floor
+    const totalRevealMs = (batchesInOrder.length - 1) * config.batchDelayMs + 400;
+    const emergencyMs = Math.max(
+      config.emergencyTimeoutMs ?? 2000,
+      totalRevealMs,
+      1200 // minimum safety
+    );
 
     // Set up emergency timeout with dynamic duration
     emergencyTimeoutRef.current = setTimeout(() => {
@@ -120,16 +145,15 @@ export function useStaggeredEdgesV2(
 
     // Reveal batches sequentially
     let cumulativeEdges: Edge[] = [];
-    sortedColumns.forEach((column, index) => {
-      const batch = edgeBatches.get(column) || [];
+    batchesInOrder.forEach((batch, index) => {
       cumulativeEdges = [...cumulativeEdges, ...batch];
       
       const timeout = setTimeout(() => {
-        setVisibleEdges([...cumulativeEdges]);
-        console.log(`[StaggeredEdgesV2] Revealed batch ${index + 1}/${sortedColumns.length}: ${batch.length} edges (total: ${cumulativeEdges.length})`);
+        reveal([...cumulativeEdges]);
+        console.log(`[StaggeredEdgesV2] Revealed batch ${index + 1}/${batchesInOrder.length}: ${batch.length} edges (total: ${cumulativeEdges.length})`);
         
         // If this is the last batch, we're done
-        if (index === sortedColumns.length - 1) {
+        if (index === batchesInOrder.length - 1) {
           setIsRevealing(false);
           if (emergencyTimeoutRef.current) {
             clearTimeout(emergencyTimeoutRef.current);
@@ -151,14 +175,17 @@ export function useStaggeredEdgesV2(
     };
   }, [allEdges, allNodes, config.enabled, config.batchDelayMs, config.emergencyTimeoutMs, sortedColumns, edgeBatches]);
 
-  // One-time logging per batch configuration change
+  // Stable one-time logging per batch configuration change
   useEffect(() => {
-    if (config.enabled && allEdges.length > 0) {
-      console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
-      console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedColumns.join(','), allEdges.length, terminalEdges.length, config.enabled]);
+    if (!config.enabled || allEdges.length === 0) return;
+    
+    const batchKey = `${sortedColumns.join(',')}|${allEdges.length}|${terminalEdges.length}`;
+    if (lastLogKeyRef.current === batchKey) return;
+    
+    lastLogKeyRef.current = batchKey;
+    console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
+    console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
+  }, [sortedColumns, allEdges.length, terminalEdges.length, config.enabled]);
 
   return {
     visibleEdges,
