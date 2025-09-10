@@ -94,7 +94,7 @@ export function LensSelector({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-background border border-border z-50">
+            <SelectContent className="bg-background border border-border shadow-lg z-[9999]">
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="fastest">Fastest</SelectItem>
               <SelectItem value="cheapest">Cheapest</SelectItem>

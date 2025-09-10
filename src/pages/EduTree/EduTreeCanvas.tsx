@@ -24,7 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 // Layout lifecycle removed - using simplified system
 import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
-import { findOptimalPath } from '@/lib/layout/pathScoring';
+import { findOptimalPath, findComparisonPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useStaggeredEdgesV2 } from '@/hooks/useStaggeredEdgesV2';
 import { useDragGuard } from '@/components/ui/drag-guard';
@@ -492,9 +492,9 @@ function EduTreeCanvasInner() {
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
 
   const comparisonPath = useMemo(() => {
-    if (!flags.eduTreeMultiPathOverlay || !comparisonLens || !flowNodes.length || !flowEdges.length) return null;
-    return findOptimalPath(flowNodes, flowEdges, comparisonLens, completedCourseIds);
-  }, [flags.eduTreeMultiPathOverlay, comparisonLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+    if (!flags.eduTreeMultiPathOverlay || !comparisonLens || !primaryPath || !flowNodes.length || !flowEdges.length) return null;
+    return findComparisonPath(flowNodes, flowEdges, comparisonLens, primaryPath, completedCourseIds);
+  }, [flags.eduTreeMultiPathOverlay, comparisonLens, primaryPath, flowNodes.length, flowEdges.length, completedCourseIds.size]);
 
   // Update highlighted paths with performance caps
   const lastPrimaryRef = useRef<string>('');
@@ -801,7 +801,7 @@ function EduTreeCanvasInner() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between relative z-20">
           <div className="flex items-center gap-6">
             <div className="flex items-center space-x-2">
               <Switch 

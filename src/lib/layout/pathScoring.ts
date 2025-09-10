@@ -48,18 +48,18 @@ function scoreROI(block: BlockWithCourses): number {
 }
 
 /**
- * Find optimal path for given lens
+ * Find multiple alternative paths for exploration
  */
-export function findOptimalPath(
+function findAlternativePaths(
   nodes: Node[], 
   edges: Edge[], 
   lens: PlanningLens,
-  completedCourseIds: Set<string>,
-  constraints?: { maxCost?: number; maxMonths?: number; providerIds?: string[] }
-): ScoredPath {
+  maxPaths: number = 3
+): ScoredPath[] {
   const blockNodes = nodes.filter(node => node.type === 'blockGroup');
+  const paths: ScoredPath[] = [];
   
-  // Score each block based on lens
+  // Score blocks based on lens
   const scoredBlocks = blockNodes.map(node => {
     const block = node.data.block as BlockWithCourses;
     let score = 0;
@@ -79,43 +79,165 @@ export function findOptimalPath(
     return { nodeId: node.id, score, block };
   });
 
-  // Sort by score and select top path
-  scoredBlocks.sort((a, b) => b.score - a.score);
+  // Find branching points (nodes with multiple outgoing edges)
+  const branchingPoints = new Map<string, string[]>();
+  edges.forEach(edge => {
+    if (!branchingPoints.has(edge.source)) {
+      branchingPoints.set(edge.source, []);
+    }
+    branchingPoints.get(edge.source)!.push(edge.target);
+  });
+
+  // Generate different paths by exploring different branches
+  const usedBranches = new Set<string>();
   
-  // Create critical path through highest-scoring accessible blocks
-  const pathNodes: string[] = [];
-  const pathEdges: string[] = [];
-  
-  // Build path following prerequisites
-  const visited = new Set<string>();
-  const queue = scoredBlocks.filter(sb => sb.block.level_year === 1);
-  
-  while (queue.length > 0 && pathNodes.length < 8) {
-    const current = queue.shift()!;
-    if (visited.has(current.nodeId)) continue;
+  for (let pathIndex = 0; pathIndex < maxPaths; pathIndex++) {
+    const pathNodes: string[] = [];
+    const pathEdges: string[] = [];
+    const visited = new Set<string>();
     
-    pathNodes.push(current.nodeId);
-    visited.add(current.nodeId);
+    // Start from level 1 blocks, but vary starting preference by lens and path index
+    let startingBlocks = scoredBlocks.filter(sb => sb.block.level_year === 1);
     
-    // Find edges from this node and add connected nodes to queue
-    edges.forEach(edge => {
-      if (edge.source === current.nodeId) {
-        pathEdges.push(edge.id);
-        const targetBlock = scoredBlocks.find(sb => sb.nodeId === edge.target);
-        if (targetBlock && !visited.has(targetBlock.nodeId)) {
-          queue.push(targetBlock);
+    // Apply different starting strategies for path diversity
+    if (pathIndex === 1) {
+      // Second path: prefer different specialization areas
+      startingBlocks = startingBlocks.filter(sb => 
+        !usedBranches.has(sb.block.area || 'unknown')
+      );
+    } else if (pathIndex === 2) {
+      // Third path: prefer different difficulty levels
+      startingBlocks.sort((a, b) => 
+        Math.abs(a.block.courses.length - 3) - Math.abs(b.block.courses.length - 3)
+      );
+    }
+    
+    if (startingBlocks.length === 0) {
+      startingBlocks = scoredBlocks.filter(sb => sb.block.level_year === 1);
+    }
+    
+    startingBlocks.sort((a, b) => b.score - a.score);
+    const queue = [startingBlocks[0]];
+    
+    while (queue.length > 0 && pathNodes.length < 6) {
+      const current = queue.shift()!;
+      if (visited.has(current.nodeId)) continue;
+      
+      pathNodes.push(current.nodeId);
+      visited.add(current.nodeId);
+      usedBranches.add(current.block.area || 'unknown');
+      
+      // Find next nodes with branch-aware selection
+      const nextNodes: Array<{nodeId: string, score: number, block: BlockWithCourses}> = [];
+      
+      edges.forEach(edge => {
+        if (edge.source === current.nodeId) {
+          pathEdges.push(edge.id);
+          const targetBlock = scoredBlocks.find(sb => sb.nodeId === edge.target);
+          if (targetBlock && !visited.has(targetBlock.nodeId)) {
+            nextNodes.push(targetBlock);
+          }
+        }
+      });
+      
+      // For branch diversification, prefer different specialization tracks
+      if (pathIndex > 0 && nextNodes.length > 1) {
+        const unusedTracks = nextNodes.filter(n => 
+          !usedBranches.has(n.block.area || 'unknown')
+        );
+        if (unusedTracks.length > 0) {
+          nextNodes.splice(0, nextNodes.length, ...unusedTracks);
         }
       }
-    });
+      
+      nextNodes.sort((a, b) => b.score - a.score);
+      queue.push(...nextNodes.slice(0, 2)); // Add top 2 to explore branches
+    }
     
-    // Sort queue by score to maintain optimal path
-    queue.sort((a, b) => b.score - a.score);
+    if (pathNodes.length > 0) {
+      paths.push({
+        nodes: pathNodes,
+        edges: pathEdges,
+        score: pathNodes.reduce((sum, nodeId) => {
+          const block = scoredBlocks.find(sb => sb.nodeId === nodeId);
+          return sum + (block?.score || 0);
+        }, 0),
+        lens
+      });
+    }
   }
+  
+  return paths;
+}
 
-  return {
-    nodes: pathNodes,
-    edges: pathEdges,
-    score: scoredBlocks.slice(0, pathNodes.length).reduce((sum, sb) => sum + sb.score, 0),
-    lens
-  };
+/**
+ * Find optimal path for given lens with enhanced branching
+ */
+export function findOptimalPath(
+  nodes: Node[], 
+  edges: Edge[], 
+  lens: PlanningLens,
+  completedCourseIds: Set<string>,
+  constraints?: { maxCost?: number; maxMonths?: number; providerIds?: string[] }
+): ScoredPath {
+  // Generate multiple alternative paths and return the best one
+  const alternativePaths = findAlternativePaths(nodes, edges, lens, 3);
+  
+  if (alternativePaths.length === 0) {
+    return { nodes: [], edges: [], score: 0, lens };
+  }
+  
+  // Return the highest-scoring path
+  alternativePaths.sort((a, b) => b.score - a.score);
+  return alternativePaths[0];
+}
+
+/**
+ * Find comparison path that's different from the primary path
+ */
+export function findComparisonPath(
+  nodes: Node[], 
+  edges: Edge[], 
+  lens: PlanningLens,
+  primaryPath: ScoredPath,
+  completedCourseIds: Set<string>,
+  constraints?: { maxCost?: number; maxMonths?: number; providerIds?: string[] }
+): ScoredPath {
+  // Generate multiple alternative paths
+  const alternativePaths = findAlternativePaths(nodes, edges, lens, 5);
+  
+  if (alternativePaths.length === 0) {
+    return { nodes: [], edges: [], score: 0, lens };
+  }
+  
+  // Find the path that's most different from the primary path
+  const primaryNodeSet = new Set(primaryPath.nodes);
+  
+  // Score paths by how different they are from primary path
+  const diversePaths = alternativePaths.map(path => {
+    const sharedNodes = path.nodes.filter(nodeId => primaryNodeSet.has(nodeId));
+    const diversityScore = path.nodes.length - sharedNodes.length;
+    
+    return {
+      ...path,
+      diversityScore
+    };
+  });
+  
+  // Sort by diversity score first, then by lens score
+  diversePaths.sort((a, b) => {
+    if (a.diversityScore !== b.diversityScore) {
+      return b.diversityScore - a.diversityScore;
+    }
+    return b.score - a.score;
+  });
+  
+  // Return the most diverse path, or the second-best if all paths are too similar
+  const bestDiverse = diversePaths[0];
+  if (bestDiverse.diversityScore > 0) {
+    return bestDiverse;
+  }
+  
+  // Fallback: return second-best alternative path
+  return diversePaths.length > 1 ? diversePaths[1] : diversePaths[0];
 }
