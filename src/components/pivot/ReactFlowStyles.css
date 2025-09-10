@@ -4,6 +4,11 @@
   height: 100% !important;
 }
 
+/* Reduce background dot opacity for better node focus */
+.react-flow__background {
+  opacity: 0.4 !important;
+}
+
 /* DO NOT override node styles - let custom nodes control their own styling */
 .react-flow__node {
   /* Remove all forced overrides to allow custom node styling */

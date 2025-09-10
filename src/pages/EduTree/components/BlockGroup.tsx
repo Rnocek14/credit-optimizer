@@ -64,14 +64,14 @@ export function BlockGroup(props: NodeProps) {
       />
 
       <Card className={`
-        min-w-[280px] max-w-[320px] 
+        min-w-[320px] max-w-[320px] 
         ${!isUnlocked ? 'opacity-60' : ''}
-        ${isComplete ? 'border-primary bg-primary/5' : 'border-border'}
-        ${isHighlighted ? 'ring-2 ring-primary shadow-lg' : ''}
+        ${isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
+        ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         transition-all duration-200
       `}>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
@@ -113,7 +113,7 @@ export function BlockGroup(props: NodeProps) {
               </span>
             </div>
             
-            <Progress value={progressPercent} className="h-2" />
+            <Progress value={progressPercent} className="h-3" />
           </div>
         </CardHeader>
 
@@ -180,14 +180,8 @@ export function BlockGroup(props: NodeProps) {
             </div>
           )}
 
-          {/* Course grid with improved layout */}
-          <div className={`
-            ${flags.eduTreeLayoutV2 ? 
-              'grid grid-cols-2 gap-2 auto-rows-[minmax(72px,auto)]' : 
-              'grid grid-cols-1 gap-2'
-            } 
-            max-h-[300px] overflow-y-auto
-          `}>
+          {/* Course grid with single column layout for better readability */}
+          <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto">
             {block.courses.map((course) => (
               <CourseNode
                 key={course.id}

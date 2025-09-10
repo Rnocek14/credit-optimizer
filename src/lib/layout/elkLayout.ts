@@ -28,9 +28,9 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
       'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.spacing.nodeNode': '56',                // Increased from 40
-      'elk.spacing.nodeNodeBetweenLayers': '96',   // Increased from 80
-      'elk.spacing.edgeNode': '28',                // Increased from 20
+      'elk.spacing.nodeNode': '80',                // Increased for better visual breathing room
+      'elk.spacing.nodeNodeBetweenLayers': '120',   // Increased for clearer layer separation  
+      'elk.spacing.edgeNode': '32',                // Increased for better edge-node clearance
       'elk.padding': '[top=24,left=24,bottom=24,right=24]'
     },
     children: nodes.map((node): ElkNode => ({

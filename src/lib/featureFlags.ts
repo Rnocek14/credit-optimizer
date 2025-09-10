@@ -84,8 +84,8 @@ export function getFeatureFlags(): FeatureFlags {
     // EduTree Layout Enhancement Flags - Progressive rollout
     eduTreeLayoutV2: toBool(getFlagValue('eduTreeLayoutV2', 'edu-tree-layout-v2', 'true')),
     eduTreeSubblocks: toBool(getFlagValue('eduTreeSubblocks', 'edu-tree-subblocks', 'false')),
-    eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'false')), 
-    eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'false')),
+    eduTreeLanes: toBool(getFlagValue('eduTreeLanes', 'edu-tree-lanes', 'true')), 
+    eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
   };
   

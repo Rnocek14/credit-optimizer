@@ -11,10 +11,10 @@ export interface LaneScaffold {
 
 export const DEFAULT_LANE_SCAFFOLD: LaneScaffold = {
   yearLanes: {
-    1: 0,
-    2: 320,
-    3: 640, 
-    4: 960
+    1: 200,   // Year 1 lane center
+    2: 600,   // Year 2 lane center  
+    3: 1000,  // Year 3 lane center
+    4: 1400   // Year 4 lane center
   },
   areaLanes: {
     'foundation': 0,

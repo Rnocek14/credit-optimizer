@@ -47,6 +47,7 @@ import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { SkeletonNode } from './components/SkeletonNode';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
+import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -548,12 +549,20 @@ function EduTreeCanvasInner() {
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
+          {/* Lane Background for educational context */}
+          {flags.eduTreeLanes && viewMode === 'flow' && (
+            <EduLaneBackground 
+              lanes={EDU_YEAR_LANES} 
+              height={2000} 
+            />
+          )}
+          
           <Controls />
           <Background 
             variant={BackgroundVariant.Dots} 
-            gap={20} 
+            gap={24} 
             size={1}
-            color="hsl(var(--muted-foreground))"
+            color="hsl(var(--muted-foreground)/0.3)"
           />
           {/* Mini-map for large tree navigation */}
           {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
@@ -569,11 +578,32 @@ function EduTreeCanvasInner() {
         />
       )}
 
-      {/* Year labels for flow mode */}
-      {viewMode === 'flow' && (
+      {/* Year labels aligned with lanes */}
+      {viewMode === 'flow' && flags.eduTreeLanes && (
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+          <div className="flex gap-12">
+            {[1, 2, 3, 4].map((year, index) => (
+              <Badge 
+                key={year} 
+                variant="outline" 
+                className="text-xs bg-background/80 backdrop-blur-sm"
+                style={{ 
+                  marginLeft: index === 0 ? '200px' : '400px',
+                  position: index === 0 ? 'relative' : 'static'
+                }}
+              >
+                Year {year}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Fallback year labels for non-lane mode */}
+      {viewMode === 'flow' && !flags.eduTreeLanes && (
         <div className="absolute bottom-4 left-4 flex gap-8 pointer-events-none">
           {[1, 2, 3, 4].map(year => (
-            <Badge key={year} variant="outline" className="text-xs">
+            <Badge key={year} variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
               Year {year}
             </Badge>
           ))}

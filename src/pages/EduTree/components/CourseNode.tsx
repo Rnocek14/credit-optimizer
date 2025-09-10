@@ -11,18 +11,18 @@ interface CourseNodeProps {
 export function CourseNode({ course, isCompleted = false, equivalencies = [] }: CourseNodeProps) {
   return (
     <div className={`
-      relative p-3 rounded-lg border-2 bg-card min-w-[180px] max-w-[200px]
+      relative p-4 rounded-lg border-2 bg-card min-w-[220px] max-w-[220px]
       transition-all duration-200 hover:shadow-md
-      ${isCompleted ? 'border-primary bg-primary/5' : 'border-border'}
+      ${isCompleted ? 'border-primary bg-primary/10 ring-1 ring-primary/20' : 'border-muted-foreground/30 hover:border-muted-foreground/50'}
     `}>
       {/* Course code */}
       <div className="text-xs font-mono text-muted-foreground mb-1">
         {course.code}
       </div>
       
-      {/* Course title */}
-      <div className="font-semibold text-sm leading-tight mb-2 line-clamp-2">
-        {course.title}
+      {/* Course title with better line height */}
+      <div className="font-semibold text-sm leading-tight mb-2 h-8 overflow-hidden">
+        <span className="line-clamp-2">{course.title}</span>
       </div>
       
       {/* Course badges */}
