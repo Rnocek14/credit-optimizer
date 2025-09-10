@@ -95,7 +95,7 @@ export function useStaggeredEdgesV2(
 
   useEffect(() => {
     // StrictMode guard - prevent duplicate scheduling
-    const key = `${sortedColumns.join(',')}|${allEdges.length}`;
+    const key = `${sortedColumns.join(',')}|${allEdges.length}|${config.batchDelayMs}`;
     if (scheduledKeyRef.current === key) return;
     scheduledKeyRef.current = key;
 

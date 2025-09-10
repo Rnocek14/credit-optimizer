@@ -622,18 +622,25 @@ function EduTreeCanvasInner() {
   // Simplified layout system - no complex resize handling needed
 
   // Enhanced onInit with terminal focus
+  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const onInit = useCallback((reactFlowInstance: any) => {
-    const hasTerminal = nodes.some(node => 
-      node.type === 'terminal' || node.type === 'terminalNode' || 
-      node.id === 'degree-completion'
-    );
+    // Clear any pending fitView to debounce
+    if (fitViewTimeoutRef.current) {
+      clearTimeout(fitViewTimeoutRef.current);
+    }
     
-    // Use higher padding if terminal node exists
-    const padding = hasTerminal ? 0.4 : 0.2;
-    setTimeout(() => {
+    // Single debounced fitView after initialization
+    fitViewTimeoutRef.current = setTimeout(() => {
+      const hasTerminal = nodes.some(node => 
+        node.type === 'terminal' || node.type === 'terminalNode' || 
+        node.id === 'degree-completion'
+      );
+      
+      const padding = hasTerminal ? 0.4 : 0.2;
       reactFlowInstance.fitView({ padding, duration: 300 });
       console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
-    }, 100);
+    }, 150);
   }, [nodes]);
 
   const handleModeToggle = useCallback(() => {
