@@ -6,25 +6,22 @@ interface CourseNodeProps {
   course: EduCourse;
   isCompleted?: boolean;
   equivalencies?: any[];
-  compact?: boolean;
 }
 
-export function CourseNode({ course, isCompleted = false, equivalencies = [], compact = false }: CourseNodeProps) {
+export function CourseNode({ course, isCompleted = false, equivalencies = [] }: CourseNodeProps) {
   return (
     <div className={`
-      relative rounded-lg border bg-card transition-all duration-200 hover:shadow-md
-      ${compact ? 'p-2 min-w-[180px] max-w-[180px]' : 'p-4 min-w-[220px] max-w-[220px]'}
+      relative p-4 rounded-lg border-2 bg-card min-w-[220px] max-w-[220px]
+      transition-all duration-200 hover:shadow-md
       ${isCompleted ? 'border-primary bg-primary/10 ring-1 ring-primary/20' : 'border-muted-foreground/30 hover:border-muted-foreground/50'}
     `}>
       {/* Course code */}
-      <div className={`font-mono text-muted-foreground mb-1 ${compact ? 'text-xs' : 'text-xs'}`}>
+      <div className="text-xs font-mono text-muted-foreground mb-1">
         {course.code}
       </div>
       
       {/* Course title with better line height */}
-      <div className={`font-semibold leading-tight mb-2 overflow-hidden ${
-        compact ? 'text-xs h-6' : 'text-sm h-8'
-      }`}>
+      <div className="font-semibold text-sm leading-tight mb-2 h-8 overflow-hidden">
         <span className="line-clamp-2">{course.title}</span>
       </div>
       

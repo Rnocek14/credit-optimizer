@@ -47,14 +47,10 @@ import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
-import { FocusProvider, useFocus } from './contexts/FocusContext';
-import { SpecializationTrack } from './components/SpecializationTrack';
-import { FocusToolbar } from './components/FocusToolbar';
 
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
-  specializationTrack: SpecializationTrack,
 };
 
 const DEV = import.meta.env.DEV;
@@ -63,8 +59,7 @@ type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
   const flags = useFeatureFlags();
-  const { focusState } = useFocus();
-  const [viewMode, setViewMode] = useState<ViewMode>('flow'); 
+  const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
@@ -177,37 +172,32 @@ function EduTreeCanvasInner() {
       gate: gates.find(g => g.block_id === block.id)
     }));
 
-    // Separate specialization tracks instead of filtering them out
-    console.log('🔍 Processing blocks for track separation:', blocksWithCourses.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
+    // Filter out child specialization blocks to prevent duplicates
+    // Keep only parent "Specializations" block, remove individual "Web Development" and "Mobile Development"
+    console.log('🔍 Before filtering - All blocks:', blocksWithCourses.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
     
-    // Separate Web and Mobile specialization blocks
-    const webBlocks = blocksWithCourses.filter(block => block.title === 'Web Development');
-    const mobileBlocks = blocksWithCourses.filter(block => block.title === 'Mobile Development');
-    
-    // Keep core blocks and remove the old "Specializations" parent block
-    const coreBlocks = blocksWithCourses.filter(block => 
-      block.title !== 'Web Development' && 
-      block.title !== 'Mobile Development' && 
-      block.title !== 'Specializations'
-    );
-    
-    console.log('✅ Track separation:', {
-      core: coreBlocks.length,
-      web: webBlocks.length, 
-      mobile: mobileBlocks.length
+    const filteredBlocks = blocksWithCourses.filter(block => {
+      // Remove child specialization blocks that duplicate courses
+      const shouldRemove = block.title === 'Web Development' || block.title === 'Mobile Development';
+      if (shouldRemove) {
+        console.log('🚫 Filtering out duplicate block:', block.title, 'with', block.courses?.length || 0, 'courses');
+      }
+      return !shouldRemove;
     });
+    
+    console.log('✅ After filtering - Remaining blocks:', filteredBlocks.map(b => ({ id: b.id, title: b.title, courses: b.courses?.length || 0 })));
 
-    // Apply topological sorting for stable Year-3 ordering on core blocks
-    const sortedCoreBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(coreBlocks, gateEdges) : 
-      coreBlocks;
+    // Apply topological sorting for stable Year-3 ordering
+    const sortedBlocks = flags.eduTreeLayoutV2 ? 
+      sortBlocksForLayout(filteredBlocks, gateEdges) : 
+      filteredBlocks;
 
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
     
-    // Find blocks with no prerequisites (starting blocks) 
+    // Find blocks with no prerequisites (starting blocks)
     const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks].forEach(block => {
+    sortedBlocks.forEach(block => {
       if (!blocksWithPrereqs.has(block.id)) {
         unlockedBlocks.add(block.id);
       }
@@ -220,8 +210,7 @@ function EduTreeCanvasInner() {
       gateEdges.forEach(edge => {
         if (unlockedBlocks.has(edge.target_block_id)) return;
         
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const sourceBlock = allBlocks.find(b => b.gate?.id === edge.source_gate_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
         if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
           unlockedBlocks.add(edge.target_block_id);
           changed = true;
@@ -229,9 +218,9 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create nodes with natural horizontal layout positioning
-    const coreNodes: Node[] = sortedCoreBlocks
+    const nodes: Node[] = sortedBlocks
       .map((block, index) => {
+        // Validate block data
         if (!block || !block.id) {
           console.warn('[EduTree] Invalid block data:', block);
           return null;
@@ -241,19 +230,15 @@ function EduTreeCanvasInner() {
           completed: block.courses.filter(c => completedCourseIds.has(c.id)).length,
           required: block.rule_type === 'ALL' ? block.courses.length : 
                    block.rule_type === 'K_OF_N' ? (block.k || 0) :
-                   Math.ceil((block.credits_needed || 0) / 3)
+                   Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
         };
 
         const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
 
         return {
-          id: String(block.id),
-          type: 'blockGroup',
-          // Natural horizontal layout: wider year-based columns with better vertical spread
-          position: { 
-            x: (block.level_year || 0) * 450, 
-            y: index * 220 
-          },
+          id: String(block.id), // Ensure string ID
+          type: 'blockGroup', // This must match nodeTypes key
+          position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
           data: {
             block,
             completedCourseIds,
@@ -266,63 +251,7 @@ function EduTreeCanvasInner() {
           }
         };
       })
-      .filter(Boolean) as Node[];
-
-    // Create specialized track nodes with natural horizontal spread
-    const trackNodes: Node[] = [];
-    
-    // Always show tracks in natural layout (focus enhances, doesn't hide)
-    if (webBlocks.length > 0 || mobileBlocks.length > 0) {
-      // Web track node - positioned at year 4, upper area
-      if (webBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'web-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'web-track',
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 100       // Upper position for web track
-            },
-            data: {
-              track: 'web',
-              blocks: webBlocks,
-              completedCourseIds,
-              isUnlocked: webBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
-      }
-
-      // Mobile track node - positioned at year 4, lower area  
-      if (mobileBlocks.length > 0) {
-        const isVisible = focusState.mode === 'overview' || 
-                         focusState.mode === 'compare-tracks' ||
-                         focusState.mode === 'mobile-track';
-        
-        if (isVisible) {
-          trackNodes.push({
-            id: 'mobile-track', 
-            type: 'specializationTrack',
-            position: { 
-              x: 4 * 450,  // Year 4 with new wider spacing
-              y: 600       // Lower position for mobile track (clear separation)
-            },
-            data: {
-              track: 'mobile',
-              blocks: mobileBlocks,
-              completedCourseIds,
-              isUnlocked: mobileBlocks.some(b => unlockedBlocks.has(b.id))
-            }
-          });
-        }
-      }
-    }
-
-    const nodes = [...coreNodes, ...trackNodes];
+      .filter(Boolean) as Node[]; // Remove any null nodes
 
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
@@ -332,26 +261,18 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create React Flow edges between core blocks and to tracks
+    // Create React Flow edges (only between blocks) - filter out edges to removed blocks
     const edges: Edge[] = viewMode === 'flow' ? gateEdges
       .filter(gateEdge => {
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
-        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        // Filter out edges pointing to removed child blocks
+        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
         return targetBlock && sourceBlock;
       })
       .map(gateEdge => {
-        const allBlocks = [...sortedCoreBlocks, ...webBlocks, ...mobileBlocks];
-        const sourceBlock = allBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-        const targetBlock = allBlocks.find(b => b.id === gateEdge.target_block_id);
-        
-        let source = sourceBlock?.id ? String(sourceBlock.id) : null;
-        let target = String(gateEdge.target_block_id);
-        
-        // Route edges to track nodes if target is a specialization block
-        if (targetBlock && (webBlocks.includes(targetBlock) || mobileBlocks.includes(targetBlock))) {
-          target = webBlocks.includes(targetBlock) ? 'web-track' : 'mobile-track';
-        }
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const source = sourceBlock?.id ? String(sourceBlock.id) : null;
+        const target = String(gateEdge.target_block_id);
         
         const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
         
@@ -376,7 +297,7 @@ function EduTreeCanvasInner() {
       }).filter(Boolean) as Edge[] : [];
 
     return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, focusState.mode]);
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
   // REMOVED highlightedPath dependency to prevent infinite loop
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -555,9 +476,6 @@ function EduTreeCanvasInner() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Focus Toolbar */}
-      <FocusToolbar className="mx-4 mt-4" />
-      
       {/* Degree Outcome Banner */}
       {flags.eduTreeOutcomes && (
         <DegreeOutcomeBanner
@@ -714,9 +632,7 @@ function EduTreeCanvasInner() {
 export function EduTreeCanvas() {
   return (
     <ReactFlowProvider>
-      <FocusProvider>
-        <EduTreeCanvasInner />
-      </FocusProvider>
+      <EduTreeCanvasInner />
     </ReactFlowProvider>
   );
 }
