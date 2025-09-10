@@ -17,7 +17,7 @@ interface ElkEdge {
   layoutOptions?: { [key: string]: any };
 }
 
-export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[]> {
+export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions?: Map<string, any>): Promise<Node[]> {
   const elk = new ELK();
   
   const graph = {
@@ -28,19 +28,24 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[
       'elk.layered.considerModelOrder': 'NODES_AND_EDGES',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      'elk.spacing.nodeNode': '80',                // Increased for better visual breathing room
-      'elk.spacing.nodeNodeBetweenLayers': '120',   // Increased for clearer layer separation  
-      'elk.spacing.edgeNode': '32',                // Increased for better edge-node clearance
+      'elk.spacing.nodeNode': '32',                 // Reduced - collision resolver will handle spacing
+      'elk.spacing.nodeNodeBetweenLayers': '80',    // Reduced for tighter initial layout
+      'elk.spacing.edgeNode': '24',                 // Adequate edge clearance
       'elk.padding': '[top=24,left=24,bottom=24,right=24]'
     },
-    children: nodes.map((node): ElkNode => ({
-      id: node.id,
-      width: node.measured?.width ?? (node.type === 'blockGroup' ? 320 : 200),
-      height: node.measured?.height ?? (node.type === 'blockGroup' ? 200 : 100),
-      layoutOptions: {
-        'elk.portConstraints': 'FIXED_SIDE'
-      }
-    })),
+    children: nodes.map((node): ElkNode => {
+      const dimensions = nodeDimensions?.get(node.id);
+      const estimatedHeight = estimateNodeHeight(node);
+      
+      return {
+        id: node.id,
+        width: dimensions?.width ?? node.measured?.width ?? (node.type === 'blockGroup' ? 320 : 200),
+        height: dimensions?.height ?? node.measured?.height ?? estimatedHeight,
+        layoutOptions: {
+          'elk.portConstraints': 'FIXED_SIDE'
+        }
+      };
+    }),
     edges: edges.map((edge): ElkEdge => ({
       id: edge.id,
       sources: [edge.source],
@@ -106,4 +111,20 @@ export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
       }
     };
   });
+}
+
+/**
+ * Smart height estimation for ELK layout
+ */
+function estimateNodeHeight(node: Node): number {
+  if (node.type === 'blockGroup') {
+    const data = node.data as any;
+    const baseHeight = 120; // Header + progress
+    const courseCount = data.block?.courses?.length || 3;
+    const subBlockCount = data.subBlocks?.length || 0;
+    
+    // More accurate height estimation
+    return baseHeight + (courseCount * 60) + (subBlockCount * 80);
+  }
+  return 100;
 }

@@ -292,7 +292,55 @@ function EduTreeCanvasInner() {
     }
   }, [blocks, courses, blockMembers, gates, gateEdges]);
 
-  // Apply layout when data changes with skeleton → measure → layout → delayed edges pipeline
+  // Enhanced layout management with collision resolution
+  const applyLayout = useCallback(async (mode: 'flow' | 'board', nodes: Node[], edges: Edge[]) => {
+    if (!flags.eduTreeLayoutV2) {
+      // Legacy layout path
+      if (mode === 'board') {
+        return layoutAsGrid(nodes, mode);
+      } else {
+        const elkNodes = await layoutWithElk(nodes, edges);
+        return resolveColumnCollisions(elkNodes);
+      }
+    }
+
+    // Enhanced layout pipeline for v2
+    if (mode === 'board') {
+      return layoutAsGrid(nodes, mode);
+    }
+
+    try {
+      // Import new collision resolution system
+      const { measureNodeHeights } = await import('@/lib/layout/heightMeasurement');
+      const { resolveAllCollisions, validateLayout } = await import('@/lib/layout/collisionResolver');
+      const { applyLaneScaffolding } = await import('@/lib/layout/laneScaffold');
+      
+      // Step 1: Pre-measure node heights for accurate ELK input
+      const dimensions = await measureNodeHeights(nodes);
+      
+      // Step 2: ELK layout with measured dimensions
+      const elkNodes = await layoutWithElk(nodes, edges, dimensions);
+      
+      // Step 3: Apply intelligent lane scaffolding (X positions only)
+      const laneNodes = applyLaneScaffolding(elkNodes);
+      
+      // Step 4: Multi-pass collision resolution
+      const resolvedNodes = resolveAllCollisions(laneNodes);
+      
+      // Step 5: Validate the final layout
+      const isValid = validateLayout(resolvedNodes);
+      if (!isValid) {
+        console.warn('⚠️ Layout validation failed, but proceeding anyway');
+      }
+      
+      return resolvedNodes;
+    } catch (error) {
+      console.error('Enhanced layout failed, falling back:', error);
+      return layoutAsGrid(nodes, 'board');
+    }
+  }, [flags.eduTreeLayoutV2]);
+
+  // Apply layout when data changes with enhanced pipeline
   useEffect(() => {
     if (flowNodes.length === 0) return;
 
@@ -307,34 +355,21 @@ function EduTreeCanvasInner() {
 
     async function performFlowLayout() {
       try {
-        // Try to restore previous positions first
-        let nodesToLayout = flowNodes;
-        if (flags.eduTreeLanes) {
-          nodesToLayout = layoutMemoryRef.current.restorePositions(flowNodes, 'flow');
-          if (nodesToLayout.every(n => n.position.x === 0 && n.position.y === 0)) {
-            // No saved positions, use scaffolding
-            nodesToLayout = snapToLanes(flowNodes, DEFAULT_LANE_SCAFFOLD);
-          }
-        }
+        // Apply the enhanced layout system
+        const layoutedNodes = await applyLayout('flow', flowNodes, flowEdges);
+        if (DEV) console.log('[EduTree] Enhanced layout complete', layoutedNodes.length);
         
-        const layoutedNodes = await layoutWithElk(nodesToLayout, flowEdges);
-        if (DEV) console.log('[EduTree] ELK done', layoutedNodes.length);
-        
-        // Apply post-layout collision resolution if layoutV2 enabled
-        const finalNodes = flags.eduTreeLayoutV2 ? 
-          resolveColumnCollisions(layoutedNodes) : layoutedNodes;
-          
-        setNodes(finalNodes);
+        setNodes(layoutedNodes);
         setEdges(flowEdges);
         setIsLayouting(false);
         
         // Save positions for mode switching
         if (flags.eduTreeLanes) {
-          layoutMemoryRef.current.savePositions(finalNodes, 'flow');
+          layoutMemoryRef.current.savePositions(layoutedNodes, 'flow');
         }
       } catch (error) {
-        console.error('[EduTree] ELK failed, fallback', error);
-        // Fallback to simple grid if ELK fails
+        console.error('[EduTree] Enhanced layout failed, fallback', error);
+        // Fallback to simple grid if everything fails
         const fallbackNodes = flowNodes.map((node, index) => ({
           ...node,
           position: { x: (index % 3) * 320, y: Math.floor(index / 3) * 220 }
@@ -356,7 +391,7 @@ function EduTreeCanvasInner() {
         layoutMemoryRef.current.savePositions(gridNodes, 'board');
       }
     }
-  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes, isLayouting]);
+  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges, flags.eduTreeLayoutV2, flags.eduTreeLanes, isLayouting, applyLayout]);
 
   // Update path highlighting when lens changes
   useEffect(() => {

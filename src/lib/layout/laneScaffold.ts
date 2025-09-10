@@ -28,22 +28,35 @@ export const DEFAULT_LANE_SCAFFOLD: LaneScaffold = {
 };
 
 /**
- * Snap nodes to lane positions for stable layout
+ * Apply lane scaffolding intelligently - only adjust X positions, preserve ELK's Y layout
  */
-export function snapToLanes(nodes: Node[], scaffold: LaneScaffold = DEFAULT_LANE_SCAFFOLD): Node[] {
+export function applyLaneScaffolding(nodes: Node[], scaffold: LaneScaffold = DEFAULT_LANE_SCAFFOLD): Node[] {
   return nodes.map(node => {
     const data = node.data as any;
-    const yearLane = scaffold.yearLanes[data.level_year] ?? data.level_year * 320;
-    const areaLane = scaffold.areaLanes[data.area] ?? 0;
+    const yearLane = scaffold.yearLanes[data.level_year];
     
-    return {
-      ...node,
-      position: {
-        x: yearLane,
-        y: areaLane
-      }
-    };
+    // Only apply X positioning if we have a defined lane
+    if (yearLane !== undefined) {
+      return {
+        ...node,
+        position: {
+          x: yearLane - 160, // Center the 320px wide node on the lane
+          y: node.position.y  // Preserve ELK's Y positioning
+        }
+      };
+    }
+    
+    return node;
   });
+}
+
+/**
+ * Legacy function - now calls applyLaneScaffolding
+ * @deprecated Use applyLaneScaffolding instead
+ */
+export function snapToLanes(nodes: Node[], scaffold: LaneScaffold = DEFAULT_LANE_SCAFFOLD): Node[] {
+  console.warn('snapToLanes is deprecated, use applyLaneScaffolding instead');
+  return applyLaneScaffolding(nodes, scaffold);
 }
 
 /**
