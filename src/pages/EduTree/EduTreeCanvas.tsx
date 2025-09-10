@@ -216,7 +216,7 @@ function EduTreeCanvasInner() {
       });
     }
 
-    const nodes: Node[] = sortedBlocks
+    const regularNodes: Node[] = sortedBlocks
       .map((block, index) => {
         // Validate block data
         if (!block || !block.id) {
@@ -241,10 +241,7 @@ function EduTreeCanvasInner() {
         return {
           id: String(block.id), // Ensure string ID
           type: 'blockGroup', // This must match nodeTypes key
-          position: { 
-            x: block.area === 'degree' ? (block.level_year || 0) * 320 + 160 : (block.level_year || 0) * 320, 
-            y: block.area === 'degree' ? 600 : index * 200 
-          }, // Position degree blocks centered and below others
+          position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
           data: {
             block,
             completedCourseIds,
@@ -260,6 +257,52 @@ function EduTreeCanvasInner() {
       })
       .filter(Boolean) as Node[]; // Remove any null nodes
 
+    // Add degree completion node
+    const capstoneBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('capstone'));
+    const architectureBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('architecture'));
+    
+    // Check if both capstone and architecture are complete for degree unlock
+    const isDegreeUnlocked = capstoneBlock && architectureBlock && 
+      isBlockComplete(capstoneBlock, capstoneBlock.courses, completedCourseIds) &&
+      isBlockComplete(architectureBlock, architectureBlock.courses, completedCourseIds);
+
+    // Check if degree is complete (all courses completed)
+    const totalCourses = courses.length;
+    const completedCourses = Array.from(completedCourseIds).length;
+    const isDegreeComplete = completedCourses === totalCourses;
+
+    const degreeNode: Node = {
+      id: 'degree-completion',
+      type: 'blockGroup',
+      position: { x: 5 * 320, y: 0 }, // Position at Year 5
+      data: {
+        block: {
+          id: 'degree-completion',
+          title: 'B.S. Software Engineering',
+          rule_type: 'ALL' as const,
+          level_year: 5,
+          area: 'degree',
+          courses: [],
+          gate: { id: 'degree-gate', block_id: 'degree-completion' }
+        },
+        completedCourseIds,
+        isUnlocked: isDegreeUnlocked || false,
+        progress: {
+          completed: completedCourses,
+          required: totalCourses
+        },
+        subBlocks: [],
+        level_year: 5,
+        area: 'degree',
+        isHighlighted: false,
+        planningLens: null,
+        isDegreeNode: true,
+        isDegreeComplete
+      }
+    };
+
+    const nodes: Node[] = [...regularNodes, degreeNode];
+
     if (DEV) {
       console.log('[EduTree] Generated nodes:', { 
         nodeCount: nodes.length, 
@@ -269,7 +312,7 @@ function EduTreeCanvasInner() {
     }
 
     // Create React Flow edges (only between blocks)
-    const edges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
+    const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
@@ -296,6 +339,52 @@ function EduTreeCanvasInner() {
       } : null;
     }).filter(Boolean) as Edge[] : [];
 
+    // Add edges to degree completion node
+    const degreeEdges: Edge[] = [];
+    if (viewMode === 'flow' && capstoneBlock && architectureBlock) {
+      // Edge from Capstone to Degree
+      degreeEdges.push({
+        id: 'capstone-to-degree',
+        source: String(capstoneBlock.id),
+        target: 'degree-completion',
+        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+        style: {
+          stroke: 'hsl(var(--accent-gold))',
+          strokeWidth: 3,
+          opacity: 0.8
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: 'hsl(var(--accent-gold))',
+        },
+        ...(flags.eduTreeLayoutV2 && {
+          pathOptions: { offset: 12 }
+        }),
+      });
+
+      // Edge from Architecture to Degree  
+      degreeEdges.push({
+        id: 'architecture-to-degree',
+        source: String(architectureBlock.id),
+        target: 'degree-completion',
+        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+        style: {
+          stroke: 'hsl(var(--accent-gold))',
+          strokeWidth: 3,
+          opacity: 0.8
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+          color: 'hsl(var(--accent-gold))',
+        },
+        ...(flags.eduTreeLayoutV2 && {
+          pathOptions: { offset: 12 }
+        }),
+      });
+    }
+
+    const edges: Edge[] = [...regularEdges, ...degreeEdges];
+
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
   // REMOVED highlightedPath dependency to prevent infinite loop
@@ -306,11 +395,6 @@ function EduTreeCanvasInner() {
   // EMERGENCY FIX: Apply layout ONLY when data first loads, prevent infinite loops
   useEffect(() => {
     if (flowNodes.length > 0) {
-      console.log('[EduTree] Layout trigger:', { 
-        nodeCount: flowNodes.length, 
-        edgeCount: flowEdges.length, 
-        viewMode 
-      });
       const applyEmergencyLayout = async () => {
         try {
           console.log('[EduTree] EMERGENCY: Applying fail-safe layout to', flowNodes.length, 'nodes');
@@ -351,7 +435,7 @@ function EduTreeCanvasInner() {
       
       applyEmergencyLayout();
     }
-  }, [flowNodes.length, flowEdges.length, viewMode]); // Include edges and view mode dependencies
+  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -603,17 +687,17 @@ function EduTreeCanvasInner() {
       {viewMode === 'flow' && flags.eduTreeLanes && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
           <div className="flex gap-12">
-            {[1, 2, 3, 4].map((year, index) => (
+            {[1, 2, 3, 4, 5].map((year, index) => (
               <Badge 
                 key={year} 
                 variant="outline" 
-                className="text-xs bg-background/80 backdrop-blur-sm"
+                className={`text-xs bg-background/80 backdrop-blur-sm ${year === 5 ? 'border-accent-gold text-accent-gold' : ''}`}
                 style={{ 
                   marginLeft: index === 0 ? '200px' : '400px',
                   position: index === 0 ? 'relative' : 'static'
                 }}
               >
-                Year {year}
+                {year === 5 ? '🎓 Degree' : `Year ${year}`}
               </Badge>
             ))}
           </div>
@@ -623,9 +707,13 @@ function EduTreeCanvasInner() {
       {/* Fallback year labels for non-lane mode */}
       {viewMode === 'flow' && !flags.eduTreeLanes && (
         <div className="absolute bottom-4 left-4 flex gap-8 pointer-events-none">
-          {[1, 2, 3, 4].map(year => (
-            <Badge key={year} variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
-              Year {year}
+          {[1, 2, 3, 4, 5].map(year => (
+            <Badge 
+              key={year} 
+              variant="outline" 
+              className={`text-xs bg-background/80 backdrop-blur-sm ${year === 5 ? 'border-accent-gold text-accent-gold' : ''}`}
+            >
+              {year === 5 ? '🎓 Degree' : `Year ${year}`}
             </Badge>
           ))}
         </div>
