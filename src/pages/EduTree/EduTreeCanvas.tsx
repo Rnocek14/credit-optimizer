@@ -47,6 +47,7 @@ import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
+import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -67,12 +68,28 @@ function EduTreeCanvasInner() {
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const layoutInProgressRef = useRef(false);
   
+  // Modal state for course details
+  const [selectedCourse, setSelectedCourse] = useState<EduCourse | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
   // Removed layout manager - using simplified system
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
   const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
   
   // State for path highlighting
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
+
+  // Handler for course click
+  const handleCourseClick = useCallback((course: EduCourse) => {
+    setSelectedCourse(course);
+    setIsModalOpen(true);
+  }, []);
+
+  // Handler for modal close
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedCourse(null);
+  }, []);
   
   // Fetch data from Supabase
   const { data: courses = [] } = useQuery({
@@ -251,7 +268,8 @@ function EduTreeCanvasInner() {
             level_year: block.level_year || 0,
             area: block.area || 'unknown',
             isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null
+            planningLens: isHighlighted ? selectedLens : null,
+            onCourseClick: handleCourseClick
           }
         };
       })
@@ -722,6 +740,30 @@ function EduTreeCanvasInner() {
           ))}
         </div>
       )}
+      
+      {/* Course Detail Modal */}
+      <EduCourseDetailModal
+        course={selectedCourse}
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        isCompleted={selectedCourse ? completedCourseIds.has(selectedCourse.id) : false}
+        onMarkComplete={(courseId) => {
+          // TODO: Implement course completion tracking
+          console.log('Mark course complete:', courseId);
+          toast({
+            title: "Course Marked Complete",
+            description: "Progress has been updated.",
+          });
+        }}
+        onSelectAlternative={(option) => {
+          // TODO: Implement alternative selection
+          console.log('Selected alternative:', option);
+          toast({
+            title: "Alternative Selected",
+            description: `${option.provider} course option selected.`,
+          });
+        }}
+      />
     </div>
   );
 }

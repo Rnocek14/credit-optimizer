@@ -1,0 +1,68 @@
+{
+  "altCreditOptions": [
+    {
+      "id": "alt-credit-1",
+      "provider": "Coursera",
+      "provider_course_name": "Introduction to Programming in Python",
+      "cost_estimate": 49,
+      "estimated_hours": 40,
+      "proctoring_required": false
+    },
+    {
+      "id": "alt-credit-2", 
+      "provider": "edX",
+      "provider_course_name": "Harvard CS50x: Introduction to Computer Science",
+      "cost_estimate": 0,
+      "estimated_hours": 80,
+      "proctoring_required": true
+    },
+    {
+      "id": "alt-credit-3",
+      "provider": "Udemy", 
+      "provider_course_name": "Complete Web Developer Course 2024",
+      "cost_estimate": 89,
+      "estimated_hours": 30,
+      "proctoring_required": false
+    },
+    {
+      "id": "alt-credit-4",
+      "provider": "YouTube",
+      "provider_course_name": "FreeCodeCamp Full Stack Development",
+      "cost_estimate": 0,
+      "estimated_hours": 60,
+      "proctoring_required": false
+    },
+    {
+      "id": "alt-credit-5",
+      "provider": "Coursera",
+      "provider_course_name": "Data Structures and Algorithms Specialization",
+      "cost_estimate": 79,
+      "estimated_hours": 120,
+      "proctoring_required": true
+    },
+    {
+      "id": "alt-credit-6",
+      "provider": "edX",
+      "provider_course_name": "MIT Introduction to Algorithms",
+      "cost_estimate": 99,
+      "estimated_hours": 100,
+      "proctoring_required": true
+    },
+    {
+      "id": "alt-credit-7",
+      "provider": "Udemy",
+      "provider_course_name": "Microservices Architecture and System Design",
+      "cost_estimate": 119,
+      "estimated_hours": 45,
+      "proctoring_required": false
+    },
+    {
+      "id": "alt-credit-8",
+      "provider": "MasterClass",
+      "provider_course_name": "Software Engineering Leadership",
+      "cost_estimate": 180,
+      "estimated_hours": 25,
+      "proctoring_required": false
+    }
+  ]
+}

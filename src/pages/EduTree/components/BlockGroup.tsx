@@ -26,7 +26,8 @@ export function BlockGroup(props: NodeProps) {
     isHighlighted = false,
     planningLens = null,
     isDegreeNode = false,
-    isDegreeComplete = false
+    isDegreeComplete = false,
+    onCourseClick
   } = props.data as {
     block: BlockWithCourses;
     completedCourseIds: Set<string>;
@@ -38,6 +39,7 @@ export function BlockGroup(props: NodeProps) {
     planningLens?: string | null;
     isDegreeNode?: boolean;
     isDegreeComplete?: boolean;
+    onCourseClick?: (course: any) => void;
   };
   
   const [showAltCredits, setShowAltCredits] = useState(false);
@@ -207,6 +209,11 @@ export function BlockGroup(props: NodeProps) {
                   key={course.id}
                   course={course}
                   isCompleted={completedCourseIds.has(course.id)}
+                  equivalencies={altCreditOptions.filter(opt => 
+                    // Match by course area or general alternative options
+                    course.area === opt.provider || !opt.provider
+                  )}
+                  onClick={onCourseClick}
                 />
               ))}
             </div>
