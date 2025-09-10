@@ -165,17 +165,27 @@ function EduTreeCanvasInner() {
       }
     });
 
-    // Create block nodes with courses
+    // Create block nodes with courses and filter out duplicates
     const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
       ...block,
       courses: coursesByBlock.get(block.id) || [],
       gate: gates.find(g => g.block_id === block.id)
     }));
 
+    // Filter out child specialization blocks to prevent duplicates
+    // Keep only parent "Specializations" block, remove individual "Web Development" and "Mobile Development"
+    const filteredBlocks = blocksWithCourses.filter(block => {
+      // Remove child specialization blocks that duplicate courses
+      if (block.title === 'Web Development' || block.title === 'Mobile Development') {
+        return false;
+      }
+      return true;
+    });
+
     // Apply topological sorting for stable Year-3 ordering
     const sortedBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(blocksWithCourses, gateEdges) : 
-      blocksWithCourses;
+      sortBlocksForLayout(filteredBlocks, gateEdges) : 
+      filteredBlocks;
 
     // Calculate which blocks are unlocked
     const unlockedBlocks = new Set<string>();
@@ -246,33 +256,40 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Create React Flow edges (only between blocks)
-    const edges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
-      const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-      const source = sourceBlock?.id ? String(sourceBlock.id) : null;
-      const target = String(gateEdge.target_block_id);
-      
-      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
-      
-      return source ? {
-        id: String(gateEdge.id),
-        source,
-        target,
-        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-        style: {
-          stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
-          strokeWidth: isHighlighted ? 3 : 2,
-          opacity: isHighlighted ? 1 : 0.65
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-          color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
-        },
-        ...(flags.eduTreeLayoutV2 && {
-          pathOptions: { offset: 12 }
-        }),
-      } : null;
-    }).filter(Boolean) as Edge[] : [];
+    // Create React Flow edges (only between blocks) - filter out edges to removed blocks
+    const edges: Edge[] = viewMode === 'flow' ? gateEdges
+      .filter(gateEdge => {
+        // Filter out edges pointing to removed child blocks
+        const targetBlock = sortedBlocks.find(b => b.id === gateEdge.target_block_id);
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        return targetBlock && sourceBlock;
+      })
+      .map(gateEdge => {
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+        const source = sourceBlock?.id ? String(sourceBlock.id) : null;
+        const target = String(gateEdge.target_block_id);
+        
+        const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
+        
+        return source ? {
+          id: String(gateEdge.id),
+          source,
+          target,
+          type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+          style: {
+            stroke: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+            strokeWidth: isHighlighted ? 3 : 2,
+            opacity: isHighlighted ? 1 : 0.65
+          },
+          markerEnd: {
+            type: MarkerType.Arrow,
+            color: isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+          },
+          ...(flags.eduTreeLayoutV2 && {
+            pathOptions: { offset: 12 }
+          }),
+        } : null;
+      }).filter(Boolean) as Edge[] : [];
 
     return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
