@@ -757,14 +757,16 @@ export default function EduTreeCanvas() {
   console.log('🚀 [EduTree] Canvas mounting with providers');
   
   return (
-    <EduTreeErrorBoundary>
-      <ReactFlowProvider>
-        <FocusProvider>
-          <EduTreeLoadingFallback>
-            <EduTreeCanvasInner />
-          </EduTreeLoadingFallback>
-        </FocusProvider>
-      </ReactFlowProvider>
-    </EduTreeErrorBoundary>
+    <div className="w-full h-screen">
+      <EduTreeErrorBoundary>
+        <ReactFlowProvider>
+          <FocusProvider>
+            <EduTreeLoadingFallback>
+              <EduTreeCanvasInner />
+            </EduTreeLoadingFallback>
+          </FocusProvider>
+        </ReactFlowProvider>
+      </EduTreeErrorBoundary>
+    </div>
   );
 }

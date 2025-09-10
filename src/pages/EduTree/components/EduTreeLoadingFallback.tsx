@@ -86,68 +86,18 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
     );
   }
 
-  // Show loading state while critical data is loading
-  if (!isCriticalDataReady) {
-    if (showDetailedProgress) {
-      return (
-        <div className="min-h-[600px] flex items-center justify-center p-4">
-          <Card className="max-w-md w-full">
-            <CardHeader className="text-center">
-              <CardTitle className="text-lg">Loading Education Tree</CardTitle>
-              <CardDescription>
-                Setting up your personalized learning pathway...
-              </CardDescription>
-            </CardHeader>
-            
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Progress</span>
-                  <span>{completedSteps}/{totalSteps} completed</span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
-              
-              <div className="space-y-3 text-sm">
-                <LoadingStep 
-                  label="Loading courses"
-                  isLoading={loading.courses}
-                  error={errors.courses}
-                  onRetry={() => queries.courses.refetch()}
-                />
-                <LoadingStep 
-                  label="Loading requirements" 
-                  isLoading={loading.blocks}
-                  error={errors.blocks}
-                  onRetry={() => queries.blocks.refetch()}
-                />
-                <LoadingStep 
-                  label="Building course relationships"
-                  isLoading={loading.blockMembers}
-                  error={errors.blockMembers}
-                  onRetry={() => queries.blockMembers.refetch()}
-                />
-                <LoadingStep 
-                  label="Setting up prerequisites"
-                  isLoading={loading.gates}
-                  error={errors.gates}
-                  onRetry={() => queries.gates.refetch()}
-                />
-                <LoadingStep 
-                  label="Creating pathway connections"
-                  isLoading={loading.gateEdges}
-                  error={errors.gateEdges}
-                  onRetry={() => queries.gateEdges.refetch()}
-                />
-              </div>
-            </CardContent>
-          </Card>
+  // EMERGENCY FIX - Force show the canvas immediately 
+  console.log('🚨 [LoadingFallback] EMERGENCY BYPASS - showing children immediately');
+  return (
+    <div className="relative">
+      {children}
+      {!isCriticalDataReady && (
+        <div className="absolute top-4 right-4 z-50 bg-blue-100 border border-blue-400 p-2 rounded text-xs">
+          Loading: {courses.length} courses, {blocks.length} blocks
         </div>
-      );
-    }
-    
-    return <EduTreeProgressSkeleton />;
-  }
+      )}
+    </div>
+  );
 
   // Show partial content with remaining loading states
   if (!allDataLoaded && isCriticalDataReady) {
