@@ -12,7 +12,7 @@ export interface LayoutResult {
 }
 
 /**
- * Main layout function with simple year-based positioning
+ * Main layout function with simple year-based positioning and collision resolution
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
@@ -28,14 +28,24 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
   }
 
   // Apply simple year-based layout with generous spacing
-  let layoutNodes = applyYearBasedLayout([...nodes]);
+  let layoutedNodes = applyYearBasedLayout([...nodes]);
+  
+  // Import and apply collision resolution
+  const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
+  
+  // Resolve any overlaps
+  console.log('🔧 Resolving collisions...');
+  layoutedNodes = resolveAllCollisions(layoutedNodes);
+  
+  // Validate final layout
+  const hasOverlaps = !validateLayout(layoutedNodes);
   
   const layoutTime = performance.now() - startTime;
-  console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms)`);
+  console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
   
   return {
-    nodes: layoutNodes,
-    hasOverlaps: false,
+    nodes: layoutedNodes,
+    hasOverlaps,
     layoutTime
   };
 }
@@ -95,13 +105,18 @@ function positionNodesInColumn(nodes: Node[], x: number): void {
 }
 
 function getEstimatedHeight(node: Node): number {
+  // Prioritize measured height if available
+  if ((node as any).measured?.height) {
+    return (node as any).measured.height;
+  }
+  
   const data = node.data as any;
   
   if (data.block && data.block.courses) {
     const courseCount = data.block.courses.length;
-    const baseHeight = 200;
-    const courseHeight = courseCount * 60;
-    return baseHeight + courseHeight;
+    const baseHeight = 180; // More compact base
+    const courseHeight = courseCount * 50; // Slightly smaller per course
+    return Math.max(baseHeight + courseHeight, 300); // Ensure minimum height
   }
   
   return 350; // Generous default height

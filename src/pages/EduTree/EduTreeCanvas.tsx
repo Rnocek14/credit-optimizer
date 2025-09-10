@@ -64,6 +64,8 @@ function EduTreeCanvasInner() {
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
+  const [layoutStage, setLayoutStage] = useState<'initial' | 'measuring' | 'final'>('initial');
+  const measurementTimeoutRef = useRef<NodeJS.Timeout>();
   
   // Removed layout manager - using simplified system
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
@@ -278,6 +280,28 @@ function EduTreeCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
+  // Handle node changes and detect measurements
+  const handleNodesChange = useCallback((changes: any[]) => {
+    onNodesChange(changes);
+    
+    // Check if we have measured nodes after initial layout
+    if (layoutStage === 'measuring') {
+      // Clear existing timeout
+      if (measurementTimeoutRef.current) {
+        clearTimeout(measurementTimeoutRef.current);
+      }
+      
+      // Debounce re-layout after measurements
+      measurementTimeoutRef.current = setTimeout(() => {
+        const hasMeasurements = nodes.some(node => (node as any).measured?.height);
+        if (hasMeasurements && layoutStage === 'measuring') {
+          console.log('🔄 Measurements detected, running final layout...');
+          setLayoutStage('final');
+        }
+      }, 100);
+    }
+  }, [onNodesChange, layoutStage, nodes]);
+
   // DEV logging for data debugging
   useEffect(() => {
     if (DEV) {
@@ -334,13 +358,44 @@ function EduTreeCanvasInner() {
 
     async function performFlowLayout() {
       try {
-        // Apply the simplified layout system
-        const layoutedNodes = await applyLayout('flow', flowNodes, flowEdges);
-        if (DEV) console.log('[EduTree] Simplified layout complete', layoutedNodes.length);
+        setLayoutStage('initial');
         
-        setNodes(layoutedNodes);
+        // Stage 1: Initial layout without collision resolution for measurements
+        const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+        
+        // Apply initial positioning
+        const initialNodes = flowNodes.map((node, index) => {
+          const data = node.data as any;
+          const year = data.level_year ?? 1;
+          return {
+            ...node,
+            position: { 
+              x: year * 400 + 40, 
+              y: index * 200 + 50 
+            }
+          };
+        });
+        
+        setNodes(initialNodes);
         setEdges(flowEdges);
-        setIsLayouting(false);
+        setLayoutStage('measuring');
+        
+        // Stage 2: Wait a bit for React Flow to measure, then apply full layout
+        setTimeout(async () => {
+          try {
+            const result = await layoutNodes(initialNodes, flowEdges);
+            if (DEV) console.log('[EduTree] Final layout complete', result.nodes.length, 'overlaps:', result.hasOverlaps);
+            
+            setNodes(result.nodes);
+            setLayoutStage('final');
+            setIsLayouting(false);
+          } catch (finalError) {
+            console.error('[EduTree] Final layout failed:', finalError);
+            setIsLayouting(false);
+            setLayoutStage('final');
+          }
+        }, 200);
+        
       } catch (error) {
         console.error('[EduTree] Layout failed, using fallback', error);
         // Fallback to simple grid if everything fails
@@ -351,6 +406,7 @@ function EduTreeCanvasInner() {
         setNodes(fallbackNodes);
         setEdges(flowEdges);
         setIsLayouting(false);
+        setLayoutStage('final');
       }
     }
 
@@ -403,6 +459,15 @@ function EduTreeCanvasInner() {
       issues
     };
   }, [courses, completedCourseIds]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (measurementTimeoutRef.current) {
+        clearTimeout(measurementTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Simplified layout system - no complex resize handling needed
 
@@ -511,7 +576,7 @@ function EduTreeCanvasInner() {
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           onInit={onInit}
