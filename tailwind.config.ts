@@ -333,7 +333,7 @@ export default {
 	},
 	plugins: [
 		require("tailwindcss-animate"),
-		// Plugin to ensure OKLCH utilities are always available
+			// Plugin to ensure OKLCH utilities are always available
 		({ addUtilities }) => {
 			addUtilities({
 				// Brand utilities
@@ -356,10 +356,25 @@ export default {
 					'color': 'oklch(var(--accent-cyan-foreground))' 
 				},
 				
-				// Supporting accents
+				// Supporting accents with full utility set
 				'.bg-accent-gold': { 
 					'background': 'oklch(var(--accent-gold))', 
 					'color': 'oklch(var(--accent-gold-foreground))' 
+				},
+				'.border-accent-gold': { 
+					'border-color': 'oklch(var(--accent-gold))' 
+				},
+				'.text-accent-gold': { 
+					'color': 'oklch(var(--accent-gold))' 
+				},
+				'.text-accent-gold-foreground': { 
+					'color': 'oklch(var(--accent-gold-foreground))' 
+				},
+				'.ring-accent-gold': { 
+					'--tw-ring-color': 'oklch(var(--accent-gold))' 
+				},
+				'.shadow-accent-gold': { 
+					'--tw-shadow-color': 'oklch(var(--accent-gold))' 
 				},
 				'.bg-accent-lime': { 
 					'background': 'oklch(var(--accent-lime))', 
