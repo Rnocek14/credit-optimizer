@@ -317,13 +317,13 @@ function EduTreeCanvasInner() {
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: isHighlighted ? 'var(--primary)' : 'var(--primary)',
+          stroke: isHighlighted ? 'oklch(var(--primary))' : 'oklch(var(--primary))',
           strokeWidth: isHighlighted ? 3 : 2,
           opacity: isHighlighted ? 1 : 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: isHighlighted ? 'var(--primary)' : 'var(--primary)',
+          color: isHighlighted ? 'oklch(var(--primary))' : 'oklch(var(--primary))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -341,13 +341,13 @@ function EduTreeCanvasInner() {
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: 'var(--accent-gold)',
+          stroke: 'oklch(var(--accent-gold))',
           strokeWidth: 3,
           opacity: 0.8
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: 'var(--accent-gold)',
+          color: 'oklch(var(--accent-gold))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
@@ -361,13 +361,13 @@ function EduTreeCanvasInner() {
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          stroke: 'var(--accent-gold)',
+          stroke: 'oklch(var(--accent-gold))',
           strokeWidth: 3,
           opacity: 0.8
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: 'var(--accent-gold)',
+          color: 'oklch(var(--accent-gold))',
         },
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
