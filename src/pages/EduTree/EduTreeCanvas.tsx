@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { 
   ReactFlow, 
   Node, 
@@ -19,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 // Layout lifecycle removed - using simplified system
 import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
@@ -54,6 +52,10 @@ import { SpecializationTrack } from './components/SpecializationTrack';
 import { FocusToolbar } from './components/FocusToolbar';
 import { FocusTransitions } from './components/FocusTransitions';
 import { LayoutDebugger } from './components/LayoutDebugger';
+import { EduTreeLoadingProvider } from './providers/EduTreeLoadingProvider';
+import { EduTreeLoadingFallback } from './components/EduTreeLoadingFallback';
+import { EduTreeErrorBoundary } from './components/EduTreeErrorBoundary';
+import { useEduTreeQueries } from './hooks/useEduTreeQueries';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -84,70 +86,15 @@ function EduTreeCanvasInner() {
   // State for path highlighting
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   
-  // Fetch data from Supabase
-  const { data: courses = [] } = useQuery({
-    queryKey: ['edu-courses'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('edu_courses')
-        .select('*')
-        .order('level_year', { ascending: true })
-        .order('code', { ascending: true });
-      
-      if (error) throw error;
-      return data as EduCourse[];
-    },
-  });
-
-  const { data: blocks = [] } = useQuery({
-    queryKey: ['requirement-blocks'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('requirement_blocks')
-        .select('*')
-        .order('level_year', { ascending: true })
-        .order('title', { ascending: true });
-      
-      if (error) throw error;
-      return data as RequirementBlock[];
-    },
-  });
-
-  const { data: blockMembers = [] } = useQuery({
-    queryKey: ['block-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_members')
-        .select('*');
-      
-      if (error) throw error;
-      return data as BlockMember[];
-    },
-  });
-
-  const { data: gates = [] } = useQuery({
-    queryKey: ['block-gates'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_gates')
-        .select('*');
-      
-      if (error) throw error;
-      return data as BlockGate[];
-    },
-  });
-
-  const { data: gateEdges = [] } = useQuery({
-    queryKey: ['prereq-to-block'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('prereq_to_block')
-        .select('*');
-      
-      if (error) throw error;
-      return data as GateEdge[];
-    },
-  });
+  // Use enhanced queries with loading management
+  const { 
+    courses, 
+    blocks, 
+    blockMembers, 
+    gates, 
+    gateEdges,
+    isCriticalDataReady 
+  } = useEduTreeQueries();
 
   // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
@@ -767,12 +714,18 @@ function EduTreeCanvasInner() {
   );
 }
 
-export function EduTreeCanvas() {
+export default function EduTreeCanvas() {
   return (
-    <ReactFlowProvider>
-      <FocusProvider>
-        <EduTreeCanvasInner />
-      </FocusProvider>
-    </ReactFlowProvider>
+    <EduTreeErrorBoundary>
+      <EduTreeLoadingProvider>
+        <ReactFlowProvider>
+          <FocusProvider>
+            <EduTreeLoadingFallback>
+              <EduTreeCanvasInner />
+            </EduTreeLoadingFallback>
+          </FocusProvider>
+        </ReactFlowProvider>
+      </EduTreeLoadingProvider>
+    </EduTreeErrorBoundary>
   );
 }
