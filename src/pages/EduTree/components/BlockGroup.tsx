@@ -10,7 +10,6 @@ import { BlockWithCourses, getBlockProgressText, isBlockComplete, AltCreditOptio
 import { CourseNode } from './CourseNode';
 import { useNodeResize } from '@/hooks/useNodeResize';
 import { useFeatureFlags } from '@/lib/featureFlags';
-import { StartBeacon } from './StartBeacon';
 
 export function BlockGroup(props: NodeProps) {
   const flags = useFeatureFlags();
@@ -45,9 +44,6 @@ export function BlockGroup(props: NodeProps) {
   const progressPercent = progress.required > 0 ? (progress.completed / progress.required) * 100 : 0;
   const hasSubBlocks = subBlocks.length > 0;
   const hasAltCredits = altCreditOptions.length > 0;
-  
-  // Check if this is a starting node (Year 1 with no prerequisites)
-  const isStartingNode = block.level_year === 1 && isUnlocked;
 
   // Attach resize observer when layoutV2 is enabled
   useEffect(() => {
@@ -59,12 +55,6 @@ export function BlockGroup(props: NodeProps) {
 
   return (
     <div className="relative" ref={nodeRef}>
-      {/* Start beacon for highlighted starting nodes */}
-      <StartBeacon 
-        visible={isHighlighted && isStartingNode && !!planningLens} 
-        lens={planningLens || 'fastest'} 
-      />
-      
       {/* Fixed connection handles for better edge routing */}
       <Handle
         type="target"
@@ -75,18 +65,12 @@ export function BlockGroup(props: NodeProps) {
 
       <Card className={`
         min-w-[280px] max-w-[320px] 
-        ${!isUnlocked ? 'locked-block' : ''} /* Better locked styling */
+        ${!isUnlocked ? 'opacity-60' : ''}
         ${isComplete ? 'border-primary bg-primary/5' : 'border-border'}
-        ${isHighlighted ? 'ring-4 ring-primary shadow-2xl ring-opacity-60' : ''} /* Enhanced glow */
+        ${isHighlighted ? 'ring-2 ring-primary shadow-lg' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
-        ${!isHighlighted && planningLens ? 'opacity-15' : ''} /* Stronger dimming for non-path when lens active */
-        transition-all duration-300 relative
+        transition-all duration-200
       `}>
-        {!isUnlocked && (
-          <div className="lock-badge">
-            <Lock className="w-3 h-3 text-muted-foreground" />
-          </div>
-        )}
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">

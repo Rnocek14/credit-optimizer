@@ -85,7 +85,7 @@ export function findOptimalPath(
   const pathNodes: string[] = [];
   const pathEdges: string[] = [];
   
-  // Build path following prerequisites and include graduation terminal
+  // Build path following prerequisites
   const visited = new Set<string>();
   const queue = scoredBlocks.filter(sb => sb.block.level_year === 1);
   
@@ -110,9 +110,6 @@ export function findOptimalPath(
     // Sort queue by score to maintain optimal path
     queue.sort((a, b) => b.score - a.score);
   }
-  
-  // Always include graduation terminal in highlighted path
-  pathNodes.push('graduation-terminal');
 
   return {
     nodes: pathNodes,
