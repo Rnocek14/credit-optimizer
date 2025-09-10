@@ -52,7 +52,6 @@ import { SpecializationTrack } from './components/SpecializationTrack';
 import { FocusToolbar } from './components/FocusToolbar';
 import { FocusTransitions } from './components/FocusTransitions';
 import { LayoutDebugger } from './components/LayoutDebugger';
-import { EduTreeLoadingProvider } from './providers/EduTreeLoadingProvider';
 import { EduTreeLoadingFallback } from './components/EduTreeLoadingFallback';
 import { EduTreeErrorBoundary } from './components/EduTreeErrorBoundary';
 import { useEduTreeQueries } from './hooks/useEduTreeQueries';
@@ -717,15 +716,13 @@ function EduTreeCanvasInner() {
 export default function EduTreeCanvas() {
   return (
     <EduTreeErrorBoundary>
-      <EduTreeLoadingProvider>
-        <ReactFlowProvider>
-          <FocusProvider>
-            <EduTreeLoadingFallback>
-              <EduTreeCanvasInner />
-            </EduTreeLoadingFallback>
-          </FocusProvider>
-        </ReactFlowProvider>
-      </EduTreeLoadingProvider>
+      <ReactFlowProvider>
+        <FocusProvider>
+          <EduTreeLoadingFallback>
+            <EduTreeCanvasInner />
+          </EduTreeLoadingFallback>
+        </FocusProvider>
+      </ReactFlowProvider>
     </EduTreeErrorBoundary>
   );
 }

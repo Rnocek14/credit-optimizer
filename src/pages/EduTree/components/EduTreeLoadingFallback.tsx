@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
-import { useEduTreeLoading } from '../providers/EduTreeLoadingProvider';
+import { useEduTreeQueries } from '../hooks/useEduTreeQueries';
 import { EduTreeSkeleton, EduTreeProgressSkeleton } from './EduTreeSkeleton';
 
 interface EduTreeLoadingFallbackProps {
@@ -15,13 +15,10 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
   const { 
     loading, 
     errors, 
-    isAnyLoading, 
-    hasAnyError, 
     criticalDataLoaded, 
     allDataLoaded,
-    retryQuery,
-    clearAllErrors 
-  } = useEduTreeLoading();
+    queries
+  } = useEduTreeQueries();
 
   // Calculate loading progress
   const totalSteps = 5;
@@ -58,8 +55,8 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
             <div className="flex gap-2">
               <Button 
                 onClick={() => {
-                  if (errors.courses) retryQuery('courses');
-                  if (errors.blocks) retryQuery('blocks');
+                  if (errors.courses) queries.courses.refetch();
+                  if (errors.blocks) queries.blocks.refetch();
                 }}
                 variant="outline" 
                 className="flex-1"
@@ -67,9 +64,9 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Retry Loading
               </Button>
-              <Button onClick={clearAllErrors} variant="default" className="flex-1">
+              <Button onClick={() => window.location.reload()} variant="default" className="flex-1">
                 <Wifi className="w-4 h-4 mr-2" />
-                Clear Errors
+                Refresh Page
               </Button>
             </div>
           </CardContent>
@@ -105,31 +102,31 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
                   label="Loading courses"
                   isLoading={loading.courses}
                   error={errors.courses}
-                  onRetry={() => retryQuery('courses')}
+                  onRetry={() => queries.courses.refetch()}
                 />
                 <LoadingStep 
                   label="Loading requirements" 
                   isLoading={loading.blocks}
                   error={errors.blocks}
-                  onRetry={() => retryQuery('blocks')}
+                  onRetry={() => queries.blocks.refetch()}
                 />
                 <LoadingStep 
                   label="Building course relationships"
                   isLoading={loading.blockMembers}
                   error={errors.blockMembers}
-                  onRetry={() => retryQuery('blockMembers')}
+                  onRetry={() => queries.blockMembers.refetch()}
                 />
                 <LoadingStep 
                   label="Setting up prerequisites"
                   isLoading={loading.gates}
                   error={errors.gates}
-                  onRetry={() => retryQuery('gates')}
+                  onRetry={() => queries.gates.refetch()}
                 />
                 <LoadingStep 
                   label="Creating pathway connections"
                   isLoading={loading.gateEdges}
                   error={errors.gateEdges}
-                  onRetry={() => retryQuery('gateEdges')}
+                  onRetry={() => queries.gateEdges.refetch()}
                 />
               </div>
             </CardContent>
@@ -142,7 +139,7 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
   }
 
   // Show partial content with remaining loading states
-  if (isAnyLoading && criticalDataLoaded) {
+  if (!allDataLoaded && criticalDataLoaded) {
     return (
       <div className="relative">
         <div className="absolute top-4 right-4 z-10">
@@ -176,7 +173,7 @@ export function EduTreeLoadingFallback({ children, showDetailedProgress = true }
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={clearAllErrors}
+                onClick={() => window.location.reload()}
                 className="ml-2 h-6"
               >
                 Dismiss
