@@ -78,12 +78,12 @@ export function SpecializationTrack(props: NodeProps) {
       />
 
       <Card className={`
-        min-w-[360px] max-w-[360px] transition-all duration-300
+        min-w-[380px] max-w-[380px] transition-all duration-300
         ${!isUnlocked ? 'opacity-60' : ''}
         ${config.bgColor} ${config.borderColor} border-l-4 ${config.accentColor}
         ${isHighlighted ? 'ring-2 ring-primary/50 shadow-lg scale-[1.02]' : ''}
         ${isFocused ? 'ring-2 ring-primary shadow-xl scale-[1.05]' : ''}
-        hover:shadow-md
+        hover:shadow-md hover:scale-[1.01]
       `}
         onMouseEnter={() => handleTrackHover(true)}
         onMouseLeave={() => handleTrackHover(false)}
