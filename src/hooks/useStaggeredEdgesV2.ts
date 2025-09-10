@@ -45,7 +45,9 @@ export function useStaggeredEdgesV2(
 
     setVisibleEdges(allEdges);
     setIsRevealing(false);
-    console.log(`[StaggeredEdgesV2] Force revealed all ${allEdges.length} edges`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[StaggeredEdgesV2] Force revealed all ${allEdges.length} edges`);
+    }
   };
 
   // Memoize the column-batching step for stability
@@ -157,7 +159,9 @@ export function useStaggeredEdgesV2(
       
       const timeout = setTimeout(() => {
         reveal([...cumulativeEdges]);
-        console.log(`[StaggeredEdgesV2] Revealed batch ${index + 1}/${batchesInOrder.length}: ${batch.length} edges (total: ${cumulativeEdges.length})`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[StaggeredEdgesV2] Revealed batch ${index + 1}/${batchesInOrder.length}: ${batch.length} edges (total: ${cumulativeEdges.length})`);
+        }
         
         // If this is the last batch, we're done
         if (index === batchesInOrder.length - 1) {
@@ -191,8 +195,10 @@ export function useStaggeredEdgesV2(
     if (lastLogKeyRef.current === batchKey) return;
     
     lastLogKeyRef.current = batchKey;
-    console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
-    console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
+      console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
+    }
   }, [sortedColumns, allEdges.length, terminalEdges.length, config.enabled]);
 
   return {

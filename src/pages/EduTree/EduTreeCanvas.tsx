@@ -432,7 +432,7 @@ function EduTreeCanvasInner() {
     nodes,
     {
       enabled: flags.eduTreeStaggeredEdgesV2,
-      batchDelayMs: process.env.NODE_ENV === 'development' ? 800 : 650,
+      batchDelayMs: process.env.NODE_ENV === 'production' ? 650 : 800,
       emergencyTimeoutMs: 2000,
     }
   );
@@ -639,7 +639,9 @@ function EduTreeCanvasInner() {
       
       const padding = hasTerminal ? 0.4 : 0.2;
       reactFlowInstance.fitView({ padding, duration: 300 });
-      console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
+      }
     }, 150);
   }, [nodes]);
 
