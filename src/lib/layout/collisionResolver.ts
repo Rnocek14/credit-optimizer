@@ -1,11 +1,9 @@
 import { Node } from '@xyflow/react';
-import { detectCollisions } from './heightMeasurement';
 
 /**
- * Lane-aware multi-pass collision resolution system
- * Resolves collisions while respecting lane assignments
+ * Simple collision resolution focused on vertical stacking
  */
-export function resolveAllCollisions(nodes: Node[], maxPasses = 5): Node[] {
+export function resolveAllCollisions(nodes: Node[], maxPasses = 3): Node[] {
   let resolvedNodes = [...nodes];
   let pass = 0;
   
@@ -18,75 +16,31 @@ export function resolveAllCollisions(nodes: Node[], maxPasses = 5): Node[] {
     }
     
     console.log(`🔄 Pass ${pass + 1}: Resolving ${collisions.length} collisions`);
-    resolvedNodes = resolveSinglePassWithLanes(resolvedNodes, collisions);
+    resolvedNodes = resolveCollisionsSimple(resolvedNodes, collisions);
     pass++;
   }
   
-  // Emergency fallback if we couldn't resolve all collisions
-  if (pass >= maxPasses) {
-    console.warn('⚠️ Using emergency grid fallback');
-    resolvedNodes = emergencyGridLayout(resolvedNodes);
-  }
-  
   return resolvedNodes;
 }
 
 /**
- * Lane-aware collision resolution in a single pass
+ * Simple collision resolution - just move overlapping nodes down
  */
-function resolveSinglePassWithLanes(nodes: Node[], collisions: any[]): Node[] {
+function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
   const resolvedNodes = [...nodes];
-  const nodeMap = new Map(resolvedNodes.map(node => [node.id, node]));
   
-  // Group nodes by lane (X position) for lane-aware resolution
-  const nodesByLane = new Map<number, Node[]>();
-  resolvedNodes.forEach(node => {
-    const laneX = Math.round(node.position.x / 400) * 400; // Group by ~400px lanes
-    if (!nodesByLane.has(laneX)) {
-      nodesByLane.set(laneX, []);
-    }
-    nodesByLane.get(laneX)!.push(node);
-  });
+  // Sort collisions by Y position to resolve from top to bottom
+  collisions.sort((a, b) => a.node1.position.y - b.node1.position.y);
   
-  // Sort collisions by overlap (resolve biggest overlaps first)
-  const sortedCollisions = collisions.sort((a, b) => b.overlap - a.overlap);
-  
-  sortedCollisions.forEach(({ node1, node2 }) => {
-    const currentNode1 = nodeMap.get(node1.id)!;
-    const currentNode2 = nodeMap.get(node2.id)!;
+  collisions.forEach(({ node1, node2 }) => {
+    const rect1 = getNodeRect(node1);
+    const rect2 = getNodeRect(node2);
     
-    const separation = calculateSeparationDistance(currentNode1, currentNode2);
-    
-    // Check if nodes are in the same lane
-    const lane1X = Math.round(currentNode1.position.x / 400) * 400;
-    const lane2X = Math.round(currentNode2.position.x / 400) * 400;
-    
-    if (Math.abs(lane1X - lane2X) < 200) {
-      // Same lane: stack vertically with better spacing
-      if (currentNode2.position.y >= currentNode1.position.y) {
-        currentNode2.position.y = currentNode1.position.y + separation.y + 24;
-      } else {
-        currentNode1.position.y = currentNode2.position.y + separation.y + 24;
-      }
+    // Move the lower positioned node down to clear the collision
+    if (node2.position.y >= node1.position.y) {
+      node2.position.y = rect1.y + rect1.height + 32; // 32px spacing
     } else {
-      // Different lanes: adjust horizontally if needed, then vertically
-      const horizontalGap = Math.abs(currentNode1.position.x - currentNode2.position.x);
-      if (horizontalGap < 340) {
-        // Too close horizontally, move one node
-        if (currentNode1.position.x < currentNode2.position.x) {
-          currentNode2.position.x = currentNode1.position.x + 340;
-        } else {
-          currentNode1.position.x = currentNode2.position.x + 340;
-        }
-      }
-      // Still stack vertically if needed
-      if (Math.abs(currentNode1.position.y - currentNode2.position.y) < separation.y) {
-        if (currentNode2.position.y >= currentNode1.position.y) {
-          currentNode2.position.y = currentNode1.position.y + separation.y + 16;
-        } else {
-          currentNode1.position.y = currentNode2.position.y + separation.y + 16;
-        }
-      }
+      node1.position.y = rect2.y + rect2.height + 32;
     }
   });
   
@@ -94,47 +48,18 @@ function resolveSinglePassWithLanes(nodes: Node[], collisions: any[]): Node[] {
 }
 
 /**
- * Calculate the minimum distance needed to separate two nodes
+ * Get node rectangle for collision detection
  */
-function calculateSeparationDistance(node1: Node, node2: Node) {
-  const height1 = getNodeHeight(node1);
-  const height2 = getNodeHeight(node2);
-  
-  const padding = 32; // Increased padding for better spacing
+function getNodeRect(node: Node) {
+  const width = node.type === 'blockGroup' ? 320 : 200;
+  const height = estimateNodeHeight(node);
   
   return {
-    x: Math.max(320, node1.measured?.width ?? 320) + padding,
-    y: Math.max(height1, height2) + padding
+    x: node.position.x,
+    y: node.position.y,
+    width,
+    height
   };
-}
-
-/**
- * Get accurate node height from multiple sources
- */
-function getNodeHeight(node: Node): number {
-  // Priority: measured height > data height > estimated height
-  if (node.measured?.height) return node.measured.height;
-  const data = node.data as any;
-  if (data?.measuredHeight) return data.measuredHeight;
-  return estimateNodeHeight(node);
-}
-
-/**
- * Emergency grid layout when collision resolution fails
- */
-function emergencyGridLayout(nodes: Node[]): Node[] {
-  const columns = 3;
-  const columnWidth = 360;
-  const rowHeight = 280;
-  const padding = 24;
-  
-  return nodes.map((node, index) => ({
-    ...node,
-    position: {
-      x: (index % columns) * columnWidth + padding,
-      y: Math.floor(index / columns) * rowHeight + padding
-    }
-  }));
 }
 
 /**
@@ -150,6 +75,49 @@ function estimateNodeHeight(node: Node): number {
     return baseHeight + (courseCount * 60) + (subBlockCount * 80);
   }
   return 100;
+}
+
+/**
+ * Detect overlapping nodes
+ */
+function detectCollisions(nodes: Node[]): { node1: Node; node2: Node; overlap: number }[] {
+  const collisions: { node1: Node; node2: Node; overlap: number }[] = [];
+  
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const node1 = nodes[i];
+      const node2 = nodes[j];
+      
+      const rect1 = getNodeRect(node1);
+      const rect2 = getNodeRect(node2);
+      
+      if (hasOverlap(rect1, rect2)) {
+        const overlap = calculateOverlapArea(rect1, rect2);
+        collisions.push({ node1, node2, overlap });
+      }
+    }
+  }
+  
+  return collisions;
+}
+
+/**
+ * Check if two rectangles overlap
+ */
+function hasOverlap(rect1: any, rect2: any): boolean {
+  return !(rect1.x + rect1.width < rect2.x || 
+           rect2.x + rect2.width < rect1.x || 
+           rect1.y + rect1.height < rect2.y || 
+           rect2.y + rect2.height < rect1.y);
+}
+
+/**
+ * Calculate overlap area between two rectangles
+ */
+function calculateOverlapArea(rect1: any, rect2: any): number {
+  const xOverlap = Math.max(0, Math.min(rect1.x + rect1.width, rect2.x + rect2.width) - Math.max(rect1.x, rect2.x));
+  const yOverlap = Math.max(0, Math.min(rect1.y + rect1.height, rect2.y + rect2.height) - Math.max(rect1.y, rect2.y));
+  return xOverlap * yOverlap;
 }
 
 /**

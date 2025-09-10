@@ -16,24 +16,38 @@ interface ElkEdge {
   layoutOptions?: { [key: string]: any };
 }
 
-export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions?: Map<string, any>): Promise<Node[]> {
+export async function layoutWithElk(nodes: Node[], edges: Edge[]): Promise<Node[]> {
   // Import ELK dynamically for better performance
   const ELK = (await import('elkjs')).default;
   const elk = new ELK();
 
-  // Convert React Flow nodes to ELK format with accurate dimensions
+  // Group nodes by year to create year-based columns
+  const nodesByYear = new Map<number, Node[]>();
+  nodes.forEach(node => {
+    const data = node.data as any;
+    const year = data.level_year ?? 1;
+    if (!nodesByYear.has(year)) {
+      nodesByYear.set(year, []);
+    }
+    nodesByYear.get(year)!.push(node);
+  });
+
+  // Convert React Flow nodes to ELK format with year-based constraints
   const elkNodes = nodes.map(node => {
-    const dimensions = nodeDimensions?.get(node.id);
-    const width = dimensions?.width ?? (node.type === 'blockGroup' ? 320 : 200);
-    const height = dimensions?.height ?? estimateNodeHeight(node);
+    const data = node.data as any;
+    const year = data.level_year ?? 1;
+    const width = node.type === 'blockGroup' ? 320 : 200;
+    const height = estimateNodeHeight(node);
     
     return {
       id: node.id,
       width,
       height,
-      // Store original node data for reference
+      // Use year-based positioning hints for ELK
       layoutOptions: {
-        'elk.padding': '[top=8,left=8,bottom=8,right=8]'
+        'elk.padding': '[top=12,left=12,bottom=12,right=12]',
+        // Constrain nodes to their year column
+        'elk.position': `(${(year - 1) * 400 + 20}, ${data.sortOrder * 200 + 20})`
       }
     };
   });
@@ -50,14 +64,16 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': 'DOWN',
-      'elk.spacing.nodeNode': '48', // Increased node spacing
-      'elk.layered.spacing.nodeNodeBetweenLayers': '120', // Increased layer spacing
-      'elk.spacing.edgeNode': '32',
+      'elk.spacing.nodeNode': '60',  // Generous horizontal spacing
+      'elk.layered.spacing.nodeNodeBetweenLayers': '140', // Generous vertical spacing
+      'elk.spacing.edgeNode': '40',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX', // Better placement
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF', // Better for column alignment
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
       'elk.separateConnectedComponents': 'false',
-      'elk.padding': '[top=20,left=20,bottom=20,right=20]'
+      'elk.padding': '[top=40,left=40,bottom=40,right=40]',
+      // Force respect of year-based positioning
+      'elk.layered.layering.strategy': 'LONGEST_PATH'
     },
     children: elkNodes,
     edges: elkEdges
@@ -66,17 +82,23 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions
   try {
     const layouted = await elk.layout(graph);
     
-    return nodes.map(node => {
+    // Apply year-based column constraints to ELK output
+    const layoutedNodes = nodes.map(node => {
       const elkNode = layouted.children?.find(n => n.id === node.id);
+      const data = node.data as any;
+      const year = data.level_year ?? 1;
       
       if (elkNode) {
+        // Force year-based column positioning
+        const yearColumns = [80, 440, 800, 1160]; // Year 1-4 columns with 320px width + 40px spacing
+        const columnX = yearColumns[year - 1] ?? elkNode.x;
+        
         return {
           ...node,
           position: { 
-            x: elkNode.x ?? node.position.x, 
+            x: columnX, 
             y: elkNode.y ?? node.position.y 
           },
-          // Store measured dimensions for collision detection
           measured: {
             width: elkNode.width,
             height: elkNode.height
@@ -86,16 +108,13 @@ export async function layoutWithElk(nodes: Node[], edges: Edge[], nodeDimensions
       
       return node;
     });
+
+    // Simple collision detection and resolution
+    return resolveSimpleCollisions(layoutedNodes);
+    
   } catch (error) {
     console.error('ELK layout failed:', error);
-    // Return nodes with improved fallback positions
-    return nodes.map((node, index) => ({
-      ...node,
-      position: { 
-        x: (index % 3) * 360 + 40, 
-        y: Math.floor(index / 3) * 280 + 40 
-      }
-    }));
+    return createYearBasedFallback(nodes);
   }
 }
 
@@ -137,17 +156,105 @@ export function layoutAsGrid(nodes: Node[], mode: 'board'): Node[] {
 }
 
 /**
- * Smart height estimation for ELK layout
+ * Simple and reliable height estimation
  */
 function estimateNodeHeight(node: Node): number {
   if (node.type === 'blockGroup') {
     const data = node.data as any;
-    const baseHeight = 120; // Header + progress
+    const baseHeight = 140; // Header + progress + padding
     const courseCount = data.block?.courses?.length || 3;
     const subBlockCount = data.subBlocks?.length || 0;
     
-    // More accurate height estimation
-    return baseHeight + (courseCount * 60) + (subBlockCount * 80);
+    return baseHeight + (courseCount * 56) + (subBlockCount * 72);
   }
-  return 100;
+  return 120;
+}
+
+/**
+ * Simple collision resolution without complex lane logic
+ */
+function resolveSimpleCollisions(nodes: Node[]): Node[] {
+  const resolvedNodes = [...nodes];
+  
+  // Sort nodes by Y position to resolve from top to bottom
+  resolvedNodes.sort((a, b) => a.position.y - b.position.y);
+  
+  for (let i = 0; i < resolvedNodes.length; i++) {
+    for (let j = i + 1; j < resolvedNodes.length; j++) {
+      const node1 = resolvedNodes[i];
+      const node2 = resolvedNodes[j];
+      
+      // Check for overlap
+      const rect1 = getNodeBounds(node1);
+      const rect2 = getNodeBounds(node2);
+      
+      if (hasOverlap(rect1, rect2)) {
+        // Move the lower node down to avoid overlap
+        const clearanceY = rect1.y + rect1.height + 24; // 24px spacing
+        if (node2.position.y < clearanceY) {
+          node2.position.y = clearanceY;
+        }
+      }
+    }
+  }
+  
+  return resolvedNodes;
+}
+
+/**
+ * Get node bounds for collision detection
+ */
+function getNodeBounds(node: Node) {
+  const width = node.measured?.width || (node.type === 'blockGroup' ? 320 : 200);
+  const height = node.measured?.height || estimateNodeHeight(node);
+  
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    width,
+    height
+  };
+}
+
+/**
+ * Check if two rectangles overlap
+ */
+function hasOverlap(rect1: any, rect2: any): boolean {
+  return !(rect1.x + rect1.width < rect2.x || 
+           rect2.x + rect2.width < rect1.x || 
+           rect1.y + rect1.height < rect2.y || 
+           rect2.y + rect2.height < rect1.y);
+}
+
+/**
+ * Year-based fallback layout when ELK fails
+ */
+function createYearBasedFallback(nodes: Node[]): Node[] {
+  const yearColumns = [80, 440, 800, 1160];
+  const nodesByYear = new Map<number, Node[]>();
+  
+  // Group nodes by year
+  nodes.forEach(node => {
+    const data = node.data as any;
+    const year = data.level_year ?? 1;
+    if (!nodesByYear.has(year)) {
+      nodesByYear.set(year, []);
+    }
+    nodesByYear.get(year)!.push(node);
+  });
+  
+  return nodes.map(node => {
+    const data = node.data as any;
+    const year = data.level_year ?? 1;
+    const yearNodes = nodesByYear.get(year) || [];
+    const nodeIndex = yearNodes.findIndex(n => n.id === node.id);
+    
+    return {
+      ...node,
+      position: {
+        x: yearColumns[year - 1] ?? 80,
+        y: nodeIndex * 200 + 40 // Stack vertically with spacing
+      }
+    };
+  });
 }
