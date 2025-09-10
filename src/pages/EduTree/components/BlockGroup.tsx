@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Lock, CheckCircle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Lock, CheckCircle, ChevronDown, ChevronRight, Sparkles, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -44,6 +44,7 @@ export function BlockGroup(props: NodeProps) {
   const progressPercent = progress.required > 0 ? (progress.completed / progress.required) * 100 : 0;
   const hasSubBlocks = subBlocks.length > 0;
   const hasAltCredits = altCreditOptions.length > 0;
+  const isDegreeBlock = block.area === 'degree';
 
   // Attach resize observer when layoutV2 is enabled
   useEffect(() => {
@@ -65,23 +66,27 @@ export function BlockGroup(props: NodeProps) {
 
       <Card className={`
         min-w-[320px] max-w-[320px] 
-        ${!isUnlocked ? 'opacity-60' : ''}
-        ${isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
+        ${!isUnlocked ? 'opacity-75' : ''}
+        ${isDegreeBlock ? 'border-2 border-yellow-500 bg-gradient-to-br from-yellow-50 to-amber-50 shadow-lg ring-2 ring-yellow-400/30' : ''}
+        ${!isDegreeBlock && isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : ''}
+        ${!isDegreeBlock && !isComplete ? 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60' : ''}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         transition-all duration-200
       `}>
         <CardHeader className="pb-3 space-y-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              {!isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
-              {isComplete && <CheckCircle className="w-4 h-4 text-primary" />}
+            <CardTitle className={`text-lg flex items-center gap-2 ${isDegreeBlock ? 'text-yellow-800 font-bold' : ''}`}>
+              {isDegreeBlock && <GraduationCap className="w-5 h-5 text-yellow-600" />}
+              {!isDegreeBlock && !isUnlocked && <Lock className="w-4 h-4 text-muted-foreground" />}
+              {!isDegreeBlock && isComplete && <CheckCircle className="w-4 h-4 text-primary" />}
               {block.title}
+              {isDegreeBlock && <span className="text-yellow-600">🎓</span>}
             </CardTitle>
             
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs">
-                Year {block.level_year}
+              <Badge variant={isDegreeBlock ? "default" : "outline"} className={`text-xs ${isDegreeBlock ? 'bg-yellow-500 text-yellow-50' : ''}`}>
+                {isDegreeBlock ? 'Degree' : `Year ${block.level_year}`}
               </Badge>
               {hasAltCredits && (
                 <Button
@@ -103,23 +108,41 @@ export function BlockGroup(props: NodeProps) {
           </div>
           
           {/* Rule and progress */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <Badge variant="secondary" className="text-xs">
-                {progressText}
-              </Badge>
-              <span className="text-muted-foreground text-xs">
-                {progress.completed}/{progress.required}
-              </span>
+          {/* Only show progress for non-degree blocks */}
+          {!isDegreeBlock && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <Badge variant="secondary" className="text-xs">
+                  {progressText}
+                </Badge>
+                <span className="text-muted-foreground text-xs">
+                  {progress.completed}/{progress.required}
+                </span>
+              </div>
+              
+              <Progress value={progressPercent} className="h-3" />
             </div>
-            
-            <Progress value={progressPercent} className="h-3" />
-          </div>
+          )}
+          
+          {/* Special message for degree blocks */}
+          {isDegreeBlock && (
+            <div className="text-center py-2">
+              <div className="text-sm font-medium text-yellow-800 mb-1">
+                🎉 Degree Completion Milestone
+              </div>
+              <div className="text-xs text-yellow-700">
+                Complete Architecture and Capstone to earn your degree
+              </div>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="pt-0">
-          {/* Sub-blocks if any */}
-          {hasSubBlocks && (
+          {/* Hide course content for degree blocks */}
+          {!isDegreeBlock && (
+            <>
+              {/* Sub-blocks if any */}
+              {hasSubBlocks && (
             <Collapsible open={subBlocksExpanded} onOpenChange={setSubBlocksExpanded}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between p-2 h-8 mb-2">
@@ -191,10 +214,12 @@ export function BlockGroup(props: NodeProps) {
             ))}
           </div>
           
-          {!isUnlocked && (
-            <div className="mt-3 p-2 bg-muted/50 rounded text-xs text-muted-foreground text-center">
-              Complete prerequisites to unlock
-            </div>
+              {!isUnlocked && (
+                <div className="mt-3 p-2 bg-muted/50 rounded text-xs text-muted-foreground text-center">
+                  Complete prerequisites to unlock
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

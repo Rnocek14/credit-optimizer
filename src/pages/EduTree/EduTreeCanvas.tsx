@@ -241,7 +241,10 @@ function EduTreeCanvasInner() {
         return {
           id: String(block.id), // Ensure string ID
           type: 'blockGroup', // This must match nodeTypes key
-          position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
+          position: { 
+            x: block.area === 'degree' ? (block.level_year || 0) * 320 + 160 : (block.level_year || 0) * 320, 
+            y: block.area === 'degree' ? 600 : index * 200 
+          }, // Position degree blocks centered and below others
           data: {
             block,
             completedCourseIds,
