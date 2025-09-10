@@ -76,10 +76,10 @@ export function LensSelector({
             value={comparisonLens || 'none'}
             onValueChange={(value) => onComparisonLensChange?.(value === 'none' ? null : value as PlanningLens)}
           >
-            <SelectTrigger className="w-28 h-8">
+            <SelectTrigger className="w-28 h-8 bg-background border border-border">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background border border-border z-50">
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="fastest">Fastest</SelectItem>
               <SelectItem value="cheapest">Cheapest</SelectItem>
