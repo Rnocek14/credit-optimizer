@@ -41,6 +41,51 @@ export function useStaggeredEdgesV2(
     console.log(`[StaggeredEdgesV2] Force revealed all ${allEdges.length} edges`);
   };
 
+  // Memoize the column-batching step for stability
+  const { sortedColumns, edgeBatches, terminalEdges } = useMemo(() => {
+    const nodePositionMap = new Map(allNodes.map(n => [n.id, n.position]));
+    const batches = new Map<number, Edge[]>();
+    const terminals: Edge[] = [];
+
+    for (const edge of allEdges) {
+      const pos = nodePositionMap.get(edge.source);
+      if (!pos) {
+        const batch = batches.get(0) || [];
+        batch.push(edge);
+        batches.set(0, batch);
+        continue;
+      }
+      
+      const isTerminal =
+        allNodes.find(n => n.id === edge.target)?.type?.toLowerCase().includes('terminal') ||
+        edge.target.includes('graduation') ||
+        edge.target.includes('terminal') ||
+        edge.target === 'degree-completion';
+
+      if (isTerminal) {
+        terminals.push(edge);
+        continue;
+      }
+
+      const col = Math.floor((pos.x ?? 0) / 500); // 500px per column
+      const batch = batches.get(col) || [];
+      batch.push(edge);
+      batches.set(col, batch);
+    }
+
+    // Put terminals in last batch
+    const cols = Array.from(batches.keys()).sort((a, b) => a - b);
+    if (terminals.length) {
+      const last = cols.length ? cols[cols.length - 1] : 0;
+      const batch = batches.get(last) || [];
+      batch.push(...terminals);
+      batches.set(last, batch);
+      if (!cols.length) cols.push(last);
+    }
+
+    return { sortedColumns: cols, edgeBatches: batches, terminalEdges: terminals };
+  }, [allEdges, allNodes]);
+
   useEffect(() => {
     // Clear any existing timeouts
     timeoutsRef.current.forEach(clearTimeout);
@@ -56,64 +101,11 @@ export function useStaggeredEdgesV2(
       return;
     }
 
-    // Small graphs show all edges immediately
-    if (allEdges.length < 6) {
-      setVisibleEdges(allEdges);
-      setIsRevealing(false);
-      console.log(`[StaggeredEdgesV2] Small graph (${allEdges.length} edges) - showing all immediately`);
-      return;
-    }
+    // Allow staggering even on small graphs (removed threshold)
 
     setIsRevealing(true);
     setVisibleEdges([]);
 
-    // Memoize the column-batching step for stability
-    const { sortedColumns, edgeBatches, terminalEdges } = useMemo(() => {
-      const nodePositionMap = new Map(allNodes.map(n => [n.id, n.position]));
-      const batches = new Map<number, Edge[]>();
-      const terminals: Edge[] = [];
-
-      for (const edge of allEdges) {
-        const pos = nodePositionMap.get(edge.source);
-        if (!pos) {
-          const batch = batches.get(0) || [];
-          batch.push(edge);
-          batches.set(0, batch);
-          continue;
-        }
-        
-        const isTerminal =
-          allNodes.find(n => n.id === edge.target)?.type?.toLowerCase().includes('terminal') ||
-          edge.target.includes('graduation') ||
-          edge.target.includes('terminal') ||
-          edge.target === 'degree-completion';
-
-        if (isTerminal) {
-          terminals.push(edge);
-          continue;
-        }
-
-        const col = Math.floor((pos.x ?? 0) / 500); // 500px per column
-        const batch = batches.get(col) || [];
-        batch.push(edge);
-        batches.set(col, batch);
-      }
-
-      // Put terminals in last batch
-      const cols = Array.from(batches.keys()).sort((a, b) => a - b);
-      if (terminals.length) {
-        const last = cols.length ? cols[cols.length - 1] : 0;
-        const batch = batches.get(last) || [];
-        batch.push(...terminals);
-        batches.set(last, batch);
-        if (!cols.length) cols.push(last);
-      }
-
-      return { sortedColumns: cols, edgeBatches: batches, terminalEdges: terminals };
-    }, [allEdges, allNodes]);
-
-    console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
-    console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
 
     // Dynamically compute emergency timeout based on batch count
     const batchesCount = Math.max(1, sortedColumns.length);
@@ -157,7 +149,16 @@ export function useStaggeredEdgesV2(
         emergencyTimeoutRef.current = null;
       }
     };
-  }, [allEdges, allNodes, config.enabled, config.batchDelayMs, config.emergencyTimeoutMs]);
+  }, [allEdges, allNodes, config.enabled, config.batchDelayMs, config.emergencyTimeoutMs, sortedColumns, edgeBatches]);
+
+  // One-time logging per batch configuration change
+  useEffect(() => {
+    if (config.enabled && allEdges.length > 0) {
+      console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
+      console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedColumns.join(','), allEdges.length, terminalEdges.length, config.enabled]);
 
   return {
     visibleEdges,
