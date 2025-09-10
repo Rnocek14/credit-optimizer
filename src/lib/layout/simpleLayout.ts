@@ -121,8 +121,8 @@ function positionNodesInColumn(nodes: Node[], x: number): void {
     // Use React Flow measured height if available, otherwise generous fallback
     const nodeHeight = (node as any).measured?.height || getEstimatedHeight(node);
     
-    // Add generous spacing between nodes
-    currentY += nodeHeight + 120; // 120px spacing between nodes
+    // Add MASSIVE spacing between nodes to prevent any overlaps
+    currentY += nodeHeight + 250; // 250px spacing between nodes
   });
 }
 

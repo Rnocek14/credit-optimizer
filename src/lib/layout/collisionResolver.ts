@@ -44,19 +44,19 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // Calculate intelligent spacing based on node heights
-    const baseSpacing = 100; // Increased base spacing significantly
+    // Calculate generous spacing based on node heights
+    const baseSpacing = 200; // DRAMATIC increase for zero overlaps
     const largerNodeHeight = Math.max(rect1.height, rect2.height);
-    const contentSpacing = largerNodeHeight * 0.25; // Increased multiplier
-    const finalSpacing = Math.min(baseSpacing + contentSpacing, 180); // Increased cap
+    const contentSpacing = largerNodeHeight * 0.4; // Increased multiplier
+    const finalSpacing = Math.min(baseSpacing + contentSpacing, 300); // Much higher cap
     
     // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
       const newY = rect1.y + rect1.height + finalSpacing;
       node2.position.y = newY;
       
-      // Check if we should consider horizontal distribution for very tall layouts
-      if (newY > 1000) { // Reduced threshold for earlier horizontal distribution
+      // Check if we should consider horizontal distribution for tall layouts
+      if (newY > 800) { // Much lower threshold for earlier horizontal distribution
         const horizontalShift = findHorizontalSpace(nodes, node2, rect2.width);
         if (horizontalShift !== null) {
           node2.position.x = horizontalShift;
@@ -67,7 +67,7 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
       const newY = rect2.y + rect2.height + finalSpacing;
       node1.position.y = newY;
       
-      if (newY > 1000) {
+      if (newY > 800) {
         const horizontalShift = findHorizontalSpace(nodes, node1, rect1.width);
         if (horizontalShift !== null) {
           node1.position.x = horizontalShift;

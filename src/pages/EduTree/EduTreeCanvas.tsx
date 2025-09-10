@@ -357,10 +357,17 @@ function EduTreeCanvasInner() {
     }, 150); // 150ms debounce
   }, [flowNodes, flowEdges, viewMode]);
 
-  // Apply layout when data changes
+  // REMOVED: Layout loop that was causing thrashing
+  // Layout is now triggered only on initial data load via onNodesInitialized
+  
+  // Trigger initial layout when nodes first become available
+  const hasTriggeredInitialLayout = useRef(false);
   useEffect(() => {
-    debouncedLayout();
-  }, [debouncedLayout]);
+    if (flowNodes.length > 0 && !hasTriggeredInitialLayout.current && !layoutInProgressRef.current) {
+      hasTriggeredInitialLayout.current = true;
+      debouncedLayout();
+    }
+  }, [flowNodes.length > 0]); // Only trigger when nodes go from 0 to >0
 
   // Layout implementations
   async function performFlowLayout() {
@@ -445,14 +452,29 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // Handle fitView through ReactFlow's onInit callback
-  const onInit = useCallback((reactFlowInstance: any) => {
-    if (nodes.length > 0) {
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-      }, 0);
+  // Handle layout on React Flow initialization (single trigger)
+  const onInit = useCallback(async (reactFlowInstance: any) => {
+    if (flowNodes.length > 0 && !layoutInProgressRef.current) {
+      layoutInProgressRef.current = true;
+      setIsLayouting(true);
+      
+      try {
+        if (viewMode === 'flow') {
+          await performFlowLayout();
+        } else {
+          performBoardLayout(); 
+        }
+        
+        // Fit view after layout
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+        }, 100);
+      } finally {
+        layoutInProgressRef.current = false;
+        setIsLayouting(false);
+      }
     }
-  }, [nodes]);
+  }, [flowNodes.length, viewMode]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
