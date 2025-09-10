@@ -275,10 +275,46 @@ function EduTreeCanvasInner() {
     }).filter(Boolean) as Edge[] : [];
 
     return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath]);
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
+  // REMOVED highlightedPath dependency to prevent infinite loop
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  // EMERGENCY FIX: Apply simple layout when flow data changes
+  useEffect(() => {
+    if (flowNodes.length > 0) {
+      try {
+        const simpleNodes = flowNodes.map((node, index) => {
+          const yearColumn = Number(node.data.level_year || 0);
+          const nodesInYear = flowNodes.filter(n => n.data.level_year === yearColumn);
+          const yearIndex = nodesInYear.indexOf(node);
+          
+          return {
+            ...node,
+            position: { 
+              x: yearColumn * 400, 
+              y: yearIndex * 300 // Large spacing to prevent overlaps
+            }
+          };
+        });
+        
+        setNodes(simpleNodes);
+        setEdges(viewMode === 'flow' ? flowEdges : []);
+        
+        if (DEV) console.log('[EduTree] Simple layout applied', simpleNodes.length, 'nodes');
+      } catch (error) {
+        console.error('[EduTree] Simple layout failed:', error);
+        // Ultra-safe fallback
+        const fallbackNodes = flowNodes.map((node, index) => ({
+          ...node,
+          position: { x: (index % 3) * 400, y: Math.floor(index / 3) * 300 }
+        }));
+        setNodes(fallbackNodes);
+        setEdges([]);
+      }
+    }
+  }, [flowNodes, flowEdges, viewMode, setNodes, setEdges]);
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -326,84 +362,14 @@ function EduTreeCanvasInner() {
     }
   }, []);
 
-  // Debounced layout function to prevent thrashing
-  const debouncedLayout = useCallback(async () => {
-    if (layoutInProgressRef.current || flowNodes.length === 0) {
-      return;
-    }
+  // EMERGENCY FIX: Remove all complex layout logic that was causing infinite loops
+  // Use simple positioning only to get preview working
 
-    // Clear any existing timeout
-    if (layoutTimeoutRef.current) {
-      clearTimeout(layoutTimeoutRef.current);
-    }
+  // EMERGENCY FIX: Removed complex layout - using inline logic above
 
-    // Debounce layout operations
-    layoutTimeoutRef.current = setTimeout(async () => {
-      if (layoutInProgressRef.current) return;
-      
-      layoutInProgressRef.current = true;
-      setIsLayouting(true);
-
-      try {
-        if (viewMode === 'flow') {
-          await performFlowLayout();
-        } else {
-          performBoardLayout();
-        }
-      } finally {
-        layoutInProgressRef.current = false;
-        setIsLayouting(false);
-      }
-    }, 150); // 150ms debounce
-  }, [flowNodes, flowEdges, viewMode]);
-
-  // REMOVED: Layout loop that was causing thrashing
-  // Layout is now triggered only on initial data load via onNodesInitialized
-  
-  // Trigger initial layout when nodes first become available
-  const hasTriggeredInitialLayout = useRef(false);
-  useEffect(() => {
-    if (flowNodes.length > 0 && !hasTriggeredInitialLayout.current && !layoutInProgressRef.current) {
-      hasTriggeredInitialLayout.current = true;
-      debouncedLayout();
-    }
-  }, [flowNodes.length > 0]); // Only trigger when nodes go from 0 to >0
-
-  // Layout implementations
-  async function performFlowLayout() {
-    try {
-      const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-      const result = await layoutNodes(flowNodes, flowEdges);
-      
-      if (DEV) console.log('[EduTree] Layout complete', result.nodes.length, 'overlaps:', result.hasOverlaps);
-      
-      setNodes(result.nodes);
-      setEdges(flowEdges);
-    } catch (error) {
-      console.error('[EduTree] Layout failed:', error);
-      // Fallback to simple positioning
-      const fallbackNodes = flowNodes.map((node, index) => ({
-        ...node,
-        position: { x: (index % 3) * 360, y: Math.floor(index / 3) * 220 }
-      }));
-      setNodes(fallbackNodes);
-      setEdges(flowEdges);
-    }
-  }
-
-  function performBoardLayout() {
-    const gridNodes = layoutAsGrid(flowNodes, 'board');
-    if (DEV) console.log('[EduTree] Board layout complete', gridNodes.length);
-    setNodes(gridNodes);
-    setEdges([]); // No edges in board mode
-    
-    // Save board positions
-    if (flags.eduTreeLanes) {
-      layoutMemoryRef.current.savePositions(gridNodes, 'board');
-    }
-  }
-
-  // Update path highlighting when lens changes
+  // EMERGENCY FIX: Temporarily disabled path highlighting to prevent infinite loop
+  // This was causing flowNodes/flowEdges to update → highlightedPath → useMemo → flowNodes/flowEdges → infinite loop
+  /*
   useEffect(() => {
     if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
       const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
@@ -413,6 +379,7 @@ function EduTreeCanvasInner() {
       });
     }
   }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
+  */
 
   // Calculate outcome panel summary
   const outcomeSummary: PlanValidationSummary = useMemo(() => {
@@ -452,29 +419,13 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // Handle layout on React Flow initialization (single trigger)
-  const onInit = useCallback(async (reactFlowInstance: any) => {
-    if (flowNodes.length > 0 && !layoutInProgressRef.current) {
-      layoutInProgressRef.current = true;
-      setIsLayouting(true);
-      
-      try {
-        if (viewMode === 'flow') {
-          await performFlowLayout();
-        } else {
-          performBoardLayout(); 
-        }
-        
-        // Fit view after layout
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-        }, 100);
-      } finally {
-        layoutInProgressRef.current = false;
-        setIsLayouting(false);
-      }
-    }
-  }, [flowNodes.length, viewMode]);
+  // EMERGENCY FIX: Simple React Flow initialization
+  const onInit = useCallback((reactFlowInstance: any) => {
+    // Simple fit view only, no complex layout
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+    }, 100);
+  }, []);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
