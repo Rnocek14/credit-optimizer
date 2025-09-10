@@ -129,6 +129,7 @@ import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
 import EduTree from "./pages/EduTree";
+import EduTreeMulti from "./pages/EduTreeMulti";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
@@ -278,6 +279,19 @@ const App = () => {
               >
                 <React.Suspense fallback={<PageLoader message="Loading education tree..." />}>
                   <EduTree />
+                </React.Suspense>
+              </EnhancedErrorBoundary>
+            }
+          />
+          <Route 
+            path="/edu-treemulti" 
+            element={
+              <EnhancedErrorBoundary 
+                fallback={<EduTreeError />}
+                onError={(error) => console.error('EduTree Multi error:', error)}
+              >
+                <React.Suspense fallback={<PageLoader message="Loading multipath education tree..." />}>
+                  <EduTreeMulti />
                 </React.Suspense>
               </EnhancedErrorBoundary>
             }
