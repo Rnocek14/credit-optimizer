@@ -24,6 +24,7 @@ export function BlockGroup(props: NodeProps) {
     subBlocks = [], 
     altCreditOptions = [],
     isHighlighted = false,
+    isComparisonHighlighted = false,
     planningLens = null,
     isDegreeNode = false,
     isDegreeComplete = false,
@@ -36,6 +37,7 @@ export function BlockGroup(props: NodeProps) {
     subBlocks?: BlockWithCourses[];
     altCreditOptions?: AltCreditOption[];
     isHighlighted?: boolean;
+    isComparisonHighlighted?: boolean;
     planningLens?: string | null;
     isDegreeNode?: boolean;
     isDegreeComplete?: boolean;
@@ -76,6 +78,7 @@ export function BlockGroup(props: NodeProps) {
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
+        ${isComparisonHighlighted ? 'ring-2 ring-amber-500 shadow-xl border-amber-500 ring-offset-2' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
         transition-all duration-200
       `}>

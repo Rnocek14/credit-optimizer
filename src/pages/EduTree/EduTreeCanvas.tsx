@@ -286,7 +286,7 @@ function EduTreeCanvasInner() {
             area: block.area || 'unknown',
             isHighlighted,
             isComparisonHighlighted,
-            planningLens: isHighlighted ? selectedLens : null,
+            planningLens: isHighlighted ? selectedLens : isComparisonHighlighted ? comparisonLens : null,
             onCourseClick: handleCourseClick
           }
         };
@@ -503,12 +503,12 @@ function EduTreeCanvasInner() {
   
   useEffect(() => {
     if (primaryPath) {
-      const key = JSON.stringify({ n: primaryPath.nodes, e: primaryPath.edges });
+      const key = JSON.stringify({ n: primaryPath.nodeIds, e: primaryPath.edgeIds });
       if (key !== lastPrimaryRef.current) {
         lastPrimaryRef.current = key;
         
         // Performance cap: max 250 combined elements
-        const totalElements = primaryPath.nodes.length + primaryPath.edges.length;
+        const totalElements = primaryPath.nodeIds.length + primaryPath.edgeIds.length;
         if (totalElements > 250) {
           // Show warning toast only once per session
           const sessionKey = 'multipath_perf_warning_shown';
@@ -523,19 +523,19 @@ function EduTreeCanvasInner() {
         }
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Multipath] Primary path: ${primaryPath.nodes.length} nodes, ${primaryPath.edges.length} edges (${totalElements} total)`);
+          console.log(`[Multipath] Primary path: ${primaryPath.nodeIds.length} nodes, ${primaryPath.edgeIds.length} edges (${totalElements} total)`);
         }
         
         setHighlightedPrimary({
-          nodes: new Set(primaryPath.nodes),
-          edges: new Set(primaryPath.edges),
+          nodes: new Set(primaryPath.nodeIds),
+          edges: new Set(primaryPath.edgeIds),
         });
         
         // For backward compatibility with single-path mode
         if (!flags.eduTreeMultiPathOverlay) {
           setHighlightedPath({
-            nodes: new Set(primaryPath.nodes),
-            edges: new Set(primaryPath.edges),
+            nodes: new Set(primaryPath.nodeIds),
+            edges: new Set(primaryPath.edgeIds),
           });
         }
       }
@@ -545,27 +545,27 @@ function EduTreeCanvasInner() {
         setHighlightedPath(null);
       }
     }
-  }, [primaryPath?.nodes?.length, primaryPath?.edges?.length, flags.eduTreeMultiPathOverlay]);
+  }, [primaryPath?.nodeIds?.length, primaryPath?.edgeIds?.length, flags.eduTreeMultiPathOverlay]);
 
   useEffect(() => {
     if (comparisonPath && flags.eduTreeMultiPathOverlay) {
-      const key = JSON.stringify({ n: comparisonPath.nodes, e: comparisonPath.edges });
+      const key = JSON.stringify({ n: comparisonPath.nodeIds, e: comparisonPath.edgeIds });
       if (key !== lastComparisonRef.current) {
         lastComparisonRef.current = key;
         
         if (process.env.NODE_ENV === 'development') {
-          console.log(`[Multipath] Comparison path: ${comparisonPath.nodes.length} nodes, ${comparisonPath.edges.length} edges`);
+          console.log(`[Multipath] Comparison path: ${comparisonPath.nodeIds.length} nodes, ${comparisonPath.edgeIds.length} edges`);
         }
         
         setHighlightedComparison({
-          nodes: new Set(comparisonPath.nodes),
-          edges: new Set(comparisonPath.edges),
+          nodes: new Set(comparisonPath.nodeIds),
+          edges: new Set(comparisonPath.edgeIds),
         });
       }
     } else {
       setHighlightedComparison(null);
     }
-  }, [comparisonPath?.nodes?.length, comparisonPath?.edges?.length, flags.eduTreeMultiPathOverlay]);
+  }, [comparisonPath?.nodeIds?.length, comparisonPath?.edgeIds?.length, flags.eduTreeMultiPathOverlay]);
   
   useEffect(() => {
     if (flowNodes.length > 0) {
@@ -677,8 +677,8 @@ function EduTreeCanvasInner() {
     if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
       const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
       setHighlightedPath({
-        nodes: new Set(optimalPath.nodes),
-        edges: new Set(optimalPath.edges)
+        nodes: new Set(optimalPath.nodeIds),
+        edges: new Set(optimalPath.edgeIds)
       });
     }
   }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
@@ -906,8 +906,14 @@ function EduTreeCanvasInner() {
               <MultipathDebugPanel
                 primaryLens={selectedLens}
                 comparisonLens={comparisonLens}
-                primaryPath={primaryPath}
-                comparisonPath={comparisonPath}
+                primaryPath={primaryPath ? { 
+                  nodes: primaryPath.nodeIds, 
+                  edges: primaryPath.edgeIds 
+                } : null}
+                comparisonPath={comparisonPath ? { 
+                  nodes: comparisonPath.nodeIds, 
+                  edges: comparisonPath.edgeIds 
+                } : null}
                 isMultipathActive={flags.eduTreeMultiPathOverlay && !!comparisonLens}
               />
             </div>
