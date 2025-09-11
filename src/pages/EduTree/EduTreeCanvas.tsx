@@ -344,13 +344,10 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Bulletproof effective blocks with deduplication
+  // Always merge track seed when multipath is on (don't gate on counts)
   const effectiveBlocks = useMemo(() => {
     if (!flags.eduTreeMultiPathOverlay) return blocks;
-    const needFallback = blocks.length < 6 || gateEdges.length < 6;
-    if (!needFallback) return blocks;
-    
-    devOnce('fallback-seed', '[Multipath] Using fallback seed data');
+    // Always merge track seed while multipath is on (dedup by id)
     return dedupeById([
       ...blocks,
       ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
@@ -358,33 +355,26 @@ function EduTreeCanvasInner() {
         parent_block_id: null,
         rule_type: 'ALL' as const,
         credits_needed: null,
-        k: null
-      }))
+        k: null,
+      })),
     ]);
-  }, [blocks, gateEdges.length, flags.eduTreeMultiPathOverlay]);
+  }, [blocks, flags.eduTreeMultiPathOverlay]);
 
-  // Bulletproof effective gate edges with validation
   const effectiveGateEdges = useMemo(() => {
-    const base = gateEdges;
-    const needFallback = flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6);
-    const extra = needFallback ? LOCAL_FALLBACK_SEED.gateEdges : [];
-
-    // Create set of valid block IDs for filtering
     const validBlockIds = new Set(effectiveBlocks.map(b => String(b.id)));
-    
-    return [...base, ...extra]
+    return [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges]
       .filter(e => {
-        // Extract source block ID from gate ID
-        const sourceGateId = e.source_gate_id || `gate-${e.target_block_id}`;
-        const sourceBlockId = sourceGateId.replace('gate-', '');
+        // use gate-<source_block_id> everywhere for consistency
+        const sourceGateId = e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`;
+        const sourceBlockId = String(sourceGateId).replace('gate-', '');
         const targetId = String(e.target_block_id);
         return validBlockIds.has(sourceBlockId) && validBlockIds.has(targetId);
       })
       .map(e => ({
         ...e,
-        source_gate_id: e.source_gate_id ?? `gate-${e.target_block_id}`
+        source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`,
       }));
-  }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay, effectiveBlocks]);
+  }, [gateEdges, effectiveBlocks]);
 
   // Transform data for React Flow with crash protection
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
@@ -570,16 +560,17 @@ function EduTreeCanvasInner() {
 
     const nodes: Node[] = [...regularNodes, degreeNode];
 
-    // Create React Flow edges (only between blocks)
-    const regularEdges: Edge[] = viewMode === 'flow' ? effectiveGateEdges.map(gateEdge => {
-      const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-      const source = sourceBlock?.id ? String(sourceBlock.id) : null;
-      const target = String(gateEdge.target_block_id);
+    // Create React Flow edges (only between blocks) - build with block IDs 
+    const regularEdges: Edge[] = viewMode === 'flow' ? effectiveGateEdges.map(ge => {
+      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
+      const source = String(sourceGateId).replace('gate-', '');  // => block id
+      const target = String(ge.target_block_id);
+      if (!source || !target) return null;
       
-      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || 
-                        highlightedPrimary?.edges.has(String(gateEdge.id)) || false;
+      const isHighlighted = highlightedPath?.edges.has(String(ge.id)) || 
+                        highlightedPrimary?.edges.has(String(ge.id)) || false;
       const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
-                                    highlightedComparison?.edges.has(String(gateEdge.id)) || false;
+                                    highlightedComparison?.edges.has(String(ge.id)) || false;
       
       // Edge style precedence: primary > comparison > default
       const isInBothPaths = isHighlighted && isComparisonHighlighted;
@@ -591,11 +582,11 @@ function EduTreeCanvasInner() {
       else if (isComparisonHighlighted) edgeClassName = 'edge--comparison';
       else if (!finalHighlighted) edgeClassName = 'edge--dim';
 
-      return source ? {
-        id: String(gateEdge.id),
+      return {
+        id: String(ge.id ?? `${source}->${target}`),
         source,
         target,
-        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+        type: 'smoothstep',
         className: edgeClassName,
         data: {
           // Pass highlight sets for multipath styling
@@ -611,10 +602,7 @@ function EduTreeCanvasInner() {
           color: isHighlighted ? 'var(--primary)' : 
                  isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
         },
-        ...(flags.eduTreeLayoutV2 && {
-          pathOptions: { offset: 12 }
-        }),
-      } : null;
+      };
     }).filter(Boolean) as Edge[] : [];
 
     // Add edges to degree completion node
@@ -731,25 +719,40 @@ function EduTreeCanvasInner() {
     return m;
   }, [flowNodes]);
 
-  const setsForTrack = useCallback((tid: TrackId | null) => {
+  const setsForTrack = useCallback((tid: TrackId | null): { nodes: Set<string>, edges: Set<string> } => {
     if (!tid) return { nodes: new Set<string>(), edges: new Set<string>() };
-    const blockIds = TRACKS[tid]?.nodes || [];
-    const nodeIds = blockIds.map(b => rfNodeIdByBlockId.get(b)).filter(Boolean) as string[];
+    const track = TRACKS[tid];
+    if (!track) return { nodes: new Set<string>(), edges: new Set<string>() };
 
-    const nodeSet = new Set(nodeIds);
+    const rfNodes = track.nodes
+      .map(bid => rfNodeIdByBlockId.get(bid))
+      .filter(Boolean) as string[];
+
+    // Dev log: which block IDs didn't map to nodes
+    if (DEV) {
+      const missing = track.nodes.filter(bid => !rfNodeIdByBlockId.get(bid));
+      if (missing.length) devOnce(`missing-${tid}`, `[Track] Missing nodes for ${tid}`, { missing });
+    }
+
+    const nodeSet = new Set(rfNodes);
     const edgeSet = new Set(
       flowEdges
         .filter(e => nodeSet.has(String(e.source)) && nodeSet.has(String(e.target)))
         .map(e => String(e.id))
     );
+
     return { nodes: nodeSet, edges: edgeSet };
   }, [rfNodeIdByBlockId, flowEdges]);
 
   const primarySets = useMemo(() => setsForTrack(primaryTrack), [primaryTrack, setsForTrack]);
   const compareSets = useMemo(() => setsForTrack(comparisonTrack), [comparisonTrack, setsForTrack]);
 
-  useEffect(() => setHighlightedPrimary(primarySets.nodes.size ? primarySets : null), [primarySets]);
-  useEffect(() => setHighlightedComparison(compareSets.nodes.size ? compareSets : null), [compareSets]);
+  useEffect(() => { 
+    setHighlightedPrimary(primarySets.nodes.size ? primarySets : null); 
+  }, [primarySets]);
+  useEffect(() => { 
+    setHighlightedComparison(compareSets.nodes.size ? compareSets : null); 
+  }, [compareSets]);
   // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -1110,17 +1113,19 @@ function EduTreeCanvasInner() {
             </Badge>
             
             {/* Track Selector - always show when multipath flag is on */}
-            <CompareTracksBar
-              primary={primaryTrack}
-              comparison={comparisonTrack}
-              onPrimary={(t) => setPrimaryTrack(t as TrackId)}
-              onComparison={(t) => setComparisonTrack(t as TrackId | null)}
-            />
+            {flags.eduTreeMultiPathOverlay && (
+              <CompareTracksBar
+                primary={primaryTrack}
+                comparison={comparisonTrack}
+                onPrimary={(t) => setPrimaryTrack(t as TrackId)}
+                onComparison={(t) => setComparisonTrack(t as TrackId | null)}
+              />
+            )}
 
             {/* Empty state for multipath */}
             {flags.eduTreeMultiPathOverlay && comparisonTrack && !highlightedComparison && (
               <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded border">
-                No comparison path available for '{comparisonTrack}'. Add branched data or enable fallback seed.
+                No comparison path for "{TRACKS[comparisonTrack].name}". Check missing nodes in console or enable fallback seed.
               </div>
             )}
             
@@ -1258,7 +1263,7 @@ function EduTreeCanvasInner() {
               maxWidth: 400,
               zIndex: 999
             }}>
-              No comparison path available for '{comparisonTrack}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+              No comparison path available for '{TRACKS[comparisonTrack].name}'. Check missing nodes in console or enable fallback seed.
             </div>
           )}
           {/* Lane Background for educational context */}
@@ -1329,7 +1334,7 @@ function EduTreeCanvasInner() {
           {flags.eduTreeMultiPathOverlay && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
             <div className="absolute left-4 bottom-4 bg-muted/90 border border-border p-3 rounded-lg max-w-96 z-50">
               <div className="text-xs text-muted-foreground">
-                No comparison path available for '{comparisonTrack}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+                No comparison path available for '{TRACKS[comparisonTrack].name}'. Check missing nodes in console or enable fallback seed.
               </div>
             </div>
           )}
