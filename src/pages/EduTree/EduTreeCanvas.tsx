@@ -332,6 +332,23 @@ function EduTreeCanvasInner() {
     [primaryTrack, comparisonTrack]
   );
 
+  // Update legacy highlight states when tracks change
+  useEffect(() => {
+    if (primaryTrack) {
+      setHighlightedPrimary(branchingHighlightState.highlightedPrimary);
+      console.log('🎯 Primary track set:', primaryTrack, 'Nodes:', branchingHighlightState.highlightedPrimary?.nodes.size);
+    } else {
+      setHighlightedPrimary(null);
+    }
+    
+    if (comparisonTrack) {
+      setHighlightedComparison(branchingHighlightState.highlightedComparison);
+      console.log('🎯 Comparison track set:', comparisonTrack, 'Nodes:', branchingHighlightState.highlightedComparison?.nodes.size);
+    } else {
+      setHighlightedComparison(null);
+    }
+  }, [branchingHighlightState, primaryTrack, comparisonTrack]);
+
   // Stabilize flags - prevent render spam
   const didEnableFlagsRef = useRef(false);
   useEffect(() => {
@@ -758,6 +775,15 @@ function EduTreeCanvasInner() {
         highlightedComparison,
         branchingHighlightState
       );
+      
+      console.log('🎯 Flow elements created:', {
+        primaryTrack,
+        comparisonTrack,
+        nodeCount: result.nodes.length,
+        highlightedPrimarySize: highlightedPrimary?.nodes.size,
+        highlightedComparisonSize: highlightedComparison?.nodes.size,
+        branchingActive: branchingHighlightState.isMultipathActive
+      });
       processedNodes = safeArr(result.nodes);
       processedEdges = safeArr(result.edges);
     } catch (err) {
@@ -1208,11 +1234,15 @@ function EduTreeCanvasInner() {
               </Label>
             </div>
             
-            {/* Track comparison status */}
+            {/* Track comparison status with better visual indicators */}
             <div className="flex items-center space-x-2">
               {primaryTrack && comparisonTrack ? (
-                <Badge variant="default" className="text-xs bg-primary text-primary-foreground">
-                  Comparing Tracks
+                <Badge variant="default" className="text-xs bg-green-600 text-white animate-pulse">
+                  Comparing: {TRACKS[primaryTrack].name} vs {TRACKS[comparisonTrack].name}
+                </Badge>
+              ) : primaryTrack ? (
+                <Badge variant="secondary" className="text-xs bg-blue-600 text-white">
+                  Viewing: {TRACKS[primaryTrack].name}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-xs">
@@ -1222,7 +1252,7 @@ function EduTreeCanvasInner() {
             </div>
             
             <Badge variant="outline" className="text-xs">
-              {viewMode === 'flow' ? 'Flow View' : 'Board View'}
+              {viewMode === 'flow' ? '🌳 Flow View' : '📋 Board View'}
             </Badge>
             
             {/* Track comparison controls - always show for multipath route */}

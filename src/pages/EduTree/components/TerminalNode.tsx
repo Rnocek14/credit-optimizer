@@ -2,7 +2,7 @@ import React from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GraduationCap, Star } from 'lucide-react';
 import { getTerminalHighlightClass } from '../utils/trackHighlighting';
-import { BranchingHighlightState } from '../core/branchingHighlighting';
+import { BranchingHighlightState, getTerminalHighlightClass as getBranchingTerminalHighlightClass } from '../core/branchingHighlighting';
 
 interface TerminalNodeData {
   label?: string;
@@ -26,10 +26,17 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
+  // Enhanced highlighting using branching state  
+  const branchingState = terminalData.branchingHighlightState;
+  
   let highlightClass = '';
   const isMultipathActive = terminalData.isMultipathActive;
   
-  if (isMultipathActive && highlightedPrimaryNodes) {
+  if (branchingState) {
+    // Use new branching highlight system - it expects 2 params: nodeId and state
+    highlightClass = getBranchingTerminalHighlightClass(id, branchingState);
+  } else if (isMultipathActive && highlightedPrimaryNodes) {
+    // Fallback to legacy system
     if (highlightedComparisonNodes) {
       // Dual track comparison mode
       if (inPrimary && inCompare) highlightClass = 'terminal--both';
@@ -38,8 +45,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
       else highlightClass = 'terminal--dim'; 
     } else {
       // Single track mode
-      if (inPrimary) highlightClass = 'terminal--primary';
-      else highlightClass = 'terminal--dim';
+      highlightClass = inPrimary ? 'terminal--primary' : 'terminal--dim';
     }
   }
 

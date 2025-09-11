@@ -54,12 +54,29 @@ export function applyBranchingLayout(
 
       // Fallback positioning for nodes not in structure
       const level = Number(node.data?.level_year) || 0;
+      const area = node.data?.area || 'unknown';
+      
+      // Enhanced fallback with better spacing
+      let x = level * opts.nodeSpacing.horizontal;
+      let y = opts.centerY;
+      
+      // Special handling for different areas
+      if (area === 'general-education') {
+        y = opts.centerY - 50; // Slightly above center
+      } else if (area === 'mathematics') {
+        y = opts.centerY + 50; // Slightly below center
+      } else if (area === 'specialization') {
+        // Spread specializations vertically
+        const specializations = ['b301', 'b302', 'b331', 'b311', 'b321'];
+        const index = specializations.indexOf(node.id);
+        if (index >= 0) {
+          y = opts.centerY + (index - 2) * 100; // Center around middle
+        }
+      }
+      
       return {
         ...node,
-        position: { 
-          x: level * opts.nodeSpacing.horizontal, 
-          y: opts.centerY 
-        }
+        position: { x, y }
       };
     });
 

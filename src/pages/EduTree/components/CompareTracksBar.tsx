@@ -41,7 +41,11 @@ export function CompareTracksBar({
           <label className="text-sm font-medium text-muted-foreground">Primary:</label>
           <select
             value={primary ?? ''}
-            onChange={e => onPrimary((e.target.value || null) as TrackId | null)}
+            onChange={e => {
+              const value = (e.target.value || null) as TrackId | null;
+              console.log('🎯 Primary track selected:', value);
+              onPrimary(value);
+            }}
             className="border border-border rounded px-3 py-1.5 text-sm bg-background min-w-[140px]"
           >
             <option value="">— Select Track —</option>
@@ -62,7 +66,11 @@ export function CompareTracksBar({
           <label className="text-sm font-medium text-muted-foreground">Compare:</label>
           <select
             value={comparison ?? ''}
-            onChange={e => onComparison((e.target.value || null) as TrackId | null)}
+            onChange={e => {
+              const value = (e.target.value || null) as TrackId | null;
+              console.log('🎯 Comparison track selected:', value);
+              onComparison(value);
+            }}
             className="border border-border rounded px-3 py-1.5 text-sm bg-background min-w-[140px]"
             disabled={!primary}
           >
