@@ -84,9 +84,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   const getNodeColor = () => {
     // Enhanced multipath-aware styling with string-coerced ID checks
     const key = String(node.id);
-    // Note: These will be replaced with actual highlight state from parent component
-    const inPrimary = false; // !!highlightedPrimary?.nodes?.has(key);
-    const inCompare = false; // !!highlightedComparison?.nodes?.has(key);
+    const inPrimary = !!data?.highlightedPrimaryNodes?.has(key);
+    const inCompare = !!data?.highlightedComparisonNodes?.has(key);
     
     let baseColor = '';
     if (inPrimary) {

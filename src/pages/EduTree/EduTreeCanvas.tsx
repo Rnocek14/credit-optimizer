@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 // Layout lifecycle removed - using simplified system
@@ -948,6 +949,20 @@ function EduTreeCanvasInner() {
                 onComparisonLensChange={handleComparisonLensChange}
               />
             )}
+            
+            {/* Dev Snapshot Button */}
+            {DEV && flags.eduTreeMultiPathOverlay && (
+              <button
+                onClick={() => {
+                  const snapshot = (window as any).__EDUTREE__?.getSnapshot?.();
+                  console.log('[Multipath Snapshot]', snapshot);
+                }}
+                className="px-2 py-1 text-xs bg-muted rounded border"
+                title="Log multipath snapshot to console"
+              >
+                📊 Snapshot
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -973,6 +988,10 @@ function EduTreeCanvasInner() {
           onInit={onInit}
           fitView
           fitViewOptions={{ padding: 0.2, duration: 300 }}
+          className={cn(
+            'react-flow-canvas',
+            flags.eduTreeMultiPathOverlay && !!comparisonLens ? 'multipath-active' : undefined
+          )}
           minZoom={0.3}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}

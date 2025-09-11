@@ -207,7 +207,8 @@ export function findOptimalPath(
     console.log(`[PathScoring] Selected optimal path: ${optimalPath.nodeIds.length} nodes`);
     console.log('[PathScoring] Selected path IDs (first 6):', {
       nodes: optimalPath.nodeIds.slice(0, 6),
-      edges: optimalPath.edgeIds.slice(0, 6)
+      edges: optimalPath.edgeIds.slice(0, 6),
+      lens
     });
   }
   
