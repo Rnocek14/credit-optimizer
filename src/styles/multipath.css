@@ -7,12 +7,23 @@
   filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.6));
 }
 
+.react-flow__edge.edge--primary path {
+  stroke: oklch(var(--primary));
+  stroke-width: 2.5;
+}
+
 /* Comparison path styling - dashed with amber color */
 .edge--comparison {
   stroke: hsl(var(--amber-500)) !important;
   stroke-width: 3px !important;
   stroke-dasharray: 8,4 !important;
   filter: drop-shadow(0 0 4px hsl(var(--amber-500) / 0.6));
+}
+
+.react-flow__edge.edge--comparison path {
+  stroke: oklch(var(--amber-500));
+  stroke-width: 2.5;
+  stroke-dasharray: 6 6;
 }
 
 .edge--comparison [class*="react-flow__edge-path"] {
@@ -72,6 +83,10 @@
 .edge--dim {
   opacity: 0.15 !important;
   stroke-width: 1px !important;
+}
+
+.react-flow__edge.edge--dim path {
+  opacity: 0.35;
 }
 
 /* Dimmed elements when multipath is active */

@@ -104,12 +104,18 @@ function createFlowElements(
         return null;
       }
 
+      // Use proper terminal renderer for the end node
+      const isTerminal = (block.area === 'terminal') || (String(block.id) === 'degree-completion');
+
       return {
         id: String(block.id),
-        type: 'blockGroup',
+        // Use real terminal renderer for the end node
+        type: isTerminal ? 'terminalNode' : 'blockGroup',
         position: { x: (block.level_year || 0) * 320, y: index * 200 },
         data: {
           block,
+          // always prefer the block title for display
+          displayTitle: block.title ?? 'Degree',
           completedCourseIds: new Set(),
           isUnlocked: true,
           progress: { completed: 0, required: block.courses?.length || 0 },
@@ -123,21 +129,28 @@ function createFlowElements(
       };
     }).filter(Boolean) as Node[];
 
-    // Create edges safely
-    const edges: Edge[] = safeEdges.map(gateEdge => {
-      // Extract source from gate ID by removing 'gate-' prefix
-      const sourceGateId = gateEdge.source_gate_id || `gate-${gateEdge.target_block_id}`;
-      const sourceBlockId = sourceGateId.replace('gate-', '');
-      const target = String(gateEdge.target_block_id);
-      
-      if (!sourceBlockId || !target) return null;
+    // Create edges safely - normalize to block ids for highlight matching
+    const edges: Edge[] = safeEdges.map(ge => {
+      // normalize to block ids
+      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
+      const source = String(sourceGateId).replace('gate-', ''); // block id
+      const target = String(ge.target_block_id);                // block id
+
+      if (!source || !target) return null;
 
       return {
-        id: String(gateEdge.id),
-        source: sourceBlockId,
-        target,
+        id: String(ge.id ?? `${source}->${target}`),
+        source, // <- block id
+        target, // <- block id
         type: 'smoothstep',
-        markerEnd: { type: MarkerType.Arrow }
+        className: '', // Will be set during highlight processing
+        data: {
+          highlightedPrimaryEdges: null,
+          highlightedComparisonEdges: null,
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+        },
       };
     }).filter(Boolean) as Edge[];
 
