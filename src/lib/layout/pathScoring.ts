@@ -96,30 +96,31 @@ export function findAlternativePaths(
     let selectedBlocks: BlockWithCourses[] = [];
     
     if (lens === 'fastest') {
-      // Fastest: core + web/frontend + terminal
+      // Fastest: core + web/frontend + terminal, prefer lower years but include Year 3
       selectedBlocks = allBlocks
         .filter(block => {
           const isCore = block.area === 'core';
           const isWeb = block.title?.toLowerCase().includes('web') || 
                        block.title?.toLowerCase().includes('frontend');
           const isTerminal = block.area === 'terminal';
-          return isCore || isWeb || isTerminal;
+          const isSpecialization = block.area === 'specialization';
+          return isCore || isWeb || isTerminal || isSpecialization;
         })
-        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+        .sort((a, b) => {
+          // Sort by level year but ensure we get progression
+          const aYear = a.level_year || 0;
+          const bYear = b.level_year || 0;
+          return aYear - bYear;
+        });
       
-      // Fallback: if < 3 blocks, broaden to include specialization
-      if (selectedBlocks.length < 3) {
+      // Ensure we have enough blocks for a valid path
+      if (selectedBlocks.length < 4) {
         selectedBlocks = allBlocks
-          .filter(block => {
-            const isCore = block.area === 'core';
-            const isSpecialization = block.area === 'specialization';
-            const isTerminal = block.area === 'terminal';
-            return isCore || isSpecialization || isTerminal;
-          })
+          .filter(block => block.area !== 'degree-completion')
           .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
       }
     } else if (lens === 'cheapest') {
-      // Cheapest: gen ed + data + core + terminal
+      // Cheapest: gen ed + data + core + terminal, prefer alternative credit
       selectedBlocks = allBlocks
         .filter(block => {
           const isGenEd = block.area === 'general-education';
@@ -127,50 +128,40 @@ export function findAlternativePaths(
                         block.title?.toLowerCase().includes('analytics');
           const isCore = block.area === 'core';
           const isTerminal = block.area === 'terminal';
-          return isGenEd || isData || isCore || isTerminal;
+          const isSpecialization = block.area === 'specialization';
+          return isGenEd || isData || isCore || isTerminal || isSpecialization;
         })
         .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
       
-      // Fallback: if < 3 blocks, broaden to include foundation
-      if (selectedBlocks.length < 3) {
+      // Fallback to broader selection if needed
+      if (selectedBlocks.length < 4) {
         selectedBlocks = allBlocks
-          .filter(block => {
-            const isGenEd = block.area === 'general-education';
-            const isFoundation = block.area === 'foundation';
-            const isCore = block.area === 'core';
-            const isSpecialization = block.area === 'specialization';
-            const isTerminal = block.area === 'terminal';
-            return isGenEd || isFoundation || isCore || isSpecialization || isTerminal;
-          })
+          .filter(block => block.area !== 'degree-completion')
           .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
       }
     } else if (lens === 'roi') {
-      // ROI: mathematics + core + specialization + terminal
+      // ROI: mathematics + core + specialization + terminal, strategic value focus
       selectedBlocks = allBlocks
         .filter(block => {
           const isMath = block.area === 'mathematics';
           const isCore = block.area === 'core';
           const isSpecialization = block.area === 'specialization';
           const isTerminal = block.area === 'terminal';
-          return isMath || isCore || isSpecialization || isTerminal;
+          const isSystems = block.title?.toLowerCase().includes('systems') ||
+                           block.title?.toLowerCase().includes('devops');
+          return isMath || isCore || isSpecialization || isTerminal || isSystems;
         })
         .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
       
-      // Fallback: if < 3 blocks, broaden to include foundation
-      if (selectedBlocks.length < 3) {
+      // Fallback to broader selection if needed
+      if (selectedBlocks.length < 4) {
         selectedBlocks = allBlocks
-          .filter(block => {
-            const isMath = block.area === 'mathematics';
-            const isFoundation = block.area === 'foundation';
-            const isCore = block.area === 'core';
-            const isSpecialization = block.area === 'specialization';
-            const isTerminal = block.area === 'terminal';
-            return isMath || isFoundation || isCore || isSpecialization || isTerminal;
-          })
+          .filter(block => block.area !== 'degree-completion')
           .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
       }
     }
 
+    // Only create path if we have sufficient blocks
     if (selectedBlocks.length >= 4) {
       // Map block IDs to React Flow node IDs
       const pathNodes: string[] = [];
@@ -198,6 +189,16 @@ export function findAlternativePaths(
           score,
           lens
         });
+
+        // Dev logging for selected path IDs
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[PathScoring] Selected ${lens} path (strategy ${strategyIndex}):`, {
+            nodes: pathNodes.slice(0, 6),
+            edges: pathEdges.slice(0, 6),
+            score: score.toFixed(2),
+            hasYear3: hasY3
+          });
+        }
       }
     }
   }

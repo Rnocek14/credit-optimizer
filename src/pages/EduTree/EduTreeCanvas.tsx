@@ -151,33 +151,29 @@ function EduTreeCanvasInner() {
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
-  // URL sync for comparison lens with default
+  // Default comparison lens on /edu-treemulti
   useEffect(() => {
     if (!flags.eduTreeMultiPathOverlay) return;
-    
-    const searchParams = new URLSearchParams(window.location.search);
-    let compareParam = searchParams.get('compare') as PlanningLens | null;
-    
-    if (!compareParam || !['fastest', 'cheapest', 'roi'].includes(compareParam)) {
-      compareParam = 'cheapest'; // default
-      searchParams.set('compare', compareParam);
-      window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
+    const sp = new URLSearchParams(window.location.search);
+    let compare = sp.get('compare') as PlanningLens | null;
+    if (!compare || !['fastest','cheapest','roi'].includes(compare)) {
+      compare = 'cheapest';
+      sp.set('compare', compare);
+      window.history.replaceState({}, '', `${window.location.pathname}?${sp.toString()}`);
     }
-    setComparisonLens(compareParam);
+    setComparisonLens(compare as PlanningLens);
   }, [flags.eduTreeMultiPathOverlay]);
 
   // Update URL when comparison lens changes
   const handleComparisonLensChange = useCallback((lens: PlanningLens | null) => {
     setComparisonLens(lens);
     
-    const url = new URL(window.location.href);
-    if (lens) {
-      url.searchParams.set('compare', lens);
-    } else {
-      url.searchParams.delete('compare');
-    }
-    
-    window.history.replaceState({}, '', url.toString());
+    try {
+      const url = new URL(window.location.href);
+      if (lens) url.searchParams.set('compare', lens);
+      else url.searchParams.delete('compare');
+      window.history.replaceState({}, '', url.toString());
+    } catch {}
   }, []);
 
   // Handler for course click
@@ -1254,6 +1250,15 @@ function EduTreeCanvasInner() {
                 id="mp-snap-pre" 
                 className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-muted/50 p-2 rounded"
               ></pre>
+            </div>
+          )}
+
+          {/* Empty state message */}
+          {flags.eduTreeMultiPathOverlay && comparisonLens && (!comparisonPath || comparisonPath.nodeIds.length === 0) && (
+            <div className="absolute left-4 bottom-4 bg-muted/90 border border-border p-3 rounded-lg max-w-96 z-50">
+              <div className="text-xs text-muted-foreground">
+                No comparison path available for '{comparisonLens}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+              </div>
             </div>
           )}
 
