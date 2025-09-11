@@ -30,7 +30,8 @@ export function BlockGroup(props: NodeProps) {
     isDegreeComplete = false,
     onCourseClick,
     highlightedPrimaryNodes,
-    highlightedComparisonNodes
+    highlightedComparisonNodes,
+    isMultipathActive = false
   } = props.data as {
     block: BlockWithCourses;
     completedCourseIds: Set<string>;
@@ -46,20 +47,18 @@ export function BlockGroup(props: NodeProps) {
     onCourseClick?: (course: any) => void;
     highlightedPrimaryNodes?: Set<string>;
     highlightedComparisonNodes?: Set<string>;
+    isMultipathActive?: boolean;
   };
   
-  // Determine highlight status from highlight sets
+  // Determine highlight status - only apply if multipath is active AND both tracks selected
   const key = String(props.id);
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
   // Only apply highlighting when multipath is ACTIVELY comparing tracks
   let nodeHighlightClass = '';
-  const hasHighlightSets = highlightedPrimaryNodes && highlightedComparisonNodes;
-  const hasActiveComparison = hasHighlightSets && 
-    (highlightedPrimaryNodes.size > 0 || highlightedComparisonNodes.size > 0);
   
-  if (hasActiveComparison) {
+  if (isMultipathActive && highlightedPrimaryNodes && highlightedComparisonNodes) {
     if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
     else if (inPrimary) nodeHighlightClass = 'node--primary'; 
     else if (inCompare) nodeHighlightClass = 'node--comparison';
@@ -67,8 +66,8 @@ export function BlockGroup(props: NodeProps) {
   }
 
   // Debug logging for multipath highlighting
-  if (process.env.NODE_ENV === 'development' && hasActiveComparison) {
-    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}, hasActiveComparison=${hasActiveComparison}`);
+  if (process.env.NODE_ENV === 'development' && isMultipathActive) {
+    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}, isMultipathActive=${isMultipathActive}`);
   }
   
   const [showAltCredits, setShowAltCredits] = useState(false);

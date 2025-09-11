@@ -1,23 +1,22 @@
-/* Clean multipath styles - only apply when container has .multipath-active */
+/* Multipath visualization styles - ONLY apply when .multipath-active class is present */
 
-/* Normal state - all nodes should be bright and visible by default */
+/* Base styles - ensure nodes are bright by default */
 .node {
-  transition: opacity 0.15s, box-shadow 0.15s, border-color 0.15s, transform 0.15s;
   opacity: 1;
+  transition: all 0.3s ease;
 }
 
 .terminal {
-  border-radius: 9999px;
-  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  padding: 1rem;
   font-weight: 600;
-  transition: all 0.15s;
-  opacity: 1;
+  transition: all 0.3s ease;
 }
 
-/* Only apply multipath styles when explicitly enabled via .multipath-active container */
+/* Multipath-specific node styling - CRITICAL: only when .multipath-active is present on container */
 .multipath-active .node--dim {
-  opacity: 0.35;
-  filter: grayscale(25%);
+  opacity: 0.2;
+  filter: grayscale(70%);
   transform: scale(0.95);
 }
 
@@ -49,7 +48,7 @@
 
 /* Terminal node styles - only when multipath is active */
 .multipath-active .terminal--dim {
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 .multipath-active .terminal--primary {
@@ -74,7 +73,7 @@
 }
 
 .multipath-active .edge--dim {
-  opacity: 0.15;
+  opacity: 0.1;
   stroke-width: 1px;
 }
 

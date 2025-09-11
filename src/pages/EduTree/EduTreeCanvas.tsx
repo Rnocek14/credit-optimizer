@@ -116,8 +116,8 @@ function createFlowElements(
         position: { x: (block.level_year || 0) * 320, y: index * 200 },
         data: {
           block,
-          // always prefer the block title for display
-          displayTitle: block.title ?? 'Degree',
+          // always prefer the block title for display  
+          displayTitle: block.title ?? (block.area === 'terminal' ? 'B.S. Software Engineering' : 'Degree'),
           completedCourseIds: new Set(),
           isUnlocked: true,
           progress: { completed: 0, required: block.courses?.length || 0 },
@@ -156,17 +156,18 @@ function createFlowElements(
       };
     }).filter(Boolean) as Edge[];
 
-    // Pass highlight sets to processed nodes and edges
+    // Pass highlight sets to processed nodes - only when both tracks selected  
     const nodesWithHighlights = nodes.map(n => ({
       ...n,
       data: {
         ...n.data,
-        highlightedPrimaryNodes: highlightedPrimary?.nodes ?? null,
-        highlightedComparisonNodes: highlightedComparison?.nodes ?? null,
+        highlightedPrimaryNodes: (highlightedPrimary && highlightedComparison) ? highlightedPrimary?.nodes : null,
+        highlightedComparisonNodes: (highlightedPrimary && highlightedComparison) ? highlightedComparison?.nodes : null,
+        isMultipathActive: !!(highlightedPrimary && highlightedComparison),
       },
     }));
 
-    // Create edges with proper className based on highlights
+    // Create edges with proper className based on highlights - ONLY when both tracks selected
     const edgesWithHighlights: Edge[] = safeEdges.map(ge => {
       const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
       const source = String(sourceGateId).replace('gate-', '');
@@ -175,14 +176,18 @@ function createFlowElements(
       if (!source || !target) return null;
 
       const edgeId = String(ge.id ?? `${source}->${target}`);
-      const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
-      const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
       
+      // Only apply multipath edge styling when both tracks are selected
       let edgeClass = 'edge';
-      if (isPrimary && isCompare) edgeClass += ' edge--both';
-      else if (isPrimary) edgeClass += ' edge--primary';
-      else if (isCompare) edgeClass += ' edge--comparison';  
-      else edgeClass += ' edge--dim';
+      if (highlightedPrimary && highlightedComparison) {
+        const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
+        const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
+        
+        if (isPrimary && isCompare) edgeClass += ' edge--both';
+        else if (isPrimary) edgeClass += ' edge--primary';
+        else if (isCompare) edgeClass += ' edge--comparison';  
+        else edgeClass += ' edge--dim';
+      }
 
       return {
         id: edgeId,
@@ -310,7 +315,7 @@ function EduTreeCanvasInner() {
   // State for path highlighting (legacy for single-path mode)
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   
-  // Track-based multipath state - start with NO tracks selected
+  // Multi-path visualization state - always available on this route
   const [primaryTrack, setPrimaryTrack] = useState<TrackId | null>(null);
   const [comparisonTrack, setComparisonTrack] = useState<TrackId | null>(null);
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
@@ -561,9 +566,10 @@ function EduTreeCanvasInner() {
             isComparisonHighlighted,
             planningLens: isHighlighted ? primaryTrack : isComparisonHighlighted ? comparisonTrack : null,
             onCourseClick: handleCourseClick,
-            // Pass highlight sets for multipath styling
-            highlightedPrimaryNodes: highlightedPrimary?.nodes ?? null,
-            highlightedComparisonNodes: highlightedComparison?.nodes ?? null,
+            // Pass highlight sets for multipath styling - only when both tracks selected
+            highlightedPrimaryNodes: (primaryTrack && comparisonTrack) ? (highlightedPrimary?.nodes ?? null) : null,
+            highlightedComparisonNodes: (primaryTrack && comparisonTrack) ? (highlightedComparison?.nodes ?? null) : null,
+            isMultipathActive: !!(primaryTrack && comparisonTrack),
           }
         };
       })
@@ -589,6 +595,7 @@ function EduTreeCanvasInner() {
       position: { x: 5 * 320, y: 0 }, // Position at Year 5
       data: {
         label: 'B.S. Software Engineering',
+        displayTitle: 'B.S. Software Engineering',
         isEligible: isDegreeUnlocked || false,
         degreeType: 'Bachelor of Science',
         credits: totalCourses * 3, // Approximate total credits
@@ -613,7 +620,11 @@ function EduTreeCanvasInner() {
         isHighlighted: false,
         planningLens: null,
         isDegreeNode: true,
-        isDegreeComplete
+        isDegreeComplete,
+        // Pass multipath data to terminal node
+        highlightedPrimaryNodes: (primaryTrack && comparisonTrack) ? (highlightedPrimary?.nodes ?? null) : null,
+        highlightedComparisonNodes: (primaryTrack && comparisonTrack) ? (highlightedComparison?.nodes ?? null) : null,
+        isMultipathActive: !!(primaryTrack && comparisonTrack),
       }
     };
 

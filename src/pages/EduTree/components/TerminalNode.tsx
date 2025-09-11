@@ -14,20 +14,19 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     displayTitle?: string;
     highlightedPrimaryNodes?: Set<string>;
     highlightedComparisonNodes?: Set<string>;
+    isMultipathActive?: boolean;
   };
   const { label, isEligible = false, degreeType, credits, displayTitle, highlightedPrimaryNodes, highlightedComparisonNodes } = terminalData;
   
-  // Determine highlight status - only apply if we have highlight sets
+  // Determine highlight status - only apply if multipath is active AND both tracks selected
   const key = String(id);
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
   let highlightClass = '';
-  const hasHighlightSets = highlightedPrimaryNodes && highlightedComparisonNodes;
-  const hasActiveComparison = hasHighlightSets && 
-    (highlightedPrimaryNodes.size > 0 || highlightedComparisonNodes.size > 0);
-    
-  if (hasActiveComparison) {
+  const isMultipathActive = terminalData.isMultipathActive;
+  
+  if (isMultipathActive && highlightedPrimaryNodes && highlightedComparisonNodes) {
     if (inPrimary && inCompare) highlightClass = 'terminal--both';
     else if (inPrimary) highlightClass = 'terminal--primary';
     else if (inCompare) highlightClass = 'terminal--comparison';
@@ -35,7 +34,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   }
 
   // Debug logging for multipath highlighting
-  if (process.env.NODE_ENV === 'development' && hasActiveComparison) {
+  if (process.env.NODE_ENV === 'development' && isMultipathActive) {
     console.log(`TerminalNode ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${highlightClass}`);
   }
 
@@ -67,7 +66,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">{String(displayTitle || label || 'Degree Completion')}</h3>
+          <h3 className="font-semibold text-foreground">{String(displayTitle || label || degreeType || 'B.S. Software Engineering')}</h3>
           {degreeType && (
             <p className="text-sm text-muted-foreground">{String(degreeType)}</p>
           )}
