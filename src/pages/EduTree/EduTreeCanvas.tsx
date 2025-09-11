@@ -14,6 +14,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
+import './styles/track-highlights.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -48,6 +49,9 @@ import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
+import { TrackSelector } from './components/TrackSelector';
+import { TrackValidator, runTrackAudits } from './components/TrackValidator';
+import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './data/trackDefinitions';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
@@ -74,6 +78,15 @@ function EduTreeCanvasInner() {
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const layoutInProgressRef = useRef(false);
+  
+  // Track comparison state
+  const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(
+    flags.eduTreeMultiPathOverlay ? TRACK_DEFINITIONS[0] : undefined
+  );
+  const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>();
+  const [comparisonEnabled, setComparisonEnabled] = useState(false);
+  const [showTrackValidator, setShowTrackValidator] = useState(false);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Modal state for course details
   const [selectedCourse, setSelectedCourse] = useState<EduCourse | null>(null);
@@ -735,7 +748,7 @@ function EduTreeCanvasInner() {
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
           nodes={nodes}
-          edges={visibleEdges}
+          edges={flags.eduTreeStaggeredEdgesV2 ? visibleEdges : edges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
@@ -793,6 +806,48 @@ function EduTreeCanvasInner() {
           )}
         </ReactFlow>
       </div>
+
+      {/* Track comparison UI */}
+      {flags.eduTreeMultiPathOverlay && (
+        <>
+          <TrackSelector
+            primaryTrack={primaryTrack}
+            comparisonTrack={comparisonTrack}
+            onPrimaryTrackChange={setPrimaryTrack}
+            onComparisonTrackChange={setComparisonTrack}
+            comparisonEnabled={comparisonEnabled}
+            onComparisonToggle={(enabled) => {
+              setComparisonEnabled(enabled);
+              if (!enabled) {
+                setComparisonTrack(undefined);
+              }
+            }}
+            isVisible={flags.eduTreeMultiPathOverlay}
+          />
+
+          <TrackValidator
+            nodes={nodes}
+            edges={edges}
+            primaryTrack={primaryTrack}
+            comparisonTrack={comparisonTrack}
+            isVisible={showTrackValidator && flags.eduTreeMultiPathOverlay}
+          />
+
+          {/* Development toggle for validator */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTrackValidator(!showTrackValidator)}
+                className="bg-background/90 backdrop-blur-sm text-xs"
+              >
+                {showTrackValidator ? 'Hide' : 'Show'} Track Validator
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Outcome Panel */}
       {flags.eduTreeOutcomes && (

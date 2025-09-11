@@ -1,0 +1,156 @@
+/* Track comparison highlight styles */
+
+/* Base node and edge classes */
+.node {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.edge {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Node highlight modifiers */
+.node--primary {
+  border: 3px solid #007bff !important;
+  background: #e7f1ff !important;
+  box-shadow: 0 0 12px rgba(0, 123, 255, 0.3) !important;
+}
+
+.node--comparison {
+  border: 3px dashed #ff9300 !important;
+  background: #fff5e6 !important;
+  box-shadow: 0 0 12px rgba(255, 147, 0, 0.3) !important;
+}
+
+.node--both {
+  border: 4px solid #6f42c1 !important;
+  background: linear-gradient(135deg, #f5e6ff, #e7f1ff) !important;
+  box-shadow: 0 0 16px rgba(111, 66, 193, 0.4) !important;
+}
+
+.node--dim {
+  opacity: 0.25 !important;
+  filter: grayscale(50%) !important;
+}
+
+/* Edge highlight modifiers */
+.react-flow__edge.edge--primary path {
+  stroke: #007bff !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 4px rgba(0, 123, 255, 0.3)) !important;
+}
+
+.react-flow__edge.edge--comparison path {
+  stroke: #ff9300 !important;
+  stroke-width: 3px !important;
+  stroke-dasharray: 8 4 !important;
+  filter: drop-shadow(0 0 4px rgba(255, 147, 0, 0.3)) !important;
+}
+
+.react-flow__edge.edge--both path {
+  stroke: #6f42c1 !important;
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 6px rgba(111, 66, 193, 0.4)) !important;
+}
+
+.react-flow__edge.edge--dim path {
+  stroke: #ccc !important;
+  stroke-opacity: 0.25 !important;
+  stroke-width: 1px !important;
+}
+
+/* Edge markers (arrows) */
+.react-flow__edge.edge--primary .react-flow__edge-path {
+  marker-end: url(#react-flow__arrowclosed-primary) !important;
+}
+
+.react-flow__edge.edge--comparison .react-flow__edge-path {
+  marker-end: url(#react-flow__arrowclosed-comparison) !important;
+}
+
+.react-flow__edge.edge--both .react-flow__edge-path {
+  marker-end: url(#react-flow__arrowclosed-both) !important;
+}
+
+/* Hover effects for highlighted elements */
+.node--primary:hover,
+.node--comparison:hover,
+.node--both:hover {
+  transform: scale(1.02) !important;
+  z-index: 100 !important;
+}
+
+/* Focus states for accessibility */
+.node--primary:focus,
+.node--comparison:focus,
+.node--both:focus {
+  outline: 3px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+
+/* Animation for track transitions */
+@keyframes track-highlight-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.node--primary,
+.node--comparison,
+.node--both {
+  animation: track-highlight-in 0.3s ease-out;
+}
+
+/* Performance optimization for large graphs */
+.react-flow__renderer {
+  will-change: transform;
+}
+
+.node,
+.react-flow__edge {
+  will-change: opacity, transform;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .node--primary {
+    background: #1a365d !important;
+    border-color: #3182ce !important;
+  }
+  
+  .node--comparison {
+    background: #2d1b00 !important;
+    border-color: #ed8936 !important;
+  }
+  
+  .node--both {
+    background: linear-gradient(135deg, #2d1b69, #1a365d) !important;
+    border-color: #9f7aea !important;
+  }
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .node--primary,
+  .node--comparison {
+    border-width: 2px !important;
+  }
+  
+  .node--both {
+    border-width: 3px !important;
+  }
+  
+  .react-flow__edge.edge--primary path,
+  .react-flow__edge.edge--comparison path {
+    stroke-width: 2px !important;
+  }
+  
+  .react-flow__edge.edge--both path {
+    stroke-width: 3px !important;
+  }
+}
