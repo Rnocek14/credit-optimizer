@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation } from 'react-router-dom';
 import { 
   ReactFlow, 
   Node, 
@@ -15,20 +14,16 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
-import '../../styles/multipath-clean.css';
-import '../../styles/multipath-convergence.css';
-import '../../styles/branching-hierarchy.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
 // Layout lifecycle removed - using simplified system
 import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
-import { findOptimalPath, findComparisonPath } from '@/lib/layout/pathScoring';
+import { findOptimalPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useStaggeredEdgesV2 } from '@/hooks/useStaggeredEdgesV2';
 import { useDragGuard } from '@/components/ui/drag-guard';
@@ -56,236 +51,6 @@ import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
-import { MultipathDebugPanel } from './components/MultipathDebugPanel';
-import { EmptyTrackState } from './components/EmptyTrackState';
-import { TRACKS, TrackId } from './tracks';
-import { CompareTracksBar } from './components/CompareTracksBar';
-import { getTrackBranchingDebugInfo, debugTrackHighlighting } from './utils/trackValidation';
-import { applyBranchingLayout } from './core/branchingLayout';
-import { 
-  createBranchingHighlightState, 
-  getNodeHighlightClass,
-  getTerminalHighlightClass,
-  getEdgeHighlightClass,
-  BranchingHighlightState
-} from './core/branchingHighlighting';
-
-const DEV = process.env.NODE_ENV !== 'production';
-const onceKeys = new Set<string>();
-function devOnce(key: string, msg: string, data?: any) {
-  if (!DEV) return;
-  if (onceKeys.has(key)) return;
-  onceKeys.add(key);
-  // eslint-disable-next-line no-console
-  console.log(msg, data ?? '');
-}
-
-// Utility functions for crash prevention
-const safeArr = <T,>(x: T[] | undefined | null): T[] => Array.isArray(x) ? x : [];
-
-// Deduplication helper
-function dedupeById<T extends { id: string | number }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  return items.filter(item => {
-    const key = String(item.id);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-// Create flow elements with crash protection
-function createFlowElements(
-  blocks: BlockWithCourses[],
-  gateEdges: GateEdge[],
-  coursesByBlock: Map<string, EduCourse[]>,
-  flags: any,
-  highlightedPrimary?: { nodes: Set<string>; edges: Set<string> } | null,
-  highlightedComparison?: { nodes: Set<string>; edges: Set<string> } | null,
-  branchingState?: BranchingHighlightState
-): { nodes: Node[]; edges: Edge[] } {
-  try {
-    const safeBlocks = safeArr(blocks);
-    const safeEdges = safeArr(gateEdges);
-    
-    if (!safeBlocks.length) {
-      return { nodes: [], edges: [] };
-    }
-
-    // Create nodes safely
-    const nodes: Node[] = safeBlocks.map((block, index) => {
-      if (!block?.id) {
-        console.warn('[EduTree] Invalid block:', block);
-        return null;
-      }
-
-      // Use proper terminal renderer for the end node
-      const isTerminal = (block.area === 'terminal') || (String(block.id) === 'degree-completion');
-
-      return {
-        id: String(block.id),
-        // Use real terminal renderer for the end node
-        type: isTerminal ? 'terminalNode' : 'blockGroup',
-        position: { x: (block.level_year || 0) * 320, y: index * 200 },
-        data: {
-          block,
-          // Enhanced terminal node title logic - always show full degree name
-          displayTitle: isTerminal ? 'B.S. Software Engineering' : (block.title ?? block.id ?? 'Course'),
-          completedCourseIds: new Set(),
-          isUnlocked: true,
-          progress: { completed: 0, required: block.courses?.length || 0 },
-          subBlocks: [],
-          level_year: block.level_year || 0,
-          area: block.area || 'unknown',
-          isHighlighted: false,
-          isComparisonHighlighted: false,
-          planningLens: null,
-          // Enhanced terminal node properties
-          isEligible: isTerminal,
-          degreeType: isTerminal ? 'Bachelor of Science' : undefined,
-          credits: isTerminal ? 120 : undefined,
-          // Add branching highlight state for enhanced rendering
-          branchingHighlightState: branchingState,
-        }
-      };
-    }).filter(Boolean) as Node[];
-
-    // Create edges safely - normalize to block ids for highlight matching
-    const edges: Edge[] = safeEdges.map(ge => {
-      // normalize to block ids
-      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
-      const source = String(sourceGateId).replace('gate-', ''); // block id
-      const target = String(ge.target_block_id);                // block id
-
-      if (!source || !target) return null;
-
-      return {
-        id: String(ge.id ?? `${source}->${target}`),
-        source, // <- block id
-        target, // <- block id
-        type: 'smoothstep',
-        className: '', // Will be set during highlight processing
-        data: {
-          highlightedPrimaryEdges: null,
-          highlightedComparisonEdges: null,
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-        },
-      };
-    }).filter(Boolean) as Edge[];
-
-    // Pass highlight sets to processed nodes - allow single track highlighting  
-    const nodesWithHighlights = nodes.map(n => ({
-      ...n,
-      data: {
-        ...n.data,
-        highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
-        highlightedComparisonNodes: highlightedComparison?.nodes || null,
-        isMultipathActive: !!(highlightedPrimary), // Allow single track mode
-        branchingHighlightState: branchingState,
-      },
-    }));
-
-    // Create edges with enhanced highlight styling
-    const edgesWithHighlights: Edge[] = safeEdges.map(ge => {
-      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
-      const source = String(sourceGateId).replace('gate-', '');
-      const target = String(ge.target_block_id);
-
-      if (!source || !target) return null;
-
-      const edgeId = String(ge.id ?? `${source}->${target}`);
-      
-      // Enhanced edge styling using branching highlight system
-      const edgeClass = branchingState ? getEdgeHighlightClass(edgeId, branchingState) : 'edge';
-
-      return {
-        id: edgeId,
-        source,
-        target,
-        type: 'smoothstep',
-        className: edgeClass,
-        data: {
-          highlightedPrimaryEdges: highlightedPrimary?.edges ?? null,
-          highlightedComparisonEdges: highlightedComparison?.edges ?? null,
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-        },
-      };
-    }).filter(Boolean) as Edge[];
-
-    return { nodes: nodesWithHighlights, edges: edgesWithHighlights };
-  } catch (error) {
-    console.error('[EduTree] createFlowElements failed:', error);
-    return { nodes: [], edges: [] };
-  }
-}
-
-// Enhanced layout function with proper branching visualization
-function layoutAndScan(nodes: Node[], edges: Edge[], options: any): { nodes: Node[]; edges: Edge[] } {
-  try {
-    if (!nodes.length) return { nodes, edges };
-    
-    // Use the new branching layout system
-    return applyBranchingLayout(nodes, edges, {
-      nodeSpacing: { horizontal: 320, vertical: 100 },
-      branchAngle: 30,
-      centerY: 200
-    });
-  } catch (error) {
-    console.warn('[EduTree] layoutAndScan failed, using fallback:', error);
-    return {
-      nodes: nodes.map((n, i) => ({ 
-        ...n, 
-        position: { x: (i % 4) * 380, y: Math.floor(i / 4) * 260 } 
-      })),
-      edges
-    };
-  }
-}
-
-// Local fallback seed for track-based testing
-const LOCAL_FALLBACK_SEED = {
-  blocks: [
-    // Year 1
-    { id: 'b101', title: 'Gen Ed: Composition',        area: 'general-education', level_year: 1 },
-    { id: 'b102', title: 'Gen Ed: Quant Reasoning',    area: 'general-education', level_year: 1 },
-    { id: 'b201', title: 'Core: Programming I',        area: 'core',               level_year: 1 },
-    { id: 'b401', title: 'Mathematics for CS',         area: 'mathematics',        level_year: 1 },
-
-    // Year 2
-    { id: 'b202', title: 'Core: Programming II',       area: 'core',               level_year: 2 },
-    { id: 'b301', title: 'Web Frontend Foundations',   area: 'specialization',     level_year: 2 },
-    { id: 'b302', title: 'Data Analytics Intro',       area: 'specialization',     level_year: 2 },
-
-    // Year 3
-    { id: 'b311', title: 'Web Frontend II',            area: 'specialization',     level_year: 3 },
-    { id: 'b321', title: 'Data Analytics II',          area: 'specialization',     level_year: 3 },
-    { id: 'b331', title: 'Systems & DevOps',           area: 'specialization',     level_year: 3 },
-
-    // Terminal (one degree – both tracks converge here)
-    { id: 'degree-completion', title: 'Degree',        area: 'terminal',           level_year: 4 }
-  ],
-  gateEdges: [
-    { id: 'e1',  source_gate_id: 'gate-b101', target_block_id: 'b201' },
-    { id: 'e2',  source_gate_id: 'gate-b102', target_block_id: 'b201' },
-    { id: 'e3',  source_gate_id: 'gate-b201', target_block_id: 'b202' },
-    { id: 'e4',  source_gate_id: 'gate-b401', target_block_id: 'b202' },
-
-    { id: 'e5',  source_gate_id: 'gate-b202', target_block_id: 'b301' }, // → web
-    { id: 'e6',  source_gate_id: 'gate-b202', target_block_id: 'b302' }, // → data
-    { id: 'e7',  source_gate_id: 'gate-b202', target_block_id: 'b331' }, // → systems
-
-    { id: 'e8',  source_gate_id: 'gate-b301', target_block_id: 'b311' }, // web year3
-    { id: 'e9',  source_gate_id: 'gate-b302', target_block_id: 'b321' }, // data year3
-
-    { id: 'e10', source_gate_id: 'gate-b311', target_block_id: 'degree-completion' },
-    { id: 'e11', source_gate_id: 'gate-b321', target_block_id: 'degree-completion' },
-    { id: 'e12', source_gate_id: 'gate-b331', target_block_id: 'degree-completion' },
-  ],
-};
 
 // Node types for React Flow
 const nodeTypes = {
@@ -296,15 +61,15 @@ const nodeTypes = {
   placeholderGroup: PlaceholderGroup,
 };
 
-
+const DEV = import.meta.env.DEV;
 
 type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
-  const location = useLocation();
   const flags = useFeatureFlags();
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
+  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
@@ -318,49 +83,8 @@ function EduTreeCanvasInner() {
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
   const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
   
-  // State for path highlighting (legacy for single-path mode)
+  // State for path highlighting
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
-  
-  // Multi-path visualization state - always available on this route
-  const [primaryTrack, setPrimaryTrack] = useState<TrackId | null>(null);
-  const [comparisonTrack, setComparisonTrack] = useState<TrackId | null>(null);
-  const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
-  const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
-
-  // Enhanced branching highlight state
-  const branchingHighlightState: BranchingHighlightState = useMemo(() => 
-    createBranchingHighlightState(primaryTrack, comparisonTrack), 
-    [primaryTrack, comparisonTrack]
-  );
-
-  // Update legacy highlight states when tracks change
-  useEffect(() => {
-    console.log('🎯 Track state changed:', { primaryTrack, comparisonTrack });
-    
-    if (primaryTrack) {
-      setHighlightedPrimary(branchingHighlightState.highlightedPrimary);
-      console.log('🎯 Primary track set:', primaryTrack, 'Nodes:', branchingHighlightState.highlightedPrimary?.nodes.size);
-    } else {
-      setHighlightedPrimary(null);
-    }
-    
-    if (comparisonTrack) {
-      setHighlightedComparison(branchingHighlightState.highlightedComparison);
-      console.log('🎯 Comparison track set:', comparisonTrack, 'Nodes:', branchingHighlightState.highlightedComparison?.nodes.size);
-    } else {
-      setHighlightedComparison(null);
-    }
-  }, [branchingHighlightState, primaryTrack, comparisonTrack]);
-
-  // Stabilize flags - prevent render spam
-  const didEnableFlagsRef = useRef(false);
-  useEffect(() => {
-    if (didEnableFlagsRef.current) return;
-    if (location.pathname.includes('/edu-treemulti')) {
-      didEnableFlagsRef.current = true;
-      // flags are already enabled by route detection in featureFlags.ts
-    }
-  }, [location.pathname]);
 
   // Handler for course click
   const handleCourseClick = useCallback((course: EduCourse) => {
@@ -439,65 +163,17 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Always provide the track seed data for multipath route, but control highlighting separately
-  const effectiveBlocks = useMemo(() => {
-    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
-    
-    // On multipath route: always provide the track structure for visualization
-    if (isMultipathRoute) {
-      return dedupeById([
-        ...blocks,
-        ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
-          ...b,
-          parent_block_id: null,
-          rule_type: 'ALL' as const,
-          credits_needed: null,
-          k: null,
-        })),
-      ]);
-    }
-    
-    // Non-multipath routes - use flag-based logic
-    if (!flags.eduTreeMultiPathOverlay) return blocks;
-    return dedupeById([
-      ...blocks,
-      ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
-        ...b,
-        parent_block_id: null,
-        rule_type: 'ALL' as const,
-        credits_needed: null,
-        k: null,
-      })),
-    ]);
-  }, [blocks, flags.eduTreeMultiPathOverlay, location.pathname]);
-
-  const effectiveGateEdges = useMemo(() => {
-    const validBlockIds = new Set(effectiveBlocks.map(b => String(b.id)));
-    return [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges]
-      .filter(e => {
-        // use gate-<source_block_id> everywhere for consistency
-        const sourceGateId = e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`;
-        const sourceBlockId = String(sourceGateId).replace('gate-', '');
-        const targetId = String(e.target_block_id);
-        return validBlockIds.has(sourceBlockId) && validBlockIds.has(targetId);
-      })
-      .map(e => ({
-        ...e,
-        source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`,
-      }));
-  }, [gateEdges, effectiveBlocks]);
-
-  // Transform data for React Flow with crash protection
+  // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('🔧 Data check:', { 
-      effectiveBlocksLength: effectiveBlocks.length, 
+    console.log('Data check:', { 
+      blocksLength: blocks.length, 
       coursesLength: courses.length, 
       blockMembersLength: blockMembers.length,
       gatesLength: gates.length,
-      effectiveGateEdgesLength: effectiveGateEdges.length 
+      gateEdgesLength: gateEdges.length 
     });
 
-    if (!effectiveBlocks.length) {
+    if (!blocks.length || !courses.length) {
       return { nodes: [], edges: [] };
     }
 
@@ -514,10 +190,10 @@ function EduTreeCanvasInner() {
     });
 
     // Create block nodes with courses
-    const blocksWithCourses: BlockWithCourses[] = effectiveBlocks.map(block => ({
+    const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
       ...block,
       courses: coursesByBlock.get(block.id) || [],
-      gate: gates.find(g => g.block_id === block.id) || { id: `gate-${block.id}`, block_id: block.id }
+      gate: gates.find(g => g.block_id === block.id)
     }));
 
     // Separate parent blocks from child blocks
@@ -584,23 +260,12 @@ function EduTreeCanvasInner() {
                    Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
         };
 
-        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || 
-                          highlightedPrimary?.nodes.has(String(block.id)) || false;
-        const isComparisonHighlighted = (flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && 
-                                      highlightedComparison?.nodes.has(String(block.id)) || false;
-
-        // CSS class for multipath node styling
-        const isInBothPaths = isHighlighted && isComparisonHighlighted;
-        let nodeClassName = '';
-        if (isInBothPaths) nodeClassName = 'node--both-paths';
-        else if (isHighlighted) nodeClassName = 'node--primary';
-        else if (isComparisonHighlighted) nodeClassName = 'node--comparison';
+        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
 
         return {
           id: String(block.id), // Ensure string ID
           type: 'blockGroup', // This must match nodeTypes key
           position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
-          className: nodeClassName,
           data: {
             block,
             completedCourseIds,
@@ -610,13 +275,8 @@ function EduTreeCanvasInner() {
             level_year: block.level_year || 0,
             area: block.area || 'unknown',
             isHighlighted,
-            isComparisonHighlighted,
-            planningLens: isHighlighted ? primaryTrack : isComparisonHighlighted ? comparisonTrack : null,
-            onCourseClick: handleCourseClick,
-            // Pass highlight sets for multipath styling - allow single track highlighting  
-            highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
-            highlightedComparisonNodes: highlightedComparison?.nodes || null,
-            isMultipathActive: !!(highlightedPrimary), // Allow single track mode
+            planningLens: isHighlighted ? selectedLens : null,
+            onCourseClick: handleCourseClick
           }
         };
       })
@@ -642,7 +302,6 @@ function EduTreeCanvasInner() {
       position: { x: 5 * 320, y: 0 }, // Position at Year 5
       data: {
         label: 'B.S. Software Engineering',
-        displayTitle: 'B.S. Software Engineering',
         isEligible: isDegreeUnlocked || false,
         degreeType: 'Bachelor of Science',
         credits: totalCourses * 3, // Approximate total credits
@@ -667,59 +326,38 @@ function EduTreeCanvasInner() {
         isHighlighted: false,
         planningLens: null,
         isDegreeNode: true,
-        isDegreeComplete,
-        // Pass multipath data to terminal node - allow single track highlighting
-        highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
-        highlightedComparisonNodes: highlightedComparison?.nodes || null,
-        isMultipathActive: !!(highlightedPrimary), // Allow single track mode
+        isDegreeComplete
       }
     };
 
     const nodes: Node[] = [...regularNodes, degreeNode];
 
-    // Create React Flow edges (only between blocks) - build with block IDs 
-    const regularEdges: Edge[] = viewMode === 'flow' ? effectiveGateEdges.map(ge => {
-      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
-      const source = String(sourceGateId).replace('gate-', '');  // => block id
-      const target = String(ge.target_block_id);
-      if (!source || !target) return null;
+    // Create React Flow edges (only between blocks)
+    const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
+      const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
+      const source = sourceBlock?.id ? String(sourceBlock.id) : null;
+      const target = String(gateEdge.target_block_id);
       
-      const isHighlighted = highlightedPath?.edges.has(String(ge.id)) || 
-                        highlightedPrimary?.edges.has(String(ge.id)) || false;
-      const isComparisonHighlighted = (flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && 
-                                    highlightedComparison?.edges.has(String(ge.id)) || false;
+      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
       
-      // Edge style precedence: primary > comparison > default
-      const isInBothPaths = isHighlighted && isComparisonHighlighted;
-      const finalHighlighted = isHighlighted || isComparisonHighlighted;
-      
-      // CSS class for multipath styling (let CSS handle the visuals)
-      let edgeClassName = '';
-      if (isHighlighted) edgeClassName = 'edge--primary';
-      else if (isComparisonHighlighted) edgeClassName = 'edge--comparison';
-      else if (!finalHighlighted) edgeClassName = 'edge--dim';
-
-      return {
-        id: String(ge.id ?? `${source}->${target}`),
+      return source ? {
+        id: String(gateEdge.id),
         source,
         target,
-        type: 'smoothstep',
-        className: edgeClassName,
-        data: {
-          // Pass highlight sets for multipath styling
-          highlightedPrimaryEdges: highlightedPrimary?.edges ?? null,
-          highlightedComparisonEdges: highlightedComparison?.edges ?? null,
-        },
+        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
         style: {
-          // Let CSS classes handle most styling, minimal inline overrides
-          opacity: !finalHighlighted ? 0.3 : undefined,
+          stroke: isHighlighted ? 'var(--primary)' : 'var(--primary)',
+          strokeWidth: isHighlighted ? 3 : 2,
+          opacity: isHighlighted ? 1 : 0.65
         },
         markerEnd: {
           type: MarkerType.Arrow,
-          color: isHighlighted ? 'var(--primary)' : 
-                 isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
+          color: isHighlighted ? 'var(--primary)' : 'var(--primary)',
         },
-      };
+        ...(flags.eduTreeLayoutV2 && {
+          pathOptions: { offset: 12 }
+        }),
+      } : null;
     }).filter(Boolean) as Edge[] : [];
 
     // Add edges to degree completion node
@@ -780,125 +418,9 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Wrap element creation and layout with crash protection
-    let processedNodes: Node[] = [];
-    let processedEdges: Edge[] = [];
-    
-    try {
-      const result = createFlowElements(
-        safeArr(blocksWithCourses),
-        safeArr(effectiveGateEdges), 
-        coursesByBlock,
-        flags,
-        highlightedPrimary,
-        highlightedComparison,
-        branchingHighlightState
-      );
-      
-      console.log('🎯 Flow elements created:', {
-        primaryTrack,
-        comparisonTrack,
-        nodeCount: result.nodes.length,
-        highlightedPrimarySize: highlightedPrimary?.nodes.size,
-        highlightedComparisonSize: highlightedComparison?.nodes.size,
-        branchingActive: branchingHighlightState.isMultipathActive
-      });
-      processedNodes = safeArr(result.nodes);
-      processedEdges = safeArr(result.edges);
-    } catch (err) {
-      console.error('[EduTree] createFlowElements failed:', err);
-      processedNodes = [];
-      processedEdges = [];
-    }
-
-    // Apply layout with crash protection
-    let processed = { nodes: processedNodes, edges: processedEdges };
-    try {
-      if (processedNodes.length && processedEdges.length) {
-        processed = layoutAndScan(processedNodes, processedEdges, {
-          nodeWidth: 320,
-          nodeHeight: 200,
-          horizontalSpacing: 180,
-          verticalSpacing: 120,
-          layoutMode: flags.eduTreeLanes ? 'lanes' : 'hierarchical'
-        });
-      }
-    } catch (err) {
-      console.warn('[EduTree] layoutAndScan failed, falling back to simple grid:', err);
-      processed = {
-        nodes: processedNodes.map((n, i) => ({
-          ...n,
-          position: { x: (i % 4) * 380, y: Math.floor(i / 4) * 260 }
-        })),
-        edges: processedEdges
-      };
-    }
-
-    return { nodes: processed.nodes, edges: processed.edges };
-  }, [effectiveBlocks, courses, blockMembers, gates, effectiveGateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
-
-  // Track highlights: compute after nodes exist to prevent crashes
-  const rfNodeIdByBlockId = useMemo(() => {
-    const m = new Map<string, string>();
-    flowNodes.forEach(n => {
-      const block = n.data?.block as any;
-      const bid = String(block?.id ?? n.id);
-      m.set(bid, String(n.id));
-    });
-    return m;
-  }, [flowNodes]);
-
-  const setsForTrack = useCallback((tid: TrackId | null): { nodes: Set<string>, edges: Set<string> } => {
-    if (!tid) return { nodes: new Set<string>(), edges: new Set<string>() };
-    const track = TRACKS[tid];
-    if (!track) return { nodes: new Set<string>(), edges: new Set<string>() };
-
-    const rfNodes = track.nodes
-      .map(bid => rfNodeIdByBlockId.get(bid))
-      .filter(Boolean) as string[];
-
-    // Dev log: which block IDs didn't map to nodes
-    if (DEV) {
-      const missing = track.nodes.filter(bid => !rfNodeIdByBlockId.get(bid));
-      if (missing.length) devOnce(`missing-${tid}`, `[Track] Missing nodes for ${tid}`, { missing });
-    }
-
-    const nodeSet = new Set(rfNodes);
-    const edgeSet = new Set(
-      flowEdges
-        .filter(e => nodeSet.has(String(e.source)) && nodeSet.has(String(e.target)))
-        .map(e => String(e.id))
-    );
-
-    return { nodes: nodeSet, edges: edgeSet };
-  }, [rfNodeIdByBlockId, flowEdges]);
-
-  // Only compute track highlights when tracks are selected for comparison
-  const primarySets = useMemo(() => 
-    primaryTrack ? setsForTrack(primaryTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
-    [primaryTrack, setsForTrack]
-  );
-  const compareSets = useMemo(() => 
-    comparisonTrack ? setsForTrack(comparisonTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
-    [comparisonTrack, setsForTrack]
-  );
-
-  useEffect(() => { 
-    setHighlightedPrimary(primarySets.nodes.size ? primarySets : null); 
-    // Debug track highlighting in development
-    if (DEV) debugTrackHighlighting(primaryTrack, comparisonTrack, primarySets.nodes, compareSets.nodes);
-  }, [primarySets]);
-  useEffect(() => { 
-    setHighlightedComparison(compareSets.nodes.size ? compareSets : null); 
-  }, [compareSets]);
-  
-  // Run track validation in development
-  useEffect(() => {
-    if (DEV && primaryTrack) {
-      getTrackBranchingDebugInfo();
-    }
-  }, [primaryTrack]);
-  // Include highlight dependencies for multipath styling
+    return { nodes, edges };
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
+  // REMOVED highlightedPath dependency to prevent infinite loop
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -924,72 +446,27 @@ function EduTreeCanvasInner() {
       setEdges(allEdges);
     }
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
-
-
-  // Remove old path computation - replaced with track-based highlights above
-
-  // Remove old path highlighting effects - using track-based highlights now
-
-  // Remove multipath snapshot - simplified debug
+  
+  // Re-enable path highlighting safely with stable dependencies
+  const lastPathRef = useRef<string>('');
   useEffect(() => {
-    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
-    if (!DEV || (!flags.eduTreeMultiPathOverlay && !isMultipathRoute)) return;
+    if (!flags.eduTreeOutcomes) return;
+    if (!flowNodes.length || !flowEdges.length) return;
+
+    const optimal = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
+    const key = JSON.stringify({ n: optimal.nodes, e: optimal.edges });
     
-    const multipathActive = !!comparisonTrack;
-    if (!multipathActive) return;
-    if (!highlightedPrimary || !highlightedComparison) return;
-
-    devOnce(
-      `track-snap-${primaryTrack}-${comparisonTrack}`,
-      '[Track Snapshot]',
-      {
-        url: typeof window !== 'undefined' ? window.location.href : '',
-        tracks: { primary: primaryTrack, comparison: comparisonTrack },
-        counts: {
-          primaryNodes: highlightedPrimary.nodes.size,
-          primaryEdges: highlightedPrimary.edges.size,
-          comparisonNodes: highlightedComparison.nodes.size,
-          comparisonEdges: highlightedComparison.edges.size,
-          overlapNodes: [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length,
-        }
-      }
-    );
-  }, [flags.eduTreeMultiPathOverlay, primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
-
-  // Expose debug global for external testing
-  useEffect(() => {
-    if (!DEV) return;
-    (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
-    (window as any).__EDUTREE__.getSnapshot = () => {
-      return {
-        tracks: { primary: primaryTrack, comparison: comparisonTrack },
-        primary: highlightedPrimary ? { 
-          nodes: Array.from(highlightedPrimary.nodes), 
-          edges: Array.from(highlightedPrimary.edges) 
-        } : null,
-        comparison: highlightedComparison ? { 
-          nodes: Array.from(highlightedComparison.nodes), 
-          edges: Array.from(highlightedComparison.edges) 
-        } : null,
-      };
-    };
-  }, [primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
+    if (key !== lastPathRef.current) {
+      lastPathRef.current = key;
+      setHighlightedPath({
+        nodes: new Set(optimal.nodes),
+        edges: new Set(optimal.edges),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
   useEffect(() => {
-    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
-    
-    // Skip emergency layout on multipath route - use branching layout instead
-    if (isMultipathRoute) {
-      console.log('[EduTree] Multipath route: Using branching layout instead of emergency layout');
-      setNodes(flowNodes);
-      if (flags.eduTreeStaggeredEdgesV2) {
-        setAllEdges(viewMode === 'flow' ? flowEdges : []);
-      } else {
-        setEdges(viewMode === 'flow' ? flowEdges : []);
-      }
-      return;
-    }
-    
     if (flowNodes.length > 0) {
       const applyEmergencyLayout = async () => {
         try {
@@ -1039,7 +516,7 @@ function EduTreeCanvasInner() {
       
       applyEmergencyLayout();
     }
-  }, [flowNodes, flowEdges, flags.eduTreeStaggeredEdgesV2, viewMode, location.pathname]);
+  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -1099,8 +576,8 @@ function EduTreeCanvasInner() {
     if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
       const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
       setHighlightedPath({
-        nodes: new Set(optimalPath.nodeIds),
-        edges: new Set(optimalPath.edgeIds)
+        nodes: new Set(optimalPath.nodes),
+        edges: new Set(optimalPath.edges)
       });
     }
   }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
@@ -1144,60 +621,29 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // FitView: gate on highlights (not just nodes) to prevent deferred DOM warnings
-  const fitViewTimeoutRef = useRef<number | null>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  // Enhanced onInit with terminal focus
+  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  useEffect(() => {
-    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
-
-    const ready =
-      reactFlowInstance &&
-      flowNodes.length > 0 &&
-      flowEdges.length > 0 &&
-      (!!highlightedPrimary || !!highlightedComparison);
-
-    if (!ready) return;
-
-    fitViewTimeoutRef.current = window.setTimeout(() => {
-      requestAnimationFrame(() => {
-        const hasDegree = flowNodes.some(n => n.id === 'degree-completion');
-        reactFlowInstance?.fitView?.({
-          padding: hasDegree ? 0.4 : 0.2,
-          duration: 400,
-          includeHiddenNodes: true
-        });
-      });
-    }, 220);
-
-    return () => { if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current); };
-  }, [
-    reactFlowInstance,
-    flowNodes.length,
-    flowEdges.length,
-    highlightedPrimary, 
-    highlightedComparison
-  ]);
-
-  const onInit = useCallback((instance: any) => {
-    setReactFlowInstance(instance);
-    
-    // Expose dev global for QA
-    if (DEV) {
-      (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
-      (window as any).__EDUTREE__.getSnapshot = () => ({
-        tracks: { primary: primaryTrack, comparison: comparisonTrack },
-        primary: highlightedPrimary ? {
-          nodes: Array.from(highlightedPrimary.nodes),
-          edges: Array.from(highlightedPrimary.edges),
-        } : null,
-        comparison: highlightedComparison ? {
-          nodes: Array.from(highlightedComparison.nodes),
-          edges: Array.from(highlightedComparison.edges),
-        } : null,
-      });
+  const onInit = useCallback((reactFlowInstance: any) => {
+    // Clear any pending fitView to debounce
+    if (fitViewTimeoutRef.current) {
+      clearTimeout(fitViewTimeoutRef.current);
     }
-  }, [primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
+    
+    // Single debounced fitView after initialization
+    fitViewTimeoutRef.current = setTimeout(() => {
+      const hasTerminal = nodes.some(node => 
+        node.type === 'terminal' || node.type === 'terminalNode' || 
+        node.id === 'degree-completion'
+      );
+      
+      const padding = hasTerminal ? 0.4 : 0.2;
+      reactFlowInstance.fitView({ padding, duration: 300 });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
+      }
+    }, 150);
+  }, [nodes]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -1226,7 +672,7 @@ function EduTreeCanvasInner() {
           estimatedMonths={outcomeSummary.estimatedMonths}
           estimatedCost={outcomeSummary.estimatedCost}
           planIssues={outcomeSummary.issues}
-          selectedLens={primaryTrack}
+          selectedLens={selectedLens}
         />
       )}
 
@@ -1255,7 +701,7 @@ function EduTreeCanvasInner() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between relative z-20">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center space-x-2">
               <Switch 
@@ -1268,54 +714,16 @@ function EduTreeCanvasInner() {
               </Label>
             </div>
             
-            {/* Track comparison status with better visual indicators */}
-            <div className="flex items-center space-x-2">
-              {primaryTrack && comparisonTrack ? (
-                <Badge variant="default" className="text-xs bg-green-600 text-white animate-pulse">
-                  Comparing: {TRACKS[primaryTrack].name} vs {TRACKS[comparisonTrack].name}
-                </Badge>
-              ) : primaryTrack ? (
-                <Badge variant="secondary" className="text-xs bg-blue-600 text-white">
-                  Viewing: {TRACKS[primaryTrack].name}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  Select tracks to compare
-                </Badge>
-              )}
-            </div>
-            
             <Badge variant="outline" className="text-xs">
-              {viewMode === 'flow' ? '🌳 Flow View' : '📋 Board View'}
+              {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
             
-            {/* Track comparison controls - always show for multipath route */}
-            <CompareTracksBar
-              primary={primaryTrack}
-              comparison={comparisonTrack}
-              onPrimary={(t) => setPrimaryTrack(t as TrackId)}
-              onComparison={(t) => setComparisonTrack(t as TrackId | null)}
-            />
-
-            {/* Empty state message */}
-            {comparisonTrack && !highlightedComparison && (
-              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded border">
-                No comparison path for "{TRACKS[comparisonTrack].name}". Check missing nodes in console.
-              </div>
-            )}
-            
-            {/* Dev Snapshot Button */}
-            {DEV && (
-              <button
-                onClick={() => {
-                  const snapshot = (window as any).__EDUTREE__?.getSnapshot?.();
-                  console.log('[Multipath Snapshot]', snapshot);
-                }}
-                className="px-2 py-1 text-xs bg-muted rounded border"
-                title="Log multipath snapshot to console"
-              >
-                📊 Snapshot
-              </button>
+            {/* Lens Selector */}
+            {flags.eduTreeOutcomes && (
+              <LensSelector 
+                selectedLens={selectedLens}
+                onLensChange={setSelectedLens}
+              />
             )}
           </div>
 
@@ -1328,21 +736,7 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* React Flow Canvas */}
-      <div 
-        className={cn(
-          "flex-1",
-          // Apply multipath-active when any track is selected (allow single track mode)
-          (primaryTrack || location.pathname.includes('/edu-treemulti')) && "multipath-active"
-        )}
-        style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
-      >
-        {/* Show overlay when no tracks selected on multipath route */}
-        {location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack && (
-          <div className="absolute inset-0 z-50 bg-background/95">
-            <EmptyTrackState onSelectTrack={(trackId) => setPrimaryTrack(trackId)} />
-          </div>
-        )}
-        
+      <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
@@ -1353,108 +747,10 @@ function EduTreeCanvasInner() {
           onInit={onInit}
           fitView
           fitViewOptions={{ padding: 0.2, duration: 300 }}
-          className={cn(
-            'react-flow-canvas',
-            // Apply multipath styling when any track is selected or on multipath route
-            (primaryTrack || location.pathname.includes('/edu-treemulti')) ? 'multipath-active' : undefined,
-            // Dim the graph when no tracks selected on multipath route
-            location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack ? 'opacity-20 pointer-events-none' : ''
-          )}
           minZoom={0.3}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
-          {/* Debug panel for multipath (visible in non-prod) */}
-          {process.env.NODE_ENV !== 'production' && primaryTrack && comparisonTrack && (
-            <div style={{
-              position: 'absolute', 
-              right: 12, 
-              top: 12, 
-              zIndex: 1000,
-              background: 'hsl(var(--background))', 
-              border: '1px solid hsl(var(--border))',
-              padding: '8px 10px', 
-              borderRadius: 8, 
-              fontSize: 12, 
-              maxWidth: 320,
-              color: 'hsl(var(--foreground))'
-            }}>
-              <strong>Track Debug</strong>
-              <div style={{ marginTop: 6 }}>
-                <div>Primary track: {primaryTrack}</div>
-                <div>Comparison track: {comparisonTrack ?? '—'}</div>
-                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
-                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
-                <div>Overlap: {
-                  (highlightedPrimary && highlightedComparison)
-                    ? [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length
-                    : 0
-                } nodes</div>
-              </div>
-              <button
-                onClick={() => {
-                  const snap = {
-                    tracks: { primary: primaryTrack, comparison: comparisonTrack },
-                    primary: highlightedPrimary ? {
-                      nodes: Array.from(highlightedPrimary.nodes),
-                      edges: Array.from(highlightedPrimary.edges)
-                    } : null,
-                    comparison: highlightedComparison ? {
-                      nodes: Array.from(highlightedComparison.nodes),
-                      edges: Array.from(highlightedComparison.edges)
-                    } : null
-                  };
-                  (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
-                  (window as any).__EDUTREE__.getSnapshot = () => snap;
-                  const pre = document.getElementById('mp-snap-pre');
-                  if (pre) pre.textContent = JSON.stringify(snap, null, 2);
-                  console.log('[Track Snapshot]', snap);
-                }}
-                style={{ 
-                  marginTop: 8, 
-                  padding: '4px 8px', 
-                  background: 'hsl(var(--primary))', 
-                  color: 'hsl(var(--primary-foreground))', 
-                  border: 'none', 
-                  borderRadius: 4, 
-                  cursor: 'pointer' 
-                }}
-              >
-                📊 Snapshot
-              </button>
-              <pre 
-                id="mp-snap-pre" 
-                style={{ 
-                  whiteSpace: 'pre-wrap', 
-                  marginTop: 6, 
-                  maxHeight: 180, 
-                  overflow: 'auto', 
-                  fontSize: 10,
-                  background: 'hsl(var(--muted))',
-                  padding: 4,
-                  borderRadius: 4
-                }}
-              />
-            </div>
-          )}
-
-          {/* Empty state for comparison */}
-          {comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
-            <div style={{
-              position: 'absolute',
-              bottom: 20,
-              left: 20,
-              background: 'hsl(var(--muted))',
-              color: 'hsl(var(--muted-foreground))',
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontSize: 12,
-              maxWidth: 400,
-              zIndex: 999
-            }}>
-              No comparison path available for '{TRACKS[comparisonTrack].name}'. Check missing nodes in console or enable fallback seed.
-            </div>
-          )}
           {/* Lane Background for educational context */}
           {flags.eduTreeLanes && viewMode === 'flow' && (
             <EduLaneBackground 
@@ -1473,64 +769,9 @@ function EduTreeCanvasInner() {
           {/* Mini-map for large tree navigation */}
           {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
           
-          {/* Multipath Debug Panel - always show on multipath route */}
-          {(flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && (
-            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50 max-w-80">
-              <strong className="text-sm">Track Debug</strong>
-              <div className="text-xs space-y-1">
-                <div>Primary track: {primaryTrack}</div>
-                <div>Comparison track: {comparisonTrack ?? '—'}</div>
-                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
-                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
-                <div>Overlap: {
-                  (highlightedPrimary && highlightedComparison)
-                    ? [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length
-                    : 0
-                } nodes</div>
-              </div>
-              <button
-                onClick={() => {
-                  const snap = {
-                    tracks: { primary: primaryTrack, comparison: comparisonTrack },
-                    primary: highlightedPrimary ? {
-                      nodes: Array.from(highlightedPrimary.nodes),
-                      edges: Array.from(highlightedPrimary.edges)
-                    } : null,
-                    comparison: highlightedComparison ? {
-                      nodes: Array.from(highlightedComparison.nodes),
-                      edges: Array.from(highlightedComparison.edges)
-                    } : null
-                  };
-                  (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
-                  (window as any).__EDUTREE__.getSnapshot = () => snap;
-                  // Render inline for no-console environments
-                  const pre = document.getElementById('mp-snap-pre');
-                  if (pre) pre.textContent = JSON.stringify(snap, null, 2);
-                  console.log('[Track Snapshot]', snap);
-                }}
-                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80 w-full"
-              >
-                📊 Snapshot
-              </button>
-              <pre 
-                id="mp-snap-pre" 
-                className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-muted/50 p-2 rounded"
-              ></pre>
-            </div>
-          )}
-
-          {/* Empty state message - always show on multipath route */}
-          {(flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
-            <div className="absolute left-4 bottom-4 bg-muted/90 border border-border p-3 rounded-lg max-w-96 z-50">
-              <div className="text-xs text-muted-foreground">
-                No comparison path available for '{TRACKS[comparisonTrack].name}'. Check missing nodes in console or enable fallback seed.
-              </div>
-            </div>
-          )}
-
-          {/* Development controls - hide on multipath route */}
-          {process.env.NODE_ENV === 'development' && !flags.eduTreeMultiPathOverlay && !location.pathname.includes('/edu-treemulti') && (
-            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50">
+          {/* Development controls */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2">
               <div className="text-xs text-muted-foreground">
                 Edges: {visibleEdges.length}/{allEdges.length}
                 {isRevealing && <span className="ml-2 text-primary">Revealing...</span>}
@@ -1553,32 +794,16 @@ function EduTreeCanvasInner() {
               >
                 Focus Terminal
               </button>
-              <button
-                onClick={() => {
-                  console.log('[Track Snapshot]', (window as any).__EDUTREE__?.getSnapshot?.());
-                }}
-                className="text-xs px-2 py-1 bg-primary rounded hover:bg-primary/80 text-primary-foreground"
-              >
-                Log Track Snapshot
-              </button>
-              
-              {/* Track Debug Panel */}
-              <div className="text-xs space-y-1">
-                <div className="font-medium">Track: {primaryTrack}</div>
-                <div>Compare: {comparisonTrack ?? '—'}</div>
-                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
-                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
-              </div>
             </div>
           )}
         </ReactFlow>
       </div>
 
-      {/* Outcome Panel - hide on multipath route */}
-      {flags.eduTreeOutcomes && !flags.eduTreeMultiPathOverlay && !location.pathname.includes('/edu-treemulti') && (
+      {/* Outcome Panel */}
+      {flags.eduTreeOutcomes && (
         <OutcomePanel
           summary={outcomeSummary}
-          selectedLens={primaryTrack as any}
+          selectedLens={selectedLens}
           isVisible={showOutcomePanel}
         />
       )}

@@ -11,8 +11,6 @@ interface LifePathEdgeData {
   label?: string;
   points?: { x: number; y: number }[];
   badge?: { text: string; tone: string };
-  highlightedPrimaryEdges?: Set<string> | null;
-  highlightedComparisonEdges?: Set<string> | null;
 }
 
 interface LifePathEdgeProps {
@@ -48,39 +46,17 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
     d = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
   }
 
-  // Enhanced multipath-aware styling with string-coerced ID checks
-  const key = String(id);
-  const inPrimary = !!data?.highlightedPrimaryEdges?.has?.(key);
-  const inCompare = !!data?.highlightedComparisonEdges?.has?.(key);
-  
-  let className = 'edge';
-  if (inPrimary) className += ' edge--primary';
-  else if (inCompare) className += ' edge--comparison';
-  else className += ' edge--dim';
-
   const style = {
-    opacity: tier === 'off-path' ? 0.35 : 
-             inPrimary ? 1 : 
-             inCompare ? 0.95 :
-             isRelatedToHovered ? 0.6 : 1,
+    opacity: tier === 'off-path' ? 0.35 : isRelatedToHovered ? 0.6 : 1,
     stroke:
-      inPrimary 
-        ? 'hsl(var(--primary))'
-        : inCompare
-        ? 'var(--lp-amber-400, #f59e0b)'
-        : tier === 'on-path'
+      tier === 'on-path'
         ? 'hsl(var(--primary))'
         : tier === 'related'
         ? 'hsl(var(--secondary))'
         : 'hsl(var(--muted-foreground))',
-    strokeWidth: inPrimary ? 3 : 
-                inCompare ? 2.5 :
-                tier === 'on-path' ? 3.5 : tier === 'related' ? 2 : 1,
-    strokeDasharray: inCompare ? '6 4' :
-                    edge?.type === 'creditTransfersTo' ? '6 6' : undefined,
-    filter: inPrimary ? 'drop-shadow(0 0 4px hsl(var(--primary) / 0.6))' :
-           inCompare ? 'drop-shadow(0 0 4px hsl(var(--amber-500) / 0.6))' :
-           tier === 'on-path' ? 'drop-shadow(0 0 4px hsl(var(--primary) / 0.3))' : undefined,
+    strokeWidth: tier === 'on-path' ? 3.5 : tier === 'related' ? 2 : 1,
+    strokeDasharray: edge?.type === 'creditTransfersTo' ? '6 6' : undefined,
+    filter: tier === 'on-path' ? 'drop-shadow(0 0 4px hsl(var(--primary) / 0.3))' : undefined,
   } as React.CSSProperties;
 
   const tierClass = tier ? `lp-edge-${tier}` : '';
@@ -99,7 +75,7 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
         id={id}
         d={d}
         fill="none"
-        className={`react-flow__edge-path ${tierClass} ${className}`.trim()}
+        className={`react-flow__edge-path ${tierClass}`.trim()}
         style={style}
         markerEnd={markerEnd}
         data-id={id}

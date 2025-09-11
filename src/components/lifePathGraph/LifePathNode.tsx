@@ -39,8 +39,6 @@ interface LifePathNodeData {
   tier?: 'on-path' | 'related' | 'off-path';
   isHovered?: boolean;
   showPreviousPath?: boolean;
-  highlightedPrimaryNodes?: Set<string> | null;
-  highlightedComparisonNodes?: Set<string> | null;
 }
 
 interface LifePathNodeProps {
@@ -82,17 +80,9 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   };
 
   const getNodeColor = () => {
-    // Enhanced multipath-aware styling with string-coerced ID checks
-    const key = String(node.id);
-    const inPrimary = !!data?.highlightedPrimaryNodes?.has?.(key);
-    const inCompare = !!data?.highlightedComparisonNodes?.has?.(key);
-    
-    let baseColor = '';
-    if (inPrimary) {
-      baseColor = 'node--primary border-primary bg-primary/10 shadow-lg';
-    } else if (inCompare) {
-      baseColor = 'node--comparison border-amber-400 bg-amber-50 dark:bg-amber-950/20';
-    } else if (tier) {
+    // Visual V2: Use tier-based styling with semantic tokens
+    if (tier) {
+      let baseColor = '';
       switch (tier) {
         case 'on-path':
           baseColor = 'border-primary bg-primary/10 shadow-lg';
@@ -104,12 +94,12 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
           baseColor = 'border-muted bg-muted/5';
           break;
       }
-    }
       
-    if (isSelected) baseColor += ' ring-2 ring-primary';
-    if (isHovered) baseColor += ' ring-1 ring-primary/50 hover-gentle transition-all duration-200';
-    if (showPreviousPath) baseColor += ' opacity-40 transition-opacity duration-1000';
-    return baseColor;
+      if (isSelected) baseColor += ' ring-2 ring-primary';
+      if (isHovered) baseColor += ' ring-1 ring-primary/50 hover-gentle transition-all duration-200';
+      if (showPreviousPath) baseColor += ' opacity-40 transition-opacity duration-1000';
+      return baseColor;
+    }
 
     // Legacy styling
     if (isSelected) return 'ring-2 ring-primary';
@@ -142,22 +132,12 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   };
 
   const tierClass = tier ? `lp-node-${tier}` : '';
-  
-  // Enhanced node class assignment with string-coerced IDs
-  const key = String(node.id);
-  const inPrimary = !!data?.highlightedPrimaryNodes?.has(key);
-  const inCompare = !!data?.highlightedComparisonNodes?.has(key);
-  
-  let nodeClassName = 'lp-node';
-  if (inPrimary) nodeClassName += ' node--primary';
-  else if (inCompare) nodeClassName += ' node--comparison';
-  
+
   return (
     <div
       data-testid="lp-node"
       data-id={node.id}
-      data-highlighted={inPrimary || inCompare ? 'true' : 'false'}
-      className={`${nodeClassName} ${tierClass}`}
+      className={`lp-node ${tierClass}`}
     >
       {/* Visual V2: Use left/right anchoring for better routing */}
       <Handle

@@ -23,7 +23,6 @@ interface FeatureFlags {
   eduTreeOutcomes: boolean;    // Outcomes panel + intelligent lenses
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
   eduTreeStaggeredEdgesV2: boolean; // V2 staggered edge system
-  eduTreeMultiPathOverlay: boolean; // Multipath comparison overlay
 }
 
 /**
@@ -90,24 +89,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
-    eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'true')),
   };
-
-  // Auto-enable multipath overlay on the dedicated route (idempotent)
-  try {
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/edu-treemulti')) {
-      flags.eduTreeOutcomes = true;
-      flags.eduTreeStaggeredEdgesV2 = true;
-      flags.eduTreeMultiPathOverlay = true;
-      
-      // Log only once per session to prevent spam
-      const key = '__MULTIPATH_FLAGS_LOGGED__';
-      if (!(window as any)[key]) {
-        (window as any)[key] = true;
-        console.log('[flags] Auto-enabled multipath flags for /edu-treemulti route');
-      }
-    }
-  } catch {}
   
   // Single consolidated debug log (only once per session)
   if (typeof window !== 'undefined') {
@@ -122,7 +104,6 @@ export function getFeatureFlags(): FeatureFlags {
     }
   }
   
-
   return flags;
 }
 

@@ -24,14 +24,10 @@ export function BlockGroup(props: NodeProps) {
     subBlocks = [], 
     altCreditOptions = [],
     isHighlighted = false,
-    isComparisonHighlighted = false,
     planningLens = null,
     isDegreeNode = false,
     isDegreeComplete = false,
-    onCourseClick,
-    highlightedPrimaryNodes,
-    highlightedComparisonNodes,
-    isMultipathActive = false
+    onCourseClick
   } = props.data as {
     block: BlockWithCourses;
     completedCourseIds: Set<string>;
@@ -40,42 +36,11 @@ export function BlockGroup(props: NodeProps) {
     subBlocks?: BlockWithCourses[];
     altCreditOptions?: AltCreditOption[];
     isHighlighted?: boolean;
-    isComparisonHighlighted?: boolean;
     planningLens?: string | null;
     isDegreeNode?: boolean;
     isDegreeComplete?: boolean;
     onCourseClick?: (course: any) => void;
-    highlightedPrimaryNodes?: Set<string>;
-    highlightedComparisonNodes?: Set<string>;
-    isMultipathActive?: boolean;
   };
-  
-  // Determine highlight status - only apply if multipath is active AND both tracks selected
-  const key = String(props.id);
-  const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
-  const inCompare = !!highlightedComparisonNodes?.has?.(key);
-  
-  // Only apply highlighting when multipath is ACTIVELY comparing tracks - support single track
-  let nodeHighlightClass = '';
-  
-  if (isMultipathActive && highlightedPrimaryNodes) {
-    if (highlightedComparisonNodes) {
-      // Dual track comparison mode
-      if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
-      else if (inPrimary) nodeHighlightClass = 'node--primary'; 
-      else if (inCompare) nodeHighlightClass = 'node--comparison';
-      else nodeHighlightClass = 'node--dim';
-    } else {
-      // Single track mode
-      if (inPrimary) nodeHighlightClass = 'node--primary';
-      else nodeHighlightClass = 'node--dim';
-    }
-  }
-
-  // Debug logging for multipath highlighting
-  if (process.env.NODE_ENV === 'development' && isMultipathActive) {
-    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}, isMultipathActive=${isMultipathActive}`);
-  }
   
   const [showAltCredits, setShowAltCredits] = useState(false);
   const [subBlocksExpanded, setSubBlocksExpanded] = useState(false);
@@ -111,9 +76,7 @@ export function BlockGroup(props: NodeProps) {
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
-        ${isComparisonHighlighted ? 'ring-2 ring-amber-500 shadow-xl border-amber-500 ring-offset-2' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
-        node ${nodeHighlightClass}
         transition-all duration-200
       `}>
         <CardHeader className="pb-3 space-y-3">

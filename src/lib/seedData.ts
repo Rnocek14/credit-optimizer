@@ -2,60 +2,75 @@ import { supabase } from '@/integrations/supabase/client';
 
 const seedData = {
   courses: [
-    // Exact matching courses for the multipath structure
+    // Foundation courses
+    { code: "CS-101", title: "Programming Fundamentals I", credits: 3, area: "foundation", level_year: 1, is_core: true, is_capstone: false },
+    { code: "CS-102", title: "Programming Fundamentals II", credits: 3, area: "foundation", level_year: 1, is_core: true, is_capstone: false },
+    
+    // Math courses
+    { code: "MATH-111", title: "College Algebra", credits: 3, area: "mathematics", level_year: 1, is_core: false, is_capstone: false },
+    { code: "MATH-120", title: "Statistics", credits: 3, area: "mathematics", level_year: 1, is_core: false, is_capstone: false },
+    
+    // General Education courses
     { code: "ENG-101", title: "English Composition I", credits: 3, area: "general_education", level_year: 1, is_core: false, is_capstone: false },
-    { code: "MATH-120", title: "Quantitative Reasoning", credits: 3, area: "general_education", level_year: 1, is_core: false, is_capstone: false },
-    { code: "CS-101", title: "Programming Fundamentals I", credits: 3, area: "core", level_year: 1, is_core: true, is_capstone: false },
-    { code: "CS-102", title: "Programming Fundamentals II", credits: 3, area: "core", level_year: 2, is_core: true, is_capstone: false },
-    { code: "CS-201", title: "Data Structures", credits: 3, area: "core", level_year: 2, is_core: true, is_capstone: false },
-    { code: "WD-201", title: "Web Frontend Foundations", credits: 3, area: "specialization", level_year: 2, is_core: false, is_capstone: false },
-    { code: "DS-201", title: "Data Analytics Intro", credits: 3, area: "specialization", level_year: 2, is_core: false, is_capstone: false },
-    { code: "MATH-111", title: "Mathematics for Computer Science", credits: 3, area: "mathematics", level_year: 1, is_core: false, is_capstone: false },
-    { code: "CS-499", title: "Senior Capstone", credits: 6, area: "capstone", level_year: 4, is_core: false, is_capstone: true },
+    { code: "ENG-102", title: "English Composition II", credits: 3, area: "general_education", level_year: 1, is_core: false, is_capstone: false },
+    { code: "PSY-101", title: "Introduction to Psychology", credits: 3, area: "general_education", level_year: 1, is_core: false, is_capstone: false },
+    
+    // Core courses
+    { code: 'CS-201', title: 'Data Structures', credits: 3, area: 'core', level_year: 2, is_core: true, is_capstone: false },
+    { code: 'CS-202', title: 'Algorithms', credits: 3, area: 'core', level_year: 2, is_core: true, is_capstone: false },
+    { code: 'CS-301', title: 'Operating Systems', credits: 3, area: 'core', level_year: 3, is_core: true, is_capstone: false },
+    { code: 'CS-302', title: 'Database Systems', credits: 3, area: 'core', level_year: 3, is_core: true, is_capstone: false },
+    
+    // Specialization courses
+    { code: 'CS-351', title: 'Web Development', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    { code: 'CS-361', title: 'Mobile Development', credits: 3, area: 'specialization', level_year: 3, is_core: false, is_capstone: false },
+    
+    // Architecture and Capstone
+    { code: 'CS-401', title: 'Software Architecture', credits: 3, area: 'software_engineering', level_year: 4, is_core: false, is_capstone: false },
+    { code: 'CS-499', title: 'Capstone Project', credits: 6, area: 'capstone', level_year: 4, is_core: false, is_capstone: true }
   ],
 
   blocks: [
-    // Exact structure matching the task specification for multipath
-    { title: "Gen Ed: Composition", rule_type: "ALL", level_year: 1, area: "general-education" },
-    { title: "Gen Ed: Quant Reasoning", rule_type: "ALL", level_year: 1, area: "general-education" },
-    { title: "Core: Programming I", rule_type: "ALL", level_year: 1, area: "core" },
-    { title: "Core: Programming II", rule_type: "ALL", level_year: 2, area: "core" },
-    { title: "Web Frontend Foundations", rule_type: "ALL", level_year: 2, area: "specialization" },
-    { title: "Data Analytics Intro", rule_type: "ALL", level_year: 2, area: "specialization" },
-    { title: "Mathematics for CS", rule_type: "ALL", level_year: 1, area: "mathematics" },
-    
-    // Terminal node for degree completion
-    { title: "Degree", rule_type: "ALL", level_year: 4, area: "terminal" },
+    { title: "Foundations", rule_type: "K_OF_N", k: 2, level_year: 1, area: "foundation" },
+    { title: "Mathematics", rule_type: "K_OF_N", k: 2, level_year: 1, area: "mathematics" },
+    { title: "General Education", rule_type: "K_OF_N", k: 3, level_year: 1, area: "general_education" },
+    { title: "Core I", rule_type: "K_OF_N", k: 2, level_year: 2, area: "core" },
+    { title: "Core II", rule_type: "K_OF_N", k: 2, level_year: 3, area: "core" },
+    { title: "Specializations", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
+    { title: "Web Development", rule_type: "ALL", level_year: 3, area: "specialization" },
+    { title: "Mobile Development", rule_type: "ALL", level_year: 3, area: "specialization" },
+    { title: "Architecture", rule_type: "ALL", level_year: 4, area: "software_engineering" },
+    { title: "Capstone", rule_type: "ALL", level_year: 4, area: "capstone" }
   ],
 
   blockCourseRelations: [
-    // Exact multipath-focused mappings
-    { blockTitle: 'Gen Ed: Composition', courseCodes: ['ENG-101'] },
-    { blockTitle: 'Gen Ed: Quant Reasoning', courseCodes: ['MATH-120'] },
-    { blockTitle: 'Core: Programming I', courseCodes: ['CS-101'] },
-    { blockTitle: 'Core: Programming II', courseCodes: ['CS-102', 'CS-201'] },
-    { blockTitle: 'Web Frontend Foundations', courseCodes: ['WD-201'] },
-    { blockTitle: 'Data Analytics Intro', courseCodes: ['DS-201'] },
-    { blockTitle: 'Mathematics for CS', courseCodes: ['MATH-111'] },
-    { blockTitle: 'Degree', courseCodes: ['CS-499'] },
+    { blockTitle: 'Foundations', courseCodes: ['CS-101', 'CS-102'] },
+    { blockTitle: 'Mathematics', courseCodes: ['MATH-111', 'MATH-120'] },
+    { blockTitle: 'General Education', courseCodes: ['ENG-101', 'ENG-102', 'PSY-101'] },
+    { blockTitle: 'Core I', courseCodes: ['CS-201', 'CS-202'] },
+    { blockTitle: 'Core II', courseCodes: ['CS-301', 'CS-302'] },
+    { blockTitle: 'Specializations', courseCodes: ['CS-351', 'CS-361'] },
+    { blockTitle: 'Web Development', courseCodes: ['CS-351'] },
+    { blockTitle: 'Mobile Development', courseCodes: ['CS-361'] },
+    { blockTitle: 'Architecture', courseCodes: ['CS-401'] },
+    { blockTitle: 'Capstone', courseCodes: ['CS-499'] }
   ],
 
   edges: [
-    // Exact multipath-focused edges matching task specification
-    { from: "Gen Ed: Composition", to: "Core: Programming I" },
-    { from: "Gen Ed: Quant Reasoning", to: "Core: Programming I" },
-    { from: "Core: Programming I", to: "Core: Programming II" },
-    { from: "Core: Programming II", to: "Web Frontend Foundations" },
-    { from: "Core: Programming II", to: "Data Analytics Intro" },
-    { from: "Mathematics for CS", to: "Core: Programming II" },
-    { from: "Web Frontend Foundations", to: "Degree" },
-    { from: "Data Analytics Intro", to: "Degree" },
+    { from: "Mathematics", to: "Core I" },
+    { from: "General Education", to: "Core I" },
+    { from: "Foundations", to: "Core I" },
+    { from: "Core I", to: "Core II" },
+    { from: "Core II", to: "Specializations" },
+    { from: "Core II", to: "Architecture" },
+    { from: "Specializations", to: "Capstone" },
+    { from: "Architecture", to: "Capstone" }
   ]
 };
 
 export async function seedEduTreeData() {
   try {
-    console.log('Starting multipath-focused edu tree data seeding...');
+    console.log('Starting edu tree data seeding with comprehensive cleanup...');
 
     // COMPREHENSIVE CLEANUP: Remove ALL existing edu tree data
     console.log('Cleaning up existing data...');
@@ -128,6 +143,15 @@ export async function seedEduTreeData() {
 
     const blockTitleToId = new Map(insertedBlocks?.map(block => [block.title, block.id]) || []);
 
+    // Update parent block relationships
+    const specializationsBlockId = blockTitleToId.get('Specializations');
+    if (specializationsBlockId) {
+      await supabase
+        .from('requirement_blocks')
+        .update({ parent_block_id: specializationsBlockId })
+        .in('title', ['Web Development', 'Mobile Development']);
+    }
+
     // Insert block members, gates, and edges
     const membersToInsert: any[] = [];
     seedData.blockCourseRelations.forEach(relation => {
@@ -161,8 +185,7 @@ export async function seedEduTreeData() {
 
     await supabase.from('prereq_to_block').insert(edgesToInsert);
     
-    console.log('✅ Multipath-focused edu tree data seeding completed successfully!');
-    console.log(`Created ${insertedBlocks?.length} blocks with ${edgesToInsert.length} edges for distinct path comparison`);
+    console.log('Edu tree data seeding completed successfully!');
   } catch (error) {
     console.error('Error during seeding:', error);
   }
