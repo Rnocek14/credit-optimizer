@@ -592,7 +592,14 @@ function EduTreeCanvasInner() {
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[Edges] base=', safeEdges.length, 'highlighted=', highlightedEdges.length);
-      // 5) Optional assert: verify source/target exist
+      
+      // 1) Assert: Visible edges must always carry one highlight class
+      const ok = highlightedEdges.every(e =>
+        /\bedge(--primary|--comparison|--both|--dim)\b/.test(e.className || '')
+      );
+      if (!ok) console.warn('[Assert] Some visible edges lack highlight classes');
+      
+      // 2) Edge endpoint sanity during reveal
       highlightedEdges.forEach(e => {
         if (!e.source || !e.target) console.warn('[Edge missing endpoints]', e.id, e);
       });
