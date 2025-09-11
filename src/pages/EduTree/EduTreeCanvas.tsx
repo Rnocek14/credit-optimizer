@@ -463,6 +463,15 @@ function EduTreeCanvasInner() {
     }
   );
   
+  console.log('[Staggered] visibleEdges=', visibleEdges?.length);
+  
+  // 1) Unify the edge source before highlighting
+  const baseEdges = useMemo(() => {
+    const useStaggered = flags.eduTreeStaggeredEdgesV2 && Array.isArray(visibleEdges);
+    const src = useStaggered ? visibleEdges : allEdges;
+    return Array.isArray(src) ? src : [];
+  }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, allEdges]);
+  
   // Update React Flow edges when visibleEdges change
   useEffect(() => {
     if (flags.eduTreeStaggeredEdgesV2) {
@@ -541,13 +550,13 @@ function EduTreeCanvasInner() {
     }
   }, [flowNodes.length, flags.eduTreeMultiPathOverlay]); // Only trigger when multipath is not intended
 
-  // Track comparison highlighting - Phase B & C: Compute highlights and apply classes
+  // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
     const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
     
     // Safe guards - ensure we have valid arrays
-    const safeNodes = nodes ?? [];
-    const safeEdges = edges ?? [];
+    const safeNodes = Array.isArray(nodes) ? nodes : [];
+    const safeEdges = baseEdges; // <-- unified source
     
     if (!overlayOn) {
       return { nodes: safeNodes, edges: safeEdges };
@@ -589,10 +598,18 @@ function EduTreeCanvasInner() {
       return { ...edge, className: merged.join(' ') };
     });
 
-    return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, edges]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Edges] base=', safeEdges.length, 'highlighted=', highlightedEdges.length);
+      // 5) Optional assert: verify source/target exist
+      highlightedEdges.forEach(e => {
+        if (!e.source || !e.target) console.warn('[Edge missing endpoints]', e.id, e);
+      });
+    }
 
-  // FitView exactly once per activation with node count guard
+    return { nodes: highlightedNodes, edges: highlightedEdges };
+  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, baseEdges]);
+
+  // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
   useEffect(() => {
     const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
@@ -600,7 +617,7 @@ function EduTreeCanvasInner() {
       didFitRef.current = false; 
       return; 
     }
-    if (!highlightedElements.nodes?.length) return;
+    if (!highlightedElements.nodes?.length || !highlightedElements.edges?.length) return;
     if (didFitRef.current) return;
     
     const timer = setTimeout(() => {
@@ -610,7 +627,8 @@ function EduTreeCanvasInner() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [reactFlowInstance, overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, highlightedElements.nodes?.length]);
+  }, [reactFlowInstance, overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, 
+      highlightedElements.nodes?.length, highlightedElements.edges?.length]);
 
   // Development audit logging with safety guards
   useEffect(() => {
@@ -862,10 +880,7 @@ function EduTreeCanvasInner() {
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
           nodes={Array.isArray(highlightedElements.nodes) ? highlightedElements.nodes : []}
-          edges={flags.eduTreeStaggeredEdgesV2 
-            ? (Array.isArray(visibleEdges) ? visibleEdges : [])
-            : (Array.isArray(highlightedElements.edges) ? highlightedElements.edges : [])
-          }
+          edges={Array.isArray(highlightedElements.edges) ? highlightedElements.edges : []}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
