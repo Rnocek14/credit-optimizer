@@ -17,16 +17,23 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   };
   const { label, isEligible = false, degreeType, credits, displayTitle, highlightedPrimaryNodes, highlightedComparisonNodes } = terminalData;
   
-  // Determine highlight status
+  // Determine highlight status - only apply if we have highlight sets
   const key = String(id);
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
   let highlightClass = '';
-  if (inPrimary && inCompare) highlightClass = 'terminal--both';
-  else if (inPrimary) highlightClass = 'terminal--primary';
-  else if (inCompare) highlightClass = 'terminal--comparison';
-  else highlightClass = 'terminal--dim';
+  if (highlightedPrimaryNodes || highlightedComparisonNodes) {
+    if (inPrimary && inCompare) highlightClass = 'terminal--both';
+    else if (inPrimary) highlightClass = 'terminal--primary';
+    else if (inCompare) highlightClass = 'terminal--comparison';
+    else highlightClass = 'terminal--dim';
+  }
+
+  // Debug logging for multipath highlighting
+  if (process.env.NODE_ENV === 'development' && (highlightedPrimaryNodes || highlightedComparisonNodes)) {
+    console.log(`TerminalNode ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${highlightClass}`);
+  }
 
   return (
     <div

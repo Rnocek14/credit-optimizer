@@ -53,11 +53,19 @@ export function BlockGroup(props: NodeProps) {
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
+  // Only apply highlighting if we have highlight sets (multipath mode)
   let nodeHighlightClass = '';
-  if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
-  else if (inPrimary) nodeHighlightClass = 'node--primary';
-  else if (inCompare) nodeHighlightClass = 'node--comparison';
-  else nodeHighlightClass = 'node--dim';
+  if (highlightedPrimaryNodes || highlightedComparisonNodes) {
+    if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
+    else if (inPrimary) nodeHighlightClass = 'node--primary';
+    else if (inCompare) nodeHighlightClass = 'node--comparison';
+    else nodeHighlightClass = 'node--dim';
+  }
+
+  // Debug logging for multipath highlighting
+  if (process.env.NODE_ENV === 'development' && (highlightedPrimaryNodes || highlightedComparisonNodes)) {
+    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}`);
+  }
   
   const [showAltCredits, setShowAltCredits] = useState(false);
   const [subBlocksExpanded, setSubBlocksExpanded] = useState(false);

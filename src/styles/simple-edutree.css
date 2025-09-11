@@ -1,0 +1,32 @@
+/* Simple EduTree styles without multipath complexity */
+
+.edu-tree-canvas .react-flow__edge {
+  stroke: hsl(var(--muted-foreground));
+  stroke-width: 2px;
+  transition: all 0.2s ease;
+}
+
+.edu-tree-canvas .react-flow__edge:hover {
+  stroke: hsl(var(--primary));
+  stroke-width: 2.5px;
+}
+
+.edu-tree-canvas .react-flow__node {
+  transition: all 0.2s ease;
+}
+
+.edu-tree-canvas .react-flow__node:hover {
+  transform: scale(1.02);
+}
+
+/* Clean node styles without multipath conflicts */
+.node {
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.terminal {
+  border-radius: 9999px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}

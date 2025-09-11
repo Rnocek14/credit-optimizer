@@ -1,7 +1,7 @@
 import React from 'react';
 import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
-import { EduTreeCanvas } from './EduTreeCanvas';
+import { EduTreeSimple } from './EduTreeSimple';
 
 export default function EduTree() {
   const enabled = resolveEduTreeFlag();
@@ -25,5 +25,5 @@ export default function EduTree() {
     );
   }
 
-  return <EduTreeCanvas />;
+  return <EduTreeSimple />;
 }
