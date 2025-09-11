@@ -151,9 +151,12 @@ function EduTreeCanvasInner() {
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
-  // Default comparison lens on /edu-treemulti
+  // Default comparison lens on /edu-treemulti (run once when flags stabilize)
+  const didInitLens = useRef(false);
   useEffect(() => {
-    if (!flags.eduTreeMultiPathOverlay) return;
+    if (!flags.eduTreeMultiPathOverlay || didInitLens.current) return;
+    didInitLens.current = true;
+    
     const sp = new URLSearchParams(window.location.search);
     let compare = sp.get('compare') as PlanningLens | null;
     if (!compare || !['fastest','cheapest','roi'].includes(compare)) {
@@ -265,20 +268,34 @@ function EduTreeCanvasInner() {
 
     // Use fallback seed if live data is insufficient (for multipath demo)
     let effectiveBlocks = blocks;
-    let effectiveGateEdges = gateEdges;
-    
+    const effectiveGateEdges = useMemo(() => {
+      let merged = gateEdges;
+
+      if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
+        devOnce('fallback-seed', '[Multipath] Using fallback seed data');
+        merged = [
+          ...gateEdges,
+          ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
+            ...e,
+            source_gate_id: `gate-${e.source_block_id}`
+          }))
+        ];
+      }
+
+      // Normalize all edges to ensure they have source_gate_id
+      return merged.map(e => ({
+        ...e,
+        source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`
+      }));
+    }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay]);
+
     if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
-      console.log('[Multipath] Using fallback seed data for demonstration');
       effectiveBlocks = [...blocks, ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
         ...b,
         parent_block_id: null,
         rule_type: 'ALL' as const,
         credits_needed: null,
         k: null
-      }))];
-      effectiveGateEdges = [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
-        ...e,
-        source_gate_id: `gate-${e.source_block_id}`
       }))];
     }
 
@@ -926,18 +943,24 @@ function EduTreeCanvasInner() {
       clearTimeout(fitViewTimeoutRef.current);
     }
     
-    // Harden fitView timing to avoid "deferred DOM Node..." warnings
+    // Gate fitView until both path highlights are ready (when compare is set)
     fitViewTimeoutRef.current = setTimeout(() => {
-      const ready = flowNodes.length > 0 && flowEdges.length > 0 &&
-                    (!flags.eduTreeOutcomes || highlightedPrimary || highlightedPath ||
-                     (flags.eduTreeMultiPathOverlay && (highlightedPrimary || highlightedComparison)));
+      const needCompare = flags.eduTreeMultiPathOverlay && !!comparisonLens;
+      const havePrimary = !!highlightedPrimary;  
+      const haveCompare = !needCompare || !!highlightedComparison;
+
+      const ready = flowNodes.length > 0 &&
+                    flowEdges.length > 0 &&
+                    (!flags.eduTreeOutcomes || havePrimary || highlightedPath) &&
+                    haveCompare;
       
       if (!ready) {
-        if (DEV) console.debug('[fitView] Waiting for data...', { 
+        if (DEV) console.debug('[fitView] Waiting for highlights...', { 
           nodes: flowNodes.length, 
           edges: flowEdges.length,
-          highlightedPrimary: !!highlightedPrimary,
-          highlightedComparison: !!highlightedComparison,
+          needCompare,
+          havePrimary,
+          haveCompare,
           highlightedPath: !!highlightedPath
         });
         return;

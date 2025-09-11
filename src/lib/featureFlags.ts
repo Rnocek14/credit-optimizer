@@ -93,14 +93,19 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'true')),
   };
 
-  // Auto-enable multipath overlay on the dedicated route
+  // Auto-enable multipath overlay on the dedicated route (idempotent)
   try {
     if (typeof window !== 'undefined' && window.location.pathname.includes('/edu-treemulti')) {
       flags.eduTreeOutcomes = true;
       flags.eduTreeStaggeredEdgesV2 = true;
       flags.eduTreeMultiPathOverlay = true;
       
-      console.log('[flags] Auto-enabled multipath flags for /edu-treemulti route');
+      // Log only once per session to prevent spam
+      const key = '__MULTIPATH_FLAGS_LOGGED__';
+      if (!(window as any)[key]) {
+        (window as any)[key] = true;
+        console.log('[flags] Auto-enabled multipath flags for /edu-treemulti route');
+      }
     }
   } catch {}
   
