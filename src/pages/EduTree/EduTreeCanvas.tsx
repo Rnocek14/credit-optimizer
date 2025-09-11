@@ -70,10 +70,14 @@ const DEV = import.meta.env.DEV;
 type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
-  console.log('[DEBUG] EduTreeCanvasInner: Starting component render');
+  console.log('[BOOT] EduTreeCanvas render start');
   
   const flags = useFeatureFlags();
-  console.log('[DEBUG] EduTreeCanvasInner: Feature flags loaded', flags);
+  
+  // Feature flag source with querystring fallback
+  const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const qsOverlay = search?.get('eduTreeMultiPathOverlay') === 'true';
+  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -539,18 +543,22 @@ function EduTreeCanvasInner() {
 
   // Track comparison highlighting - Phase B & C: Compute highlights and apply classes
   const highlightedElements = useMemo(() => {
-    const overlayOn = flags.eduTreeMultiPathOverlay && comparisonEnabled && primaryTrack;
+    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    
+    // Safe guards - ensure we have valid arrays
+    const safeNodes = nodes ?? [];
+    const safeEdges = edges ?? [];
     
     if (!overlayOn) {
-      return { nodes, edges };
+      return { nodes: safeNodes, edges: safeEdges };
     }
 
     const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
-    const highlightedNodes = nodes.map(node => {
+    const highlightedNodes = safeNodes.map(node => {
       const blockId = String(node.data?.blockId ?? node.id);
-      const merged = [node.className, 'node']; // Keep original first
+      const merged = [node.className, 'node'].filter(Boolean);
       
       if (highlights.bothNodes.has(blockId)) {
         merged.push('node--both');
@@ -558,15 +566,15 @@ function EduTreeCanvasInner() {
         merged.push('node--primary');
       } else if (highlights.comparisonOnlyNodes.has(blockId)) {
         merged.push('node--comparison');
-      } else if (overlayOn) {
+      } else {
         merged.push('node--dim');
       }
       
-      return { ...node, className: merged.filter(Boolean).join(' ') };
+      return { ...node, className: merged.join(' ') };
     });
 
-    const highlightedEdges = edges.map(edge => {
-      const merged = [edge.className, 'edge']; // Keep original first
+    const highlightedEdges = safeEdges.map(edge => {
+      const merged = [edge.className, 'edge'].filter(Boolean);
       
       if (highlights.bothEdges.has(edge.id)) {
         merged.push('edge--both');
@@ -574,24 +582,25 @@ function EduTreeCanvasInner() {
         merged.push('edge--primary');
       } else if (highlights.comparisonOnlyEdges.has(edge.id)) {
         merged.push('edge--comparison');
-      } else if (overlayOn) {
+      } else {
         merged.push('edge--dim');
       }
       
-      return { ...edge, className: merged.filter(Boolean).join(' ') };
+      return { ...edge, className: merged.join(' ') };
     });
 
     return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [flags.eduTreeMultiPathOverlay, comparisonEnabled, primaryTrack, comparisonTrack, nodes, edges]);
+  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, edges]);
 
-  // FitView exactly once per activation
+  // FitView exactly once per activation with node count guard
   const didFitRef = useRef(false);
   useEffect(() => {
-    const overlayOn = flags.eduTreeMultiPathOverlay && comparisonEnabled && primaryTrack;
+    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
     if (!reactFlowInstance || !overlayOn) { 
       didFitRef.current = false; 
       return; 
     }
+    if (!highlightedElements.nodes?.length) return;
     if (didFitRef.current) return;
     
     const timer = setTimeout(() => {
@@ -601,14 +610,14 @@ function EduTreeCanvasInner() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [reactFlowInstance, flags.eduTreeMultiPathOverlay, comparisonEnabled, primaryTrack, comparisonTrack]);
+  }, [reactFlowInstance, overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, highlightedElements.nodes?.length]);
 
-  // Development audit logging
+  // Development audit logging with safety guards
   useEffect(() => {
-    if (flags.eduTreeMultiPathOverlay && highlightedElements.nodes.length > 0) {
-      runTrackAudits(highlightedElements.nodes, highlightedElements.edges);
-    }
-  }, [flags.eduTreeMultiPathOverlay, highlightedElements.nodes.length, highlightedElements.edges.length]);
+    if (!overlayFlag) return;
+    if (!highlightedElements.nodes?.length) return;
+    runTrackAudits(highlightedElements.nodes, highlightedElements.edges);
+  }, [overlayFlag, highlightedElements.nodes?.length, highlightedElements.edges?.length]);
 
   // Dev hotkey: press 'T' to toggle Track Validator
   useEffect(() => {
@@ -727,6 +736,9 @@ function EduTreeCanvasInner() {
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const onInit = useCallback((reactFlowInstance: any) => {
+    console.log('[BOOT] RF onInit');
+    setReactFlowInstance(reactFlowInstance);
+    
     // Clear any pending fitView to debounce
     if (fitViewTimeoutRef.current) {
       clearTimeout(fitViewTimeoutRef.current);
@@ -761,6 +773,15 @@ function EduTreeCanvasInner() {
 
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
+
+  // Loading state check - render skeleton until data arrives
+  if (!nodes || !edges) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-sm opacity-70">Loading curriculum…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -840,8 +861,11 @@ function EduTreeCanvasInner() {
       {/* React Flow Canvas */}
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
-          nodes={highlightedElements.nodes}
-          edges={flags.eduTreeStaggeredEdgesV2 ? visibleEdges : highlightedElements.edges}
+          nodes={Array.isArray(highlightedElements.nodes) ? highlightedElements.nodes : []}
+          edges={flags.eduTreeStaggeredEdgesV2 
+            ? (Array.isArray(visibleEdges) ? visibleEdges : [])
+            : (Array.isArray(highlightedElements.edges) ? highlightedElements.edges : [])
+          }
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
