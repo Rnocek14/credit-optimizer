@@ -226,6 +226,28 @@ function EduTreeCanvasInner() {
     },
   });
 
+  // Extract effectiveGateEdges as a separate hook to avoid nesting
+  const effectiveGateEdges = useMemo(() => {
+    let merged = gateEdges;
+
+    if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
+      devOnce('fallback-seed', '[Multipath] Using fallback seed data');
+      merged = [
+        ...gateEdges,
+        ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
+          ...e,
+          source_gate_id: `gate-${e.source_block_id}`
+        }))
+      ];
+    }
+
+    // Normalize all edges to ensure they have source_gate_id
+    return merged.map(e => ({
+      ...e,
+      source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`
+    }));
+  }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay]);
+
   // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     console.log('Data check:', { 
@@ -238,26 +260,6 @@ function EduTreeCanvasInner() {
 
     // Use fallback seed if live data is insufficient (for multipath demo)
     let effectiveBlocks = blocks;
-    const effectiveGateEdges = useMemo(() => {
-      let merged = gateEdges;
-
-      if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
-        devOnce('fallback-seed', '[Multipath] Using fallback seed data');
-        merged = [
-          ...gateEdges,
-          ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
-            ...e,
-            source_gate_id: `gate-${e.source_block_id}`
-          }))
-        ];
-      }
-
-      // Normalize all edges to ensure they have source_gate_id
-      return merged.map(e => ({
-        ...e,
-        source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`
-      }));
-    }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay]);
 
     if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
       effectiveBlocks = [...blocks, ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
@@ -588,7 +590,7 @@ function EduTreeCanvasInner() {
   }, [trackHighlightedComparison]);
 
   return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath, highlightedPrimary, highlightedComparison]);
+  }, [blocks, courses, blockMembers, gates, effectiveGateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath, highlightedPrimary, highlightedComparison]);
   // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
