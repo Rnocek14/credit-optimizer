@@ -9,14 +9,29 @@ interface TerminalNodeData {
   credits?: number;
 }
 
-export const TerminalNode: React.FC<NodeProps> = ({ data, selected }) => {
-  const terminalData = data as TerminalNodeData;
-  const { label, isEligible = false, degreeType, credits } = terminalData;
+export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
+  const terminalData = data as TerminalNodeData & {
+    displayTitle?: string;
+    highlightedPrimaryNodes?: Set<string>;
+    highlightedComparisonNodes?: Set<string>;
+  };
+  const { label, isEligible = false, degreeType, credits, displayTitle, highlightedPrimaryNodes, highlightedComparisonNodes } = terminalData;
+  
+  // Determine highlight status
+  const key = String(id);
+  const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
+  const inCompare = !!highlightedComparisonNodes?.has?.(key);
+  
+  let highlightClass = '';
+  if (inPrimary && inCompare) highlightClass = 'terminal--both';
+  else if (inPrimary) highlightClass = 'terminal--primary';
+  else if (inCompare) highlightClass = 'terminal--comparison';
+  else highlightClass = 'terminal--dim';
 
   return (
     <div
       className={`
-        relative min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
+        relative min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200 terminal ${highlightClass}
         ${isEligible 
           ? 'bg-primary/10 border-primary shadow-lg shadow-primary/20' 
           : 'bg-secondary/50 border-secondary'
@@ -41,7 +56,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ data, selected }) => {
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">{String(label || 'Terminal Node')}</h3>
+          <h3 className="font-semibold text-foreground">{String(displayTitle || label || 'Degree Completion')}</h3>
           {degreeType && (
             <p className="text-sm text-muted-foreground">{String(degreeType)}</p>
           )}

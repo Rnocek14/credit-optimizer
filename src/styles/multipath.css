@@ -1,4 +1,82 @@
-/* Multipath overlay styles */
+/* Node styles for track comparison */
+.node {
+  transition: opacity 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.node--dim {
+  opacity: 0.35;
+  filter: grayscale(25%);
+}
+
+.node--primary {
+  opacity: 1;
+  border: 2px solid hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+}
+
+.node--comparison {
+  opacity: 1;
+  border: 2px dashed hsl(var(--amber-500));
+  box-shadow: 0 0 0 3px hsl(var(--amber-500) / 0.25);
+}
+
+.node--both {
+  opacity: 1;
+  border: 2px solid hsl(var(--amber-600));
+  box-shadow: 0 0 0 3px hsl(var(--amber-600) / 0.3), 0 0 0 5px hsl(var(--primary) / 0.3);
+}
+
+/* Terminal node styles */
+.terminal {
+  border-radius: 9999px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.terminal--dim {
+  opacity: 0.4;
+}
+
+.terminal--primary {
+  border: 2px solid hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+}
+
+.terminal--comparison {
+  border: 2px dashed hsl(var(--amber-500));
+  box-shadow: 0 0 0 3px hsl(var(--amber-500) / 0.25);
+}
+
+.terminal--both {
+  border: 2px solid hsl(var(--amber-600));
+  box-shadow: 0 0 0 2px hsl(var(--amber-300)), 0 0 0 4px hsl(var(--primary));
+}
+
+/* Edge styles for track comparison */
+.edge {
+  stroke-width: 2.25px;
+  transition: all 0.15s;
+}
+
+.edge--dim {
+  stroke-opacity: 0.25;
+}
+
+.edge--primary path {
+  stroke: hsl(var(--primary));
+  stroke-dasharray: 0;
+}
+
+.edge--comparison path {
+  stroke: hsl(var(--amber-500));
+  stroke-dasharray: 6 6;
+}
+
+.edge--both path {
+  stroke: hsl(var(--amber-600));
+  stroke-dasharray: 3 5;
+}
 
 /* Primary path styling - solid with primary color glow */
 .edge--primary {

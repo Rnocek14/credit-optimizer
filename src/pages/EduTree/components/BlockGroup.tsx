@@ -28,7 +28,9 @@ export function BlockGroup(props: NodeProps) {
     planningLens = null,
     isDegreeNode = false,
     isDegreeComplete = false,
-    onCourseClick
+    onCourseClick,
+    highlightedPrimaryNodes,
+    highlightedComparisonNodes
   } = props.data as {
     block: BlockWithCourses;
     completedCourseIds: Set<string>;
@@ -42,7 +44,20 @@ export function BlockGroup(props: NodeProps) {
     isDegreeNode?: boolean;
     isDegreeComplete?: boolean;
     onCourseClick?: (course: any) => void;
+    highlightedPrimaryNodes?: Set<string>;
+    highlightedComparisonNodes?: Set<string>;
   };
+  
+  // Determine highlight status from highlight sets
+  const key = String(props.id);
+  const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
+  const inCompare = !!highlightedComparisonNodes?.has?.(key);
+  
+  let nodeHighlightClass = '';
+  if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
+  else if (inPrimary) nodeHighlightClass = 'node--primary';
+  else if (inCompare) nodeHighlightClass = 'node--comparison';
+  else nodeHighlightClass = 'node--dim';
   
   const [showAltCredits, setShowAltCredits] = useState(false);
   const [subBlocksExpanded, setSubBlocksExpanded] = useState(false);
@@ -80,6 +95,7 @@ export function BlockGroup(props: NodeProps) {
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}
         ${isComparisonHighlighted ? 'ring-2 ring-amber-500 shadow-xl border-amber-500 ring-offset-2' : ''}
         ${planningLens ? 'border-l-4 border-l-accent' : ''}
+        node ${nodeHighlightClass}
         transition-all duration-200
       `}>
         <CardHeader className="pb-3 space-y-3">

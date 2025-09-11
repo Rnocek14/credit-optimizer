@@ -87,7 +87,9 @@ function createFlowElements(
   blocks: BlockWithCourses[],
   gateEdges: GateEdge[],
   coursesByBlock: Map<string, EduCourse[]>,
-  flags: any
+  flags: any,
+  highlightedPrimary?: { nodes: Set<string>; edges: Set<string> } | null,
+  highlightedComparison?: { nodes: Set<string>; edges: Set<string> } | null
 ): { nodes: Node[]; edges: Edge[] } {
   try {
     const safeBlocks = safeArr(blocks);
@@ -154,7 +156,51 @@ function createFlowElements(
       };
     }).filter(Boolean) as Edge[];
 
-    return { nodes, edges };
+    // Pass highlight sets to processed nodes and edges
+    const nodesWithHighlights = nodes.map(n => ({
+      ...n,
+      data: {
+        ...n.data,
+        highlightedPrimaryNodes: highlightedPrimary?.nodes ?? null,
+        highlightedComparisonNodes: highlightedComparison?.nodes ?? null,
+      },
+    }));
+
+    // Create edges with proper className based on highlights
+    const edgesWithHighlights: Edge[] = safeEdges.map(ge => {
+      const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
+      const source = String(sourceGateId).replace('gate-', '');
+      const target = String(ge.target_block_id);
+
+      if (!source || !target) return null;
+
+      const edgeId = String(ge.id ?? `${source}->${target}`);
+      const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
+      const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
+      
+      let edgeClass = 'edge';
+      if (isPrimary && isCompare) edgeClass += ' edge--both';
+      else if (isPrimary) edgeClass += ' edge--primary';
+      else if (isCompare) edgeClass += ' edge--comparison';  
+      else edgeClass += ' edge--dim';
+
+      return {
+        id: edgeId,
+        source,
+        target,
+        type: 'smoothstep',
+        className: edgeClass,
+        data: {
+          highlightedPrimaryEdges: highlightedPrimary?.edges ?? null,
+          highlightedComparisonEdges: highlightedComparison?.edges ?? null,
+        },
+        markerEnd: {
+          type: MarkerType.Arrow,
+        },
+      };
+    }).filter(Boolean) as Edge[];
+
+    return { nodes: nodesWithHighlights, edges: edgesWithHighlights };
   } catch (error) {
     console.error('[EduTree] createFlowElements failed:', error);
     return { nodes: [], edges: [] };
@@ -685,7 +731,9 @@ function EduTreeCanvasInner() {
         safeArr(blocksWithCourses),
         safeArr(effectiveGateEdges), 
         coursesByBlock,
-        flags
+        flags,
+        highlightedPrimary,
+        highlightedComparison
       );
       processedNodes = safeArr(result.nodes);
       processedEdges = safeArr(result.edges);
