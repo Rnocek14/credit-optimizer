@@ -20,18 +20,28 @@ export function CompareTracksBar({
   const options = Object.entries(TRACKS);
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-secondary/30 rounded-lg border border-border/50">
+    <div className="flex flex-col gap-3 p-4 bg-secondary/50 rounded-lg border-2 border-primary/30 shadow-lg">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Track Comparison</h3>
+        <h3 className="text-lg font-bold text-foreground">🎯 Track Comparison</h3>
         {(primary || comparison) && (
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => { onPrimary(null); onComparison(null); }}
-            className="h-6 px-2"
+            className="h-6 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-600"
           >
             <X className="w-3 h-3" />
             Clear All
+          </Button>
+        )}
+        {!primary && !comparison && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onPrimary('web')}
+            className="h-6 px-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600"
+          >
+            🚀 Quick Test
           </Button>
         )}
       </div>
@@ -46,9 +56,9 @@ export function CompareTracksBar({
               console.log('🎯 Primary track selected:', value);
               onPrimary(value);
             }}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background min-w-[140px]"
+            className="border-2 border-primary/30 rounded px-3 py-1.5 text-sm bg-background min-w-[140px] font-medium focus:border-primary"
           >
-            <option value="">— Select Track —</option>
+            <option value="">🎯 Select Track</option>
             {options.map(([id, track]) => (
               <option key={id} value={id} disabled={id === comparison}>
                 {track.name}
@@ -71,10 +81,10 @@ export function CompareTracksBar({
               console.log('🎯 Comparison track selected:', value);
               onComparison(value);
             }}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background min-w-[140px]"
+            className="border-2 border-secondary/30 rounded px-3 py-1.5 text-sm bg-background min-w-[140px] font-medium focus:border-secondary"
             disabled={!primary}
           >
-            <option value="">{primary ? "— Add Comparison —" : "Select primary first"}</option>
+            <option value="">{primary ? "🔄 Add Comparison" : "Select primary first"}</option>
             {primary && options.map(([id, track]) => (
               <option key={id} value={id} disabled={id === primary}>
                 {track.name}

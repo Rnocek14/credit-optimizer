@@ -436,9 +436,10 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Always merge track seed when multipath is on (don't gate on counts)
+  // Always merge track seed when on multipath route (multipath route always has this data)
   const effectiveBlocks = useMemo(() => {
-    if (!flags.eduTreeMultiPathOverlay) return blocks;
+    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
+    if (!isMultipathRoute && !flags.eduTreeMultiPathOverlay) return blocks;
     // Always merge track seed while multipath is on (dedup by id)
     return dedupeById([
       ...blocks,
@@ -567,7 +568,7 @@ function EduTreeCanvasInner() {
 
         const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || 
                           highlightedPrimary?.nodes.has(String(block.id)) || false;
-        const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
+        const isComparisonHighlighted = (flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && 
                                       highlightedComparison?.nodes.has(String(block.id)) || false;
 
         // CSS class for multipath node styling
@@ -667,7 +668,7 @@ function EduTreeCanvasInner() {
       
       const isHighlighted = highlightedPath?.edges.has(String(ge.id)) || 
                         highlightedPrimary?.edges.has(String(ge.id)) || false;
-      const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
+      const isComparisonHighlighted = (flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && 
                                     highlightedComparison?.edges.has(String(ge.id)) || false;
       
       // Edge style precedence: primary > comparison > default
@@ -913,7 +914,8 @@ function EduTreeCanvasInner() {
 
   // Remove multipath snapshot - simplified debug
   useEffect(() => {
-    if (!DEV || !flags.eduTreeMultiPathOverlay) return;
+    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
+    if (!DEV || (!flags.eduTreeMultiPathOverlay && !isMultipathRoute)) return;
     
     const multipathActive = !!comparisonTrack;
     if (!multipathActive) return;
@@ -956,6 +958,20 @@ function EduTreeCanvasInner() {
   }, [primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
   
   useEffect(() => {
+    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
+    
+    // Skip emergency layout on multipath route - use branching layout instead
+    if (isMultipathRoute) {
+      console.log('[EduTree] Multipath route: Using branching layout instead of emergency layout');
+      setNodes(flowNodes);
+      if (flags.eduTreeStaggeredEdgesV2) {
+        setAllEdges(viewMode === 'flow' ? flowEdges : []);
+      } else {
+        setEdges(viewMode === 'flow' ? flowEdges : []);
+      }
+      return;
+    }
+    
     if (flowNodes.length > 0) {
       const applyEmergencyLayout = async () => {
         try {
@@ -1005,7 +1021,7 @@ function EduTreeCanvasInner() {
       
       applyEmergencyLayout();
     }
-  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
+  }, [flowNodes, flowEdges, flags.eduTreeStaggeredEdgesV2, viewMode, location.pathname]);
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -1298,7 +1314,7 @@ function EduTreeCanvasInner() {
         className={cn(
           "flex-1",
           // Apply multipath-active when any track is selected (allow single track mode)
-          primaryTrack && "multipath-active"
+          (primaryTrack || location.pathname.includes('/edu-treemulti')) && "multipath-active"
         )}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
@@ -1314,8 +1330,8 @@ function EduTreeCanvasInner() {
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           className={cn(
             'react-flow-canvas',
-            // Apply multipath styling when any track is selected (allow single track mode)
-            primaryTrack ? 'multipath-active' : undefined
+            // Apply multipath styling when any track is selected or on multipath route
+            (primaryTrack || location.pathname.includes('/edu-treemulti')) ? 'multipath-active' : undefined
           )}
           minZoom={0.3}
           maxZoom={1.5}
@@ -1430,8 +1446,8 @@ function EduTreeCanvasInner() {
           {/* Mini-map for large tree navigation */}
           {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
           
-          {/* Multipath Debug Panel */}
-          {flags.eduTreeMultiPathOverlay && (
+          {/* Multipath Debug Panel - always show on multipath route */}
+          {(flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && (
             <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50 max-w-80">
               <strong className="text-sm">Track Debug</strong>
               <div className="text-xs space-y-1">
@@ -1476,8 +1492,8 @@ function EduTreeCanvasInner() {
             </div>
           )}
 
-          {/* Empty state message */}
-          {flags.eduTreeMultiPathOverlay && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
+          {/* Empty state message - always show on multipath route */}
+          {(flags.eduTreeMultiPathOverlay || location.pathname.includes('/edu-treemulti')) && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
             <div className="absolute left-4 bottom-4 bg-muted/90 border border-border p-3 rounded-lg max-w-96 z-50">
               <div className="text-xs text-muted-foreground">
                 No comparison path available for '{TRACKS[comparisonTrack].name}'. Check missing nodes in console or enable fallback seed.
@@ -1485,8 +1501,8 @@ function EduTreeCanvasInner() {
             </div>
           )}
 
-          {/* Development controls */}
-          {process.env.NODE_ENV === 'development' && !flags.eduTreeMultiPathOverlay && (
+          {/* Development controls - hide on multipath route */}
+          {process.env.NODE_ENV === 'development' && !flags.eduTreeMultiPathOverlay && !location.pathname.includes('/edu-treemulti') && (
             <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50">
               <div className="text-xs text-muted-foreground">
                 Edges: {visibleEdges.length}/{allEdges.length}
@@ -1531,8 +1547,8 @@ function EduTreeCanvasInner() {
         </ReactFlow>
       </div>
 
-      {/* Outcome Panel */}
-      {flags.eduTreeOutcomes && !flags.eduTreeMultiPathOverlay && (
+      {/* Outcome Panel - hide on multipath route */}
+      {flags.eduTreeOutcomes && !flags.eduTreeMultiPathOverlay && !location.pathname.includes('/edu-treemulti') && (
         <OutcomePanel
           summary={outcomeSummary}
           selectedLens={primaryTrack as any}
