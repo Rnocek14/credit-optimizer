@@ -50,8 +50,8 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
 
   // Enhanced multipath-aware styling with string-coerced ID checks
   const key = String(id);
-  const inPrimary = !!data?.highlightedPrimaryEdges?.has(key);
-  const inCompare = !!data?.highlightedComparisonEdges?.has(key);
+  const inPrimary = !!data?.highlightedPrimaryEdges?.has?.(key);
+  const inCompare = !!data?.highlightedComparisonEdges?.has?.(key);
   
   let className = 'edge';
   if (inPrimary) className += ' edge--primary';

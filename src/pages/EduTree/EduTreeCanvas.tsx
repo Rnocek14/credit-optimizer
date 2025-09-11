@@ -833,6 +833,7 @@ function EduTreeCanvasInner() {
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const onInit = useCallback((reactFlowInstance: any) => {
+    
     // Clear any pending fitView to debounce
     if (fitViewTimeoutRef.current) {
       clearTimeout(fitViewTimeoutRef.current);
@@ -845,7 +846,13 @@ function EduTreeCanvasInner() {
                      (flags.eduTreeMultiPathOverlay && (highlightedPrimary || highlightedComparison)));
       
       if (!ready) {
-        console.log('[fitView] Not ready yet, skipping fitView');
+        if (DEV) console.debug('[fitView] Waiting for data...', { 
+          nodes: flowNodes.length, 
+          edges: flowEdges.length,
+          highlightedPrimary: !!highlightedPrimary,
+          highlightedComparison: !!highlightedComparison,
+          highlightedPath: !!highlightedPath
+        });
         return;
       }
       
@@ -858,12 +865,31 @@ function EduTreeCanvasInner() {
       
       // Wrap in requestAnimationFrame for better timing
       requestAnimationFrame(() => {
-        reactFlowInstance?.fitView?.({ padding, duration: 400, includeHiddenNodes: true });
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📏 fitView fired (debounced) with padding', padding);
+        try {
+          reactFlowInstance?.fitView?.({ padding, duration: 400, includeHiddenNodes: true });
+          if (DEV) devOnce('fitview-applied', '[fitView] Applied with padding:', padding);
+        } catch (error) {
+          if (DEV) console.warn('[fitView] Error:', error);
         }
       });
-    }, 200);
+    }, 220);
+    
+    // Expose dev global for QA
+    if (DEV) {
+      (window as any).__EDUTREE__ = {
+        getSnapshot: () => ({
+          lenses: { primary: selectedLens, comparison: comparisonLens },
+          primary: highlightedPrimary ? {
+            nodes: Array.from(highlightedPrimary.nodes),
+            edges: Array.from(highlightedPrimary.edges),
+          } : null,
+          comparison: highlightedComparison ? {
+            nodes: Array.from(highlightedComparison.nodes),
+            edges: Array.from(highlightedComparison.edges),
+          } : null,
+        }),
+      };
+    }
   }, [nodes, flowNodes.length, flowEdges.length, flags.eduTreeOutcomes, flags.eduTreeMultiPathOverlay, highlightedPrimary, highlightedPath, highlightedComparison]);
 
   const handleModeToggle = useCallback(() => {
