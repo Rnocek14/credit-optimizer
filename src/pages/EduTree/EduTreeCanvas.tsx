@@ -829,7 +829,8 @@ function EduTreeCanvasInner() {
     // Harden fitView timing to avoid "deferred DOM Node..." warnings
     fitViewTimeoutRef.current = setTimeout(() => {
       const ready = flowNodes.length > 0 && flowEdges.length > 0 &&
-                    (!flags.eduTreeOutcomes || highlightedPrimary || highlightedPath);
+                    (!flags.eduTreeOutcomes || highlightedPrimary || highlightedPath ||
+                     (flags.eduTreeMultiPathOverlay && (highlightedPrimary || highlightedComparison)));
       
       if (!ready) {
         console.log('[fitView] Not ready yet, skipping fitView');
@@ -851,7 +852,7 @@ function EduTreeCanvasInner() {
         }
       });
     }, 200);
-  }, [nodes, flowNodes.length, flowEdges.length, flags.eduTreeOutcomes, highlightedPrimary, highlightedPath]);
+  }, [nodes, flowNodes.length, flowEdges.length, flags.eduTreeOutcomes, flags.eduTreeMultiPathOverlay, highlightedPrimary, highlightedPath, highlightedComparison]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');

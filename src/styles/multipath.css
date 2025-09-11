@@ -27,6 +27,16 @@
   opacity: 1;
 }
 
+/* Node comparison highlighting */
+.node--comparison {
+  outline: 2px dashed var(--lp-amber-400, #f59e0b) !important;
+  outline-offset: 3px !important;
+}
+
+.node--both-paths {
+  box-shadow: 0 0 0 2px var(--lp-amber-300, #fbbf24), 0 0 0 4px var(--lp-primary, #60a5fa) !important;
+}
+
 /* Both paths styling - primary wins with amber accent */
 .edge--both-paths {
   stroke: hsl(var(--primary)) !important;
