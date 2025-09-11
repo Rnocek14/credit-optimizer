@@ -103,6 +103,34 @@ function EduTreeCanvasInner() {
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
+  // URL sync for comparison lens
+  useEffect(() => {
+    if (!flags.eduTreeMultiPathOverlay) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCompare = urlParams.get('compare');
+    
+    if (urlCompare && ['fastest', 'cheapest', 'roi'].includes(urlCompare)) {
+      setComparisonLens(urlCompare as PlanningLens);
+    } else if (urlCompare === null) {
+      setComparisonLens(null);
+    }
+  }, [flags.eduTreeMultiPathOverlay]);
+
+  // Update URL when comparison lens changes
+  const handleComparisonLensChange = useCallback((lens: PlanningLens | null) => {
+    setComparisonLens(lens);
+    
+    const url = new URL(window.location.href);
+    if (lens) {
+      url.searchParams.set('compare', lens);
+    } else {
+      url.searchParams.delete('compare');
+    }
+    
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
   // Handler for course click
   const handleCourseClick = useCallback((course: EduCourse) => {
     setSelectedCourse(course);
@@ -491,32 +519,7 @@ function EduTreeCanvasInner() {
       setEdges(allEdges);
     }
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
-  
-  // Handler for comparison lens change with URL sync
-  const handleComparisonLensChange = useCallback((lens: PlanningLens | null) => {
-    setComparisonLens(lens);
-    
-    // Update URL without reload
-    const url = new URL(window.location.href);
-    if (lens) {
-      url.searchParams.set('compare', lens);
-    } else {
-      url.searchParams.delete('compare');
-    }
-    window.history.replaceState({}, '', url.toString());
-  }, []);
 
-  // URL parameter support for comparison lens - robust sync
-  useEffect(() => {
-    if (!flags.eduTreeMultiPathOverlay) return;
-    const sp = new URLSearchParams(window.location.search);
-    const val = sp.get('compare');
-    if (val === 'fastest' || val === 'cheapest' || val === 'roi') {
-      setComparisonLens(val as PlanningLens);
-    } else {
-      setComparisonLens(null);
-    }
-  }, [flags.eduTreeMultiPathOverlay]);
 
   // Compute primary and comparison paths
   const primaryPath = useMemo(() => {
