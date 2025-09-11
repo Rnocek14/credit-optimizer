@@ -335,6 +335,8 @@ function EduTreeCanvasInner() {
 
   // Update legacy highlight states when tracks change
   useEffect(() => {
+    console.log('🎯 Track state changed:', { primaryTrack, comparisonTrack });
+    
     if (primaryTrack) {
       setHighlightedPrimary(branchingHighlightState.highlightedPrimary);
       console.log('🎯 Primary track set:', primaryTrack, 'Nodes:', branchingHighlightState.highlightedPrimary?.nodes.size);
@@ -437,17 +439,12 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Only show track seed data when tracks are actually selected
+  // Always provide the track seed data for multipath route, but control highlighting separately
   const effectiveBlocks = useMemo(() => {
     const isMultipathRoute = location.pathname.includes('/edu-treemulti');
     
-    // On multipath route: only show seed data if tracks are selected
+    // On multipath route: always provide the track structure for visualization
     if (isMultipathRoute) {
-      if (!primaryTrack && !comparisonTrack) {
-        // No tracks selected - show empty state to encourage selection
-        return [];
-      }
-      // Tracks selected - merge with seed data for visualization
       return dedupeById([
         ...blocks,
         ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
@@ -472,16 +469,9 @@ function EduTreeCanvasInner() {
         k: null,
       })),
     ]);
-  }, [blocks, flags.eduTreeMultiPathOverlay, primaryTrack, comparisonTrack, location.pathname]);
+  }, [blocks, flags.eduTreeMultiPathOverlay, location.pathname]);
 
   const effectiveGateEdges = useMemo(() => {
-    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
-    
-    // On multipath route: only show edges if tracks are selected
-    if (isMultipathRoute && !primaryTrack && !comparisonTrack) {
-      return []; // No tracks selected - no edges
-    }
-    
     const validBlockIds = new Set(effectiveBlocks.map(b => String(b.id)));
     return [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges]
       .filter(e => {
@@ -495,7 +485,7 @@ function EduTreeCanvasInner() {
         ...e,
         source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`,
       }));
-  }, [gateEdges, effectiveBlocks, primaryTrack, comparisonTrack, location.pathname]);
+  }, [gateEdges, effectiveBlocks]);
 
   // Transform data for React Flow with crash protection
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
@@ -1346,10 +1336,13 @@ function EduTreeCanvasInner() {
         )}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
-        {/* Empty state when no tracks selected on multipath route */}
-        {location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack ? (
-          <EmptyTrackState onSelectTrack={(trackId) => setPrimaryTrack(trackId)} />
-        ) : (
+        {/* Show overlay when no tracks selected on multipath route */}
+        {location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack && (
+          <div className="absolute inset-0 z-50 bg-background/95">
+            <EmptyTrackState onSelectTrack={(trackId) => setPrimaryTrack(trackId)} />
+          </div>
+        )}
+        
         <ReactFlow
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
@@ -1363,7 +1356,9 @@ function EduTreeCanvasInner() {
           className={cn(
             'react-flow-canvas',
             // Apply multipath styling when any track is selected or on multipath route
-            (primaryTrack || location.pathname.includes('/edu-treemulti')) ? 'multipath-active' : undefined
+            (primaryTrack || location.pathname.includes('/edu-treemulti')) ? 'multipath-active' : undefined,
+            // Dim the graph when no tracks selected on multipath route
+            location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack ? 'opacity-20 pointer-events-none' : ''
           )}
           minZoom={0.3}
           maxZoom={1.5}
@@ -1577,7 +1572,6 @@ function EduTreeCanvasInner() {
             </div>
           )}
         </ReactFlow>
-        )}
       </div>
 
       {/* Outcome Panel - hide on multipath route */}
