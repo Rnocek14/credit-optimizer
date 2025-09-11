@@ -68,6 +68,12 @@
   box-shadow: 0 0 0 2px var(--lp-amber-300, #fbbf24), 0 0 0 4px var(--lp-primary, #60a5fa);
 }
 
+/* Dimmed edges when not part of any path */
+.edge--dim {
+  opacity: 0.15 !important;
+  stroke-width: 1px !important;
+}
+
 /* Dimmed elements when multipath is active */
 .multipath-active .react-flow__edge:not(.edge--primary):not(.edge--comparison):not(.edge--both-paths) {
   opacity: 0.15 !important;

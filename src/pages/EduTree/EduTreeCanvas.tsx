@@ -374,10 +374,18 @@ function EduTreeCanvasInner() {
         const isComparisonHighlighted = flags.eduTreeMultiPathOverlay && 
                                       highlightedComparison?.nodes.has(String(block.id)) || false;
 
+        // CSS class for multipath node styling
+        const isInBothPaths = isHighlighted && isComparisonHighlighted;
+        let nodeClassName = '';
+        if (isInBothPaths) nodeClassName = 'node--both-paths';
+        else if (isHighlighted) nodeClassName = 'node--primary';
+        else if (isComparisonHighlighted) nodeClassName = 'node--comparison';
+
         return {
           id: String(block.id), // Ensure string ID
           type: 'blockGroup', // This must match nodeTypes key
           position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
+          className: nodeClassName,
           data: {
             block,
             completedCourseIds,
@@ -463,34 +471,32 @@ function EduTreeCanvasInner() {
       const isInBothPaths = isHighlighted && isComparisonHighlighted;
       const finalHighlighted = isHighlighted || isComparisonHighlighted;
       
+      // CSS class for multipath styling (let CSS handle the visuals)
+      let edgeClassName = '';
+      if (isHighlighted) edgeClassName = 'edge--primary';
+      else if (isComparisonHighlighted) edgeClassName = 'edge--comparison';
+      else if (!finalHighlighted) edgeClassName = 'edge--dim';
+
       return source ? {
         id: String(gateEdge.id),
         source,
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+        className: edgeClassName,
         data: {
           // Pass highlight sets for multipath styling
           highlightedPrimaryEdges: highlightedPrimary?.edges ?? null,
           highlightedComparisonEdges: highlightedComparison?.edges ?? null,
         },
         style: {
-          stroke: isHighlighted ? 'var(--primary)' : 
-                  isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
-          strokeWidth: isHighlighted ? 3 : isComparisonHighlighted ? 2 : 2,
-          strokeDasharray: isComparisonHighlighted && !isHighlighted ? '6 4' : undefined,
-          opacity: finalHighlighted ? (isHighlighted ? 1 : 0.8) : 0.3,
-          filter: isInBothPaths ? 'drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 1px oklch(var(--amber-500)))' : 
-                  isHighlighted ? 'drop-shadow(0 0 2px var(--primary))' :
-                  isComparisonHighlighted ? 'drop-shadow(0 0 2px oklch(var(--amber-500)))' : undefined
+          // Let CSS classes handle most styling, minimal inline overrides
+          opacity: !finalHighlighted ? 0.3 : undefined,
         },
         markerEnd: {
           type: MarkerType.Arrow,
           color: isHighlighted ? 'var(--primary)' : 
                  isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
         },
-        className: isInBothPaths ? 'edge--both-paths' :
-                   isHighlighted ? 'edge--primary' : 
-                   isComparisonHighlighted ? 'edge--comparison' : undefined,
         ...(flags.eduTreeLayoutV2 && {
           pathOptions: { offset: 12 }
         }),
