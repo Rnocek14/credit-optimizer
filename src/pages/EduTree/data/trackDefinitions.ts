@@ -34,8 +34,11 @@ export function getTrackById(id: string): TrackDefinition | undefined {
   return TRACK_DEFINITIONS.find(track => track.id === id);
 }
 
+// Guard edge-IDs at source - enforce block-based IDs
+export const eid = (s: string, t: string) => `e-${String(s)}-${String(t)}`;
+
 export function generateEdgeIds(blockSequence: string[]): string[] {
-  return blockSequence.slice(0, -1).map((src, i) => `e-${src}-${blockSequence[i + 1]}`);
+  return blockSequence.slice(0, -1).map((src, i) => eid(src, blockSequence[i + 1]));
 }
 
 export interface TrackHighlights {

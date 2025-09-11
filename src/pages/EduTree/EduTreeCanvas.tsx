@@ -527,6 +527,89 @@ function EduTreeCanvasInner() {
     }
   }, [flowNodes.length, flags.eduTreeMultiPathOverlay]); // Only trigger when multipath is not intended
 
+  // Track comparison highlighting - Phase B & C: Compute highlights and apply classes
+  const highlightedElements = useMemo(() => {
+    const overlayOn = flags.eduTreeMultiPathOverlay && comparisonEnabled && primaryTrack;
+    
+    if (!overlayOn) {
+      return { nodes, edges };
+    }
+
+    const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
+    
+    // Phase C: Apply CSS classes based on track membership (merge with existing classes)
+    const highlightedNodes = nodes.map(node => {
+      const blockId = String(node.data?.blockId ?? node.id);
+      const merged = [node.className, 'node']; // Keep original first
+      
+      if (highlights.bothNodes.has(blockId)) {
+        merged.push('node--both');
+      } else if (highlights.primaryOnlyNodes.has(blockId)) {
+        merged.push('node--primary');
+      } else if (highlights.comparisonOnlyNodes.has(blockId)) {
+        merged.push('node--comparison');
+      } else if (overlayOn) {
+        merged.push('node--dim');
+      }
+      
+      return { ...node, className: merged.filter(Boolean).join(' ') };
+    });
+
+    const highlightedEdges = edges.map(edge => {
+      const merged = [edge.className, 'edge']; // Keep original first
+      
+      if (highlights.bothEdges.has(edge.id)) {
+        merged.push('edge--both');
+      } else if (highlights.primaryOnlyEdges.has(edge.id)) {
+        merged.push('edge--primary');
+      } else if (highlights.comparisonOnlyEdges.has(edge.id)) {
+        merged.push('edge--comparison');
+      } else if (overlayOn) {
+        merged.push('edge--dim');
+      }
+      
+      return { ...edge, className: merged.filter(Boolean).join(' ') };
+    });
+
+    return { nodes: highlightedNodes, edges: highlightedEdges };
+  }, [flags.eduTreeMultiPathOverlay, comparisonEnabled, primaryTrack, comparisonTrack, nodes, edges]);
+
+  // FitView exactly once per activation
+  const didFitRef = useRef(false);
+  useEffect(() => {
+    const overlayOn = flags.eduTreeMultiPathOverlay && comparisonEnabled && primaryTrack;
+    if (!reactFlowInstance || !overlayOn) { 
+      didFitRef.current = false; 
+      return; 
+    }
+    if (didFitRef.current) return;
+    
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
+      didFitRef.current = true;
+      console.log('[TrackComparison] fitView executed');
+    }, 80);
+
+    return () => clearTimeout(timer);
+  }, [reactFlowInstance, flags.eduTreeMultiPathOverlay, comparisonEnabled, primaryTrack, comparisonTrack]);
+
+  // Development audit logging
+  useEffect(() => {
+    if (flags.eduTreeMultiPathOverlay && highlightedElements.nodes.length > 0) {
+      runTrackAudits(highlightedElements.nodes, highlightedElements.edges);
+    }
+  }, [flags.eduTreeMultiPathOverlay, highlightedElements.nodes.length, highlightedElements.edges.length]);
+
+  // Dev hotkey: press 'T' to toggle Track Validator
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    const onKey = (e: KeyboardEvent) => { 
+      if (e.key.toLowerCase() === 't') setShowTrackValidator(v => !v); 
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
     onNodesChange(changes);
@@ -747,8 +830,8 @@ function EduTreeCanvasInner() {
       {/* React Flow Canvas */}
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
-          nodes={nodes}
-          edges={flags.eduTreeStaggeredEdgesV2 ? visibleEdges : edges}
+          nodes={highlightedElements.nodes}
+          edges={flags.eduTreeStaggeredEdgesV2 ? visibleEdges : highlightedElements.edges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
