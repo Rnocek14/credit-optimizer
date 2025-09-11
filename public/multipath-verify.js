@@ -60,7 +60,32 @@
     hasYear3: year3Nodes > 0
   });
   
-  // 6. Overall status
+  // 6. Check path diversity (overlap analysis)
+  if (snap?.primary && snap?.comparison) {
+    const P = new Set(snap.primary.nodes);
+    const C = new Set(snap.comparison.nodes);
+    const inter = [...P].filter(x => C.has(x));
+    const uniqC = [...C].filter(x => !P.has(x));
+    const uniqP = [...P].filter(x => !C.has(x));
+    const jaccard = P.size + C.size === 0 ? 0 : inter.length / (P.size + C.size - inter.length);
+    
+    const diversity = {
+      overlap: inter.length,
+      uniqueInCompare: uniqC.length,
+      uniqueInPrimary: uniqP.length,
+      jaccard: Math.round(jaccard * 100) / 100,
+      isDiverse: uniqC.length >= 2 && inter.length < P.size
+    };
+    
+    console.log('✅ Path Diversity:', diversity);
+    
+    if (!diversity.isDiverse) {
+      console.warn('⚠️  Paths too similar! Comparison is mostly a superset of primary.');
+      console.log('Expected: uniqueInCompare >= 2, overlap < primaryCount');
+    }
+  }
+
+  // 7. Overall status
   const allGood = flagsOK && hasData && comparisonEdges > 0 && year3Nodes > 0;
   console.log(allGood ? '🎉 MULTIPATH WORKING!' : '❌ Issues detected');
   

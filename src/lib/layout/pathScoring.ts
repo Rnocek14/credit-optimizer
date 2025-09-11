@@ -258,6 +258,47 @@ export function findOptimalPath(
   return optimalPath;
 }
 
+// Helper functions for diversity analysis
+function jaccard(a: string[], b: string[]) {
+  const A = new Set(a), B = new Set(b);
+  const inter = [...A].filter(x => B.has(x)).length;
+  const union = A.size + B.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+function hasYear3(nodeIds: string[], nodes: Node[]) {
+  const nodeMap = new Map(nodes.map(n => [n.id, n.data]));
+  return nodeIds.some(id => {
+    const nodeData = nodeMap.get(id) as any;
+    return nodeData?.level_year && typeof nodeData.level_year === 'number' && nodeData.level_year >= 3;
+  });
+}
+
+function isDifferentSpecialization(comparisonIds: string[], primaryIds: string[], nodes: Node[]) {
+  const nodeMap = new Map(nodes.map(n => [n.id, n.data]));
+  
+  const getSpecTokens = (ids: string[]) => {
+    return ids.flatMap(id => {
+      const nodeData = nodeMap.get(id) as any;
+      const title = nodeData?.title;
+      if (!title || typeof title !== 'string') return [];
+      
+      const titleLower = title.toLowerCase();
+      const tokens = [];
+      if (titleLower.includes('web') || titleLower.includes('frontend')) tokens.push('web');
+      if (titleLower.includes('data') || titleLower.includes('analytics')) tokens.push('data');
+      if (titleLower.includes('systems') || titleLower.includes('devops')) tokens.push('systems');
+      return tokens;
+    });
+  };
+  
+  const primarySpecs = new Set(getSpecTokens(primaryIds));
+  const compSpecs = new Set(getSpecTokens(comparisonIds));
+  
+  // Different if comparison has specialization tokens not in primary
+  return [...compSpecs].some(spec => !primarySpecs.has(spec));
+}
+
 /**
  * Find comparison path that's different from the primary path
  */
@@ -270,36 +311,59 @@ export function findComparisonPath(
   constraints?: { maxCost?: number; maxMonths?: number; providerIds?: string[] }
 ): ScoredPath {
   // Generate multiple alternative paths
-  const alternativePaths = findAlternativePaths(nodes, edges, lens, 5);
+  const alternativePaths = findAlternativePaths(nodes, edges, lens, 8);
   
   if (alternativePaths.length === 0) {
     return { nodeIds: [], edgeIds: [], score: 0, lens };
   }
   
-  // Find the path that's most different from the primary path
-  const primaryNodeSet = new Set(primaryPath.nodeIds);
+  const SIM_THRESHOLD = 0.8;     // reject near-identical
+  const Y3_BONUS      = 0.10;    // nudge year-3 continuations
+  const DIVERSE_BONUS = 0.20;    // reward different specialization
   
-  // Score paths by how different they are from primary path
-  const diversePaths = alternativePaths.map(path => {
-    const sharedNodes = path.nodeIds.filter(nodeId => primaryNodeSet.has(nodeId));
-    const diversityScore = path.nodeIds.length - sharedNodes.length;
+  // Hard filter: drop supersets/near-duplicates of primary
+  let candidates = alternativePaths.filter(path => {
+    const similarity = jaccard(path.nodeIds, primaryPath.nodeIds);
+    
+    // Must add at least 2 nodes not in primary
+    const primarySet = new Set(primaryPath.nodeIds);
+    const uniqueInCompare = path.nodeIds.filter(id => !primarySet.has(id)).length;
+    
+    return similarity < SIM_THRESHOLD && uniqueInCompare >= 2;
+  });
+  
+  // If no diverse candidates found, relax constraints slightly
+  if (candidates.length === 0) {
+    candidates = alternativePaths.filter(path => {
+      const primarySet = new Set(primaryPath.nodeIds);
+      const uniqueInCompare = path.nodeIds.filter(id => !primarySet.has(id)).length;
+      return uniqueInCompare >= 1; // at least 1 unique node
+    });
+  }
+  
+  if (candidates.length === 0) {
+    return alternativePaths[0] || { nodeIds: [], edgeIds: [], score: 0, lens };
+  }
+  
+  // Soft re-rank by combined score
+  const diversePaths = candidates.map(path => {
+    const similarity = jaccard(path.nodeIds, primaryPath.nodeIds);
+    const diversity = 1 - similarity;
+    const y3Bonus = hasYear3(path.nodeIds, nodes) ? Y3_BONUS : 0;
+    const specBonus = isDifferentSpecialization(path.nodeIds, primaryPath.nodeIds, nodes) ? DIVERSE_BONUS : 0;
+    
+    // Combine original score with diversity bonuses
+    const combinedScore = 0.6 * path.score + 0.4 * diversity + y3Bonus + specBonus;
     
     return {
       ...path,
-      diversityScore,
-      combinedScore: path.score * 0.7 + diversityScore * 0.3
+      diversityScore: Math.round(diversity * 10),
+      combinedScore
     };
   });
   
-  // Sort by combined score (quality + diversity)
+  // Sort by combined score (quality + diversity + bonuses)
   diversePaths.sort((a, b) => b.combinedScore - a.combinedScore);
   
-  // Return the most diverse viable path
-  const bestDiverse = diversePaths[0];
-  if (bestDiverse.diversityScore > 0) {
-    return bestDiverse;
-  }
-  
-  // Fallback: return second-best alternative path
-  return diversePaths.length > 1 ? diversePaths[1] : diversePaths[0];
+  return diversePaths[0];
 }
