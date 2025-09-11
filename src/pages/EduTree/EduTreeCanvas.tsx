@@ -54,6 +54,8 @@ import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 import { MultipathDebugPanel } from './components/MultipathDebugPanel';
+import { TRACKS, TrackId } from './tracks';
+import { CompareTracksBar } from './components/CompareTracksBar';
 
 const DEV = process.env.NODE_ENV !== 'production';
 const onceKeys = new Set<string>();
@@ -65,7 +67,7 @@ function devOnce(key: string, msg: string, data?: any) {
   console.log(msg, data ?? '');
 }
 
-// Local fallback seed for multipath testing
+// Local fallback seed for track-based testing
 const LOCAL_FALLBACK_SEED = {
   blocks: [
     // Year 1
@@ -79,37 +81,31 @@ const LOCAL_FALLBACK_SEED = {
     { id: 'b301', title: 'Web Frontend Foundations',   area: 'specialization',     level_year: 2 },
     { id: 'b302', title: 'Data Analytics Intro',       area: 'specialization',     level_year: 2 },
 
-    // Year 3 (NEW)
+    // Year 3
     { id: 'b311', title: 'Web Frontend II',            area: 'specialization',     level_year: 3 },
     { id: 'b321', title: 'Data Analytics II',          area: 'specialization',     level_year: 3 },
     { id: 'b331', title: 'Systems & DevOps',           area: 'specialization',     level_year: 3 },
 
-    // Terminal
+    // Terminal (one degree – both tracks converge here)
     { id: 'degree-completion', title: 'Degree',        area: 'terminal',           level_year: 4 }
   ],
   gateEdges: [
-    // feed into Core I
-    { id: 'e1', source_block_id: 'b101', target_block_id: 'b201' },
-    { id: 'e2', source_block_id: 'b102', target_block_id: 'b201' },
-    // Core I -> Core II
-    { id: 'e3', source_block_id: 'b201', target_block_id: 'b202' },
-    // Math can accelerate ROI path by merging into Core II
-    { id: 'e4', source_block_id: 'b401', target_block_id: 'b202' },
+    { id: 'e1',  source_block_id: 'b101', target_block_id: 'b201' },
+    { id: 'e2',  source_block_id: 'b102', target_block_id: 'b201' },
+    { id: 'e3',  source_block_id: 'b201', target_block_id: 'b202' },
+    { id: 'e4',  source_block_id: 'b401', target_block_id: 'b202' },
 
-    // Year 2 specialization forks
-    { id: 'e5', source_block_id: 'b202', target_block_id: 'b301' }, // web
-    { id: 'e6', source_block_id: 'b202', target_block_id: 'b302' }, // data
+    { id: 'e5',  source_block_id: 'b202', target_block_id: 'b301' }, // → web
+    { id: 'e6',  source_block_id: 'b202', target_block_id: 'b302' }, // → data
+    { id: 'e7',  source_block_id: 'b202', target_block_id: 'b331' }, // → systems
 
-    // Year 3 continuations (NEW)
-    { id: 'e7',  source_block_id: 'b301', target_block_id: 'b311' }, // web -> web II
-    { id: 'e8',  source_block_id: 'b302', target_block_id: 'b321' }, // data -> data II
-    { id: 'e9',  source_block_id: 'b202', target_block_id: 'b331' }, // core II -> systems/devops (ROI)
+    { id: 'e8',  source_block_id: 'b301', target_block_id: 'b311' }, // web year3
+    { id: 'e9',  source_block_id: 'b302', target_block_id: 'b321' }, // data year3
 
-    // Connect Year 3 to terminal
     { id: 'e10', source_block_id: 'b311', target_block_id: 'degree-completion' },
     { id: 'e11', source_block_id: 'b321', target_block_id: 'degree-completion' },
-    { id: 'e12', source_block_id: 'b331', target_block_id: 'degree-completion' }
-  ]
+    { id: 'e12', source_block_id: 'b331', target_block_id: 'degree-completion' },
+  ],
 };
 
 // Node types for React Flow
@@ -129,7 +125,6 @@ function EduTreeCanvasInner() {
   const flags = useFeatureFlags();
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
-  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
@@ -143,41 +138,16 @@ function EduTreeCanvasInner() {
   const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
   const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
   
-  // State for path highlighting
+  // State for path highlighting (legacy for single-path mode)
   const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   
-  // Multipath state
-  const [comparisonLens, setComparisonLens] = useState<PlanningLens | null>(null);
+  // Track-based multipath state  
+  const [primaryTrack, setPrimaryTrack] = useState<TrackId | null>('web');
+  const [comparisonTrack, setComparisonTrack] = useState<TrackId | null>('data');
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
-  // Default comparison lens on /edu-treemulti (run once when flags stabilize)
-  const didInitLens = useRef(false);
-  useEffect(() => {
-    if (!flags.eduTreeMultiPathOverlay || didInitLens.current) return;
-    didInitLens.current = true;
-    
-    const sp = new URLSearchParams(window.location.search);
-    let compare = sp.get('compare') as PlanningLens | null;
-    if (!compare || !['fastest','cheapest','roi'].includes(compare)) {
-      compare = 'cheapest';
-      sp.set('compare', compare);
-      window.history.replaceState({}, '', `${window.location.pathname}?${sp.toString()}`);
-    }
-    setComparisonLens(compare as PlanningLens);
-  }, [flags.eduTreeMultiPathOverlay]);
-
-  // Update URL when comparison lens changes
-  const handleComparisonLensChange = useCallback((lens: PlanningLens | null) => {
-    setComparisonLens(lens);
-    
-    try {
-      const url = new URL(window.location.href);
-      if (lens) url.searchParams.set('compare', lens);
-      else url.searchParams.delete('compare');
-      window.history.replaceState({}, '', url.toString());
-    } catch {}
-  }, []);
+  // No URL management needed for tracks - they're controlled via UI only
 
   // Handler for course click
   const handleCourseClick = useCallback((course: EduCourse) => {
@@ -413,7 +383,7 @@ function EduTreeCanvasInner() {
             area: block.area || 'unknown',
             isHighlighted,
             isComparisonHighlighted,
-            planningLens: isHighlighted ? selectedLens : isComparisonHighlighted ? comparisonLens : null,
+            planningLens: isHighlighted ? primaryTrack : isComparisonHighlighted ? comparisonTrack : null,
             onCourseClick: handleCourseClick,
             // Pass highlight sets for multipath styling
             highlightedPrimaryNodes: highlightedPrimary?.nodes ?? null,
@@ -578,7 +548,46 @@ function EduTreeCanvasInner() {
       });
     }
 
-    return { nodes, edges };
+  // Build track highlights using block ID to RF node ID mapping
+  const blockIdToNodeId = useMemo(() => {
+    const map = new Map<string, string>();
+    flowNodes.forEach(n => {
+      const blockId = (n.data?.block as any)?.id ?? n.id;
+      map.set(String(blockId), String(n.id));
+    });
+    return map;
+  }, [flowNodes]);
+
+  function setsForTrack(trackId: TrackId | null): { nodes: Set<string>, edges: Set<string> } {
+    if (!trackId) return { nodes: new Set<string>(), edges: new Set<string>() };
+
+    const blockIds = TRACKS[trackId].nodes;
+    const rfNodes = blockIds
+      .map(id => blockIdToNodeId.get(id))
+      .filter(Boolean) as string[];
+
+    const rfNodeSet = new Set(rfNodes);
+    const rfEdges = flowEdges
+      .filter(e => rfNodeSet.has(String(e.source)) && rfNodeSet.has(String(e.target)))
+      .map(e => String(e.id));
+
+    return { nodes: new Set(rfNodes), edges: new Set(rfEdges) };
+  }
+
+  // Generate highlight sets from selected tracks
+  const trackHighlightedPrimary = useMemo(() => setsForTrack(primaryTrack), [primaryTrack, flowNodes, flowEdges]);
+  const trackHighlightedComparison = useMemo(() => setsForTrack(comparisonTrack), [comparisonTrack, flowNodes, flowEdges]);
+
+  // Update highlight state when tracks change
+  useEffect(() => {
+    setHighlightedPrimary(trackHighlightedPrimary.nodes.size > 0 ? trackHighlightedPrimary : null);
+  }, [trackHighlightedPrimary]);
+
+  useEffect(() => {
+    setHighlightedComparison(trackHighlightedComparison.nodes.size > 0 ? trackHighlightedComparison : null);
+  }, [trackHighlightedComparison]);
+
+  return { nodes, edges };
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath, highlightedPrimary, highlightedComparison]);
   // Include highlight dependencies for multipath styling
 
@@ -608,162 +617,34 @@ function EduTreeCanvasInner() {
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
 
 
-  // Compute primary and comparison paths
-  const primaryPath = useMemo(() => {
-    if (!flags.eduTreeOutcomes || !flowNodes.length || !flowEdges.length) return null;
-    const path = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[EduTreeCanvas] Primary path (${selectedLens}):`, {
-        nodeCount: path.nodeIds.length,
-        edgeCount: path.edgeIds.length,
-        nodeIds: path.nodeIds.slice(0, 4),
-        score: path.score
-      });
-    }
-    return path;
-  }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+  // Remove old path computation - replaced with track-based highlights above
 
-  const comparisonPath = useMemo(() => {
-    if (!flags.eduTreeMultiPathOverlay || !comparisonLens || !primaryPath || !flowNodes.length || !flowEdges.length) return null;
-    const path = findComparisonPath(flowNodes, flowEdges, comparisonLens, primaryPath, completedCourseIds);
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[EduTreeCanvas] Comparison path (${comparisonLens}):`, {
-        nodeCount: path.nodeIds.length,
-        edgeCount: path.edgeIds.length,
-        nodeIds: path.nodeIds.slice(0, 4),
-        score: path.score
-      });
-    }
-    return path;
-  }, [flags.eduTreeMultiPathOverlay, comparisonLens, primaryPath, flowNodes.length, flowEdges.length, completedCourseIds.size]);
+  // Remove old path highlighting effects - using track-based highlights now
 
-  // Update highlighted paths with performance caps
-  const lastPrimaryRef = useRef<string>('');
-  const lastComparisonRef = useRef<string>('');
-  
+  // Remove multipath snapshot - simplified debug
   useEffect(() => {
-    if (primaryPath) {
-      const key = JSON.stringify({ n: primaryPath.nodeIds, e: primaryPath.edgeIds });
-      if (key !== lastPrimaryRef.current) {
-        lastPrimaryRef.current = key;
-        
-        // Performance cap: max 250 combined elements
-        const totalElements = primaryPath.nodeIds.length + primaryPath.edgeIds.length;
-        if (totalElements > 250) {
-          // Show warning toast only once per session
-          const sessionKey = 'multipath_perf_warning_shown';
-          if (!sessionStorage.getItem(sessionKey)) {
-            sessionStorage.setItem(sessionKey, 'true');
-            toast({
-              title: "Path too large",
-              description: "Showing primary path only due to size.",
-            });
-          }
-          return;
-        }
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Multipath] Primary path: ${primaryPath.nodeIds.length} nodes, ${primaryPath.edgeIds.length} edges (${totalElements} total)`);
-        }
-        
-        setHighlightedPrimary({
-          nodes: new Set(primaryPath.nodeIds),
-          edges: new Set(primaryPath.edgeIds),
-        });
-        
-        // For backward compatibility with single-path mode
-        if (!flags.eduTreeMultiPathOverlay) {
-          setHighlightedPath({
-            nodes: new Set(primaryPath.nodeIds),
-            edges: new Set(primaryPath.edgeIds),
-          });
-        }
-      }
-    } else {
-      setHighlightedPrimary(null);
-      if (!flags.eduTreeMultiPathOverlay) {
-        setHighlightedPath(null);
-      }
-    }
-  }, [primaryPath?.nodeIds?.length, primaryPath?.edgeIds?.length, flags.eduTreeMultiPathOverlay]);
-
-  useEffect(() => {
-    if (comparisonPath && flags.eduTreeMultiPathOverlay) {
-      const key = JSON.stringify({ n: comparisonPath.nodeIds, e: comparisonPath.edgeIds });
-      if (key !== lastComparisonRef.current) {
-        lastComparisonRef.current = key;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Multipath] Comparison path: ${comparisonPath.nodeIds.length} nodes, ${comparisonPath.edgeIds.length} edges`);
-        }
-        
-        setHighlightedComparison({
-          nodes: new Set(comparisonPath.nodeIds),
-          edges: new Set(comparisonPath.edgeIds),
-        });
-      }
-    } else {
-      setHighlightedComparison(null);
-    }
-  }, [comparisonPath?.nodeIds?.length, comparisonPath?.edgeIds?.length, flags.eduTreeMultiPathOverlay]);
-
-  // === Multipath Snapshot (dev-only, one-time per input set) ===
-  useEffect(() => {
-    const multipathActive = flags.eduTreeMultiPathOverlay && !!comparisonLens;
+    if (!DEV || !flags.eduTreeMultiPathOverlay) return;
+    
+    const multipathActive = !!comparisonTrack;
     if (!multipathActive) return;
-    if (!primaryPath || !comparisonPath) return;
-
-    const key = JSON.stringify({
-      lensPrimary: selectedLens,
-      lensComparison: comparisonLens,
-      pn: primaryPath.nodeIds?.length ?? 0,
-      pe: primaryPath.edgeIds?.length ?? 0,
-      cn: comparisonPath.nodeIds?.length ?? 0,
-      ce: comparisonPath.edgeIds?.length ?? 0,
-    });
-
-    const overlapNodes = new Set(
-      primaryPath.nodeIds.filter((id: string) => comparisonPath.nodeIds.includes(id))
-    );
-    const overlapEdges = new Set(
-      primaryPath.edgeIds.filter((id: string) => comparisonPath.edgeIds.includes(id))
-    );
+    if (!highlightedPrimary || !highlightedComparison) return;
 
     devOnce(
-      `multipath-snap-${key}`,
-      '[Multipath Snapshot]',
+      `track-snap-${primaryTrack}-${comparisonTrack}`,
+      '[Track Snapshot]',
       {
         url: typeof window !== 'undefined' ? window.location.href : '',
-        flags: {
-          eduTreeOutcomes: flags.eduTreeOutcomes,
-          eduTreeMultiPathOverlay: flags.eduTreeMultiPathOverlay,
-        },
-        lenses: { primary: selectedLens, comparison: comparisonLens },
+        tracks: { primary: primaryTrack, comparison: comparisonTrack },
         counts: {
-          primaryNodes: primaryPath.nodeIds.length,
-          primaryEdges: primaryPath.edgeIds.length,
-          comparisonNodes: comparisonPath.nodeIds.length,
-          comparisonEdges: comparisonPath.edgeIds.length,
-          overlapNodes: overlapNodes.size,
-          overlapEdges: overlapEdges.size,
-        },
-        sample: {
-          primaryNodes: primaryPath.nodeIds.slice(0, 8),
-          comparisonNodes: comparisonPath.nodeIds.slice(0, 8),
-          overlapNodes: Array.from(overlapNodes).slice(0, 8),
-        },
+          primaryNodes: highlightedPrimary.nodes.size,
+          primaryEdges: highlightedPrimary.edges.size,
+          comparisonNodes: highlightedComparison.nodes.size,
+          comparisonEdges: highlightedComparison.edges.size,
+          overlapNodes: [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length,
+        }
       }
     );
-  }, [
-    flags.eduTreeMultiPathOverlay,
-    flags.eduTreeOutcomes,
-    selectedLens,
-    comparisonLens,
-    primaryPath?.nodeIds?.length,
-    primaryPath?.edgeIds?.length,
-    comparisonPath?.nodeIds?.length,
-    comparisonPath?.edgeIds?.length,
-  ]);
+  }, [flags.eduTreeMultiPathOverlay, primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
 
   // Expose debug global for external testing
   useEffect(() => {
@@ -771,12 +652,18 @@ function EduTreeCanvasInner() {
     (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
     (window as any).__EDUTREE__.getSnapshot = () => {
       return {
-        lenses: { primary: selectedLens, comparison: comparisonLens },
-        primary: primaryPath ? { nodes: primaryPath.nodeIds, edges: primaryPath.edgeIds } : null,
-        comparison: comparisonPath ? { nodes: comparisonPath.nodeIds, edges: comparisonPath.edgeIds } : null,
+        tracks: { primary: primaryTrack, comparison: comparisonTrack },
+        primary: highlightedPrimary ? { 
+          nodes: Array.from(highlightedPrimary.nodes), 
+          edges: Array.from(highlightedPrimary.edges) 
+        } : null,
+        comparison: highlightedComparison ? { 
+          nodes: Array.from(highlightedComparison.nodes), 
+          edges: Array.from(highlightedComparison.edges) 
+        } : null,
       };
     };
-  }, [selectedLens, comparisonLens, primaryPath, comparisonPath]);
+  }, [primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
   
   useEffect(() => {
     if (flowNodes.length > 0) {
@@ -933,7 +820,7 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // Enhanced onInit with terminal focus
+  // FitView: only run when (a) elements exist and (b) at least one highlight set exists
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const onInit = useCallback((reactFlowInstance: any) => {
@@ -943,25 +830,18 @@ function EduTreeCanvasInner() {
       clearTimeout(fitViewTimeoutRef.current);
     }
     
-    // Gate fitView until both path highlights are ready (when compare is set)
     fitViewTimeoutRef.current = setTimeout(() => {
-      const needCompare = flags.eduTreeMultiPathOverlay && !!comparisonLens;
-      const havePrimary = !!highlightedPrimary;  
-      const haveCompare = !needCompare || !!highlightedComparison;
+      const ready =
+        flowNodes.length > 0 &&
+        flowEdges.length > 0 &&
+        (highlightedPrimary?.nodes.size ?? 0) > 0;
 
-      const ready = flowNodes.length > 0 &&
-                    flowEdges.length > 0 &&
-                    (!flags.eduTreeOutcomes || havePrimary || highlightedPath) &&
-                    haveCompare;
-      
       if (!ready) {
-        if (DEV) console.debug('[fitView] Waiting for highlights...', { 
+        if (DEV) console.debug('[fitView] Waiting for track highlights...', { 
           nodes: flowNodes.length, 
           edges: flowEdges.length,
-          needCompare,
-          havePrimary,
-          haveCompare,
-          highlightedPath: !!highlightedPath
+          primaryHighlights: highlightedPrimary?.nodes.size ?? 0,
+          comparisonHighlights: highlightedComparison?.nodes.size ?? 0
         });
         return;
       }
@@ -988,7 +868,7 @@ function EduTreeCanvasInner() {
     if (DEV) {
       (window as any).__EDUTREE__ = {
         getSnapshot: () => ({
-          lenses: { primary: selectedLens, comparison: comparisonLens },
+          tracks: { primary: primaryTrack, comparison: comparisonTrack },
           primary: highlightedPrimary ? {
             nodes: Array.from(highlightedPrimary.nodes),
             edges: Array.from(highlightedPrimary.edges),
@@ -1029,7 +909,7 @@ function EduTreeCanvasInner() {
           estimatedMonths={outcomeSummary.estimatedMonths}
           estimatedCost={outcomeSummary.estimatedCost}
           planIssues={outcomeSummary.issues}
-          selectedLens={selectedLens}
+          selectedLens={primaryTrack}
         />
       )}
 
@@ -1075,21 +955,22 @@ function EduTreeCanvasInner() {
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
             
-            {/* Lens Selector */}
-            {flags.eduTreeOutcomes && (
-              <LensSelector 
-            selectedLens={selectedLens}
-            onLensChange={setSelectedLens}
-            multiPathEnabled={flags.eduTreeMultiPathOverlay}
-            comparisonLens={comparisonLens}
-            onComparisonLensChange={handleComparisonLensChange}
+import { CompareTracksBar } from './components/CompareTracksBar';
+
+            {/* Track Selector for multipath */}
+            {flags.eduTreeMultiPathOverlay && (
+              <CompareTracksBar
+                primary={primaryTrack}
+                comparison={comparisonTrack}
+                onPrimary={setPrimaryTrack}
+                onComparison={setComparisonTrack}
               />
             )}
 
             {/* Empty state for multipath */}
-            {flags.eduTreeMultiPathOverlay && comparisonLens && !comparisonPath && (
+            {flags.eduTreeMultiPathOverlay && comparisonTrack && !highlightedComparison && (
               <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded border">
-                No comparison path available for '{comparisonLens}'. Add branched data or enable fallback seed.
+                No comparison path available for '{comparisonTrack}'. Add branched data or enable fallback seed.
               </div>
             )}
             
@@ -1118,7 +999,7 @@ function EduTreeCanvasInner() {
 
       {/* React Flow Canvas */}
       <div 
-        className={`flex-1 ${flags.eduTreeMultiPathOverlay && comparisonLens ? 'multipath-active' : ''}`}
+        className={`flex-1 ${flags.eduTreeMultiPathOverlay && comparisonTrack ? 'multipath-active' : ''}`}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
         <ReactFlow
@@ -1133,7 +1014,7 @@ function EduTreeCanvasInner() {
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           className={cn(
             'react-flow-canvas',
-            flags.eduTreeMultiPathOverlay && !!comparisonLens ? 'multipath-active' : undefined
+            flags.eduTreeMultiPathOverlay && !!comparisonTrack ? 'multipath-active' : undefined
           )}
           minZoom={0.3}
           maxZoom={1.5}
@@ -1154,30 +1035,36 @@ function EduTreeCanvasInner() {
               maxWidth: 320,
               color: 'hsl(var(--foreground))'
             }}>
-              <strong>Multipath Debug</strong>
+              <strong>Track Debug</strong>
               <div style={{ marginTop: 6 }}>
-                <div>Primary lens: {selectedLens}</div>
-                <div>Comparison lens: {comparisonLens ?? '—'}</div>
-                <div>Primary: {primaryPath?.nodeIds.length ?? 0} nodes / {primaryPath?.edgeIds.length ?? 0} edges</div>
-                <div>Compare: {comparisonPath?.nodeIds.length ?? 0} nodes / {comparisonPath?.edgeIds.length ?? 0} edges</div>
+                <div>Primary track: {primaryTrack}</div>
+                <div>Comparison track: {comparisonTrack ?? '—'}</div>
+                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
+                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
                 <div>Overlap: {
-                  (primaryPath && comparisonPath)
-                    ? primaryPath.nodeIds.filter(x => comparisonPath.nodeIds.includes(x)).length
+                  (highlightedPrimary && highlightedComparison)
+                    ? [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length
                     : 0
                 } nodes</div>
               </div>
               <button
                 onClick={() => {
                   const snap = {
-                    lenses: { primary: selectedLens, comparison: comparisonLens },
-                    primary: primaryPath ?? null,
-                    comparison: comparisonPath ?? null
+                    tracks: { primary: primaryTrack, comparison: comparisonTrack },
+                    primary: highlightedPrimary ? {
+                      nodes: Array.from(highlightedPrimary.nodes),
+                      edges: Array.from(highlightedPrimary.edges)
+                    } : null,
+                    comparison: highlightedComparison ? {
+                      nodes: Array.from(highlightedComparison.nodes),
+                      edges: Array.from(highlightedComparison.edges)
+                    } : null
                   };
                   (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
                   (window as any).__EDUTREE__.getSnapshot = () => snap;
                   const pre = document.getElementById('mp-snap-pre');
                   if (pre) pre.textContent = JSON.stringify(snap, null, 2);
-                  console.log('[Multipath Snapshot]', snap);
+                  console.log('[Track Snapshot]', snap);
                 }}
                 style={{ 
                   marginTop: 8, 
@@ -1208,7 +1095,7 @@ function EduTreeCanvasInner() {
           )}
 
           {/* Empty state for comparison */}
-          {flags.eduTreeMultiPathOverlay && comparisonLens && (!comparisonPath || comparisonPath.nodeIds.length === 0) && (
+          {flags.eduTreeMultiPathOverlay && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
             <div style={{
               position: 'absolute',
               bottom: 20,
@@ -1221,7 +1108,7 @@ function EduTreeCanvasInner() {
               maxWidth: 400,
               zIndex: 999
             }}>
-              No comparison path available for '{comparisonLens}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+              No comparison path available for '{comparisonTrack}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
             </div>
           )}
           {/* Lane Background for educational context */}
@@ -1245,31 +1132,37 @@ function EduTreeCanvasInner() {
           {/* Multipath Debug Panel */}
           {flags.eduTreeMultiPathOverlay && (
             <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50 max-w-80">
-              <strong className="text-sm">Multipath Debug</strong>
+              <strong className="text-sm">Track Debug</strong>
               <div className="text-xs space-y-1">
-                <div>Primary lens: {selectedLens}</div>
-                <div>Comparison lens: {comparisonLens ?? '—'}</div>
-                <div>Primary: {primaryPath?.nodeIds.length ?? 0} nodes / {primaryPath?.edgeIds.length ?? 0} edges</div>
-                <div>Compare: {comparisonPath?.nodeIds.length ?? 0} nodes / {comparisonPath?.edgeIds.length ?? 0} edges</div>
+                <div>Primary track: {primaryTrack}</div>
+                <div>Comparison track: {comparisonTrack ?? '—'}</div>
+                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
+                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
                 <div>Overlap: {
-                  (primaryPath && comparisonPath)
-                    ? primaryPath.nodeIds.filter(x => comparisonPath.nodeIds.includes(x)).length
+                  (highlightedPrimary && highlightedComparison)
+                    ? [...highlightedPrimary.nodes].filter(x => highlightedComparison.nodes.has(x)).length
                     : 0
                 } nodes</div>
               </div>
               <button
                 onClick={() => {
                   const snap = {
-                    lenses: { primary: selectedLens, comparison: comparisonLens },
-                    primary: primaryPath ?? null,
-                    comparison: comparisonPath ?? null
+                    tracks: { primary: primaryTrack, comparison: comparisonTrack },
+                    primary: highlightedPrimary ? {
+                      nodes: Array.from(highlightedPrimary.nodes),
+                      edges: Array.from(highlightedPrimary.edges)
+                    } : null,
+                    comparison: highlightedComparison ? {
+                      nodes: Array.from(highlightedComparison.nodes),
+                      edges: Array.from(highlightedComparison.edges)
+                    } : null
                   };
                   (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
                   (window as any).__EDUTREE__.getSnapshot = () => snap;
                   // Render inline for no-console environments
                   const pre = document.getElementById('mp-snap-pre');
                   if (pre) pre.textContent = JSON.stringify(snap, null, 2);
-                  console.log('[Multipath Snapshot]', snap);
+                  console.log('[Track Snapshot]', snap);
                 }}
                 className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80 w-full"
               >
@@ -1283,10 +1176,10 @@ function EduTreeCanvasInner() {
           )}
 
           {/* Empty state message */}
-          {flags.eduTreeMultiPathOverlay && comparisonLens && (!comparisonPath || comparisonPath.nodeIds.length === 0) && (
+          {flags.eduTreeMultiPathOverlay && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
             <div className="absolute left-4 bottom-4 bg-muted/90 border border-border p-3 rounded-lg max-w-96 z-50">
               <div className="text-xs text-muted-foreground">
-                No comparison path available for '{comparisonLens}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+                No comparison path available for '{comparisonTrack}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
               </div>
             </div>
           )}
@@ -1318,27 +1211,20 @@ function EduTreeCanvasInner() {
               </button>
               <button
                 onClick={() => {
-                  console.log('[Multipath Snapshot]', (window as any).__EDUTREE__?.getSnapshot?.());
+                  console.log('[Track Snapshot]', (window as any).__EDUTREE__?.getSnapshot?.());
                 }}
                 className="text-xs px-2 py-1 bg-primary rounded hover:bg-primary/80 text-primary-foreground"
               >
-                Log Multipath Snapshot
+                Log Track Snapshot
               </button>
               
-              {/* Multipath Debug Panel */}
-              <MultipathDebugPanel
-                primaryLens={selectedLens}
-                comparisonLens={comparisonLens}
-                primaryPath={primaryPath ? { 
-                  nodes: primaryPath.nodeIds, 
-                  edges: primaryPath.edgeIds 
-                } : null}
-                comparisonPath={comparisonPath ? { 
-                  nodes: comparisonPath.nodeIds, 
-                  edges: comparisonPath.edgeIds 
-                } : null}
-                isMultipathActive={flags.eduTreeMultiPathOverlay && !!comparisonLens}
-              />
+              {/* Track Debug Panel */}
+              <div className="text-xs space-y-1">
+                <div className="font-medium">Track: {primaryTrack}</div>
+                <div>Compare: {comparisonTrack ?? '—'}</div>
+                <div>Primary: {highlightedPrimary?.nodes.size ?? 0} nodes / {highlightedPrimary?.edges.size ?? 0} edges</div>
+                <div>Compare: {highlightedComparison?.nodes.size ?? 0} nodes / {highlightedComparison?.edges.size ?? 0} edges</div>
+              </div>
             </div>
           )}
         </ReactFlow>
