@@ -96,7 +96,10 @@ async function runSmokeTest() {
 // Auto-run if we're on the right page
 if (window.location.pathname.includes('/edu-treemulti')) {
   // Wait for the app to load
-  setTimeout(runSmokeTest, 2000);
+  setTimeout(runSmokeTest, 3000);
 } else {
   console.log('Navigate to /edu-treemulti?compare=cheapest first, then run: runSmokeTest()');
 }
+
+// Also expose the function globally for manual testing
+window.runSmokeTest = runSmokeTest;

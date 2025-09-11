@@ -484,6 +484,20 @@ function EduTreeCanvasInner() {
     }
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
   
+  // Handler for comparison lens change with URL sync
+  const handleComparisonLensChange = useCallback((lens: PlanningLens | null) => {
+    setComparisonLens(lens);
+    
+    // Update URL without reload
+    const url = new URL(window.location.href);
+    if (lens) {
+      url.searchParams.set('compare', lens);
+    } else {
+      url.searchParams.delete('compare');
+    }
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
   // URL parameter support for comparison lens - robust sync
   useEffect(() => {
     if (!flags.eduTreeMultiPathOverlay) return;
@@ -812,20 +826,32 @@ function EduTreeCanvasInner() {
       clearTimeout(fitViewTimeoutRef.current);
     }
     
-    // Single debounced fitView after initialization
+    // Harden fitView timing to avoid "deferred DOM Node..." warnings
     fitViewTimeoutRef.current = setTimeout(() => {
+      const ready = flowNodes.length > 0 && flowEdges.length > 0 &&
+                    (!flags.eduTreeOutcomes || highlightedPrimary || highlightedPath);
+      
+      if (!ready) {
+        console.log('[fitView] Not ready yet, skipping fitView');
+        return;
+      }
+      
       const hasTerminal = nodes.some(node => 
         node.type === 'terminal' || node.type === 'terminalNode' || 
         node.id === 'degree-completion'
       );
       
       const padding = hasTerminal ? 0.4 : 0.2;
-      reactFlowInstance.fitView({ padding, duration: 300 });
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
-      }
-    }, 150);
-  }, [nodes]);
+      
+      // Wrap in requestAnimationFrame for better timing
+      requestAnimationFrame(() => {
+        reactFlowInstance?.fitView?.({ padding, duration: 400, includeHiddenNodes: true });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📏 fitView fired (debounced) with padding', padding);
+        }
+      });
+    }, 200);
+  }, [nodes, flowNodes.length, flowEdges.length, flags.eduTreeOutcomes, highlightedPrimary, highlightedPath]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -907,7 +933,7 @@ function EduTreeCanvasInner() {
                 onLensChange={setSelectedLens}
                 multiPathEnabled={flags.eduTreeMultiPathOverlay}
                 comparisonLens={comparisonLens}
-                onComparisonLensChange={setComparisonLens}
+                onComparisonLensChange={handleComparisonLensChange}
               />
             )}
           </div>
@@ -981,6 +1007,14 @@ function EduTreeCanvasInner() {
                 className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
               >
                 Focus Terminal
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[Multipath Snapshot]', (window as any).__EDUTREE__?.getSnapshot?.());
+                }}
+                className="text-xs px-2 py-1 bg-primary rounded hover:bg-primary/80 text-primary-foreground"
+              >
+                Log Multipath Snapshot
               </button>
               
               {/* Multipath Debug Panel */}

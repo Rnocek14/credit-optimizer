@@ -67,6 +67,15 @@ export function findAlternativePaths(
 
   console.log(`[PathFinding] Starting alternative path generation with ${lens} lens`);
 
+  // Build lookup from block.id to React Flow node ID
+  const blockIdToNodeId = new Map<string, string>();
+  nodes.forEach(n => {
+    const b = n.data?.block;
+    if (b && typeof b === 'object' && 'id' in b && b.id) {
+      blockIdToNodeId.set(String(b.id), String(n.id));
+    }
+  });
+
   // Extract blocks from nodes with proper typing
   const allBlocks: BlockWithCourses[] = [];
   for (const node of nodes) {
@@ -126,10 +135,18 @@ export function findAlternativePaths(
     }
 
     if (selectedBlocks.length >= 3) {
-      const pathNodes = selectedBlocks.map(block => block.id);
+      // Map block IDs to React Flow node IDs
+      const pathNodes: string[] = [];
+      selectedBlocks.forEach(block => {
+        const rfId = blockIdToNodeId.get(String(block.id));
+        if (rfId) pathNodes.push(rfId);
+      });
+
+      // Filter edges using React Flow node IDs
+      const rfNodeSet = new Set(pathNodes);
       const pathEdges = edges
-        .filter(edge => pathNodes.includes(edge.source) && pathNodes.includes(edge.target))
-        .map(edge => edge.id);
+        .filter(edge => rfNodeSet.has(String(edge.source)) && rfNodeSet.has(String(edge.target)))
+        .map(edge => String(edge.id));
       
       const score = selectedBlocks.reduce((total, block) => {
         return total + scoreByLens(block, lens);
@@ -188,6 +205,10 @@ export function findOptimalPath(
   
   if (process.env.NODE_ENV === 'development') {
     console.log(`[PathScoring] Selected optimal path: ${optimalPath.nodeIds.length} nodes`);
+    console.log('[PathScoring] Selected path IDs (first 6):', {
+      nodes: optimalPath.nodeIds.slice(0, 6),
+      edges: optimalPath.edgeIds.slice(0, 6)
+    });
   }
   
   return optimalPath;
