@@ -525,12 +525,30 @@ function EduTreeCanvasInner() {
   // Compute primary and comparison paths
   const primaryPath = useMemo(() => {
     if (!flags.eduTreeOutcomes || !flowNodes.length || !flowEdges.length) return null;
-    return findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
+    const path = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[EduTreeCanvas] Primary path (${selectedLens}):`, {
+        nodeCount: path.nodeIds.length,
+        edgeCount: path.edgeIds.length,
+        nodeIds: path.nodeIds.slice(0, 4),
+        score: path.score
+      });
+    }
+    return path;
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
 
   const comparisonPath = useMemo(() => {
     if (!flags.eduTreeMultiPathOverlay || !comparisonLens || !primaryPath || !flowNodes.length || !flowEdges.length) return null;
-    return findComparisonPath(flowNodes, flowEdges, comparisonLens, primaryPath, completedCourseIds);
+    const path = findComparisonPath(flowNodes, flowEdges, comparisonLens, primaryPath, completedCourseIds);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[EduTreeCanvas] Comparison path (${comparisonLens}):`, {
+        nodeCount: path.nodeIds.length,
+        edgeCount: path.edgeIds.length,
+        nodeIds: path.nodeIds.slice(0, 4),
+        score: path.score
+      });
+    }
+    return path;
   }, [flags.eduTreeMultiPathOverlay, comparisonLens, primaryPath, flowNodes.length, flowEdges.length, completedCourseIds.size]);
 
   // Update highlighted paths with performance caps
@@ -968,11 +986,11 @@ function EduTreeCanvasInner() {
             {/* Lens Selector */}
             {flags.eduTreeOutcomes && (
               <LensSelector 
-                selectedLens={selectedLens}
-                onLensChange={setSelectedLens}
-                multiPathEnabled={flags.eduTreeMultiPathOverlay}
-                comparisonLens={comparisonLens}
-                onComparisonLensChange={handleComparisonLensChange}
+            selectedLens={selectedLens}
+            onLensChange={setSelectedLens}
+            multiPathEnabled={flags.eduTreeMultiPathOverlay}
+            comparisonLens={comparisonLens}
+            onComparisonLensChange={handleComparisonLensChange}
               />
             )}
             

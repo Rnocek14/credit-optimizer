@@ -96,42 +96,39 @@ export function findAlternativePaths(
     let selectedBlocks: BlockWithCourses[] = [];
     
     if (lens === 'fastest') {
-      // Focus on core subjects and web technologies
+      // Focus on core + web path: Programming I → Programming II → Web Frontend → Degree
       selectedBlocks = allBlocks
         .filter(block => {
           const isCore = block.area === 'core';
           const isWeb = block.title?.toLowerCase().includes('web') || 
                        block.title?.toLowerCase().includes('frontend');
-          const isFoundation = block.area === 'foundation' || block.area === 'general-education';
-          return isCore || isWeb || (isFoundation && strategyIndex === 0);
+          const isDegree = block.area === 'terminal';
+          return isCore || isWeb || isDegree;
         })
-        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
-        .slice(0, 4 + strategyIndex);
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
     } else if (lens === 'cheapest') {
-      // Focus on general education and data science
+      // Focus on gen ed + data path: Gen Ed → Programming I → Programming II → Data Analytics → Degree
       selectedBlocks = allBlocks
         .filter(block => {
           const isGenEd = block.area === 'general-education';
           const isData = block.title?.toLowerCase().includes('data') || 
                         block.title?.toLowerCase().includes('analytics');
           const isCore = block.area === 'core';
-          return isGenEd || isData || (isCore && strategyIndex > 0);
+          const isDegree = block.area === 'terminal';
+          return isGenEd || isData || isCore || isDegree;
         })
-        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
-        .slice(0, 4 + strategyIndex);
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
     } else if (lens === 'roi') {
-      // Focus on mathematics, systems, and DevOps
+      // Focus on mathematics + core path: Math → Programming II → choice → Degree
       selectedBlocks = allBlocks
         .filter(block => {
           const isMath = block.area === 'mathematics';
-          const isSystem = block.title?.toLowerCase().includes('system') || 
-                          block.title?.toLowerCase().includes('devops') ||
-                          block.title?.toLowerCase().includes('architecture');
           const isCore = block.area === 'core';
-          return isMath || isSystem || (isCore && strategyIndex > 0);
+          const isDegree = block.area === 'terminal';
+          const isSpecialization = block.area === 'specialization';
+          return isMath || isCore || isDegree || isSpecialization;
         })
-        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
-        .slice(0, 4 + strategyIndex);
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
     }
 
     if (selectedBlocks.length >= 3) {
