@@ -55,14 +55,21 @@ export function BlockGroup(props: NodeProps) {
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
-  // Only apply highlighting when multipath is ACTIVELY comparing tracks
+  // Only apply highlighting when multipath is ACTIVELY comparing tracks - support single track
   let nodeHighlightClass = '';
   
-  if (isMultipathActive && highlightedPrimaryNodes && highlightedComparisonNodes) {
-    if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
-    else if (inPrimary) nodeHighlightClass = 'node--primary'; 
-    else if (inCompare) nodeHighlightClass = 'node--comparison';
-    else nodeHighlightClass = 'node--dim';
+  if (isMultipathActive && highlightedPrimaryNodes) {
+    if (highlightedComparisonNodes) {
+      // Dual track comparison mode
+      if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
+      else if (inPrimary) nodeHighlightClass = 'node--primary'; 
+      else if (inCompare) nodeHighlightClass = 'node--comparison';
+      else nodeHighlightClass = 'node--dim';
+    } else {
+      // Single track mode
+      if (inPrimary) nodeHighlightClass = 'node--primary';
+      else nodeHighlightClass = 'node--dim';
+    }
   }
 
   // Debug logging for multipath highlighting

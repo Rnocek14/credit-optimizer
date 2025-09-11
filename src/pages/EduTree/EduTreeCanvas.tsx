@@ -156,14 +156,14 @@ function createFlowElements(
       };
     }).filter(Boolean) as Edge[];
 
-    // Pass highlight sets to processed nodes - only when both tracks selected  
+    // Pass highlight sets to processed nodes - allow single track highlighting  
     const nodesWithHighlights = nodes.map(n => ({
       ...n,
       data: {
         ...n.data,
-        highlightedPrimaryNodes: (highlightedPrimary && highlightedComparison) ? highlightedPrimary?.nodes : null,
-        highlightedComparisonNodes: (highlightedPrimary && highlightedComparison) ? highlightedComparison?.nodes : null,
-        isMultipathActive: !!(highlightedPrimary && highlightedComparison),
+        highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
+        highlightedComparisonNodes: highlightedComparison?.nodes || null,
+        isMultipathActive: !!(highlightedPrimary), // Allow single track mode
       },
     }));
 
@@ -177,16 +177,23 @@ function createFlowElements(
 
       const edgeId = String(ge.id ?? `${source}->${target}`);
       
-      // Only apply multipath edge styling when both tracks are selected
+      // Apply multipath edge styling - support single track mode
       let edgeClass = 'edge';
-      if (highlightedPrimary && highlightedComparison) {
+      if (highlightedPrimary) {
         const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
         const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
         
-        if (isPrimary && isCompare) edgeClass += ' edge--both';
-        else if (isPrimary) edgeClass += ' edge--primary';
-        else if (isCompare) edgeClass += ' edge--comparison';  
-        else edgeClass += ' edge--dim';
+        if (highlightedComparison) {
+          // Dual track mode
+          if (isPrimary && isCompare) edgeClass += ' edge--both';
+          else if (isPrimary) edgeClass += ' edge--primary';
+          else if (isCompare) edgeClass += ' edge--comparison';  
+          else edgeClass += ' edge--dim';
+        } else {
+          // Single track mode
+          if (isPrimary) edgeClass += ' edge--primary';
+          else edgeClass += ' edge--dim';
+        }
       }
 
       return {
@@ -566,10 +573,10 @@ function EduTreeCanvasInner() {
             isComparisonHighlighted,
             planningLens: isHighlighted ? primaryTrack : isComparisonHighlighted ? comparisonTrack : null,
             onCourseClick: handleCourseClick,
-            // Pass highlight sets for multipath styling - only when both tracks selected
-            highlightedPrimaryNodes: (primaryTrack && comparisonTrack) ? (highlightedPrimary?.nodes ?? null) : null,
-            highlightedComparisonNodes: (primaryTrack && comparisonTrack) ? (highlightedComparison?.nodes ?? null) : null,
-            isMultipathActive: !!(primaryTrack && comparisonTrack),
+            // Pass highlight sets for multipath styling - allow single track highlighting  
+            highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
+            highlightedComparisonNodes: highlightedComparison?.nodes || null,
+            isMultipathActive: !!(highlightedPrimary), // Allow single track mode
           }
         };
       })
@@ -621,10 +628,10 @@ function EduTreeCanvasInner() {
         planningLens: null,
         isDegreeNode: true,
         isDegreeComplete,
-        // Pass multipath data to terminal node
-        highlightedPrimaryNodes: (primaryTrack && comparisonTrack) ? (highlightedPrimary?.nodes ?? null) : null,
-        highlightedComparisonNodes: (primaryTrack && comparisonTrack) ? (highlightedComparison?.nodes ?? null) : null,
-        isMultipathActive: !!(primaryTrack && comparisonTrack),
+        // Pass multipath data to terminal node - allow single track highlighting
+        highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
+        highlightedComparisonNodes: highlightedComparison?.nodes || null,
+        isMultipathActive: !!(highlightedPrimary), // Allow single track mode
       }
     };
 
@@ -1246,8 +1253,8 @@ function EduTreeCanvasInner() {
       <div 
         className={cn(
           "flex-1",
-          // Only apply multipath-active when tracks are being actively compared
-          primaryTrack && comparisonTrack && "multipath-active"
+          // Apply multipath-active when any track is selected (allow single track mode)
+          primaryTrack && "multipath-active"
         )}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
@@ -1263,8 +1270,8 @@ function EduTreeCanvasInner() {
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           className={cn(
             'react-flow-canvas',
-            // Apply multipath styling only when actively comparing tracks
-            primaryTrack && comparisonTrack ? 'multipath-active' : undefined
+            // Apply multipath styling when any track is selected (allow single track mode)
+            primaryTrack ? 'multipath-active' : undefined
           )}
           minZoom={0.3}
           maxZoom={1.5}

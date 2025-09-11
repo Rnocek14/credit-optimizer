@@ -18,7 +18,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   };
   const { label, isEligible = false, degreeType, credits, displayTitle, highlightedPrimaryNodes, highlightedComparisonNodes } = terminalData;
   
-  // Determine highlight status - only apply if multipath is active AND both tracks selected
+  // Determine highlight status - support single track highlighting
   const key = String(id);
   const inPrimary = !!highlightedPrimaryNodes?.has?.(key);
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
@@ -26,11 +26,18 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   let highlightClass = '';
   const isMultipathActive = terminalData.isMultipathActive;
   
-  if (isMultipathActive && highlightedPrimaryNodes && highlightedComparisonNodes) {
-    if (inPrimary && inCompare) highlightClass = 'terminal--both';
-    else if (inPrimary) highlightClass = 'terminal--primary';
-    else if (inCompare) highlightClass = 'terminal--comparison';
-    else highlightClass = 'terminal--dim';
+  if (isMultipathActive && highlightedPrimaryNodes) {
+    if (highlightedComparisonNodes) {
+      // Dual track comparison mode
+      if (inPrimary && inCompare) highlightClass = 'terminal--both';
+      else if (inPrimary) highlightClass = 'terminal--primary';
+      else if (inCompare) highlightClass = 'terminal--comparison';
+      else highlightClass = 'terminal--dim'; 
+    } else {
+      // Single track mode
+      if (inPrimary) highlightClass = 'terminal--primary';
+      else highlightClass = 'terminal--dim';
+    }
   }
 
   // Debug logging for multipath highlighting
