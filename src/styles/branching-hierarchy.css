@@ -1,0 +1,201 @@
+/**
+ * Visual hierarchy styles for branching tree structure
+ * Provides distinct styling for foundation, branching, specialization, and convergence nodes
+ */
+
+.multipath-active {
+  /* Foundation nodes - shared starting point */
+  .node--foundation {
+    border: 2px solid hsl(var(--muted-foreground));
+    background: hsl(var(--background));
+    box-shadow: 0 2px 8px hsl(var(--muted) / 0.3);
+  }
+  
+  .node--foundation.node--primary {
+    border-color: hsl(var(--primary));
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--background)));
+  }
+  
+  .node--foundation.node--comparison {
+    border-color: hsl(var(--secondary));
+    background: linear-gradient(135deg, hsl(var(--secondary) / 0.1), hsl(var(--background)));
+  }
+  
+  .node--foundation.node--both {
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--secondary) / 0.2));
+    box-shadow: 
+      0 0 0 2px hsl(var(--primary) / 0.5),
+      0 0 0 4px hsl(var(--secondary) / 0.5),
+      0 4px 12px hsl(var(--primary) / 0.2);
+  }
+
+  /* Branching point - where paths diverge */
+  .node--branching {
+    position: relative;
+    border: 3px solid hsl(var(--accent));
+    background: radial-gradient(circle at center, hsl(var(--accent) / 0.2), hsl(var(--background)));
+    box-shadow: 
+      0 0 20px hsl(var(--accent) / 0.4),
+      0 4px 16px hsl(var(--accent) / 0.2);
+    transform: scale(1.05);
+  }
+  
+  .node--branching::before {
+    content: '🔀';
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    font-size: 18px;
+    animation: branching-pulse 2s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  /* Specialization nodes - track-specific branches */
+  .node--specialization {
+    border: 2px solid hsl(var(--border));
+    background: hsl(var(--card));
+    transition: all 0.3s ease;
+  }
+  
+  .node--specialization.node--primary {
+    border-color: hsl(var(--primary));
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--card)));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  }
+  
+  .node--specialization.node--comparison {
+    border-color: hsl(var(--secondary));
+    background: linear-gradient(135deg, hsl(var(--secondary) / 0.15), hsl(var(--card)));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px hsl(var(--secondary) / 0.3);
+  }
+
+  /* Convergence point - where all paths merge */
+  .node--convergence {
+    position: relative;
+    border: 3px solid hsl(var(--accent));
+    background: radial-gradient(circle at center, hsl(var(--accent) / 0.3), hsl(var(--background)));
+    box-shadow: 
+      0 0 30px hsl(var(--accent) / 0.6),
+      0 8px 24px hsl(var(--accent) / 0.3);
+    transform: scale(1.1);
+  }
+  
+  .node--convergence::before {
+    content: '🎓';
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    font-size: 24px;
+    animation: convergence-celebration 3s ease-in-out infinite;
+    z-index: 10;
+  }
+
+  /* Terminal convergence styling */
+  .terminal--convergence {
+    border: 4px solid hsl(var(--accent));
+    background: linear-gradient(135deg, 
+      hsl(var(--accent) / 0.2), 
+      hsl(var(--primary) / 0.1), 
+      hsl(var(--secondary) / 0.1)
+    );
+    box-shadow: 
+      0 0 40px hsl(var(--accent) / 0.8),
+      0 12px 32px hsl(var(--accent) / 0.4);
+    transform: scale(1.15);
+  }
+  
+  .terminal--convergence.terminal--both {
+    box-shadow: 
+      0 0 0 3px hsl(var(--primary) / 0.9), 
+      0 0 0 6px hsl(var(--secondary) / 0.7), 
+      0 0 0 9px hsl(var(--accent) / 0.5),
+      0 0 50px hsl(var(--accent) / 0.9),
+      0 16px 40px hsl(var(--primary) / 0.3);
+    transform: scale(1.2);
+  }
+
+  /* Enhanced edge styling for flow visualization */
+  .edge--shared {
+    stroke: hsl(var(--muted-foreground));
+    stroke-width: 3;
+    opacity: 0.8;
+  }
+  
+  .edge--branching {
+    stroke: hsl(var(--accent));
+    stroke-width: 4;
+    stroke-dasharray: 5 5;
+    animation: flow-pulse 2s ease-in-out infinite;
+  }
+  
+  .edge--convergence {
+    stroke: hsl(var(--accent));
+    stroke-width: 5;
+    opacity: 1;
+    filter: drop-shadow(0 2px 4px hsl(var(--accent) / 0.3));
+  }
+}
+
+/* Enhanced animations */
+@keyframes branching-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.3) rotate(15deg);
+    opacity: 1;
+  }
+}
+
+@keyframes convergence-celebration {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.8;
+  }
+  33% {
+    transform: scale(1.2) rotate(120deg);
+    opacity: 1;
+  }
+  66% {
+    transform: scale(1.1) rotate(240deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes flow-pulse {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.6;
+  }
+  50% {
+    stroke-dashoffset: -10;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -20;
+    opacity: 0.6;
+  }
+}
+
+/* Dimmed state improvements */
+.multipath-active .node--dim {
+  opacity: 0.25;
+  filter: grayscale(0.8) blur(0.5px);
+  transform: scale(0.95);
+}
+
+.multipath-active .terminal--dim {
+  opacity: 0.2;
+  filter: grayscale(0.9) blur(1px);
+  transform: scale(0.9);
+}
+
+.multipath-active .edge--dim {
+  opacity: 0.15;
+  stroke-width: 1;
+  filter: grayscale(1);
+}

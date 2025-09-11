@@ -1,44 +1,72 @@
 /**
  * Track highlighting utilities for proper branching multipath visualization
+ * Integrates with the new branching data structure
  */
 import { TrackId, TRACKS } from '../tracks';
+import { 
+  getTrackNodesFromStructure, 
+  getTrackEdgesFromStructure,
+  getSharedNodesFromStructure,
+  getUniqueNodesFromStructure,
+  isBranchingPointFromStructure,
+  isConvergencePointFromStructure,
+  BRANCHING_STRUCTURE
+} from '../core/branchingData';
 
 /**
- * Get all nodes for a specific track
+ * Get all nodes for a specific track (enhanced with branching structure)
  */
 export function getTrackNodes(trackId: TrackId): Set<string> {
-  return new Set(TRACKS[trackId]?.nodes || []);
+  // Use the new branching structure first, fallback to legacy TRACKS
+  try {
+    return getTrackNodesFromStructure(trackId);
+  } catch {
+    return new Set(TRACKS[trackId]?.nodes || []);
+  }
+}
+
+/**
+ * Get all edges for a specific track
+ */
+export function getTrackEdges(trackId: TrackId): Set<string> {
+  try {
+    return getTrackEdgesFromStructure(trackId);
+  } catch {
+    // Fallback: construct edge IDs from TRACKS data
+    const nodes = TRACKS[trackId]?.nodes || [];
+    const edges = new Set<string>();
+    for (let i = 0; i < nodes.length - 1; i++) {
+      edges.add(`${nodes[i]}->${nodes[i + 1]}`);
+    }
+    return edges;
+  }
 }
 
 /**
  * Get shared foundation nodes (before branching point)
  */
 export function getSharedFoundationNodes(primaryTrack: TrackId, comparisonTrack: TrackId): Set<string> {
-  const primary = TRACKS[primaryTrack];
-  const comparison = TRACKS[comparisonTrack];
-  
-  if (!primary || !comparison) return new Set();
-  
-  // Get nodes that appear in both foundation paths AND convergence
-  const primaryFoundation = new Set(primary.sharedFoundation);
-  const comparisonFoundation = new Set(comparison.sharedFoundation);
-  const convergence = new Set([primary.convergencePoint, comparison.convergencePoint]);
-  
-  // Intersection of foundations + convergence point
-  const shared = new Set([...primaryFoundation].filter(nodeId => comparisonFoundation.has(nodeId)));
-  convergence.forEach(nodeId => shared.add(nodeId));
-  
-  // Enhanced debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`🌳 Shared foundation between ${primaryTrack} and ${comparisonTrack}:`, {
-      shared: Array.from(shared),
-      primaryFoundation: Array.from(primaryFoundation),
-      comparisonFoundation: Array.from(comparisonFoundation),
-      convergence: Array.from(convergence)
-    });
+  try {
+    return getSharedNodesFromStructure(primaryTrack, comparisonTrack);
+  } catch {
+    // Fallback to legacy intersection logic
+    const primary = TRACKS[primaryTrack];
+    const comparison = TRACKS[comparisonTrack];
+    
+    if (!primary || !comparison) return new Set();
+
+    const primaryNodes = new Set(primary.nodes);
+    const comparisonNodes = new Set(comparison.nodes);
+    const shared = new Set<string>();
+
+    for (const node of primaryNodes) {
+      if (comparisonNodes.has(node)) {
+        shared.add(node);
+      }
+    }
+
+    return shared;
   }
-  
-  return shared;
 }
 
 /**
@@ -52,10 +80,14 @@ export function getSharedNodes(primaryTrack: TrackId, comparisonTrack: TrackId):
  * Get unique nodes for a track (nodes not shared with comparison track)
  */
 export function getUniqueNodes(trackId: TrackId, otherTrack: TrackId): Set<string> {
-  const trackNodes = getTrackNodes(trackId);
-  const otherNodes = getTrackNodes(otherTrack);
-  
-  return new Set([...trackNodes].filter(nodeId => !otherNodes.has(nodeId)));
+  try {
+    return getUniqueNodesFromStructure(trackId, otherTrack);
+  } catch {
+    const trackNodes = getTrackNodes(trackId);
+    const otherNodes = getTrackNodes(otherTrack);
+    
+    return new Set([...trackNodes].filter(nodeId => !otherNodes.has(nodeId)));
+  }
 }
 
 /**
@@ -69,14 +101,22 @@ export function getUniqueSpecializationNodes(trackId: TrackId): Set<string> {
  * Check if node is a branching point
  */
 export function isBranchingPoint(nodeId: string, trackId: TrackId): boolean {
-  return TRACKS[trackId]?.branchingPoint === nodeId;
+  try {
+    return isBranchingPointFromStructure(nodeId);
+  } catch {
+    return TRACKS[trackId]?.branchingPoint === nodeId;
+  }
 }
 
 /**
  * Check if node is convergence point
  */
 export function isConvergencePoint(nodeId: string): boolean {
-  return Object.values(TRACKS).some(track => track.convergencePoint === nodeId);
+  try {
+    return isConvergencePointFromStructure(nodeId);
+  } catch {
+    return Object.values(TRACKS).some(track => track.convergencePoint === nodeId);
+  }
 }
 
 /**

@@ -1,12 +1,15 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GraduationCap, Star } from 'lucide-react';
+import { getTerminalHighlightClass } from '../utils/trackHighlighting';
+import { BranchingHighlightState } from '../core/branchingHighlighting';
 
 interface TerminalNodeData {
   label?: string;
   isEligible?: boolean;
   degreeType?: string;
   credits?: number;
+  branchingHighlightState?: BranchingHighlightState;
 }
 
 export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {

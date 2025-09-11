@@ -17,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
 import '../../styles/multipath-clean.css';
 import '../../styles/multipath-convergence.css';
+import '../../styles/branching-hierarchy.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -59,6 +60,14 @@ import { MultipathDebugPanel } from './components/MultipathDebugPanel';
 import { TRACKS, TrackId } from './tracks';
 import { CompareTracksBar } from './components/CompareTracksBar';
 import { getTrackBranchingDebugInfo, debugTrackHighlighting } from './utils/trackValidation';
+import { applyBranchingLayout } from './core/branchingLayout';
+import { 
+  createBranchingHighlightState, 
+  getNodeHighlightClass,
+  getTerminalHighlightClass,
+  getEdgeHighlightClass,
+  BranchingHighlightState
+} from './core/branchingHighlighting';
 
 const DEV = process.env.NODE_ENV !== 'production';
 const onceKeys = new Set<string>();
@@ -91,7 +100,8 @@ function createFlowElements(
   coursesByBlock: Map<string, EduCourse[]>,
   flags: any,
   highlightedPrimary?: { nodes: Set<string>; edges: Set<string> } | null,
-  highlightedComparison?: { nodes: Set<string>; edges: Set<string> } | null
+  highlightedComparison?: { nodes: Set<string>; edges: Set<string> } | null,
+  branchingState?: BranchingHighlightState
 ): { nodes: Node[]; edges: Edge[] } {
   try {
     const safeBlocks = safeArr(blocks);
@@ -133,6 +143,8 @@ function createFlowElements(
           isEligible: isTerminal,
           degreeType: isTerminal ? 'Bachelor of Science' : undefined,
           credits: isTerminal ? 120 : undefined,
+          // Add branching highlight state for enhanced rendering
+          branchingHighlightState: branchingState,
         }
       };
     }).filter(Boolean) as Node[];
@@ -170,6 +182,7 @@ function createFlowElements(
         highlightedPrimaryNodes: highlightedPrimary?.nodes || null,
         highlightedComparisonNodes: highlightedComparison?.nodes || null,
         isMultipathActive: !!(highlightedPrimary), // Allow single track mode
+        branchingHighlightState: branchingState,
       },
     }));
 
@@ -183,24 +196,8 @@ function createFlowElements(
 
       const edgeId = String(ge.id ?? `${source}->${target}`);
       
-      // Enhanced edge styling with better logic
-      let edgeClass = 'edge';
-      if (highlightedPrimary) {
-        const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
-        const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
-        
-        if (highlightedComparison) {
-          // Dual track comparison mode
-          if (isPrimary && isCompare) edgeClass += ' edge--both';
-          else if (isPrimary) edgeClass += ' edge--primary';
-          else if (isCompare) edgeClass += ' edge--comparison';  
-          else edgeClass += ' edge--dim';
-        } else {
-          // Single track mode - cleaner highlighting
-          if (isPrimary) edgeClass += ' edge--primary';
-          else edgeClass += ' edge--dim';
-        }
-      }
+      // Enhanced edge styling using branching highlight system
+      const edgeClass = branchingState ? getEdgeHighlightClass(edgeId, branchingState) : 'edge';
 
       return {
         id: edgeId,
@@ -230,48 +227,12 @@ function layoutAndScan(nodes: Node[], edges: Edge[], options: any): { nodes: Nod
   try {
     if (!nodes.length) return { nodes, edges };
     
-    // Track-based positioning for Y-shaped branching
-    const layoutedNodes = nodes.map((node) => {
-      const nodeId = node.id;
-      const nodeData = node.data;
-      const level = Number(nodeData?.level_year) || 0;
-      const area = nodeData?.area || 'unknown';
-      
-      // Base positioning by year
-      let x = (level || 0) * 320;
-      let y = 200; // Central baseline
-      
-      // Adjust positioning for branching visualization
-      if (area === 'general-education') {
-        // Foundation courses - spread vertically for better visualization
-        if (nodeId === 'b101') { x = 100; y = 150; }  // Composition
-        if (nodeId === 'b102') { x = 100; y = 250; }  // Math
-      } else if (area === 'mathematics') {
-        // Math foundation
-        if (nodeId === 'b401') { x = 100; y = 350; }
-      } else if (area === 'core') {
-        // Core programming courses - central path
-        if (nodeId === 'b201') { x = 420; y = 200; }  // Prog I (convergence)
-        if (nodeId === 'b202') { x = 740; y = 200; }  // Prog II (branching point)
-      } else if (area === 'specialization') {
-        // Specialization tracks - branch into Y-shape after b202
-        if (nodeId === 'b301') { x = 1060; y = 100; } // Web Frontend (top branch)
-        if (nodeId === 'b302') { x = 1060; y = 200; } // Data Analytics (middle)
-        if (nodeId === 'b331') { x = 1060; y = 300; } // Systems (bottom branch)
-        if (nodeId === 'b311') { x = 1380; y = 100; } // Web Frontend II
-        if (nodeId === 'b321') { x = 1380; y = 200; } // Data Analytics II
-      } else if (area === 'terminal') {
-        // Convergence point - all tracks merge here
-        if (nodeId === 'degree-completion') { x = 1700; y = 200; }
-      }
-      
-      return {
-        ...node,
-        position: { x, y }
-      };
+    // Use the new branching layout system
+    return applyBranchingLayout(nodes, edges, {
+      nodeSpacing: { horizontal: 320, vertical: 100 },
+      branchAngle: 30,
+      centerY: 200
     });
-
-    return { nodes: layoutedNodes, edges };
   } catch (error) {
     console.warn('[EduTree] layoutAndScan failed, using fallback:', error);
     return {
@@ -364,6 +325,12 @@ function EduTreeCanvasInner() {
   const [comparisonTrack, setComparisonTrack] = useState<TrackId | null>(null);
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
+
+  // Enhanced branching highlight state
+  const branchingHighlightState: BranchingHighlightState = useMemo(() => 
+    createBranchingHighlightState(primaryTrack, comparisonTrack), 
+    [primaryTrack, comparisonTrack]
+  );
 
   // Stabilize flags - prevent render spam
   const didEnableFlagsRef = useRef(false);
@@ -788,7 +755,8 @@ function EduTreeCanvasInner() {
         coursesByBlock,
         flags,
         highlightedPrimary,
-        highlightedComparison
+        highlightedComparison,
+        branchingHighlightState
       );
       processedNodes = safeArr(result.nodes);
       processedEdges = safeArr(result.edges);
