@@ -54,6 +54,16 @@ import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackgroun
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 import { MultipathDebugPanel } from './components/MultipathDebugPanel';
 
+const DEV = process.env.NODE_ENV !== 'production';
+const onceKeys = new Set<string>();
+function devOnce(key: string, msg: string, data?: any) {
+  if (!DEV) return;
+  if (onceKeys.has(key)) return;
+  onceKeys.add(key);
+  // eslint-disable-next-line no-console
+  console.log(msg, data ?? '');
+}
+
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
@@ -63,7 +73,7 @@ const nodeTypes = {
   placeholderGroup: PlaceholderGroup,
 };
 
-const DEV = import.meta.env.DEV;
+
 
 type ViewMode = 'flow' | 'board';
 
@@ -474,15 +484,15 @@ function EduTreeCanvasInner() {
     }
   }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
   
-  // URL parameter support for comparison lens
+  // URL parameter support for comparison lens - robust sync
   useEffect(() => {
     if (!flags.eduTreeMultiPathOverlay) return;
-    
-    const searchParams = new URLSearchParams(window.location.search);
-    const compareParam = searchParams.get('compare');
-    
-    if (compareParam === 'fastest' || compareParam === 'cheapest' || compareParam === 'roi') {
-      setComparisonLens(compareParam);
+    const sp = new URLSearchParams(window.location.search);
+    const val = sp.get('compare');
+    if (val === 'fastest' || val === 'cheapest' || val === 'roi') {
+      setComparisonLens(val as PlanningLens);
+    } else {
+      setComparisonLens(null);
     }
   }, [flags.eduTreeMultiPathOverlay]);
 
@@ -566,6 +576,77 @@ function EduTreeCanvasInner() {
       setHighlightedComparison(null);
     }
   }, [comparisonPath?.nodeIds?.length, comparisonPath?.edgeIds?.length, flags.eduTreeMultiPathOverlay]);
+
+  // === Multipath Snapshot (dev-only, one-time per input set) ===
+  useEffect(() => {
+    const multipathActive = flags.eduTreeMultiPathOverlay && !!comparisonLens;
+    if (!multipathActive) return;
+    if (!primaryPath || !comparisonPath) return;
+
+    const key = JSON.stringify({
+      lensPrimary: selectedLens,
+      lensComparison: comparisonLens,
+      pn: primaryPath.nodeIds?.length ?? 0,
+      pe: primaryPath.edgeIds?.length ?? 0,
+      cn: comparisonPath.nodeIds?.length ?? 0,
+      ce: comparisonPath.edgeIds?.length ?? 0,
+    });
+
+    const overlapNodes = new Set(
+      primaryPath.nodeIds.filter((id: string) => comparisonPath.nodeIds.includes(id))
+    );
+    const overlapEdges = new Set(
+      primaryPath.edgeIds.filter((id: string) => comparisonPath.edgeIds.includes(id))
+    );
+
+    devOnce(
+      `multipath-snap-${key}`,
+      '[Multipath Snapshot]',
+      {
+        url: typeof window !== 'undefined' ? window.location.href : '',
+        flags: {
+          eduTreeOutcomes: flags.eduTreeOutcomes,
+          eduTreeMultiPathOverlay: flags.eduTreeMultiPathOverlay,
+        },
+        lenses: { primary: selectedLens, comparison: comparisonLens },
+        counts: {
+          primaryNodes: primaryPath.nodeIds.length,
+          primaryEdges: primaryPath.edgeIds.length,
+          comparisonNodes: comparisonPath.nodeIds.length,
+          comparisonEdges: comparisonPath.edgeIds.length,
+          overlapNodes: overlapNodes.size,
+          overlapEdges: overlapEdges.size,
+        },
+        sample: {
+          primaryNodes: primaryPath.nodeIds.slice(0, 8),
+          comparisonNodes: comparisonPath.nodeIds.slice(0, 8),
+          overlapNodes: Array.from(overlapNodes).slice(0, 8),
+        },
+      }
+    );
+  }, [
+    flags.eduTreeMultiPathOverlay,
+    flags.eduTreeOutcomes,
+    selectedLens,
+    comparisonLens,
+    primaryPath?.nodeIds?.length,
+    primaryPath?.edgeIds?.length,
+    comparisonPath?.nodeIds?.length,
+    comparisonPath?.edgeIds?.length,
+  ]);
+
+  // Expose debug global for external testing
+  useEffect(() => {
+    if (!DEV) return;
+    (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
+    (window as any).__EDUTREE__.getSnapshot = () => {
+      return {
+        lenses: { primary: selectedLens, comparison: comparisonLens },
+        primary: primaryPath ? { nodes: primaryPath.nodeIds, edges: primaryPath.edgeIds } : null,
+        comparison: comparisonPath ? { nodes: comparisonPath.nodeIds, edges: comparisonPath.edgeIds } : null,
+      };
+    };
+  }, [selectedLens, comparisonLens, primaryPath, comparisonPath]);
   
   useEffect(() => {
     if (flowNodes.length > 0) {

@@ -75,17 +75,16 @@ export function LensSelector({
           <Select
             value={comparisonLens || 'none'}
             onValueChange={(value) => {
-              const newLens = value === 'none' ? null : value as PlanningLens;
+              const newLens = value === 'none' ? null : (value as PlanningLens);
               onComparisonLensChange?.(newLens);
-              
-              // Update URL parameter
-              const url = new URL(window.location.href);
-              if (newLens) {
-                url.searchParams.set('compare', newLens);
-              } else {
-                url.searchParams.delete('compare');
-              }
-              window.history.replaceState({}, '', url.toString());
+
+              // URL sync without page reload
+              try {
+                const url = new URL(window.location.href);
+                if (newLens) url.searchParams.set('compare', newLens);
+                else url.searchParams.delete('compare');
+                window.history.replaceState({}, '', url.toString());
+              } catch {}
             }}
           >
             <SelectTrigger 

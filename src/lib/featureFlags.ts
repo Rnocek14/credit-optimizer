@@ -92,6 +92,13 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
     eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'true')),
   };
+
+  // Auto-enable multipath overlay on the dedicated route
+  try {
+    if (typeof window !== 'undefined' && location.pathname.includes('/edu-treemulti')) {
+      flags.eduTreeMultiPathOverlay = true;
+    }
+  } catch {}
   
   // Single consolidated debug log (only once per session)
   if (typeof window !== 'undefined') {
