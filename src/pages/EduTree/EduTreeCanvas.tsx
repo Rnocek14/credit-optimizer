@@ -472,15 +472,7 @@ function EduTreeCanvasInner() {
     return Array.isArray(src) ? src : [];
   }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, allEdges]);
   
-  // Update React Flow edges when visibleEdges change
-  useEffect(() => {
-    if (flags.eduTreeStaggeredEdgesV2) {
-      setEdges(visibleEdges);
-    } else {
-      // fall back to allEdges to avoid empty graph when flag is off
-      setEdges(allEdges);
-    }
-  }, [visibleEdges, allEdges, flags.eduTreeStaggeredEdgesV2, setEdges]);
+  // Removed competing edge source - ReactFlow now always renders highlightedElements.edges
   
   // Re-enable path highlighting safely with stable dependencies
   const lastPathRef = useRef<string>('');
