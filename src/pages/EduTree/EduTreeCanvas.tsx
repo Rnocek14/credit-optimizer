@@ -297,7 +297,10 @@ function EduTreeCanvasInner() {
             isHighlighted,
             isComparisonHighlighted,
             planningLens: isHighlighted ? selectedLens : isComparisonHighlighted ? comparisonLens : null,
-            onCourseClick: handleCourseClick
+            onCourseClick: handleCourseClick,
+            // Pass highlight sets for multipath styling
+            highlightedPrimaryNodes: highlightedPrimary?.nodes ?? null,
+            highlightedComparisonNodes: highlightedComparison?.nodes ?? null,
           }
         };
       })
@@ -373,6 +376,11 @@ function EduTreeCanvasInner() {
         source,
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
+        data: {
+          // Pass highlight sets for multipath styling
+          highlightedPrimaryEdges: highlightedPrimary?.edges ?? null,
+          highlightedComparisonEdges: highlightedComparison?.edges ?? null,
+        },
         style: {
           stroke: isHighlighted ? 'var(--primary)' : 
                   isComparisonHighlighted ? 'oklch(var(--amber-500))' : 'var(--primary)',
@@ -456,8 +464,8 @@ function EduTreeCanvasInner() {
     }
 
     return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
-  // REMOVED highlightedPath dependency to prevent infinite loop
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath, highlightedPrimary, highlightedComparison]);
+  // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);

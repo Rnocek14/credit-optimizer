@@ -11,6 +11,8 @@ interface LifePathEdgeData {
   label?: string;
   points?: { x: number; y: number }[];
   badge?: { text: string; tone: string };
+  highlightedPrimaryEdges?: Set<string> | null;
+  highlightedComparisonEdges?: Set<string> | null;
 }
 
 interface LifePathEdgeProps {
@@ -48,9 +50,8 @@ export function LifePathEdgeComponent(props: LifePathEdgeProps) {
 
   // Enhanced multipath-aware styling with string-coerced ID checks
   const key = String(id);
-  // Note: These will be replaced with actual highlight state from parent component
-  const inPrimary = false; // !!highlightedPrimary?.edges?.has(key);
-  const inCompare = false; // !!highlightedComparison?.edges?.has(key);
+  const inPrimary = !!data?.highlightedPrimaryEdges?.has(key);
+  const inCompare = !!data?.highlightedComparisonEdges?.has(key);
   
   let className = 'edge';
   if (inPrimary) className += ' edge--primary';

@@ -39,6 +39,8 @@ interface LifePathNodeData {
   tier?: 'on-path' | 'related' | 'off-path';
   isHovered?: boolean;
   showPreviousPath?: boolean;
+  highlightedPrimaryNodes?: Set<string> | null;
+  highlightedComparisonNodes?: Set<string> | null;
 }
 
 interface LifePathNodeProps {
@@ -144,8 +146,8 @@ export function LifePathNodeComponent({ data }: LifePathNodeProps) {
   
   // Enhanced node class assignment with string-coerced IDs
   const key = String(node.id);
-  const inPrimary = false; // !!highlightedPrimary?.nodes?.has(key);
-  const inCompare = false; // !!highlightedComparison?.nodes?.has(key);
+  const inPrimary = !!data?.highlightedPrimaryNodes?.has(key);
+  const inCompare = !!data?.highlightedComparisonNodes?.has(key);
   
   let nodeClassName = 'lp-node';
   if (inPrimary) nodeClassName += ' node--primary';
