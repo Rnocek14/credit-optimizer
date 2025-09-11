@@ -52,6 +52,7 @@ import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
+import { MultipathDebugPanel } from './components/MultipathDebugPanel';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -877,7 +878,7 @@ function EduTreeCanvasInner() {
           
           {/* Development controls */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2">
+            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50">
               <div className="text-xs text-muted-foreground">
                 Edges: {visibleEdges.length}/{allEdges.length}
                 {isRevealing && <span className="ml-2 text-primary">Revealing...</span>}
@@ -900,6 +901,15 @@ function EduTreeCanvasInner() {
               >
                 Focus Terminal
               </button>
+              
+              {/* Multipath Debug Panel */}
+              <MultipathDebugPanel
+                primaryLens={selectedLens}
+                comparisonLens={comparisonLens}
+                primaryPath={primaryPath}
+                comparisonPath={comparisonPath}
+                isMultipathActive={flags.eduTreeMultiPathOverlay && !!comparisonLens}
+              />
             </div>
           )}
         </ReactFlow>
