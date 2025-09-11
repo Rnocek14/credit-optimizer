@@ -7,11 +7,21 @@ interface TerminalNodeData {
   isEligible?: boolean;
   degreeType?: string;
   credits?: number;
+  block?: {
+    id: string;
+    title: string;
+    rule_type: string;
+    level_year: number;
+    area: string;
+    courses: any[];
+    gate?: any;
+  };
 }
 
 export const TerminalNode: React.FC<NodeProps> = ({ data, selected }) => {
   const terminalData = data as TerminalNodeData;
-  const { label, isEligible = false, degreeType, credits } = terminalData;
+  const { isEligible = false, degreeType, credits, block } = terminalData;
+  const label = block?.title || terminalData.label || 'Terminal Node';
 
   return (
     <div

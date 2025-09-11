@@ -298,13 +298,9 @@ function EduTreeCanvasInner() {
 
     const degreeNode: Node = {
       id: 'degree-completion',
-      type: 'terminal',
+      type: 'terminalNode', // Use consistent terminal node type
       position: { x: 5 * 320, y: 0 }, // Position at Year 5
       data: {
-        label: 'B.S. Software Engineering',
-        isEligible: isDegreeUnlocked || false,
-        degreeType: 'Bachelor of Science',
-        credits: totalCourses * 3, // Approximate total credits
         block: {
           id: 'degree-completion',
           title: 'B.S. Software Engineering',
@@ -314,6 +310,9 @@ function EduTreeCanvasInner() {
           courses: [],
           gate: { id: 'degree-gate', block_id: 'degree-completion' }
         },
+        isEligible: isDegreeUnlocked || false,
+        degreeType: 'Bachelor of Science',
+        credits: totalCourses * 3, // Approximate total credits
         completedCourseIds,
         isUnlocked: isDegreeUnlocked || false,
         progress: {
@@ -466,29 +465,27 @@ function EduTreeCanvasInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
+  // Apply layout only when multipath overlay is NOT intended
   useEffect(() => {
-    if (flowNodes.length > 0) {
+    if (flowNodes.length > 0 && !flags.eduTreeMultiPathOverlay) {
       const applyEmergencyLayout = async () => {
         try {
-          console.log('[EduTree] EMERGENCY: Applying fail-safe layout to', flowNodes.length, 'nodes');
+          console.log('[EduTree] Applying layout to', flowNodes.length, 'nodes');
           
-          // EMERGENCY: Use the collision-resistant layout system
           const { layoutNodes } = await import('@/lib/layout/simpleLayout');
           const result = await layoutNodes(flowNodes, flowEdges);
           
           if (result.hasOverlaps) {
-            console.error('⚠️ EMERGENCY: Layout STILL has overlaps! Using ultra-safe fallback');
-            // Ultra-safe fallback - guarantee no overlaps with multi-column grid
+            console.warn('⚠️ Layout has overlaps, using safe fallback');
             const safeNodes = flowNodes.map((node, index) => ({
               ...node,
               position: { 
-                x: (index % 2) * 600, // 2 columns, 600px apart
-                y: Math.floor(index / 2) * 500 // 500px vertical spacing
+                x: (index % 2) * 600,
+                y: Math.floor(index / 2) * 500
               }
             }));
             setNodes(safeNodes);
           } else {
-            console.log('✅ EMERGENCY: Layout validated - no overlaps');
             setNodes(result.nodes);
           }
           
@@ -499,8 +496,7 @@ function EduTreeCanvasInner() {
           }
           
         } catch (error) {
-          console.error('[EduTree] EMERGENCY: All layouts failed, using absolute fallback:', error);
-          // ABSOLUTE LAST RESORT: Simple grid with massive spacing
+          console.error('[EduTree] Layout failed, using fallback:', error);
           const fallbackNodes = flowNodes.map((node, index) => ({
             ...node,
             position: { x: (index % 2) * 700, y: Math.floor(index / 2) * 600 }
@@ -516,7 +512,7 @@ function EduTreeCanvasInner() {
       
       applyEmergencyLayout();
     }
-  }, [flowNodes.length]); // CRITICAL: Only trigger on node COUNT change, not content change
+  }, [flowNodes.length, flags.eduTreeMultiPathOverlay]); // Only trigger when multipath is not intended
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -738,7 +734,6 @@ function EduTreeCanvasInner() {
       {/* React Flow Canvas */}
       <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
         <ReactFlow
-          key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
           edges={visibleEdges}
           onNodesChange={handleNodesChange}
