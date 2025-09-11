@@ -65,6 +65,30 @@ function devOnce(key: string, msg: string, data?: any) {
   console.log(msg, data ?? '');
 }
 
+// Local fallback seed for multipath testing
+const LOCAL_FALLBACK_SEED = {
+  blocks: [
+    { id: 'b101', title: 'Gen Ed: Composition', area: 'general-education', level_year: 1 },
+    { id: 'b102', title: 'Gen Ed: Quant Reasoning', area: 'general-education', level_year: 1 },
+    { id: 'b201', title: 'Core: Programming I', area: 'core', level_year: 1 },
+    { id: 'b202', title: 'Core: Programming II', area: 'core', level_year: 2 },
+    { id: 'b301', title: 'Web Frontend Foundations', area: 'specialization', level_year: 2 },
+    { id: 'b302', title: 'Data Analytics Intro', area: 'specialization', level_year: 2 },
+    { id: 'b401', title: 'Mathematics for CS', area: 'mathematics', level_year: 1 },
+    { id: 'degree-completion', title: 'Degree', area: 'terminal', level_year: 4 }
+  ],
+  gateEdges: [
+    { id: 'e1', source_block_id: 'b101', target_block_id: 'b201' },
+    { id: 'e2', source_block_id: 'b102', target_block_id: 'b201' },
+    { id: 'e3', source_block_id: 'b201', target_block_id: 'b202' },
+    { id: 'e4', source_block_id: 'b202', target_block_id: 'b301' }, // web
+    { id: 'e5', source_block_id: 'b202', target_block_id: 'b302' }, // data
+    { id: 'e6', source_block_id: 'b401', target_block_id: 'b202' }, // math path merges into core II
+    { id: 'e7', source_block_id: 'b301', target_block_id: 'degree-completion' },
+    { id: 'e8', source_block_id: 'b302', target_block_id: 'degree-completion' }
+  ]
+};
+
 // Node types for React Flow
 const nodeTypes = {
   blockGroup: BlockGroup,
@@ -219,7 +243,26 @@ function EduTreeCanvasInner() {
       gateEdgesLength: gateEdges.length 
     });
 
-    if (!blocks.length || !courses.length) {
+    // Use fallback seed if live data is insufficient (for multipath demo)
+    let effectiveBlocks = blocks;
+    let effectiveGateEdges = gateEdges;
+    
+    if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
+      console.log('[Multipath] Using fallback seed data for demonstration');
+      effectiveBlocks = [...blocks, ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
+        ...b,
+        parent_block_id: null,
+        rule_type: 'ALL' as const,
+        credits_needed: null,
+        k: null
+      }))];
+      effectiveGateEdges = [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
+        ...e,
+        source_gate_id: `gate-${e.source_block_id}`
+      }))];
+    }
+
+    if (!effectiveBlocks.length) {
       return { nodes: [], edges: [] };
     }
 
@@ -236,10 +279,10 @@ function EduTreeCanvasInner() {
     });
 
     // Create block nodes with courses
-    const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
+    const blocksWithCourses: BlockWithCourses[] = effectiveBlocks.map(block => ({
       ...block,
       courses: coursesByBlock.get(block.id) || [],
-      gate: gates.find(g => g.block_id === block.id)
+      gate: gates.find(g => g.block_id === block.id) || { id: `gate-${block.id}`, block_id: block.id }
     }));
 
     // Separate parent blocks from child blocks
@@ -386,7 +429,7 @@ function EduTreeCanvasInner() {
     const nodes: Node[] = [...regularNodes, degreeNode];
 
     // Create React Flow edges (only between blocks)
-    const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
+    const regularEdges: Edge[] = viewMode === 'flow' ? effectiveGateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
       const target = String(gateEdge.target_block_id);
@@ -993,6 +1036,13 @@ function EduTreeCanvasInner() {
             onComparisonLensChange={handleComparisonLensChange}
               />
             )}
+
+            {/* Empty state for multipath */}
+            {flags.eduTreeMultiPathOverlay && comparisonLens && !comparisonPath && (
+              <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded border">
+                No comparison path available for '{comparisonLens}'. Add branched data or enable fallback seed.
+              </div>
+            )}
             
             {/* Dev Snapshot Button */}
             {DEV && flags.eduTreeMultiPathOverlay && (
@@ -1058,8 +1108,48 @@ function EduTreeCanvasInner() {
           {/* Mini-map for large tree navigation */}
           {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
           
+          {/* Multipath Debug Panel */}
+          {flags.eduTreeMultiPathOverlay && (
+            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50 max-w-80">
+              <strong className="text-sm">Multipath Debug</strong>
+              <div className="text-xs space-y-1">
+                <div>Primary lens: {selectedLens}</div>
+                <div>Comparison lens: {comparisonLens ?? '—'}</div>
+                <div>Primary: {primaryPath?.nodeIds.length ?? 0} nodes / {primaryPath?.edgeIds.length ?? 0} edges</div>
+                <div>Compare: {comparisonPath?.nodeIds.length ?? 0} nodes / {comparisonPath?.edgeIds.length ?? 0} edges</div>
+                <div>Overlap: {
+                  (primaryPath && comparisonPath)
+                    ? primaryPath.nodeIds.filter(x => comparisonPath.nodeIds.includes(x)).length
+                    : 0
+                } nodes</div>
+              </div>
+              <button
+                onClick={() => {
+                  const snap = {
+                    lenses: { primary: selectedLens, comparison: comparisonLens },
+                    primary: primaryPath ?? null,
+                    comparison: comparisonPath ?? null
+                  };
+                  (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
+                  (window as any).__EDUTREE__.getSnapshot = () => snap;
+                  // Render inline for no-console environments
+                  const pre = document.getElementById('mp-snap-pre');
+                  if (pre) pre.textContent = JSON.stringify(snap, null, 2);
+                  console.log('[Multipath Snapshot]', snap);
+                }}
+                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80 w-full"
+              >
+                📊 Snapshot
+              </button>
+              <pre 
+                id="mp-snap-pre" 
+                className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-muted/50 p-2 rounded"
+              ></pre>
+            </div>
+          )}
+
           {/* Development controls */}
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === 'development' && !flags.eduTreeMultiPathOverlay && (
             <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2 z-50">
               <div className="text-xs text-muted-foreground">
                 Edges: {visibleEdges.length}/{allEdges.length}

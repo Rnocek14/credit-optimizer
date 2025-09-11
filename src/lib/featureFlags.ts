@@ -117,6 +117,13 @@ export function getFeatureFlags(): FeatureFlags {
     }
   }
   
+  // Force flags for /edu-treemulti route
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/edu-treemulti')) {
+    flags.eduTreeOutcomes = true;
+    flags.eduTreeMultiPathOverlay = true;
+    flags.eduTreeStaggeredEdgesV2 = true;
+  }
+
   return flags;
 }
 

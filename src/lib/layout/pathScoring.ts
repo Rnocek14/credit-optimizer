@@ -96,39 +96,79 @@ export function findAlternativePaths(
     let selectedBlocks: BlockWithCourses[] = [];
     
     if (lens === 'fastest') {
-      // Focus on core + web path: Programming I → Programming II → Web Frontend → Degree
+      // Fastest: core + web/frontend + terminal
       selectedBlocks = allBlocks
         .filter(block => {
           const isCore = block.area === 'core';
           const isWeb = block.title?.toLowerCase().includes('web') || 
                        block.title?.toLowerCase().includes('frontend');
-          const isDegree = block.area === 'terminal';
-          return isCore || isWeb || isDegree;
+          const isTerminal = block.area === 'terminal';
+          return isCore || isWeb || isTerminal;
         })
         .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      
+      // Fallback: if < 3 blocks, broaden to include specialization
+      if (selectedBlocks.length < 3) {
+        selectedBlocks = allBlocks
+          .filter(block => {
+            const isCore = block.area === 'core';
+            const isSpecialization = block.area === 'specialization';
+            const isTerminal = block.area === 'terminal';
+            return isCore || isSpecialization || isTerminal;
+          })
+          .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      }
     } else if (lens === 'cheapest') {
-      // Focus on gen ed + data path: Gen Ed → Programming I → Programming II → Data Analytics → Degree
+      // Cheapest: gen ed + data + core + terminal
       selectedBlocks = allBlocks
         .filter(block => {
           const isGenEd = block.area === 'general-education';
           const isData = block.title?.toLowerCase().includes('data') || 
                         block.title?.toLowerCase().includes('analytics');
           const isCore = block.area === 'core';
-          const isDegree = block.area === 'terminal';
-          return isGenEd || isData || isCore || isDegree;
+          const isTerminal = block.area === 'terminal';
+          return isGenEd || isData || isCore || isTerminal;
         })
         .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      
+      // Fallback: if < 3 blocks, broaden to include foundation
+      if (selectedBlocks.length < 3) {
+        selectedBlocks = allBlocks
+          .filter(block => {
+            const isGenEd = block.area === 'general-education';
+            const isFoundation = block.area === 'foundation';
+            const isCore = block.area === 'core';
+            const isSpecialization = block.area === 'specialization';
+            const isTerminal = block.area === 'terminal';
+            return isGenEd || isFoundation || isCore || isSpecialization || isTerminal;
+          })
+          .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      }
     } else if (lens === 'roi') {
-      // Focus on mathematics + core path: Math → Programming II → choice → Degree
+      // ROI: mathematics + core + specialization + terminal
       selectedBlocks = allBlocks
         .filter(block => {
           const isMath = block.area === 'mathematics';
           const isCore = block.area === 'core';
-          const isDegree = block.area === 'terminal';
           const isSpecialization = block.area === 'specialization';
-          return isMath || isCore || isDegree || isSpecialization;
+          const isTerminal = block.area === 'terminal';
+          return isMath || isCore || isSpecialization || isTerminal;
         })
         .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      
+      // Fallback: if < 3 blocks, broaden to include foundation
+      if (selectedBlocks.length < 3) {
+        selectedBlocks = allBlocks
+          .filter(block => {
+            const isMath = block.area === 'mathematics';
+            const isFoundation = block.area === 'foundation';
+            const isCore = block.area === 'core';
+            const isSpecialization = block.area === 'specialization';
+            const isTerminal = block.area === 'terminal';
+            return isMath || isFoundation || isCore || isSpecialization || isTerminal;
+          })
+          .sort((a, b) => (a.level_year || 0) - (b.level_year || 0));
+      }
     }
 
     if (selectedBlocks.length >= 3) {
@@ -205,7 +245,8 @@ export function findOptimalPath(
     console.log('[PathScoring] Selected path IDs (first 6):', {
       nodes: optimalPath.nodeIds.slice(0, 6),
       edges: optimalPath.edgeIds.slice(0, 6),
-      lens
+      lens,
+      score: optimalPath.score.toFixed(2)
     });
   }
   
