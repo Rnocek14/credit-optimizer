@@ -70,7 +70,11 @@ const DEV = import.meta.env.DEV;
 type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
+  console.log('[DEBUG] EduTreeCanvasInner: Starting component render');
+  
   const flags = useFeatureFlags();
+  console.log('[DEBUG] EduTreeCanvasInner: Feature flags loaded', flags);
+  
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
@@ -86,6 +90,12 @@ function EduTreeCanvasInner() {
   const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>();
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
   const [showTrackValidator, setShowTrackValidator] = useState(false);
+  
+  console.log('[DEBUG] EduTreeCanvasInner: Track comparison state initialized', { 
+    primaryTrack: primaryTrack?.name, 
+    comparisonEnabled, 
+    multiPathOverlayEnabled: flags.eduTreeMultiPathOverlay 
+  });
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Modal state for course details
