@@ -955,8 +955,6 @@ function EduTreeCanvasInner() {
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
             
-import { CompareTracksBar } from './components/CompareTracksBar';
-
             {/* Track Selector for multipath */}
             {flags.eduTreeMultiPathOverlay && (
               <CompareTracksBar
@@ -1231,10 +1229,10 @@ import { CompareTracksBar } from './components/CompareTracksBar';
       </div>
 
       {/* Outcome Panel */}
-      {flags.eduTreeOutcomes && (
+      {flags.eduTreeOutcomes && !flags.eduTreeMultiPathOverlay && (
         <OutcomePanel
           summary={outcomeSummary}
-          selectedLens={selectedLens}
+          selectedLens={primaryTrack as any}
           isVisible={showOutcomePanel}
         />
       )}
