@@ -44,6 +44,16 @@ function scoreROI(block: BlockWithCourses): number {
   return strategicValue + levelBonus;
 }
 
+function scoreByLens(block: BlockWithCourses, lens: PlanningLens): number {
+  if (lens === 'fastest') {
+    return scoreFastest(block);
+  } else if (lens === 'cheapest') {
+    return scoreCheapest(block);
+  } else {
+    return scoreROI(block);
+  }
+}
+
 /**
  * Generate alternative paths for different planning strategies
  */
@@ -57,158 +67,91 @@ export function findAlternativePaths(
 
   console.log(`[PathFinding] Starting alternative path generation with ${lens} lens`);
 
-  // Group nodes by year level for curriculum progression
-  const nodesByYear = new Map<number, Node[]>();
-  nodes.forEach(node => {
-    const year = Number(node.data?.level_year) || 0;
-    if (!nodesByYear.has(year)) {
-      nodesByYear.set(year, []);
+  // Extract blocks from nodes with proper typing
+  const allBlocks: BlockWithCourses[] = [];
+  for (const node of nodes) {
+    if (node.data?.block && 
+        typeof node.data.block === 'object' && 
+        'id' in node.data.block &&
+        node.data.block.id !== 'degree-completion') {
+      allBlocks.push(node.data.block as BlockWithCourses);
     }
-    nodesByYear.get(year)!.push(node);
-  });
+  }
+  
+  if (allBlocks.length === 0) return [];
 
-  // Define complete curriculum strategies based on lens
   const paths: ScoredPath[] = [];
   
-  if (lens === 'fastest') {
-    // Strategy 1: Foundation → Core → Web Development track
-    paths.push(buildCurriculumPath(nodes, edges, 'web-dev', lens));
-    // Strategy 2: Foundation → Core → Accelerated track
-    paths.push(buildCurriculumPath(nodes, edges, 'accelerated', lens));
-  } else if (lens === 'cheapest') {
-    // Strategy 1: General Education → Core → Data Science
-    paths.push(buildCurriculumPath(nodes, edges, 'data-science', lens));
-    // Strategy 2: Transfer-heavy path
-    paths.push(buildCurriculumPath(nodes, edges, 'transfer-heavy', lens));
-  } else if (lens === 'roi') {
-    // Strategy 1: Mathematics → Core → DevOps
-    paths.push(buildCurriculumPath(nodes, edges, 'devops', lens));
-    // Strategy 2: Strategic high-value path
-    paths.push(buildCurriculumPath(nodes, edges, 'high-value', lens));
+  // Generate multiple paths for each lens with different selection criteria
+  for (let strategyIndex = 0; strategyIndex < 3; strategyIndex++) {
+    let selectedBlocks: BlockWithCourses[] = [];
+    
+    if (lens === 'fastest') {
+      // Focus on core subjects and web technologies
+      selectedBlocks = allBlocks
+        .filter(block => {
+          const isCore = block.area === 'core';
+          const isWeb = block.title?.toLowerCase().includes('web') || 
+                       block.title?.toLowerCase().includes('frontend');
+          const isFoundation = block.area === 'foundation' || block.area === 'general-education';
+          return isCore || isWeb || (isFoundation && strategyIndex === 0);
+        })
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
+        .slice(0, 4 + strategyIndex);
+    } else if (lens === 'cheapest') {
+      // Focus on general education and data science
+      selectedBlocks = allBlocks
+        .filter(block => {
+          const isGenEd = block.area === 'general-education';
+          const isData = block.title?.toLowerCase().includes('data') || 
+                        block.title?.toLowerCase().includes('analytics');
+          const isCore = block.area === 'core';
+          return isGenEd || isData || (isCore && strategyIndex > 0);
+        })
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
+        .slice(0, 4 + strategyIndex);
+    } else if (lens === 'roi') {
+      // Focus on mathematics, systems, and DevOps
+      selectedBlocks = allBlocks
+        .filter(block => {
+          const isMath = block.area === 'mathematics';
+          const isSystem = block.title?.toLowerCase().includes('system') || 
+                          block.title?.toLowerCase().includes('devops') ||
+                          block.title?.toLowerCase().includes('architecture');
+          const isCore = block.area === 'core';
+          return isMath || isSystem || (isCore && strategyIndex > 0);
+        })
+        .sort((a, b) => (a.level_year || 0) - (b.level_year || 0))
+        .slice(0, 4 + strategyIndex);
+    }
+
+    if (selectedBlocks.length >= 3) {
+      const pathNodes = selectedBlocks.map(block => block.id);
+      const pathEdges = edges
+        .filter(edge => pathNodes.includes(edge.source) && pathNodes.includes(edge.target))
+        .map(edge => edge.id);
+      
+      const score = selectedBlocks.reduce((total, block) => {
+        return total + scoreByLens(block, lens);
+      }, 0) / selectedBlocks.length;
+      
+      paths.push({
+        nodeIds: pathNodes,
+        edgeIds: pathEdges,
+        score,
+        lens
+      });
+    }
   }
 
-  // Filter to valid paths (8+ nodes for complete curriculum)
-  const validPaths = paths.filter(path => path.nodeIds.length >= 8);
+  // Filter to valid paths (3+ nodes for curriculum progression)
+  const validPaths = paths.filter(path => path.nodeIds.length >= 3);
   
   console.log(`[PathFinding] Generated ${validPaths.length} valid curriculum paths`);
   
   return validPaths
     .sort((a, b) => b.score - a.score)
     .slice(0, maxPaths);
-}
-
-function buildCurriculumPath(
-  nodes: Node[],
-  edges: Edge[],
-  strategy: string,
-  lens: PlanningLens
-): ScoredPath {
-  const pathNodes: string[] = [];
-  const pathEdges: string[] = [];
-  let totalScore = 0;
-
-  // Define curriculum progression by strategy
-  const progression = getCurriculumProgression(strategy);
-  
-  for (const yearData of progression) {
-    const yearNodes = nodes.filter(n => 
-      (Number(n.data?.level_year) || 0) === yearData.year && 
-      (yearData.areas.length === 0 || yearData.areas.includes(String(n.data?.area) || ''))
-    );
-    
-    // Select best node for this year based on lens scoring
-    const bestNode = yearNodes
-      .filter(n => n.data?.block)
-      .sort((a, b) => {
-        const scoreA = scoreByLens(a.data.block, lens);
-        const scoreB = scoreByLens(b.data.block, lens);
-        return scoreB - scoreA;
-      })[0];
-      
-    if (bestNode) {
-      pathNodes.push(bestNode.id);
-      totalScore += scoreByLens(bestNode.data.block, lens);
-      
-      // Find connecting edge from previous node
-      if (pathNodes.length > 1) {
-        const prevNodeId = pathNodes[pathNodes.length - 2];
-        const connectingEdge = edges.find(e => 
-          e.source === prevNodeId && e.target === bestNode.id
-        );
-        if (connectingEdge) {
-          pathEdges.push(connectingEdge.id);
-        }
-      }
-    }
-  }
-
-  console.log(`[PathFinding] Built ${strategy} path: ${pathNodes.length} nodes`);
-
-  return {
-    nodeIds: pathNodes,
-    edgeIds: pathEdges,
-    score: totalScore / Math.max(pathNodes.length, 1),
-    lens
-  };
-}
-
-function getCurriculumProgression(strategy: string) {
-  const progressions: Record<string, Array<{ year: number; areas: string[] }>> = {
-    'web-dev': [
-      { year: 1, areas: ['foundation', 'general'] },
-      { year: 2, areas: ['core', 'mathematics'] },
-      { year: 3, areas: ['web', 'frontend'] },
-      { year: 4, areas: ['web', 'capstone'] },
-      { year: 5, areas: ['degree'] }
-    ],
-    'data-science': [
-      { year: 1, areas: ['foundation', 'general'] },
-      { year: 2, areas: ['mathematics', 'statistics'] },
-      { year: 3, areas: ['data', 'analytics'] },
-      { year: 4, areas: ['data', 'capstone'] },
-      { year: 5, areas: ['degree'] }
-    ],
-    'devops': [
-      { year: 1, areas: ['foundation', 'general'] },
-      { year: 2, areas: ['core', 'systems'] },
-      { year: 3, areas: ['devops', 'infrastructure'] },
-      { year: 4, areas: ['devops', 'capstone'] },
-      { year: 5, areas: ['degree'] }
-    ],
-    'accelerated': [
-      { year: 1, areas: ['foundation'] },
-      { year: 2, areas: ['core'] },
-      { year: 3, areas: ['web', 'data'] },
-      { year: 4, areas: ['capstone'] },
-      { year: 5, areas: ['degree'] }
-    ],
-    'transfer-heavy': [
-      { year: 1, areas: ['general'] },
-      { year: 2, areas: ['core'] },
-      { year: 3, areas: ['data'] },
-      { year: 4, areas: ['capstone'] },
-      { year: 5, areas: ['degree'] }
-    ],
-    'high-value': [
-      { year: 1, areas: ['mathematics'] },
-      { year: 2, areas: ['core'] },
-      { year: 3, areas: ['devops'] },
-      { year: 4, areas: ['capstone'] },
-      { year: 5, areas: ['degree'] }
-    ]
-  };
-  
-  return progressions[strategy] || progressions['web-dev'];
-}
-
-function scoreByLens(block: any, lens: PlanningLens): number {
-  if (lens === 'fastest') {
-    return scoreFastest(block);
-  } else if (lens === 'cheapest') {
-    return scoreCheapest(block);
-  } else {
-    return scoreROI(block);
-  }
 }
 
 /**
