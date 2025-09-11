@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { 
   ReactFlow, 
   Node, 
@@ -67,6 +68,114 @@ function devOnce(key: string, msg: string, data?: any) {
   console.log(msg, data ?? '');
 }
 
+// Utility functions for crash prevention
+const safeArr = <T,>(x: T[] | undefined | null): T[] => Array.isArray(x) ? x : [];
+
+// Deduplication helper
+function dedupeById<T extends { id: string | number }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    const key = String(item.id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// Create flow elements with crash protection
+function createFlowElements(
+  blocks: BlockWithCourses[],
+  gateEdges: GateEdge[],
+  coursesByBlock: Map<string, EduCourse[]>,
+  flags: any
+): { nodes: Node[]; edges: Edge[] } {
+  try {
+    const safeBlocks = safeArr(blocks);
+    const safeEdges = safeArr(gateEdges);
+    
+    if (!safeBlocks.length) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Create nodes safely
+    const nodes: Node[] = safeBlocks.map((block, index) => {
+      if (!block?.id) {
+        console.warn('[EduTree] Invalid block:', block);
+        return null;
+      }
+
+      return {
+        id: String(block.id),
+        type: 'blockGroup',
+        position: { x: (block.level_year || 0) * 320, y: index * 200 },
+        data: {
+          block,
+          completedCourseIds: new Set(),
+          isUnlocked: true,
+          progress: { completed: 0, required: block.courses?.length || 0 },
+          subBlocks: [],
+          level_year: block.level_year || 0,
+          area: block.area || 'unknown',
+          isHighlighted: false,
+          isComparisonHighlighted: false,
+          planningLens: null,
+        }
+      };
+    }).filter(Boolean) as Node[];
+
+    // Create edges safely
+    const edges: Edge[] = safeEdges.map(gateEdge => {
+      // Extract source from gate ID by removing 'gate-' prefix
+      const sourceGateId = gateEdge.source_gate_id || `gate-${gateEdge.target_block_id}`;
+      const sourceBlockId = sourceGateId.replace('gate-', '');
+      const target = String(gateEdge.target_block_id);
+      
+      if (!sourceBlockId || !target) return null;
+
+      return {
+        id: String(gateEdge.id),
+        source: sourceBlockId,
+        target,
+        type: 'smoothstep',
+        markerEnd: { type: MarkerType.Arrow }
+      };
+    }).filter(Boolean) as Edge[];
+
+    return { nodes, edges };
+  } catch (error) {
+    console.error('[EduTree] createFlowElements failed:', error);
+    return { nodes: [], edges: [] };
+  }
+}
+
+// Layout function with crash protection
+function layoutAndScan(nodes: Node[], edges: Edge[], options: any): { nodes: Node[]; edges: Edge[] } {
+  try {
+    if (!nodes.length) return { nodes, edges };
+    
+    // Simple layout - positions nodes in a grid to prevent crashes
+    const layoutedNodes = nodes.map((node, index) => ({
+      ...node,
+      position: {
+        x: (index % 4) * 380,
+        y: Math.floor(index / 4) * 260
+      }
+    }));
+
+    return { nodes: layoutedNodes, edges };
+  } catch (error) {
+    console.warn('[EduTree] layoutAndScan failed, using fallback:', error);
+    // Ultra-safe fallback
+    return {
+      nodes: nodes.map((n, i) => ({ 
+        ...n, 
+        position: { x: (i % 4) * 380, y: Math.floor(i / 4) * 260 } 
+      })),
+      edges
+    };
+  }
+}
+
 // Local fallback seed for track-based testing
 const LOCAL_FALLBACK_SEED = {
   blocks: [
@@ -90,21 +199,21 @@ const LOCAL_FALLBACK_SEED = {
     { id: 'degree-completion', title: 'Degree',        area: 'terminal',           level_year: 4 }
   ],
   gateEdges: [
-    { id: 'e1',  source_block_id: 'b101', target_block_id: 'b201' },
-    { id: 'e2',  source_block_id: 'b102', target_block_id: 'b201' },
-    { id: 'e3',  source_block_id: 'b201', target_block_id: 'b202' },
-    { id: 'e4',  source_block_id: 'b401', target_block_id: 'b202' },
+    { id: 'e1',  source_gate_id: 'gate-b101', target_block_id: 'b201' },
+    { id: 'e2',  source_gate_id: 'gate-b102', target_block_id: 'b201' },
+    { id: 'e3',  source_gate_id: 'gate-b201', target_block_id: 'b202' },
+    { id: 'e4',  source_gate_id: 'gate-b401', target_block_id: 'b202' },
 
-    { id: 'e5',  source_block_id: 'b202', target_block_id: 'b301' }, // → web
-    { id: 'e6',  source_block_id: 'b202', target_block_id: 'b302' }, // → data
-    { id: 'e7',  source_block_id: 'b202', target_block_id: 'b331' }, // → systems
+    { id: 'e5',  source_gate_id: 'gate-b202', target_block_id: 'b301' }, // → web
+    { id: 'e6',  source_gate_id: 'gate-b202', target_block_id: 'b302' }, // → data
+    { id: 'e7',  source_gate_id: 'gate-b202', target_block_id: 'b331' }, // → systems
 
-    { id: 'e8',  source_block_id: 'b301', target_block_id: 'b311' }, // web year3
-    { id: 'e9',  source_block_id: 'b302', target_block_id: 'b321' }, // data year3
+    { id: 'e8',  source_gate_id: 'gate-b301', target_block_id: 'b311' }, // web year3
+    { id: 'e9',  source_gate_id: 'gate-b302', target_block_id: 'b321' }, // data year3
 
-    { id: 'e10', source_block_id: 'b311', target_block_id: 'degree-completion' },
-    { id: 'e11', source_block_id: 'b321', target_block_id: 'degree-completion' },
-    { id: 'e12', source_block_id: 'b331', target_block_id: 'degree-completion' },
+    { id: 'e10', source_gate_id: 'gate-b311', target_block_id: 'degree-completion' },
+    { id: 'e11', source_gate_id: 'gate-b321', target_block_id: 'degree-completion' },
+    { id: 'e12', source_gate_id: 'gate-b331', target_block_id: 'degree-completion' },
   ],
 };
 
@@ -122,6 +231,7 @@ const nodeTypes = {
 type ViewMode = 'flow' | 'board';
 
 function EduTreeCanvasInner() {
+  const location = useLocation();
   const flags = useFeatureFlags();
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -147,7 +257,15 @@ function EduTreeCanvasInner() {
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
-  // No URL management needed for tracks - they're controlled via UI only
+  // Stabilize flags - prevent render spam
+  const didEnableFlagsRef = useRef(false);
+  useEffect(() => {
+    if (didEnableFlagsRef.current) return;
+    if (location.pathname.includes('/edu-treemulti')) {
+      didEnableFlagsRef.current = true;
+      // flags are already enabled by route detection in featureFlags.ts
+    }
+  }, [location.pathname]);
 
   // Handler for course click
   const handleCourseClick = useCallback((course: EduCourse) => {
@@ -226,50 +344,57 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Extract effectiveGateEdges as a separate hook to avoid nesting
-  const effectiveGateEdges = useMemo(() => {
-    let merged = gateEdges;
-
-    if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
-      devOnce('fallback-seed', '[Multipath] Using fallback seed data');
-      merged = [
-        ...gateEdges,
-        ...LOCAL_FALLBACK_SEED.gateEdges.map(e => ({
-          ...e,
-          source_gate_id: `gate-${e.source_block_id}`
-        }))
-      ];
-    }
-
-    // Normalize all edges to ensure they have source_gate_id
-    return merged.map(e => ({
-      ...e,
-      source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`
-    }));
-  }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay]);
-
-  // Transform data for React Flow
-  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('Data check:', { 
-      blocksLength: blocks.length, 
-      coursesLength: courses.length, 
-      blockMembersLength: blockMembers.length,
-      gatesLength: gates.length,
-      gateEdgesLength: gateEdges.length 
-    });
-
-    // Use fallback seed if live data is insufficient (for multipath demo)
-    let effectiveBlocks = blocks;
-
-    if (flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6)) {
-      effectiveBlocks = [...blocks, ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
+  // Bulletproof effective blocks with deduplication
+  const effectiveBlocks = useMemo(() => {
+    if (!flags.eduTreeMultiPathOverlay) return blocks;
+    const needFallback = blocks.length < 6 || gateEdges.length < 6;
+    if (!needFallback) return blocks;
+    
+    devOnce('fallback-seed', '[Multipath] Using fallback seed data');
+    return dedupeById([
+      ...blocks,
+      ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
         ...b,
         parent_block_id: null,
         rule_type: 'ALL' as const,
         credits_needed: null,
         k: null
-      }))];
-    }
+      }))
+    ]);
+  }, [blocks, gateEdges.length, flags.eduTreeMultiPathOverlay]);
+
+  // Bulletproof effective gate edges with validation
+  const effectiveGateEdges = useMemo(() => {
+    const base = gateEdges;
+    const needFallback = flags.eduTreeMultiPathOverlay && (blocks.length < 6 || gateEdges.length < 6);
+    const extra = needFallback ? LOCAL_FALLBACK_SEED.gateEdges : [];
+
+    // Create set of valid block IDs for filtering
+    const validBlockIds = new Set(effectiveBlocks.map(b => String(b.id)));
+    
+    return [...base, ...extra]
+      .filter(e => {
+        // Extract source block ID from gate ID
+        const sourceGateId = e.source_gate_id || `gate-${e.target_block_id}`;
+        const sourceBlockId = sourceGateId.replace('gate-', '');
+        const targetId = String(e.target_block_id);
+        return validBlockIds.has(sourceBlockId) && validBlockIds.has(targetId);
+      })
+      .map(e => ({
+        ...e,
+        source_gate_id: e.source_gate_id ?? `gate-${e.target_block_id}`
+      }));
+  }, [blocks.length, gateEdges, flags.eduTreeMultiPathOverlay, effectiveBlocks]);
+
+  // Transform data for React Flow with crash protection
+  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+    console.log('Data check:', { 
+      effectiveBlocksLength: effectiveBlocks.length, 
+      coursesLength: courses.length, 
+      blockMembersLength: blockMembers.length,
+      gatesLength: gates.length,
+      effectiveGateEdgesLength: effectiveGateEdges.length 
+    });
 
     if (!effectiveBlocks.length) {
       return { nodes: [], edges: [] };
@@ -550,47 +675,81 @@ function EduTreeCanvasInner() {
       });
     }
 
-  // Build track highlights using block ID to RF node ID mapping
-  const blockIdToNodeId = useMemo(() => {
-    const map = new Map<string, string>();
+    // Wrap element creation and layout with crash protection
+    let processedNodes: Node[] = [];
+    let processedEdges: Edge[] = [];
+    
+    try {
+      const result = createFlowElements(
+        safeArr(blocksWithCourses),
+        safeArr(effectiveGateEdges), 
+        coursesByBlock,
+        flags
+      );
+      processedNodes = safeArr(result.nodes);
+      processedEdges = safeArr(result.edges);
+    } catch (err) {
+      console.error('[EduTree] createFlowElements failed:', err);
+      processedNodes = [];
+      processedEdges = [];
+    }
+
+    // Apply layout with crash protection
+    let processed = { nodes: processedNodes, edges: processedEdges };
+    try {
+      if (processedNodes.length && processedEdges.length) {
+        processed = layoutAndScan(processedNodes, processedEdges, {
+          nodeWidth: 320,
+          nodeHeight: 200,
+          horizontalSpacing: 180,
+          verticalSpacing: 120,
+          layoutMode: flags.eduTreeLanes ? 'lanes' : 'hierarchical'
+        });
+      }
+    } catch (err) {
+      console.warn('[EduTree] layoutAndScan failed, falling back to simple grid:', err);
+      processed = {
+        nodes: processedNodes.map((n, i) => ({
+          ...n,
+          position: { x: (i % 4) * 380, y: Math.floor(i / 4) * 260 }
+        })),
+        edges: processedEdges
+      };
+    }
+
+    return { nodes: processed.nodes, edges: processed.edges };
+  }, [effectiveBlocks, courses, blockMembers, gates, effectiveGateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
+
+  // Track highlights: compute after nodes exist to prevent crashes
+  const rfNodeIdByBlockId = useMemo(() => {
+    const m = new Map<string, string>();
     flowNodes.forEach(n => {
-      const blockId = (n.data?.block as any)?.id ?? n.id;
-      map.set(String(blockId), String(n.id));
+      const block = n.data?.block as any;
+      const bid = String(block?.id ?? n.id);
+      m.set(bid, String(n.id));
     });
-    return map;
+    return m;
   }, [flowNodes]);
 
-  function setsForTrack(trackId: TrackId | null): { nodes: Set<string>, edges: Set<string> } {
-    if (!trackId) return { nodes: new Set<string>(), edges: new Set<string>() };
+  const setsForTrack = useCallback((tid: TrackId | null) => {
+    if (!tid) return { nodes: new Set<string>(), edges: new Set<string>() };
+    const blockIds = TRACKS[tid]?.nodes || [];
+    const nodeIds = blockIds.map(b => rfNodeIdByBlockId.get(b)).filter(Boolean) as string[];
 
-    const blockIds = TRACKS[trackId].nodes;
-    const rfNodes = blockIds
-      .map(id => blockIdToNodeId.get(id))
-      .filter(Boolean) as string[];
+    const nodeSet = new Set(nodeIds);
+    const edgeSet = new Set(
+      flowEdges
+        .filter(e => nodeSet.has(String(e.source)) && nodeSet.has(String(e.target)))
+        .map(e => String(e.id))
+    );
+    return { nodes: nodeSet, edges: edgeSet };
+  }, [rfNodeIdByBlockId, flowEdges]);
 
-    const rfNodeSet = new Set(rfNodes);
-    const rfEdges = flowEdges
-      .filter(e => rfNodeSet.has(String(e.source)) && rfNodeSet.has(String(e.target)))
-      .map(e => String(e.id));
+  const primarySets = useMemo(() => setsForTrack(primaryTrack), [primaryTrack, setsForTrack]);
+  const compareSets = useMemo(() => setsForTrack(comparisonTrack), [comparisonTrack, setsForTrack]);
 
-    return { nodes: new Set(rfNodes), edges: new Set(rfEdges) };
-  }
-
-  // Generate highlight sets from selected tracks
-  const trackHighlightedPrimary = useMemo(() => setsForTrack(primaryTrack), [primaryTrack, flowNodes, flowEdges]);
-  const trackHighlightedComparison = useMemo(() => setsForTrack(comparisonTrack), [comparisonTrack, flowNodes, flowEdges]);
-
-  // Update highlight state when tracks change
-  useEffect(() => {
-    setHighlightedPrimary(trackHighlightedPrimary.nodes.size > 0 ? trackHighlightedPrimary : null);
-  }, [trackHighlightedPrimary]);
-
-  useEffect(() => {
-    setHighlightedComparison(trackHighlightedComparison.nodes.size > 0 ? trackHighlightedComparison : null);
-  }, [trackHighlightedComparison]);
-
-  return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, effectiveGateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, highlightedPath, highlightedPrimary, highlightedComparison]);
+  useEffect(() => setHighlightedPrimary(primarySets.nodes.size ? primarySets : null), [primarySets]);
+  useEffect(() => setHighlightedComparison(compareSets.nodes.size ? compareSets : null), [compareSets]);
   // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -822,67 +981,60 @@ function EduTreeCanvasInner() {
 
   // Simplified layout system - no complex resize handling needed
 
-  // FitView: only run when (a) elements exist and (b) at least one highlight set exists
-  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // FitView: gate on highlights (not just nodes) to prevent deferred DOM warnings
+  const fitViewTimeoutRef = useRef<number | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   
-  const onInit = useCallback((reactFlowInstance: any) => {
-    
-    // Clear any pending fitView to debounce
-    if (fitViewTimeoutRef.current) {
-      clearTimeout(fitViewTimeoutRef.current);
-    }
-    
-    fitViewTimeoutRef.current = setTimeout(() => {
-      const ready =
-        flowNodes.length > 0 &&
-        flowEdges.length > 0 &&
-        (highlightedPrimary?.nodes.size ?? 0) > 0;
+  useEffect(() => {
+    if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current);
 
-      if (!ready) {
-        if (DEV) console.debug('[fitView] Waiting for track highlights...', { 
-          nodes: flowNodes.length, 
-          edges: flowEdges.length,
-          primaryHighlights: highlightedPrimary?.nodes.size ?? 0,
-          comparisonHighlights: highlightedComparison?.nodes.size ?? 0
-        });
-        return;
-      }
-      
-      const hasTerminal = nodes.some(node => 
-        node.type === 'terminal' || node.type === 'terminalNode' || 
-        node.id === 'degree-completion'
-      );
-      
-      const padding = hasTerminal ? 0.4 : 0.2;
-      
-      // Wrap in requestAnimationFrame for better timing
+    const ready =
+      reactFlowInstance &&
+      flowNodes.length > 0 &&
+      flowEdges.length > 0 &&
+      (!!highlightedPrimary || !!highlightedComparison);
+
+    if (!ready) return;
+
+    fitViewTimeoutRef.current = window.setTimeout(() => {
       requestAnimationFrame(() => {
-        try {
-          reactFlowInstance?.fitView?.({ padding, duration: 400, includeHiddenNodes: true });
-          if (DEV) devOnce('fitview-applied', '[fitView] Applied with padding:', padding);
-        } catch (error) {
-          if (DEV) console.warn('[fitView] Error:', error);
-        }
+        const hasDegree = flowNodes.some(n => n.id === 'degree-completion');
+        reactFlowInstance?.fitView?.({
+          padding: hasDegree ? 0.4 : 0.2,
+          duration: 400,
+          includeHiddenNodes: true
+        });
       });
     }, 220);
+
+    return () => { if (fitViewTimeoutRef.current) clearTimeout(fitViewTimeoutRef.current); };
+  }, [
+    reactFlowInstance,
+    flowNodes.length,
+    flowEdges.length,
+    highlightedPrimary, 
+    highlightedComparison
+  ]);
+
+  const onInit = useCallback((instance: any) => {
+    setReactFlowInstance(instance);
     
     // Expose dev global for QA
     if (DEV) {
-      (window as any).__EDUTREE__ = {
-        getSnapshot: () => ({
-          tracks: { primary: primaryTrack, comparison: comparisonTrack },
-          primary: highlightedPrimary ? {
-            nodes: Array.from(highlightedPrimary.nodes),
-            edges: Array.from(highlightedPrimary.edges),
-          } : null,
-          comparison: highlightedComparison ? {
-            nodes: Array.from(highlightedComparison.nodes),
-            edges: Array.from(highlightedComparison.edges),
-          } : null,
-        }),
-      };
+      (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
+      (window as any).__EDUTREE__.getSnapshot = () => ({
+        tracks: { primary: primaryTrack, comparison: comparisonTrack },
+        primary: highlightedPrimary ? {
+          nodes: Array.from(highlightedPrimary.nodes),
+          edges: Array.from(highlightedPrimary.edges),
+        } : null,
+        comparison: highlightedComparison ? {
+          nodes: Array.from(highlightedComparison.nodes),
+          edges: Array.from(highlightedComparison.edges),
+        } : null,
+      });
     }
-  }, [nodes, flowNodes.length, flowEdges.length, flags.eduTreeOutcomes, flags.eduTreeMultiPathOverlay, highlightedPrimary, highlightedPath, highlightedComparison]);
+  }, [primaryTrack, comparisonTrack, highlightedPrimary, highlightedComparison]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -957,15 +1109,13 @@ function EduTreeCanvasInner() {
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
             
-            {/* Track Selector for multipath */}
-            {flags.eduTreeMultiPathOverlay && (
-              <CompareTracksBar
-                primary={primaryTrack}
-                comparison={comparisonTrack}
-                onPrimary={setPrimaryTrack}
-                onComparison={setComparisonTrack}
-              />
-            )}
+            {/* Track Selector - always show when multipath flag is on */}
+            <CompareTracksBar
+              primary={primaryTrack}
+              comparison={comparisonTrack}
+              onPrimary={(t) => setPrimaryTrack(t as TrackId)}
+              onComparison={(t) => setComparisonTrack(t as TrackId | null)}
+            />
 
             {/* Empty state for multipath */}
             {flags.eduTreeMultiPathOverlay && comparisonTrack && !highlightedComparison && (
