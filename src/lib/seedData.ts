@@ -48,68 +48,67 @@ const seedData = {
   ],
 
   blocks: [
+    // Core curriculum blocks that match path scoring expectations
+    { title: "Gen Ed: Composition", rule_type: "ALL", level_year: 1, area: "general-education" },
+    { title: "Gen Ed: Quant Reasoning", rule_type: "ALL", level_year: 1, area: "general-education" },
+    { title: "Core: Programming I", rule_type: "ALL", level_year: 1, area: "core" },
+    { title: "Core: Programming II", rule_type: "ALL", level_year: 2, area: "core" },
+    { title: "Web Frontend Foundations", rule_type: "ALL", level_year: 2, area: "specialization" },
+    { title: "Data Analytics Intro", rule_type: "ALL", level_year: 2, area: "specialization" },
+    { title: "Mathematics for CS", rule_type: "ALL", level_year: 1, area: "mathematics" },
+    { title: "DevOps Systems Architecture", rule_type: "ALL", level_year: 3, area: "specialization" },
+    
+    // Terminal node for degree completion
+    { title: "Degree", rule_type: "ALL", level_year: 4, area: "terminal" },
+    
+    // Legacy blocks for compatibility (can be removed later)
     { title: "Foundations", rule_type: "K_OF_N", k: 2, level_year: 1, area: "foundation" },
     { title: "Mathematics", rule_type: "K_OF_N", k: 2, level_year: 1, area: "mathematics" },
     { title: "General Education", rule_type: "K_OF_N", k: 3, level_year: 1, area: "general_education" },
     { title: "Core I", rule_type: "K_OF_N", k: 2, level_year: 2, area: "core" },
     { title: "Core II", rule_type: "K_OF_N", k: 2, level_year: 3, area: "core" },
-    { title: "Specializations", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
-    { title: "Web Development", rule_type: "ALL", level_year: 3, area: "specialization" },
-    { title: "Mobile Development", rule_type: "ALL", level_year: 3, area: "specialization" },
-    { title: "Architecture", rule_type: "ALL", level_year: 4, area: "software_engineering" },
-    { title: "Capstone", rule_type: "ALL", level_year: 4, area: "capstone" },
-
-    // New branching tracks for multipath demo
-    { title: "Track: Web Development", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
-    { title: "Track: Data Science", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
-    { title: "Track: DevOps Engineering", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
-    { title: "Capstone: Web", rule_type: "ALL", level_year: 4, area: "capstone" },
-    { title: "Capstone: Data Science", rule_type: "ALL", level_year: 4, area: "capstone" },
-    { title: "Capstone: DevOps", rule_type: "ALL", level_year: 4, area: "capstone" }
+    { title: "Specializations", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" }
   ],
 
   blockCourseRelations: [
+    // New multipath-focused mappings
+    { blockTitle: 'Gen Ed: Composition', courseCodes: ['ENG-101'] },
+    { blockTitle: 'Gen Ed: Quant Reasoning', courseCodes: ['MATH-120'] },
+    { blockTitle: 'Core: Programming I', courseCodes: ['CS-101'] },
+    { blockTitle: 'Core: Programming II', courseCodes: ['CS-102', 'CS-201'] },
+    { blockTitle: 'Web Frontend Foundations', courseCodes: ['WD-201', 'CS-351'] },
+    { blockTitle: 'Data Analytics Intro', courseCodes: ['DS-201', 'MATH-210'] },
+    { blockTitle: 'Mathematics for CS', courseCodes: ['MATH-111'] },
+    { blockTitle: 'DevOps Systems Architecture', courseCodes: ['DO-201', 'DO-301'] },
+    { blockTitle: 'Degree', courseCodes: ['CS-499'] },
+    
+    // Legacy mappings for compatibility
     { blockTitle: 'Foundations', courseCodes: ['CS-101', 'CS-102'] },
     { blockTitle: 'Mathematics', courseCodes: ['MATH-111', 'MATH-120'] },
     { blockTitle: 'General Education', courseCodes: ['ENG-101', 'ENG-102', 'PSY-101'] },
     { blockTitle: 'Core I', courseCodes: ['CS-201', 'CS-202'] },
     { blockTitle: 'Core II', courseCodes: ['CS-301', 'CS-302'] },
-    { blockTitle: 'Specializations', courseCodes: ['CS-351', 'CS-361'] },
-    { blockTitle: 'Web Development', courseCodes: ['CS-351'] },
-    { blockTitle: 'Mobile Development', courseCodes: ['CS-361'] },
-    { blockTitle: 'Architecture', courseCodes: ['CS-401'] },
-    { blockTitle: 'Capstone', courseCodes: ['CS-499'] },
-
-    // New branching track mappings
-    { blockTitle: 'Track: Web Development', courseCodes: ['WD-201', 'WD-301'] },
-    { blockTitle: 'Track: Data Science', courseCodes: ['DS-201', 'DS-301', 'MATH-210'] },
-    { blockTitle: 'Track: DevOps Engineering', courseCodes: ['DO-201', 'DO-301', 'CERT-101'] },
-    { blockTitle: 'Capstone: Web', courseCodes: ['WD-499'] },
-    { blockTitle: 'Capstone: Data Science', courseCodes: ['DS-499'] },
-    { blockTitle: 'Capstone: DevOps', courseCodes: ['DO-499'] }
+    { blockTitle: 'Specializations', courseCodes: ['CS-351', 'CS-361'] }
   ],
 
   edges: [
+    // New multipath-focused edges
+    { from: "Gen Ed: Composition", to: "Core: Programming I" },
+    { from: "Gen Ed: Quant Reasoning", to: "Core: Programming I" },
+    { from: "Core: Programming I", to: "Core: Programming II" },
+    { from: "Core: Programming II", to: "Web Frontend Foundations" },
+    { from: "Core: Programming II", to: "Data Analytics Intro" },
+    { from: "Mathematics for CS", to: "Core: Programming II" },
+    { from: "Web Frontend Foundations", to: "Degree" },
+    { from: "Data Analytics Intro", to: "Degree" },
+    { from: "DevOps Systems Architecture", to: "Degree" },
+    
+    // Legacy edges for compatibility
     { from: "Mathematics", to: "Core I" },
     { from: "General Education", to: "Core I" },
     { from: "Foundations", to: "Core I" },
     { from: "Core I", to: "Core II" },
-
-    // Existing branches
-    { from: "Core II", to: "Specializations" },
-    { from: "Core II", to: "Architecture" },
-    { from: "Specializations", to: "Capstone" },
-    { from: "Architecture", to: "Capstone" },
-
-    // New branching to distinct tracks
-    { from: "Core II", to: "Track: Web Development" },
-    { from: "Core II", to: "Track: Data Science" },
-    { from: "Core II", to: "Track: DevOps Engineering" },
-
-    // Track-specific capstones
-    { from: "Track: Web Development", to: "Capstone: Web" },
-    { from: "Track: Data Science", to: "Capstone: Data Science" },
-    { from: "Track: DevOps Engineering", to: "Capstone: DevOps" }
+    { from: "Core II", to: "Specializations" }
   ]
 };
 
@@ -188,18 +187,16 @@ export async function seedEduTreeData() {
 
     const blockTitleToId = new Map(insertedBlocks?.map(block => [block.title, block.id]) || []);
 
-    // Update parent block relationships
+    // Update parent block relationships for legacy specializations
     const specializationsBlockId = blockTitleToId.get('Specializations');
     if (specializationsBlockId) {
       await supabase
         .from('requirement_blocks')
         .update({ parent_block_id: specializationsBlockId })
         .in('title', [
-          'Web Development',
-          'Mobile Development',
-          'Track: Web Development',
-          'Track: Data Science',
-          'Track: DevOps Engineering'
+          'Web Frontend Foundations',
+          'Data Analytics Intro', 
+          'DevOps Systems Architecture'
         ]);
     }
 

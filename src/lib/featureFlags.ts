@@ -96,6 +96,8 @@ export function getFeatureFlags(): FeatureFlags {
   // Auto-enable multipath overlay on the dedicated route
   try {
     if (typeof window !== 'undefined' && location.pathname.includes('/edu-treemulti')) {
+      flags.eduTreeOutcomes = true;
+      flags.eduTreeStaggeredEdgesV2 = true;
       flags.eduTreeMultiPathOverlay = true;
     }
   } catch {}
