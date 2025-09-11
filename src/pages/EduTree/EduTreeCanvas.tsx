@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
 import '../../styles/multipath-clean.css';
+import '../../styles/multipath-convergence.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -57,6 +58,7 @@ import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 import { MultipathDebugPanel } from './components/MultipathDebugPanel';
 import { TRACKS, TrackId } from './tracks';
 import { CompareTracksBar } from './components/CompareTracksBar';
+import { getTrackBranchingDebugInfo, debugTrackHighlighting } from './utils/trackValidation';
 
 const DEV = process.env.NODE_ENV !== 'production';
 const onceKeys = new Set<string>();
@@ -117,7 +119,7 @@ function createFlowElements(
         data: {
           block,
           // Enhanced terminal node title logic - always show full degree name
-          displayTitle: isTerminal ? 'B.S. Software Engineering' : (block.title ?? 'Degree'),
+          displayTitle: isTerminal ? 'B.S. Software Engineering' : (block.title ?? block.id ?? 'Course'),
           completedCourseIds: new Set(),
           isUnlocked: true,
           progress: { completed: 0, required: block.courses?.length || 0 },
@@ -171,7 +173,7 @@ function createFlowElements(
       },
     }));
 
-    // Create edges with proper className based on highlights - ONLY when both tracks selected
+    // Create edges with enhanced highlight styling
     const edgesWithHighlights: Edge[] = safeEdges.map(ge => {
       const sourceGateId = ge.source_gate_id ?? `gate-${(ge as any).source_block_id ?? ge.target_block_id}`;
       const source = String(sourceGateId).replace('gate-', '');
@@ -181,20 +183,20 @@ function createFlowElements(
 
       const edgeId = String(ge.id ?? `${source}->${target}`);
       
-      // Apply multipath edge styling - support single track mode
+      // Enhanced edge styling with better logic
       let edgeClass = 'edge';
       if (highlightedPrimary) {
         const isPrimary = !!highlightedPrimary?.edges?.has?.(edgeId);
         const isCompare = !!highlightedComparison?.edges?.has?.(edgeId);
         
         if (highlightedComparison) {
-          // Dual track mode
+          // Dual track comparison mode
           if (isPrimary && isCompare) edgeClass += ' edge--both';
           else if (isPrimary) edgeClass += ' edge--primary';
           else if (isCompare) edgeClass += ' edge--comparison';  
           else edgeClass += ' edge--dim';
         } else {
-          // Single track mode
+          // Single track mode - cleaner highlighting
           if (isPrimary) edgeClass += ' edge--primary';
           else edgeClass += ' edge--dim';
         }
@@ -223,24 +225,55 @@ function createFlowElements(
   }
 }
 
-// Layout function with crash protection
+// Enhanced layout function with proper branching visualization
 function layoutAndScan(nodes: Node[], edges: Edge[], options: any): { nodes: Node[]; edges: Edge[] } {
   try {
     if (!nodes.length) return { nodes, edges };
     
-    // Simple layout - positions nodes in a grid to prevent crashes
-    const layoutedNodes = nodes.map((node, index) => ({
-      ...node,
-      position: {
-        x: (index % 4) * 380,
-        y: Math.floor(index / 4) * 260
+    // Track-based positioning for Y-shaped branching
+    const layoutedNodes = nodes.map((node) => {
+      const nodeId = node.id;
+      const nodeData = node.data;
+      const level = Number(nodeData?.level_year) || 0;
+      const area = nodeData?.area || 'unknown';
+      
+      // Base positioning by year
+      let x = (level || 0) * 320;
+      let y = 200; // Central baseline
+      
+      // Adjust positioning for branching visualization
+      if (area === 'general-education') {
+        // Foundation courses - spread vertically for better visualization
+        if (nodeId === 'b101') { x = 100; y = 150; }  // Composition
+        if (nodeId === 'b102') { x = 100; y = 250; }  // Math
+      } else if (area === 'mathematics') {
+        // Math foundation
+        if (nodeId === 'b401') { x = 100; y = 350; }
+      } else if (area === 'core') {
+        // Core programming courses - central path
+        if (nodeId === 'b201') { x = 420; y = 200; }  // Prog I (convergence)
+        if (nodeId === 'b202') { x = 740; y = 200; }  // Prog II (branching point)
+      } else if (area === 'specialization') {
+        // Specialization tracks - branch into Y-shape after b202
+        if (nodeId === 'b301') { x = 1060; y = 100; } // Web Frontend (top branch)
+        if (nodeId === 'b302') { x = 1060; y = 200; } // Data Analytics (middle)
+        if (nodeId === 'b331') { x = 1060; y = 300; } // Systems (bottom branch)
+        if (nodeId === 'b311') { x = 1380; y = 100; } // Web Frontend II
+        if (nodeId === 'b321') { x = 1380; y = 200; } // Data Analytics II
+      } else if (area === 'terminal') {
+        // Convergence point - all tracks merge here
+        if (nodeId === 'degree-completion') { x = 1700; y = 200; }
       }
-    }));
+      
+      return {
+        ...node,
+        position: { x, y }
+      };
+    });
 
     return { nodes: layoutedNodes, edges };
   } catch (error) {
     console.warn('[EduTree] layoutAndScan failed, using fallback:', error);
-    // Ultra-safe fallback
     return {
       nodes: nodes.map((n, i) => ({ 
         ...n, 
@@ -839,10 +872,19 @@ function EduTreeCanvasInner() {
 
   useEffect(() => { 
     setHighlightedPrimary(primarySets.nodes.size ? primarySets : null); 
+    // Debug track highlighting in development
+    if (DEV) debugTrackHighlighting(primaryTrack, comparisonTrack, primarySets.nodes, compareSets.nodes);
   }, [primarySets]);
   useEffect(() => { 
     setHighlightedComparison(compareSets.nodes.size ? compareSets : null); 
   }, [compareSets]);
+  
+  // Run track validation in development
+  useEffect(() => {
+    if (DEV && primaryTrack) {
+      getTrackBranchingDebugInfo();
+    }
+  }, [primaryTrack]);
   // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);

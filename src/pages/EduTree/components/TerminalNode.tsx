@@ -73,7 +73,9 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground">{String(displayTitle || label || degreeType || 'B.S. Software Engineering')}</h3>
+          <h3 className="font-semibold text-foreground">
+            {String(displayTitle || 'B.S. Software Engineering')}
+          </h3>
           {degreeType && (
             <p className="text-sm text-muted-foreground">{String(degreeType)}</p>
           )}

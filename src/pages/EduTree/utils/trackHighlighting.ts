@@ -106,13 +106,15 @@ export function getNodeHighlightClass(
   const comparisonNodes = getTrackNodes(comparisonTrack);
   const inComparison = comparisonNodes.has(nodeId);
   
-  // Special handling for shared foundation and convergence
+  // Enhanced branching logic with visual hierarchy
   const isShared = getSharedFoundationNodes(primaryTrack, comparisonTrack).has(nodeId);
   const isConvergence = isConvergencePoint(nodeId);
   const isBranching = isBranchingPoint(nodeId, primaryTrack) || isBranchingPoint(nodeId, comparisonTrack);
   
-  if (isShared || isConvergence) return 'node--both';
-  if (isBranching) return 'node--both'; // branching points are shared
+  // Prioritize convergence and branching points
+  if (isConvergence) return 'node--both node--convergence';
+  if (isBranching) return 'node--both node--branching';
+  if (isShared) return 'node--both';
   if (inPrimary) return 'node--primary';
   if (inComparison) return 'node--comparison';
   return 'node--dim';

@@ -15,10 +15,10 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Dimmed nodes - less aggressive */
+  /* Dimmed nodes - less aggressive for better readability */
   .node--dim {
-    opacity: 0.4;
-    filter: grayscale(0.5) brightness(0.8);
+    opacity: 0.5;
+    filter: grayscale(0.3) brightness(0.9);
     transform: scale(0.98);
   }
 
@@ -65,10 +65,10 @@
     animation: shared-pulse 3s ease-in-out infinite;
   }
 
-  /* Dimmed terminals - less aggressive */
+  /* Dimmed terminals - less aggressive for better readability */
   .terminal--dim {
-    opacity: 0.45;
-    filter: grayscale(0.5) brightness(0.8);
+    opacity: 0.55;
+    filter: grayscale(0.3) brightness(0.9);
     transform: scale(0.98);
   }
 
@@ -115,12 +115,12 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Dimmed edges - less aggressive */
+  /* Dimmed edges - improved visibility */
   .edge--dim {
-    opacity: 0.2;
+    opacity: 0.3;
     stroke-width: 1.5px;
     stroke: hsl(var(--muted-foreground) / 0.6);
-    filter: grayscale(0.6);
+    filter: grayscale(0.4);
   }
 
   /* Primary track edges */
@@ -141,13 +141,15 @@
     animation: pulse-secondary 2s ease-in-out infinite alternate;
   }
 
-  /* Edges in both tracks - shared paths */
+  /* Edges in both tracks - enhanced shared paths */
   .edge--both path {
     opacity: 1;
-    stroke-width: 5px;
-    stroke: url(#gradient-both);
-    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.6)) drop-shadow(0 0 8px hsl(var(--secondary) / 0.4));
-    animation: pulse-both 3s ease-in-out infinite alternate;
+    stroke-width: 4px;
+    stroke: hsl(var(--accent));
+    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.4)) 
+            drop-shadow(0 0 8px hsl(var(--secondary) / 0.4))
+            drop-shadow(0 0 6px hsl(var(--accent) / 0.5));
+    animation: pulse-both 2.5s ease-in-out infinite alternate;
   }
 }
 
