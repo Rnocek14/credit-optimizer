@@ -116,8 +116,8 @@ function createFlowElements(
         position: { x: (block.level_year || 0) * 320, y: index * 200 },
         data: {
           block,
-          // always prefer the block title for display  
-          displayTitle: block.title ?? (block.area === 'terminal' ? 'B.S. Software Engineering' : 'Degree'),
+          // Enhanced terminal node title logic - always show full degree name
+          displayTitle: isTerminal ? 'B.S. Software Engineering' : (block.title ?? 'Degree'),
           completedCourseIds: new Set(),
           isUnlocked: true,
           progress: { completed: 0, required: block.courses?.length || 0 },
@@ -127,6 +127,10 @@ function createFlowElements(
           isHighlighted: false,
           isComparisonHighlighted: false,
           planningLens: null,
+          // Enhanced terminal node properties
+          isEligible: isTerminal,
+          degreeType: isTerminal ? 'Bachelor of Science' : undefined,
+          credits: isTerminal ? 120 : undefined,
         }
       };
     }).filter(Boolean) as Node[];
@@ -449,7 +453,7 @@ function EduTreeCanvasInner() {
 
   // Transform data for React Flow with crash protection
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('Data check:', { 
+    console.log('🔧 Data check:', { 
       effectiveBlocksLength: effectiveBlocks.length, 
       coursesLength: courses.length, 
       blockMembersLength: blockMembers.length,
