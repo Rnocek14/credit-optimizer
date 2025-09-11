@@ -315,9 +315,6 @@ function EduTreeCanvasInner() {
   const [comparisonTrack, setComparisonTrack] = useState<TrackId | null>(null);
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
-  
-  // Multipath toggle - explicit user control
-  const [multipathEnabled, setMultipathEnabled] = useState(false);
 
   // Stabilize flags - prevent render spam
   const didEnableFlagsRef = useRef(false);
@@ -808,22 +805,22 @@ function EduTreeCanvasInner() {
     return { nodes: nodeSet, edges: edgeSet };
   }, [rfNodeIdByBlockId, flowEdges]);
 
-  // Only compute track highlights when multipath is explicitly enabled
+  // Only compute track highlights when tracks are selected for comparison
   const primarySets = useMemo(() => 
-    multipathEnabled && primaryTrack ? setsForTrack(primaryTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
-    [primaryTrack, setsForTrack, multipathEnabled]
+    primaryTrack ? setsForTrack(primaryTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
+    [primaryTrack, setsForTrack]
   );
   const compareSets = useMemo(() => 
-    multipathEnabled && comparisonTrack ? setsForTrack(comparisonTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
-    [comparisonTrack, setsForTrack, multipathEnabled]
+    comparisonTrack ? setsForTrack(comparisonTrack) : { nodes: new Set<string>(), edges: new Set<string>() },
+    [comparisonTrack, setsForTrack]
   );
 
   useEffect(() => { 
-    setHighlightedPrimary(multipathEnabled && primarySets.nodes.size ? primarySets : null); 
-  }, [primarySets, multipathEnabled]);
+    setHighlightedPrimary(primarySets.nodes.size ? primarySets : null); 
+  }, [primarySets]);
   useEffect(() => { 
-    setHighlightedComparison(multipathEnabled && compareSets.nodes.size ? compareSets : null); 
-  }, [compareSets, multipathEnabled]);
+    setHighlightedComparison(compareSets.nodes.size ? compareSets : null); 
+  }, [compareSets]);
   // Include highlight dependencies for multipath styling
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -1179,41 +1176,40 @@ function EduTreeCanvasInner() {
               </Label>
             </div>
             
-            {/* Multipath Toggle */}
+            {/* Track comparison status */}
             <div className="flex items-center space-x-2">
-              <Switch 
-                id="multipath-mode" 
-                checked={multipathEnabled}
-                onCheckedChange={setMultipathEnabled}
-              />
-              <Label htmlFor="multipath-mode" className="text-sm">
-                Compare Tracks
-              </Label>
+              {primaryTrack && comparisonTrack ? (
+                <Badge variant="default" className="text-xs bg-primary text-primary-foreground">
+                  Comparing Tracks
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  Select tracks to compare
+                </Badge>
+              )}
             </div>
             
             <Badge variant="outline" className="text-xs">
               {viewMode === 'flow' ? 'Flow View' : 'Board View'}
             </Badge>
             
-            {/* Track Selector - only show when multipath is enabled */}
-            {flags.eduTreeMultiPathOverlay && multipathEnabled && (
-              <CompareTracksBar
-                primary={primaryTrack}
-                comparison={comparisonTrack}
-                onPrimary={(t) => setPrimaryTrack(t as TrackId)}
-                onComparison={(t) => setComparisonTrack(t as TrackId | null)}
-              />
-            )}
+            {/* Track comparison controls - always show for multipath route */}
+            <CompareTracksBar
+              primary={primaryTrack}
+              comparison={comparisonTrack}
+              onPrimary={(t) => setPrimaryTrack(t as TrackId)}
+              onComparison={(t) => setComparisonTrack(t as TrackId | null)}
+            />
 
-            {/* Empty state for multipath */}
-            {flags.eduTreeMultiPathOverlay && multipathEnabled && comparisonTrack && !highlightedComparison && (
+            {/* Empty state message */}
+            {comparisonTrack && !highlightedComparison && (
               <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded border">
-                No comparison path for "{TRACKS[comparisonTrack].name}". Check missing nodes in console or enable fallback seed.
+                No comparison path for "{TRACKS[comparisonTrack].name}". Check missing nodes in console.
               </div>
             )}
             
             {/* Dev Snapshot Button */}
-            {DEV && flags.eduTreeMultiPathOverlay && (
+            {DEV && (
               <button
                 onClick={() => {
                   const snapshot = (window as any).__EDUTREE__?.getSnapshot?.();
@@ -1237,7 +1233,11 @@ function EduTreeCanvasInner() {
 
       {/* React Flow Canvas */}
       <div 
-        className={`flex-1 ${flags.eduTreeMultiPathOverlay && multipathEnabled && comparisonTrack ? 'multipath-active' : ''}`}
+        className={cn(
+          "flex-1",
+          // Only apply multipath-active when tracks are being actively compared
+          primaryTrack && comparisonTrack && "multipath-active"
+        )}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
         <ReactFlow
@@ -1252,14 +1252,15 @@ function EduTreeCanvasInner() {
           fitViewOptions={{ padding: 0.2, duration: 300 }}
           className={cn(
             'react-flow-canvas',
-            flags.eduTreeMultiPathOverlay && multipathEnabled && !!comparisonTrack ? 'multipath-active' : undefined
+            // Apply multipath styling only when actively comparing tracks
+            primaryTrack && comparisonTrack ? 'multipath-active' : undefined
           )}
           minZoom={0.3}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
           {/* Debug panel for multipath (visible in non-prod) */}
-          {process.env.NODE_ENV !== 'production' && flags.eduTreeMultiPathOverlay && multipathEnabled && (
+          {process.env.NODE_ENV !== 'production' && primaryTrack && comparisonTrack && (
             <div style={{
               position: 'absolute', 
               right: 12, 
@@ -1333,7 +1334,7 @@ function EduTreeCanvasInner() {
           )}
 
           {/* Empty state for comparison */}
-          {flags.eduTreeMultiPathOverlay && multipathEnabled && comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
+          {comparisonTrack && (!highlightedComparison || highlightedComparison.nodes.size === 0) && (
             <div style={{
               position: 'absolute',
               bottom: 20,

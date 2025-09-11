@@ -55,10 +55,11 @@ export function BlockGroup(props: NodeProps) {
   
   // Only apply highlighting when multipath is ACTIVELY comparing tracks
   let nodeHighlightClass = '';
-  const isMultipathActive = highlightedPrimaryNodes && highlightedComparisonNodes && 
+  const hasHighlightSets = highlightedPrimaryNodes && highlightedComparisonNodes;
+  const hasActiveComparison = hasHighlightSets && 
     (highlightedPrimaryNodes.size > 0 || highlightedComparisonNodes.size > 0);
   
-  if (isMultipathActive) {
+  if (hasActiveComparison) {
     if (inPrimary && inCompare) nodeHighlightClass = 'node--both';
     else if (inPrimary) nodeHighlightClass = 'node--primary'; 
     else if (inCompare) nodeHighlightClass = 'node--comparison';
@@ -66,8 +67,8 @@ export function BlockGroup(props: NodeProps) {
   }
 
   // Debug logging for multipath highlighting
-  if (process.env.NODE_ENV === 'development' && isMultipathActive) {
-    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}, multipathActive=${isMultipathActive}`);
+  if (process.env.NODE_ENV === 'development' && hasActiveComparison) {
+    console.log(`BlockGroup ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${nodeHighlightClass}, hasActiveComparison=${hasActiveComparison}`);
   }
   
   const [showAltCredits, setShowAltCredits] = useState(false);

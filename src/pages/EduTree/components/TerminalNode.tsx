@@ -23,7 +23,11 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const inCompare = !!highlightedComparisonNodes?.has?.(key);
   
   let highlightClass = '';
-  if (highlightedPrimaryNodes || highlightedComparisonNodes) {
+  const hasHighlightSets = highlightedPrimaryNodes && highlightedComparisonNodes;
+  const hasActiveComparison = hasHighlightSets && 
+    (highlightedPrimaryNodes.size > 0 || highlightedComparisonNodes.size > 0);
+    
+  if (hasActiveComparison) {
     if (inPrimary && inCompare) highlightClass = 'terminal--both';
     else if (inPrimary) highlightClass = 'terminal--primary';
     else if (inCompare) highlightClass = 'terminal--comparison';
@@ -31,7 +35,7 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   }
 
   // Debug logging for multipath highlighting
-  if (process.env.NODE_ENV === 'development' && (highlightedPrimaryNodes || highlightedComparisonNodes)) {
+  if (process.env.NODE_ENV === 'development' && hasActiveComparison) {
     console.log(`TerminalNode ${key}: inPrimary=${inPrimary}, inCompare=${inCompare}, class=${highlightClass}`);
   }
 
