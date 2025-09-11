@@ -68,24 +68,47 @@ function devOnce(key: string, msg: string, data?: any) {
 // Local fallback seed for multipath testing
 const LOCAL_FALLBACK_SEED = {
   blocks: [
-    { id: 'b101', title: 'Gen Ed: Composition', area: 'general-education', level_year: 1 },
-    { id: 'b102', title: 'Gen Ed: Quant Reasoning', area: 'general-education', level_year: 1 },
-    { id: 'b201', title: 'Core: Programming I', area: 'core', level_year: 1 },
-    { id: 'b202', title: 'Core: Programming II', area: 'core', level_year: 2 },
-    { id: 'b301', title: 'Web Frontend Foundations', area: 'specialization', level_year: 2 },
-    { id: 'b302', title: 'Data Analytics Intro', area: 'specialization', level_year: 2 },
-    { id: 'b401', title: 'Mathematics for CS', area: 'mathematics', level_year: 1 },
-    { id: 'degree-completion', title: 'Degree', area: 'terminal', level_year: 4 }
+    // Year 1
+    { id: 'b101', title: 'Gen Ed: Composition',        area: 'general-education', level_year: 1 },
+    { id: 'b102', title: 'Gen Ed: Quant Reasoning',    area: 'general-education', level_year: 1 },
+    { id: 'b201', title: 'Core: Programming I',        area: 'core',               level_year: 1 },
+    { id: 'b401', title: 'Mathematics for CS',         area: 'mathematics',        level_year: 1 },
+
+    // Year 2
+    { id: 'b202', title: 'Core: Programming II',       area: 'core',               level_year: 2 },
+    { id: 'b301', title: 'Web Frontend Foundations',   area: 'specialization',     level_year: 2 },
+    { id: 'b302', title: 'Data Analytics Intro',       area: 'specialization',     level_year: 2 },
+
+    // Year 3 (NEW)
+    { id: 'b311', title: 'Web Frontend II',            area: 'specialization',     level_year: 3 },
+    { id: 'b321', title: 'Data Analytics II',          area: 'specialization',     level_year: 3 },
+    { id: 'b331', title: 'Systems & DevOps',           area: 'specialization',     level_year: 3 },
+
+    // Terminal
+    { id: 'degree-completion', title: 'Degree',        area: 'terminal',           level_year: 4 }
   ],
   gateEdges: [
+    // feed into Core I
     { id: 'e1', source_block_id: 'b101', target_block_id: 'b201' },
     { id: 'e2', source_block_id: 'b102', target_block_id: 'b201' },
+    // Core I -> Core II
     { id: 'e3', source_block_id: 'b201', target_block_id: 'b202' },
-    { id: 'e4', source_block_id: 'b202', target_block_id: 'b301' }, // web
-    { id: 'e5', source_block_id: 'b202', target_block_id: 'b302' }, // data
-    { id: 'e6', source_block_id: 'b401', target_block_id: 'b202' }, // math path merges into core II
-    { id: 'e7', source_block_id: 'b301', target_block_id: 'degree-completion' },
-    { id: 'e8', source_block_id: 'b302', target_block_id: 'degree-completion' }
+    // Math can accelerate ROI path by merging into Core II
+    { id: 'e4', source_block_id: 'b401', target_block_id: 'b202' },
+
+    // Year 2 specialization forks
+    { id: 'e5', source_block_id: 'b202', target_block_id: 'b301' }, // web
+    { id: 'e6', source_block_id: 'b202', target_block_id: 'b302' }, // data
+
+    // Year 3 continuations (NEW)
+    { id: 'e7',  source_block_id: 'b301', target_block_id: 'b311' }, // web -> web II
+    { id: 'e8',  source_block_id: 'b302', target_block_id: 'b321' }, // data -> data II
+    { id: 'e9',  source_block_id: 'b202', target_block_id: 'b331' }, // core II -> systems/devops (ROI)
+
+    // Connect Year 3 to terminal
+    { id: 'e10', source_block_id: 'b311', target_block_id: 'degree-completion' },
+    { id: 'e11', source_block_id: 'b321', target_block_id: 'degree-completion' },
+    { id: 'e12', source_block_id: 'b331', target_block_id: 'degree-completion' }
   ]
 };
 
@@ -128,18 +151,19 @@ function EduTreeCanvasInner() {
   const [highlightedPrimary, setHighlightedPrimary] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
   const [highlightedComparison, setHighlightedComparison] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
 
-  // URL sync for comparison lens
+  // URL sync for comparison lens with default
   useEffect(() => {
     if (!flags.eduTreeMultiPathOverlay) return;
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlCompare = urlParams.get('compare');
+    const searchParams = new URLSearchParams(window.location.search);
+    let compareParam = searchParams.get('compare') as PlanningLens | null;
     
-    if (urlCompare && ['fastest', 'cheapest', 'roi'].includes(urlCompare)) {
-      setComparisonLens(urlCompare as PlanningLens);
-    } else if (urlCompare === null) {
-      setComparisonLens(null);
+    if (!compareParam || !['fastest', 'cheapest', 'roi'].includes(compareParam)) {
+      compareParam = 'cheapest'; // default
+      searchParams.set('compare', compareParam);
+      window.history.replaceState({}, '', `${window.location.pathname}?${searchParams.toString()}`);
     }
+    setComparisonLens(compareParam);
   }, [flags.eduTreeMultiPathOverlay]);
 
   // Update URL when comparison lens changes
@@ -1090,6 +1114,91 @@ function EduTreeCanvasInner() {
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         >
+          {/* Debug panel for multipath (visible in non-prod) */}
+          {process.env.NODE_ENV !== 'production' && flags.eduTreeMultiPathOverlay && (
+            <div style={{
+              position: 'absolute', 
+              right: 12, 
+              top: 12, 
+              zIndex: 1000,
+              background: 'hsl(var(--background))', 
+              border: '1px solid hsl(var(--border))',
+              padding: '8px 10px', 
+              borderRadius: 8, 
+              fontSize: 12, 
+              maxWidth: 320,
+              color: 'hsl(var(--foreground))'
+            }}>
+              <strong>Multipath Debug</strong>
+              <div style={{ marginTop: 6 }}>
+                <div>Primary lens: {selectedLens}</div>
+                <div>Comparison lens: {comparisonLens ?? '—'}</div>
+                <div>Primary: {primaryPath?.nodeIds.length ?? 0} nodes / {primaryPath?.edgeIds.length ?? 0} edges</div>
+                <div>Compare: {comparisonPath?.nodeIds.length ?? 0} nodes / {comparisonPath?.edgeIds.length ?? 0} edges</div>
+                <div>Overlap: {
+                  (primaryPath && comparisonPath)
+                    ? primaryPath.nodeIds.filter(x => comparisonPath.nodeIds.includes(x)).length
+                    : 0
+                } nodes</div>
+              </div>
+              <button
+                onClick={() => {
+                  const snap = {
+                    lenses: { primary: selectedLens, comparison: comparisonLens },
+                    primary: primaryPath ?? null,
+                    comparison: comparisonPath ?? null
+                  };
+                  (window as any).__EDUTREE__ = (window as any).__EDUTREE__ || {};
+                  (window as any).__EDUTREE__.getSnapshot = () => snap;
+                  const pre = document.getElementById('mp-snap-pre');
+                  if (pre) pre.textContent = JSON.stringify(snap, null, 2);
+                  console.log('[Multipath Snapshot]', snap);
+                }}
+                style={{ 
+                  marginTop: 8, 
+                  padding: '4px 8px', 
+                  background: 'hsl(var(--primary))', 
+                  color: 'hsl(var(--primary-foreground))', 
+                  border: 'none', 
+                  borderRadius: 4, 
+                  cursor: 'pointer' 
+                }}
+              >
+                📊 Snapshot
+              </button>
+              <pre 
+                id="mp-snap-pre" 
+                style={{ 
+                  whiteSpace: 'pre-wrap', 
+                  marginTop: 6, 
+                  maxHeight: 180, 
+                  overflow: 'auto', 
+                  fontSize: 10,
+                  background: 'hsl(var(--muted))',
+                  padding: 4,
+                  borderRadius: 4
+                }}
+              />
+            </div>
+          )}
+
+          {/* Empty state for comparison */}
+          {flags.eduTreeMultiPathOverlay && comparisonLens && (!comparisonPath || comparisonPath.nodeIds.length === 0) && (
+            <div style={{
+              position: 'absolute',
+              bottom: 20,
+              left: 20,
+              background: 'hsl(var(--muted))',
+              color: 'hsl(var(--muted-foreground))',
+              padding: '8px 12px',
+              borderRadius: 8,
+              fontSize: 12,
+              maxWidth: 400,
+              zIndex: 999
+            }}>
+              No comparison path available for '{comparisonLens}'. If you're using live data, add a branched seed or enable the fallback seed to see a demo.
+            </div>
+          )}
           {/* Lane Background for educational context */}
           {flags.eduTreeLanes && viewMode === 'flow' && (
             <EduLaneBackground 

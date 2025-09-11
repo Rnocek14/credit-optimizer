@@ -171,7 +171,7 @@ export function findAlternativePaths(
       }
     }
 
-    if (selectedBlocks.length >= 3) {
+    if (selectedBlocks.length >= 4) {
       // Map block IDs to React Flow node IDs
       const pathNodes: string[] = [];
       selectedBlocks.forEach(block => {
@@ -185,21 +185,25 @@ export function findAlternativePaths(
         .filter(edge => rfNodeSet.has(String(edge.source)) && rfNodeSet.has(String(edge.target)))
         .map(edge => String(edge.id));
       
-      const score = selectedBlocks.reduce((total, block) => {
-        return total + scoreByLens(block, lens);
-      }, 0) / selectedBlocks.length;
-      
-      paths.push({
-        nodeIds: pathNodes,
-        edgeIds: pathEdges,
-        score,
-        lens
-      });
+      // Only accept if there is at least one Year 3 node OR ≥3 edges:
+      const hasY3 = selectedBlocks.some(b => (b.level_year ?? 0) >= 3);
+      if (hasY3 || pathEdges.length >= 3) {
+        const score = selectedBlocks.reduce((total, block) => {
+          return total + scoreByLens(block, lens);
+        }, 0) / selectedBlocks.length;
+        
+        paths.push({
+          nodeIds: pathNodes,
+          edgeIds: pathEdges,
+          score,
+          lens
+        });
+      }
     }
   }
 
-  // Filter to valid paths (3+ nodes for curriculum progression)
-  const validPaths = paths.filter(path => path.nodeIds.length >= 3);
+  // Filter to valid paths (4+ nodes for curriculum progression with Year 3)
+  const validPaths = paths.filter(path => path.nodeIds.length >= 4);
   
   console.log(`[PathFinding] Generated ${validPaths.length} valid curriculum paths`);
   
