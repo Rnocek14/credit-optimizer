@@ -57,6 +57,7 @@ import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
 import { MultipathDebugPanel } from './components/MultipathDebugPanel';
+import { EmptyTrackState } from './components/EmptyTrackState';
 import { TRACKS, TrackId } from './tracks';
 import { CompareTracksBar } from './components/CompareTracksBar';
 import { getTrackBranchingDebugInfo, debugTrackHighlighting } from './utils/trackValidation';
@@ -436,11 +437,31 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Always merge track seed when on multipath route (multipath route always has this data)
+  // Only show track seed data when tracks are actually selected
   const effectiveBlocks = useMemo(() => {
     const isMultipathRoute = location.pathname.includes('/edu-treemulti');
-    if (!isMultipathRoute && !flags.eduTreeMultiPathOverlay) return blocks;
-    // Always merge track seed while multipath is on (dedup by id)
+    
+    // On multipath route: only show seed data if tracks are selected
+    if (isMultipathRoute) {
+      if (!primaryTrack && !comparisonTrack) {
+        // No tracks selected - show empty state to encourage selection
+        return [];
+      }
+      // Tracks selected - merge with seed data for visualization
+      return dedupeById([
+        ...blocks,
+        ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
+          ...b,
+          parent_block_id: null,
+          rule_type: 'ALL' as const,
+          credits_needed: null,
+          k: null,
+        })),
+      ]);
+    }
+    
+    // Non-multipath routes - use flag-based logic
+    if (!flags.eduTreeMultiPathOverlay) return blocks;
     return dedupeById([
       ...blocks,
       ...LOCAL_FALLBACK_SEED.blocks.map(b => ({
@@ -451,9 +472,16 @@ function EduTreeCanvasInner() {
         k: null,
       })),
     ]);
-  }, [blocks, flags.eduTreeMultiPathOverlay]);
+  }, [blocks, flags.eduTreeMultiPathOverlay, primaryTrack, comparisonTrack, location.pathname]);
 
   const effectiveGateEdges = useMemo(() => {
+    const isMultipathRoute = location.pathname.includes('/edu-treemulti');
+    
+    // On multipath route: only show edges if tracks are selected
+    if (isMultipathRoute && !primaryTrack && !comparisonTrack) {
+      return []; // No tracks selected - no edges
+    }
+    
     const validBlockIds = new Set(effectiveBlocks.map(b => String(b.id)));
     return [...gateEdges, ...LOCAL_FALLBACK_SEED.gateEdges]
       .filter(e => {
@@ -467,7 +495,7 @@ function EduTreeCanvasInner() {
         ...e,
         source_gate_id: e.source_gate_id ?? `gate-${(e as any).source_block_id ?? e.target_block_id}`,
       }));
-  }, [gateEdges, effectiveBlocks]);
+  }, [gateEdges, effectiveBlocks, primaryTrack, comparisonTrack, location.pathname]);
 
   // Transform data for React Flow with crash protection
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
@@ -1318,6 +1346,10 @@ function EduTreeCanvasInner() {
         )}
         style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}
       >
+        {/* Empty state when no tracks selected on multipath route */}
+        {location.pathname.includes('/edu-treemulti') && !primaryTrack && !comparisonTrack ? (
+          <EmptyTrackState onSelectTrack={(trackId) => setPrimaryTrack(trackId)} />
+        ) : (
         <ReactFlow
           key={`reactflow-${viewMode}-${nodes.length}`} // Force re-init on mode/data changes
           nodes={nodes}
@@ -1545,6 +1577,7 @@ function EduTreeCanvasInner() {
             </div>
           )}
         </ReactFlow>
+        )}
       </div>
 
       {/* Outcome Panel - hide on multipath route */}

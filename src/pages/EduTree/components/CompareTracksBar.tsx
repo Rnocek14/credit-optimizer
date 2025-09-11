@@ -20,9 +20,17 @@ export function CompareTracksBar({
   const options = Object.entries(TRACKS);
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-secondary/50 rounded-lg border-2 border-primary/30 shadow-lg">
+    <div className={`flex flex-col gap-3 p-4 rounded-lg border-2 shadow-lg ${
+      !primary && !comparison 
+        ? 'bg-blue-50 border-blue-300 animate-pulse' 
+        : 'bg-secondary/50 border-primary/30'
+    }`}>
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-foreground">🎯 Track Comparison</h3>
+        <h3 className={`text-lg font-bold ${
+          !primary && !comparison ? 'text-blue-700' : 'text-foreground'
+        }`}>
+          {!primary && !comparison ? '👆 Select Track to Begin' : '🎯 Track Comparison'}
+        </h3>
         {(primary || comparison) && (
           <Button 
             variant="ghost" 
