@@ -58,6 +58,7 @@ import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './da
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
+import { preflightGraph, EduTreeDataError, getDiagnosticFlags, exposeDebugInfo } from '@/utils/eduTreePreflight';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -75,13 +76,21 @@ type ViewMode = 'flow' | 'board';
 function EduTreeCanvasInner() {
   console.log('[BOOT] EduTreeCanvas render start');
   
+  // Diagnostic flags for crash isolation
+  const diagnostics = getDiagnosticFlags();
+  const { safeMode, noOverlay, noStagger, verboseLog } = diagnostics;
+  
+  if (verboseLog) {
+    console.log('[EduTree] Diagnostic flags:', diagnostics);
+  }
+  
   const flags = useFeatureFlags();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Feature flag source with querystring fallback
+  // Feature flag source with querystring fallback (disabled in safe mode)
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
+  const overlayFlag = !safeMode && !noOverlay && (flags.eduTreeMultiPathOverlay || qsOverlay);
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -324,7 +333,7 @@ function EduTreeCanvasInner() {
     retryDelay: 1000,
   });
 
-  // Transform data for React Flow with comprehensive error handling
+  // Transform data for React Flow with bulletproof preflight validation
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     try {
       console.log('[EduTree] Data transformation check:', { 
@@ -332,10 +341,12 @@ function EduTreeCanvasInner() {
         coursesLength: courses?.length || 0, 
         blockMembersLength: blockMembers?.length || 0,
         gatesLength: gates?.length || 0,
-        gateEdgesLength: gateEdges?.length || 0 
+        gateEdgesLength: gateEdges?.length || 0,
+        safeMode,
+        diagnostics
       });
 
-      // Phase 1: Hard data ready gate - don't proceed with empty data
+      // Phase 1: Quick presence checks
       if (!blocks || !courses || !blockMembers || !gates || !gateEdges) {
         console.log('[EduTree] Data arrays not initialized yet, returning empty graph');
         return { nodes: [], edges: [] };
@@ -347,20 +358,82 @@ function EduTreeCanvasInner() {
         return { nodes: [], edges: [] };
       }
 
-      // Phase 3: Safe data processing with null guards
-      const coursesByBlock = new Map<string, EduCourse[]>();
-      if (blockMembers && Array.isArray(blockMembers)) {
-        blockMembers.forEach(member => {
-          if (!member || !member.course_id || !member.block_id) return;
-          const course = courses.find(c => c && c.id === member.course_id);
-          if (course) {
-            if (!coursesByBlock.has(member.block_id)) {
-              coursesByBlock.set(member.block_id, []);
-            }
-            coursesByBlock.get(member.block_id)!.push(course);
-          }
+      // Phase 3: Build raw nodes/edges from domain data (existing logic)
+      const rawData = buildReactFlowFromDomainData({
+        blocks, courses, blockMembers, gates, gateEdges, 
+        completedCourseIds, viewMode, flags, handleCourseClick, highlightedPath
+      });
+
+      // Phase 4: BULLETPROOF PREFLIGHT - sanitize and validate before ReactFlow
+      const { nodes, edges } = preflightGraph(rawData.nodes, rawData.edges, nodeTypes);
+
+      // Phase 5: Apply stagger logic (skip in safe mode)
+      const finalEdges = safeMode || noStagger ? edges : edges; // TODO: apply stagger batches here
+
+      if (verboseLog || process.env.NODE_ENV !== 'production') {
+        console.log('[EduTree] Post-preflight:', { 
+          rawNodes: rawData.nodes.length,
+          rawEdges: rawData.edges.length, 
+          sanitizedNodes: nodes.length, 
+          sanitizedEdges: edges.length,
+          finalEdges: finalEdges.length,
+          safeMode 
         });
       }
+
+      // Phase 6: Expose debug info for testing
+      exposeDebugInfo(nodes.length, finalEdges.length, { 
+        safeMode, 
+        overlayFlag,
+        trackId: primaryTrack?.id 
+      });
+
+      return { nodes, edges: finalEdges };
+      
+    } catch (error) {
+      console.error('[EduTree] Transform crash - detailed analysis:', error);
+      
+      // Bubble useful error types to boundary, wrap others
+      if (error instanceof EduTreeDataError) {
+        throw error;
+      } else {
+        throw new EduTreeDataError(`Graph transformation failed: ${error?.message || 'Unknown error'}`);
+      }
+    }
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, 
+      handleCourseClick, highlightedPath, safeMode, noStagger, verboseLog, primaryTrack?.id]);
+
+// Helper function to build raw ReactFlow data from domain data  
+function buildReactFlowFromDomainData({
+  blocks, courses, blockMembers, gates, gateEdges,
+  completedCourseIds, viewMode, flags, handleCourseClick, highlightedPath
+}: {
+  blocks: RequirementBlock[];
+  courses: EduCourse[];
+  blockMembers: BlockMember[];  
+  gates: BlockGate[];
+  gateEdges: GateEdge[];
+  completedCourseIds: Set<string>;
+  viewMode: ViewMode;
+  flags: any;
+  handleCourseClick: (course: EduCourse) => void;
+  highlightedPath: { nodes: Set<string>, edges: Set<string> } | null;
+}): { nodes: Node[]; edges: Edge[] } {
+
+  // Safe data processing with null guards
+  const coursesByBlock = new Map<string, EduCourse[]>();
+  if (blockMembers && Array.isArray(blockMembers)) {
+    blockMembers.forEach(member => {
+      if (!member || !member.course_id || !member.block_id) return;
+      const course = courses.find(c => c && c.id === member.course_id);
+      if (course) {
+        if (!coursesByBlock.has(member.block_id)) {
+          coursesByBlock.set(member.block_id, []);
+        }
+        coursesByBlock.get(member.block_id)!.push(course);
+      }
+    });
+  }
 
       // Create block nodes with courses
       const blocksWithCourses: BlockWithCourses[] = blocks
@@ -614,12 +687,8 @@ function EduTreeCanvasInner() {
     }
 
     return { nodes, edges: normalizedEdges };
-    } catch (error) {
-      console.error('[EduTree] Error in data transformation:', error);
-      // Return empty state on error to prevent crashes
-      return { nodes: [], edges: [] };
-    }
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
+}
+  
   // Check for query errors and throw them to error boundary with detailed logging
   const hasQueryErrors = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
   const isAnyLoading = coursesLoading || blocksLoading;
@@ -845,14 +914,14 @@ function EduTreeCanvasInner() {
     };
   }, [overlayFlag, primaryTrack, comparisonTrack, rfNodeIdByBlockId, baseEdges]);
 
-  // Add overlay ready bypass to prevent crashes
-  const overlayReady = !!(overlayFlag && primaryTrack) &&
+  // Add overlay ready bypass to prevent crashes (disabled in safe mode)
+  const overlayReady = !safeMode && !!(overlayFlag && primaryTrack) &&
     (baseEdges?.length ?? 0) > 0 &&
     (flowNodes?.length ?? 0) > 0;
 
   // Use stable overlay hook to handle race conditions with staggered edges
   const highlightedElements = useStableOverlay({
-    overlayOn: overlayReady, // Only turn on when graph exists
+    overlayOn: overlayReady, // Only turn on when graph exists and not in safe mode
     baseNodes: Array.isArray(flowNodes) ? flowNodes : [],
     baseEdges: baseEdges ?? [],
     primaryEdgeIds: highlightSets.primaryEdgeIds,
@@ -1117,16 +1186,22 @@ function EduTreeCanvasInner() {
         </div>
       )}
 
-      {/* Debug HUD (dev only) */}
-      {overlayFlag && process.env.NODE_ENV !== 'production' && (
+      {/* Debug HUD (dev only) - shows safe mode status */}
+      {(overlayFlag || safeMode) && process.env.NODE_ENV !== 'production' && (
         <div style={{position:'fixed', right:12, bottom:12, zIndex:9999, padding:'10px 12px',
                      background:'rgba(20,22,27,.85)', color:'#fff', fontSize:12, border:'1px solid #333', borderRadius:8}}>
-          <div style={{opacity:.85, marginBottom:4}}>MP Overlay Debug</div>
+          <div style={{opacity:.85, marginBottom:4}}>
+            {safeMode ? 'SAFE MODE' : 'MP Overlay Debug'}
+          </div>
+          {safeMode && <div style={{color:'#ff6b6b', fontSize:11, marginBottom:4}}>
+            Overlay & Stagger Disabled
+          </div>}
           <div>primary: {primaryTrack?.id ?? '—'}</div>
           <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
           <div>base edges: {baseEdges?.length ?? 0}</div>
           <div>base nodes: {flowNodes?.length ?? 0}</div>
-          <div>overlay active: {overlayFlag && !!primaryTrack ? 'yes' : 'no'}</div>
+          <div>overlay active: {overlayReady ? 'yes' : 'no'}</div>
+          <div>safe mode: {safeMode ? 'ON' : 'off'}</div>
         </div>
       )}
 
@@ -1252,8 +1327,8 @@ function EduTreeCanvasInner() {
         </ReactFlow>
       </div>
 
-      {/* Track comparison UI */}
-      {overlayFlag && (
+      {/* Track comparison UI (disabled in safe mode) */}
+      {overlayFlag && !safeMode && (
         <>
           <TrackSelector
             primaryTrack={primaryTrack}
