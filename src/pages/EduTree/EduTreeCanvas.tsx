@@ -264,7 +264,7 @@ function EduTreeCanvasInner() {
     },
   });
 
-  // Transform data for React Flow
+  // Transform data for React Flow with defensive programming
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     console.log('Data check:', { 
       blocksLength: blocks.length, 
@@ -274,7 +274,11 @@ function EduTreeCanvasInner() {
       gateEdgesLength: gateEdges.length 
     });
 
-    if (!blocks.length || !courses.length) {
+    // Phase 1: Early return for loading state - prevent rendering with empty data
+    if (!blocks?.length || !courses?.length) {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Data not ready yet, returning empty graph');
+      }
       return { nodes: [], edges: [] };
     }
 
@@ -903,8 +907,10 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Loading state check - render skeleton until data arrives
-  if (!nodes || !edges) {
+  // Phase 1: Loading state check - render skeleton until data arrives
+  if (!nodes || !edges || nodes.length === 0 || 
+      !blocks?.length || !courses?.length || 
+      blocks.length === 0 || courses.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">Loading curriculum…</div>
