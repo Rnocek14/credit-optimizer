@@ -53,7 +53,9 @@ import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
 import { TrackSelector } from './components/TrackSelector';
 import { TrackValidator, runTrackAudits } from './components/TrackValidator';
+import { TrackPicker } from './components/TrackPicker';
 import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './data/trackDefinitions';
+import { resolveTrackBlockIds, TrackKey } from './data/resolveTrackBlocks';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
@@ -90,40 +92,41 @@ function EduTreeCanvasInner() {
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const layoutInProgressRef = useRef(false);
   
-  // Track comparison state - initialize from URL params
-  
-  // URL-to-ID normalization for track lookup
-  const ID_ALIASES: Record<string, string> = {
-    'software-engineering': 'se',
-    'data-science': 'ds', 
-    'cybersecurity': 'cy',
-  };
-  
-  const normalizeTrackId = (id: string | null) => 
-    id ? (ID_ALIASES[id] ?? id) : null;
-  
-  const getTrackFromId = (id: string | null) => 
-    id ? TRACK_DEFINITIONS.find(t => t.id === id) : undefined;
-  
-  const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(() => {
-    if (!overlayFlag) return undefined;
-    const raw = searchParams.get('primary');
-    const normalized = normalizeTrackId(raw);
-    return normalized ? getTrackFromId(normalized) : TRACK_DEFINITIONS[0];
+  // Track comparison state - dynamic resolution from block titles
+  const [currentTrackKey, setCurrentTrackKey] = useState<TrackKey>(() => {
+    const raw = searchParams.get('primary') as TrackKey;
+    return raw && ['software-engineering', 'data-science', 'cybersecurity'].includes(raw) 
+      ? raw 
+      : 'software-engineering';
   });
   
-  const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>(() => {
-    const raw = searchParams.get('comparison');
-    const normalized = normalizeTrackId(raw);
-    return normalized ? getTrackFromId(normalized) : undefined;
-  });
-  
+  const [primaryTrack, setPrimaryTrack] = useState<{ name: string; blockIds: string[] } | undefined>();
   const [comparisonEnabled, setComparisonEnabled] = useState(() => {
     return searchParams.get('cmp') === '1';
   });
   
   const [showTrackValidator, setShowTrackValidator] = useState(false);
   
+  // Dynamic track resolution
+  useEffect(() => {
+    if (!overlayFlag) return;
+    
+    (async () => {
+      try {
+        const resolved = await resolveTrackBlockIds(currentTrackKey);
+        setPrimaryTrack(resolved);
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[MP Overlay] track resolved', resolved.name, {
+            blocks: resolved.blockIds.length, missing: resolved.missingTitles
+          });
+        }
+      } catch (e) {
+        console.error('[MP Overlay] resolveTrackBlockIds failed', e);
+      }
+    })();
+  }, [overlayFlag, currentTrackKey]);
+
   console.log('[DEBUG] EduTreeCanvasInner: Track comparison state initialized', { 
     primaryTrack: primaryTrack?.name, 
     comparisonEnabled, 
@@ -136,18 +139,11 @@ function EduTreeCanvasInner() {
     
     const newParams = new URLSearchParams(searchParams);
     newParams.set('eduTreeMultiPathOverlay', 'true');
+    newParams.set('primary', currentTrackKey);
     
-    if (primaryTrack) {
-      newParams.set('primary', primaryTrack.id);
-    } else {
-      newParams.delete('primary');
-    }
-    
-    if (comparisonTrack && comparisonEnabled) {
-      newParams.set('comparison', comparisonTrack.id);
+    if (comparisonEnabled) {
       newParams.set('cmp', '1');
     } else {
-      newParams.delete('comparison');
       newParams.delete('cmp');
     }
     
@@ -155,7 +151,7 @@ function EduTreeCanvasInner() {
     if (newParams.toString() !== searchParams.toString()) {
       setSearchParams(newParams, { replace: true });
     }
-  }, [primaryTrack, comparisonTrack, comparisonEnabled, overlayFlag, searchParams, setSearchParams]);
+  }, [currentTrackKey, comparisonEnabled, overlayFlag, searchParams, setSearchParams]);
   
   // Telemetry tracking for overlay activation
   useEffect(() => {
@@ -164,13 +160,12 @@ function EduTreeCanvasInner() {
         task: 'edu_tree_multipath_overlay_activated',
         route: '/edu-tree',
         complexity: { 
-          primaryTrack: primaryTrack.id,
-          comparisonEnabled,
-          comparisonTrack: comparisonTrack?.id 
+          primaryTrack: currentTrackKey,
+          comparisonEnabled
         }
       });
     }
-  }, [overlayFlag, primaryTrack, comparisonEnabled, comparisonTrack]);
+  }, [overlayFlag, primaryTrack, comparisonEnabled, currentTrackKey]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Modal state for course details
@@ -615,29 +610,39 @@ function EduTreeCanvasInner() {
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
-    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    const overlayReady = 
+      overlayFlag &&
+      primaryTrack &&
+      Array.isArray(primaryTrack.blockIds) &&
+      primaryTrack.blockIds.length > 0 &&
+      (baseEdges?.length ?? 0) > 0 &&
+      (nodes?.length ?? 0) > 0;
     
     // Safe guards - ensure we have valid arrays
     const safeNodes = Array.isArray(nodes) ? nodes : [];
     const safeEdges = baseEdges; // <-- unified source
     
-    if (!overlayOn) {
+    if (!overlayReady) {
       return { nodes: safeNodes, edges: safeEdges };
     }
 
-    const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
+    // For now, just highlight primary track (comparison coming later)
+    const primaryNodes = new Set(primaryTrack.blockIds);
+    const primaryEdges = new Set();
+    
+    // Generate edge IDs from block sequence
+    for (let i = 0; i < primaryTrack.blockIds.length - 1; i++) {
+      const edgeId = `e-${primaryTrack.blockIds[i]}-${primaryTrack.blockIds[i + 1]}`;
+      primaryEdges.add(edgeId);
+    }
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
     const highlightedNodes = safeNodes.map(node => {
       const blockId = String(node.data?.blockId ?? node.id);
       const merged = [node.className, 'node'].filter(Boolean);
       
-      if (highlights.bothNodes.has(blockId)) {
-        merged.push('node--both');
-      } else if (highlights.primaryOnlyNodes.has(blockId)) {
+      if (primaryNodes.has(blockId)) {
         merged.push('node--primary');
-      } else if (highlights.comparisonOnlyNodes.has(blockId)) {
-        merged.push('node--comparison');
       } else {
         merged.push('node--dim');
       }
@@ -648,12 +653,8 @@ function EduTreeCanvasInner() {
     const highlightedEdges = safeEdges.map(edge => {
       const merged = [edge.className, 'edge'].filter(Boolean);
       
-      if (highlights.bothEdges.has(edge.id)) {
-        merged.push('edge--both');
-      } else if (highlights.primaryOnlyEdges.has(edge.id)) {
+      if (primaryEdges.has(edge.id)) {
         merged.push('edge--primary');
-      } else if (highlights.comparisonOnlyEdges.has(edge.id)) {
-        merged.push('edge--comparison');
       } else {
         merged.push('edge--dim');
       }
@@ -677,12 +678,12 @@ function EduTreeCanvasInner() {
     }
 
     return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, baseEdges]);
+  }, [overlayFlag, primaryTrack, nodes, baseEdges]);
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
   useEffect(() => {
-    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    const overlayOn = overlayFlag && primaryTrack;
     if (!reactFlowInstance || !overlayOn) { 
       didFitRef.current = false; 
       return; 
@@ -697,7 +698,7 @@ function EduTreeCanvasInner() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [reactFlowInstance, overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, 
+  }, [reactFlowInstance, overlayFlag, primaryTrack, 
       highlightedElements.nodes?.length, highlightedElements.edges?.length]);
 
   // Development audit logging with safety guards
@@ -1009,46 +1010,29 @@ function EduTreeCanvasInner() {
         </ReactFlow>
       </div>
 
-      {/* Track comparison UI */}
+      {/* Track picker UI */}
       {overlayFlag && (
-        <>
-          <TrackSelector
-            primaryTrack={primaryTrack}
-            comparisonTrack={comparisonTrack}
-            onPrimaryTrackChange={setPrimaryTrack}
-            onComparisonTrackChange={setComparisonTrack}
-            comparisonEnabled={comparisonEnabled}
-            onComparisonToggle={(enabled) => {
-              setComparisonEnabled(enabled);
-              if (!enabled) {
-                setComparisonTrack(undefined);
-              }
-            }}
-            isVisible={overlayFlag}
+        <div className="absolute top-4 left-4 z-10">
+          <TrackPicker
+            value={currentTrackKey}
+            onChange={setCurrentTrackKey}
+            disabled={!overlayFlag}
           />
+        </div>
+      )}
 
-          <TrackValidator
-            nodes={nodes}
-            edges={edges}
-            primaryTrack={primaryTrack}
-            comparisonTrack={comparisonTrack}
-            isVisible={showTrackValidator && overlayFlag}
-          />
-
-          {/* Development toggle for validator */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTrackValidator(!showTrackValidator)}
-                className="bg-background/90 backdrop-blur-sm text-xs"
-              >
-                {showTrackValidator ? 'Hide' : 'Show'} Track Validator
-              </Button>
-            </div>
-          )}
-        </>
+      {/* Development toggle for validator */}
+      {process.env.NODE_ENV === 'development' && overlayFlag && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTrackValidator(!showTrackValidator)}
+            className="bg-background/90 backdrop-blur-sm text-xs"
+          >
+            {showTrackValidator ? 'Hide' : 'Show'} Track Validator
+          </Button>
+        </div>
       )}
 
       {/* Outcome Panel */}

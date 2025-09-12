@@ -90,7 +90,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
-    eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'false')),
+    eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'true')),
   };
   
   // Single consolidated debug log (only once per session)

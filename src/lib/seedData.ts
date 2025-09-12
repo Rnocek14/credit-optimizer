@@ -68,45 +68,58 @@ const seedData = {
   ]
 };
 
-export async function seedEduTreeData() {
+export async function seedEduTreeData({ destructive = false } = {}) {
   try {
-    console.log('Starting edu tree data seeding with comprehensive cleanup...');
+    console.log('Starting edu tree data seeding...');
 
-    // COMPREHENSIVE CLEANUP: Remove ALL existing edu tree data
-    console.log('Cleaning up existing data...');
-    
-    // Get all existing blocks to clean up properly
-    const { data: allExistingBlocks } = await supabase
-      .from('requirement_blocks')
-      .select('id');
-    
-    if (allExistingBlocks && allExistingBlocks.length > 0) {
-      const allBlockIds = allExistingBlocks.map(b => b.id);
-      
-      // Get all gates for these blocks
-      const { data: allGates } = await supabase
-        .from('block_gates')
-        .select('id')
-        .in('block_id', allBlockIds);
-      
-      const allGateIds = allGates?.map(g => g.id) ?? [];
-      
-      // Delete in proper order to avoid foreign key constraints
-      if (allGateIds.length > 0) {
-        await supabase.from('prereq_to_block').delete().in('source_gate_id', allGateIds);
-        await supabase.from('prereq_to_block').delete().in('target_block_id', allBlockIds);
+    if (!destructive) {
+      const [{ count: c1 }, { count: c2 }] = await Promise.all([
+        supabase.from('requirement_blocks').select('id', { count: 'exact', head: true }),
+        supabase.from('edu_courses').select('id', { count: 'exact', head: true })
+      ]);
+      if ((c1 ?? 0) > 0 && (c2 ?? 0) > 0) {
+        console.log('[Seed] Skipping; data already present');
+        return;
       }
-      await supabase.from('block_members').delete().in('block_id', allBlockIds);
-      await supabase.from('block_gates').delete().in('block_id', allBlockIds);
-      await supabase.from('requirement_blocks').delete().in('id', allBlockIds);
-      
-      console.log(`Cleaned up ${allExistingBlocks.length} existing blocks`);
     }
 
-    // Also clean up courses with our seed codes to avoid duplicates
-    const seedCourseCodes = seedData.courses.map(c => c.code);
-    await supabase.from('edu_courses').delete().in('code', seedCourseCodes);
-    console.log('Cleaned up existing courses');
+    console.log('Inserting fresh seed data...');
+
+    // Only clean up if destructive mode is enabled
+    if (destructive) {
+      // Get all existing blocks to clean up properly
+      const { data: allExistingBlocks } = await supabase
+        .from('requirement_blocks')
+        .select('id');
+      
+      if (allExistingBlocks && allExistingBlocks.length > 0) {
+        const allBlockIds = allExistingBlocks.map(b => b.id);
+        
+        // Get all gates for these blocks
+        const { data: allGates } = await supabase
+          .from('block_gates')
+          .select('id')
+          .in('block_id', allBlockIds);
+        
+        const allGateIds = allGates?.map(g => g.id) ?? [];
+        
+        // Delete in proper order to avoid foreign key constraints
+        if (allGateIds.length > 0) {
+          await supabase.from('prereq_to_block').delete().in('source_gate_id', allGateIds);
+          await supabase.from('prereq_to_block').delete().in('target_block_id', allBlockIds);
+        }
+        await supabase.from('block_members').delete().in('block_id', allBlockIds);
+        await supabase.from('block_gates').delete().in('block_id', allBlockIds);
+        await supabase.from('requirement_blocks').delete().in('id', allBlockIds);
+        
+        console.log(`Cleaned up ${allExistingBlocks.length} existing blocks`);
+      }
+
+      // Also clean up courses with our seed codes to avoid duplicates
+      const seedCourseCodes = seedData.courses.map(c => c.code);
+      await supabase.from('edu_courses').delete().in('code', seedCourseCodes);
+      console.log('Cleaned up existing courses');
+    }
 
     // Fresh insert of all seed data
     const { data: insertedCourses, error: coursesError } = await supabase
