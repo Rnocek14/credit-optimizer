@@ -39,29 +39,40 @@
 }
 
 /* Edge highlight modifiers */
-.react-flow__edge.edge--primary path {
-  stroke: #007bff !important;
+.react-flow__edge.edge--primary .react-flow__edge-path {
+  stroke: #0969da !important;
   stroke-width: 3px !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
   filter: drop-shadow(0 0 4px rgba(0, 123, 255, 0.3)) !important;
 }
 
-.react-flow__edge.edge--comparison path {
+.react-flow__edge.edge--comparison .react-flow__edge-path {
   stroke: #ff9300 !important;
   stroke-width: 3px !important;
   stroke-dasharray: 6 !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
   filter: drop-shadow(0 0 4px rgba(255, 147, 0, 0.3)) !important;
 }
 
-.react-flow__edge.edge--both path {
+.react-flow__edge.edge--both .react-flow__edge-path {
   stroke: #6f42c1 !important;
   stroke-width: 4px !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
   filter: drop-shadow(0 0 6px rgba(111, 66, 193, 0.4)) !important;
 }
 
-.react-flow__edge.edge--dim path {
-  stroke: #ccc !important;
-  stroke-opacity: 0.25 !important;
-  stroke-width: 1px !important;
+.react-flow__edge.edge--dim .react-flow__edge-path {
+  stroke: #b9b9b9 !important;
+  stroke-width: 2px !important;
+  opacity: 0.4 !important;
+  stroke-linecap: round !important;
+  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
 }
 
 /* Edge markers (arrows) */

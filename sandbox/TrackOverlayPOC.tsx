@@ -142,23 +142,54 @@ export default function TrackOverlayPOC() {
         <Controls />
       </ReactFlow>
 
-      {/* Inline demo CSS (for quick testing)
       <style>
       {`
       .node-content { min-width: 64px; padding: 6px 8px; border: 2px solid #999; border-radius: 6px; background:#fff; font-size:12px; text-align:center; }
       .degree-node { font-weight: 700; }
-      .edge { stroke:#999; stroke-width:2px; }
-      .edge--primary { stroke:#0969da; stroke-width:3px; }
-      .edge--comparison { stroke:#ff9300; stroke-width:3px; stroke-dasharray:6; }
-      .edge--both { stroke:#6f42c1; stroke-width:4px; }
-      .edge--dim { stroke:#ccc; stroke-opacity:.25; }
+      
+      /* Edge highlight modifiers - target the actual path */
+      .react-flow__edge.edge--primary .react-flow__edge-path {
+        stroke: #0969da !important;
+        stroke-width: 3px !important;
+        opacity: 1 !important;
+        stroke-linecap: round !important;
+        transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
+        filter: drop-shadow(0 0 4px rgba(0, 123, 255, 0.3)) !important;
+      }
+      
+      .react-flow__edge.edge--comparison .react-flow__edge-path {
+        stroke: #ff9300 !important;
+        stroke-width: 3px !important;
+        stroke-dasharray: 6 !important;
+        opacity: 1 !important;
+        stroke-linecap: round !important;
+        transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
+        filter: drop-shadow(0 0 4px rgba(255, 147, 0, 0.3)) !important;
+      }
+      
+      .react-flow__edge.edge--both .react-flow__edge-path {
+        stroke: #6f42c1 !important;
+        stroke-width: 4px !important;
+        opacity: 1 !important;
+        stroke-linecap: round !important;
+        transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
+        filter: drop-shadow(0 0 6px rgba(111, 66, 193, 0.4)) !important;
+      }
+      
+      .react-flow__edge.edge--dim .react-flow__edge-path {
+        stroke: #b9b9b9 !important;
+        stroke-width: 2px !important;
+        opacity: 0.4 !important;
+        stroke-linecap: round !important;
+        transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
+      }
+      
       .node--primary { border-color:#0969da; background:#e7f1ff; }
       .node--comparison { border-color:#ff9300; background:#fff5e6; }
       .node--both { border-color:#6f42c1; background:#f5e6ff; }
       .node--dim { opacity:.25; filter: grayscale(60%); }
       `}
       </style>
-      */}
     </div>
   );
 }
