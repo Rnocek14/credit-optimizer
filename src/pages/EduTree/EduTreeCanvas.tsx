@@ -91,18 +91,31 @@ function EduTreeCanvasInner() {
   const layoutInProgressRef = useRef(false);
   
   // Track comparison state - initialize from URL params
+  
+  // URL-to-ID normalization for track lookup
+  const ID_ALIASES: Record<string, string> = {
+    'software-engineering': 'se',
+    'data-science': 'ds', 
+    'cybersecurity': 'cy',
+  };
+  
+  const normalizeTrackId = (id: string | null) => 
+    id ? (ID_ALIASES[id] ?? id) : null;
+  
   const getTrackFromId = (id: string | null) => 
     id ? TRACK_DEFINITIONS.find(t => t.id === id) : undefined;
   
   const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(() => {
     if (!overlayFlag) return undefined;
-    const primaryId = searchParams.get('primary');
-    return primaryId ? getTrackFromId(primaryId) : TRACK_DEFINITIONS[0];
+    const raw = searchParams.get('primary');
+    const normalized = normalizeTrackId(raw);
+    return normalized ? getTrackFromId(normalized) : TRACK_DEFINITIONS[0];
   });
   
   const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>(() => {
-    const comparisonId = searchParams.get('comparison');
-    return comparisonId ? getTrackFromId(comparisonId) : undefined;
+    const raw = searchParams.get('comparison');
+    const normalized = normalizeTrackId(raw);
+    return normalized ? getTrackFromId(normalized) : undefined;
   });
   
   const [comparisonEnabled, setComparisonEnabled] = useState(() => {
@@ -551,10 +564,10 @@ function EduTreeCanvasInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
-  // Apply layout only when multipath overlay is NOT intended
+  // Apply layout when nodes are available (allow regular layout even in overlay mode)
   useEffect(() => {
-    if (flowNodes.length > 0 && !flags.eduTreeMultiPathOverlay) {
-      const applyEmergencyLayout = async () => {
+    if (flowNodes.length > 0) {
+      const applyLayout = async () => {
         try {
           console.log('[EduTree] Applying layout to', flowNodes.length, 'nodes');
           
@@ -596,9 +609,9 @@ function EduTreeCanvasInner() {
         }
       };
       
-      applyEmergencyLayout();
+      applyLayout();
     }
-  }, [flowNodes.length, flags.eduTreeMultiPathOverlay]); // Only trigger when multipath is not intended
+  }, [flowNodes.length]); // Run layout whenever flowNodes change
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
