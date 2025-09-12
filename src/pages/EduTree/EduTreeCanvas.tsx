@@ -91,31 +91,33 @@ function EduTreeCanvasInner() {
   const layoutInProgressRef = useRef(false);
   
   // Track comparison state - initialize from URL params
-  
-  // URL-to-ID normalization for track lookup
-  const ID_ALIASES: Record<string, string> = {
-    'software-engineering': 'se',
-    'data-science': 'ds', 
-    'cybersecurity': 'cy',
-  };
-  
-  const normalizeTrackId = (id: string | null) => 
-    id ? (ID_ALIASES[id] ?? id) : null;
-  
   const getTrackFromId = (id: string | null) => 
     id ? TRACK_DEFINITIONS.find(t => t.id === id) : undefined;
   
   const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(() => {
     if (!overlayFlag) return undefined;
     const raw = searchParams.get('primary');
-    const normalized = normalizeTrackId(raw);
-    return normalized ? getTrackFromId(normalized) : TRACK_DEFINITIONS[0];
+    const resolved = getTrackFromId(raw);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Track Resolution]', {
+        rawPrimary: raw,
+        resolvedPrimaryId: resolved?.id,
+        available: TRACK_DEFINITIONS.map(t => t.id)
+      });
+    }
+    return resolved ?? TRACK_DEFINITIONS[0];
   });
   
   const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>(() => {
     const raw = searchParams.get('comparison');
-    const normalized = normalizeTrackId(raw);
-    return normalized ? getTrackFromId(normalized) : undefined;
+    const resolved = getTrackFromId(raw);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Track Resolution]', {
+        rawComparison: raw,
+        resolvedComparisonId: resolved?.id
+      });
+    }
+    return resolved ?? undefined;
   });
   
   const [comparisonEnabled, setComparisonEnabled] = useState(() => {
@@ -625,6 +627,16 @@ function EduTreeCanvasInner() {
       return { nodes: safeNodes, edges: safeEdges };
     }
 
+    // Edge ID consistency debugging (dev-only)
+    if (process.env.NODE_ENV !== 'production') {
+      const expectEdgeIds = (seq: string[]) => seq.slice(0, -1).map((s, i) => `e-${s}-${seq[i + 1]}`);
+      const sampleBlockIds = primaryTrack?.blockIds ?? [];
+      console.log('[Edge ID Debug]', {
+        expected: sampleBlockIds.length ? expectEdgeIds(sampleBlockIds) : [],
+        actualSample: safeEdges.slice(0, 5).map(e => e.id)
+      });
+    }
+
     const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
@@ -885,6 +897,13 @@ function EduTreeCanvasInner() {
           planIssues={outcomeSummary.issues}
           selectedLens={selectedLens}
         />
+      )}
+
+      {/* Track Resolution Fallback Banner */}
+      {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
+        <div className="fixed bottom-20 right-4 text-xs bg-amber-50 border border-amber-300 text-amber-900 px-2 py-1 rounded z-50">
+          Unknown track ID in URL. Using fallback.
+        </div>
       )}
 
       {/* Header */}
