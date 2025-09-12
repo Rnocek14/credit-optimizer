@@ -45,7 +45,7 @@ import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { CourseNode } from './components/CourseNode';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { TrackValidator } from './components/TrackValidator';
-import { TrackSelector } from './components/TrackSelector';
+import { SimpleTrackPicker } from './components/SimpleTrackPicker';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { useStableOverlay } from './hooks/useStableOverlay';
 import { trackBySlug, generateEdgeIds } from './data/trackDefinitions';
@@ -165,6 +165,8 @@ function EduTreeCanvasInner() {
     nodes,
     {
       enabled: flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow',
+      batchDelayMs: 140,
+      emergencyTimeoutMs: 5000,
     }
   );
 
@@ -480,9 +482,9 @@ function EduTreeCanvasInner() {
         {/* Track Controls */}
         {overlayFlag && !isSafeMode && (
           <div className="flex items-center gap-4">
-            <TrackSelector
-              currentTrack={currentTrackKey}
-              onTrackChange={handleTrackChange}
+            <SimpleTrackPicker
+              value={currentTrackKey}
+              onChange={handleTrackChange}
             />
             {DEV && (
               <Button
