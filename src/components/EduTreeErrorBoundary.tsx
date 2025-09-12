@@ -29,7 +29,17 @@ export class EduTreeErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
+    // Reset component state instead of reloading page
     this.setState({ hasError: false, error: undefined });
+    
+    // Force a re-render by updating a key or triggering a state change
+    // This avoids the reload loop while still recovering from errors
+    if (typeof window !== 'undefined' && window.location.search.includes('refresh=')) {
+      // Remove refresh param to prevent reload loops
+      const url = new URL(window.location.href);
+      url.searchParams.delete('refresh');
+      window.history.replaceState(null, '', url.toString());
+    }
   };
 
   render() {

@@ -324,86 +324,112 @@ function EduTreeCanvasInner() {
     retryDelay: 1000,
   });
 
-  // Transform data for React Flow with defensive programming
+  // Transform data for React Flow with comprehensive error handling
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('Data check:', { 
-      blocksLength: blocks.length, 
-      coursesLength: courses.length, 
-      blockMembersLength: blockMembers.length,
-      gatesLength: gates.length,
-      gateEdgesLength: gateEdges.length 
-    });
-
-    // Phase 1: Early return for loading state - prevent rendering with empty data
-    if (!blocks?.length || !courses?.length) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Data not ready yet, returning empty graph');
-      }
-      return { nodes: [], edges: [] };
-    }
-
-    // Group courses by block
-    const coursesByBlock = new Map<string, EduCourse[]>();
-    blockMembers.forEach(member => {
-      const course = courses.find(c => c.id === member.course_id);
-      if (course) {
-        if (!coursesByBlock.has(member.block_id)) {
-          coursesByBlock.set(member.block_id, []);
-        }
-        coursesByBlock.get(member.block_id)!.push(course);
-      }
-    });
-
-    // Create block nodes with courses
-    const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
-      ...block,
-      courses: coursesByBlock.get(block.id) || [],
-      gate: gates.find(g => g.block_id === block.id)
-    }));
-
-    // Separate parent blocks from child blocks
-    const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
-    const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
-    
-    // Group child blocks by parent
-    const childBlocksByParent = new Map<string, BlockWithCourses[]>();
-    childBlocks.forEach(child => {
-      if (!childBlocksByParent.has(child.parent_block_id!)) {
-        childBlocksByParent.set(child.parent_block_id!, []);
-      }
-      childBlocksByParent.get(child.parent_block_id!)!.push(child);
-    });
-
-    // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
-    const sortedBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(parentBlocks, gateEdges) : 
-      parentBlocks;
-
-    // Calculate which blocks are unlocked
-    const unlockedBlocks = new Set<string>();
-    
-    // Find blocks with no prerequisites (starting blocks)
-    const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    sortedBlocks.forEach(block => {
-      if (!blocksWithPrereqs.has(block.id)) {
-        unlockedBlocks.add(block.id);
-      }
-    });
-
-    // Unlock blocks whose prerequisites are complete
-    let changed = true;
-    while (changed) {
-      changed = false;
-      gateEdges.forEach(edge => {
-        if (unlockedBlocks.has(edge.target_block_id)) return;
-        
-        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
-        if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
-          unlockedBlocks.add(edge.target_block_id);
-          changed = true;
-        }
+    try {
+      console.log('Data check:', { 
+        blocksLength: blocks?.length || 0, 
+        coursesLength: courses?.length || 0, 
+        blockMembersLength: blockMembers?.length || 0,
+        gatesLength: gates?.length || 0,
+        gateEdgesLength: gateEdges?.length || 0 
       });
-    }
+
+      // Phase 1: Comprehensive null/undefined checks
+      if (!blocks || !courses || !blockMembers || !gates || !gateEdges) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log('[EduTree] Data arrays not initialized yet, returning empty graph');
+        }
+        return { nodes: [], edges: [] };
+      }
+
+      // Phase 2: Length checks for meaningful data
+      if (blocks.length === 0 || courses.length === 0) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log('[EduTree] Data not ready yet, returning empty graph');
+        }
+        return { nodes: [], edges: [] };
+      }
+
+      // Phase 3: Safe data processing with null guards
+      const coursesByBlock = new Map<string, EduCourse[]>();
+      if (blockMembers && Array.isArray(blockMembers)) {
+        blockMembers.forEach(member => {
+          if (!member || !member.course_id || !member.block_id) return;
+          const course = courses.find(c => c && c.id === member.course_id);
+          if (course) {
+            if (!coursesByBlock.has(member.block_id)) {
+              coursesByBlock.set(member.block_id, []);
+            }
+            coursesByBlock.get(member.block_id)!.push(course);
+          }
+        });
+      }
+
+      // Create block nodes with courses
+      const blocksWithCourses: BlockWithCourses[] = blocks
+        .filter(block => block && block.id) // Filter out invalid blocks
+        .map(block => ({
+          ...block,
+          courses: coursesByBlock.get(block.id) || [],
+          gate: gates && Array.isArray(gates) ? gates.find(g => g && g.block_id === block.id) : undefined
+        }));
+
+      // Separate parent blocks from child blocks
+      const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
+      const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
+      
+      // Group child blocks by parent
+      const childBlocksByParent = new Map<string, BlockWithCourses[]>();
+      if (Array.isArray(childBlocks)) {
+        childBlocks.forEach(child => {
+          if (!child || !child.parent_block_id) return;
+          if (!childBlocksByParent.has(child.parent_block_id)) {
+            childBlocksByParent.set(child.parent_block_id, []);
+          }
+          childBlocksByParent.get(child.parent_block_id)!.push(child);
+        });
+      }
+
+      // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
+      const safeGateEdges = gateEdges && Array.isArray(gateEdges) ? gateEdges : [];
+      const sortedBlocks = flags.eduTreeLayoutV2 ? 
+        sortBlocksForLayout(parentBlocks, safeGateEdges) : 
+        parentBlocks;
+
+      // Calculate which blocks are unlocked
+      const unlockedBlocks = new Set<string>();
+      
+      // Find blocks with no prerequisites (starting blocks)
+      const blocksWithPrereqs = new Set(
+        safeGateEdges
+          .filter(edge => edge && edge.target_block_id)
+          .map(edge => edge.target_block_id)
+      );
+      if (Array.isArray(sortedBlocks)) {
+        sortedBlocks.forEach(block => {
+          if (!block || !block.id) return;
+          if (!blocksWithPrereqs.has(block.id)) {
+            unlockedBlocks.add(block.id);
+          }
+        });
+      }
+
+      // Unlock blocks whose prerequisites are complete
+      let changed = true;
+      while (changed) {
+        changed = false;
+        safeGateEdges.forEach(edge => {
+          if (!edge || !edge.target_block_id || !edge.source_gate_id) return;
+          if (unlockedBlocks.has(edge.target_block_id)) return;
+          
+          const sourceBlock = sortedBlocks.find(b => b && b.gate?.id === edge.source_gate_id);
+          if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses || [], completedCourseIds)) {
+            unlockedBlocks.add(edge.target_block_id);
+            changed = true;
+          }
+        });
+      }
 
     const regularNodes: Node[] = sortedBlocks
       .map((block, index) => {
@@ -445,7 +471,7 @@ function EduTreeCanvasInner() {
           }
         };
       })
-      .filter(Boolean) as Node[]; // Remove any null nodes
+        .filter(Boolean) as Node[]; // Remove any null nodes
 
     // Add degree completion node
     const capstoneBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('capstone'));
@@ -586,8 +612,38 @@ function EduTreeCanvasInner() {
     }
 
     return { nodes, edges };
+    } catch (error) {
+      console.error('[EduTree] Error in data transformation:', error);
+      // Return empty state on error to prevent crashes
+      return { nodes: [], edges: [] };
+    }
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
-  // REMOVED highlightedPath dependency to prevent infinite loop
+  // Check for query errors and throw them to error boundary
+  const hasQueryErrors = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
+  const isAnyLoading = coursesLoading || blocksLoading;
+
+  if (hasQueryErrors) {
+    console.error('[EduTree] Query errors detected:', {
+      coursesError,
+      blocksError,
+      blockMembersError,
+      gatesError,
+      gateEdgesError
+    });
+    throw hasQueryErrors;
+  }
+
+  // Show loading state while data is being fetched
+  if (isAnyLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading education tree...</p>
+        </div>
+      </div>
+    );
+  }
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
