@@ -89,7 +89,7 @@ function EduTreeCanvasInner() {
   
   // Track comparison state
   const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(
-    flags.eduTreeMultiPathOverlay ? TRACK_DEFINITIONS[0] : undefined
+    overlayFlag ? TRACK_DEFINITIONS[0] : undefined
   );
   const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>();
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
@@ -939,7 +939,7 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* Track comparison UI */}
-      {flags.eduTreeMultiPathOverlay && (
+      {overlayFlag && (
         <>
           <TrackSelector
             primaryTrack={primaryTrack}
@@ -953,7 +953,7 @@ function EduTreeCanvasInner() {
                 setComparisonTrack(undefined);
               }
             }}
-            isVisible={flags.eduTreeMultiPathOverlay}
+            isVisible={overlayFlag}
           />
 
           <TrackValidator
@@ -961,7 +961,7 @@ function EduTreeCanvasInner() {
             edges={edges}
             primaryTrack={primaryTrack}
             comparisonTrack={comparisonTrack}
-            isVisible={showTrackValidator && flags.eduTreeMultiPathOverlay}
+            isVisible={showTrackValidator && overlayFlag}
           />
 
           {/* Development toggle for validator */}
