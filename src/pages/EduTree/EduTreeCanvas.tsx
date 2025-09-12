@@ -431,7 +431,7 @@ function EduTreeCanvasInner() {
 
     const nodes: Node[] = [...regularNodes, degreeNode];
 
-    // Create React Flow edges (only between blocks)
+    // Create React Flow edges (only between blocks) with normalized edge IDs
     const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
@@ -439,8 +439,11 @@ function EduTreeCanvasInner() {
       
       const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
       
+      // Use normalized edge ID format for track comparison compatibility
+      const normalizedId = source ? `e-${source}-${target}` : String(gateEdge.id);
+      
       return source ? {
-        id: String(gateEdge.id),
+        id: normalizedId,
         source,
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -462,9 +465,9 @@ function EduTreeCanvasInner() {
     // Add edges to degree completion node
     const degreeEdges: Edge[] = [];
     if (viewMode === 'flow' && capstoneBlock && architectureBlock) {
-      // Edge from Capstone to Degree
+      // Edge from Capstone to Degree (normalized ID)
       degreeEdges.push({
-        id: 'capstone-to-degree',
+        id: `e-${capstoneBlock.id}-degree-completion`,
         source: String(capstoneBlock.id),
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -482,9 +485,9 @@ function EduTreeCanvasInner() {
         }),
       });
 
-      // Edge from Architecture to Degree  
+      // Edge from Architecture to Degree (normalized ID)
       degreeEdges.push({
-        id: 'architecture-to-degree',
+        id: `e-${architectureBlock.id}-degree-completion`,
         source: String(architectureBlock.id),
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -617,13 +620,15 @@ function EduTreeCanvasInner() {
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
-    // Runtime diagnostics (no behavior change)
+  // Runtime diagnostics (no behavior change)
     if (process.env.NODE_ENV !== 'production') {
       const dbg = {
         overlayFlag,
         comparisonEnabled,
         primaryTrackId: primaryTrack?.id,
+        primaryTrackName: primaryTrack?.name,
         comparisonTrackId: comparisonTrack?.id,
+        comparisonTrackName: comparisonTrack?.name,
         trackPrimaryBlocks: primaryTrack?.blockIds?.length ?? 0,
         trackComparisonBlocks: comparisonTrack?.blockIds?.length ?? 0,
         base: { nodes: flowNodes?.length ?? 0, edges: baseEdges?.length ?? 0 },
@@ -680,7 +685,8 @@ function EduTreeCanvasInner() {
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
     const highlightedNodes = safeNodes.map(node => {
-      const blockId = String(node.data?.blockId ?? node.id);
+      // Use node.id directly since that matches the blockIds in track definitions
+      const blockId = String(node.id);
       const merged = [node.className, 'node'].filter(Boolean);
       
       if (highlights.bothNodes.has(blockId)) {
@@ -1128,6 +1134,26 @@ function EduTreeCanvasInner() {
               >
                 {showTrackValidator ? 'Hide' : 'Show'} Track Validator
               </Button>
+            </div>
+          )}
+
+          {/* Development debug HUD */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div style={{position:'fixed', right:12, bottom:12, zIndex:9999, padding:'10px 12px',
+                         background:'rgba(20,22,27,.85)', color:'#fff', fontSize:12, border:'1px solid #333', borderRadius:8}}>
+              <div style={{opacity:.85, marginBottom:4}}>MP Overlay Debug</div>
+              <div>primary: {primaryTrack?.id ?? '—'}</div> 
+              <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
+              <div>base edges: {baseEdges?.length ?? 0}</div>
+              <div>base nodes: {flowNodes?.length ?? 0}</div>
+              <div>overlay active: {overlayFlag && !!primaryTrack ? 'yes' : 'no'}</div>
+            </div>
+          )}
+
+          {/* Fallback banner for unknown track IDs */}
+          {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
+            <div className="fixed bottom-20 right-4 text-xs bg-amber-50 border border-amber-300 text-amber-900 px-2 py-1 rounded">
+              Unknown track id in URL. Using fallback.
             </div>
           )}
         </>
