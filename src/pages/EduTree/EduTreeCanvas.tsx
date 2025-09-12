@@ -51,11 +51,9 @@ import { CourseNode } from './components/CourseNode';
 import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
-import { TrackSelector } from './components/TrackSelector';
-import { TrackValidator, runTrackAudits } from './components/TrackValidator';
 import { TrackPicker } from './components/TrackPicker';
-import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './data/trackDefinitions';
 import { resolveTrackBlockIds, TrackKey } from './data/resolveTrackBlocks';
+import { normalizeEdges, validateEdgeIdSpace } from './utils/edgeNormalization';
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
@@ -117,9 +115,9 @@ function EduTreeCanvasInner() {
         setPrimaryTrack(resolved);
 
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[MP Overlay] track resolved', resolved.name, {
-            blocks: resolved.blockIds.length, missing: resolved.missingTitles
-          });
+        console.log('[MP Overlay] track resolved', resolved.name, {
+          blocks: resolved.blockIds.length, missing: resolved.missingSlugs
+        });
         }
       } catch (e) {
         console.error('[MP Overlay] resolveTrackBlockIds failed', e);

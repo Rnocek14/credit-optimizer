@@ -90,7 +90,19 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
-    eduTreeMultiPathOverlay: toBool(getFlagValue('eduTreeMultiPathOverlay', 'edu-tree-multipath-overlay', 'true')),
+  // EduTree multipath overlay for track comparison
+  eduTreeMultiPathOverlay: (() => {
+    const url = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') : null;
+    const resolved = toBool(getFlagValue('eduTreeMultiPathOverlay','edu-tree-multipath-overlay','true'));
+    if (typeof window !== 'undefined') {
+      console.log('[Flags]', {
+        url,
+        resolved,
+        final: url !== null ? toBool(url) : resolved
+      });
+    }
+    return url !== null ? toBool(url) : resolved;
+  })(),
   };
   
   // Single consolidated debug log (only once per session)
