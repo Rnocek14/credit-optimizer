@@ -618,135 +618,123 @@ function EduTreeCanvasInner() {
     }
   }, [flowNodes.length, viewMode, flags.eduTreeStaggeredEdgesV2]); // Include all dependencies that affect layout
 
+  // Phase A: Build rfNodeIdByBlockId from rendered nodes (stable across toggles)
+  const rfNodeIdByBlockId = useMemo(() => {
+    // Accept nodes that carry either data.blockId or fallback to id
+    // Always coerce to strings for matching
+    return new Map(
+      (flowNodes ?? []).map(n => [String(n.data?.blockId ?? n.id), String(n.id)])
+    );
+  }, [flowNodes]);
+
+  // Optional pinpoint log (dev-only)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && overlayFlag && primaryTrack) {
+      const first = primaryTrack.blockIds?.[0];
+      console.log('[RF Map check] first primary block', first, '→ rfId:', first ? rfNodeIdByBlockId.get(String(first)) : null);
+    }
+  }, [overlayFlag, primaryTrack, rfNodeIdByBlockId]);
+
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
-  // Runtime diagnostics (no behavior change)
+    // Runtime inputs (dev)
     if (process.env.NODE_ENV !== 'production') {
-      const dbg = {
+      console.log('[MP Overlay][Inputs]', {
         overlayFlag,
         comparisonEnabled,
         primaryTrackId: primaryTrack?.id,
-        primaryTrackName: primaryTrack?.name,
         comparisonTrackId: comparisonTrack?.id,
-        comparisonTrackName: comparisonTrack?.name,
-        trackPrimaryBlocks: primaryTrack?.blockIds?.length ?? 0,
-        trackComparisonBlocks: comparisonTrack?.blockIds?.length ?? 0,
-        base: { nodes: flowNodes?.length ?? 0, edges: baseEdges?.length ?? 0 },
-      };
-      console.log('[MP Overlay][Inputs]', dbg);
-    }
-
-    const overlayOn = overlayFlag && !!primaryTrack; // comparison optional
-    
-    // Safe guards - ensure we have valid arrays
-    const safeNodes = Array.isArray(nodes) ? nodes : [];
-    const safeEdges = baseEdges; // <-- unified source
-    
-    if (!overlayOn) {
-      return { nodes: safeNodes, edges: safeEdges };
-    }
-
-    // Edge ID consistency debugging (dev-only)
-    if (process.env.NODE_ENV !== 'production') {
-      const expectEdgeIds = (seq: string[]) => seq.slice(0, -1).map((s, i) => `e-${s}-${seq[i + 1]}`);
-      const sampleBlockIds = primaryTrack?.blockIds ?? [];
-      console.log('[Edge ID Debug]', {
-        expected: sampleBlockIds.length ? expectEdgeIds(sampleBlockIds) : [],
-        actualSample: safeEdges.slice(0, 5).map(e => e.id)
+        base: { nodes: (flowNodes ?? []).length, edges: (baseEdges ?? []).length },
+        rfMapSize: rfNodeIdByBlockId.size,
       });
-
-      // Check for non-normalized edge IDs
-      const bad = safeEdges.filter(e => !/^e-.+-.+$/.test(e.id));
-      if (bad.length) console.warn('[MP Overlay] Non-normalized edge IDs:', bad.slice(0, 5));
     }
 
-    const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
-    
-    // Log track highlight sets
+    // Overlay is active if flag + we have a primary track (comparison optional)
+    const overlayOn = !!(overlayFlag && primaryTrack);
+    const safeNodes = Array.isArray(flowNodes) ? flowNodes : [];
+    const safeEdges = baseEdges ?? [];
+
+    if (!overlayOn) return { nodes: safeNodes, edges: safeEdges };
+
+    // ---- Phase B: compute highlight sets IN RF-ID SPACE ----
+    const toEdgeIds = (seq: string[]) => seq.slice(0, -1).map((s, i) => `e-${String(s)}-${String(seq[i + 1])}`);
+
+    // 1) Track nodes in BLOCK space
+    const pBlocks = new Set(primaryTrack?.blockIds?.map(String) ?? []);
+    const cBlocks = new Set(comparisonTrack?.blockIds?.map(String) ?? []);
+
+    // 2) Map BLOCK → RF node.id, dropping any that don't exist in the graph
+    const pNodeIdsRF = new Set<string>();
+    const cNodeIdsRF = new Set<string>();
+    const missingP: string[] = [];
+    const missingC: string[] = [];
+
+    pBlocks.forEach(b => {
+      const rf = rfNodeIdByBlockId.get(String(b));
+      rf ? pNodeIdsRF.add(rf) : missingP.push(String(b));
+    });
+    cBlocks.forEach(b => {
+      const rf = rfNodeIdByBlockId.get(String(b));
+      rf ? cNodeIdsRF.add(rf) : missingC.push(String(b));
+    });
+
+    // 3) Edges stay in block-id space (normalized as e-<block>-<block>)
+    const pEdgeIds = new Set(primaryTrack ? toEdgeIds(primaryTrack.blockIds) : []);
+    const cEdgeIds = new Set(comparisonTrack ? toEdgeIds(comparisonTrack.blockIds) : []);
+
+    // Intersections & exclusives (nodes = RF IDs, edges = normalized eid)
+    const bothNodeIdsRF = new Set([...pNodeIdsRF].filter(id => cNodeIdsRF.has(id)));
+    const bothEdgeIds   = new Set([...pEdgeIds].filter(id => cEdgeIds.has(id)));
+    const pOnlyNodeIdsRF = new Set([...pNodeIdsRF].filter(id => !bothNodeIdsRF.has(id)));
+    const cOnlyNodeIdsRF = new Set([...cNodeIdsRF].filter(id => !bothNodeIdsRF.has(id)));
+    const pOnlyEdgeIds   = new Set([...pEdgeIds].filter(id => !bothEdgeIds.has(id)));
+    const cOnlyEdgeIds   = new Set([...cEdgeIds].filter(id => !bothEdgeIds.has(id)));
+
     if (process.env.NODE_ENV !== 'production') {
-      const { primaryHighlights, comparisonHighlights, bothNodes, bothEdges,
-              primaryOnlyNodes, comparisonOnlyNodes, primaryOnlyEdges, comparisonOnlyEdges } = highlights;
       console.log('[MP Overlay][Sets]', {
-        pNodes: primaryHighlights.nodes.size,
-        cNodes: comparisonHighlights.nodes.size,
-        bothNodes: bothNodes.size,
-        pOnlyNodes: primaryOnlyNodes.size,
-        cOnlyNodes: comparisonOnlyNodes.size,
-        pEdges: primaryHighlights.edges.size,
-        cEdges: comparisonHighlights.edges.size,
-        bothEdges: bothEdges.size,
-        pOnlyEdges: primaryOnlyEdges.size,
-        cOnlyEdges: comparisonOnlyEdges.size,
-        samplePNode: [...primaryHighlights.nodes].slice(0,5),
-        samplePEdge: [...primaryHighlights.edges].slice(0,5),
-        sampleBaseEdgeIds: safeEdges.slice(0,5).map(e => e.id),
+        rfMapSize: rfNodeIdByBlockId.size,
+        missingPrimaryBlocks: missingP,
+        missingComparisonBlocks: missingC,
+        pNodesRF: pNodeIdsRF.size, cNodesRF: cNodeIdsRF.size, bothNodes: bothNodeIdsRF.size,
+        pEdges: pEdgeIds.size,     cEdges: cEdgeIds.size,     bothEdges: bothEdgeIds.size,
+        sampleRFMap: [...rfNodeIdByBlockId.entries()].slice(0, 5),
+        sampleBaseEdges: safeEdges.slice(0, 5).map(e => e.id),
       });
     }
-    
-    // Phase C: Apply CSS classes based on track membership (merge with existing classes)
+
+    // ---- Phase C: attach classes against RF node IDs & normalized edge IDs ----
     const highlightedNodes = safeNodes.map(node => {
-      // Use node.id directly since that matches the blockIds in track definitions
-      const blockId = String(node.id);
       const merged = [node.className, 'node'].filter(Boolean);
-      
-      if (highlights.bothNodes.has(blockId)) {
-        merged.push('node--both');
-      } else if (highlights.primaryOnlyNodes.has(blockId)) {
-        merged.push('node--primary');
-      } else if (highlights.comparisonOnlyNodes.has(blockId)) {
-        merged.push('node--comparison');
-      } else {
-        merged.push('node--dim');
-      }
-      
+      const idRF = String(node.id);
+      if (bothNodeIdsRF.has(idRF))        merged.push('node--both');
+      else if (pOnlyNodeIdsRF.has(idRF))  merged.push('node--primary');
+      else if (cOnlyNodeIdsRF.has(idRF))  merged.push('node--comparison');
+      else                                merged.push('node--dim');
       return { ...node, className: merged.join(' ') };
     });
 
     const highlightedEdges = safeEdges.map(edge => {
       const merged = [edge.className, 'edge'].filter(Boolean);
-      
-      if (highlights.bothEdges.has(edge.id)) {
-        merged.push('edge--both');
-      } else if (highlights.primaryOnlyEdges.has(edge.id)) {
-        merged.push('edge--primary');
-      } else if (highlights.comparisonOnlyEdges.has(edge.id)) {
-        merged.push('edge--comparison');
-      } else {
-        merged.push('edge--dim');
-      }
-      
+      if (bothEdgeIds.has(edge.id))        merged.push('edge--both');
+      else if (pOnlyEdgeIds.has(edge.id))  merged.push('edge--primary');
+      else if (cOnlyEdgeIds.has(edge.id))  merged.push('edge--comparison');
+      else                                 merged.push('edge--dim');
       return { ...edge, className: merged.join(' ') };
     });
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[Edges] base=', safeEdges.length, 'highlighted=', highlightedEdges.length);
-      
-      // 1) Assert: Visible edges must always carry one highlight class
-      const ok = highlightedEdges.every(e =>
-        /\bedge(--primary|--comparison|--both|--dim)\b/.test(e.className || '')
-      );
-      if (!ok) console.warn('[Assert] Some visible edges lack highlight classes');
-      
-      // 2) Edge endpoint sanity during reveal
-      highlightedEdges.forEach(e => {
-        if (!e.source || !e.target) console.warn('[Edge missing endpoints]', e.id, e);
-      });
+    if (process.env.NODE_ENV !== 'production') {
+      // Hard assert: if we found 0 RF primary nodes but tracks are non-empty, you have ID mismatches
+      if (primaryTrack?.blockIds?.length && pNodeIdsRF.size === 0) {
+        console.warn('[MP Overlay][ASSERT] 0 primary RF nodes. Likely blockId ↔ node.id mismatch. See missingPrimaryBlocks above.');
+      }
+      // Edge normalization sanity
+      const bad = highlightedEdges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
+      if (bad.length) console.warn('[MP Overlay] Non-normalized edge IDs detected (track overlay expects e-<block>-<block>):', bad.slice(0,5));
     }
 
     return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, baseEdges]);
+  }, [overlayFlag, primaryTrack, comparisonTrack, comparisonEnabled, flowNodes, baseEdges, rfNodeIdByBlockId]);
 
-  // Add ReactFlow map probe (dev-only)
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && overlayFlag && flowNodes.length > 0) {
-      const rfNodeIdByBlockId = new Map(flowNodes.map(n => [String(n.data?.blockId ?? n.id), n.id]));
-      console.log('[RF Map] size=', rfNodeIdByBlockId.size, 'sample=', [...rfNodeIdByBlockId.entries()].slice(0,5));
-      const missingP = (primaryTrack?.blockIds ?? []).filter(b => !rfNodeIdByBlockId.has(String(b)));
-      const missingC = (comparisonTrack?.blockIds ?? []).filter(b => !rfNodeIdByBlockId.has(String(b)));
-      if (missingP.length) console.warn('[MP Overlay] Missing primary nodes in RF map:', missingP);
-      if (missingC.length) console.warn('[MP Overlay] Missing comparison nodes in RF map:', missingC);
-    }
-  }, [overlayFlag, primaryTrack, comparisonTrack, flowNodes.length]);
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
