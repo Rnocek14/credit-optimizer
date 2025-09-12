@@ -199,69 +199,129 @@ function EduTreeCanvasInner() {
     setSelectedCourse(null);
   }, []);
   
-  // Fetch data from Supabase
-  const { data: courses = [] } = useQuery({
+  // Fetch data from Supabase with proper error handling
+  const { data: courses = [], error: coursesError, isLoading: coursesLoading } = useQuery({
     queryKey: ['edu-courses'],
     queryFn: async () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Fetching edu_courses...');
+      }
       const { data, error } = await supabase
         .from('edu_courses')
         .select('*')
         .order('level_year', { ascending: true })
         .order('code', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[EduTree] courses query error:', error);
+        throw error;
+      }
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] courses fetched:', data?.length || 0);
+      }
       return data as EduCourse[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: blocks = [] } = useQuery({
+  const { data: blocks = [], error: blocksError, isLoading: blocksLoading } = useQuery({
     queryKey: ['requirement-blocks'],
     queryFn: async () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Fetching requirement_blocks...');
+      }
       const { data, error } = await supabase
         .from('requirement_blocks')
         .select('*')
         .order('level_year', { ascending: true })
         .order('title', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[EduTree] blocks query error:', error);
+        throw error;
+      }
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] blocks fetched:', data?.length || 0);
+      }
       return data as RequirementBlock[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: blockMembers = [] } = useQuery({
+  const { data: blockMembers = [], error: blockMembersError } = useQuery({
     queryKey: ['block-members'],
     queryFn: async () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Fetching block_members...');
+      }
       const { data, error } = await supabase
         .from('block_members')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error('[EduTree] blockMembers query error:', error);
+        throw error;
+      }
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] blockMembers fetched:', data?.length || 0);
+      }
       return data as BlockMember[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: gates = [] } = useQuery({
+  const { data: gates = [], error: gatesError } = useQuery({
     queryKey: ['block-gates'],
     queryFn: async () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Fetching block_gates...');
+      }
       const { data, error } = await supabase
         .from('block_gates')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error('[EduTree] gates query error:', error);
+        throw error;
+      }
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] gates fetched:', data?.length || 0);
+      }
       return data as BlockGate[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: gateEdges = [] } = useQuery({
+  const { data: gateEdges = [], error: gateEdgesError } = useQuery({
     queryKey: ['prereq-to-block'],
     queryFn: async () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] Fetching prereq_to_block...');
+      }
       const { data, error } = await supabase
         .from('prereq_to_block')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error('[EduTree] gateEdges query error:', error);
+        throw error;
+      }
+      
+      if (process.env.NODE_ENV !== "production") {
+        console.log('[EduTree] gateEdges fetched:', data?.length || 0);
+      }
       return data as GateEdge[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Transform data for React Flow with defensive programming
@@ -907,13 +967,23 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
+  // Check for query errors and throw them to be caught by error boundary
+  const queryError = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
+  if (queryError) {
+    console.error('[EduTree] Query error detected:', queryError);
+    throw queryError;
+  }
+
   // Phase 1: Loading state check - render skeleton until data arrives
-  if (!nodes || !edges || nodes.length === 0 || 
+  const isLoading = coursesLoading || blocksLoading;
+  if (isLoading || !nodes || !edges || nodes.length === 0 || 
       !blocks?.length || !courses?.length || 
       blocks.length === 0 || courses.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-sm opacity-70">Loading curriculum…</div>
+        <div className="text-sm opacity-70">
+          {isLoading ? 'Loading curriculum…' : 'Preparing education tree…'}
+        </div>
       </div>
     );
   }
