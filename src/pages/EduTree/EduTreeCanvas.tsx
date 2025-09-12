@@ -701,10 +701,17 @@ function EduTreeCanvasInner() {
 
   // Development audit logging with safety guards
   useEffect(() => {
-    if (!overlayFlag) return;
+    if (!overlayFlag || !primaryTrack) return;
     if (!highlightedElements.nodes?.length) return;
-    runTrackAudits(highlightedElements.nodes, highlightedElements.edges);
-  }, [overlayFlag, highlightedElements.nodes?.length, highlightedElements.edges?.length]);
+    
+    // Simple audit logging instead of runTrackAudits
+    console.log('[Track Audit]', {
+      totalNodes: highlightedElements.nodes.length,
+      totalEdges: highlightedElements.edges?.length || 0,
+      trackKey: currentTrackKey,
+      overlayFlag: overlayFlag
+    });
+  }, [overlayFlag, primaryTrack, highlightedElements.nodes?.length, highlightedElements.edges?.length, currentTrackKey]);
 
   // Dev hotkey: press 'T' to toggle Track Validator
   useEffect(() => {
