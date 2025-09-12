@@ -327,7 +327,7 @@ function EduTreeCanvasInner() {
   // Transform data for React Flow with comprehensive error handling
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     try {
-      console.log('Data check:', { 
+      console.log('[EduTree] Data transformation check:', { 
         blocksLength: blocks?.length || 0, 
         coursesLength: courses?.length || 0, 
         blockMembersLength: blockMembers?.length || 0,
@@ -335,19 +335,15 @@ function EduTreeCanvasInner() {
         gateEdgesLength: gateEdges?.length || 0 
       });
 
-      // Phase 1: Comprehensive null/undefined checks
+      // Phase 1: Hard data ready gate - don't proceed with empty data
       if (!blocks || !courses || !blockMembers || !gates || !gateEdges) {
-        if (process.env.NODE_ENV !== "production") {
-          console.log('[EduTree] Data arrays not initialized yet, returning empty graph');
-        }
+        console.log('[EduTree] Data arrays not initialized yet, returning empty graph');
         return { nodes: [], edges: [] };
       }
 
       // Phase 2: Length checks for meaningful data
       if (blocks.length === 0 || courses.length === 0) {
-        if (process.env.NODE_ENV !== "production") {
-          console.log('[EduTree] Data not ready yet, returning empty graph');
-        }
+        console.log('[EduTree] Data not ready yet, returning empty graph');
         return { nodes: [], edges: [] };
       }
 
@@ -599,38 +595,56 @@ function EduTreeCanvasInner() {
 
     const edges: Edge[] = [...regularEdges, ...degreeEdges];
 
-    if (DEV) {
+    // Normalize edge IDs at source to prevent overlay crashes
+    const normalizeEdgeId = (e: { id?: string; source: string; target: string }) =>
+      e.id && /^e-.+-.+$/.test(e.id) ? e.id : `e-${e.source}-${e.target}`;
+
+    const normalizedEdges = edges.map(e => ({ ...e, id: normalizeEdgeId(e) }));
+
+    if (process.env.NODE_ENV !== "production") {
       console.log('[EduTree] Generated elements:', { 
         nodeCount: nodes.length, 
-        edgeCount: edges.length,
+        edgeCount: normalizedEdges.length,
         firstNode: nodes[0],
-        firstEdge: edges[0],
+        firstEdge: normalizedEdges[0],
         regularEdges: regularEdges.length,
         degreeEdges: degreeEdges.length,
         nodeTypes: Object.keys(nodeTypes)
       });
     }
 
-    return { nodes, edges };
+    return { nodes, edges: normalizedEdges };
     } catch (error) {
       console.error('[EduTree] Error in data transformation:', error);
       // Return empty state on error to prevent crashes
       return { nodes: [], edges: [] };
     }
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
-  // Check for query errors and throw them to error boundary
+  // Check for query errors and throw them to error boundary with detailed logging
   const hasQueryErrors = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
   const isAnyLoading = coursesLoading || blocksLoading;
 
   if (hasQueryErrors) {
-    console.error('[EduTree] Query errors detected:', {
-      coursesError,
-      blocksError,
-      blockMembersError,
-      gatesError,
-      gateEdgesError
+    console.error('[EduTree] Detailed query error analysis:', {
+      coursesError: coursesError ? { message: coursesError.message, details: coursesError } : null,
+      blocksError: blocksError ? { message: blocksError.message, details: blocksError } : null,
+      blockMembersError: blockMembersError ? { message: blockMembersError.message, details: blockMembersError } : null,
+      gatesError: gatesError ? { message: gatesError.message, details: gatesError } : null,
+      gateEdgesError: gateEdgesError ? { message: gateEdgesError.message, details: gateEdgesError } : null,
     });
-    throw hasQueryErrors;
+    
+    // Create a comprehensive error message
+    const errorDetails = [
+      coursesError && `Courses: ${coursesError.message}`,
+      blocksError && `Blocks: ${blocksError.message}`,
+      blockMembersError && `Block Members: ${blockMembersError.message}`,
+      gatesError && `Gates: ${gatesError.message}`,
+      gateEdgesError && `Gate Edges: ${gateEdgesError.message}`,
+    ].filter(Boolean).join('; ');
+    
+    const comprehensiveError = new Error(`EduTree data loading failed: ${errorDetails}`);
+    comprehensiveError.name = 'EduTreeDataError';
+    throw comprehensiveError;
   }
 
   // Show loading state while data is being fetched
@@ -831,9 +845,14 @@ function EduTreeCanvasInner() {
     };
   }, [overlayFlag, primaryTrack, comparisonTrack, rfNodeIdByBlockId, baseEdges]);
 
+  // Add overlay ready bypass to prevent crashes
+  const overlayReady = !!(overlayFlag && primaryTrack) &&
+    (baseEdges?.length ?? 0) > 0 &&
+    (flowNodes?.length ?? 0) > 0;
+
   // Use stable overlay hook to handle race conditions with staggered edges
   const highlightedElements = useStableOverlay({
-    overlayOn: !!(overlayFlag && primaryTrack),
+    overlayOn: overlayReady, // Only turn on when graph exists
     baseNodes: Array.isArray(flowNodes) ? flowNodes : [],
     baseEdges: baseEdges ?? [],
     primaryEdgeIds: highlightSets.primaryEdgeIds,
@@ -1035,18 +1054,44 @@ function EduTreeCanvasInner() {
     throw queryError;
   }
 
-  // Phase 1: Loading state check - render skeleton until data arrives
+  // Phase 1: Hard data ready gate - don't mount ReactFlow until graph exists
+  const dataReady = Array.isArray(flowNodes) && flowNodes.length > 0 &&
+                   Array.isArray(flowEdges) && flowEdges.length > 0 &&
+                   Array.isArray(blocks) && blocks.length > 0 &&
+                   Array.isArray(courses) && courses.length > 0;
+
   const isLoading = coursesLoading || blocksLoading;
-  if (isLoading || !nodes || !edges || nodes.length === 0 || 
-      !blocks?.length || !courses?.length || 
-      blocks.length === 0 || courses.length === 0) {
+  
+  if (isLoading || !dataReady) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">
           {isLoading ? 'Loading curriculum…' : 'Preparing education tree…'}
         </div>
+        {process.env.NODE_ENV !== "production" && (
+          <div className="absolute bottom-4 right-4 text-xs opacity-50">
+            Debug: nodes={flowNodes?.length || 0}, edges={flowEdges?.length || 0}, 
+            blocks={blocks?.length || 0}, courses={courses?.length || 0}
+          </div>
+        )}
       </div>
     );
+  }
+
+  // Phase 2: Development sanity checks to catch issues early
+  if (process.env.NODE_ENV !== 'production') {
+    const badEdgeIds = (baseEdges ?? []).filter(e => !/^e-.+-.+$/.test(String(e.id)));
+    if (badEdgeIds.length) {
+      console.warn('[EduTree][ASSERT] Non-normalized edge IDs', badEdgeIds.slice(0, 5).map(e => e.id));
+    }
+    
+    if (overlayFlag && highlightSets?.primaryEdgeIds && highlightSets.primaryEdgeIds.size && (baseEdges?.length ?? 0) > 0) {
+      const graphEdges = new Set(baseEdges.map(e => e.id));
+      const missingPrimary = [...highlightSets.primaryEdgeIds].filter(id => !graphEdges.has(id));
+      if (missingPrimary.length) {
+        console.warn('[EduTree][ASSERT] Primary highlight edge IDs not in graph (first 5):', missingPrimary.slice(0, 5));
+      }
+    }
   }
 
   return (
