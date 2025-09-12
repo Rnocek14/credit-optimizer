@@ -617,7 +617,21 @@ function EduTreeCanvasInner() {
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
-    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    // Runtime diagnostics (no behavior change)
+    if (process.env.NODE_ENV !== 'production') {
+      const dbg = {
+        overlayFlag,
+        comparisonEnabled,
+        primaryTrackId: primaryTrack?.id,
+        comparisonTrackId: comparisonTrack?.id,
+        trackPrimaryBlocks: primaryTrack?.blockIds?.length ?? 0,
+        trackComparisonBlocks: comparisonTrack?.blockIds?.length ?? 0,
+        base: { nodes: flowNodes?.length ?? 0, edges: baseEdges?.length ?? 0 },
+      };
+      console.log('[MP Overlay][Inputs]', dbg);
+    }
+
+    const overlayOn = overlayFlag && !!primaryTrack; // comparison optional
     
     // Safe guards - ensure we have valid arrays
     const safeNodes = Array.isArray(nodes) ? nodes : [];
@@ -635,9 +649,34 @@ function EduTreeCanvasInner() {
         expected: sampleBlockIds.length ? expectEdgeIds(sampleBlockIds) : [],
         actualSample: safeEdges.slice(0, 5).map(e => e.id)
       });
+
+      // Check for non-normalized edge IDs
+      const bad = safeEdges.filter(e => !/^e-.+-.+$/.test(e.id));
+      if (bad.length) console.warn('[MP Overlay] Non-normalized edge IDs:', bad.slice(0, 5));
     }
 
     const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
+    
+    // Log track highlight sets
+    if (process.env.NODE_ENV !== 'production') {
+      const { primaryHighlights, comparisonHighlights, bothNodes, bothEdges,
+              primaryOnlyNodes, comparisonOnlyNodes, primaryOnlyEdges, comparisonOnlyEdges } = highlights;
+      console.log('[MP Overlay][Sets]', {
+        pNodes: primaryHighlights.nodes.size,
+        cNodes: comparisonHighlights.nodes.size,
+        bothNodes: bothNodes.size,
+        pOnlyNodes: primaryOnlyNodes.size,
+        cOnlyNodes: comparisonOnlyNodes.size,
+        pEdges: primaryHighlights.edges.size,
+        cEdges: comparisonHighlights.edges.size,
+        bothEdges: bothEdges.size,
+        pOnlyEdges: primaryOnlyEdges.size,
+        cOnlyEdges: comparisonOnlyEdges.size,
+        samplePNode: [...primaryHighlights.nodes].slice(0,5),
+        samplePEdge: [...primaryHighlights.edges].slice(0,5),
+        sampleBaseEdgeIds: safeEdges.slice(0,5).map(e => e.id),
+      });
+    }
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
     const highlightedNodes = safeNodes.map(node => {
@@ -691,10 +730,22 @@ function EduTreeCanvasInner() {
     return { nodes: highlightedNodes, edges: highlightedEdges };
   }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, baseEdges]);
 
+  // Add ReactFlow map probe (dev-only)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && overlayFlag && flowNodes.length > 0) {
+      const rfNodeIdByBlockId = new Map(flowNodes.map(n => [String(n.data?.blockId ?? n.id), n.id]));
+      console.log('[RF Map] size=', rfNodeIdByBlockId.size, 'sample=', [...rfNodeIdByBlockId.entries()].slice(0,5));
+      const missingP = (primaryTrack?.blockIds ?? []).filter(b => !rfNodeIdByBlockId.has(String(b)));
+      const missingC = (comparisonTrack?.blockIds ?? []).filter(b => !rfNodeIdByBlockId.has(String(b)));
+      if (missingP.length) console.warn('[MP Overlay] Missing primary nodes in RF map:', missingP);
+      if (missingC.length) console.warn('[MP Overlay] Missing comparison nodes in RF map:', missingC);
+    }
+  }, [overlayFlag, primaryTrack, comparisonTrack, flowNodes.length]);
+
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
   useEffect(() => {
-    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    const overlayOn = overlayFlag && !!primaryTrack;
     if (!reactFlowInstance || !overlayOn) { 
       didFitRef.current = false; 
       return; 
@@ -903,6 +954,18 @@ function EduTreeCanvasInner() {
       {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
         <div className="fixed bottom-20 right-4 text-xs bg-amber-50 border border-amber-300 text-amber-900 px-2 py-1 rounded z-50">
           Unknown track ID in URL. Using fallback.
+        </div>
+      )}
+
+      {/* Debug HUD (dev only) */}
+      {overlayFlag && process.env.NODE_ENV !== 'production' && (
+        <div style={{position:'fixed', right:12, bottom:12, zIndex:9999, padding:'10px 12px',
+                     background:'rgba(20,22,27,.85)', color:'#fff', fontSize:12, border:'1px solid #333', borderRadius:8}}>
+          <div style={{opacity:.85, marginBottom:4}}>MP Overlay Debug</div>
+          <div>primary: {primaryTrack?.id ?? '—'}</div>
+          <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
+          <div>base edges: {baseEdges?.length ?? 0}</div>
+          <div>base nodes: {flowNodes?.length ?? 0}</div>
         </div>
       )}
 
