@@ -132,6 +132,7 @@ import EduTree from "./pages/EduTree";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
+import TrackOverlayPOCPage from "../sandbox/TrackOverlayPOCPage";
 
 const queryClient = new QueryClient();
 
@@ -282,6 +283,8 @@ const App = () => {
               </EnhancedErrorBoundary>
             }
           />
+          {/* Sandbox route for TrackOverlayPOC (dev only) */}
+          <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
           <Route 
             path="/compare" 
             element={

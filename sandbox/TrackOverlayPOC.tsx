@@ -1,6 +1,6 @@
 // TrackOverlayPOC.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ReactFlow, { Background, Controls, Node, Edge, NodeTypes, ReactFlowInstance } from '@xyflow/react';
+import { ReactFlow, Background, Controls, Node, Edge, NodeTypes, ReactFlowInstance } from '@xyflow/react';
 
 export type TrackId = string;
 export interface TrackDefinition { id: TrackId; name: string; blockIds: string[]; }
@@ -106,12 +106,26 @@ export default function TrackOverlayPOC() {
   return (
     <div style={{ height: 420, position: 'relative' }}>
       <div style={{ position: 'absolute', zIndex: 5, display: 'flex', gap: 8, padding: 8 }}>
-        <select value={primary?.id ?? ''} onChange={(e) => setPrimary(TRACKS.find(t => t.id === e.target.value))}>
+        <select
+          value={primary?.id ?? ''}
+          onChange={(e) => setPrimary(TRACKS.find(t => t.id === e.target.value))}
+          data-testid="primary-track"
+        >
           {TRACKS.map(t => <option key={t.id} value={t.id}>{t.name} (primary)</option>)}
         </select>
-        <label><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enable comparison</label>
-        <select value={comparison?.id ?? ''} onChange={(e) => setComparison(TRACKS.find(t => t.id === e.target.value))} disabled={!enabled}>
-          {TRACKS.filter(t => t.id !== primary?.id).map(t => <option key={t.id} value={t.id}>{t.name} (comparison)</option>)}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          Enable comparison
+        </label>
+        <select
+          value={comparison?.id ?? ''}
+          onChange={(e) => setComparison(TRACKS.find(t => t.id === e.target.value))}
+          disabled={!enabled}
+          data-testid="comparison-track"
+        >
+          {TRACKS.filter(t => t.id !== primary?.id).map(t =>
+            <option key={t.id} value={t.id}>{t.name} (comparison)</option>
+          )}
         </select>
       </div>
 
