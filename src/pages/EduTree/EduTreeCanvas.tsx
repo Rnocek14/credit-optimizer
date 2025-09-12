@@ -776,9 +776,13 @@ function EduTreeCanvasInner() {
     };
 
     // ---- Phase B: compute highlight sets IN RF-ID SPACE ----
-    const toEdgeIds = (seq: string[]) => seq.slice(0, -1).map((s, i) => `e-${String(s)}-${String(seq[i + 1])}`);
+    const toEdgeIds = (seq: string[] | undefined | null): string[] => {
+      // Add comprehensive null guards
+      if (!seq || !Array.isArray(seq) || seq.length === 0) return [];
+      return seq.slice(0, -1).map((s, i) => `e-${String(s)}-${String(seq[i + 1])}`);
+    };
 
-    // 1) Track nodes in BLOCK space
+    // 1) Track nodes in BLOCK space - with defensive programming
     const pBlocks = new Set(primaryTrack?.blockIds?.map(String) ?? []);
     const cBlocks = new Set(comparisonTrack?.blockIds?.map(String) ?? []);
 
@@ -798,8 +802,9 @@ function EduTreeCanvasInner() {
     });
 
     // 3) Edges stay in block-id space (normalized as e-<block>-<block>)
-    const pEdgeIds = new Set(primaryTrack ? toEdgeIds(primaryTrack.blockIds) : []);
-    const cEdgeIds = new Set(comparisonTrack ? toEdgeIds(comparisonTrack.blockIds) : []);
+    // Safe edge ID generation with comprehensive null checks
+    const pEdgeIds = new Set(primaryTrack?.blockIds ? toEdgeIds(primaryTrack.blockIds) : []);
+    const cEdgeIds = new Set(comparisonTrack?.blockIds ? toEdgeIds(comparisonTrack.blockIds) : []);
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('[MP Overlay][Sets]', {
