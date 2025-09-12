@@ -28,7 +28,7 @@ export function TrackSelector({
 }: TrackSelectorProps) {
   const flags = useFeatureFlags();
 
-  if (!isVisible || !flags.eduTreeMultiPathOverlay) {
+  if (!isVisible) {
     return null;
   }
 
