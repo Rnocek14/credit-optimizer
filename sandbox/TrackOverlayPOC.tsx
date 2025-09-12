@@ -161,8 +161,13 @@ export default function TrackOverlayPOC() {
 
       <style>
       {`
-      .node-content { min-width: 64px; padding: 6px 8px; border: 2px solid #999; border-radius: 6px; background:#fff; font-size:12px; text-align:center; }
-      .degree-node { font-weight: 700; }
+      .node-content { min-width: 64px; padding: 6px 8px; border: 2px solid #999; border-radius: 6px; background:#fff; font-size:12px; text-align:center; color: #111 !important; }
+      .degree-node { font-weight: 700; color: #0b1020 !important; }
+      
+      /* Better edge hit-target and visibility on dark backgrounds */
+      .react-flow__edge .react-flow__edge-path {
+        pointer-events: stroke !important;
+      }
       
       /* Edge highlight modifiers - target the actual path */
       .react-flow__edge.edge--primary .react-flow__edge-path {
@@ -193,12 +198,18 @@ export default function TrackOverlayPOC() {
         filter: drop-shadow(0 0 6px rgba(111, 66, 193, 0.4)) !important;
       }
       
+      /* Dim edge: raise base gray + opacity slightly */
       .react-flow__edge.edge--dim .react-flow__edge-path {
-        stroke: #b9b9b9 !important;
+        stroke: #c8c8c8 !important;
         stroke-width: 2px !important;
-        opacity: 0.4 !important;
+        opacity: 0.55 !important;
         stroke-linecap: round !important;
         transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
+      }
+      
+      /* Optional hover affordance for edges */
+      .react-flow__edge:hover .react-flow__edge-path {
+        opacity: 0.9 !important;
       }
       
       .node--primary { border-color:#0969da; background:#e7f1ff; }
