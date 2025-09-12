@@ -547,6 +547,14 @@ function EduTreeCanvasInner() {
     const src = useStaggered ? visibleEdges : allEdges;
     return Array.isArray(src) ? src : [];
   }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, allEdges]);
+
+  // Edge ID normalization assert (dev only)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      const bad = (baseEdges ?? []).filter(e => !/^e-.+-.+$/.test(String(e.id)));
+      if (bad.length) console.warn('[MP Overlay][ASSERT] Non-normalized edge IDs', bad.slice(0,5));
+    }
+  }, [baseEdges]);
   
   // Removed competing edge source - ReactFlow now always renders highlightedElements.edges
   
@@ -632,6 +640,7 @@ function EduTreeCanvasInner() {
     if (process.env.NODE_ENV !== 'production' && overlayFlag && primaryTrack) {
       const first = primaryTrack.blockIds?.[0];
       console.log('[RF Map check] first primary block', first, '→ rfId:', first ? rfNodeIdByBlockId.get(String(first)) : null);
+      console.log('[RF Map check] overlay conditions:', { overlayFlag, hasPrimaryTrack: !!primaryTrack, rfMapSize: rfNodeIdByBlockId.size });
     }
   }, [overlayFlag, primaryTrack, rfNodeIdByBlockId]);
 
@@ -653,6 +662,8 @@ function EduTreeCanvasInner() {
     const overlayOn = !!(overlayFlag && primaryTrack);
     const safeNodes = Array.isArray(flowNodes) ? flowNodes : [];
     const safeEdges = baseEdges ?? [];
+
+    console.log('[MP Overlay][Debug] overlayOn=', overlayOn, 'safeNodes=', safeNodes.length, 'safeEdges=', safeEdges.length);
 
     if (!overlayOn) return { nodes: safeNodes, edges: safeEdges };
 
@@ -960,6 +971,7 @@ function EduTreeCanvasInner() {
           <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
           <div>base edges: {baseEdges?.length ?? 0}</div>
           <div>base nodes: {flowNodes?.length ?? 0}</div>
+          <div>overlay active: {overlayFlag && !!primaryTrack ? 'yes' : 'no'}</div>
         </div>
       )}
 
@@ -1125,18 +1137,7 @@ function EduTreeCanvasInner() {
             </div>
           )}
 
-          {/* Development debug HUD */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div style={{position:'fixed', right:12, bottom:12, zIndex:9999, padding:'10px 12px',
-                         background:'rgba(20,22,27,.85)', color:'#fff', fontSize:12, border:'1px solid #333', borderRadius:8}}>
-              <div style={{opacity:.85, marginBottom:4}}>MP Overlay Debug</div>
-              <div>primary: {primaryTrack?.id ?? '—'}</div> 
-              <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
-              <div>base edges: {baseEdges?.length ?? 0}</div>
-              <div>base nodes: {flowNodes?.length ?? 0}</div>
-              <div>overlay active: {overlayFlag && !!primaryTrack ? 'yes' : 'no'}</div>
-            </div>
-          )}
+          {/* Development debug HUD - remove duplicate */}
 
           {/* Fallback banner for unknown track IDs */}
           {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
