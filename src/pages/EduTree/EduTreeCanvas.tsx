@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   ReactFlow, 
   Node, 
@@ -41,6 +42,7 @@ import {
   PlanningLens 
 } from '@/lib/types/eduTree';
 import { toast } from '@/hooks/use-toast';
+import { trackTelemetryEvent } from '@/utils/telemetry';
 import { SeedDataButton } from './components/SeedDataButton';
 import { BlockGroup } from './components/BlockGroup';
 import { TerminalNode } from './components/TerminalNode';
@@ -73,10 +75,11 @@ function EduTreeCanvasInner() {
   console.log('[BOOT] EduTreeCanvas render start');
   
   const flags = useFeatureFlags();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Feature flag source with querystring fallback
-  const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const qsOverlay = search?.get('eduTreeMultiPathOverlay') === 'true';
+  const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
   const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
@@ -87,12 +90,25 @@ function EduTreeCanvasInner() {
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const layoutInProgressRef = useRef(false);
   
-  // Track comparison state
-  const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(
-    overlayFlag ? TRACK_DEFINITIONS[0] : undefined
-  );
-  const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>();
-  const [comparisonEnabled, setComparisonEnabled] = useState(false);
+  // Track comparison state - initialize from URL params
+  const getTrackFromId = (id: string | null) => 
+    id ? TRACK_DEFINITIONS.find(t => t.id === id) : undefined;
+  
+  const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(() => {
+    if (!overlayFlag) return undefined;
+    const primaryId = searchParams.get('primary');
+    return primaryId ? getTrackFromId(primaryId) : TRACK_DEFINITIONS[0];
+  });
+  
+  const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>(() => {
+    const comparisonId = searchParams.get('comparison');
+    return comparisonId ? getTrackFromId(comparisonId) : undefined;
+  });
+  
+  const [comparisonEnabled, setComparisonEnabled] = useState(() => {
+    return searchParams.get('cmp') === '1';
+  });
+  
   const [showTrackValidator, setShowTrackValidator] = useState(false);
   
   console.log('[DEBUG] EduTreeCanvasInner: Track comparison state initialized', { 
@@ -100,6 +116,48 @@ function EduTreeCanvasInner() {
     comparisonEnabled, 
     multiPathOverlayEnabled: flags.eduTreeMultiPathOverlay 
   });
+  
+  // URL persistence - update URL when track state changes
+  useEffect(() => {
+    if (!overlayFlag) return;
+    
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('eduTreeMultiPathOverlay', 'true');
+    
+    if (primaryTrack) {
+      newParams.set('primary', primaryTrack.id);
+    } else {
+      newParams.delete('primary');
+    }
+    
+    if (comparisonTrack && comparisonEnabled) {
+      newParams.set('comparison', comparisonTrack.id);
+      newParams.set('cmp', '1');
+    } else {
+      newParams.delete('comparison');
+      newParams.delete('cmp');
+    }
+    
+    // Only update if params actually changed
+    if (newParams.toString() !== searchParams.toString()) {
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [primaryTrack, comparisonTrack, comparisonEnabled, overlayFlag, searchParams, setSearchParams]);
+  
+  // Telemetry tracking for overlay activation
+  useEffect(() => {
+    if (overlayFlag && primaryTrack) {
+      trackTelemetryEvent({
+        task: 'edu_tree_multipath_overlay_activated',
+        route: '/edu-tree',
+        complexity: { 
+          primaryTrack: primaryTrack.id,
+          comparisonEnabled,
+          comparisonTrack: comparisonTrack?.id 
+        }
+      });
+    }
+  }, [overlayFlag, primaryTrack, comparisonEnabled, comparisonTrack]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
   // Modal state for course details
