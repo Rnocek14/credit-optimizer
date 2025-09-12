@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useStableOverlay } from '@/hooks/useStableOverlay';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
@@ -644,28 +645,15 @@ function EduTreeCanvasInner() {
     }
   }, [overlayFlag, primaryTrack, rfNodeIdByBlockId]);
 
-  // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
-  const highlightedElements = useMemo(() => {
-    // Runtime inputs (dev)
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[MP Overlay][Inputs]', {
-        overlayFlag,
-        comparisonEnabled,
-        primaryTrackId: primaryTrack?.id,
-        comparisonTrackId: comparisonTrack?.id,
-        base: { nodes: (flowNodes ?? []).length, edges: (baseEdges ?? []).length },
-        rfMapSize: rfNodeIdByBlockId.size,
-      });
-    }
-
-    // Overlay is active if flag + we have a primary track (comparison optional)
+  // Compute highlight sets for stable overlay hook
+  const highlightSets = useMemo(() => {
     const overlayOn = !!(overlayFlag && primaryTrack);
-    const safeNodes = Array.isArray(flowNodes) ? flowNodes : [];
-    const safeEdges = baseEdges ?? [];
-
-    console.log('[MP Overlay][Debug] overlayOn=', overlayOn, 'safeNodes=', safeNodes.length, 'safeEdges=', safeEdges.length);
-
-    if (!overlayOn) return { nodes: safeNodes, edges: safeEdges };
+    if (!overlayOn) return { 
+      primaryEdgeIds: new Set<string>(), 
+      comparisonEdgeIds: new Set<string>(),
+      primaryNodeIds: new Set<string>(), 
+      comparisonNodeIds: new Set<string>() 
+    };
 
     // ---- Phase B: compute highlight sets IN RF-ID SPACE ----
     const toEdgeIds = (seq: string[]) => seq.slice(0, -1).map((s, i) => `e-${String(s)}-${String(seq[i + 1])}`);
@@ -693,58 +681,43 @@ function EduTreeCanvasInner() {
     const pEdgeIds = new Set(primaryTrack ? toEdgeIds(primaryTrack.blockIds) : []);
     const cEdgeIds = new Set(comparisonTrack ? toEdgeIds(comparisonTrack.blockIds) : []);
 
-    // Intersections & exclusives (nodes = RF IDs, edges = normalized eid)
-    const bothNodeIdsRF = new Set([...pNodeIdsRF].filter(id => cNodeIdsRF.has(id)));
-    const bothEdgeIds   = new Set([...pEdgeIds].filter(id => cEdgeIds.has(id)));
-    const pOnlyNodeIdsRF = new Set([...pNodeIdsRF].filter(id => !bothNodeIdsRF.has(id)));
-    const cOnlyNodeIdsRF = new Set([...cNodeIdsRF].filter(id => !bothNodeIdsRF.has(id)));
-    const pOnlyEdgeIds   = new Set([...pEdgeIds].filter(id => !bothEdgeIds.has(id)));
-    const cOnlyEdgeIds   = new Set([...cEdgeIds].filter(id => !bothEdgeIds.has(id)));
-
     if (process.env.NODE_ENV !== 'production') {
       console.log('[MP Overlay][Sets]', {
         rfMapSize: rfNodeIdByBlockId.size,
         missingPrimaryBlocks: missingP,
         missingComparisonBlocks: missingC,
-        pNodesRF: pNodeIdsRF.size, cNodesRF: cNodeIdsRF.size, bothNodes: bothNodeIdsRF.size,
-        pEdges: pEdgeIds.size,     cEdges: cEdgeIds.size,     bothEdges: bothEdgeIds.size,
+        pNodesRF: pNodeIdsRF.size, cNodesRF: cNodeIdsRF.size,
+        pEdges: pEdgeIds.size,     cEdges: cEdgeIds.size,
         sampleRFMap: [...rfNodeIdByBlockId.entries()].slice(0, 5),
-        sampleBaseEdges: safeEdges.slice(0, 5).map(e => e.id),
+        sampleBaseEdges: (baseEdges ?? []).slice(0, 5).map(e => e.id),
       });
-    }
 
-    // ---- Phase C: attach classes against RF node IDs & normalized edge IDs ----
-    const highlightedNodes = safeNodes.map(node => {
-      const merged = [node.className, 'node'].filter(Boolean);
-      const idRF = String(node.id);
-      if (bothNodeIdsRF.has(idRF))        merged.push('node--both');
-      else if (pOnlyNodeIdsRF.has(idRF))  merged.push('node--primary');
-      else if (cOnlyNodeIdsRF.has(idRF))  merged.push('node--comparison');
-      else                                merged.push('node--dim');
-      return { ...node, className: merged.join(' ') };
-    });
-
-    const highlightedEdges = safeEdges.map(edge => {
-      const merged = [edge.className, 'edge'].filter(Boolean);
-      if (bothEdgeIds.has(edge.id))        merged.push('edge--both');
-      else if (pOnlyEdgeIds.has(edge.id))  merged.push('edge--primary');
-      else if (cOnlyEdgeIds.has(edge.id))  merged.push('edge--comparison');
-      else                                 merged.push('edge--dim');
-      return { ...edge, className: merged.join(' ') };
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
       // Hard assert: if we found 0 RF primary nodes but tracks are non-empty, you have ID mismatches
       if (primaryTrack?.blockIds?.length && pNodeIdsRF.size === 0) {
         console.warn('[MP Overlay][ASSERT] 0 primary RF nodes. Likely blockId ↔ node.id mismatch. See missingPrimaryBlocks above.');
       }
-      // Edge normalization sanity
-      const bad = highlightedEdges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
-      if (bad.length) console.warn('[MP Overlay] Non-normalized edge IDs detected (track overlay expects e-<block>-<block>):', bad.slice(0,5));
     }
 
-    return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, primaryTrack, comparisonTrack, comparisonEnabled, flowNodes, baseEdges, rfNodeIdByBlockId]);
+    return { 
+      primaryEdgeIds: pEdgeIds,
+      comparisonEdgeIds: cEdgeIds,
+      primaryNodeIds: pNodeIdsRF,
+      comparisonNodeIds: cNodeIdsRF
+    };
+  }, [overlayFlag, primaryTrack, comparisonTrack, rfNodeIdByBlockId, baseEdges]);
+
+  // Use stable overlay hook to handle race conditions with staggered edges
+  const highlightedElements = useStableOverlay({
+    overlayOn: !!(overlayFlag && primaryTrack),
+    baseNodes: Array.isArray(flowNodes) ? flowNodes : [],
+    baseEdges: baseEdges ?? [],
+    primaryEdgeIds: highlightSets.primaryEdgeIds,
+    comparisonEdgeIds: highlightSets.comparisonEdgeIds,
+    primaryNodeIds: highlightSets.primaryNodeIds,
+    comparisonNodeIds: highlightSets.comparisonNodeIds,
+    debounceMs: 100,
+    logPrefix: "[MP Overlay]",
+  }) as { nodes: Node[]; edges: Edge[] };
 
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
