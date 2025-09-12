@@ -52,6 +52,7 @@ import { trackBySlug, generateEdgeIds } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
+import { normalizeEdges } from './utils/edgeNormalization';
 
 const DEV = import.meta.env.DEV;
 
@@ -127,7 +128,7 @@ function EduTreeCanvasInner() {
   }
 
   if (dataError && !isSafeMode) {
-    return <EduTreeError error={dataError} onRetry={() => window.location.reload()} />;
+    return <EduTreeError error={dataError} />;
   }
 
   // Empty state (not an error):
@@ -147,12 +148,37 @@ function EduTreeCanvasInner() {
 
   // Transform data for React Flow (defensive)
   const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => {
-    // Use defensive transformer
-    return transformEducationData(
-      { blocks, courses, blockMembers, gates, gateEdges },
-      completedCourseIds,
-      flags
-    );
+    try {
+      // Use defensive transformer
+      const result = transformEducationData(
+        { blocks, courses, blockMembers, gates, gateEdges },
+        completedCourseIds,
+        flags
+      );
+      
+      // Normalize ALL edges right after build (GPT hotfix B)
+      const normalizedEdges = normalizeEdges(result.edges);
+      
+      console.log('[EduTree][Transform][Result]', { 
+        nodes: result.nodes.length, 
+        edges: normalizedEdges.length, 
+        flowNodes: result.nodes.length,
+        sampleEdgeId: normalizedEdges[0]?.id 
+      });
+      
+      return { 
+        ...result, 
+        edges: normalizedEdges 
+      };
+    } catch (error) {
+      console.error('[EduTree][Transform][Error]', error);
+      // Return safe fallback
+      return {
+        nodes: [],
+        edges: [],
+        blocksWithCourses: []
+      };
+    }
   }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -239,15 +265,18 @@ function EduTreeCanvasInner() {
     });
 
     const highlightedEdges = safeEdges.map(edge => {
+      // Defensive edge id normalization (GPT hotfix C)
+      const id = /^e-.+-.+$/.test(String(edge.id)) ? String(edge.id)
+                                                   : `e-${String(edge.source)}-${String(edge.target)}`;
       const merged = [edge.className, 'edge'].filter(Boolean);
       
-      if (primaryEdges.has(edge.id)) {
+      if (primaryEdges.has(id)) {
         merged.push('edge--primary');
       } else {
         merged.push('edge--dim');
       }
       
-      return { ...edge, className: merged.join(' ') };
+      return { ...edge, id, className: merged.join(' ') };
     });
 
     if (process.env.NODE_ENV === 'development') {
