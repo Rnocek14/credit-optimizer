@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useStableOverlay } from '@/hooks/useStableOverlay';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
@@ -58,7 +57,6 @@ import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './da
 import { LensSelector } from './components/LensSelector';
 import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
 import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
-import { preflightGraph, EduTreeDataError, getDiagnosticFlags, exposeDebugInfo } from '@/utils/eduTreePreflight';
 
 // Node types for React Flow
 const nodeTypes = {
@@ -76,21 +74,13 @@ type ViewMode = 'flow' | 'board';
 function EduTreeCanvasInner() {
   console.log('[BOOT] EduTreeCanvas render start');
   
-  // Diagnostic flags for crash isolation
-  const diagnostics = getDiagnosticFlags();
-  const { safeMode, noOverlay, noStagger, verboseLog } = diagnostics;
-  
-  if (verboseLog) {
-    console.log('[EduTree] Diagnostic flags:', diagnostics);
-  }
-  
   const flags = useFeatureFlags();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Feature flag source with querystring fallback (disabled in safe mode)
+  // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = !safeMode && !noOverlay && (flags.eduTreeMultiPathOverlay || qsOverlay);
+  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -101,33 +91,31 @@ function EduTreeCanvasInner() {
   const layoutInProgressRef = useRef(false);
   
   // Track comparison state - initialize from URL params
+  
+  // URL-to-ID normalization for track lookup
+  const ID_ALIASES: Record<string, string> = {
+    'software-engineering': 'se',
+    'data-science': 'ds', 
+    'cybersecurity': 'cy',
+  };
+  
+  const normalizeTrackId = (id: string | null) => 
+    id ? (ID_ALIASES[id] ?? id) : null;
+  
   const getTrackFromId = (id: string | null) => 
     id ? TRACK_DEFINITIONS.find(t => t.id === id) : undefined;
   
   const [primaryTrack, setPrimaryTrack] = useState<TrackDefinition | undefined>(() => {
     if (!overlayFlag) return undefined;
     const raw = searchParams.get('primary');
-    const resolved = getTrackFromId(raw);
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[Track Resolution]', {
-        rawPrimary: raw,
-        resolvedPrimaryId: resolved?.id,
-        available: TRACK_DEFINITIONS.map(t => t.id)
-      });
-    }
-    return resolved ?? TRACK_DEFINITIONS[0];
+    const normalized = normalizeTrackId(raw);
+    return normalized ? getTrackFromId(normalized) : TRACK_DEFINITIONS[0];
   });
   
   const [comparisonTrack, setComparisonTrack] = useState<TrackDefinition | undefined>(() => {
     const raw = searchParams.get('comparison');
-    const resolved = getTrackFromId(raw);
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[Track Resolution]', {
-        rawComparison: raw,
-        resolvedComparisonId: resolved?.id
-      });
-    }
-    return resolved ?? undefined;
+    const normalized = normalizeTrackId(raw);
+    return normalized ? getTrackFromId(normalized) : undefined;
   });
   
   const [comparisonEnabled, setComparisonEnabled] = useState(() => {
@@ -208,224 +196,89 @@ function EduTreeCanvasInner() {
     setSelectedCourse(null);
   }, []);
   
-  // Fetch data from Supabase with proper error handling
-  const { data: courses = [], error: coursesError, isLoading: coursesLoading } = useQuery({
+  // Fetch data from Supabase
+  const { data: courses = [] } = useQuery({
     queryKey: ['edu-courses'],
     queryFn: async () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Fetching edu_courses...');
-      }
       const { data, error } = await supabase
         .from('edu_courses')
         .select('*')
         .order('level_year', { ascending: true })
         .order('code', { ascending: true });
       
-      if (error) {
-        console.error('[EduTree] courses query error:', error);
-        throw error;
-      }
-      
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] courses fetched:', data?.length || 0);
-      }
+      if (error) throw error;
       return data as EduCourse[];
     },
-    retry: 3,
-    retryDelay: 1000,
   });
 
-  const { data: blocks = [], error: blocksError, isLoading: blocksLoading } = useQuery({
+  const { data: blocks = [] } = useQuery({
     queryKey: ['requirement-blocks'],
     queryFn: async () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Fetching requirement_blocks...');
-      }
       const { data, error } = await supabase
         .from('requirement_blocks')
         .select('*')
         .order('level_year', { ascending: true })
         .order('title', { ascending: true });
       
-      if (error) {
-        console.error('[EduTree] blocks query error:', error);
-        throw error;
-      }
-      
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] blocks fetched:', data?.length || 0);
-      }
+      if (error) throw error;
       return data as RequirementBlock[];
     },
-    retry: 3,
-    retryDelay: 1000,
   });
 
-  const { data: blockMembers = [], error: blockMembersError } = useQuery({
+  const { data: blockMembers = [] } = useQuery({
     queryKey: ['block-members'],
     queryFn: async () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Fetching block_members...');
-      }
       const { data, error } = await supabase
         .from('block_members')
         .select('*');
       
-      if (error) {
-        console.error('[EduTree] blockMembers query error:', error);
-        throw error;
-      }
-      
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] blockMembers fetched:', data?.length || 0);
-      }
+      if (error) throw error;
       return data as BlockMember[];
     },
-    retry: 3,
-    retryDelay: 1000,
   });
 
-  const { data: gates = [], error: gatesError } = useQuery({
+  const { data: gates = [] } = useQuery({
     queryKey: ['block-gates'],
     queryFn: async () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Fetching block_gates...');
-      }
       const { data, error } = await supabase
         .from('block_gates')
         .select('*');
       
-      if (error) {
-        console.error('[EduTree] gates query error:', error);
-        throw error;
-      }
-      
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] gates fetched:', data?.length || 0);
-      }
+      if (error) throw error;
       return data as BlockGate[];
     },
-    retry: 3,
-    retryDelay: 1000,
   });
 
-  const { data: gateEdges = [], error: gateEdgesError } = useQuery({
+  const { data: gateEdges = [] } = useQuery({
     queryKey: ['prereq-to-block'],
     queryFn: async () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] Fetching prereq_to_block...');
-      }
       const { data, error } = await supabase
         .from('prereq_to_block')
         .select('*');
       
-      if (error) {
-        console.error('[EduTree] gateEdges query error:', error);
-        throw error;
-      }
-      
-      if (process.env.NODE_ENV !== "production") {
-        console.log('[EduTree] gateEdges fetched:', data?.length || 0);
-      }
+      if (error) throw error;
       return data as GateEdge[];
     },
-    retry: 3,
-    retryDelay: 1000,
   });
 
-  // Transform data for React Flow with bulletproof preflight validation
+  // Transform data for React Flow
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    try {
-      console.log('[EduTree] Data transformation check:', { 
-        blocksLength: blocks?.length || 0, 
-        coursesLength: courses?.length || 0, 
-        blockMembersLength: blockMembers?.length || 0,
-        gatesLength: gates?.length || 0,
-        gateEdgesLength: gateEdges?.length || 0,
-        safeMode,
-        diagnostics
-      });
+    console.log('Data check:', { 
+      blocksLength: blocks.length, 
+      coursesLength: courses.length, 
+      blockMembersLength: blockMembers.length,
+      gatesLength: gates.length,
+      gateEdgesLength: gateEdges.length 
+    });
 
-      // Phase 1: Quick presence checks
-      if (!blocks || !courses || !blockMembers || !gates || !gateEdges) {
-        console.log('[EduTree] Data arrays not initialized yet, returning empty graph');
-        return { nodes: [], edges: [] };
-      }
-
-      // Phase 2: Length checks for meaningful data
-      if (blocks.length === 0 || courses.length === 0) {
-        console.log('[EduTree] Data not ready yet, returning empty graph');
-        return { nodes: [], edges: [] };
-      }
-
-      // Phase 3: Build raw nodes/edges from domain data (existing logic)
-      const rawData = buildReactFlowFromDomainData({
-        blocks, courses, blockMembers, gates, gateEdges, 
-        completedCourseIds, viewMode, flags, handleCourseClick, highlightedPath
-      });
-
-      // Phase 4: BULLETPROOF PREFLIGHT - sanitize and validate before ReactFlow
-      const { nodes, edges } = preflightGraph(rawData.nodes, rawData.edges, nodeTypes);
-
-      // Phase 5: Apply stagger logic (skip in safe mode)
-      const finalEdges = safeMode || noStagger ? edges : edges; // TODO: apply stagger batches here
-
-      if (verboseLog || process.env.NODE_ENV !== 'production') {
-        console.log('[EduTree] Post-preflight:', { 
-          rawNodes: rawData.nodes.length,
-          rawEdges: rawData.edges.length, 
-          sanitizedNodes: nodes.length, 
-          sanitizedEdges: edges.length,
-          finalEdges: finalEdges.length,
-          safeMode 
-        });
-      }
-
-      // Phase 6: Expose debug info for testing
-      exposeDebugInfo(nodes.length, finalEdges.length, { 
-        safeMode, 
-        overlayFlag,
-        trackId: primaryTrack?.id 
-      });
-
-      return { nodes, edges: finalEdges };
-      
-    } catch (error) {
-      console.error('[EduTree] Transform crash - detailed analysis:', error);
-      
-      // Bubble useful error types to boundary, wrap others
-      if (error instanceof EduTreeDataError) {
-        throw error;
-      } else {
-        throw new EduTreeDataError(`Graph transformation failed: ${error?.message || 'Unknown error'}`);
-      }
+    if (!blocks.length || !courses.length) {
+      return { nodes: [], edges: [] };
     }
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2, 
-      handleCourseClick, highlightedPath, safeMode, noStagger, verboseLog, primaryTrack?.id]);
 
-// Helper function to build raw ReactFlow data from domain data  
-function buildReactFlowFromDomainData({
-  blocks, courses, blockMembers, gates, gateEdges,
-  completedCourseIds, viewMode, flags, handleCourseClick, highlightedPath
-}: {
-  blocks: RequirementBlock[];
-  courses: EduCourse[];
-  blockMembers: BlockMember[];  
-  gates: BlockGate[];
-  gateEdges: GateEdge[];
-  completedCourseIds: Set<string>;
-  viewMode: ViewMode;
-  flags: any;
-  handleCourseClick: (course: EduCourse) => void;
-  highlightedPath: { nodes: Set<string>, edges: Set<string> } | null;
-}): { nodes: Node[]; edges: Edge[] } {
-
-  // Safe data processing with null guards
-  const coursesByBlock = new Map<string, EduCourse[]>();
-  if (blockMembers && Array.isArray(blockMembers)) {
+    // Group courses by block
+    const coursesByBlock = new Map<string, EduCourse[]>();
     blockMembers.forEach(member => {
-      if (!member || !member.course_id || !member.block_id) return;
-      const course = courses.find(c => c && c.id === member.course_id);
+      const course = courses.find(c => c.id === member.course_id);
       if (course) {
         if (!coursesByBlock.has(member.block_id)) {
           coursesByBlock.set(member.block_id, []);
@@ -433,72 +286,57 @@ function buildReactFlowFromDomainData({
         coursesByBlock.get(member.block_id)!.push(course);
       }
     });
-  }
 
-      // Create block nodes with courses
-      const blocksWithCourses: BlockWithCourses[] = blocks
-        .filter(block => block && block.id) // Filter out invalid blocks
-        .map(block => ({
-          ...block,
-          courses: coursesByBlock.get(block.id) || [],
-          gate: gates && Array.isArray(gates) ? gates.find(g => g && g.block_id === block.id) : undefined
-        }));
+    // Create block nodes with courses
+    const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
+      ...block,
+      courses: coursesByBlock.get(block.id) || [],
+      gate: gates.find(g => g.block_id === block.id)
+    }));
 
-      // Separate parent blocks from child blocks
-      const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
-      const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
-      
-      // Group child blocks by parent
-      const childBlocksByParent = new Map<string, BlockWithCourses[]>();
-      if (Array.isArray(childBlocks)) {
-        childBlocks.forEach(child => {
-          if (!child || !child.parent_block_id) return;
-          if (!childBlocksByParent.has(child.parent_block_id)) {
-            childBlocksByParent.set(child.parent_block_id, []);
-          }
-          childBlocksByParent.get(child.parent_block_id)!.push(child);
-        });
+    // Separate parent blocks from child blocks
+    const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
+    const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
+    
+    // Group child blocks by parent
+    const childBlocksByParent = new Map<string, BlockWithCourses[]>();
+    childBlocks.forEach(child => {
+      if (!childBlocksByParent.has(child.parent_block_id!)) {
+        childBlocksByParent.set(child.parent_block_id!, []);
       }
+      childBlocksByParent.get(child.parent_block_id!)!.push(child);
+    });
 
-      // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
-      const safeGateEdges = gateEdges && Array.isArray(gateEdges) ? gateEdges : [];
-      const sortedBlocks = flags.eduTreeLayoutV2 ? 
-        sortBlocksForLayout(parentBlocks, safeGateEdges) : 
-        parentBlocks;
+    // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
+    const sortedBlocks = flags.eduTreeLayoutV2 ? 
+      sortBlocksForLayout(parentBlocks, gateEdges) : 
+      parentBlocks;
 
-      // Calculate which blocks are unlocked
-      const unlockedBlocks = new Set<string>();
-      
-      // Find blocks with no prerequisites (starting blocks)
-      const blocksWithPrereqs = new Set(
-        safeGateEdges
-          .filter(edge => edge && edge.target_block_id)
-          .map(edge => edge.target_block_id)
-      );
-      if (Array.isArray(sortedBlocks)) {
-        sortedBlocks.forEach(block => {
-          if (!block || !block.id) return;
-          if (!blocksWithPrereqs.has(block.id)) {
-            unlockedBlocks.add(block.id);
-          }
-        });
+    // Calculate which blocks are unlocked
+    const unlockedBlocks = new Set<string>();
+    
+    // Find blocks with no prerequisites (starting blocks)
+    const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
+    sortedBlocks.forEach(block => {
+      if (!blocksWithPrereqs.has(block.id)) {
+        unlockedBlocks.add(block.id);
       }
+    });
 
-      // Unlock blocks whose prerequisites are complete
-      let changed = true;
-      while (changed) {
-        changed = false;
-        safeGateEdges.forEach(edge => {
-          if (!edge || !edge.target_block_id || !edge.source_gate_id) return;
-          if (unlockedBlocks.has(edge.target_block_id)) return;
-          
-          const sourceBlock = sortedBlocks.find(b => b && b.gate?.id === edge.source_gate_id);
-          if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses || [], completedCourseIds)) {
-            unlockedBlocks.add(edge.target_block_id);
-            changed = true;
-          }
-        });
-      }
+    // Unlock blocks whose prerequisites are complete
+    let changed = true;
+    while (changed) {
+      changed = false;
+      gateEdges.forEach(edge => {
+        if (unlockedBlocks.has(edge.target_block_id)) return;
+        
+        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
+        if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
+          unlockedBlocks.add(edge.target_block_id);
+          changed = true;
+        }
+      });
+    }
 
     const regularNodes: Node[] = sortedBlocks
       .map((block, index) => {
@@ -540,7 +378,7 @@ function buildReactFlowFromDomainData({
           }
         };
       })
-        .filter(Boolean) as Node[]; // Remove any null nodes
+      .filter(Boolean) as Node[]; // Remove any null nodes
 
     // Add degree completion node
     const capstoneBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('capstone'));
@@ -591,7 +429,7 @@ function buildReactFlowFromDomainData({
 
     const nodes: Node[] = [...regularNodes, degreeNode];
 
-    // Create React Flow edges (only between blocks) with normalized edge IDs
+    // Create React Flow edges (only between blocks)
     const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
       const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
       const source = sourceBlock?.id ? String(sourceBlock.id) : null;
@@ -599,11 +437,8 @@ function buildReactFlowFromDomainData({
       
       const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
       
-      // Use normalized edge ID format for track comparison compatibility
-      const normalizedId = source ? `e-${source}-${target}` : String(gateEdge.id);
-      
       return source ? {
-        id: normalizedId,
+        id: String(gateEdge.id),
         source,
         target,
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -625,9 +460,9 @@ function buildReactFlowFromDomainData({
     // Add edges to degree completion node
     const degreeEdges: Edge[] = [];
     if (viewMode === 'flow' && capstoneBlock && architectureBlock) {
-      // Edge from Capstone to Degree (normalized ID)
+      // Edge from Capstone to Degree
       degreeEdges.push({
-        id: `e-${capstoneBlock.id}-degree-completion`,
+        id: 'capstone-to-degree',
         source: String(capstoneBlock.id),
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -645,9 +480,9 @@ function buildReactFlowFromDomainData({
         }),
       });
 
-      // Edge from Architecture to Degree (normalized ID)
+      // Edge from Architecture to Degree  
       degreeEdges.push({
-        id: `e-${architectureBlock.id}-degree-completion`,
+        id: 'architecture-to-degree',
         source: String(architectureBlock.id),
         target: 'degree-completion',
         type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
@@ -668,65 +503,21 @@ function buildReactFlowFromDomainData({
 
     const edges: Edge[] = [...regularEdges, ...degreeEdges];
 
-    // Normalize edge IDs at source to prevent overlay crashes
-    const normalizeEdgeId = (e: { id?: string; source: string; target: string }) =>
-      e.id && /^e-.+-.+$/.test(e.id) ? e.id : `e-${e.source}-${e.target}`;
-
-    const normalizedEdges = edges.map(e => ({ ...e, id: normalizeEdgeId(e) }));
-
-    if (process.env.NODE_ENV !== "production") {
+    if (DEV) {
       console.log('[EduTree] Generated elements:', { 
         nodeCount: nodes.length, 
-        edgeCount: normalizedEdges.length,
+        edgeCount: edges.length,
         firstNode: nodes[0],
-        firstEdge: normalizedEdges[0],
+        firstEdge: edges[0],
         regularEdges: regularEdges.length,
         degreeEdges: degreeEdges.length,
         nodeTypes: Object.keys(nodeTypes)
       });
     }
 
-    return { nodes, edges: normalizedEdges };
-}
-  
-  // Check for query errors and throw them to error boundary with detailed logging
-  const hasQueryErrors = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
-  const isAnyLoading = coursesLoading || blocksLoading;
-
-  if (hasQueryErrors) {
-    console.error('[EduTree] Detailed query error analysis:', {
-      coursesError: coursesError ? { message: coursesError.message, details: coursesError } : null,
-      blocksError: blocksError ? { message: blocksError.message, details: blocksError } : null,
-      blockMembersError: blockMembersError ? { message: blockMembersError.message, details: blockMembersError } : null,
-      gatesError: gatesError ? { message: gatesError.message, details: gatesError } : null,
-      gateEdgesError: gateEdgesError ? { message: gateEdgesError.message, details: gateEdgesError } : null,
-    });
-    
-    // Create a comprehensive error message
-    const errorDetails = [
-      coursesError && `Courses: ${coursesError.message}`,
-      blocksError && `Blocks: ${blocksError.message}`,
-      blockMembersError && `Block Members: ${blockMembersError.message}`,
-      gatesError && `Gates: ${gatesError.message}`,
-      gateEdgesError && `Gate Edges: ${gateEdgesError.message}`,
-    ].filter(Boolean).join('; ');
-    
-    const comprehensiveError = new Error(`EduTree data loading failed: ${errorDetails}`);
-    comprehensiveError.name = 'EduTreeDataError';
-    throw comprehensiveError;
-  }
-
-  // Show loading state while data is being fetched
-  if (isAnyLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-muted-foreground">Loading education tree...</p>
-        </div>
-      </div>
-    );
-  }
+    return { nodes, edges };
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
+  // REMOVED highlightedPath dependency to prevent infinite loop
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -751,14 +542,6 @@ function buildReactFlowFromDomainData({
     const src = useStaggered ? visibleEdges : allEdges;
     return Array.isArray(src) ? src : [];
   }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, allEdges]);
-
-  // Edge ID normalization assert (dev only)
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      const bad = (baseEdges ?? []).filter(e => !/^e-.+-.+$/.test(String(e.id)));
-      if (bad.length) console.warn('[MP Overlay][ASSERT] Non-normalized edge IDs', bad.slice(0,5));
-    }
-  }, [baseEdges]);
   
   // Removed competing edge source - ReactFlow now always renders highlightedElements.edges
   
@@ -781,7 +564,7 @@ function buildReactFlowFromDomainData({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
-  // Apply layout when nodes are available (always run layout, even in overlay mode)
+  // Apply layout when nodes are available (allow regular layout even in overlay mode)
   useEffect(() => {
     if (flowNodes.length > 0) {
       const applyLayout = async () => {
@@ -828,115 +611,78 @@ function buildReactFlowFromDomainData({
       
       applyLayout();
     }
-  }, [flowNodes.length, viewMode, flags.eduTreeStaggeredEdgesV2]); // Include all dependencies that affect layout
+  }, [flowNodes.length]); // Run layout whenever flowNodes change
 
-  // Phase A: Build rfNodeIdByBlockId from rendered nodes (stable across toggles)
-  const rfNodeIdByBlockId = useMemo(() => {
-    // Accept nodes that carry either data.blockId or fallback to id
-    // Always coerce to strings for matching
-    return new Map(
-      (flowNodes ?? []).map(n => [String(n.data?.blockId ?? n.id), String(n.id)])
-    );
-  }, [flowNodes]);
-
-  // Optional pinpoint log (dev-only)
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && overlayFlag && primaryTrack) {
-      const first = primaryTrack.blockIds?.[0];
-      console.log('[RF Map check] first primary block', first, '→ rfId:', first ? rfNodeIdByBlockId.get(String(first)) : null);
-      console.log('[RF Map check] overlay conditions:', { overlayFlag, hasPrimaryTrack: !!primaryTrack, rfMapSize: rfNodeIdByBlockId.size });
+  // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
+  const highlightedElements = useMemo(() => {
+    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
+    
+    // Safe guards - ensure we have valid arrays
+    const safeNodes = Array.isArray(nodes) ? nodes : [];
+    const safeEdges = baseEdges; // <-- unified source
+    
+    if (!overlayOn) {
+      return { nodes: safeNodes, edges: safeEdges };
     }
-  }, [overlayFlag, primaryTrack, rfNodeIdByBlockId]);
 
-  // Compute highlight sets for stable overlay hook
-  const highlightSets = useMemo(() => {
-    const overlayOn = !!(overlayFlag && primaryTrack);
-    if (!overlayOn) return { 
-      primaryEdgeIds: new Set<string>(), 
-      comparisonEdgeIds: new Set<string>(),
-      primaryNodeIds: new Set<string>(), 
-      comparisonNodeIds: new Set<string>() 
-    };
-
-    // ---- Phase B: compute highlight sets IN RF-ID SPACE ----
-    const toEdgeIds = (seq: string[] | undefined | null): string[] => {
-      // Add comprehensive null guards
-      if (!seq || !Array.isArray(seq) || seq.length === 0) return [];
-      return seq.slice(0, -1).map((s, i) => `e-${String(s)}-${String(seq[i + 1])}`);
-    };
-
-    // 1) Track nodes in BLOCK space - with defensive programming
-    const pBlocks = new Set(primaryTrack?.blockIds?.map(String) ?? []);
-    const cBlocks = new Set(comparisonTrack?.blockIds?.map(String) ?? []);
-
-    // 2) Map BLOCK → RF node.id, dropping any that don't exist in the graph
-    const pNodeIdsRF = new Set<string>();
-    const cNodeIdsRF = new Set<string>();
-    const missingP: string[] = [];
-    const missingC: string[] = [];
-
-    pBlocks.forEach(b => {
-      const rf = rfNodeIdByBlockId.get(String(b));
-      rf ? pNodeIdsRF.add(rf) : missingP.push(String(b));
-    });
-    cBlocks.forEach(b => {
-      const rf = rfNodeIdByBlockId.get(String(b));
-      rf ? cNodeIdsRF.add(rf) : missingC.push(String(b));
-    });
-
-    // 3) Edges stay in block-id space (normalized as e-<block>-<block>)
-    // Safe edge ID generation with comprehensive null checks
-    const pEdgeIds = new Set(primaryTrack?.blockIds ? toEdgeIds(primaryTrack.blockIds) : []);
-    const cEdgeIds = new Set(comparisonTrack?.blockIds ? toEdgeIds(comparisonTrack.blockIds) : []);
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[MP Overlay][Sets]', {
-        rfMapSize: rfNodeIdByBlockId.size,
-        missingPrimaryBlocks: missingP,
-        missingComparisonBlocks: missingC,
-        pNodesRF: pNodeIdsRF.size, cNodesRF: cNodeIdsRF.size,
-        pEdges: pEdgeIds.size,     cEdges: cEdgeIds.size,
-        sampleRFMap: [...rfNodeIdByBlockId.entries()].slice(0, 5),
-        sampleBaseEdges: (baseEdges ?? []).slice(0, 5).map(e => e.id),
-      });
-
-      // Hard assert: if we found 0 RF primary nodes but tracks are non-empty, you have ID mismatches
-      if (primaryTrack?.blockIds?.length && pNodeIdsRF.size === 0) {
-        console.warn('[MP Overlay][ASSERT] 0 primary RF nodes. Likely blockId ↔ node.id mismatch. See missingPrimaryBlocks above.');
+    const highlights = computeTrackHighlights(primaryTrack, comparisonTrack);
+    
+    // Phase C: Apply CSS classes based on track membership (merge with existing classes)
+    const highlightedNodes = safeNodes.map(node => {
+      const blockId = String(node.data?.blockId ?? node.id);
+      const merged = [node.className, 'node'].filter(Boolean);
+      
+      if (highlights.bothNodes.has(blockId)) {
+        merged.push('node--both');
+      } else if (highlights.primaryOnlyNodes.has(blockId)) {
+        merged.push('node--primary');
+      } else if (highlights.comparisonOnlyNodes.has(blockId)) {
+        merged.push('node--comparison');
+      } else {
+        merged.push('node--dim');
       }
+      
+      return { ...node, className: merged.join(' ') };
+    });
+
+    const highlightedEdges = safeEdges.map(edge => {
+      const merged = [edge.className, 'edge'].filter(Boolean);
+      
+      if (highlights.bothEdges.has(edge.id)) {
+        merged.push('edge--both');
+      } else if (highlights.primaryOnlyEdges.has(edge.id)) {
+        merged.push('edge--primary');
+      } else if (highlights.comparisonOnlyEdges.has(edge.id)) {
+        merged.push('edge--comparison');
+      } else {
+        merged.push('edge--dim');
+      }
+      
+      return { ...edge, className: merged.join(' ') };
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Edges] base=', safeEdges.length, 'highlighted=', highlightedEdges.length);
+      
+      // 1) Assert: Visible edges must always carry one highlight class
+      const ok = highlightedEdges.every(e =>
+        /\bedge(--primary|--comparison|--both|--dim)\b/.test(e.className || '')
+      );
+      if (!ok) console.warn('[Assert] Some visible edges lack highlight classes');
+      
+      // 2) Edge endpoint sanity during reveal
+      highlightedEdges.forEach(e => {
+        if (!e.source || !e.target) console.warn('[Edge missing endpoints]', e.id, e);
+      });
     }
 
-    return { 
-      primaryEdgeIds: pEdgeIds,
-      comparisonEdgeIds: cEdgeIds,
-      primaryNodeIds: pNodeIdsRF,
-      comparisonNodeIds: cNodeIdsRF
-    };
-  }, [overlayFlag, primaryTrack, comparisonTrack, rfNodeIdByBlockId, baseEdges]);
-
-  // Add overlay ready bypass to prevent crashes (disabled in safe mode)
-  const overlayReady = !safeMode && !!(overlayFlag && primaryTrack) &&
-    (baseEdges?.length ?? 0) > 0 &&
-    (flowNodes?.length ?? 0) > 0;
-
-  // Use stable overlay hook to handle race conditions with staggered edges
-  const highlightedElements = useStableOverlay({
-    overlayOn: overlayReady, // Only turn on when graph exists and not in safe mode
-    baseNodes: Array.isArray(flowNodes) ? flowNodes : [],
-    baseEdges: baseEdges ?? [],
-    primaryEdgeIds: highlightSets.primaryEdgeIds,
-    comparisonEdgeIds: highlightSets.comparisonEdgeIds,
-    primaryNodeIds: highlightSets.primaryNodeIds,
-    comparisonNodeIds: highlightSets.comparisonNodeIds,
-    debounceMs: 100,
-    logPrefix: "[MP Overlay]",
-  }) as { nodes: Node[]; edges: Edge[] };
-
+    return { nodes: highlightedNodes, edges: highlightedEdges };
+  }, [overlayFlag, comparisonEnabled, primaryTrack, comparisonTrack, nodes, baseEdges]);
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
   useEffect(() => {
-    const overlayOn = overlayFlag && !!primaryTrack;
+    const overlayOn = overlayFlag && comparisonEnabled && primaryTrack;
     if (!reactFlowInstance || !overlayOn) { 
       didFitRef.current = false; 
       return; 
@@ -1116,51 +862,13 @@ function buildReactFlowFromDomainData({
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Check for query errors and throw them to be caught by error boundary
-  const queryError = coursesError || blocksError || blockMembersError || gatesError || gateEdgesError;
-  if (queryError) {
-    console.error('[EduTree] Query error detected:', queryError);
-    throw queryError;
-  }
-
-  // Phase 1: Hard data ready gate - don't mount ReactFlow until graph exists
-  const dataReady = Array.isArray(flowNodes) && flowNodes.length > 0 &&
-                   Array.isArray(flowEdges) && flowEdges.length > 0 &&
-                   Array.isArray(blocks) && blocks.length > 0 &&
-                   Array.isArray(courses) && courses.length > 0;
-
-  const isLoading = coursesLoading || blocksLoading;
-  
-  if (isLoading || !dataReady) {
+  // Loading state check - render skeleton until data arrives
+  if (!nodes || !edges) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-sm opacity-70">
-          {isLoading ? 'Loading curriculum…' : 'Preparing education tree…'}
-        </div>
-        {process.env.NODE_ENV !== "production" && (
-          <div className="absolute bottom-4 right-4 text-xs opacity-50">
-            Debug: nodes={flowNodes?.length || 0}, edges={flowEdges?.length || 0}, 
-            blocks={blocks?.length || 0}, courses={courses?.length || 0}
-          </div>
-        )}
+        <div className="text-sm opacity-70">Loading curriculum…</div>
       </div>
     );
-  }
-
-  // Phase 2: Development sanity checks to catch issues early
-  if (process.env.NODE_ENV !== 'production') {
-    const badEdgeIds = (baseEdges ?? []).filter(e => !/^e-.+-.+$/.test(String(e.id)));
-    if (badEdgeIds.length) {
-      console.warn('[EduTree][ASSERT] Non-normalized edge IDs', badEdgeIds.slice(0, 5).map(e => e.id));
-    }
-    
-    if (overlayFlag && highlightSets?.primaryEdgeIds && highlightSets.primaryEdgeIds.size && (baseEdges?.length ?? 0) > 0) {
-      const graphEdges = new Set(baseEdges.map(e => e.id));
-      const missingPrimary = [...highlightSets.primaryEdgeIds].filter(id => !graphEdges.has(id));
-      if (missingPrimary.length) {
-        console.warn('[EduTree][ASSERT] Primary highlight edge IDs not in graph (first 5):', missingPrimary.slice(0, 5));
-      }
-    }
   }
 
   return (
@@ -1177,32 +885,6 @@ function buildReactFlowFromDomainData({
           planIssues={outcomeSummary.issues}
           selectedLens={selectedLens}
         />
-      )}
-
-      {/* Track Resolution Fallback Banner */}
-      {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
-        <div className="fixed bottom-20 right-4 text-xs bg-amber-50 border border-amber-300 text-amber-900 px-2 py-1 rounded z-50">
-          Unknown track ID in URL. Using fallback.
-        </div>
-      )}
-
-      {/* Debug HUD (dev only) - shows safe mode status */}
-      {(overlayFlag || safeMode) && process.env.NODE_ENV !== 'production' && (
-        <div style={{position:'fixed', right:12, bottom:12, zIndex:9999, padding:'10px 12px',
-                     background:'rgba(20,22,27,.85)', color:'#fff', fontSize:12, border:'1px solid #333', borderRadius:8}}>
-          <div style={{opacity:.85, marginBottom:4}}>
-            {safeMode ? 'SAFE MODE' : 'MP Overlay Debug'}
-          </div>
-          {safeMode && <div style={{color:'#ff6b6b', fontSize:11, marginBottom:4}}>
-            Overlay & Stagger Disabled
-          </div>}
-          <div>primary: {primaryTrack?.id ?? '—'}</div>
-          <div>comparison: {comparisonEnabled ? (comparisonTrack?.id ?? '—') : 'off'}</div>
-          <div>base edges: {baseEdges?.length ?? 0}</div>
-          <div>base nodes: {flowNodes?.length ?? 0}</div>
-          <div>overlay active: {overlayReady ? 'yes' : 'no'}</div>
-          <div>safe mode: {safeMode ? 'ON' : 'off'}</div>
-        </div>
       )}
 
       {/* Header */}
@@ -1327,8 +1009,8 @@ function buildReactFlowFromDomainData({
         </ReactFlow>
       </div>
 
-      {/* Track comparison UI (disabled in safe mode) */}
-      {overlayFlag && !safeMode && (
+      {/* Track comparison UI */}
+      {overlayFlag && (
         <>
           <TrackSelector
             primaryTrack={primaryTrack}
@@ -1364,15 +1046,6 @@ function buildReactFlowFromDomainData({
               >
                 {showTrackValidator ? 'Hide' : 'Show'} Track Validator
               </Button>
-            </div>
-          )}
-
-          {/* Development debug HUD - remove duplicate */}
-
-          {/* Fallback banner for unknown track IDs */}
-          {overlayFlag && (!primaryTrack || (comparisonEnabled && !comparisonTrack)) && (
-            <div className="fixed bottom-20 right-4 text-xs bg-amber-50 border border-amber-300 text-amber-900 px-2 py-1 rounded">
-              Unknown track id in URL. Using fallback.
             </div>
           )}
         </>

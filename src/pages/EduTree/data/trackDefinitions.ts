@@ -37,11 +37,7 @@ export function getTrackById(id: string): TrackDefinition | undefined {
 // Guard edge-IDs at source - enforce block-based IDs
 export const eid = (s: string, t: string) => `e-${String(s)}-${String(t)}`;
 
-export function generateEdgeIds(blockSequence: string[] | undefined | null): string[] {
-  // Add comprehensive null guards
-  if (!blockSequence || !Array.isArray(blockSequence) || blockSequence.length === 0) {
-    return [];
-  }
+export function generateEdgeIds(blockSequence: string[]): string[] {
   return blockSequence.slice(0, -1).map((src, i) => eid(src, blockSequence[i + 1]));
 }
 
@@ -66,9 +62,8 @@ export function computeTrackHighlights(
   const primaryNodes = new Set(primaryTrack?.blockIds || []);
   const comparisonNodes = new Set(comparisonTrack?.blockIds || []);
   
-  // Safe edge generation with null guards
-  const primaryEdges = new Set(primaryTrack?.blockIds ? generateEdgeIds(primaryTrack.blockIds) : []);
-  const comparisonEdges = new Set(comparisonTrack?.blockIds ? generateEdgeIds(comparisonTrack.blockIds) : []);
+  const primaryEdges = new Set(primaryTrack ? generateEdgeIds(primaryTrack.blockIds) : []);
+  const comparisonEdges = new Set(comparisonTrack ? generateEdgeIds(comparisonTrack.blockIds) : []);
 
   // Compute intersections
   const bothNodes = new Set([...primaryNodes].filter(id => comparisonNodes.has(id)));

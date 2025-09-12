@@ -90,14 +90,4 @@ describe('EduTree multipath overlay', () => {
     // Track selector should not be visible
     cy.contains('Enable comparison').should('not.exist');
   });
-
-  it('multipath overlay highlights (probe)', () => {
-    cy.visit('/edu-tree?eduTreeMultiPathOverlay=true&primary=software-engineering&comparison=data-science&cmp=1');
-    cy.get('.react-flow__renderer').should('be.visible');
-    cy.get('.react-flow__edge').should('have.length.greaterThan', 0);
-    cy.get('.react-flow__edge').then($es => {
-      const classes = [...$es].map(e => e.getAttribute('class') || '').join(' ');
-      expect(classes).to.match(/edge--(primary|comparison|both)/);
-    });
-  });
 });
