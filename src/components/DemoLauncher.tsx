@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function DemoLauncher() {
-  if (process.env.NODE_ENV === 'production') return null;
+  if (import.meta.env.MODE === 'production') return null;
 
   const base = '/edu-tree?eduTreeMultiPathOverlay=true';
   const demoFull = `${base}&primary=se&comparison=ds&cmp=1`;
