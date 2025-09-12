@@ -103,6 +103,23 @@ export default function TrackOverlayPOC() {
     return () => clearTimeout(t);
   }, [rf, overlayOn, elements.nodes.length]);
 
+  // Dev assertions for edge validation
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && overlayOn) {
+      const timer = setTimeout(() => {
+        document.querySelectorAll('.react-flow__edge').forEach((e) => {
+          const cls = e.className || '';
+          if (!/(edge--primary|edge--comparison|edge--both|edge--dim)/.test(cls)) {
+            console.warn('[Edge missing highlight class]', e);
+          }
+          const path = e.querySelector('.react-flow__edge-path');
+          if (!path) console.warn('[Edge missing path child]', e);
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [overlayOn, elements.edges]);
+
   return (
     <div style={{ height: 420, position: 'relative' }}>
       <div style={{ position: 'absolute', zIndex: 5, display: 'flex', gap: 8, padding: 8 }}>

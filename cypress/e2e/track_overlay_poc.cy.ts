@@ -1,5 +1,5 @@
 describe('TrackOverlayPOC smoke', () => {
-  it('renders with highlight classes on edges', () => {
+  it('applies highlight classes and path styles', () => {
     cy.visit('/sandbox/track-overlay');
 
     // Enable comparison if checkbox exists
@@ -10,11 +10,22 @@ describe('TrackOverlayPOC smoke', () => {
     cy.get('[data-testid="comparison-track"]').select('Data Science');
 
     // Sample several frames to account for any animations
-    const sample = () =>
-      cy.get('.react-flow__edge').each(($e) => {
-        const cls = $e.attr('class') || '';
-        expect(cls).to.match(/edge--(primary|comparison|both)/);
-      });
+    const sample = () => {
+      cy.get('.react-flow__edge')
+        .should('have.length.greaterThan', 0)
+        .each($edge => {
+          const cls = $edge.attr('class') || '';
+          expect(cls).to.match(/edge--(primary|comparison|both|dim)/);
+
+          // path element should exist and have a stroke
+          cy.wrap($edge).find('.react-flow__edge-path')
+            .should('exist')
+            .and($p => {
+              const stroke = $p.css('stroke');
+              expect(stroke, 'stroke color set').to.be.ok;
+            });
+        });
+    };
 
     sample();
     cy.wait(250); sample();
