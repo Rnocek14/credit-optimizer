@@ -566,7 +566,7 @@ function EduTreeCanvasInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
   
-  // Apply layout when nodes are available (allow regular layout even in overlay mode)
+  // Apply layout when nodes are available (always run layout, even in overlay mode)
   useEffect(() => {
     if (flowNodes.length > 0) {
       const applyLayout = async () => {
@@ -613,7 +613,7 @@ function EduTreeCanvasInner() {
       
       applyLayout();
     }
-  }, [flowNodes.length]); // Run layout whenever flowNodes change
+  }, [flowNodes.length, viewMode, flags.eduTreeStaggeredEdgesV2]); // Include all dependencies that affect layout
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
