@@ -55,6 +55,8 @@ import { TRACK_DEFINITIONS, getAllTrackIds, type TrackId } from './data/trackDef
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
+import { safe } from './safe';
+import { computeHighlights } from './overlay';
 
 
 const DEV = import.meta.env.DEV;
@@ -87,6 +89,8 @@ function EduTreeCanvasInner() {
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
   const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
   const isSafeMode = searchParams.get('safe') === '1';
+  const forceGrid = searchParams.get('elk') === '0';
+  const debug = searchParams.get('debug') === '1';
   
   // Dev-time validation for node types
   if (DEV) {
@@ -185,41 +189,53 @@ function EduTreeCanvasInner() {
   }
 
   // Transform data for React Flow (defensive)
-  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => {
-    try {
-      // Use defensive transformer
-      const result = transformEducationData(
-        { blocks, courses, blockMembers, gates, gateEdges },
-        completedCourseIds,
-        flags
-      );
-      
-      console.log('[EduTree][Transform][Result]', { 
-        nodes: result.nodes.length, 
-        edges: result.edges.length, 
-        flowNodes: result.nodes.length,
-        sampleEdgeId: result.edges[0]?.id 
-      });
-      
-      // Dev-time assertion for edge normalization
-      if (DEV) {
-        const bad = result.edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
-        if (bad.length) {
-          console.warn('[ASSERT] bad edge ids:', bad.map(b => b.id));
-        }
+  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => safe(
+    () => transformEducationData(
+      { blocks, courses, blockMembers, gates, gateEdges },
+      completedCourseIds,
+      flags
+    ),
+    { nodes: [], edges: [], blocksWithCourses: [] },
+    'Transform'
+  ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
+
+  if (debug) {
+    console.log('[EduTree Debug]', {
+      blocks: blocks.length, 
+      courses: courses.length,
+      nodes: flowNodes?.length, 
+      edges: flowEdges?.length,
+      overlayFlag, 
+      trackBlocks: 'Loading...'
+    });
+  }
+
+  // Absolute guardrails before ReactFlow
+  const guardsOk = useMemo(() => 
+    Array.isArray(flowNodes) &&
+    Array.isArray(flowEdges) &&
+    typeof nodeTypes.blockGroup === 'function' &&
+    typeof nodeTypes.terminalNode === 'function'
+  , [flowNodes, flowEdges, nodeTypes]);
+
+  if (!guardsOk) {
+    return <div className="p-6 text-sm text-muted-foreground">Preparing canvas…</div>;
+  }
+
+  // Coerce unknown node types to prevent ReactFlow crashes
+  const KNOWN = new Set(Object.keys(nodeTypes));
+  const safeNodes = useMemo(() => {
+    let touched = false;
+    const list = (flowNodes ?? []).map(n => {
+      if (!n?.type || !KNOWN.has(n.type)) { 
+        touched = true; 
+        return {...n, type: 'blockGroup'}; 
       }
-      
-      return result;
-    } catch (error) {
-      console.warn('[Transform Error]', error);
-      // IMPORTANT: no setState here - just return safe fallback
-      return {
-        nodes: [],
-        edges: [],
-        blocksWithCourses: []
-      };
-    }
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
+      return n;
+    });
+    if (touched && import.meta.env.DEV) console.warn('[COERCE] unknown node types → blockGroup');
+    return list;
+  }, [flowNodes, nodeTypes]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -228,9 +244,9 @@ function EduTreeCanvasInner() {
   // Staggered edges V2 system
   const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
     allEdges,
-    nodes,
+    safeNodes,
     {
-      enabled: flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow',
+      enabled: flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow' && !isSafeMode,
       batchDelayMs: 140,
       emergencyTimeoutMs: 5000,
     }
@@ -240,7 +256,7 @@ function EduTreeCanvasInner() {
   const [primaryTrack, setPrimaryTrack] = useState<any>(null);
 
   useEffect(() => {
-    if (!currentTrackKey || !overlayFlag || !blocks.length) return;
+    if (!currentTrackKey || !overlayFlag || !blocks.length || isSafeMode) return;
     
     resolveTrackBlockIds(currentTrackKey)
       .then(track => {
@@ -258,98 +274,48 @@ function EduTreeCanvasInner() {
     return flags.eduTreeStaggeredEdgesV2 ? visibleEdges : flowEdges;
   }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, flowEdges]);
 
-  // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
-  const highlightedElements = useMemo(() => {
-    if (isSafeMode) {
-      return { nodes: flowNodes, edges: baseEdges };
-    }
+  // Overlay computation using actual graph structure
+  const highlighted = useMemo(() => {
+    if (isSafeMode || !overlayFlag || !primaryTrack?.blockIds?.length) return null;
+    return computeHighlights(safeNodes, baseEdges, new Set(primaryTrack.blockIds));
+  }, [overlayFlag, primaryTrack, safeNodes, baseEdges, isSafeMode]);
 
-    const overlayReady = 
-      overlayFlag &&
-      primaryTrack &&
-      Array.isArray(primaryTrack.blockIds) &&
-      primaryTrack.blockIds.length > 0 &&
-      (baseEdges?.length ?? 0) > 0 &&
-      (flowNodes?.length ?? 0) > 0;
-    
-    // Safe guards - ensure we have valid arrays
-    const safeNodes = Array.isArray(flowNodes) ? flowNodes : [];
-    const safeEdges = baseEdges; // <-- unified source
-    
-    if (!overlayReady) {
-      if (DEV && overlayFlag) {
-        console.warn('[Overlay OFF] Missing data for highlight. Check missing slugs:', primaryTrack?.missingSlugs);
-      }
-      return { nodes: safeNodes, edges: safeEdges };
-    }
-
-    // Use actual graph structure instead of assuming linear sequence
-    const nodeIdSet = new Set(safeNodes.map(n => String(n.id))); // RF node IDs are block UUID strings
-    const primaryNodeIds = new Set(
-      (primaryTrack?.blockIds ?? []).map(id => String(id)).filter(id => nodeIdSet.has(id))
-    );
-    
-    console.log('[Overlay]', {
-      nodesInTrack: primaryNodeIds.size,
-      totalNodes: safeNodes.length,
-      totalEdges: safeEdges.length,
-      trackBlocks: primaryTrack.blockIds.length
+  const viewNodes = useMemo(() => {
+    if (!highlighted) return safeNodes;
+    if (highlighted.nodeIds.size === 0) return safeNodes; // no-op, avoid dim-only UI
+    return safeNodes.map(n => {
+      const cls = [n.className, 'node'];
+      cls.push(highlighted.nodeIds.has(String(n.id)) ? 'node--primary' : 'node--dim');
+      return {...n, className: cls.filter(Boolean).join(' ')};
     });
+  }, [safeNodes, highlighted]);
+
+  const viewEdges = useMemo(() => {
+    if (!highlighted) return baseEdges;
+    if (highlighted.edgeIds.size === 0) return baseEdges;
+    return baseEdges.map(e => {
+      const id = /^e-.+-.+$/.test(String(e.id)) ? String(e.id) : `e-${e.source}-${e.target}`;
+      const cls = [e.className, 'edge'];
+      cls.push(highlighted.edgeIds.has(id) ? 'edge--primary' : 'edge--dim');
+      return {...e, id, className: cls.filter(Boolean).join(' ')};
+    });
+  }, [baseEdges, highlighted]);
+
+  // Development audit logging with safety guards
+  useEffect(() => {
+    if (!overlayFlag || !primaryTrack || isSafeMode) return;
+    if (!highlighted?.nodeIds?.size) return;
     
-    // Phase C: Apply CSS classes based on track membership (merge with existing classes)
-    const highlightedNodes = safeNodes.map(node => {
-      const nodeId = String(node.id);
-      const merged = [node.className, 'node'].filter(Boolean);
-      
-      if (primaryNodeIds.has(nodeId)) {
-        merged.push('node--primary');
-      } else {
-        merged.push('node--dim');
-      }
-      
-      return { ...node, className: merged.join(' ') };
+    // Simple audit logging
+    console.log('[Track Audit]', {
+      totalNodes: viewNodes.length,
+      totalEdges: viewEdges.length,
+      nodesInTrack: highlighted.nodeIds.size,
+      edgesInTrack: highlighted.edgeIds.size,
+      trackKey: currentTrackKey,
+      overlayFlag: overlayFlag
     });
-
-    // Highlight edges that actually exist between track nodes
-    const highlightedEdges = safeEdges.map(edge => {
-      const s = String(edge.source);
-      const t = String(edge.target);
-      const merged = [edge.className, 'edge'].filter(Boolean);
-      
-      // Defensive edge id normalization
-      const id = /^e-.+-.+$/.test(String(edge.id)) ? String(edge.id) : `e-${s}-${t}`;
-      
-      if (primaryNodeIds.has(s) && primaryNodeIds.has(t)) {
-        merged.push('edge--primary');        // within-track real edge
-      } else {
-        merged.push('edge--dim');
-      }
-      
-      return { ...edge, id, className: merged.join(' ') };
-    });
-
-    if (process.env.NODE_ENV === 'development') {
-      const edgesInTrack = highlightedEdges.filter(e => e.className?.includes('edge--primary')).length;
-      console.log('[Overlay Debug]', {
-        nodesInTrack: primaryNodeIds.size,
-        edgesInTrack,
-        totalEdges: highlightedEdges.length
-      });
-      
-      // 1) Assert: Visible edges must always carry one highlight class
-      const ok = highlightedEdges.every(e =>
-        /\bedge(--primary|--comparison|--both|--dim)\b/.test(e.className || '')
-      );
-      if (!ok) console.warn('[Assert] Some visible edges lack highlight classes');
-      
-      // 2) Edge endpoint sanity during reveal
-      highlightedEdges.forEach(e => {
-        if (!e.source || !e.target) console.warn('[Edge missing endpoints]', e.id, e);
-      });
-    }
-
-    return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, primaryTrack, flowNodes, baseEdges, isSafeMode]);
+  }, [overlayFlag, primaryTrack, highlighted, viewNodes.length, viewEdges.length, currentTrackKey, isSafeMode]);
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
@@ -359,7 +325,7 @@ function EduTreeCanvasInner() {
       didFitRef.current = false; 
       return; 
     }
-    if (!highlightedElements.nodes?.length || !highlightedElements.edges?.length) return;
+    if (!viewNodes?.length || !viewEdges?.length) return;
     if (didFitRef.current) return;
     
     const timer = setTimeout(() => {
@@ -369,22 +335,7 @@ function EduTreeCanvasInner() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [reactFlowInstance, overlayFlag, primaryTrack, 
-      highlightedElements.nodes?.length, highlightedElements.edges?.length, isSafeMode]);
-
-  // Development audit logging with safety guards
-  useEffect(() => {
-    if (!overlayFlag || !primaryTrack || isSafeMode) return;
-    if (!highlightedElements.nodes?.length) return;
-    
-    // Simple audit logging
-    console.log('[Track Audit]', {
-      totalNodes: highlightedElements.nodes.length,
-      totalEdges: highlightedElements.edges?.length || 0,
-      trackKey: currentTrackKey,
-      overlayFlag: overlayFlag
-    });
-  }, [overlayFlag, primaryTrack, highlightedElements.nodes?.length, highlightedElements.edges?.length, currentTrackKey, isSafeMode]);
+  }, [reactFlowInstance, overlayFlag, primaryTrack, viewNodes?.length, viewEdges?.length, isSafeMode]);
 
   // Dev hotkey: press 'T' to toggle Track Validator
   useEffect(() => {
@@ -401,23 +352,10 @@ function EduTreeCanvasInner() {
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  // DEV logging for data debugging
-  useEffect(() => {
-    if (DEV) {
-      console.log('[EduTree] data-counts', {
-        blocks: blocks.length,
-        courses: courses.length,
-        blockMembers: blockMembers.length,
-        gates: gates.length,
-        gateEdges: gateEdges.length,
-      });
-    }
-  }, [blocks, courses, blockMembers, gates, gateEdges]);
-
   // Simplified layout management 
   const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]) => {
-    if (mode === 'board') {
-      return layoutAsGrid(layoutNodes, mode);
+    if (mode === 'board' || forceGrid) {
+      return layoutAsGrid(layoutNodes, 'board');
     }
 
     try {
@@ -426,7 +364,7 @@ function EduTreeCanvasInner() {
       console.error('Layout failed, using fallback:', error);
       return layoutAsGrid(layoutNodes, 'board');
     }
-  }, []);
+  }, [forceGrid]);
 
   // Calculate outcome panel summary
   const outcomeSummary: PlanValidationSummary = useMemo(() => {
@@ -468,7 +406,7 @@ function EduTreeCanvasInner() {
     
     // Single debounced fitView after initialization
     fitViewTimeoutRef.current = setTimeout(() => {
-      const hasTerminal = highlightedElements.nodes.some(node => 
+      const hasTerminal = finalNodes.some(node => 
         node.type === 'terminal' || node.type === 'terminalNode' || 
         node.id === 'degree-completion'
       );
@@ -479,7 +417,7 @@ function EduTreeCanvasInner() {
         console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
       }
     }, 150);
-  }, [highlightedElements.nodes]);
+  }, [viewNodes]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -496,26 +434,47 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Safe node coercion to prevent invalid node types
-  const safeNodes = useMemo(() => {
-    const KNOWN_TYPES = new Set(Object.keys(nodeTypes));
-    return (highlightedElements.nodes || []).map(node => {
-      if (!node?.type || !KNOWN_TYPES.has(node.type)) {
-        console.warn('[COERCE] Unknown node type:', node?.type, 'for node:', node?.id);
-        return { ...node, type: 'blockGroup' };
+  // Safe node coercion moved up earlier - now use viewNodes for final render
+  const finalNodes = useMemo(() => {
+    return (viewNodes || []).map(node => {
+      // Ensure all required properties exist
+      if (!node?.id) {
+        console.warn('[Safe Node] Missing ID:', node);
+        return { ...node, id: `fallback-${Math.random()}` };
       }
       return node;
     });
-  }, [highlightedElements.nodes, nodeTypes]);
+  }, [finalNodes]);
 
-  // Update ReactFlow nodes and edges when data changes
+  const finalEdges = useMemo(() => {
+    return (viewEdges || []).map(edge => {
+      // Ensure all required properties exist
+      if (!edge?.source || !edge?.target) {
+        console.warn('[Safe Edge] Missing endpoints:', edge);
+        return null;
+      }
+      return edge;
+    }).filter(Boolean);
+  }, [viewEdges]);
+
+  // Initial node/edge setup with layout
   useEffect(() => {
-    if (highlightedElements.nodes && highlightedElements.edges) {
-      setNodes(safeNodes);
-      setEdges(highlightedElements.edges);
-      setAllEdges(highlightedElements.edges);
-    }
-  }, [highlightedElements, safeNodes, setNodes, setEdges]);
+    if (!finalNodes.length) return;
+    
+    applyLayout(viewMode, finalNodes, finalEdges)
+      .then((layoutResult) => {
+        setNodes(layoutResult.nodes);
+        setEdges(layoutResult.edges);
+        setAllEdges(layoutResult.edges);
+      })
+      .catch(error => {
+        console.error('Layout application failed:', error);
+        // Fallback to original nodes/edges
+        setNodes(finalNodes);
+        setEdges(finalEdges);
+        setAllEdges(finalEdges);
+      });
+  }, [finalNodes, finalEdges, viewMode, applyLayout]);
 
   // Handle course click
   const handleCourseClick = useCallback((courseId: string) => {
@@ -526,8 +485,38 @@ function EduTreeCanvasInner() {
     });
   }, []);
 
+  // Mode change handler with safe fallback
+  useEffect(() => {
+    if (!finalNodes.length || !finalEdges.length) return;
+    
+    setIsLayouting(true);
+    
+    // Clear any existing timeout
+    if (layoutTimeoutRef.current) {
+      clearTimeout(layoutTimeoutRef.current);
+    }
+    
+    if (layoutInProgressRef.current) return;
+    
+    layoutInProgressRef.current = true;
+    
+    applyLayout(viewMode, finalNodes, finalEdges)
+      .then((layoutResult) => {
+        setNodes(layoutResult.nodes);
+        setEdges(layoutResult.edges);
+        setAllEdges(layoutResult.edges);
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+      })
+      .catch(error => {
+        console.error('Layout change failed:', error);
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+      });
+  }, [viewMode, finalNodes, finalEdges, applyLayout]);
+
   // Loading state check - render skeleton until data arrives
-  if (!highlightedElements.nodes || !highlightedElements.edges) {
+  if (!finalNodes?.length || !finalEdges?.length) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">Loading curriculum…</div>
@@ -598,8 +587,8 @@ function EduTreeCanvasInner() {
       {showTrackValidator && DEV && (
         <div className="p-4 border-b border-border bg-muted/50">
           <TrackValidator
-            nodes={highlightedElements.nodes}
-            edges={highlightedElements.edges}
+            nodes={finalNodes}
+            edges={finalEdges}
             primaryTrack={primaryTrack}
             isVisible={true}
           />
@@ -626,8 +615,8 @@ function EduTreeCanvasInner() {
         ) : (
           <DebugBoundary>
             <ReactFlow
-              nodes={highlightedElements.nodes}
-              edges={highlightedElements.edges}
+              nodes={flags.eduTreeStaggeredEdgesV2 && !isSafeMode ? nodes : finalNodes}
+              edges={flags.eduTreeStaggeredEdgesV2 && !isSafeMode ? visibleEdges : finalEdges}
               onNodesChange={handleNodesChange}
               onEdgesChange={onEdgesChange}
               onInit={onInit}
