@@ -72,6 +72,7 @@ interface HighlightedPath {
 }
 
 function EduTreeCanvasInner() {
+  console.log('[EduTreeCanvasInner] Component mounting...');
   // ===== ALL HOOKS FIRST - ABSOLUTELY NO EARLY RETURNS AFTER HOOKS =====
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();

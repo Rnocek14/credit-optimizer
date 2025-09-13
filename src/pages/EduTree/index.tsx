@@ -4,12 +4,18 @@ import { DisabledFeature } from '@/components/DisabledFeature';
 import { EduTreeCanvas } from './EduTreeCanvas';
 
 export default function EduTree() {
+  console.log('[EduTree] Component mounting...');
+  
   const enabled = resolveEduTreeFlag();
+  console.log('[EduTree] Flag resolved:', enabled);
+  
   // TODO: Get user role from auth context when available
   const userRole = undefined; // Replace with actual user role
   const canBypass = canBypassEduTreeFlag(userRole);
+  console.log('[EduTree] Can bypass:', canBypass);
   
   if (!enabled && !canBypass) {
+    console.log('[EduTree] Feature disabled, showing disabled screen');
     const handleEnableForSession = () => {
       localStorage.setItem('eduTree', 'true');
       window.location.reload();
@@ -25,5 +31,6 @@ export default function EduTree() {
     );
   }
 
+  console.log('[EduTree] Rendering EduTreeCanvas...');
   return <EduTreeCanvas />;
 }
