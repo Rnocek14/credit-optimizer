@@ -1,39 +1,31 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { TRACK_DEFINITIONS, type TrackId } from '../data/trackDefinitions';
 
-type TrackKey = 'software-engineering' | 'data-science' | 'cybersecurity';
-
-interface SimpleTrackPickerProps {
-  value: TrackKey;
-  onChange: (value: TrackKey) => void;
+export interface SimpleTrackPickerProps {
+  value?: TrackId;
+  onChange: (value: TrackId | undefined) => void;
+  placeholder?: string;
+  excludeValue?: TrackId;
 }
 
-const trackOptions = [
-  { id: 'software-engineering' as TrackKey, name: 'Software Engineering' },
-  { id: 'data-science' as TrackKey, name: 'Data Science' },
-  { id: 'cybersecurity' as TrackKey, name: 'Cybersecurity' }
-] as const;
+export function SimpleTrackPicker({ value, onChange, placeholder = "Select track...", excludeValue }: SimpleTrackPickerProps) {
+  const availableTracks = TRACK_DEFINITIONS.filter(track => 
+    !excludeValue || track.id !== excludeValue
+  );
 
-export function SimpleTrackPicker({ value, onChange }: SimpleTrackPickerProps) {
   return (
-    <div className="flex items-center gap-2">
-      <Label htmlFor="track-picker" className="text-sm font-medium">Track:</Label>
-      <Select 
-        value={value} 
-        onValueChange={onChange}
-      >
-        <SelectTrigger id="track-picker" className="w-48">
-          <SelectValue placeholder="Select a track" />
-        </SelectTrigger>
-        <SelectContent>
-          {trackOptions.map(option => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {availableTracks.map((track) => (
+          <SelectItem key={track.id} value={track.id}>
+            {track.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

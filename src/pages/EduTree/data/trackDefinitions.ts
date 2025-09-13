@@ -1,23 +1,85 @@
-export type TrackKey = 'software-engineering' | 'data-science' | 'cybersecurity';
+export type TrackId = string;
 
-export const trackBySlug: Record<TrackKey, { name: string; slugs: string[] }> = {
-  'software-engineering': {
+export interface TrackDefinition {
+  id: TrackId;
+  name: string;
+  description?: string;
+  color?: string;
+  blockIds: string[]; // ordered block ids (using slugs)
+}
+
+// Track definitions using block slugs
+export const TRACK_DEFINITIONS: TrackDefinition[] = [
+  {
+    id: 'software-engineering',
     name: 'Software Engineering',
-    slugs: ['foundations', 'mathematics', 'general-education', 'core-i', 'core-ii', 'architecture', 'capstone']
+    description: 'Full-stack development track',
+    color: '#3b82f6',
+    blockIds: [
+      'foundations',
+      'mathematics', 
+      'general-education',
+      'core-i',
+      'core-ii',
+      'architecture',
+      'capstone'
+    ]
   },
-  'data-science': {
+  {
+    id: 'data-science',
     name: 'Data Science',
-    slugs: ['foundations', 'mathematics', 'general-education', 'core-i', 'specializations', 'web-development', 'capstone']
+    description: 'Analytics and machine learning track',
+    color: '#10b981',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education', 
+      'core-i',
+      'data-analysis',
+      'machine-learning',
+      'capstone'
+    ]
   },
-  'cybersecurity': {
+  {
+    id: 'cybersecurity',
     name: 'Cybersecurity',
-    slugs: ['foundations', 'mathematics', 'general-education', 'core-i', 'mobile-development', 'architecture', 'capstone']
+    description: 'Security and risk management track',
+    color: '#f59e0b',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'security-fundamentals',
+      'advanced-security',
+      'capstone'
+    ]
+  },
+  {
+    id: 'mobile-development',
+    name: 'Mobile Development', 
+    description: 'iOS and Android development track',
+    color: '#8b5cf6',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'mobile-frameworks',
+      'advanced-mobile',
+      'capstone'
+    ]
   }
-};
+];
 
-// Guard edge-IDs at source - enforce block-based IDs
-export const eid = (s: string, t: string) => `e-${String(s)}-${String(t)}`;
+export const TRACK_MAP = new Map(TRACK_DEFINITIONS.map(t => [t.id, t]));
 
-export function generateEdgeIds(blockSequence: string[]): string[] {
-  return blockSequence.slice(0, -1).map((src, i) => eid(src, blockSequence[i + 1]));
+// Helper to get track by ID with fallback
+export function getTrackById(id: TrackId): TrackDefinition | undefined {
+  return TRACK_MAP.get(id);
+}
+
+// Helper to get all track IDs
+export function getAllTrackIds(): TrackId[] {
+  return TRACK_DEFINITIONS.map(t => t.id);
 }

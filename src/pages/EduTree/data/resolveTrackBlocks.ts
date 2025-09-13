@@ -1,10 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
-import { trackBySlug } from './trackDefinitions';
+import { TRACK_MAP, type TrackId } from './trackDefinitions';
 
-export type TrackKey = 'software-engineering' | 'data-science' | 'cybersecurity';
+export async function resolveTrackBlockIds(trackKey: TrackId) {
+  const track = TRACK_MAP.get(trackKey);
+  if (!track) {
+    throw new Error(`Unknown track: ${trackKey}`);
+  }
 
-export async function resolveTrackBlockIds(trackKey: TrackKey) {
-  const desired = new Set(trackBySlug[trackKey].slugs);
+  const desired = new Set(track.blockIds);
   const { data, error } = await supabase
     .from('requirement_blocks')
     .select('id,slug');
@@ -23,13 +26,13 @@ export async function resolveTrackBlockIds(trackKey: TrackKey) {
   }
 
   console.log(`[Resolve ${trackKey}]`, { 
-    desired: trackBySlug[trackKey].slugs, 
+    desired: track.blockIds, 
     resolved: blockIds.length, 
     missing: missing.length > 0 ? missing : 'none' 
   });
 
   return { 
-    name: trackBySlug[trackKey].name, 
+    name: track.name, 
     blockIds, 
     missingSlugs: missing 
   };

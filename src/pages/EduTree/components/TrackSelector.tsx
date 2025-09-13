@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { trackBySlug, TrackKey } from '../data/trackDefinitions';
+import { TRACK_DEFINITIONS, type TrackId } from '../data/trackDefinitions';
 import { useFeatureFlags } from '@/lib/featureFlags';
 
 interface TrackData {
@@ -34,11 +34,10 @@ export function TrackSelector({
 }: TrackSelectorProps) {
   const flags = useFeatureFlags();
   
-  const trackOptions = Object.entries(trackBySlug).map(([key, data]) => ({
-    id: key as TrackKey,
-    name: data.name,
-    color: key === 'software-engineering' ? '#007bff' : 
-           key === 'data-science' ? '#ff9300' : '#dc3545'
+  const trackOptions = TRACK_DEFINITIONS.map(track => ({
+    id: track.id,
+    name: track.name,
+    color: track.color || '#007bff'
   }));
 
   if (!isVisible) {
@@ -61,13 +60,12 @@ export function TrackSelector({
             Primary Track
           </Label>
           <Select
-            value={primaryTrack ? Object.keys(trackBySlug).find(key => trackBySlug[key as TrackKey].name === primaryTrack.name) : ''}
+            value={primaryTrack ? TRACK_DEFINITIONS.find(t => t.name === primaryTrack.name)?.id : ''}
             onValueChange={(value) => {
-              const trackKey = value as TrackKey;
-              const trackData = trackBySlug[trackKey];
-              if (trackData) {
+              const track = TRACK_DEFINITIONS.find(t => t.id === value);
+              if (track) {
                 onPrimaryTrackChange({
-                  name: trackData.name,
+                  name: track.name,
                   blockIds: [], // Will be resolved dynamically
                   missingSlugs: []
                 });
@@ -112,13 +110,12 @@ export function TrackSelector({
               Comparison Track
             </Label>
             <Select
-              value={comparisonTrack ? Object.keys(trackBySlug).find(key => trackBySlug[key as TrackKey].name === comparisonTrack.name) : ''}
+              value={comparisonTrack ? TRACK_DEFINITIONS.find(t => t.name === comparisonTrack.name)?.id : ''}
               onValueChange={(value) => {
-                const trackKey = value as TrackKey;
-                const trackData = trackBySlug[trackKey];
-                if (trackData) {
+                const track = TRACK_DEFINITIONS.find(t => t.id === value);
+                if (track) {
                   onComparisonTrackChange({
-                    name: trackData.name,
+                    name: track.name,
                     blockIds: [], // Will be resolved dynamically
                     missingSlugs: []
                   });

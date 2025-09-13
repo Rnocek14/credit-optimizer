@@ -15,6 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
 import './styles/track-highlights.css';
+import './styles/trackOverlay.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -46,9 +47,10 @@ import { CourseNode } from './components/CourseNode';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
 import { TrackValidator } from './components/TrackValidator';
 import { SimpleTrackPicker } from './components/SimpleTrackPicker';
+import { TrackComparisonControls } from './components/TrackComparisonControls';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { useStableOverlay } from './hooks/useStableOverlay';
-import { trackBySlug, generateEdgeIds } from './data/trackDefinitions';
+import { TRACK_DEFINITIONS, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
@@ -66,7 +68,7 @@ const nodeTypes = {
 
 // Type definitions
 type ViewMode = 'flow' | 'board';
-type TrackKey = 'software-engineering' | 'data-science' | 'cybersecurity';
+type TrackKey = TrackId;
 
 interface HighlightedPath {
   nodes: Set<string>;
@@ -94,15 +96,15 @@ function EduTreeCanvasInner() {
   const layoutInProgressRef = useRef(false);
   
   // Track comparison state - dynamic resolution from block titles
-  const [currentTrackKey, setCurrentTrackKey] = useState<TrackKey>(() => {
-    const raw = searchParams.get('primary') as TrackKey;
-    return raw && ['software-engineering', 'data-science', 'cybersecurity'].includes(raw) 
+  const [currentTrackKey, setCurrentTrackKey] = useState<TrackId>(() => {
+    const raw = searchParams.get('primary') as TrackId;
+    return raw && getAllTrackIds().includes(raw) 
       ? raw 
       : 'software-engineering';
   });
   
   // Track handler
-  const handleTrackChange = useCallback((newTrackKey: TrackKey) => {
+  const handleTrackChange = useCallback((newTrackKey: TrackId) => {
     setCurrentTrackKey(newTrackKey);
     const newParams = new URLSearchParams(searchParams);
     newParams.set('primary', newTrackKey);
