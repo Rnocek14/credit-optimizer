@@ -51,13 +51,13 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
   const hasSubBlocks = subBlocks.length > 0;
   const hasAltCredits = altCreditOptions.length > 0;
 
-  // Attach resize observer when layoutV2 is enabled
+  // Always attach resize observer for better layout management
   useEffect(() => {
-    if (flags.eduTreeLayoutV2 && nodeRef.current) {
+    if (nodeRef.current) {
       attachResizeObserver(nodeRef.current);
       return () => detachResizeObserver();
     }
-  }, [flags.eduTreeLayoutV2, attachResizeObserver, detachResizeObserver]);
+  }, [attachResizeObserver, detachResizeObserver]);
 
   return (
     <div className="relative" ref={nodeRef}>
@@ -70,7 +70,7 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       />
 
       <Card className={`
-        ${isDegreeNode ? 'min-w-[380px] max-w-[380px]' : 'min-w-[320px] max-w-[320px]'} 
+        ${isDegreeNode ? 'w-[380px]' : 'w-[320px]'} 
         ${!isUnlocked ? 'opacity-65' : ''} 
         ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' : 
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :

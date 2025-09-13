@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
+import { layoutWithElk, layoutAsGrid, ViewMode as LayoutViewMode } from '@/lib/layout/elkLayout';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useStaggeredEdgesV2 } from '@/hooks/useStaggeredEdgesV2';
 import { useDragGuard } from '@/components/ui/drag-guard';
@@ -286,20 +286,27 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Async layout function with proper Promise handling
-  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]): Promise<Node[]> => {
-    if (mode === 'board' || forceGrid) {
-      return Promise.resolve(layoutAsGrid(layoutNodes, 'board'));
+  // Simplified layout function with better error handling
+  const applyLayout = useCallback(async (mode: ViewMode, layoutNodes: Node[], layoutEdges: Edge[]): Promise<Node[]> => {
+    if (layoutInProgressRef.current) {
+      console.log('[Layout] Already in progress, skipping');
+      return layoutNodes;
     }
 
+    layoutInProgressRef.current = true;
+    setIsLayouting(true);
+
     try {
-      const result = await layoutWithElk(layoutNodes, layoutEdges);
+      const result = await layoutWithElk(layoutNodes, layoutEdges, mode);
       return Array.isArray(result) ? result : layoutNodes;
     } catch (error) {
-      console.error('Layout failed, using fallback:', error);
+      console.error('Layout failed:', error);
       return layoutAsGrid(layoutNodes, 'board');
+    } finally {
+      layoutInProgressRef.current = false;
+      setIsLayouting(false);
     }
-  }, [forceGrid]);
+  }, []);
 
   // Track handler
   const handleTrackChange = useCallback((newTrackKey: TrackId) => {
@@ -315,30 +322,11 @@ function EduTreeCanvasInner() {
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  // Enhanced onInit with terminal focus
+  // Simplified onInit without conflicting fitView
   const onInit = useCallback((reactFlowInstance: any) => {
     console.log('[BOOT] RF onInit');
     setReactFlowInstance(reactFlowInstance);
-    
-    // Clear any pending fitView to debounce
-    if (fitViewTimeoutRef.current) {
-      clearTimeout(fitViewTimeoutRef.current);
-    }
-    
-    // Single debounced fitView after initialization
-    fitViewTimeoutRef.current = setTimeout(() => {
-      const hasTerminal = finalNodes.some(node => 
-        node.type === 'terminal' || node.type === 'terminalNode' || 
-        node.id === 'degree-completion'
-      );
-      
-      const padding = hasTerminal ? 0.4 : 0.2;
-      reactFlowInstance.fitView({ padding, duration: 300 });
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
-      }
-    }, 150);
-  }, [finalNodes]);
+  }, []);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -401,24 +389,12 @@ function EduTreeCanvasInner() {
     });
   }, [overlayFlag, primaryTrack, highlighted, viewNodes.length, viewEdges.length, currentTrackKey, isSafeMode]);
 
-  // FitView exactly once per activation with highlighted node/edge count guard
+  // Reset fitView flag when overlay state changes
   useEffect(() => {
-    const overlayOn = overlayFlag && primaryTrack;
-    if (!reactFlowInstance || !overlayOn || isSafeMode) { 
-      didFitRef.current = false; 
-      return; 
+    if (!overlayFlag || !primaryTrack) {
+      didFitRef.current = false;
     }
-    if (!viewNodes?.length || !viewEdges?.length) return;
-    if (didFitRef.current) return;
-    
-    const timer = setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
-      didFitRef.current = true;
-      console.log('[TrackComparison] fitView executed');
-    }, 80);
-
-    return () => clearTimeout(timer);
-  }, [reactFlowInstance, overlayFlag, primaryTrack, viewNodes?.length, viewEdges?.length, isSafeMode]);
+  }, [overlayFlag, primaryTrack]);
 
   // Dev hotkey: press 'T' to toggle Track Validator
   useEffect(() => {
@@ -430,61 +406,46 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Initial node/edge setup with layout - PROPER ASYNC HANDLING
+  // Unified layout effect with proper debouncing
   useEffect(() => {
-    if (!finalNodes.length || !finalEdges.length) return;
+    if (!finalNodes.length) return;
     
-    // Use the async layout function properly
-    setIsLayouting(true);
-    applyLayout(viewMode, finalNodes, finalEdges)
-      .then((layoutedNodes) => {
-        setNodes(layoutedNodes);
-        setEdges(finalEdges);
-        setAllEdges(finalEdges);
-        setIsLayouting(false);
-      })
-      .catch(error => {
-        console.error('Layout application failed:', error);
-        // Fallback to original nodes/edges
-        setNodes(finalNodes);
-        setEdges(finalEdges);
-        setAllEdges(finalEdges);
-        setIsLayouting(false);
-      });
-  }, [finalNodes, finalEdges, viewMode, applyLayout]);
-
-  // Mode change handler with safe fallback - DEBOUNCED ASYNC
-  useEffect(() => {
-    if (!finalNodes.length || !finalEdges.length) return;
-    
-    setIsLayouting(true);
-    
-    // Clear existing timeout
+    // Clear existing layout timeout
     if (layoutTimeoutRef.current) {
       clearTimeout(layoutTimeoutRef.current);
     }
     
     // Debounce layout changes
     layoutTimeoutRef.current = setTimeout(() => {
-      if (layoutInProgressRef.current) return;
-      
-      layoutInProgressRef.current = true;
-      
       applyLayout(viewMode, finalNodes, finalEdges)
         .then((layoutedNodes) => {
           setNodes(layoutedNodes);
           setEdges(finalEdges);
           setAllEdges(finalEdges);
-          setIsLayouting(false);
-          layoutInProgressRef.current = false;
+          
+          // Single fitView after layout is complete
+          if (reactFlowInstance && !didFitRef.current) {
+            setTimeout(() => {
+              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+              didFitRef.current = true;
+            }, 100);
+          }
         })
         .catch(error => {
-          console.error('Layout change failed:', error);
-          setIsLayouting(false);
-          layoutInProgressRef.current = false;
+          console.error('Layout failed:', error);
+          // Fallback without layout
+          setNodes(finalNodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
         });
-    }, 300);
-  }, [viewMode, finalNodes, finalEdges, applyLayout]);
+    }, 200);
+    
+    return () => {
+      if (layoutTimeoutRef.current) {
+        clearTimeout(layoutTimeoutRef.current);
+      }
+    };
+  }, [finalNodes, finalEdges, viewMode, applyLayout, reactFlowInstance]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
@@ -618,7 +579,7 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* Main Canvas */}
-      <div className="w-full h-full">
+      <div className={`w-full h-full ${isLayouting ? 'layout-loading' : ''}`}>
         <ReactFlow
           nodes={finalNodes}
           edges={finalEdges}
