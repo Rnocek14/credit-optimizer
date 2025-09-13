@@ -24,8 +24,7 @@ import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { OutcomePanel } from './components/OutcomePanel';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { useStaggeredEdgesV2 } from './hooks/useStaggeredEdgesV2';
+import { useFeatureFlags } from '@/lib/featureFlags';
 import {
   EduCourse, 
   RequirementBlock, 
@@ -33,6 +32,7 @@ import {
   BlockGate, 
   GateEdge,
   BlockWithCourses,
+  PlanningLens,
   isBlockComplete
 } from '@/lib/types/eduTree';
 import { toast } from '@/hooks/use-toast';
@@ -81,7 +81,7 @@ function EduTreeCanvasInner() {
   const [showTrackValidator, setShowTrackValidator] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
-  const [selectedLens, setSelectedLens] = useState<string>('fastest');
+  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutTimeoutRef = useRef<NodeJS.Timeout>();
@@ -132,11 +132,12 @@ function EduTreeCanvasInner() {
   }, [primaryTrackId, comparisonTrackId, overlayEnabled, write]);
   
   // FIX 6: Node types mapping for ReactFlow - DEFENSIVE CHECK
-  const nodeTypes = useMemo(() => ({
-    blockGroup: BlockGroup,
-    terminalNode: TerminalNode,
-    placeholder: PlaceholderGroup
-  }), []);
+  const nodeTypes = useMemo(() => {
+    const types = {
+      blockGroup: BlockGroup,
+      terminalNode: TerminalNode,
+      placeholder: PlaceholderGroup
+    };
     
     // Dev validation
     if (import.meta.env.DEV) {
@@ -151,7 +152,7 @@ function EduTreeCanvasInner() {
   // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
   const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
-  const debug = Boolean(flags.eduTreeDebugLogging);
+  const debug = false; // Temporarily disabled
 
   // Data from Supabase
   const {
@@ -199,16 +200,10 @@ function EduTreeCanvasInner() {
     return list;
   }, [flowNodes, nodeTypes]);
 
-  // Staggered edges V2 system
-  const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
-    allEdges,
-    safeNodes,
-    {
-      enabled: flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow' && !isSafeMode,
-      batchDelayMs: 140,
-      emergencyTimeoutMs: 5000,
-    }
-  );
+  // Simplified edges (removed staggered system)
+  const visibleEdges = allEdges;
+  const isRevealing = false;
+  const forceRevealAll = () => {};
 
   // Base edges for overlay (unified source)
   const baseEdges = useMemo(() => {
