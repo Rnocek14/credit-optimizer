@@ -52,7 +52,7 @@ import { trackBySlug, generateEdgeIds } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
-import { normalizeEdges } from './utils/edgeNormalization';
+
 
 const DEV = import.meta.env.DEV;
 
@@ -156,20 +156,14 @@ function EduTreeCanvasInner() {
         flags
       );
       
-      // Normalize ALL edges right after build (GPT hotfix B)
-      const normalizedEdges = normalizeEdges(result.edges);
-      
       console.log('[EduTree][Transform][Result]', { 
         nodes: result.nodes.length, 
-        edges: normalizedEdges.length, 
+        edges: result.edges.length, 
         flowNodes: result.nodes.length,
-        sampleEdgeId: normalizedEdges[0]?.id 
+        sampleEdgeId: result.edges[0]?.id 
       });
       
-      return { 
-        ...result, 
-        edges: normalizedEdges 
-      };
+      return result;
     } catch (error) {
       console.error('[EduTree][Transform][Error]', error);
       // Return safe fallback
