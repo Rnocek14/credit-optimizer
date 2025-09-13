@@ -67,83 +67,31 @@
   transition: all 0.3s ease;
 }
 
-/* FIX 4: Track comparison controls positioning */
+/* Color palette for overlay */
+:root {
+  --lp-primary:  #5ab0ff;
+  --lp-compare:  #ff6fa6;
+  --lp-shared:   #7cf29c;
+}
+
+/* Track comparison controls positioning */
 .track-controls, .track-comparison {
   position: absolute;
   top: 16px;
   left: 16px;
-  z-index: 20000;          /* force above everything */
-  pointer-events: auto;    /* allow clicks */
-}
-
-/* Ensure controls don't interfere with React Flow */
-.track-controls *, .track-comparison * {
+  z-index: 40;
   pointer-events: auto;
 }
 
-/* Enhanced overlay styles for better visibility */
-.react-flow__node.node--dim { 
-  opacity: 0.18; 
-  filter: saturate(0.6); 
-}
-.react-flow__node.node--primary { 
-  box-shadow: 0 0 0 2px rgba(82,156,255,0.9) inset; 
-}
-.react-flow__node.node--comparison { 
-  box-shadow: 0 0 0 2px rgba(255,140,64,0.9) inset; 
-}
-.react-flow__node.node--both { 
-  box-shadow: 0 0 0 2px rgba(120,220,140,0.9) inset; 
-}
+/* B) New highlight classes (no collision with base styles) */
+/* nodes */
+.hl--primary    { outline: 2px solid var(--lp-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-primary) 25%, transparent); }
+.hl--comparison { outline: 2px solid var(--lp-compare); box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-compare) 25%, transparent); }
+.hl--both       { outline: 2px solid var(--lp-shared);  box-shadow: 0 0 0 4px var(--lp-shared) inset; }
+.hl--dim        { opacity: .28; filter: saturate(.5); }
 
-.react-flow__edge.edge--dim path { 
-  opacity: 0.25; 
-}
-.react-flow__edge.edge--primary path { 
-  stroke-width: 2.5; 
-}
-.react-flow__edge.edge--comparison path { 
-  stroke-dasharray: 6 4; 
-  stroke-width: 2.5; 
-}
-.react-flow__edge.edge--both path { 
-  stroke-width: 3; 
-}
-
-/* highlight tokens */
-.node.node--primary { 
-  outline: 2px solid hsl(var(--primary)); 
-  filter: none; 
-}
-
-.node.node--comparison { 
-  outline: 2px dashed hsl(var(--secondary)); 
-}
-
-.node.node--both { 
-  outline: 2px solid hsl(var(--primary)); 
-  box-shadow: 0 0 0 2px hsl(var(--primary)) inset; 
-}
-
-.node.node--dim { 
-  opacity: 0.25; 
-  filter: grayscale(0.2); 
-}
-
-.edge.edge--primary { 
-  stroke-width: 2px; 
-  opacity: 1; 
-}
-
-.edge.edge--comparison { 
-  stroke-dasharray: 6 6; 
-  opacity: 1; 
-}
-
-.edge.edge--both { 
-  stroke-width: 2.5px; 
-}
-
-.edge.edge--dim { 
-  opacity: 0.25; 
-}
+/* edges */
+.edge.hl--primary    path { stroke: var(--lp-primary) !important; opacity: 1 !important; }
+.edge.hl--comparison path { stroke: var(--lp-compare) !important; opacity: 1 !important; }
+.edge.hl--both       path { stroke: var(--lp-shared)  !important; opacity: 1 !important; }
+.edge.hl--dim        path { opacity: .25 !important; }
