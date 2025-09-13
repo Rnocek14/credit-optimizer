@@ -41,14 +41,16 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { trackTelemetryEvent } from '@/utils/telemetry';
 import { SeedDataButton } from './components/SeedDataButton';
-import { BlockGroup } from './components/BlockGroup';
-import { TerminalNode } from './components/TerminalNode';
-import { PlaceholderGroup } from './components/PlaceholderGroup';
-import { CourseNode } from './components/CourseNode';
-import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
-import { TrackValidator } from './components/TrackValidator';
-import { SimpleTrackPicker } from './components/SimpleTrackPicker';
-import { TrackComparisonControls } from './components/TrackComparisonControls';
+import { 
+  BlockGroup, 
+  TerminalNode, 
+  PlaceholderGroup, 
+  CourseNode,
+  DegreeOutcomeBanner,
+  TrackValidator,
+  SimpleTrackPicker,
+  TrackComparisonControls
+} from './components';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { useStableOverlay } from './hooks/useStableOverlay';
 import { TRACK_DEFINITIONS, getAllTrackIds, type TrackId } from './data/trackDefinitions';
@@ -57,7 +59,6 @@ import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import { computeHighlights } from './overlay';
-
 
 const DEV = import.meta.env.DEV;
 
@@ -71,7 +72,7 @@ interface HighlightedPath {
 }
 
 function EduTreeCanvasInner() {
-  // ===== ALL HOOKS FIRST - NO EARLY RETURNS AFTER HOOKS =====
+  // ===== ALL HOOKS FIRST - ABSOLUTELY NO EARLY RETURNS AFTER HOOKS =====
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const flags = useFeatureFlags();
@@ -99,13 +100,27 @@ function EduTreeCanvasInner() {
       : 'software-engineering';
   });
   
-  // Node types mapping for ReactFlow
-  const nodeTypes = useMemo(() => ({
-    blockGroup: BlockGroup,
-    terminalNode: TerminalNode,
-    terminal: TerminalNode, // Alias for consistency
-    placeholder: PlaceholderGroup,
-  }), []);
+  // Node types mapping for ReactFlow - DEFENSIVE CHECK
+  const nodeTypes = useMemo(() => {
+    const types = {
+      blockGroup: BlockGroup,
+      terminalNode: TerminalNode,
+      terminal: TerminalNode, // Alias for consistency
+      placeholder: PlaceholderGroup,
+    };
+    
+    // Validation in dev mode
+    if (DEV) {
+      Object.entries(types).forEach(([key, component]) => {
+        if (typeof component !== 'function') {
+          console.error(`[CRITICAL] NodeType ${key} is not a function:`, component);
+          throw new Error(`Invalid node type: ${key}`);
+        }
+      });
+    }
+    
+    return types;
+  }, []);
 
   // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
@@ -148,11 +163,15 @@ function EduTreeCanvasInner() {
     const list = (flowNodes ?? []).map(n => {
       if (!n?.type || !KNOWN.has(n.type)) { 
         touched = true; 
-        return {...n, type: 'blockGroup'}; 
+        return {...n, type: 'blockGroup', id: n?.id || `fallback-${Math.random()}`}; 
+      }
+      if (!n?.id) {
+        touched = true;
+        return {...n, id: `fallback-${Math.random()}`};
       }
       return n;
     });
-    if (touched && import.meta.env.DEV) console.warn('[COERCE] unknown node types → blockGroup');
+    if (touched && import.meta.env.DEV) console.warn('[COERCE] Fixed node issues');
     return list;
   }, [flowNodes, nodeTypes]);
 
@@ -199,13 +218,18 @@ function EduTreeCanvasInner() {
     });
   }, [baseEdges, highlighted]);
 
-  // Safe node coercion moved up earlier - now use viewNodes for final render
+  // Final safe nodes/edges with complete validation
   const finalNodes = useMemo(() => {
     return (viewNodes || []).map(node => {
-      // Ensure all required properties exist
-      if (!node?.id) {
-        console.warn('[Safe Node] Missing ID:', node);
-        return { ...node, id: `fallback-${Math.random()}` };
+      if (!node?.id || !node?.type) {
+        console.warn('[Safe Node] Missing required props:', node);
+        return { 
+          ...node, 
+          id: node?.id || `fallback-${Math.random()}`,
+          type: 'blockGroup',
+          position: node?.position || { x: 0, y: 0 },
+          data: node?.data || {}
+        };
       }
       return node;
     });
@@ -213,12 +237,14 @@ function EduTreeCanvasInner() {
 
   const finalEdges = useMemo(() => {
     return (viewEdges || []).map(edge => {
-      // Ensure all required properties exist
       if (!edge?.source || !edge?.target) {
         console.warn('[Safe Edge] Missing endpoints:', edge);
         return null;
       }
-      return edge;
+      return {
+        ...edge,
+        id: edge.id || `edge-${edge.source}-${edge.target}`,
+      };
     }).filter(Boolean);
   }, [viewEdges]);
 
@@ -259,6 +285,21 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
+  // Async layout function with proper Promise handling
+  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]): Promise<Node[]> => {
+    if (mode === 'board' || forceGrid) {
+      return Promise.resolve(layoutAsGrid(layoutNodes, 'board'));
+    }
+
+    try {
+      const result = await layoutWithElk(layoutNodes, layoutEdges);
+      return Array.isArray(result) ? result : layoutNodes;
+    } catch (error) {
+      console.error('Layout failed, using fallback:', error);
+      return layoutAsGrid(layoutNodes, 'board');
+    }
+  }, [forceGrid]);
+
   // Track handler
   const handleTrackChange = useCallback((newTrackKey: TrackId) => {
     setCurrentTrackKey(newTrackKey);
@@ -267,20 +308,6 @@ function EduTreeCanvasInner() {
     newParams.set('eduTreeMultiPathOverlay', 'true');
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
-
-  // Simplified layout management 
-  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]) => {
-    if (mode === 'board' || forceGrid) {
-      return layoutAsGrid(layoutNodes, 'board');
-    }
-
-    try {
-      return await layoutWithElk(layoutNodes, layoutEdges);
-    } catch (error) {
-      console.error('Layout failed, using fallback:', error);
-      return layoutAsGrid(layoutNodes, 'board');
-    }
-  }, [forceGrid]);
 
   // Handle node changes with simple forwarding
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -402,15 +429,18 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Initial node/edge setup with layout
+  // Initial node/edge setup with layout - PROPER ASYNC HANDLING
   useEffect(() => {
-    if (!finalNodes.length) return;
+    if (!finalNodes.length || !finalEdges.length) return;
     
+    // Use the async layout function properly
+    setIsLayouting(true);
     applyLayout(viewMode, finalNodes, finalEdges)
       .then((layoutedNodes) => {
         setNodes(layoutedNodes);
         setEdges(finalEdges);
         setAllEdges(finalEdges);
+        setIsLayouting(false);
       })
       .catch(error => {
         console.error('Layout application failed:', error);
@@ -418,10 +448,11 @@ function EduTreeCanvasInner() {
         setNodes(finalNodes);
         setEdges(finalEdges);
         setAllEdges(finalEdges);
+        setIsLayouting(false);
       });
   }, [finalNodes, finalEdges, viewMode, applyLayout]);
 
-  // Mode change handler with safe fallback
+  // Mode change handler with safe fallback - DEBOUNCED ASYNC
   useEffect(() => {
     if (!finalNodes.length || !finalEdges.length) return;
     
@@ -454,20 +485,12 @@ function EduTreeCanvasInner() {
     }, 300);
   }, [viewMode, finalNodes, finalEdges, applyLayout]);
 
-  // ===== CONDITIONAL RENDERING LOGIC =====
-  // Dev-time validation for node types
-  if (DEV) {
-    Object.entries(nodeTypes).forEach(([k, v]) => {
-      if (typeof v !== 'function') {
-        console.error('[INVALID NODETYPE]', k, v, 'Check component exports');
-      }
-    });
-  }
+  // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
   // Render path logging for debugging
   console.log('[EduTree] render', {
     hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
-    overlayFlag, isSafeMode
+    overlayFlag, isSafeMode, dataLoading, dataError, hasData, guardsOk
   });
 
   if (debug) {
@@ -481,163 +504,201 @@ function EduTreeCanvasInner() {
     });
   }
   
-  // NOW HANDLE CONDITIONS WITH CONDITIONAL JSX INSTEAD OF EARLY RETURNS
+  // CONDITIONAL JSX RENDERING INSTEAD OF EARLY RETURNS
   if (dataLoading) {
-    console.log('[GUARD] dataLoading return');
     return (
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-sm opacity-70">Loading curriculum…</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground">Loading education tree data...</p>
+        </div>
       </div>
     );
   }
 
-  if (dataError && !isSafeMode) {
-    console.log('[GUARD] dataError return', dataError);
+  if (dataError) {
     return <EduTreeError error={dataError} />;
   }
 
-  // Empty state (not an error):
-  if (!hasData && !isSafeMode) {
-    console.log('[GUARD] no data return', { blocks: blocks.length, courses: courses.length });
+  if (!hasData) {
     return (
-      <div className="p-6 text-sm text-muted-foreground">
-        No curriculum data found for this track yet.
-        {import.meta.env.DEV && (
-          <div className="mt-2 text-xs">
-            DEV: blocks={blocks.length}, courses={courses.length},
-            gates={gates.length}, gateEdges={gateEdges.length}
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <div className="p-6 text-center space-y-4">
+            <h3 className="text-lg font-semibold">No Data Available</h3>
+            <p className="text-muted-foreground">
+              The education tree data is not yet available. This could be due to:
+            </p>
+            <ul className="text-sm text-muted-foreground text-left space-y-1">
+              <li>• Database not yet seeded</li>
+              <li>• Network connectivity issues</li>
+              <li>• Authentication required</li>
+            </ul>
+            <SeedDataButton />
           </div>
-        )}
+        </Card>
       </div>
     );
   }
 
   if (!guardsOk) {
-    return <div className="p-6 text-sm text-muted-foreground">Preparing canvas…</div>;
-  }
-
-  // MAIN RENDER LOGIC
-  return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Degree Outcome Banner */}
-      {flags.eduTreeOutcomes && (
-        <DegreeOutcomeBanner
-          targetCredits={120}
-          completedCredits={stats.completedCredits}
-          totalCourses={stats.totalCourses}
-          completedCourses={stats.completedCourses}
-          estimatedMonths={outcomeSummary.estimatedMonths}
-          estimatedCost={outcomeSummary.estimatedCost}
-          planIssues={outcomeSummary.issues}
-          selectedLens={selectedLens}
-        />
-      )}
-
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Education Tree</h1>
-            {isSafeMode && (
-              <div className="text-xs text-amber-600 dark:text-amber-400">
-                Safe Mode: Overlay disabled
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <SeedDataButton />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleModeToggle}
-            >
-              {viewMode === 'flow' ? 'Board View' : 'Flow View'}
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full">
+          <div className="p-6 text-center space-y-4">
+            <h3 className="text-lg font-semibold">Component Error</h3>
+            <p className="text-muted-foreground">
+              The education tree components failed validation:
+            </p>
+            <ul className="text-sm text-muted-foreground text-left space-y-1">
+              <li>• Nodes: {Array.isArray(flowNodes) ? '✓' : '✗'}</li>
+              <li>• Edges: {Array.isArray(flowEdges) ? '✓' : '✗'}</li>
+              <li>• BlockGroup: {typeof nodeTypes.blockGroup === 'function' ? '✓' : '✗'}</li>
+              <li>• TerminalNode: {typeof nodeTypes.terminalNode === 'function' ? '✓' : '✗'}</li>
+            </ul>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Reload Page
             </Button>
           </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // MAIN RENDER - Only reached when all conditions are met
+  return (
+    <div className="h-screen bg-background relative">
+      {/* Track comparison overlay controls */}
+      {overlayFlag && !isSafeMode && (
+        <div className="absolute top-4 left-4 z-20 space-y-2">
+          <Card className="p-3 shadow-lg">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Track Comparison</Label>
+              <SimpleTrackPicker
+                value={currentTrackKey}
+                onChange={handleTrackChange}
+                data-testid="primary-track"
+              />
+              {primaryTrack && (
+                <div className="text-xs text-muted-foreground">
+                  Highlighting: {primaryTrack.name} ({primaryTrack.blockIds?.length || 0} blocks)
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
-        
-        {/* Track Controls */}
-        {overlayFlag && !isSafeMode && (
+      )}
+
+      {/* Top Controls */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <Card className="p-2">
           <div className="flex items-center gap-4">
-            <SimpleTrackPicker
-              value={currentTrackKey}
-              onChange={handleTrackChange}
-            />
-            {DEV && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTrackValidator(!showTrackValidator)}
-              >
-                {showTrackValidator ? 'Hide' : 'Show'} Validator
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <Switch
+                id="view-mode"
+                checked={viewMode === 'board'}
+                onCheckedChange={handleModeToggle}
+                disabled={isLayouting}
+              />
+              <Label htmlFor="view-mode" className="text-sm whitespace-nowrap">
+                {viewMode === 'flow' ? 'Flow View' : 'Board View'}
+              </Label>
+            </div>
+            
+            <div className="h-4 w-px bg-border" />
+            
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{stats.completedCourses}/{stats.totalCourses} courses</span>
+              <span>•</span>
+              <span>{stats.completedCredits}/{stats.totalCredits} credits</span>
+            </div>
           </div>
-        )}
+        </Card>
       </div>
 
-      {/* Track Validator Panel */}
-      {showTrackValidator && DEV && (
-        <div className="p-4 border-b border-border bg-muted/50">
-          <TrackValidator
-            nodes={finalNodes}
-            edges={finalEdges}
-            primaryTrack={primaryTrack}
-            isVisible={true}
+      {/* Main Canvas */}
+      <div className="w-full h-full">
+        <ReactFlow
+          nodes={finalNodes}
+          edges={finalEdges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onInit={onInit}
+          nodeTypes={nodeTypes}
+          fitView
+          attributionPosition="bottom-left"
+          className="bg-background"
+          minZoom={0.1}
+          maxZoom={1.5}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        >
+          <Controls position="bottom-right" />
+          <Background 
+            variant={BackgroundVariant.Dots} 
+            gap={20} 
+            size={1} 
+            className="opacity-30"
+          />
+          <EduTreeMiniMap />
+        </ReactFlow>
+      </div>
+
+      {/* Outcome Panel */}
+      {showOutcomePanel && (
+        <div className="absolute bottom-4 left-4 z-10">
+          <OutcomePanel
+            summary={outcomeSummary}
+            selectedLens={selectedLens}
+            isVisible={showOutcomePanel}
           />
         </div>
       )}
 
-      {/* Main Canvas */}
-      <div className="flex-1 relative">
-        {/* Temporary debug override */}
-        {window.location.search.includes('debug=basic') ? (
-          <div style={{padding: 20, background: 'lightgreen'}}>
-            DEBUG MODE: EduTree render path reached!
-            <div>Data: {hasData ? 'YES' : 'NO'}</div>
-            <div>Nodes: {flowNodes?.length ?? 0}</div>
-            <div>Loading: {dataLoading ? 'YES' : 'NO'}</div>
-            <div>NodeTypes Valid: {typeof nodeTypes.blockGroup === 'function' ? 'YES' : 'NO'}</div>
+      {/* Track Validator (Dev) */}
+      {showTrackValidator && (
+        <div className="absolute top-16 left-4 z-30">
+          <TrackValidator
+            nodes={finalNodes}
+            edges={finalEdges}
+            primaryTrack={primaryTrack}
+            isVisible={showTrackValidator}
+          />
+        </div>
+      )}
+
+      {/* Staggered edges reveal button */}
+      {flags.eduTreeStaggeredEdgesV2 && isRevealing && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <Button
+            onClick={forceRevealAll}
+            variant="outline"
+            size="sm"
+            className="shadow-lg"
+          >
+            Reveal All Connections
+          </Button>
+        </div>
+      )}
+
+      {/* Loading overlay for layout operations */}
+      {isLayouting && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-50">
+          <div className="text-center space-y-2">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground">Applying layout...</p>
           </div>
-        ) : !Array.isArray(flowNodes) || flowNodes.length === 0 ? (
-          <div className="p-6">Loading curriculum nodes…</div>
-        ) : !Array.isArray(flowEdges) ? (
-          <div className="p-6">Loading curriculum connections…</div>
-        ) : !nodeTypes.blockGroup || typeof nodeTypes.blockGroup !== 'function' ? (
-          <div className="p-6">Preparing components…</div>
-        ) : (
-          <DebugBoundary>
-            <ReactFlow
-              nodes={flags.eduTreeStaggeredEdgesV2 && !isSafeMode ? nodes : finalNodes}
-              edges={flags.eduTreeStaggeredEdgesV2 && !isSafeMode ? visibleEdges : finalEdges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={onEdgesChange}
-              onInit={onInit}
-              nodeTypes={nodeTypes}
-              fitView
-              minZoom={0.1}
-              maxZoom={1.5}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-            >
-              <Background 
-                variant={BackgroundVariant.Dots} 
-                gap={24} 
-                size={1} 
-              />
-              <Controls showInteractive={false} />
-              <EduTreeMiniMap />
-            </ReactFlow>
-          </DebugBoundary>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export function EduTreeCanvas() {
   return (
-    <ReactFlowProvider>
-      <EduTreeCanvasInner />
-    </ReactFlowProvider>
+    <DebugBoundary>
+      <ReactFlowProvider>
+        <EduTreeCanvasInner />
+      </ReactFlowProvider>
+    </DebugBoundary>
   );
 }

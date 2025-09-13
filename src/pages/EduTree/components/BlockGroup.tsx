@@ -11,7 +11,7 @@ import { CourseNode } from './CourseNode';
 import { useNodeResize } from '@/hooks/useNodeResize';
 import { useFeatureFlags } from '@/lib/featureFlags';
 
-export function BlockGroup(props: NodeProps) {
+export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
   const flags = useFeatureFlags();
   const nodeRef = useRef<HTMLDivElement>(null);
   const { attachResizeObserver, detachResizeObserver } = useNodeResize(props.id);
