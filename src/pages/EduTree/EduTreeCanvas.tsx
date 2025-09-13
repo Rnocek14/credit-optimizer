@@ -71,13 +71,35 @@ interface HighlightedPath {
 }
 
 function EduTreeCanvasInner() {
+  // ===== ALL HOOKS FIRST - NO EARLY RETURNS AFTER HOOKS =====
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const flags = useFeatureFlags();
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [showTrackValidator, setShowTrackValidator] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('flow');
+  const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
+  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
+  const [showOutcomePanel, setShowOutcomePanel] = useState(true);
+  const [isLayouting, setIsLayouting] = useState(false);
+  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
+  const layoutInProgressRef = useRef(false);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [allEdges, setAllEdges] = useState<Edge[]>([]);
+  const [primaryTrack, setPrimaryTrack] = useState<any>(null);
+  const didFitRef = useRef(false);
+  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Node types mapping for ReactFlow - MOVED INSIDE COMPONENT
+  // Track comparison state - dynamic resolution from block titles
+  const [currentTrackKey, setCurrentTrackKey] = useState<TrackId>(() => {
+    const raw = searchParams.get('primary') as TrackId;
+    return raw && getAllTrackIds().includes(raw) 
+      ? raw 
+      : 'software-engineering';
+  });
+  
+  // Node types mapping for ReactFlow
   const nodeTypes = useMemo(() => ({
     blockGroup: BlockGroup,
     terminalNode: TerminalNode,
@@ -92,63 +114,6 @@ function EduTreeCanvasInner() {
   const forceGrid = searchParams.get('elk') === '0';
   const debug = searchParams.get('debug') === '1';
   
-  // Dev-time validation for node types
-  if (DEV) {
-    Object.entries(nodeTypes).forEach(([k, v]) => {
-      if (typeof v !== 'function') {
-        console.error('[INVALID NODETYPE]', k, v, 'Check component exports');
-      }
-    });
-  }
-  
-  // Render path logging for debugging
-  console.log('[EduTree] render', {
-    hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
-    overlayFlag, isSafeMode
-  });
-  
-  
-  // Global error listeners for debugging
-  useEffect(() => {
-    const uhr = (e: PromiseRejectionEvent) => {
-      console.error('[unhandledrejection]', e.reason);
-    };
-    const ue = (e: ErrorEvent) => {
-      console.error('[error]', e.message, e.error);
-    };
-    window.addEventListener('unhandledrejection', uhr);
-    window.addEventListener('error', ue);
-    return () => {
-      window.removeEventListener('unhandledrejection', uhr);
-      window.removeEventListener('error', ue);
-    };
-  }, []);
-  
-  const [viewMode, setViewMode] = useState<ViewMode>('flow');
-  const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
-  const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
-  const [showOutcomePanel, setShowOutcomePanel] = useState(true);
-  const [isLayouting, setIsLayouting] = useState(false);
-  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
-  const layoutInProgressRef = useRef(false);
-  
-  // Track comparison state - dynamic resolution from block titles
-  const [currentTrackKey, setCurrentTrackKey] = useState<TrackId>(() => {
-    const raw = searchParams.get('primary') as TrackId;
-    return raw && getAllTrackIds().includes(raw) 
-      ? raw 
-      : 'software-engineering';
-  });
-  
-  // Track handler
-  const handleTrackChange = useCallback((newTrackKey: TrackId) => {
-    setCurrentTrackKey(newTrackKey);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('primary', newTrackKey);
-    newParams.set('eduTreeMultiPathOverlay', 'true');
-    setSearchParams(newParams, { replace: true });
-  }, [searchParams, setSearchParams]);
-  
   // Use the new defensive data hook
   const { 
     data: { courses, blocks, blockMembers, gates, gateEdges },
@@ -156,37 +121,6 @@ function EduTreeCanvasInner() {
     error: dataError,
     hasData 
   } = useEduTreeData();
-
-  // Add error handling with logging
-  if (dataLoading) {
-    console.log('[GUARD] dataLoading return');
-    return (
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-sm opacity-70">Loading curriculum…</div>
-      </div>
-    );
-  }
-
-  if (dataError && !isSafeMode) {
-    console.log('[GUARD] dataError return', dataError);
-    return <EduTreeError error={dataError} />;
-  }
-
-  // Empty state (not an error):
-  if (!hasData && !isSafeMode) {
-    console.log('[GUARD] no data return', { blocks: blocks.length, courses: courses.length });
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        No curriculum data found for this track yet.
-        {import.meta.env.DEV && (
-          <div className="mt-2 text-xs">
-            DEV: blocks={blocks.length}, courses={courses.length},
-            gates={gates.length}, gateEdges={gateEdges.length}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // Transform data for React Flow (defensive)
   const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => safe(
@@ -199,17 +133,6 @@ function EduTreeCanvasInner() {
     'Transform'
   ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
 
-  if (debug) {
-    console.log('[EduTree Debug]', {
-      blocks: blocks.length, 
-      courses: courses.length,
-      nodes: flowNodes?.length, 
-      edges: flowEdges?.length,
-      overlayFlag, 
-      trackBlocks: 'Loading...'
-    });
-  }
-
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 
     Array.isArray(flowNodes) &&
@@ -217,10 +140,6 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.blockGroup === 'function' &&
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
-
-  if (!guardsOk) {
-    return <div className="p-6 text-sm text-muted-foreground">Preparing canvas…</div>;
-  }
 
   // Coerce unknown node types to prevent ReactFlow crashes
   const KNOWN = new Set(Object.keys(nodeTypes));
@@ -237,10 +156,6 @@ function EduTreeCanvasInner() {
     return list;
   }, [flowNodes, nodeTypes]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [allEdges, setAllEdges] = useState<Edge[]>([]);
-
   // Staggered edges V2 system
   const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
     allEdges,
@@ -251,23 +166,6 @@ function EduTreeCanvasInner() {
       emergencyTimeoutMs: 5000,
     }
   );
-
-  // Track resolution and overlay
-  const [primaryTrack, setPrimaryTrack] = useState<any>(null);
-
-  useEffect(() => {
-    if (!currentTrackKey || !overlayFlag || !blocks.length || isSafeMode) return;
-    
-    resolveTrackBlockIds(currentTrackKey)
-      .then(track => {
-        console.log('[Track Resolution]', { trackKey: currentTrackKey, track });
-        setPrimaryTrack(track);
-      })
-      .catch(err => {
-        console.error('[Track Resolution Error]', err);
-        setPrimaryTrack(null);
-      });
-  }, [currentTrackKey, overlayFlag, blocks.length]);
 
   // Base edges for overlay (unified source)
   const baseEdges = useMemo(() => {
@@ -301,6 +199,164 @@ function EduTreeCanvasInner() {
     });
   }, [baseEdges, highlighted]);
 
+  // Safe node coercion moved up earlier - now use viewNodes for final render
+  const finalNodes = useMemo(() => {
+    return (viewNodes || []).map(node => {
+      // Ensure all required properties exist
+      if (!node?.id) {
+        console.warn('[Safe Node] Missing ID:', node);
+        return { ...node, id: `fallback-${Math.random()}` };
+      }
+      return node;
+    });
+  }, [viewNodes]);
+
+  const finalEdges = useMemo(() => {
+    return (viewEdges || []).map(edge => {
+      // Ensure all required properties exist
+      if (!edge?.source || !edge?.target) {
+        console.warn('[Safe Edge] Missing endpoints:', edge);
+        return null;
+      }
+      return edge;
+    }).filter(Boolean);
+  }, [viewEdges]);
+
+  // Calculate outcome panel summary
+  const outcomeSummary: PlanValidationSummary = useMemo(() => {
+    const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
+    const completedCredits = courses
+      .filter(c => completedCourseIds.has(c.id))
+      .reduce((sum, c) => sum + c.credits, 0);
+    
+    // Simple estimates - in real app these would be more sophisticated
+    const estimatedMonths = Math.max(24, Math.ceil((totalCredits - completedCredits) / 15 * 4));
+    const estimatedCost = (totalCredits - completedCredits) * 500; // $500 per credit estimate
+    
+    const issues: string[] = [];
+    if (completedCredits < totalCredits * 0.25) {
+      issues.push('No foundation courses completed');
+    }
+    
+    return {
+      totalCredits,
+      completedCredits,
+      estimatedMonths,
+      estimatedCost,
+      planValid: issues.length === 0,
+      issues
+    };
+  }, [courses, completedCourseIds]);
+
+  const stats = useMemo(() => {
+    const totalCourses = courses.length;
+    const completedCourses = Array.from(completedCourseIds).length;
+    const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
+    const completedCredits = courses
+      .filter(c => completedCourseIds.has(c.id))
+      .reduce((sum, c) => sum + c.credits, 0);
+
+    return { totalCourses, completedCourses, totalCredits, completedCredits };
+  }, [courses, completedCourseIds]);
+
+  // Track handler
+  const handleTrackChange = useCallback((newTrackKey: TrackId) => {
+    setCurrentTrackKey(newTrackKey);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('primary', newTrackKey);
+    newParams.set('eduTreeMultiPathOverlay', 'true');
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Simplified layout management 
+  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]) => {
+    if (mode === 'board' || forceGrid) {
+      return layoutAsGrid(layoutNodes, 'board');
+    }
+
+    try {
+      return await layoutWithElk(layoutNodes, layoutEdges);
+    } catch (error) {
+      console.error('Layout failed, using fallback:', error);
+      return layoutAsGrid(layoutNodes, 'board');
+    }
+  }, [forceGrid]);
+
+  // Handle node changes with simple forwarding
+  const handleNodesChange = useCallback((changes: any[]) => {
+    onNodesChange(changes);
+  }, [onNodesChange]);
+
+  // Enhanced onInit with terminal focus
+  const onInit = useCallback((reactFlowInstance: any) => {
+    console.log('[BOOT] RF onInit');
+    setReactFlowInstance(reactFlowInstance);
+    
+    // Clear any pending fitView to debounce
+    if (fitViewTimeoutRef.current) {
+      clearTimeout(fitViewTimeoutRef.current);
+    }
+    
+    // Single debounced fitView after initialization
+    fitViewTimeoutRef.current = setTimeout(() => {
+      const hasTerminal = finalNodes.some(node => 
+        node.type === 'terminal' || node.type === 'terminalNode' || 
+        node.id === 'degree-completion'
+      );
+      
+      const padding = hasTerminal ? 0.4 : 0.2;
+      reactFlowInstance.fitView({ padding, duration: 300 });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
+      }
+    }, 150);
+  }, [finalNodes]);
+
+  const handleModeToggle = useCallback(() => {
+    setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
+  }, []);
+
+  // Handle course click
+  const handleCourseClick = useCallback((courseId: string) => {
+    console.log('Course clicked:', courseId);
+    toast({
+      title: "Course Information",
+      description: `Viewing details for course ${courseId}`,
+    });
+  }, []);
+
+  // ===== ALL EFFECTS =====
+  // Global error listeners for debugging
+  useEffect(() => {
+    const uhr = (e: PromiseRejectionEvent) => {
+      console.error('[unhandledrejection]', e.reason);
+    };
+    const ue = (e: ErrorEvent) => {
+      console.error('[error]', e.message, e.error);
+    };
+    window.addEventListener('unhandledrejection', uhr);
+    window.addEventListener('error', ue);
+    return () => {
+      window.removeEventListener('unhandledrejection', uhr);
+      window.removeEventListener('error', ue);
+    };
+  }, []);
+
+  // Track resolution and overlay
+  useEffect(() => {
+    if (!currentTrackKey || !overlayFlag || !blocks.length || isSafeMode) return;
+    
+    resolveTrackBlockIds(currentTrackKey)
+      .then(track => {
+        console.log('[Track Resolution]', { trackKey: currentTrackKey, track });
+        setPrimaryTrack(track);
+      })
+      .catch(err => {
+        console.error('[Track Resolution Error]', err);
+        setPrimaryTrack(null);
+      });
+  }, [currentTrackKey, overlayFlag, blocks.length, isSafeMode]);
+
   // Development audit logging with safety guards
   useEffect(() => {
     if (!overlayFlag || !primaryTrack || isSafeMode) return;
@@ -317,8 +373,7 @@ function EduTreeCanvasInner() {
     });
   }, [overlayFlag, primaryTrack, highlighted, viewNodes.length, viewEdges.length, currentTrackKey, isSafeMode]);
 
-  // 4) FitView exactly once per activation with highlighted node/edge count guard
-  const didFitRef = useRef(false);
+  // FitView exactly once per activation with highlighted node/edge count guard
   useEffect(() => {
     const overlayOn = overlayFlag && primaryTrack;
     if (!reactFlowInstance || !overlayOn || isSafeMode) { 
@@ -347,116 +402,6 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Handle node changes with simple forwarding
-  const handleNodesChange = useCallback((changes: any[]) => {
-    onNodesChange(changes);
-  }, [onNodesChange]);
-
-  // Simplified layout management 
-  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]) => {
-    if (mode === 'board' || forceGrid) {
-      return layoutAsGrid(layoutNodes, 'board');
-    }
-
-    try {
-      return await layoutWithElk(layoutNodes, layoutEdges);
-    } catch (error) {
-      console.error('Layout failed, using fallback:', error);
-      return layoutAsGrid(layoutNodes, 'board');
-    }
-  }, [forceGrid]);
-
-  // Calculate outcome panel summary
-  const outcomeSummary: PlanValidationSummary = useMemo(() => {
-    const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
-    const completedCredits = courses
-      .filter(c => completedCourseIds.has(c.id))
-      .reduce((sum, c) => sum + c.credits, 0);
-    
-    // Simple estimates - in real app these would be more sophisticated
-    const estimatedMonths = Math.max(24, Math.ceil((totalCredits - completedCredits) / 15 * 4));
-    const estimatedCost = (totalCredits - completedCredits) * 500; // $500 per credit estimate
-    
-    const issues: string[] = [];
-    if (completedCredits < totalCredits * 0.25) {
-      issues.push('No foundation courses completed');
-    }
-    
-    return {
-      totalCredits,
-      completedCredits,
-      estimatedMonths,
-      estimatedCost,
-      planValid: issues.length === 0,
-      issues
-    };
-  }, [courses, completedCourseIds]);
-
-  // Enhanced onInit with terminal focus
-  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const onInit = useCallback((reactFlowInstance: any) => {
-    console.log('[BOOT] RF onInit');
-    setReactFlowInstance(reactFlowInstance);
-    
-    // Clear any pending fitView to debounce
-    if (fitViewTimeoutRef.current) {
-      clearTimeout(fitViewTimeoutRef.current);
-    }
-    
-    // Single debounced fitView after initialization
-    fitViewTimeoutRef.current = setTimeout(() => {
-      const hasTerminal = finalNodes.some(node => 
-        node.type === 'terminal' || node.type === 'terminalNode' || 
-        node.id === 'degree-completion'
-      );
-      
-      const padding = hasTerminal ? 0.4 : 0.2;
-      reactFlowInstance.fitView({ padding, duration: 300 });
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
-      }
-    }, 150);
-  }, [viewNodes]);
-
-  const handleModeToggle = useCallback(() => {
-    setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
-  }, []);
-
-  const stats = useMemo(() => {
-    const totalCourses = courses.length;
-    const completedCourses = Array.from(completedCourseIds).length;
-    const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
-    const completedCredits = courses
-      .filter(c => completedCourseIds.has(c.id))
-      .reduce((sum, c) => sum + c.credits, 0);
-
-    return { totalCourses, completedCourses, totalCredits, completedCredits };
-  }, [courses, completedCourseIds]);
-
-  // Safe node coercion moved up earlier - now use viewNodes for final render
-  const finalNodes = useMemo(() => {
-    return (viewNodes || []).map(node => {
-      // Ensure all required properties exist
-      if (!node?.id) {
-        console.warn('[Safe Node] Missing ID:', node);
-        return { ...node, id: `fallback-${Math.random()}` };
-      }
-      return node;
-    });
-  }, [viewNodes]);
-
-  const finalEdges = useMemo(() => {
-    return (viewEdges || []).map(edge => {
-      // Ensure all required properties exist
-      if (!edge?.source || !edge?.target) {
-        console.warn('[Safe Edge] Missing endpoints:', edge);
-        return null;
-      }
-      return edge;
-    }).filter(Boolean);
-  }, [viewEdges]);
-
   // Initial node/edge setup with layout
   useEffect(() => {
     if (!finalNodes.length) return;
@@ -476,47 +421,69 @@ function EduTreeCanvasInner() {
       });
   }, [finalNodes, finalEdges, viewMode, applyLayout]);
 
-  // Handle course click
-  const handleCourseClick = useCallback((courseId: string) => {
-    console.log('Course clicked:', courseId);
-    toast({
-      title: "Course Information",
-      description: `Viewing details for course ${courseId}`,
-    });
-  }, []);
-
   // Mode change handler with safe fallback
   useEffect(() => {
     if (!finalNodes.length || !finalEdges.length) return;
     
     setIsLayouting(true);
     
-    // Clear any existing timeout
+    // Clear existing timeout
     if (layoutTimeoutRef.current) {
       clearTimeout(layoutTimeoutRef.current);
     }
     
-    if (layoutInProgressRef.current) return;
-    
-    layoutInProgressRef.current = true;
-    
-    applyLayout(viewMode, finalNodes, finalEdges)
-      .then((layoutedNodes) => {
-        setNodes(layoutedNodes);
-        setEdges(finalEdges);
-        setAllEdges(finalEdges);
-        setIsLayouting(false);
-        layoutInProgressRef.current = false;
-      })
-      .catch(error => {
-        console.error('Layout change failed:', error);
-        setIsLayouting(false);
-        layoutInProgressRef.current = false;
-      });
+    // Debounce layout changes
+    layoutTimeoutRef.current = setTimeout(() => {
+      if (layoutInProgressRef.current) return;
+      
+      layoutInProgressRef.current = true;
+      
+      applyLayout(viewMode, finalNodes, finalEdges)
+        .then((layoutedNodes) => {
+          setNodes(layoutedNodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
+          setIsLayouting(false);
+          layoutInProgressRef.current = false;
+        })
+        .catch(error => {
+          console.error('Layout change failed:', error);
+          setIsLayouting(false);
+          layoutInProgressRef.current = false;
+        });
+    }, 300);
   }, [viewMode, finalNodes, finalEdges, applyLayout]);
 
-  // Loading state check - render skeleton until data arrives
-  if (!finalNodes?.length || !finalEdges?.length) {
+  // ===== CONDITIONAL RENDERING LOGIC =====
+  // Dev-time validation for node types
+  if (DEV) {
+    Object.entries(nodeTypes).forEach(([k, v]) => {
+      if (typeof v !== 'function') {
+        console.error('[INVALID NODETYPE]', k, v, 'Check component exports');
+      }
+    });
+  }
+  
+  // Render path logging for debugging
+  console.log('[EduTree] render', {
+    hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
+    overlayFlag, isSafeMode
+  });
+
+  if (debug) {
+    console.log('[EduTree Debug]', {
+      blocks: blocks.length, 
+      courses: courses.length,
+      nodes: flowNodes?.length, 
+      edges: flowEdges?.length,
+      overlayFlag, 
+      trackBlocks: 'Loading...'
+    });
+  }
+  
+  // NOW HANDLE CONDITIONS WITH CONDITIONAL JSX INSTEAD OF EARLY RETURNS
+  if (dataLoading) {
+    console.log('[GUARD] dataLoading return');
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">Loading curriculum…</div>
@@ -524,6 +491,32 @@ function EduTreeCanvasInner() {
     );
   }
 
+  if (dataError && !isSafeMode) {
+    console.log('[GUARD] dataError return', dataError);
+    return <EduTreeError error={dataError} />;
+  }
+
+  // Empty state (not an error):
+  if (!hasData && !isSafeMode) {
+    console.log('[GUARD] no data return', { blocks: blocks.length, courses: courses.length });
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        No curriculum data found for this track yet.
+        {import.meta.env.DEV && (
+          <div className="mt-2 text-xs">
+            DEV: blocks={blocks.length}, courses={courses.length},
+            gates={gates.length}, gateEdges={gateEdges.length}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!guardsOk) {
+    return <div className="p-6 text-sm text-muted-foreground">Preparing canvas…</div>;
+  }
+
+  // MAIN RENDER LOGIC
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Degree Outcome Banner */}
