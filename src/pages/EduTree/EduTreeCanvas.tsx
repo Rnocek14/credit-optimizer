@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { DebugBoundary } from '@/components/DebugBoundary';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   ReactFlow, 
@@ -94,8 +95,25 @@ function EduTreeCanvasInner() {
   
   // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
+  const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
   const isSafeMode = searchParams.get('safe') === '1';
+  
+  
+  // Global error listeners for debugging
+  useEffect(() => {
+    const uhr = (e: PromiseRejectionEvent) => {
+      console.error('[unhandledrejection]', e.reason);
+    };
+    const ue = (e: ErrorEvent) => {
+      console.error('[error]', e.message, e.error);
+    };
+    window.addEventListener('unhandledrejection', uhr);
+    window.addEventListener('error', ue);
+    return () => {
+      window.removeEventListener('unhandledrejection', uhr);
+      window.removeEventListener('error', ue);
+    };
+  }, []);
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -179,7 +197,7 @@ function EduTreeCanvasInner() {
       if (DEV) {
         const bad = result.edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
         if (bad.length) {
-          console.warn('[ASSERT] Non-normalized edge ids:', bad.slice(0, 5).map(b => b.id));
+          console.warn('[ASSERT] bad edge ids:', bad.map(b => b.id));
         }
       }
       
@@ -564,26 +582,28 @@ function EduTreeCanvasInner() {
         ) : !nodeTypes.terminalNode || typeof nodeTypes.terminalNode !== 'function' ? (
           <div className="p-4 text-center text-muted-foreground">Preparing canvas…</div>
         ) : (
-          <ReactFlow
-            nodes={highlightedElements.nodes}
-            edges={highlightedElements.edges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          onInit={onInit}
-          nodeTypes={nodeTypes}
-          fitView
-          minZoom={0.1}
-          maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        >
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={24} 
-            size={1} 
-          />
-          <Controls showInteractive={false} />
-          <EduTreeMiniMap />
-        </ReactFlow>
+          <DebugBoundary>
+            <ReactFlow
+              nodes={highlightedElements.nodes}
+              edges={highlightedElements.edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={onEdgesChange}
+              onInit={onInit}
+              nodeTypes={nodeTypes}
+              fitView
+              minZoom={0.1}
+              maxZoom={1.5}
+              defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+            >
+              <Background 
+                variant={BackgroundVariant.Dots} 
+                gap={24} 
+                size={1} 
+              />
+              <Controls showInteractive={false} />
+              <EduTreeMiniMap />
+            </ReactFlow>
+          </DebugBoundary>
         )}
       </div>
     </div>

@@ -189,9 +189,9 @@ export function transformEducationData(
     }
 
     regularEdges.push({
-      id: `e-${sourceBlockId}-${targetBlockId}`,
-      source: sourceBlockId,
-      target: targetBlockId,
+      id: `e-${sourceBlockId}-${targetBlockId}`, // guaranteed string
+      source: String(sourceBlockId), // guaranteed string
+      target: String(targetBlockId), // guaranteed string
       type: 'smoothstep',
       className: 'edge',
       style: {
