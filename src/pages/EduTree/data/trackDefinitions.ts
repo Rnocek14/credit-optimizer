@@ -1,88 +1,85 @@
+export type TrackId = string;
+
 export interface TrackDefinition {
-  id: string;
+  id: TrackId;
   name: string;
-  description: string;
-  color: string;
-  blockIds: string[];
+  description?: string;
+  color?: string;
+  blockIds: string[]; // ordered block ids (using slugs)
 }
 
+// Track definitions using block slugs
 export const TRACK_DEFINITIONS: TrackDefinition[] = [
   {
     id: 'software-engineering',
     name: 'Software Engineering',
-    description: 'Focus on software development, algorithms, and system design',
-    color: '#007bff',
-    blockIds: ['1', '2', '3', '4', '5', '6', '9']
+    description: 'Full-stack development track',
+    color: '#3b82f6',
+    blockIds: [
+      'foundations',
+      'mathematics', 
+      'general-education',
+      'core-i',
+      'core-ii',
+      'architecture',
+      'capstone'
+    ]
   },
   {
     id: 'data-science',
     name: 'Data Science',
-    description: 'Focus on data analysis, machine learning, and statistics',
-    color: '#ff9300',
-    blockIds: ['1', '2', '3', '4', '7', '8', '9']
+    description: 'Analytics and machine learning track',
+    color: '#10b981',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education', 
+      'core-i',
+      'data-analysis',
+      'machine-learning',
+      'capstone'
+    ]
   },
   {
     id: 'cybersecurity',
     name: 'Cybersecurity',
-    description: 'Focus on security, cryptography, and risk management',
-    color: '#dc3545',
-    blockIds: ['1', '2', '3', '4', '10', '11', '9']
+    description: 'Security and risk management track',
+    color: '#f59e0b',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'security-fundamentals',
+      'advanced-security',
+      'capstone'
+    ]
+  },
+  {
+    id: 'mobile-development',
+    name: 'Mobile Development', 
+    description: 'iOS and Android development track',
+    color: '#8b5cf6',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'mobile-frameworks',
+      'advanced-mobile',
+      'capstone'
+    ]
   }
 ];
 
-export function getTrackById(id: string): TrackDefinition | undefined {
-  return TRACK_DEFINITIONS.find(track => track.id === id);
+export const TRACK_MAP = new Map(TRACK_DEFINITIONS.map(t => [t.id, t]));
+
+// Helper to get track by ID with fallback
+export function getTrackById(id: TrackId): TrackDefinition | undefined {
+  return TRACK_MAP.get(id);
 }
 
-// Guard edge-IDs at source - enforce block-based IDs
-export const eid = (s: string, t: string) => `e-${String(s)}-${String(t)}`;
-
-export function generateEdgeIds(blockSequence: string[]): string[] {
-  return blockSequence.slice(0, -1).map((src, i) => eid(src, blockSequence[i + 1]));
-}
-
-export interface TrackHighlights {
-  nodes: Set<string>;
-  edges: Set<string>;
-}
-
-export function computeTrackHighlights(
-  primaryTrack?: TrackDefinition,
-  comparisonTrack?: TrackDefinition
-): {
-  primaryHighlights: TrackHighlights;
-  comparisonHighlights: TrackHighlights;
-  bothNodes: Set<string>;
-  bothEdges: Set<string>;
-  primaryOnlyNodes: Set<string>;
-  comparisonOnlyNodes: Set<string>;
-  primaryOnlyEdges: Set<string>;
-  comparisonOnlyEdges: Set<string>;
-} {
-  const primaryNodes = new Set(primaryTrack?.blockIds || []);
-  const comparisonNodes = new Set(comparisonTrack?.blockIds || []);
-  
-  const primaryEdges = new Set(primaryTrack ? generateEdgeIds(primaryTrack.blockIds) : []);
-  const comparisonEdges = new Set(comparisonTrack ? generateEdgeIds(comparisonTrack.blockIds) : []);
-
-  // Compute intersections
-  const bothNodes = new Set([...primaryNodes].filter(id => comparisonNodes.has(id)));
-  const bothEdges = new Set([...primaryEdges].filter(id => comparisonEdges.has(id)));
-
-  // Compute exclusive sets
-  const primaryOnlyNodes = new Set([...primaryNodes].filter(id => !bothNodes.has(id)));
-  const comparisonOnlyNodes = new Set([...comparisonNodes].filter(id => !bothNodes.has(id)));
-  const primaryOnlyEdges = new Set([...primaryEdges].filter(id => !bothEdges.has(id)));
-  const comparisonOnlyEdges = new Set([...comparisonEdges].filter(id => !bothEdges.has(id)));
-
-  return {
-    primaryHighlights: { nodes: primaryNodes, edges: primaryEdges },
-    comparisonHighlights: { nodes: comparisonNodes, edges: comparisonEdges },
-    bothNodes,
-    bothEdges,
-    primaryOnlyNodes,
-    comparisonOnlyNodes,
-    primaryOnlyEdges,
-    comparisonOnlyEdges
-  };
+// Helper to get all track IDs
+export function getAllTrackIds(): TrackId[] {
+  return TRACK_DEFINITIONS.map(t => t.id);
 }

@@ -1,18 +1,18 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { TrackKey } from '../data/resolveTrackBlocks';
+import { type TrackId } from '../data/trackDefinitions';
 
 interface TrackPickerProps {
-  value: TrackKey | undefined;
-  onChange: (value: TrackKey) => void;
+  value: TrackId | undefined;
+  onChange: (value: TrackId) => void;
   disabled?: boolean;
 }
 
 const trackOptions = [
-  { id: 'software-engineering' as TrackKey, name: 'Software Engineering' },
-  { id: 'data-science' as TrackKey, name: 'Data Science' },
-  { id: 'cybersecurity' as TrackKey, name: 'Cybersecurity' }
+  { id: 'software-engineering' as TrackId, name: 'Software Engineering' },
+  { id: 'data-science' as TrackId, name: 'Data Science' },
+  { id: 'cybersecurity' as TrackId, name: 'Cybersecurity' }
 ] as const;
 
 export function TrackPicker({ value, onChange, disabled }: TrackPickerProps) {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { DebugBoundary } from '@/components/DebugBoundary';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   ReactFlow, 
@@ -16,16 +16,13 @@ import {
 import '@xyflow/react/dist/style.css';
 import './styles/drag-animations.css';
 import './styles/track-highlights.css';
+import './styles/trackOverlay.css';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { layoutWithElk, layoutAsGrid } from '@/lib/layout/elkLayout';
-// Layout lifecycle removed - using simplified system
-import { snapToLanes, LayoutMemory, DEFAULT_LANE_SCAFFOLD } from '@/lib/layout/laneScaffold';
-import { findOptimalPath } from '@/lib/layout/pathScoring';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { useStaggeredEdgesV2 } from '@/hooks/useStaggeredEdgesV2';
 import { useDragGuard } from '@/components/ui/drag-guard';
@@ -48,41 +45,80 @@ import { BlockGroup } from './components/BlockGroup';
 import { TerminalNode } from './components/TerminalNode';
 import { PlaceholderGroup } from './components/PlaceholderGroup';
 import { CourseNode } from './components/CourseNode';
-import { sortBlocksForLayout } from '@/lib/layout/topologicalSort';
 import { DegreeOutcomeBanner } from './components/DegreeOutcomeBanner';
-import { DegreeOutcomePanel } from './components/DegreeOutcomePanel';
-import { TrackSelector } from './components/TrackSelector';
-import { TrackValidator, runTrackAudits } from './components/TrackValidator';
-import { TrackPicker } from './components/TrackPicker';
-import { TRACK_DEFINITIONS, TrackDefinition, computeTrackHighlights } from './data/trackDefinitions';
-import { resolveTrackBlockIds, TrackKey } from './data/resolveTrackBlocks';
-import { LensSelector } from './components/LensSelector';
-import { EduLaneBackground, EDU_YEAR_LANES } from './components/EduLaneBackground';
-import { EduCourseDetailModal } from '@/components/EduCourseDetailModal';
+import { TrackValidator } from './components/TrackValidator';
+import { SimpleTrackPicker } from './components/SimpleTrackPicker';
+import { TrackComparisonControls } from './components/TrackComparisonControls';
+import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
+import { useStableOverlay } from './hooks/useStableOverlay';
+import { TRACK_DEFINITIONS, getAllTrackIds, type TrackId } from './data/trackDefinitions';
+import { useEduTreeData } from './hooks/useEduTreeData';
+import { transformEducationData } from './utils/transformEducationData';
+import { EduTreeError } from '../../components/EduTreeError';
 
-// Node types for React Flow
-const nodeTypes = {
-  blockGroup: BlockGroup,
-  terminal: TerminalNode,
-  terminalNode: TerminalNode,
-  placeholder: PlaceholderGroup,
-  placeholderGroup: PlaceholderGroup,
-};
 
 const DEV = import.meta.env.DEV;
 
+// Type definitions
 type ViewMode = 'flow' | 'board';
+type TrackKey = TrackId;
+
+interface HighlightedPath {
+  nodes: Set<string>;
+  edges: Set<string>;
+}
 
 function EduTreeCanvasInner() {
-  console.log('[BOOT] EduTreeCanvas render start');
-  
-  const flags = useFeatureFlags();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const flags = useFeatureFlags();
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [showTrackValidator, setShowTrackValidator] = useState(false);
   
+  // Node types mapping for ReactFlow - MOVED INSIDE COMPONENT
+  const nodeTypes = useMemo(() => ({
+    blockGroup: BlockGroup,
+    terminalNode: TerminalNode,
+    terminal: TerminalNode, // Alias for consistency
+    placeholder: PlaceholderGroup,
+  }), []);
+
   // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
+  const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
+  const isSafeMode = searchParams.get('safe') === '1';
+  
+  // Dev-time validation for node types
+  if (DEV) {
+    Object.entries(nodeTypes).forEach(([k, v]) => {
+      if (typeof v !== 'function') {
+        console.error('[INVALID NODETYPE]', k, v, 'Check component exports');
+      }
+    });
+  }
+  
+  // Render path logging for debugging
+  console.log('[EduTree] render', {
+    hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
+    overlayFlag, isSafeMode
+  });
+  
+  
+  // Global error listeners for debugging
+  useEffect(() => {
+    const uhr = (e: PromiseRejectionEvent) => {
+      console.error('[unhandledrejection]', e.reason);
+    };
+    const ue = (e: ErrorEvent) => {
+      console.error('[error]', e.message, e.error);
+    };
+    window.addEventListener('unhandledrejection', uhr);
+    window.addEventListener('error', ue);
+    return () => {
+      window.removeEventListener('unhandledrejection', uhr);
+      window.removeEventListener('error', ue);
+    };
+  }, []);
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -93,533 +129,151 @@ function EduTreeCanvasInner() {
   const layoutInProgressRef = useRef(false);
   
   // Track comparison state - dynamic resolution from block titles
-  const [currentTrackKey, setCurrentTrackKey] = useState<TrackKey>(() => {
-    const raw = searchParams.get('primary') as TrackKey;
-    return raw && ['software-engineering', 'data-science', 'cybersecurity'].includes(raw) 
+  const [currentTrackKey, setCurrentTrackKey] = useState<TrackId>(() => {
+    const raw = searchParams.get('primary') as TrackId;
+    return raw && getAllTrackIds().includes(raw) 
       ? raw 
       : 'software-engineering';
   });
   
-  const [primaryTrack, setPrimaryTrack] = useState<{ name: string; blockIds: string[] } | undefined>();
-  const [comparisonEnabled, setComparisonEnabled] = useState(() => {
-    return searchParams.get('cmp') === '1';
-  });
-  
-  const [showTrackValidator, setShowTrackValidator] = useState(false);
-  
-  // Dynamic track resolution
-  useEffect(() => {
-    if (!overlayFlag) return;
-    
-    (async () => {
-      try {
-        const resolved = await resolveTrackBlockIds(currentTrackKey);
-        setPrimaryTrack(resolved);
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[MP Overlay] track resolved', resolved.name, {
-            blocks: resolved.blockIds.length, missing: resolved.missingTitles
-          });
-        }
-      } catch (e) {
-        console.error('[MP Overlay] resolveTrackBlockIds failed', e);
-      }
-    })();
-  }, [overlayFlag, currentTrackKey]);
-
-  console.log('[DEBUG] EduTreeCanvasInner: Track comparison state initialized', { 
-    primaryTrack: primaryTrack?.name, 
-    comparisonEnabled, 
-    multiPathOverlayEnabled: flags.eduTreeMultiPathOverlay 
-  });
-  
-  // URL persistence - update URL when track state changes
-  useEffect(() => {
-    if (!overlayFlag) return;
-    
+  // Track handler
+  const handleTrackChange = useCallback((newTrackKey: TrackId) => {
+    setCurrentTrackKey(newTrackKey);
     const newParams = new URLSearchParams(searchParams);
+    newParams.set('primary', newTrackKey);
     newParams.set('eduTreeMultiPathOverlay', 'true');
-    newParams.set('primary', currentTrackKey);
-    
-    if (comparisonEnabled) {
-      newParams.set('cmp', '1');
-    } else {
-      newParams.delete('cmp');
-    }
-    
-    // Only update if params actually changed
-    if (newParams.toString() !== searchParams.toString()) {
-      setSearchParams(newParams, { replace: true });
-    }
-  }, [currentTrackKey, comparisonEnabled, overlayFlag, searchParams, setSearchParams]);
+    setSearchParams(newParams, { replace: true });
+  }, [searchParams, setSearchParams]);
   
-  // Telemetry tracking for overlay activation
-  useEffect(() => {
-    if (overlayFlag && primaryTrack) {
-      trackTelemetryEvent({
-        task: 'edu_tree_multipath_overlay_activated',
-        route: '/edu-tree',
-        complexity: { 
-          primaryTrack: currentTrackKey,
-          comparisonEnabled
-        }
-      });
-    }
-  }, [overlayFlag, primaryTrack, comparisonEnabled, currentTrackKey]);
-  const [reactFlowInstance, setReactFlowInstance] = useState(null);
-  
-  // Modal state for course details
-  const [selectedCourse, setSelectedCourse] = useState<EduCourse | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Removed layout manager - using simplified system
-  const layoutMemoryRef = useRef<LayoutMemory>(new LayoutMemory());
-  const { isDragging, setIsDragging, validateDrop, handleInvalidDrop } = useDragGuard();
-  
-  // State for path highlighting
-  const [highlightedPath, setHighlightedPath] = useState<{ nodes: Set<string>, edges: Set<string> } | null>(null);
+  // Use the new defensive data hook
+  const { 
+    data: { courses, blocks, blockMembers, gates, gateEdges },
+    loading: dataLoading,
+    error: dataError,
+    hasData 
+  } = useEduTreeData();
 
-  // Handler for course click
-  const handleCourseClick = useCallback((course: EduCourse) => {
-    setSelectedCourse(course);
-    setIsModalOpen(true);
-  }, []);
+  // Add error handling with logging
+  if (dataLoading) {
+    console.log('[GUARD] dataLoading return');
+    return (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-sm opacity-70">Loading curriculum…</div>
+      </div>
+    );
+  }
 
-  // Handler for modal close
-  const handleModalClose = useCallback(() => {
-    setIsModalOpen(false);
-    setSelectedCourse(null);
-  }, []);
-  
-  // Fetch data from Supabase
-  const { data: courses = [] } = useQuery({
-    queryKey: ['edu-courses'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('edu_courses')
-        .select('*')
-        .order('level_year', { ascending: true })
-        .order('code', { ascending: true });
-      
-      if (error) throw error;
-      return data as EduCourse[];
-    },
-  });
+  if (dataError && !isSafeMode) {
+    console.log('[GUARD] dataError return', dataError);
+    return <EduTreeError error={dataError} />;
+  }
 
-  const { data: blocks = [] } = useQuery({
-    queryKey: ['requirement-blocks'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('requirement_blocks')
-        .select('*')
-        .order('level_year', { ascending: true })
-        .order('title', { ascending: true });
-      
-      if (error) throw error;
-      return data as RequirementBlock[];
-    },
-  });
+  // Empty state (not an error):
+  if (!hasData && !isSafeMode) {
+    console.log('[GUARD] no data return', { blocks: blocks.length, courses: courses.length });
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        No curriculum data found for this track yet.
+        {import.meta.env.DEV && (
+          <div className="mt-2 text-xs">
+            DEV: blocks={blocks.length}, courses={courses.length},
+            gates={gates.length}, gateEdges={gateEdges.length}
+          </div>
+        )}
+      </div>
+    );
+  }
 
-  const { data: blockMembers = [] } = useQuery({
-    queryKey: ['block-members'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_members')
-        .select('*');
-      
-      if (error) throw error;
-      return data as BlockMember[];
-    },
-  });
-
-  const { data: gates = [] } = useQuery({
-    queryKey: ['block-gates'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('block_gates')
-        .select('*');
-      
-      if (error) throw error;
-      return data as BlockGate[];
-    },
-  });
-
-  const { data: gateEdges = [] } = useQuery({
-    queryKey: ['prereq-to-block'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('prereq_to_block')
-        .select('*');
-      
-      if (error) throw error;
-      return data as GateEdge[];
-    },
-  });
-
-  // Transform data for React Flow
-  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    console.log('Data check:', { 
-      blocksLength: blocks.length, 
-      coursesLength: courses.length, 
-      blockMembersLength: blockMembers.length,
-      gatesLength: gates.length,
-      gateEdgesLength: gateEdges.length 
-    });
-
-    if (!blocks.length || !courses.length) {
-      return { nodes: [], edges: [] };
-    }
-
-    // Group courses by block
-    const coursesByBlock = new Map<string, EduCourse[]>();
-    blockMembers.forEach(member => {
-      const course = courses.find(c => c.id === member.course_id);
-      if (course) {
-        if (!coursesByBlock.has(member.block_id)) {
-          coursesByBlock.set(member.block_id, []);
-        }
-        coursesByBlock.get(member.block_id)!.push(course);
-      }
-    });
-
-    // Create block nodes with courses
-    const blocksWithCourses: BlockWithCourses[] = blocks.map(block => ({
-      ...block,
-      courses: coursesByBlock.get(block.id) || [],
-      gate: gates.find(g => g.block_id === block.id)
-    }));
-
-    // Separate parent blocks from child blocks
-    const parentBlocks = blocksWithCourses.filter(block => !block.parent_block_id);
-    const childBlocks = blocksWithCourses.filter(block => block.parent_block_id);
-    
-    // Group child blocks by parent
-    const childBlocksByParent = new Map<string, BlockWithCourses[]>();
-    childBlocks.forEach(child => {
-      if (!childBlocksByParent.has(child.parent_block_id!)) {
-        childBlocksByParent.set(child.parent_block_id!, []);
-      }
-      childBlocksByParent.get(child.parent_block_id!)!.push(child);
-    });
-
-    // Apply topological sorting for stable Year-3 ordering (only to parent blocks)
-    const sortedBlocks = flags.eduTreeLayoutV2 ? 
-      sortBlocksForLayout(parentBlocks, gateEdges) : 
-      parentBlocks;
-
-    // Calculate which blocks are unlocked
-    const unlockedBlocks = new Set<string>();
-    
-    // Find blocks with no prerequisites (starting blocks)
-    const blocksWithPrereqs = new Set(gateEdges.map(edge => edge.target_block_id));
-    sortedBlocks.forEach(block => {
-      if (!blocksWithPrereqs.has(block.id)) {
-        unlockedBlocks.add(block.id);
-      }
-    });
-
-    // Unlock blocks whose prerequisites are complete
-    let changed = true;
-    while (changed) {
-      changed = false;
-      gateEdges.forEach(edge => {
-        if (unlockedBlocks.has(edge.target_block_id)) return;
-        
-        const sourceBlock = sortedBlocks.find(b => b.gate?.id === edge.source_gate_id);
-        if (sourceBlock && isBlockComplete(sourceBlock, sourceBlock.courses, completedCourseIds)) {
-          unlockedBlocks.add(edge.target_block_id);
-          changed = true;
-        }
-      });
-    }
-
-    const regularNodes: Node[] = sortedBlocks
-      .map((block, index) => {
-        // Validate block data
-        if (!block || !block.id) {
-          console.warn('[EduTree] Invalid block data:', block);
-          return null;
-        }
-
-        // Get sub-blocks for this parent block
-        const subBlocks = childBlocksByParent.get(block.id) || [];
-        
-        // Calculate progress including sub-blocks
-        const allCourses = [...block.courses, ...subBlocks.flatMap(sb => sb.courses)];
-        const progress = {
-          completed: allCourses.filter(c => completedCourseIds.has(c.id)).length,
-          required: block.rule_type === 'ALL' ? allCourses.length : 
-                   block.rule_type === 'K_OF_N' ? (block.k || 0) :
-                   Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
-        };
-
-        const isHighlighted = highlightedPath?.nodes.has(String(block.id)) || false;
-
-        return {
-          id: String(block.id), // Ensure string ID
-          type: 'blockGroup', // This must match nodeTypes key
-          position: { x: (block.level_year || 0) * 320, y: index * 200 }, // Initial grid position, with fallback
-          data: {
-            block,
-            completedCourseIds,
-            isUnlocked: unlockedBlocks.has(block.id),
-            progress,
-            subBlocks, // Include sub-blocks in the node data
-            level_year: block.level_year || 0,
-            area: block.area || 'unknown',
-            isHighlighted,
-            planningLens: isHighlighted ? selectedLens : null,
-            onCourseClick: handleCourseClick
-          }
-        };
-      })
-      .filter(Boolean) as Node[]; // Remove any null nodes
-
-    // Add degree completion node
-    const capstoneBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('capstone'));
-    const architectureBlock = sortedBlocks.find(b => b.title.toLowerCase().includes('architecture'));
-    
-    // Check if both capstone and architecture are complete for degree unlock
-    const isDegreeUnlocked = capstoneBlock && architectureBlock && 
-      isBlockComplete(capstoneBlock, capstoneBlock.courses, completedCourseIds) &&
-      isBlockComplete(architectureBlock, architectureBlock.courses, completedCourseIds);
-
-    // Check if degree is complete (all courses completed)
-    const totalCourses = courses.length;
-    const completedCourses = Array.from(completedCourseIds).length;
-    const isDegreeComplete = completedCourses === totalCourses;
-
-    const degreeNode: Node = {
-      id: 'degree-completion',
-      type: 'terminalNode', // Use consistent terminal node type
-      position: { x: 5 * 320, y: 0 }, // Position at Year 5
-      data: {
-        block: {
-          id: 'degree-completion',
-          title: 'B.S. Software Engineering',
-          rule_type: 'ALL' as const,
-          level_year: 5,
-          area: 'degree',
-          courses: [],
-          gate: { id: 'degree-gate', block_id: 'degree-completion' }
-        },
-        isEligible: isDegreeUnlocked || false,
-        degreeType: 'Bachelor of Science',
-        credits: totalCourses * 3, // Approximate total credits
+  // Transform data for React Flow (defensive)
+  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => {
+    try {
+      // Use defensive transformer
+      const result = transformEducationData(
+        { blocks, courses, blockMembers, gates, gateEdges },
         completedCourseIds,
-        isUnlocked: isDegreeUnlocked || false,
-        progress: {
-          completed: completedCourses,
-          required: totalCourses
-        },
-        subBlocks: [],
-        level_year: 5,
-        area: 'degree',
-        isHighlighted: false,
-        planningLens: null,
-        isDegreeNode: true,
-        isDegreeComplete
+        flags
+      );
+      
+      console.log('[EduTree][Transform][Result]', { 
+        nodes: result.nodes.length, 
+        edges: result.edges.length, 
+        flowNodes: result.nodes.length,
+        sampleEdgeId: result.edges[0]?.id 
+      });
+      
+      // Dev-time assertion for edge normalization
+      if (DEV) {
+        const bad = result.edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
+        if (bad.length) {
+          console.warn('[ASSERT] bad edge ids:', bad.map(b => b.id));
+        }
       }
-    };
-
-    const nodes: Node[] = [...regularNodes, degreeNode];
-
-    // Create React Flow edges (only between blocks)
-    const regularEdges: Edge[] = viewMode === 'flow' ? gateEdges.map(gateEdge => {
-      const sourceBlock = sortedBlocks.find(b => b.gate?.id === gateEdge.source_gate_id);
-      const source = sourceBlock?.id ? String(sourceBlock.id) : null;
-      const target = String(gateEdge.target_block_id);
       
-      const isHighlighted = highlightedPath?.edges.has(String(gateEdge.id)) || false;
-      
-      return source ? {
-        id: String(gateEdge.id),
-        source,
-        target,
-        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-        style: {
-          stroke: isHighlighted ? 'var(--primary)' : 'var(--primary)',
-          strokeWidth: isHighlighted ? 3 : 2,
-          opacity: isHighlighted ? 1 : 0.65
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-          color: isHighlighted ? 'var(--primary)' : 'var(--primary)',
-        },
-        ...(flags.eduTreeLayoutV2 && {
-          pathOptions: { offset: 12 }
-        }),
-      } : null;
-    }).filter(Boolean) as Edge[] : [];
-
-    // Add edges to degree completion node
-    const degreeEdges: Edge[] = [];
-    if (viewMode === 'flow' && capstoneBlock && architectureBlock) {
-      // Edge from Capstone to Degree
-      degreeEdges.push({
-        id: 'capstone-to-degree',
-        source: String(capstoneBlock.id),
-        target: 'degree-completion',
-        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-        style: {
-          stroke: 'var(--accent-gold)',
-          strokeWidth: 3,
-          opacity: 0.8
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-          color: 'var(--accent-gold)',
-        },
-        ...(flags.eduTreeLayoutV2 && {
-          pathOptions: { offset: 12 }
-        }),
-      });
-
-      // Edge from Architecture to Degree  
-      degreeEdges.push({
-        id: 'architecture-to-degree',
-        source: String(architectureBlock.id),
-        target: 'degree-completion',
-        type: flags.eduTreeLayoutV2 ? 'step' : 'smoothstep',
-        style: {
-          stroke: 'var(--accent-gold)',
-          strokeWidth: 3,
-          opacity: 0.8
-        },
-        markerEnd: {
-          type: MarkerType.Arrow,
-          color: 'var(--accent-gold)',
-        },
-        ...(flags.eduTreeLayoutV2 && {
-          pathOptions: { offset: 12 }
-        }),
-      });
+      return result;
+    } catch (error) {
+      console.warn('[Transform Error]', error);
+      // IMPORTANT: no setState here - just return safe fallback
+      return {
+        nodes: [],
+        edges: [],
+        blocksWithCourses: []
+      };
     }
-
-    const edges: Edge[] = [...regularEdges, ...degreeEdges];
-
-    if (DEV) {
-      console.log('[EduTree] Generated elements:', { 
-        nodeCount: nodes.length, 
-        edgeCount: edges.length,
-        firstNode: nodes[0],
-        firstEdge: edges[0],
-        regularEdges: regularEdges.length,
-        degreeEdges: degreeEdges.length,
-        nodeTypes: Object.keys(nodeTypes)
-      });
-    }
-
-    return { nodes, edges };
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, viewMode, flags.eduTreeLayoutV2]);
-  // REMOVED highlightedPath dependency to prevent infinite loop
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
-  
+
   // Staggered edges V2 system
   const { visibleEdges, isRevealing, forceRevealAll } = useStaggeredEdgesV2(
     allEdges,
     nodes,
     {
-      enabled: flags.eduTreeStaggeredEdgesV2,
-      batchDelayMs: process.env.NODE_ENV === 'production' ? 650 : 800,
-      emergencyTimeoutMs: 2000,
+      enabled: flags.eduTreeStaggeredEdgesV2 && viewMode === 'flow',
+      batchDelayMs: 140,
+      emergencyTimeoutMs: 5000,
     }
   );
-  
-  console.log('[Staggered] visibleEdges=', visibleEdges?.length);
-  
-  // 1) Unify the edge source before highlighting
-  const baseEdges = useMemo(() => {
-    const useStaggered = flags.eduTreeStaggeredEdgesV2 && Array.isArray(visibleEdges);
-    const src = useStaggered ? visibleEdges : allEdges;
-    return Array.isArray(src) ? src : [];
-  }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, allEdges]);
-  
-  // Removed competing edge source - ReactFlow now always renders highlightedElements.edges
-  
-  // Re-enable path highlighting safely with stable dependencies
-  const lastPathRef = useRef<string>('');
-  useEffect(() => {
-    if (!flags.eduTreeOutcomes) return;
-    if (!flowNodes.length || !flowEdges.length) return;
 
-    const optimal = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
-    const key = JSON.stringify({ n: optimal.nodes, e: optimal.edges });
-    
-    if (key !== lastPathRef.current) {
-      lastPathRef.current = key;
-      setHighlightedPath({
-        nodes: new Set(optimal.nodes),
-        edges: new Set(optimal.edges),
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flags.eduTreeOutcomes, selectedLens, flowNodes.length, flowEdges.length, completedCourseIds.size]);
-  
-  // Apply layout when nodes are available (allow regular layout even in overlay mode)
+  // Track resolution and overlay
+  const [primaryTrack, setPrimaryTrack] = useState<any>(null);
+
   useEffect(() => {
-    if (flowNodes.length > 0) {
-      const applyLayout = async () => {
-        try {
-          console.log('[EduTree] Applying layout to', flowNodes.length, 'nodes');
-          
-          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-          const result = await layoutNodes(flowNodes, flowEdges);
-          
-          if (result.hasOverlaps) {
-            console.warn('⚠️ Layout has overlaps, using safe fallback');
-            const safeNodes = flowNodes.map((node, index) => ({
-              ...node,
-              position: { 
-                x: (index % 2) * 600,
-                y: Math.floor(index / 2) * 500
-              }
-            }));
-            setNodes(safeNodes);
-          } else {
-            setNodes(result.nodes);
-          }
-          
-          if (flags.eduTreeStaggeredEdgesV2) {
-            setAllEdges(viewMode === 'flow' ? flowEdges : []);
-          } else {
-            setEdges(viewMode === 'flow' ? flowEdges : []);
-          }
-          
-        } catch (error) {
-          console.error('[EduTree] Layout failed, using fallback:', error);
-          const fallbackNodes = flowNodes.map((node, index) => ({
-            ...node,
-            position: { x: (index % 2) * 700, y: Math.floor(index / 2) * 600 }
-          }));
-          setNodes(fallbackNodes);
-          if (flags.eduTreeStaggeredEdgesV2) {
-            setAllEdges([]);
-          } else {
-            setEdges([]);
-          }
-        }
-      };
-      
-      applyLayout();
-    }
-  }, [flowNodes.length]); // Run layout whenever flowNodes change
+    if (!currentTrackKey || !overlayFlag || !blocks.length) return;
+    
+    resolveTrackBlockIds(currentTrackKey)
+      .then(track => {
+        console.log('[Track Resolution]', { trackKey: currentTrackKey, track });
+        setPrimaryTrack(track);
+      })
+      .catch(err => {
+        console.error('[Track Resolution Error]', err);
+        setPrimaryTrack(null);
+      });
+  }, [currentTrackKey, overlayFlag, blocks.length]);
+
+  // Base edges for overlay (unified source)
+  const baseEdges = useMemo(() => {
+    return flags.eduTreeStaggeredEdgesV2 ? visibleEdges : flowEdges;
+  }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, flowEdges]);
 
   // 2) Track comparison highlighting - Phase B & C: Feed baseEdges into highlight memo
   const highlightedElements = useMemo(() => {
+    if (isSafeMode) {
+      return { nodes: flowNodes, edges: baseEdges };
+    }
+
     const overlayReady = 
       overlayFlag &&
       primaryTrack &&
       Array.isArray(primaryTrack.blockIds) &&
       primaryTrack.blockIds.length > 0 &&
       (baseEdges?.length ?? 0) > 0 &&
-      (nodes?.length ?? 0) > 0;
+      (flowNodes?.length ?? 0) > 0;
     
     // Safe guards - ensure we have valid arrays
-    const safeNodes = Array.isArray(nodes) ? nodes : [];
+    const safeNodes = Array.isArray(flowNodes) ? flowNodes : [];
     const safeEdges = baseEdges; // <-- unified source
     
     if (!overlayReady) {
@@ -651,15 +305,18 @@ function EduTreeCanvasInner() {
     });
 
     const highlightedEdges = safeEdges.map(edge => {
+      // Defensive edge id normalization (GPT hotfix C)
+      const id = /^e-.+-.+$/.test(String(edge.id)) ? String(edge.id)
+                                                   : `e-${String(edge.source)}-${String(edge.target)}`;
       const merged = [edge.className, 'edge'].filter(Boolean);
       
-      if (primaryEdges.has(edge.id)) {
+      if (primaryEdges.has(id)) {
         merged.push('edge--primary');
       } else {
         merged.push('edge--dim');
       }
       
-      return { ...edge, className: merged.join(' ') };
+      return { ...edge, id, className: merged.join(' ') };
     });
 
     if (process.env.NODE_ENV === 'development') {
@@ -678,13 +335,13 @@ function EduTreeCanvasInner() {
     }
 
     return { nodes: highlightedNodes, edges: highlightedEdges };
-  }, [overlayFlag, primaryTrack, nodes, baseEdges]);
+  }, [overlayFlag, primaryTrack, flowNodes, baseEdges, isSafeMode]);
 
   // 4) FitView exactly once per activation with highlighted node/edge count guard
   const didFitRef = useRef(false);
   useEffect(() => {
     const overlayOn = overlayFlag && primaryTrack;
-    if (!reactFlowInstance || !overlayOn) { 
+    if (!reactFlowInstance || !overlayOn || isSafeMode) { 
       didFitRef.current = false; 
       return; 
     }
@@ -699,14 +356,21 @@ function EduTreeCanvasInner() {
 
     return () => clearTimeout(timer);
   }, [reactFlowInstance, overlayFlag, primaryTrack, 
-      highlightedElements.nodes?.length, highlightedElements.edges?.length]);
+      highlightedElements.nodes?.length, highlightedElements.edges?.length, isSafeMode]);
 
   // Development audit logging with safety guards
   useEffect(() => {
-    if (!overlayFlag) return;
+    if (!overlayFlag || !primaryTrack || isSafeMode) return;
     if (!highlightedElements.nodes?.length) return;
-    runTrackAudits(highlightedElements.nodes, highlightedElements.edges);
-  }, [overlayFlag, highlightedElements.nodes?.length, highlightedElements.edges?.length]);
+    
+    // Simple audit logging
+    console.log('[Track Audit]', {
+      totalNodes: highlightedElements.nodes.length,
+      totalEdges: highlightedElements.edges?.length || 0,
+      trackKey: currentTrackKey,
+      overlayFlag: overlayFlag
+    });
+  }, [overlayFlag, primaryTrack, highlightedElements.nodes?.length, highlightedElements.edges?.length, currentTrackKey, isSafeMode]);
 
   // Dev hotkey: press 'T' to toggle Track Validator
   useEffect(() => {
@@ -737,51 +401,18 @@ function EduTreeCanvasInner() {
   }, [blocks, courses, blockMembers, gates, gateEdges]);
 
   // Simplified layout management 
-  const applyLayout = useCallback(async (mode: 'flow' | 'board', nodes: Node[], edges: Edge[]) => {
+  const applyLayout = useCallback(async (mode: 'flow' | 'board', layoutNodes: Node[], layoutEdges: Edge[]) => {
     if (mode === 'board') {
-      return layoutAsGrid(nodes, mode);
+      return layoutAsGrid(layoutNodes, mode);
     }
 
     try {
-      // Use the new simplified layout system
-      const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-      const result = await layoutNodes(nodes, edges);
-      
-      if (result.hasOverlaps) {
-        console.warn('⚠️ Layout has overlaps, but proceeding');
-      }
-      
-      return result.nodes;
+      return await layoutWithElk(layoutNodes, layoutEdges);
     } catch (error) {
       console.error('Layout failed, using fallback:', error);
-      // Fallback to ELK without post-processing
-      try {
-        return await layoutWithElk(nodes, edges);
-      } catch (elkError) {
-        console.error('ELK fallback failed:', elkError);
-        return layoutAsGrid(nodes, 'board');
-      }
+      return layoutAsGrid(layoutNodes, 'board');
     }
   }, []);
-
-  // EMERGENCY FIX: Remove all complex layout logic that was causing infinite loops
-  // Use simple positioning only to get preview working
-
-  // EMERGENCY FIX: Removed complex layout - using inline logic above
-
-  // EMERGENCY FIX: Temporarily disabled path highlighting to prevent infinite loop
-  // This was causing flowNodes/flowEdges to update → highlightedPath → useMemo → flowNodes/flowEdges → infinite loop
-  /*
-  useEffect(() => {
-    if (flags.eduTreeOutcomes && flowNodes.length > 0 && flowEdges.length > 0) {
-      const optimalPath = findOptimalPath(flowNodes, flowEdges, selectedLens, completedCourseIds);
-      setHighlightedPath({
-        nodes: new Set(optimalPath.nodes),
-        edges: new Set(optimalPath.edges)
-      });
-    }
-  }, [selectedLens, flowNodes, flowEdges, completedCourseIds, flags.eduTreeOutcomes]);
-  */
 
   // Calculate outcome panel summary
   const outcomeSummary: PlanValidationSummary = useMemo(() => {
@@ -809,18 +440,6 @@ function EduTreeCanvasInner() {
     };
   }, [courses, completedCourseIds]);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (layoutTimeoutRef.current) {
-        clearTimeout(layoutTimeoutRef.current);
-      }
-      layoutInProgressRef.current = false;
-    };
-  }, []);
-
-  // Simplified layout system - no complex resize handling needed
-
   // Enhanced onInit with terminal focus
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -835,7 +454,7 @@ function EduTreeCanvasInner() {
     
     // Single debounced fitView after initialization
     fitViewTimeoutRef.current = setTimeout(() => {
-      const hasTerminal = nodes.some(node => 
+      const hasTerminal = highlightedElements.nodes.some(node => 
         node.type === 'terminal' || node.type === 'terminalNode' || 
         node.id === 'degree-completion'
       );
@@ -846,7 +465,7 @@ function EduTreeCanvasInner() {
         console.log(`[EduTree] ReactFlow initialized - terminal detected: ${hasTerminal}, padding: ${padding}`);
       }
     }, 150);
-  }, [nodes]);
+  }, [highlightedElements.nodes]);
 
   const handleModeToggle = useCallback(() => {
     setViewMode(prev => prev === 'flow' ? 'board' : 'flow');
@@ -863,8 +482,38 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
+  // Safe node coercion to prevent invalid node types
+  const safeNodes = useMemo(() => {
+    const KNOWN_TYPES = new Set(Object.keys(nodeTypes));
+    return (highlightedElements.nodes || []).map(node => {
+      if (!node?.type || !KNOWN_TYPES.has(node.type)) {
+        console.warn('[COERCE] Unknown node type:', node?.type, 'for node:', node?.id);
+        return { ...node, type: 'blockGroup' };
+      }
+      return node;
+    });
+  }, [highlightedElements.nodes, nodeTypes]);
+
+  // Update ReactFlow nodes and edges when data changes
+  useEffect(() => {
+    if (highlightedElements.nodes && highlightedElements.edges) {
+      setNodes(safeNodes);
+      setEdges(highlightedElements.edges);
+      setAllEdges(highlightedElements.edges);
+    }
+  }, [highlightedElements, safeNodes, setNodes, setEdges]);
+
+  // Handle course click
+  const handleCourseClick = useCallback((courseId: string) => {
+    console.log('Course clicked:', courseId);
+    toast({
+      title: "Course Information",
+      description: `Viewing details for course ${courseId}`,
+    });
+  }, []);
+
   // Loading state check - render skeleton until data arrives
-  if (!nodes || !edges) {
+  if (!highlightedElements.nodes || !highlightedElements.edges) {
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">Loading curriculum…</div>
@@ -892,217 +541,99 @@ function EduTreeCanvasInner() {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold">Education-First Skill Tree</h1>
-            <p className="text-muted-foreground">Software Engineering Degree Path (B.S.)</p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Card className="p-3">
-              <div className="flex gap-4 text-sm">
-                <div className="text-center">
-                  <div className="font-semibold">{stats.completedCourses}/{stats.totalCourses}</div>
-                  <div className="text-muted-foreground">Courses</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-semibold">{stats.completedCredits}/{stats.totalCredits}</div>
-                  <div className="text-muted-foreground">Credits</div>
-                </div>
+            <h1 className="text-2xl font-bold">Education Tree</h1>
+            {isSafeMode && (
+              <div className="text-xs text-amber-600 dark:text-amber-400">
+                Safe Mode: Overlay disabled
               </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="view-mode" 
-                checked={viewMode === 'board'}
-                onCheckedChange={handleModeToggle}
-              />
-              <Label htmlFor="view-mode" className="text-sm">
-                Board Mode
-              </Label>
-            </div>
-            
-            <Badge variant="outline" className="text-xs">
-              {viewMode === 'flow' ? 'Flow View' : 'Board View'}
-            </Badge>
-            
-            {/* Lens Selector */}
-            {flags.eduTreeOutcomes && (
-              <LensSelector 
-                selectedLens={selectedLens}
-                onLensChange={setSelectedLens}
-              />
             )}
           </div>
-
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             <SeedDataButton />
-            <Button variant="outline" size="sm">Export Plan</Button>
-            <Button variant="outline" size="sm">Share</Button>
-          </div>
-        </div>
-      </div>
-
-      {/* React Flow Canvas */}
-      <div className="flex-1" style={{ height: 'calc(100vh - 140px)', minHeight: '400px' }}>
-        <ReactFlow
-          nodes={Array.isArray(highlightedElements.nodes) ? highlightedElements.nodes : []}
-          edges={Array.isArray(highlightedElements.edges) ? highlightedElements.edges : []}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          onInit={onInit}
-          fitView
-          fitViewOptions={{ padding: 0.2, duration: 300 }}
-          minZoom={0.3}
-          maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        >
-          {/* Lane Background for educational context */}
-          {flags.eduTreeLanes && viewMode === 'flow' && (
-            <EduLaneBackground 
-              lanes={EDU_YEAR_LANES} 
-              height={2000} 
-            />
-          )}
-          
-          <Controls />
-          <Background 
-            variant={BackgroundVariant.Dots} 
-            gap={24} 
-            size={1}
-            color="hsl(var(--muted-foreground)/0.3)"
-          />
-          {/* Mini-map for large tree navigation */}
-          {flags.eduTreeOutcomes && viewMode === 'flow' && <EduTreeMiniMap />}
-          
-          {/* Development controls */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="absolute top-4 right-4 bg-background/90 border rounded-lg p-3 space-y-2">
-              <div className="text-xs text-muted-foreground">
-                Edges: {visibleEdges.length}/{allEdges.length}
-                {isRevealing && <span className="ml-2 text-primary">Revealing...</span>}
-              </div>
-              <button
-                onClick={forceRevealAll}
-                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
-              >
-                Show All Edges
-              </button>
-              <button
-                onClick={() => {
-                  const hasTerminal = nodes.some(node => 
-                    node.type === 'terminal' || node.id === 'degree-completion'
-                  );
-                  const padding = hasTerminal ? 0.4 : 0.2;
-                  onInit?.({ fitView: (opts: any) => console.log('Manual fitView triggered', opts) } as any);
-                }}
-                className="text-xs px-2 py-1 bg-secondary rounded hover:bg-secondary/80"
-              >
-                Focus Terminal
-              </button>
-            </div>
-          )}
-        </ReactFlow>
-      </div>
-
-      {/* Track picker UI */}
-      {overlayFlag && (
-        <div className="absolute top-4 left-4 z-10">
-          <TrackPicker
-            value={currentTrackKey}
-            onChange={setCurrentTrackKey}
-            disabled={!overlayFlag}
-          />
-        </div>
-      )}
-
-      {/* Development toggle for validator */}
-      {process.env.NODE_ENV === 'development' && overlayFlag && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTrackValidator(!showTrackValidator)}
-            className="bg-background/90 backdrop-blur-sm text-xs"
-          >
-            {showTrackValidator ? 'Hide' : 'Show'} Track Validator
-          </Button>
-        </div>
-      )}
-
-      {/* Outcome Panel */}
-      {flags.eduTreeOutcomes && (
-        <OutcomePanel
-          summary={outcomeSummary}
-          selectedLens={selectedLens}
-          isVisible={showOutcomePanel}
-        />
-      )}
-
-      {/* Year labels aligned with lanes */}
-      {viewMode === 'flow' && flags.eduTreeLanes && (
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none">
-          <div className="flex gap-12">
-            {[1, 2, 3, 4, 5].map((year, index) => (
-              <Badge 
-                key={year} 
-                variant="outline" 
-                className={`text-xs bg-background/80 backdrop-blur-sm ${year === 5 ? 'border-accent-gold text-accent-gold' : ''}`}
-                style={{ 
-                  marginLeft: index === 0 ? '200px' : '400px',
-                  position: index === 0 ? 'relative' : 'static'
-                }}
-              >
-                {year === 5 ? '🎓 Degree' : `Year ${year}`}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Fallback year labels for non-lane mode */}
-      {viewMode === 'flow' && !flags.eduTreeLanes && (
-        <div className="absolute bottom-4 left-4 flex gap-8 pointer-events-none">
-          {[1, 2, 3, 4, 5].map(year => (
-            <Badge 
-              key={year} 
-              variant="outline" 
-              className={`text-xs bg-background/80 backdrop-blur-sm ${year === 5 ? 'border-accent-gold text-accent-gold' : ''}`}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleModeToggle}
             >
-              {year === 5 ? '🎓 Degree' : `Year ${year}`}
-            </Badge>
-          ))}
+              {viewMode === 'flow' ? 'Board View' : 'Flow View'}
+            </Button>
+          </div>
+        </div>
+        
+        {/* Track Controls */}
+        {overlayFlag && !isSafeMode && (
+          <div className="flex items-center gap-4">
+            <SimpleTrackPicker
+              value={currentTrackKey}
+              onChange={handleTrackChange}
+            />
+            {DEV && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTrackValidator(!showTrackValidator)}
+              >
+                {showTrackValidator ? 'Hide' : 'Show'} Validator
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Track Validator Panel */}
+      {showTrackValidator && DEV && (
+        <div className="p-4 border-b border-border bg-muted/50">
+          <TrackValidator
+            nodes={highlightedElements.nodes}
+            edges={highlightedElements.edges}
+            primaryTrack={primaryTrack}
+            isVisible={true}
+          />
         </div>
       )}
-      
-      {/* Course Detail Modal */}
-      <EduCourseDetailModal
-        course={selectedCourse}
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        isCompleted={selectedCourse ? completedCourseIds.has(selectedCourse.id) : false}
-        onMarkComplete={(courseId) => {
-          // TODO: Implement course completion tracking
-          console.log('Mark course complete:', courseId);
-          toast({
-            title: "Course Marked Complete",
-            description: "Progress has been updated.",
-          });
-        }}
-        onSelectAlternative={(option) => {
-          // TODO: Implement alternative selection
-          console.log('Selected alternative:', option);
-          toast({
-            title: "Alternative Selected",
-            description: `${option.provider} course option selected.`,
-          });
-        }}
-      />
+
+      {/* Main Canvas */}
+      <div className="flex-1 relative">
+        {/* Temporary debug override */}
+        {window.location.search.includes('debug=basic') ? (
+          <div style={{padding: 20, background: 'lightgreen'}}>
+            DEBUG MODE: EduTree render path reached!
+            <div>Data: {hasData ? 'YES' : 'NO'}</div>
+            <div>Nodes: {flowNodes?.length ?? 0}</div>
+            <div>Loading: {dataLoading ? 'YES' : 'NO'}</div>
+            <div>NodeTypes Valid: {typeof nodeTypes.blockGroup === 'function' ? 'YES' : 'NO'}</div>
+          </div>
+        ) : !Array.isArray(flowNodes) || flowNodes.length === 0 ? (
+          <div className="p-6">Loading curriculum nodes…</div>
+        ) : !Array.isArray(flowEdges) ? (
+          <div className="p-6">Loading curriculum connections…</div>
+        ) : !nodeTypes.blockGroup || typeof nodeTypes.blockGroup !== 'function' ? (
+          <div className="p-6">Preparing components…</div>
+        ) : (
+          <DebugBoundary>
+            <ReactFlow
+              nodes={highlightedElements.nodes}
+              edges={highlightedElements.edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={onEdgesChange}
+              onInit={onInit}
+              nodeTypes={nodeTypes}
+              fitView
+              minZoom={0.1}
+              maxZoom={1.5}
+              defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+            >
+              <Background 
+                variant={BackgroundVariant.Dots} 
+                gap={24} 
+                size={1} 
+              />
+              <Controls showInteractive={false} />
+              <EduTreeMiniMap />
+            </ReactFlow>
+          </DebugBoundary>
+        )}
+      </div>
     </div>
   );
 }

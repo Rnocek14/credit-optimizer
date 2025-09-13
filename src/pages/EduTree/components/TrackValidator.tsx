@@ -1,14 +1,19 @@
 import React from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { TrackDefinition, generateEdgeIds } from '../data/trackDefinitions';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
+
+interface TrackData {
+  name: string;
+  blockIds: string[];
+  missingSlugs?: string[];
+}
 
 interface TrackValidatorProps {
   nodes: Node[];
   edges: Edge[];
-  primaryTrack?: TrackDefinition;
-  comparisonTrack?: TrackDefinition;
+  primaryTrack?: TrackData;
+  comparisonTrack?: TrackData;
   isVisible: boolean;
 }
 
@@ -23,134 +28,112 @@ export function TrackValidator({
     return null;
   }
 
-  // Phase A: Build rfNodeIdByBlockId map
-  const rfNodeIdByBlockId = new Map(
-    nodes.map(n => [String(n.data?.blockId ?? n.id), n.id])
-  );
-
-  const edgeIds = new Set(edges.map(e => e.id));
-
-  const validateTrack = (track: TrackDefinition) => {
-    const missingNodes = track.blockIds.filter(blockId => 
-      !rfNodeIdByBlockId.has(String(blockId))
-    );
+  const validateTrack = (track: TrackData) => {
+    const nodeIdSet = new Set(nodes.map(n => String(n.id)));
+    const missingNodes = track.blockIds.filter(id => !nodeIdSet.has(id));
     
-    const expectedEdges = generateEdgeIds(track.blockIds);
-    const missingEdges = expectedEdges.filter(edgeId => !edgeIds.has(edgeId));
-    
+    // Check for missing edges between consecutive blocks
+    const missingEdges: string[] = [];
+    for (let i = 0; i < track.blockIds.length - 1; i++) {
+      const edgeId = `e-${track.blockIds[i]}-${track.blockIds[i + 1]}`;
+      const hasEdge = edges.some(e => String(e.id) === edgeId);
+      if (!hasEdge) {
+        missingEdges.push(edgeId);
+      }
+    }
+
     return { missingNodes, missingEdges };
   };
 
   const primaryValidation = primaryTrack ? validateTrack(primaryTrack) : null;
   const comparisonValidation = comparisonTrack ? validateTrack(comparisonTrack) : null;
 
-  // Check terminal node
-  const degreeNode = nodes.find(n => n.type === 'degree' || n.type === 'terminal');
-  const degreeTitle = (degreeNode?.data?.title as string) || (degreeNode?.data?.label as string);
+  // Check for terminal degree node (simplified to avoid typing issues)
+  const hasTerminalNode = nodes.some(n => n.type === 'terminal' || n.type === 'terminalNode');
 
   const hasIssues = 
     (primaryValidation && (primaryValidation.missingNodes.length > 0 || primaryValidation.missingEdges.length > 0)) ||
     (comparisonValidation && (comparisonValidation.missingNodes.length > 0 || comparisonValidation.missingEdges.length > 0)) ||
-    !degreeTitle;
+    !hasTerminalNode;
 
   if (!hasIssues) {
     return (
-      <Card className="absolute top-4 left-4 p-3 bg-green-50 border-green-200 z-50">
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
         <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
-            ✓ Track Validation Pass
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+            Track Validation Passed
           </Badge>
-          <span className="text-sm text-green-700">All track data contracts verified</span>
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="absolute top-4 left-4 p-4 bg-yellow-50 border-yellow-200 z-50 max-w-md">
-      <div className="space-y-3">
-        <Badge variant="destructive" className="mb-2">
-          ⚠️ Track Validation Issues
+    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+        <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+          Track Validation Issues
         </Badge>
-
+      </div>
+      
+      <div className="space-y-2 text-sm">
         {primaryValidation && (
           <div>
-            <div className="font-medium text-sm text-yellow-800">
-              {primaryTrack!.name} Track:
-            </div>
+            <strong>{primaryTrack?.name} Track:</strong>
             {primaryValidation.missingNodes.length > 0 && (
-              <div className="text-xs text-red-600 ml-2">
+              <div className="ml-2 text-yellow-700">
                 Missing nodes: {primaryValidation.missingNodes.join(', ')}
               </div>
             )}
             {primaryValidation.missingEdges.length > 0 && (
-              <div className="text-xs text-red-600 ml-2">
-                Missing edges: {primaryValidation.missingEdges.join(', ')}
+              <div className="ml-2 text-yellow-700">
+                Missing edges: {primaryValidation.missingEdges.length}
+              </div>
+            )}
+            {primaryTrack?.missingSlugs && primaryTrack.missingSlugs.length > 0 && (
+              <div className="ml-2 text-yellow-700">
+                Missing slugs: {primaryTrack.missingSlugs.join(', ')}
               </div>
             )}
           </div>
         )}
-
+        
         {comparisonValidation && (
           <div>
-            <div className="font-medium text-sm text-yellow-800">
-              {comparisonTrack!.name} Track:
-            </div>
+            <strong>{comparisonTrack?.name} Track:</strong>
             {comparisonValidation.missingNodes.length > 0 && (
-              <div className="text-xs text-red-600 ml-2">
+              <div className="ml-2 text-yellow-700">
                 Missing nodes: {comparisonValidation.missingNodes.join(', ')}
               </div>
             )}
             {comparisonValidation.missingEdges.length > 0 && (
-              <div className="text-xs text-red-600 ml-2">
-                Missing edges: {comparisonValidation.missingEdges.join(', ')}
+              <div className="ml-2 text-yellow-700">
+                Missing edges: {comparisonValidation.missingEdges.length}
               </div>
             )}
           </div>
         )}
-
-        {!degreeTitle && (
-          <div className="text-xs text-red-600">
-            Terminal node missing title: {degreeNode?.id || 'No degree node found'}
+        
+        {!hasTerminalNode && (
+          <div className="text-yellow-700">
+            Missing terminal node for degree completion
           </div>
         )}
-
-        <div className="text-xs text-gray-600 mt-2">
-          Degree node data: {String(degreeTitle || 'None')}
-        </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
-// Browser console audit functions (for development)
-export const runTrackAudits = (nodes: Node[], edges: Edge[]) => {
-  if (process.env.NODE_ENV !== 'development') return;
-
-  const rfNodeIdByBlockId = new Map(
-    nodes.map(n => [String(n.data?.blockId ?? n.id), n.id])
-  );
-
-  const sampleTrackA = ['1','2','3','4','5','6','9'];
-  const sampleTrackB = ['1','2','3','4','7','8','9'];
-
-  const missing = (blockIds: string[]) => 
-    blockIds.filter(b => !rfNodeIdByBlockId.has(String(b)));
-
-  console.log('[Audit] Missing in Track A:', missing(sampleTrackA));
-  console.log('[Audit] Missing in Track B:', missing(sampleTrackB));
-
-  const degreeNode = nodes.find(n => n.type === 'degree' || n.type === 'terminal');
-  console.log('[Audit] Degree node id/data:', degreeNode?.id, degreeNode?.data);
-  console.log('[Audit] Degree title:', degreeNode?.data?.title);
-
-  const toEdgeIds = (seq: string[]) => 
-    seq.slice(0,-1).map((src,i) => `e-${src}-${seq[i+1]}`);
-  
-  const edgeIds = new Set(edges.map(e => e.id));
-  const aMissingEdges = toEdgeIds(sampleTrackA).filter(id => !edgeIds.has(id));
-  const bMissingEdges = toEdgeIds(sampleTrackB).filter(id => !edgeIds.has(id));
-  
-  console.log('[Audit] Missing A edges:', aMissingEdges);
-  console.log('[Audit] Missing B edges:', bMissingEdges);
-};
+// Development audit function
+export function runTrackAudits(nodes: Node[], edges: Edge[]) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Track Audit]', {
+      totalNodes: nodes.length,
+      totalEdges: edges.length,
+      nodeTypes: [...new Set(nodes.map(n => n.type))],
+      sampleNodeIds: nodes.slice(0, 5).map(n => n.id)
+    });
+  }
+}

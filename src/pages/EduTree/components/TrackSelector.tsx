@@ -4,14 +4,20 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { TRACK_DEFINITIONS, TrackDefinition } from '../data/trackDefinitions';
+import { TRACK_DEFINITIONS, type TrackId } from '../data/trackDefinitions';
 import { useFeatureFlags } from '@/lib/featureFlags';
 
+interface TrackData {
+  name: string;
+  blockIds: string[];
+  missingSlugs?: string[];
+}
+
 interface TrackSelectorProps {
-  primaryTrack?: TrackDefinition;
-  comparisonTrack?: TrackDefinition;
-  onPrimaryTrackChange: (track?: TrackDefinition) => void;
-  onComparisonTrackChange: (track?: TrackDefinition) => void;
+  primaryTrack?: TrackData;
+  comparisonTrack?: TrackData;
+  onPrimaryTrackChange: (track?: TrackData) => void;
+  onComparisonTrackChange: (track?: TrackData) => void;
   comparisonEnabled: boolean;
   onComparisonToggle: (enabled: boolean) => void;
   isVisible: boolean;
@@ -27,6 +33,12 @@ export function TrackSelector({
   isVisible
 }: TrackSelectorProps) {
   const flags = useFeatureFlags();
+  
+  const trackOptions = TRACK_DEFINITIONS.map(track => ({
+    id: track.id,
+    name: track.name,
+    color: track.color || '#007bff'
+  }));
 
   if (!isVisible) {
     return null;
@@ -48,17 +60,23 @@ export function TrackSelector({
             Primary Track
           </Label>
           <Select
-            value={primaryTrack?.id || ''}
+            value={primaryTrack ? TRACK_DEFINITIONS.find(t => t.name === primaryTrack.name)?.id : ''}
             onValueChange={(value) => {
               const track = TRACK_DEFINITIONS.find(t => t.id === value);
-              onPrimaryTrackChange(track);
+              if (track) {
+                onPrimaryTrackChange({
+                  name: track.name,
+                  blockIds: [], // Will be resolved dynamically
+                  missingSlugs: []
+                });
+              }
             }}
           >
             <SelectTrigger id="primary-track">
               <SelectValue placeholder="Select primary track..." />
             </SelectTrigger>
             <SelectContent>
-              {TRACK_DEFINITIONS.map((track) => (
+              {trackOptions.map((track) => (
                 <SelectItem key={track.id} value={track.id}>
                   <div className="flex items-center gap-2">
                     <div 
@@ -92,18 +110,24 @@ export function TrackSelector({
               Comparison Track
             </Label>
             <Select
-              value={comparisonTrack?.id || ''}
+              value={comparisonTrack ? TRACK_DEFINITIONS.find(t => t.name === comparisonTrack.name)?.id : ''}
               onValueChange={(value) => {
                 const track = TRACK_DEFINITIONS.find(t => t.id === value);
-                onComparisonTrackChange(track);
+                if (track) {
+                  onComparisonTrackChange({
+                    name: track.name,
+                    blockIds: [], // Will be resolved dynamically
+                    missingSlugs: []
+                  });
+                }
               }}
             >
               <SelectTrigger id="comparison-track">
                 <SelectValue placeholder="Select comparison track..." />
               </SelectTrigger>
               <SelectContent>
-                {TRACK_DEFINITIONS
-                  .filter(track => track.id !== primaryTrack?.id)
+                {trackOptions
+                  .filter(track => track.name !== primaryTrack?.name)
                   .map((track) => (
                     <SelectItem key={track.id} value={track.id}>
                       <div className="flex items-center gap-2">
@@ -126,7 +150,7 @@ export function TrackSelector({
             <Label className="text-xs text-muted-foreground">Track Info</Label>
             {primaryTrack && (
               <div className="text-xs">
-                <span className="font-medium" style={{ color: primaryTrack.color }}>
+                <span className="font-medium text-primary">
                   {primaryTrack.name}:
                 </span>
                 <span className="ml-1 text-muted-foreground">
@@ -136,7 +160,7 @@ export function TrackSelector({
             )}
             {comparisonTrack && (
               <div className="text-xs">
-                <span className="font-medium" style={{ color: comparisonTrack.color }}>
+                <span className="font-medium text-primary">
                   {comparisonTrack.name}:
                 </span>
                 <span className="ml-1 text-muted-foreground">
