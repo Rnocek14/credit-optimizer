@@ -185,8 +185,8 @@ function EduTreeCanvasInner() {
       
       return result;
     } catch (error) {
-      console.error('[EduTree][Transform][Error]', error);
-      // Return safe fallback
+      console.warn('[Transform Error]', error);
+      // IMPORTANT: no setState here - just return safe fallback
       return {
         nodes: [],
         edges: [],
@@ -559,7 +559,9 @@ function EduTreeCanvasInner() {
         {/* Guard ReactFlow render until everything is valid */}
         {!Array.isArray(highlightedElements.nodes) || !Array.isArray(highlightedElements.edges) ? (
           <div className="p-4 text-center text-muted-foreground">Loading curriculum…</div>
-        ) : !nodeTypes.blockGroup || !nodeTypes.terminalNode ? (
+        ) : !nodeTypes.blockGroup || typeof nodeTypes.blockGroup !== 'function' ? (
+          <div className="p-4 text-center text-muted-foreground">Preparing canvas…</div>
+        ) : !nodeTypes.terminalNode || typeof nodeTypes.terminalNode !== 'function' ? (
           <div className="p-4 text-center text-muted-foreground">Preparing canvas…</div>
         ) : (
           <ReactFlow
