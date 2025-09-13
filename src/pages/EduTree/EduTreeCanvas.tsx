@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { DebugBoundary } from '@/components/DebugBoundary';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   ReactFlow, 
@@ -59,6 +58,14 @@ import { EduTreeError } from '../../components/EduTreeError';
 
 const DEV = import.meta.env.DEV;
 
+// Node types mapping for ReactFlow  
+const nodeTypes = {
+  blockGroup: BlockGroup,
+  terminalNode: TerminalNode,
+  terminal: TerminalNode, // Alias for consistency
+  placeholder: PlaceholderGroup,
+};
+
 // Type definitions
 type ViewMode = 'flow' | 'board';
 type TrackKey = TrackId;
@@ -75,50 +82,10 @@ function EduTreeCanvasInner() {
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [showTrackValidator, setShowTrackValidator] = useState(false);
   
-  // Node types mapping for ReactFlow - MOVED INSIDE COMPONENT
-  const nodeTypes = useMemo(() => ({
-    blockGroup: BlockGroup,
-    terminalNode: TerminalNode,
-    terminal: TerminalNode, // Alias for consistency
-    placeholder: PlaceholderGroup,
-  }), []);
-
   // Feature flag source with querystring fallback
   const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
+  const overlayFlag = flags.eduTreeMultiPathOverlay || qsOverlay;
   const isSafeMode = searchParams.get('safe') === '1';
-  
-  // Dev-time validation for node types
-  if (DEV) {
-    Object.entries(nodeTypes).forEach(([k, v]) => {
-      if (typeof v !== 'function') {
-        console.error('[INVALID NODETYPE]', k, v, 'Check component exports');
-      }
-    });
-  }
-  
-  // Render path logging for debugging
-  console.log('[EduTree] render', {
-    hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
-    overlayFlag, isSafeMode
-  });
-  
-  
-  // Global error listeners for debugging
-  useEffect(() => {
-    const uhr = (e: PromiseRejectionEvent) => {
-      console.error('[unhandledrejection]', e.reason);
-    };
-    const ue = (e: ErrorEvent) => {
-      console.error('[error]', e.message, e.error);
-    };
-    window.addEventListener('unhandledrejection', uhr);
-    window.addEventListener('error', ue);
-    return () => {
-      window.removeEventListener('unhandledrejection', uhr);
-      window.removeEventListener('error', ue);
-    };
-  }, []);
   
   const [viewMode, setViewMode] = useState<ViewMode>('flow');
   const [completedCourseIds] = useState<Set<string>>(new Set()); // Mock completed courses
@@ -153,9 +120,8 @@ function EduTreeCanvasInner() {
     hasData 
   } = useEduTreeData();
 
-  // Add error handling with logging
+  // Add error handling
   if (dataLoading) {
-    console.log('[GUARD] dataLoading return');
     return (
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-sm opacity-70">Loading curriculum…</div>
@@ -164,13 +130,11 @@ function EduTreeCanvasInner() {
   }
 
   if (dataError && !isSafeMode) {
-    console.log('[GUARD] dataError return', dataError);
     return <EduTreeError error={dataError} />;
   }
 
   // Empty state (not an error):
   if (!hasData && !isSafeMode) {
-    console.log('[GUARD] no data return', { blocks: blocks.length, courses: courses.length });
     return (
       <div className="p-6 text-sm text-muted-foreground">
         No curriculum data found for this track yet.
@@ -201,18 +165,10 @@ function EduTreeCanvasInner() {
         sampleEdgeId: result.edges[0]?.id 
       });
       
-      // Dev-time assertion for edge normalization
-      if (DEV) {
-        const bad = result.edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
-        if (bad.length) {
-          console.warn('[ASSERT] bad edge ids:', bad.map(b => b.id));
-        }
-      }
-      
       return result;
     } catch (error) {
-      console.warn('[Transform Error]', error);
-      // IMPORTANT: no setState here - just return safe fallback
+      console.error('[EduTree][Transform][Error]', error);
+      // Return safe fallback
       return {
         nodes: [],
         edges: [],
@@ -482,26 +438,14 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Safe node coercion to prevent invalid node types
-  const safeNodes = useMemo(() => {
-    const KNOWN_TYPES = new Set(Object.keys(nodeTypes));
-    return (highlightedElements.nodes || []).map(node => {
-      if (!node?.type || !KNOWN_TYPES.has(node.type)) {
-        console.warn('[COERCE] Unknown node type:', node?.type, 'for node:', node?.id);
-        return { ...node, type: 'blockGroup' };
-      }
-      return node;
-    });
-  }, [highlightedElements.nodes, nodeTypes]);
-
   // Update ReactFlow nodes and edges when data changes
   useEffect(() => {
     if (highlightedElements.nodes && highlightedElements.edges) {
-      setNodes(safeNodes);
+      setNodes(highlightedElements.nodes);
       setEdges(highlightedElements.edges);
       setAllEdges(highlightedElements.edges);
     }
-  }, [highlightedElements, safeNodes, setNodes, setEdges]);
+  }, [highlightedElements, setNodes, setEdges]);
 
   // Handle course click
   const handleCourseClick = useCallback((courseId: string) => {
@@ -594,45 +538,26 @@ function EduTreeCanvasInner() {
 
       {/* Main Canvas */}
       <div className="flex-1 relative">
-        {/* Temporary debug override */}
-        {window.location.search.includes('debug=basic') ? (
-          <div style={{padding: 20, background: 'lightgreen'}}>
-            DEBUG MODE: EduTree render path reached!
-            <div>Data: {hasData ? 'YES' : 'NO'}</div>
-            <div>Nodes: {flowNodes?.length ?? 0}</div>
-            <div>Loading: {dataLoading ? 'YES' : 'NO'}</div>
-            <div>NodeTypes Valid: {typeof nodeTypes.blockGroup === 'function' ? 'YES' : 'NO'}</div>
-          </div>
-        ) : !Array.isArray(flowNodes) || flowNodes.length === 0 ? (
-          <div className="p-6">Loading curriculum nodes…</div>
-        ) : !Array.isArray(flowEdges) ? (
-          <div className="p-6">Loading curriculum connections…</div>
-        ) : !nodeTypes.blockGroup || typeof nodeTypes.blockGroup !== 'function' ? (
-          <div className="p-6">Preparing components…</div>
-        ) : (
-          <DebugBoundary>
-            <ReactFlow
-              nodes={highlightedElements.nodes}
-              edges={highlightedElements.edges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={onEdgesChange}
-              onInit={onInit}
-              nodeTypes={nodeTypes}
-              fitView
-              minZoom={0.1}
-              maxZoom={1.5}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-            >
-              <Background 
-                variant={BackgroundVariant.Dots} 
-                gap={24} 
-                size={1} 
-              />
-              <Controls showInteractive={false} />
-              <EduTreeMiniMap />
-            </ReactFlow>
-          </DebugBoundary>
-        )}
+        <ReactFlow
+          nodes={highlightedElements.nodes}
+          edges={highlightedElements.edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onInit={onInit}
+          nodeTypes={nodeTypes}
+          fitView
+          minZoom={0.1}
+          maxZoom={1.5}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        >
+          <Background 
+            variant={BackgroundVariant.Dots} 
+            gap={24} 
+            size={1} 
+          />
+          <Controls showInteractive={false} />
+          <EduTreeMiniMap />
+        </ReactFlow>
       </div>
     </div>
   );
