@@ -277,25 +277,31 @@ function EduTreeCanvasInner() {
     const safeEdges = baseEdges; // <-- unified source
     
     if (!overlayReady) {
+      if (DEV && overlayFlag) {
+        console.warn('[Overlay OFF] Missing data for highlight. Check missing slugs:', primaryTrack?.missingSlugs);
+      }
       return { nodes: safeNodes, edges: safeEdges };
     }
 
-    // For now, just highlight primary track (comparison coming later)
-    const primaryNodes = new Set(primaryTrack.blockIds);
-    const primaryEdges = new Set();
+    // Use actual graph structure instead of assuming linear sequence
+    const nodeIdSet = new Set(safeNodes.map(n => String(n.id))); // RF node IDs are block UUID strings
+    const primaryNodeIds = new Set(
+      (primaryTrack?.blockIds ?? []).map(id => String(id)).filter(id => nodeIdSet.has(id))
+    );
     
-    // Generate edge IDs from block sequence
-    for (let i = 0; i < primaryTrack.blockIds.length - 1; i++) {
-      const edgeId = `e-${primaryTrack.blockIds[i]}-${primaryTrack.blockIds[i + 1]}`;
-      primaryEdges.add(edgeId);
-    }
+    console.log('[Overlay]', {
+      nodesInTrack: primaryNodeIds.size,
+      totalNodes: safeNodes.length,
+      totalEdges: safeEdges.length,
+      trackBlocks: primaryTrack.blockIds.length
+    });
     
     // Phase C: Apply CSS classes based on track membership (merge with existing classes)
     const highlightedNodes = safeNodes.map(node => {
-      const blockId = String(node.data?.blockId ?? node.id);
+      const nodeId = String(node.id);
       const merged = [node.className, 'node'].filter(Boolean);
       
-      if (primaryNodes.has(blockId)) {
+      if (primaryNodeIds.has(nodeId)) {
         merged.push('node--primary');
       } else {
         merged.push('node--dim');
@@ -304,14 +310,17 @@ function EduTreeCanvasInner() {
       return { ...node, className: merged.join(' ') };
     });
 
+    // Highlight edges that actually exist between track nodes
     const highlightedEdges = safeEdges.map(edge => {
-      // Defensive edge id normalization (GPT hotfix C)
-      const id = /^e-.+-.+$/.test(String(edge.id)) ? String(edge.id)
-                                                   : `e-${String(edge.source)}-${String(edge.target)}`;
+      const s = String(edge.source);
+      const t = String(edge.target);
       const merged = [edge.className, 'edge'].filter(Boolean);
       
-      if (primaryEdges.has(id)) {
-        merged.push('edge--primary');
+      // Defensive edge id normalization
+      const id = /^e-.+-.+$/.test(String(edge.id)) ? String(edge.id) : `e-${s}-${t}`;
+      
+      if (primaryNodeIds.has(s) && primaryNodeIds.has(t)) {
+        merged.push('edge--primary');        // within-track real edge
       } else {
         merged.push('edge--dim');
       }
@@ -320,7 +329,12 @@ function EduTreeCanvasInner() {
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('[Edges] base=', safeEdges.length, 'highlighted=', highlightedEdges.length);
+      const edgesInTrack = highlightedEdges.filter(e => e.className?.includes('edge--primary')).length;
+      console.log('[Overlay Debug]', {
+        nodesInTrack: primaryNodeIds.size,
+        edgesInTrack,
+        totalEdges: highlightedEdges.length
+      });
       
       // 1) Assert: Visible edges must always carry one highlight class
       const ok = highlightedEdges.every(e =>

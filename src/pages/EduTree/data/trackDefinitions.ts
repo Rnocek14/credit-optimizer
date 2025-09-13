@@ -21,6 +21,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'general-education',
       'core-i',
       'core-ii',
+      'specializations',
       'architecture',
       'capstone'
     ]
