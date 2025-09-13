@@ -93,28 +93,28 @@ function EduTreeCanvasInner() {
   const didFitRef = useRef(false);
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // URL-based state management for tracks
+  // URL & overlay state (keep this together)
   const isSafeMode = searchParams.get('safe') === '1';
-  const [overlayEnabled, setOverlayEnabled] = useState(() => 
+
+  const [overlayEnabled, setOverlayEnabled] = useState(
     searchParams.get('eduTreeMultiPathOverlay') === 'true'
   );
-  
-  const [primaryTrackId, setPrimaryTrackId] = useState<TrackId>(() => {
-    const raw = searchParams.get('primary') as TrackId | null;
-    return raw ?? 'software-engineering';
-  });
-  
-  const [comparisonTrackId, setComparisonTrackId] = useState<TrackId | undefined>(() => {
-    return (searchParams.get('comparison') as TrackId | null) ?? undefined;
-  });
 
-  // Keep URL in sync
+  const [primaryTrackId, setPrimaryTrackId] = useState<TrackId>(
+    (searchParams.get('primary') as TrackId) || 'software-engineering'
+  );
+
+  const [comparisonTrackId, setComparisonTrackId] = useState<TrackId | undefined>(
+    (searchParams.get('comparison') as TrackId) || undefined
+  );
+
+  // keep URL in sync
   const syncParam = useCallback((k: string, v?: string) => {
-    const p = new URLSearchParams(searchParams);
+    const p = new URLSearchParams(window.location.search);
     v ? p.set(k, v) : p.delete(k);
     const s = p.toString();
     window.history.replaceState({}, '', s ? `?${s}` : location.pathname);
-  }, [searchParams]);
+  }, []);
   
   // Node types mapping for ReactFlow - DEFENSIVE CHECK
   const nodeTypes = useMemo(() => {
@@ -206,121 +206,124 @@ function EduTreeCanvasInner() {
     return flags.eduTreeStaggeredEdgesV2 ? visibleEdges : flowEdges;
   }, [flags.eduTreeStaggeredEdgesV2, visibleEdges, flowEdges]);
 
-  // Track comparison with proper highlighting
-  const { highlightedNodes: viewNodes, highlightedEdges: viewEdges, debugInfo } = useMemo(() => {
-    if (!overlayEnabled || isSafeMode) {
-      return { 
-        highlightedNodes: safeNodes, 
-        highlightedEdges: baseEdges,
-        debugInfo: { overlayReady: false, resolvedBlocks: 0, anyMatches: false, primaryCount: 0, comparisonCount: 0, sharedCount: 0 }
-      };
+  // Build map: slug -> nodeId
+  const nodeIdBySlug = useMemo(() => {
+    const m = new Map<string,string>();
+    for (const n of safeNodes) {
+      const d: any = n.data;
+      const slug = d?.block?.slug || d?.slug;
+      if (slug) m.set(slug, n.id);
     }
+    return m;
+  }, [safeNodes]);
 
-    const primaryTrack = TRACK_MAP.get(primaryTrackId);
-    const comparisonTrack = comparisonTrackId ? TRACK_MAP.get(comparisonTrackId) : undefined;
-
-    if (!primaryTrack) {
-      return { 
-        highlightedNodes: safeNodes, 
-        highlightedEdges: baseEdges,
-        debugInfo: { overlayReady: false, resolvedBlocks: 0, anyMatches: false, primaryCount: 0, comparisonCount: 0, sharedCount: 0 }
-      };
-    }
-
-    // Build node lookup by block slug
-    const nodeByBlockSlug = new Map<string, Node>();
-    safeNodes.forEach(node => {
-      const blockData = node.data as any;
-      const slug = blockData?.block?.slug || blockData?.slug;
-      if (slug) {
-        nodeByBlockSlug.set(slug, node);
-      }
-    });
-
-    // Find nodes for tracks
+  // Track node sets
+  const { primaryNodeIds, comparisonNodeIds, sharedNodeIds } = useMemo(() => {
     const primaryNodeIds = new Set<string>();
     const comparisonNodeIds = new Set<string>();
-    
-    primaryTrack.blockIds.forEach(slug => {
-      const node = nodeByBlockSlug.get(slug);
-      if (node) primaryNodeIds.add(node.id);
-    });
-
-    if (comparisonTrack) {
-      comparisonTrack.blockIds.forEach(slug => {
-        const node = nodeByBlockSlug.get(slug);
-        if (node) comparisonNodeIds.add(node.id);
-      });
-    }
-
-    // Find shared nodes
     const sharedNodeIds = new Set<string>();
-    if (comparisonTrack) {
-      primaryNodeIds.forEach(id => {
-        if (comparisonNodeIds.has(id)) {
-          sharedNodeIds.add(id);
-        }
+
+    if (overlayEnabled && !isSafeMode) {
+      // From track definitions (blockIds are slugs)
+      TRACK_MAP.get(primaryTrackId)?.blockIds.forEach(slug => {
+        const id = nodeIdBySlug.get(slug);
+        if (id) primaryNodeIds.add(id);
       });
+
+      if (comparisonTrackId) {
+        TRACK_MAP.get(comparisonTrackId)?.blockIds.forEach(slug => {
+          const id = nodeIdBySlug.get(slug);
+          if (id) comparisonNodeIds.add(id);
+        });
+
+        // Find shared nodes
+        primaryNodeIds.forEach(id => {
+          if (comparisonNodeIds.has(id)) {
+            sharedNodeIds.add(id);
+          }
+        });
+      }
     }
 
-    // Find edges for tracks
+    return { primaryNodeIds, comparisonNodeIds, sharedNodeIds };
+  }, [overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId, nodeIdBySlug]);
+
+  // Track edge sets
+  const { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds } = useMemo(() => {
     const primaryEdgeIds = new Set<string>();
     const comparisonEdgeIds = new Set<string>();
     const sharedEdgeIds = new Set<string>();
 
-    baseEdges.forEach(edge => {
-      const sInP = primaryNodeIds.has(String(edge.source));
-      const tInP = primaryNodeIds.has(String(edge.target));
-      const sInC = comparisonNodeIds.has(String(edge.source));
-      const tInC = comparisonNodeIds.has(String(edge.target));
-      const id = edge.id || `e-${edge.source}-${edge.target}`;
+    if (overlayEnabled && !isSafeMode) {
+      baseEdges.forEach(edge => {
+        const sInP = primaryNodeIds.has(String(edge.source));
+        const tInP = primaryNodeIds.has(String(edge.target));
+        const sInC = comparisonNodeIds.has(String(edge.source));
+        const tInC = comparisonNodeIds.has(String(edge.target));
+        const id = edge.id || `e-${edge.source}-${edge.target}`;
 
-      if (sInP && tInP) primaryEdgeIds.add(id);
-      if (sInC && tInC) comparisonEdgeIds.add(id);
-      if (primaryEdgeIds.has(id) && comparisonEdgeIds.has(id)) sharedEdgeIds.add(id);
+        if (sInP && tInP) primaryEdgeIds.add(id);
+        if (sInC && tInC) comparisonEdgeIds.add(id);
+        if (primaryEdgeIds.has(id) && comparisonEdgeIds.has(id)) sharedEdgeIds.add(id);
+      });
+    }
+
+    return { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds };
+  }, [overlayEnabled, isSafeMode, baseEdges, primaryNodeIds, comparisonNodeIds]);
+
+  // when overlayEnabled === false -> show base data with NO dim classes
+  const viewNodes = useMemo(() => {
+    if (!overlayEnabled || isSafeMode) return safeNodes;
+
+    const KNOWN = new Set(['node--primary','node--comparison','node--both','node--dim','node']);
+    return safeNodes.map(n => {
+      const base = (n.className || '')
+        .split(' ')
+        .filter(t => t && !KNOWN.has(t))         // drop old highlight tokens
+        .join(' ');
+      const next: string[] = ['node'];           // always include base marker
+
+      if (sharedNodeIds.has(n.id)) next.push('node--both');
+      else if (primaryNodeIds.has(n.id)) next.push('node--primary');
+      else if (comparisonNodeIds.has(n.id)) next.push('node--comparison');
+      else next.push('node--dim');
+
+      if (base) next.push(base);
+      return { ...n, className: next.join(' ') };
     });
+  }, [overlayEnabled, isSafeMode, safeNodes, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
 
-    // Apply highlight classes
-    const known = new Set(['node--primary','node--comparison','node--both','node--dim']);
-    const highlightedNodes = safeNodes.map(n => {
-      const c = ['node', n.className].filter(Boolean);
-      const filtered = c.filter(token => !known.has(token));
+  const viewEdges = useMemo(() => {
+    if (!overlayEnabled || isSafeMode) return baseEdges;
 
-      if (sharedNodeIds.has(n.id)) filtered.push('node--both');
-      else if (primaryNodeIds.has(n.id)) filtered.push('node--primary');
-      else if (comparisonNodeIds.has(n.id)) filtered.push('node--comparison');
-      else filtered.push('node--dim');
+    const KNOWN = new Set(['edge--primary','edge--comparison','edge--both','edge--dim','edge']);
+    return baseEdges.map(e => {
+      const id = /^e-.+-.+$/.test(String(e.id)) ? String(e.id) : `e-${e.source}-${e.target}`;
+      const base = (e.className || '')
+        .split(' ')
+        .filter(t => t && !KNOWN.has(t))
+        .join(' ');
+      const next: string[] = ['edge'];
 
-      return { ...n, className: filtered.join(' ') };
+      if (sharedEdgeIds.has(id)) next.push('edge--both');
+      else if (primaryEdgeIds.has(id)) next.push('edge--primary');
+      else if (comparisonEdgeIds.has(id)) next.push('edge--comparison');
+      else next.push('edge--dim');
+
+      if (base) next.push(base);
+      return { ...e, id, className: next.join(' ') };
     });
+  }, [overlayEnabled, isSafeMode, baseEdges, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
 
-    const edgeKnown = new Set(['edge--primary','edge--comparison','edge--both','edge--dim']);
-    const highlightedEdges = baseEdges.map(e => {
-      const id = e.id || `e-${e.source}-${e.target}`;
-      const c = ['edge', e.className].filter(Boolean);
-      const filtered = c.filter(token => !edgeKnown.has(token));
-
-      if (sharedEdgeIds.has(id)) filtered.push('edge--both');
-      else if (primaryEdgeIds.has(id)) filtered.push('edge--primary');
-      else if (comparisonEdgeIds.has(id)) filtered.push('edge--comparison');
-      else filtered.push('edge--dim');
-
-      return { ...e, id, className: filtered.join(' ') };
-    });
-
-    return {
-      highlightedNodes,
-      highlightedEdges,
-      debugInfo: {
-        overlayReady: true,
-        resolvedBlocks: nodeByBlockSlug.size,
-        anyMatches: primaryNodeIds.size > 0,
-        primaryCount: primaryNodeIds.size,
-        comparisonCount: comparisonNodeIds.size,
-        sharedCount: sharedNodeIds.size
-      }
-    };
-  }, [safeNodes, baseEdges, overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId]);
+  // Debug info
+  const debugInfo = useMemo(() => ({
+    overlayReady: overlayEnabled && !!primaryTrackId,
+    resolvedBlocks: nodeIdBySlug.size,
+    anyMatches: primaryNodeIds.size > 0,
+    primaryCount: primaryNodeIds.size,
+    comparisonCount: comparisonNodeIds.size,
+    sharedCount: sharedNodeIds.size
+  }), [overlayEnabled, primaryTrackId, nodeIdBySlug.size, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
 
   // Final safe nodes/edges with complete validation
   const finalNodes = useMemo(() => {
@@ -389,61 +392,42 @@ function EduTreeCanvasInner() {
     return { totalCourses, completedCourses, totalCredits, completedCredits };
   }, [courses, completedCourseIds]);
 
-  // Temporary safe column layout (bypassing ELK issues)
+  // Stabilize layout (safe columns; no ELK during triage)
   const layoutYearColumns = useCallback((list: Node[]): Node[] => {
-    const pad = 40, colW = 360, rowH = 220;
+    const pad = 40, colW = 360, rowH = 240;
     const byYear = new Map<number, Node[]>();
-    list.forEach(n => {
-      const y = (n.data as any)?.level_year ?? 1;
-      if (!byYear.has(y)) byYear.set(y, []);
-      byYear.get(y)!.push(n);
+    list.forEach((n, index) => {
+      const y = Math.max(1, Math.min(4, Number((n.data as any)?.level_year ?? ((index % 4) + 1))));
+      const arr = byYear.get(y) || [];
+      arr.push(n);
+      byYear.set(y, arr);
     });
+
     const out: Node[] = [];
-    [...byYear.entries()].forEach(([year, arr]) => {
-      arr.forEach((n, i) => {
-        out.push({ ...n, position: { x: pad + (year - 1) * colW, y: pad + i * rowH } });
+    for (const [y, col] of byYear) {
+      col.forEach((n, i) => {
+        out.push({ ...n, position: { x: pad + (y - 1) * colW, y: pad + i * rowH } });
       });
-    });
+    }
     return out;
   }, []);
-
-  // Simplified layout function with better error handling
-  const applyLayout = useCallback(async (mode: ViewMode, layoutNodes: Node[], layoutEdges: Edge[]): Promise<Node[]> => {
-    if (layoutInProgressRef.current) {
-      console.log('[Layout] Already in progress, skipping');
-      return layoutNodes;
-    }
-
-    layoutInProgressRef.current = true;
-    setIsLayouting(true);
-
-    try {
-      // Use safe column layout for now
-      const result = layoutYearColumns(layoutNodes);
-      return result;
-    } catch (error) {
-      console.error('Layout failed:', error);
-      return layoutAsGrid(layoutNodes, 'board');
-    } finally {
-      layoutInProgressRef.current = false;
-      setIsLayouting(false);
-    }
-  }, [layoutYearColumns]);
-
-  // Track handlers with URL sync
-  const handlePrimaryTrackChange = useCallback((newTrackId: TrackId) => {
-    setPrimaryTrackId(newTrackId);
-    syncParam('primary', newTrackId);
-  }, [syncParam]);
-
-  const handleComparisonTrackChange = useCallback((newTrackId: TrackId | undefined) => {
-    setComparisonTrackId(newTrackId);
-    syncParam('comparison', newTrackId);
-  }, [syncParam]);
 
   const handleOverlayToggle = useCallback((enabled: boolean) => {
     setOverlayEnabled(enabled);
     syncParam('eduTreeMultiPathOverlay', String(enabled));
+  }, [syncParam]);
+
+  const handlePrimaryTrackChange = useCallback((id: TrackId) => {
+    setPrimaryTrackId(id);
+    syncParam('primary', id);
+    // ensure overlay turns on when a primary is chosen
+    setOverlayEnabled(true);
+    syncParam('eduTreeMultiPathOverlay', 'true');
+  }, [syncParam]);
+
+  const handleComparisonTrackChange = useCallback((id?: TrackId) => {
+    setComparisonTrackId(id);
+    syncParam('comparison', id);
   }, [syncParam]);
 
   // Handle node changes with simple forwarding
@@ -526,50 +510,25 @@ function EduTreeCanvasInner() {
   // Unified layout effect with proper debouncing
   useEffect(() => {
     if (!finalNodes.length) return;
-    
-    // Clear existing layout timeout
-    if (layoutTimeoutRef.current) {
-      clearTimeout(layoutTimeoutRef.current);
+    const layouted = layoutYearColumns(finalNodes);
+    setNodes(layouted);
+    setEdges(finalEdges);
+    setAllEdges(finalEdges);
+    // one-shot fit when ready
+    if (reactFlowInstance && !didFitRef.current) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+        didFitRef.current = true;
+      }, 120);
     }
-    
-    // Debounce layout changes
-    layoutTimeoutRef.current = setTimeout(() => {
-      applyLayout(viewMode, finalNodes, finalEdges)
-        .then((layoutedNodes) => {
-          setNodes(layoutedNodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-          
-          // Single fitView after layout is complete
-          if (reactFlowInstance && !didFitRef.current) {
-            setTimeout(() => {
-              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-              didFitRef.current = true;
-            }, 100);
-          }
-        })
-        .catch(error => {
-          console.error('Layout failed:', error);
-          // Fallback without layout
-          setNodes(finalNodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-        });
-    }, 200);
-    
-    return () => {
-      if (layoutTimeoutRef.current) {
-        clearTimeout(layoutTimeoutRef.current);
-      }
-    };
-  }, [finalNodes, finalEdges, viewMode, applyLayout, reactFlowInstance]);
+  }, [finalNodes, finalEdges, layoutYearColumns, reactFlowInstance]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
   // Render path logging for debugging
-  console.log('[EduTree] render', {
-    hasNodeTypes: !!nodeTypes.blockGroup && !!nodeTypes.terminalNode,
-    overlayFlag, isSafeMode, dataLoading, dataError, hasData, guardsOk
+  console.log('[EduTree]', {
+    overlayEnabled, primaryTrackId, comparisonTrackId,
+    nodes: safeNodes.length, edges: baseEdges.length
   });
 
   if (debug) {
@@ -648,17 +607,19 @@ function EduTreeCanvasInner() {
   return (
     <div className="h-screen bg-background relative">
       {/* Track comparison overlay controls */}
-      {!isSafeMode && (
-        <TrackComparisonControls
-          overlayEnabled={overlayEnabled}
-          onOverlayToggle={handleOverlayToggle}
-          primaryTrackId={primaryTrackId}
-          onPrimaryTrackChange={handlePrimaryTrackChange}
-          comparisonTrackId={comparisonTrackId}
-          onComparisonTrackChange={handleComparisonTrackChange}
-          debugInfo={debugInfo}
-        />
-      )}
+      <div className="track-controls">
+        {!isSafeMode && (
+          <TrackComparisonControls
+            overlayEnabled={overlayEnabled}
+            onOverlayToggle={handleOverlayToggle}
+            primaryTrackId={primaryTrackId}
+            onPrimaryTrackChange={handlePrimaryTrackChange}
+            comparisonTrackId={comparisonTrackId}
+            onComparisonTrackChange={handleComparisonTrackChange}
+            debugInfo={debugInfo}
+          />
+        )}
+      </div>
 
       {/* Validity guard for React Flow */}
       {!Array.isArray(finalNodes) || !Array.isArray(finalEdges) ? (
