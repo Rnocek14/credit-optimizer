@@ -444,7 +444,7 @@ function EduTreeCanvasInner() {
       }
       return node;
     });
-  }, [finalNodes]);
+  }, [viewNodes]);
 
   const finalEdges = useMemo(() => {
     return (viewEdges || []).map(edge => {
@@ -462,10 +462,10 @@ function EduTreeCanvasInner() {
     if (!finalNodes.length) return;
     
     applyLayout(viewMode, finalNodes, finalEdges)
-      .then((layoutResult) => {
-        setNodes(layoutResult.nodes);
-        setEdges(layoutResult.edges);
-        setAllEdges(layoutResult.edges);
+      .then((layoutedNodes) => {
+        setNodes(layoutedNodes);
+        setEdges(finalEdges);
+        setAllEdges(finalEdges);
       })
       .catch(error => {
         console.error('Layout application failed:', error);
@@ -501,10 +501,10 @@ function EduTreeCanvasInner() {
     layoutInProgressRef.current = true;
     
     applyLayout(viewMode, finalNodes, finalEdges)
-      .then((layoutResult) => {
-        setNodes(layoutResult.nodes);
-        setEdges(layoutResult.edges);
-        setAllEdges(layoutResult.edges);
+      .then((layoutedNodes) => {
+        setNodes(layoutedNodes);
+        setEdges(finalEdges);
+        setAllEdges(finalEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
       })
