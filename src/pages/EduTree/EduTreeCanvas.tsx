@@ -59,12 +59,12 @@ import { EduTreeError } from '../../components/EduTreeError';
 const DEV = import.meta.env.DEV;
 
 // Node types mapping for ReactFlow  
-const nodeTypes = {
+const nodeTypes = useMemo(() => ({
   blockGroup: BlockGroup,
   terminalNode: TerminalNode,
   terminal: TerminalNode, // Alias for consistency
   placeholder: PlaceholderGroup,
-};
+}), []);
 
 // Dev-time sanity check for node types
 if (DEV) {
