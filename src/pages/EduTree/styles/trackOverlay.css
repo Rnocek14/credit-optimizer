@@ -1,54 +1,69 @@
 /* Track Comparison Overlay Styles */
 
+/* Node base class */
+.node { 
+  transition: opacity 0.18s ease, filter 0.18s ease; 
+}
+
 /* Node highlighting */
 .node--dim {
   opacity: 0.25;
+  filter: grayscale(0.2) brightness(0.9);
   transition: opacity 0.3s ease;
 }
 
 .node--primary {
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--primary);
+  outline: 2px solid hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary));
   transition: all 0.3s ease;
 }
 
 .node--comparison {
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--secondary);
+  outline: 2px dashed hsl(var(--secondary));
+  box-shadow: 0 0 0 2px hsl(var(--secondary));
   transition: all 0.3s ease;
 }
 
 .node--both {
   opacity: 1;
-  box-shadow: 0 0 0 3px var(--primary), 0 0 0 6px var(--secondary);
+  outline: 3px solid hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary)), 0 0 0 6px hsl(var(--secondary));
   transition: all 0.3s ease;
 }
 
+/* Edge base class */
+.edge { 
+  transition: all 0.18s ease; 
+}
+
 /* Edge highlighting */
-.edge--dim {
+.edge.edge--dim {
+  stroke-opacity: 0.2;
   opacity: 0.25;
   transition: opacity 0.3s ease;
 }
 
-.edge--primary {
+.edge.edge--primary {
   opacity: 1;
+  stroke-width: 2;
   stroke: hsl(var(--primary)) !important;
-  stroke-width: 3px !important;
   transition: all 0.3s ease;
 }
 
-.edge--comparison {
+.edge.edge--comparison {
   opacity: 1;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
   stroke: hsl(var(--secondary)) !important;
-  stroke-width: 2px !important;
-  stroke-dasharray: 6 4 !important;
   transition: all 0.3s ease;
 }
 
-.edge--both {
+.edge.edge--both {
   opacity: 1;
+  stroke-width: 3;
   stroke: hsl(var(--primary)) !important;
-  stroke-width: 4px !important;
   transition: all 0.3s ease;
 }
 
