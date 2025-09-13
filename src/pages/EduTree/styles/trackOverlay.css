@@ -68,17 +68,46 @@
 }
 
 /* FIX 4: Track comparison controls positioning */
-.track-controls {
+.track-controls, .track-comparison {
   position: absolute;
   top: 16px;
   left: 16px;
-  z-index: 10;             /* above React Flow canvas */
-  pointer-events: auto;   /* allow clicks */
+  z-index: 20000;          /* force above everything */
+  pointer-events: auto;    /* allow clicks */
 }
 
 /* Ensure controls don't interfere with React Flow */
-.track-controls * {
+.track-controls *, .track-comparison * {
   pointer-events: auto;
+}
+
+/* Enhanced overlay styles for better visibility */
+.react-flow__node.node--dim { 
+  opacity: 0.18; 
+  filter: saturate(0.6); 
+}
+.react-flow__node.node--primary { 
+  box-shadow: 0 0 0 2px rgba(82,156,255,0.9) inset; 
+}
+.react-flow__node.node--comparison { 
+  box-shadow: 0 0 0 2px rgba(255,140,64,0.9) inset; 
+}
+.react-flow__node.node--both { 
+  box-shadow: 0 0 0 2px rgba(120,220,140,0.9) inset; 
+}
+
+.react-flow__edge.edge--dim path { 
+  opacity: 0.25; 
+}
+.react-flow__edge.edge--primary path { 
+  stroke-width: 2.5; 
+}
+.react-flow__edge.edge--comparison path { 
+  stroke-dasharray: 6 4; 
+  stroke-width: 2.5; 
+}
+.react-flow__edge.edge--both path { 
+  stroke-width: 3; 
 }
 
 /* highlight tokens */

@@ -93,6 +93,9 @@ function EduTreeCanvasInner() {
   const didFitRef = useRef(false);
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // TEMP: force overlay on if ?debugOverlay=1 or if comparison is in URL
+  const debugOverlay = new URLSearchParams(window.location.search).get('debugOverlay') === '1';
+  
   // URL & overlay state (keep this together) - FIX 1: Validate track IDs
   const isSafeMode = searchParams.get('safe') === '1';
   
@@ -100,14 +103,18 @@ function EduTreeCanvasInner() {
   const getValid = (v: string | null, fallback: TrackId) =>
     (v && VALID.has(v as TrackId) ? (v as TrackId) : fallback);
 
-  const [overlayEnabled, setOverlayEnabled] = useState(() =>
-    new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') === 'true'
-  );
+  const [overlayEnabled, setOverlayEnabled] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('eduTreeMultiPathOverlay') === 'true' || 
+           !!params.get('comparison') || 
+           debugOverlay;
+  });
   const [primaryTrackId, setPrimaryTrackId] = useState<TrackId>(() =>
     getValid(new URLSearchParams(window.location.search).get('primary'), 'software-engineering')
   );
   const [comparisonTrackId, setComparisonTrackId] = useState<TrackId | undefined>(() => {
     const raw = new URLSearchParams(window.location.search).get('comparison');
+    console.log('[DEBUG] Raw comparison from URL:', raw, 'VALID tracks:', [...VALID]);
     return raw && VALID.has(raw as TrackId) ? (raw as TrackId) : undefined;
   });
 
@@ -207,18 +214,20 @@ function EduTreeCanvasInner() {
     for (const n of safeNodes) {
       const d: any = n.data;
       const slug = d?.block?.slug || d?.slug;
-      if (slug) m.set(slug, n.id);
+      if (slug) m.set(slug, String(n.id));
     }
+    console.log('[DEBUG] nodeIdBySlug map:', Object.fromEntries(m));
     return m;
   }, [safeNodes]);
 
   // Track node sets
+  const overlayActive = debugOverlay ? true : (overlayEnabled && !isSafeMode);
   const { primaryNodeIds, comparisonNodeIds, sharedNodeIds } = useMemo(() => {
     const primaryNodeIds = new Set<string>();
     const comparisonNodeIds = new Set<string>();
     const sharedNodeIds = new Set<string>();
 
-    if (overlayEnabled && !isSafeMode) {
+    if (overlayActive) {
       // From track definitions (blockIds are slugs)
       TRACK_MAP.get(primaryTrackId)?.blockIds.forEach(slug => {
         const id = nodeIdBySlug.get(slug);
@@ -240,8 +249,15 @@ function EduTreeCanvasInner() {
       }
     }
 
+    console.log('[HL] nodes', {
+      total: safeNodes.length,
+      primary: [...primaryNodeIds].length,
+      comparison: [...comparisonNodeIds].length,
+      shared: [...sharedNodeIds].length
+    });
+
     return { primaryNodeIds, comparisonNodeIds, sharedNodeIds };
-  }, [overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId, nodeIdBySlug]);
+  }, [overlayActive, primaryTrackId, comparisonTrackId, nodeIdBySlug, safeNodes]);
 
   // Track edge sets
   const { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds } = useMemo(() => {
@@ -249,7 +265,7 @@ function EduTreeCanvasInner() {
     const comparisonEdgeIds = new Set<string>();
     const sharedEdgeIds = new Set<string>();
 
-    if (overlayEnabled && !isSafeMode) {
+    if (overlayActive) {
       baseEdges.forEach(edge => {
         const sInP = primaryNodeIds.has(String(edge.source));
         const tInP = primaryNodeIds.has(String(edge.target));
@@ -263,11 +279,17 @@ function EduTreeCanvasInner() {
       });
     }
 
+    console.log('[HL] edges', {
+      total: baseEdges.length,
+      primary: [...primaryEdgeIds].length,
+      comparison: [...comparisonEdgeIds].length,
+      shared: [...sharedEdgeIds].length
+    });
+
     return { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds };
-  }, [overlayEnabled, isSafeMode, baseEdges, primaryNodeIds, comparisonNodeIds]);
+  }, [overlayActive, baseEdges, primaryNodeIds, comparisonNodeIds]);
 
   // FIX 3: Clean class application - strip previous overlay classes first
-  const overlayOn = overlayEnabled && !isSafeMode;
 
   const cleanNode = (n: Node) => {
     const keep = (n.className || '').split(' ')
@@ -287,7 +309,7 @@ function EduTreeCanvasInner() {
   const safeEdges = useMemo(() => baseEdges.map(cleanEdge), [baseEdges]);
 
   const viewNodes = useMemo(() => {
-    if (!overlayOn) return baseNodes;
+    if (!overlayActive) return baseNodes;
     return baseNodes.map(n => {
       const cls = ['node'];
       if (sharedNodeIds.has(n.id)) cls.push('node--both');
@@ -296,10 +318,10 @@ function EduTreeCanvasInner() {
       else cls.push('node--dim');
       return { ...n, className: [n.className, ...cls].filter(Boolean).join(' ') };
     });
-  }, [overlayOn, baseNodes, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
+  }, [overlayActive, baseNodes, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
 
   const viewEdges = useMemo(() => {
-    if (!overlayOn) return safeEdges;
+    if (!overlayActive) return safeEdges;
     return safeEdges.map(e => {
       const id = e.id || `e-${e.source}-${e.target}`;
       const cls = ['edge'];
@@ -309,7 +331,7 @@ function EduTreeCanvasInner() {
       else cls.push('edge--dim');
       return { ...e, id, className: [e.className, ...cls].filter(Boolean).join(' ') };
     });
-  }, [overlayOn, safeEdges, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
+  }, [overlayActive, safeEdges, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
 
   // Debug info
   const debugInfo = useMemo(() => ({
@@ -392,8 +414,9 @@ function EduTreeCanvasInner() {
   const layoutYearColumns = useCallback((list: Node[]): Node[] => {
     const pad = 40, colW = 360, rowH = 220;
     const byYear = new Map<number, Node[]>();
-    list.forEach(n => {
-      const y = Number((n.data as any)?.level_year ?? 1);
+    // Sort nodes by stable key to prevent shuffle, use stable fallback year
+    list.slice().sort((a,b) => String(a.id).localeCompare(String(b.id))).forEach(n => {
+      const y = Number((n.data as any)?.level_year) || 1; // NOT (index % 4) + 1
       const arr = byYear.get(y) || [];
       arr.push(n);
       byYear.set(y, arr);
@@ -478,7 +501,7 @@ function EduTreeCanvasInner() {
 
   // FIX 5: Overlay debugging with slug validation
   useEffect(() => {
-    if (!overlayOn) return;
+    if (!overlayActive) return;
     const primary = TRACK_MAP.get(primaryTrackId);
     const comparison = comparisonTrackId ? TRACK_MAP.get(comparisonTrackId) : undefined;
 
@@ -492,7 +515,7 @@ function EduTreeCanvasInner() {
       matchedPrimary: primaryNodeIds.size,
       matchedComparison: comparisonNodeIds.size
     });
-  }, [overlayOn, primaryTrackId, comparisonTrackId, nodeIdBySlug, primaryNodeIds, comparisonNodeIds]);
+  }, [overlayActive, primaryTrackId, comparisonTrackId, nodeIdBySlug, primaryNodeIds, comparisonNodeIds]);
 
   // Development audit logging with safety guards
   useEffect(() => {
@@ -625,16 +648,16 @@ function EduTreeCanvasInner() {
   return (
     <div className="h-screen bg-background relative">
       {/* FIX 4: Track comparison overlay controls - force visible for debug */}
-      <div className="track-controls">
+      <div data-testid="track-comparison-controls" className="track-comparison">
         <TrackComparisonControls
-          overlayEnabled={overlayEnabled}
-          onOverlayToggle={handleOverlayToggle}
+          overlayEnabled={overlayActive}
+          onOverlayToggle={setOverlayEnabled}
           primaryTrackId={primaryTrackId}
-          onPrimaryTrackChange={handlePrimaryTrackChange}
           comparisonTrackId={comparisonTrackId}
+          onPrimaryTrackChange={handlePrimaryTrackChange}
           onComparisonTrackChange={handleComparisonTrackChange}
           debugInfo={{
-            overlayReady: overlayEnabled && !!primaryTrackId,
+            overlayReady: overlayActive && !!primaryTrackId,
             resolvedBlocks: nodeIdBySlug.size,
             anyMatches: primaryNodeIds.size > 0,
             primaryCount: primaryNodeIds.size,
