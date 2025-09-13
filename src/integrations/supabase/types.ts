@@ -6784,42 +6784,6 @@ export type Database = {
           },
         ]
       }
-      placeholder_members: {
-        Row: {
-          course_id: string
-          created_at: string
-          id: string
-          placeholder_id: string
-        }
-        Insert: {
-          course_id: string
-          created_at?: string
-          id?: string
-          placeholder_id: string
-        }
-        Update: {
-          course_id?: string
-          created_at?: string
-          id?: string
-          placeholder_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "placeholder_members_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "edu_courses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "placeholder_members_placeholder_id_fkey"
-            columns: ["placeholder_id"]
-            isOneToOne: false
-            referencedRelation: "requirement_placeholders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       portfolio_projects: {
         Row: {
           block_id: string | null
@@ -7430,7 +7394,6 @@ export type Database = {
           level_year: number
           parent_block_id: string | null
           rule_type: string
-          slug: string | null
           title: string
           updated_at: string | null
         }
@@ -7443,7 +7406,6 @@ export type Database = {
           level_year: number
           parent_block_id?: string | null
           rule_type: string
-          slug?: string | null
           title: string
           updated_at?: string | null
         }
@@ -7456,7 +7418,6 @@ export type Database = {
           level_year?: number
           parent_block_id?: string | null
           rule_type?: string
-          slug?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -7466,53 +7427,6 @@ export type Database = {
             columns: ["parent_block_id"]
             isOneToOne: false
             referencedRelation: "requirement_blocks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      requirement_placeholders: {
-        Row: {
-          area: string
-          created_at: string
-          credits_needed: number | null
-          id: string
-          k: number | null
-          level_year: number | null
-          parent_block_id: string | null
-          rule_type: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          area: string
-          created_at?: string
-          credits_needed?: number | null
-          id?: string
-          k?: number | null
-          level_year?: number | null
-          parent_block_id?: string | null
-          rule_type: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          area?: string
-          created_at?: string
-          credits_needed?: number | null
-          id?: string
-          k?: number | null
-          level_year?: number | null
-          parent_block_id?: string | null
-          rule_type?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "requirement_placeholders_parent_block_id_fkey"
-            columns: ["parent_block_id"]
-            isOneToOne: false
-            referencedRelation: "requirement_placeholders"
             referencedColumns: ["id"]
           },
         ]
