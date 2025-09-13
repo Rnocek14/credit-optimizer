@@ -67,12 +67,12 @@
   transition: all 0.3s ease;
 }
 
-/* Track comparison controls positioning */
+/* FIX 4: Track comparison controls positioning */
 .track-controls {
   position: absolute;
   top: 16px;
   left: 16px;
-  z-index: 5;             /* above React Flow canvas */
+  z-index: 10;             /* above React Flow canvas */
   pointer-events: auto;   /* allow clicks */
 }
 
