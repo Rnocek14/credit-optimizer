@@ -66,6 +66,16 @@ const nodeTypes = {
   placeholder: PlaceholderGroup,
 };
 
+// Dev-time sanity check for node types
+if (DEV) {
+  console.log('[NODETYPES]', nodeTypes);
+  Object.entries(nodeTypes).forEach(([k, v]) => {
+    if (typeof v !== 'function') {
+      console.warn('[INVALID NODETYPE]', k, v);
+    }
+  });
+}
+
 // Type definitions
 type ViewMode = 'flow' | 'board';
 type TrackKey = TrackId;
@@ -164,6 +174,14 @@ function EduTreeCanvasInner() {
         flowNodes: result.nodes.length,
         sampleEdgeId: result.edges[0]?.id 
       });
+      
+      // Dev-time assertion for edge normalization
+      if (DEV) {
+        const bad = result.edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
+        if (bad.length) {
+          console.warn('[ASSERT] Non-normalized edge ids:', bad.slice(0, 5).map(b => b.id));
+        }
+      }
       
       return result;
     } catch (error) {
@@ -538,9 +556,15 @@ function EduTreeCanvasInner() {
 
       {/* Main Canvas */}
       <div className="flex-1 relative">
-        <ReactFlow
-          nodes={highlightedElements.nodes}
-          edges={highlightedElements.edges}
+        {/* Guard ReactFlow render until everything is valid */}
+        {!Array.isArray(highlightedElements.nodes) || !Array.isArray(highlightedElements.edges) ? (
+          <div className="p-4 text-center text-muted-foreground">Loading curriculum…</div>
+        ) : !nodeTypes.blockGroup || !nodeTypes.terminalNode ? (
+          <div className="p-4 text-center text-muted-foreground">Preparing canvas…</div>
+        ) : (
+          <ReactFlow
+            nodes={highlightedElements.nodes}
+            edges={highlightedElements.edges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={onInit}
@@ -558,6 +582,7 @@ function EduTreeCanvasInner() {
           <Controls showInteractive={false} />
           <EduTreeMiniMap />
         </ReactFlow>
+        )}
       </div>
     </div>
   );
