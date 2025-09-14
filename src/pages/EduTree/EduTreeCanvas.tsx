@@ -221,13 +221,29 @@ function EduTreeCanvasInner() {
   // Track node sets
   const overlayActive = overlayEnabled && !isSafeMode;
 
-  // Diagnostic: check for missing slugs in track definitions
+  // Enhanced slug mapping with diagnostics
   useEffect(() => {
     if (!overlayActive) return;
+    
+    console.log('[overlay:debug] Available node slugs:', Array.from(nodeIdBySlug.keys()));
+    console.log('[overlay:debug] Node mapping:', Object.fromEntries(nodeIdBySlug));
+    
     const primary = TRACK_MAP.get(primaryTrackId);
-    const missing = (primary?.blockIds ?? []).filter(s => !nodeIdBySlug.has(s));
-    if (missing.length) console.warn('[overlay] missing slugs in graph:', missing);
-  }, [overlayActive, primaryTrackId, nodeIdBySlug]);
+    const comparison = comparisonTrackId ? TRACK_MAP.get(comparisonTrackId) : null;
+    
+    if (primary) {
+      const missing = primary.blockIds.filter(s => !nodeIdBySlug.has(s));
+      console.log(`[overlay:debug] Primary track '${primary.name}' blockIds:`, primary.blockIds);
+      if (missing.length) console.warn('[overlay] Primary missing slugs:', missing);
+    }
+    
+    if (comparison) {
+      const missing = comparison.blockIds.filter(s => !nodeIdBySlug.has(s));
+      console.log(`[overlay:debug] Comparison track '${comparison.name}' blockIds:`, comparison.blockIds);
+      if (missing.length) console.warn('[overlay] Comparison missing slugs:', missing);
+    }
+  }, [overlayActive, primaryTrackId, comparisonTrackId, nodeIdBySlug]);
+
   const { primaryNodeIds, comparisonNodeIds, sharedNodeIds } = useMemo(() => {
     const primaryNodeIds = new Set<string>();
     const comparisonNodeIds = new Set<string>();
@@ -281,21 +297,32 @@ function EduTreeCanvasInner() {
     return { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds };
   }, [overlayActive, baseEdges, primaryNodeIds, comparisonNodeIds]);
 
-  // Diagnostic logs
-  if (import.meta.env.DEV) {
-    console.log('[overlay:init]', {
-      overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId,
-      url: searchParams.toString()
-    });
-
+  // Enhanced diagnostic logs
+  useEffect(() => {
+    if (!overlayActive) return;
+    
     console.log('[overlay:match]', {
       nodes: safeNodes.length,
       edges: baseEdges.length,
       primaryMatched: primaryNodeIds.size,
       comparisonMatched: comparisonNodeIds.size,
-      shared: sharedNodeIds.size
+      shared: sharedNodeIds.size,
+      primaryEdges: primaryEdgeIds.size,
+      comparisonEdges: comparisonEdgeIds.size,
+      sharedEdges: sharedEdgeIds.size
     });
-  }
+    
+    // Log specific matches for debugging
+    if (primaryNodeIds.size > 0) {
+      console.log('[overlay:primary-nodes]', Array.from(primaryNodeIds));
+    }
+    if (comparisonNodeIds.size > 0) {
+      console.log('[overlay:comparison-nodes]', Array.from(comparisonNodeIds));
+    }
+    if (sharedNodeIds.size > 0) {
+      console.log('[overlay:shared-nodes]', Array.from(sharedNodeIds));
+    }
+  }, [overlayActive, safeNodes.length, baseEdges.length, primaryNodeIds, comparisonNodeIds, sharedNodeIds, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
 
   // Clean class application (remove collisions)
   const scrub = (klass?: string) =>
@@ -314,7 +341,7 @@ function EduTreeCanvasInner() {
       else if (primaryNodeIds.has(n.id)) cls.push('hl--primary');
       else if (comparisonNodeIds.has(n.id)) cls.push('hl--comparison');
       else cls.push('hl--dim');
-      return { ...n, className: [n.className, ...cls].join(' ') };
+      return { ...n, className: [n.className, ...cls].filter(Boolean).join(' ') };
     });
   }, [overlayActive, baseNodes, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
 
@@ -327,7 +354,7 @@ function EduTreeCanvasInner() {
       else if (primaryEdgeIds.has(id)) cls.push('hl--primary');
       else if (comparisonEdgeIds.has(id)) cls.push('hl--comparison');
       else cls.push('hl--dim');
-      return { ...e, id, className: [e.className, ...cls].join(' ') };
+      return { ...e, id, className: [e.className, ...cls].filter(Boolean).join(' ') };
     });
   }, [overlayActive, baseEdgesC, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
 
