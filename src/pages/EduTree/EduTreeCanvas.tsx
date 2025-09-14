@@ -520,21 +520,63 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // One layout path (stop jitter)
+  // Year-based layout with proper grouping and diagnostics
   useEffect(() => {
     if (!finalNodes.length) return;
-    const pad = 40, colW = 360, rowH = 220;
+    
+    // Log node data for debugging
+    console.log('[layout:debug] Node data samples:', finalNodes.slice(0, 3).map(n => ({
+      id: n.id,
+      level_year: (n.data as any)?.level_year,
+      title: (n.data as any)?.block?.title || (n.data as any)?.displayTitle
+    })));
+    
+    const pad = 40, colW = 400, rowH = 180; // Wider columns, tighter rows
     const byYear = new Map<number, any[]>();
-    [...finalNodes].sort((a,b) => String(a.id).localeCompare(String(b.id))).forEach(n => {
-      const y = Number((n.data as any)?.level_year) || 1;
-      (byYear.get(y) ?? byYear.set(y, []).get(y)!).push(n);
+    
+    // Group nodes by year, ensuring proper year extraction
+    [...finalNodes].forEach(n => {
+      const nodeData = n.data as any;
+      let year = 1; // default
+      
+      // Try multiple ways to get year
+      if (nodeData?.level_year) {
+        year = Number(nodeData.level_year);
+      } else if (nodeData?.block?.level_year) {
+        year = Number(nodeData.block.level_year);
+      } else if (nodeData?.courses?.length > 0) {
+        // Use year from first course
+        year = Number(nodeData.courses[0].level_year) || 1;
+      }
+      
+      if (year < 1 || year > 4) year = 1; // clamp to valid range
+      
+      if (!byYear.has(year)) byYear.set(year, []);
+      byYear.get(year)!.push(n);
     });
 
-    const laidOut = ([] as typeof finalNodes).concat(
-      ...[...byYear.entries()].map(([y, col]) =>
-        col.map((n, i) => ({ ...n, position: { x: pad + (y - 1) * colW, y: pad + i * rowH } }))
-      )
-    );
+    console.log('[layout:debug] Year distribution:', Object.fromEntries(
+      Array.from(byYear.entries()).map(([year, nodes]) => [year, nodes.length])
+    ));
+
+    // Layout nodes in year columns (Year 1, 2, 3, 4)
+    const laidOut: any[] = [];
+    for (let year = 1; year <= 4; year++) {
+      const yearNodes = byYear.get(year) || [];
+      yearNodes.forEach((n, i) => {
+        laidOut.push({
+          ...n,
+          position: { 
+            x: pad + (year - 1) * colW,  // Year 1 at x=40, Year 2 at x=440, etc.
+            y: pad + i * rowH 
+          }
+        });
+      });
+    }
+
+    console.log('[layout:debug] Final layout positions:', laidOut.slice(0, 3).map(n => ({
+      id: n.id, position: n.position
+    })));
 
     setNodes(laidOut);
     setEdges(finalEdges);
