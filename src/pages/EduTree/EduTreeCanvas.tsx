@@ -290,6 +290,20 @@ function EduTreeCanvasInner() {
     shared: sharedNodeIds.size
   });
 
+  // PHASE 1: Additional diagnostic logs for checklist verification
+  console.log('[DEBUG] nodeIdBySlug map:', Object.fromEntries(nodeIdBySlug));
+  console.log('[HL] nodes', { 
+    primary: primaryNodeIds.size, 
+    comparison: comparisonNodeIds.size, 
+    shared: sharedNodeIds.size 
+  });
+  console.log('[HL] edges', { 
+    primary: primaryEdgeIds.size, 
+    comparison: comparisonEdgeIds.size, 
+    shared: sharedEdgeIds.size 
+  });
+  console.log('[VALID TRACKS]', getAllTrackIds());
+
   // B) Stop using node/edge as highlight classes - rename to avoid collision
   const cleanNode = (n: Node) => {
     const keep = (n.className || '')
@@ -510,21 +524,38 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // FIX 2: Unified layout effect - single layout path
+  // PHASE 4: Force column layout + single fitView after overlay state is stable
   useEffect(() => {
     if (!finalNodes.length) return;
+    
+    if (import.meta.env.DEV) {
+      console.log('[EduTree][Layout] Applying forced column layout', {
+        nodeCount: finalNodes.length,
+        overlayActive,
+        primaryCount: primaryNodeIds.size
+      });
+    }
+    
     const laidOut = layoutYearColumns(finalNodes);
     setNodes(laidOut);
     setEdges(finalEdges);
     setAllEdges(finalEdges);
-    // single fitView
-    if (reactFlowInstance && !didFitRef.current) {
+    
+    // PHASE 4: Single fitView - only after layout + overlay highlighting is complete
+    if (reactFlowInstance && overlayActive && primaryNodeIds.size > 0 && !didFitRef.current) {
+      if (import.meta.env.DEV) console.log('[EduTree] Calling fitView - overlay ready with highlights');
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
+        didFitRef.current = true;
+      }, 200);
+    } else if (reactFlowInstance && !overlayActive && !didFitRef.current) {
+      // Fallback fitView for non-overlay mode
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
         didFitRef.current = true;
       }, 120);
     }
-  }, [finalNodes, finalEdges, layoutYearColumns, reactFlowInstance]);
+  }, [finalNodes, finalEdges, layoutYearColumns, reactFlowInstance, overlayActive, primaryNodeIds.size]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
