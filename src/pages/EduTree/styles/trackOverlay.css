@@ -1,72 +1,5 @@
 /* Track Comparison Overlay Styles */
 
-/* Node base class */
-.node { 
-  transition: opacity 0.18s ease, filter 0.18s ease; 
-}
-
-/* Node highlighting */
-.node--dim {
-  opacity: 0.25;
-  filter: grayscale(0.2) brightness(0.9);
-  transition: opacity 0.3s ease;
-}
-
-.node--primary {
-  opacity: 1;
-  outline: 2px solid hsl(var(--primary));
-  box-shadow: 0 0 0 2px hsl(var(--primary));
-  transition: all 0.3s ease;
-}
-
-.node--comparison {
-  opacity: 1;
-  outline: 2px dashed hsl(var(--secondary));
-  box-shadow: 0 0 0 2px hsl(var(--secondary));
-  transition: all 0.3s ease;
-}
-
-.node--both {
-  opacity: 1;
-  outline: 3px solid hsl(var(--primary));
-  box-shadow: 0 0 0 3px hsl(var(--primary)), 0 0 0 6px hsl(var(--secondary));
-  transition: all 0.3s ease;
-}
-
-/* Edge base class */
-.edge { 
-  transition: all 0.18s ease; 
-}
-
-/* Edge highlighting */
-.edge.edge--dim {
-  stroke-opacity: 0.2;
-  opacity: 0.25;
-  transition: opacity 0.3s ease;
-}
-
-.edge.edge--primary {
-  opacity: 1;
-  stroke-width: 2;
-  stroke: hsl(var(--primary)) !important;
-  transition: all 0.3s ease;
-}
-
-.edge.edge--comparison {
-  opacity: 1;
-  stroke-width: 2;
-  stroke-dasharray: 4 4;
-  stroke: hsl(var(--secondary)) !important;
-  transition: all 0.3s ease;
-}
-
-.edge.edge--both {
-  opacity: 1;
-  stroke-width: 3;
-  stroke: hsl(var(--primary)) !important;
-  transition: all 0.3s ease;
-}
-
 /* Color palette for overlay */
 :root {
   --lp-primary:  #5ab0ff;
@@ -83,15 +16,46 @@
   pointer-events: auto;
 }
 
-/* B) New highlight classes (no collision with base styles) */
-/* nodes */
-.hl--primary    { outline: 2px solid var(--lp-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-primary) 25%, transparent); }
-.hl--comparison { outline: 2px solid var(--lp-compare); box-shadow: 0 0 0 3px color-mix(in oklab, var(--lp-compare) 25%, transparent); }
-.hl--both       { outline: 2px solid var(--lp-shared);  box-shadow: 0 0 0 4px var(--lp-shared) inset; }
-.hl--dim        { opacity: .28; filter: saturate(.5); }
+/* Unified highlight classes - single source of truth */
+.hl { 
+  opacity: 1; 
+  transition: opacity .2s ease; 
+}
 
-/* edges */
-.edge.hl--primary    path { stroke: var(--lp-primary) !important; opacity: 1 !important; }
-.edge.hl--comparison path { stroke: var(--lp-compare) !important; opacity: 1 !important; }
-.edge.hl--both       path { stroke: var(--lp-shared)  !important; opacity: 1 !important; }
-.edge.hl--dim        path { opacity: .25 !important; }
+/* non-selected baseline */
+.hl--dim { 
+  opacity: .2; 
+}
+
+/* primary vs comparison vs both */
+.hl--primary { 
+  opacity: 1; 
+  outline: 2px solid var(--lp-primary); 
+}
+
+.hl--comparison { 
+  opacity: 1; 
+  outline: 2px dashed var(--lp-compare); 
+}
+
+.hl--both { 
+  opacity: 1; 
+  outline: 3px solid var(--lp-shared); 
+}
+
+/* optional edges */
+.edge.hl--dim { 
+  stroke-opacity: .15; 
+}
+
+.edge.hl--primary { 
+  stroke-width: 2; 
+}
+
+.edge.hl--comparison { 
+  stroke-dasharray: 6 4; 
+}
+
+.edge.hl--both { 
+  stroke-width: 3; 
+}

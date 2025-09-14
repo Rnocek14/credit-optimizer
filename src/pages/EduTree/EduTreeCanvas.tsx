@@ -70,7 +70,6 @@ interface HighlightedPath {
 }
 
 function EduTreeCanvasInner() {
-  console.log('[EduTreeCanvasInner] Component mounting...');
   // ===== ALL HOOKS FIRST - ABSOLUTELY NO EARLY RETURNS AFTER HOOKS =====
   
   // A) One source of truth for URL params (and no loops)
@@ -96,33 +95,31 @@ function EduTreeCanvasInner() {
   const VALID = useMemo(() => new Set(getAllTrackIds()), []);
 
   // helpers
-  const read = useCallback(
-    (k: string) => searchParams.get(k),
-    [searchParams]
-  );
-  const write = useCallback(
-    (mut: (p: URLSearchParams) => void) => {
-      const p = new URLSearchParams(searchParams);
-      mut(p);
-      setSearchParams(p, { replace: true });
-    },
-    [searchParams, setSearchParams]
+  const read = useCallback((k: string) => searchParams.get(k), [searchParams]);
+  const write = useCallback((mut: (p: URLSearchParams) => void) => {
+    const p = new URLSearchParams(searchParams);
+    mut(p);
+    setSearchParams(p, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // init (single source of truth)
+  const isSafeMode = read('safe') === '1';
+
+  const [overlayEnabled, setOverlayEnabled] = useState(
+    () => read('eduTreeMultiPathOverlay') === 'true' || !!read('comparison')
   );
 
-  // init (no window.location here)
-  const [overlayEnabled, setOverlayEnabled] = useState(() => read('eduTreeMultiPathOverlay') === 'true' || !!read('comparison'));
   const [primaryTrackId, setPrimaryTrackId] = useState<TrackId>(() => {
     const raw = read('primary') as TrackId | null;
-    return (raw && VALID.has(raw)) ? raw : 'software-engineering';
+    return raw && VALID.has(raw) ? raw : 'software-engineering';
   });
+
   const [comparisonTrackId, setComparisonTrackId] = useState<TrackId | undefined>(() => {
     const raw = read('comparison') as TrackId | null;
-    return (raw && VALID.has(raw)) ? raw : undefined;
+    return raw && VALID.has(raw) ? raw : undefined;
   });
 
-  const isSafeMode = searchParams.get('safe') === '1';
-
-  // single sync (no replaceState / no multiple effects)
+  // single sync (prevents loops)
   useEffect(() => {
     write(p => {
       p.set('primary', primaryTrackId);
@@ -212,7 +209,7 @@ function EduTreeCanvasInner() {
 
   // Build map: slug -> nodeId
   const nodeIdBySlug = useMemo(() => {
-    const m = new Map<string,string>();
+    const m = new Map<string, string>();
     for (const n of safeNodes) {
       const d: any = n.data;
       const slug = d?.block?.slug || d?.slug;
@@ -223,6 +220,14 @@ function EduTreeCanvasInner() {
 
   // Track node sets
   const overlayActive = overlayEnabled && !isSafeMode;
+
+  // Diagnostic: check for missing slugs in track definitions
+  useEffect(() => {
+    if (!overlayActive) return;
+    const primary = TRACK_MAP.get(primaryTrackId);
+    const missing = (primary?.blockIds ?? []).filter(s => !nodeIdBySlug.has(s));
+    if (missing.length) console.warn('[overlay] missing slugs in graph:', missing);
+  }, [overlayActive, primaryTrackId, nodeIdBySlug]);
   const { primaryNodeIds, comparisonNodeIds, sharedNodeIds } = useMemo(() => {
     const primaryNodeIds = new Set<string>();
     const comparisonNodeIds = new Set<string>();
@@ -276,53 +281,30 @@ function EduTreeCanvasInner() {
     return { primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds };
   }, [overlayActive, baseEdges, primaryNodeIds, comparisonNodeIds]);
 
-  // D) Sanity logs (one-shot, super helpful)
-  console.log('[overlay:init]', {
-    overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId,
-    url: searchParams.toString()
-  });
+  // Diagnostic logs
+  if (import.meta.env.DEV) {
+    console.log('[overlay:init]', {
+      overlayEnabled, isSafeMode, primaryTrackId, comparisonTrackId,
+      url: searchParams.toString()
+    });
 
-  console.log('[overlay:match]', {
-    nodes: safeNodes.length,
-    edges: baseEdges.length,
-    primaryMatched: primaryNodeIds.size,
-    comparisonMatched: comparisonNodeIds.size,
-    shared: sharedNodeIds.size
-  });
+    console.log('[overlay:match]', {
+      nodes: safeNodes.length,
+      edges: baseEdges.length,
+      primaryMatched: primaryNodeIds.size,
+      comparisonMatched: comparisonNodeIds.size,
+      shared: sharedNodeIds.size
+    });
+  }
 
-  // PHASE 1: Additional diagnostic logs for checklist verification
-  console.log('[DEBUG] nodeIdBySlug map:', Object.fromEntries(nodeIdBySlug));
-  console.log('[HL] nodes', { 
-    primary: primaryNodeIds.size, 
-    comparison: comparisonNodeIds.size, 
-    shared: sharedNodeIds.size 
-  });
-  console.log('[HL] edges', { 
-    primary: primaryEdgeIds.size, 
-    comparison: comparisonEdgeIds.size, 
-    shared: sharedEdgeIds.size 
-  });
-  console.log('[VALID TRACKS]', getAllTrackIds());
-
-  // B) Stop using node/edge as highlight classes - rename to avoid collision
-  const cleanNode = (n: Node) => {
-    const keep = (n.className || '')
-      .split(' ')
+  // Clean class application (remove collisions)
+  const scrub = (klass?: string) =>
+    (klass || '').split(' ')
       .filter(t => t && !['hl','hl--primary','hl--comparison','hl--both','hl--dim'].includes(t))
       .join(' ');
-    return { ...n, className: keep };
-  };
 
-  const cleanEdge = (e: Edge) => {
-    const keep = (e.className || '')
-      .split(' ')
-      .filter(t => t && !['hl','hl--primary','hl--comparison','hl--both','hl--dim'].includes(t))
-      .join(' ');
-    return { ...e, className: keep };
-  };
-
-  const baseNodes = useMemo(() => safeNodes.map(cleanNode), [safeNodes]);
-  const baseEdgesC = useMemo(() => baseEdges.map(cleanEdge), [baseEdges]);
+  const baseNodes = useMemo(() => safeNodes.map(n => ({ ...n, className: scrub(n.className) })), [safeNodes]);
+  const baseEdgesC = useMemo(() => baseEdges.map(e => ({ ...e, className: scrub(e.className) })), [baseEdges]);
 
   const viewNodes = useMemo(() => {
     if (!overlayActive) return baseNodes;
@@ -332,20 +314,20 @@ function EduTreeCanvasInner() {
       else if (primaryNodeIds.has(n.id)) cls.push('hl--primary');
       else if (comparisonNodeIds.has(n.id)) cls.push('hl--comparison');
       else cls.push('hl--dim');
-      return { ...n, className: [n.className, ...cls].filter(Boolean).join(' ') };
+      return { ...n, className: [n.className, ...cls].join(' ') };
     });
   }, [overlayActive, baseNodes, primaryNodeIds, comparisonNodeIds, sharedNodeIds]);
 
   const viewEdges = useMemo(() => {
     if (!overlayActive) return baseEdgesC;
     return baseEdgesC.map(e => {
-      const id = e.id || `e-${e.source}-${e.target}`;  // normalization
+      const id = e.id || `e-${e.source}-${e.target}`;
       const cls = ['hl'];
       if (sharedEdgeIds.has(id)) cls.push('hl--both');
       else if (primaryEdgeIds.has(id)) cls.push('hl--primary');
       else if (comparisonEdgeIds.has(id)) cls.push('hl--comparison');
       else cls.push('hl--dim');
-      return { ...e, id, className: [e.className, ...cls].filter(Boolean).join(' ') };
+      return { ...e, id, className: [e.className, ...cls].join(' ') };
     });
   }, [overlayActive, baseEdgesC, primaryEdgeIds, comparisonEdgeIds, sharedEdgeIds]);
 
@@ -494,19 +476,6 @@ function EduTreeCanvasInner() {
     });
   }, [overlayActive, primaryTrackId, comparisonTrackId, nodeIdBySlug, primaryNodeIds, comparisonNodeIds]);
 
-  // Development audit logging with safety guards
-  useEffect(() => {
-    if (!overlayEnabled || isSafeMode) return;
-    
-    console.log('[Track Audit]', {
-      totalNodes: viewNodes.length,
-      totalEdges: viewEdges.length,
-      nodesInTrack: debugInfo.primaryCount,
-      edgesInTrack: 0,
-      trackKey: primaryTrackId,
-      overlayFlag: overlayEnabled
-    });
-  }, [overlayEnabled, debugInfo, viewNodes.length, viewEdges.length, primaryTrackId, isSafeMode]);
 
   // Reset fitView flag when overlay state changes
   useEffect(() => {
@@ -524,38 +493,33 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // PHASE 4: Force column layout + single fitView after overlay state is stable
+  // One layout path (stop jitter)
   useEffect(() => {
     if (!finalNodes.length) return;
-    
-    if (import.meta.env.DEV) {
-      console.log('[EduTree][Layout] Applying forced column layout', {
-        nodeCount: finalNodes.length,
-        overlayActive,
-        primaryCount: primaryNodeIds.size
-      });
-    }
-    
-    const laidOut = layoutYearColumns(finalNodes);
+    const pad = 40, colW = 360, rowH = 220;
+    const byYear = new Map<number, any[]>();
+    [...finalNodes].sort((a,b) => String(a.id).localeCompare(String(b.id))).forEach(n => {
+      const y = Number((n.data as any)?.level_year) || 1;
+      (byYear.get(y) ?? byYear.set(y, []).get(y)!).push(n);
+    });
+
+    const laidOut = ([] as typeof finalNodes).concat(
+      ...[...byYear.entries()].map(([y, col]) =>
+        col.map((n, i) => ({ ...n, position: { x: pad + (y - 1) * colW, y: pad + i * rowH } }))
+      )
+    );
+
     setNodes(laidOut);
     setEdges(finalEdges);
     setAllEdges(finalEdges);
-    
-    // PHASE 4: Single fitView - only after layout + overlay highlighting is complete
-    if (reactFlowInstance && overlayActive && primaryNodeIds.size > 0 && !didFitRef.current) {
-      if (import.meta.env.DEV) console.log('[EduTree] Calling fitView - overlay ready with highlights');
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
-        didFitRef.current = true;
-      }, 200);
-    } else if (reactFlowInstance && !overlayActive && !didFitRef.current) {
-      // Fallback fitView for non-overlay mode
+
+    if (reactFlowInstance && !didFitRef.current) {
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
         didFitRef.current = true;
-      }, 120);
+      }, 100);
     }
-  }, [finalNodes, finalEdges, layoutYearColumns, reactFlowInstance, overlayActive, primaryNodeIds.size]);
+  }, [finalNodes, finalEdges, reactFlowInstance]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
@@ -624,17 +588,17 @@ function EduTreeCanvasInner() {
   // MAIN RENDER - Only reached when all conditions are met
   return (
     <div className="h-screen bg-background relative">
-      {/* C) Always render the comparison controls (no hidden guard) */}
+      {/* Always render comparison controls */}
       <div data-testid="track-comparison-controls" className="track-comparison">
         <TrackComparisonControls
           overlayEnabled={overlayEnabled}
-          onOverlayToggle={setOverlayEnabled}
           primaryTrackId={primaryTrackId}
-          onPrimaryTrackChange={setPrimaryTrackId}
           comparisonTrackId={comparisonTrackId}
+          onOverlayToggle={setOverlayEnabled}
+          onPrimaryTrackChange={(id) => { setPrimaryTrackId(id); setOverlayEnabled(true); }}
           onComparisonTrackChange={setComparisonTrackId}
           debugInfo={{
-            overlayReady: overlayActive,
+            overlayReady: overlayEnabled && !!primaryTrackId,
             resolvedBlocks: nodeIdBySlug.size,
             anyMatches: primaryNodeIds.size > 0,
             primaryCount: primaryNodeIds.size,
