@@ -249,33 +249,33 @@ export function transformEducationData(
 
   // Add degree edges (defensive)
   const degreeEdges: Edge[] = [];
-  if (capstoneBlock && architectureBlock) {
-    degreeEdges.push(
-      {
-        id: 'capstone-to-degree',
-        source: String(capstoneBlock.id),
-        target: 'degree-completion',
-        type: 'smoothstep',
-        className: 'edge degree-edge',
-        style: {
-          stroke: 'var(--accent-gold)',
-          strokeWidth: 3,
-          opacity: 0.8
-        }
-      },
-      {
-        id: 'architecture-to-degree',
-        source: String(architectureBlock.id),
-        target: 'degree-completion',
-        type: 'smoothstep',
-        className: 'edge degree-edge',
-        style: {
-          stroke: 'var(--accent-gold)',
-          strokeWidth: 3,
-          opacity: 0.8
-        }
+  if (capstoneBlock) {
+    degreeEdges.push({
+      id: 'capstone-to-degree',
+      source: String(capstoneBlock.id),
+      target: 'degree-completion',
+      type: 'smoothstep',
+      className: 'edge degree-edge',
+      style: {
+        stroke: 'var(--accent-gold)',
+        strokeWidth: 3,
+        opacity: 0.8
       }
-    );
+    });
+  }
+  if (architectureBlock) {
+    degreeEdges.push({
+      id: 'architecture-to-degree',
+      source: String(architectureBlock.id),
+      target: 'degree-completion',
+      type: 'smoothstep',
+      className: 'edge degree-edge',
+      style: {
+        stroke: 'var(--accent-gold)',
+        strokeWidth: 3,
+        opacity: 0.8
+      }
+    });
   }
 
   const nodes: Node[] = [...regularNodes, degreeNode];

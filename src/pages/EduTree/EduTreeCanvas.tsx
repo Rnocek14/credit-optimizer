@@ -1,9 +1,10 @@
-import React, { 
-  useState, 
-  useEffect, 
-  useMemo, 
-  useCallback, 
-  useRef 
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  useLayoutEffect
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -89,6 +90,7 @@ function EduTreeCanvasInner() {
   
   const didFitRef = useRef(false);
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const columnCountRef = useRef(0);
   
   const VALID = useMemo(() => new Set(getAllTrackIds()), []);
 
@@ -533,14 +535,17 @@ function EduTreeCanvasInner() {
   }, []);
 
   // Perform layout when data or node sizes change
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!reactFlowInstance || !finalNodes.length) return;
     if (layoutInProgressRef.current) return;
 
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
-    requestAnimationFrame(() => {
+    let raf1 = 0;
+    let raf2 = 0;
+
+    const runLayout = () => {
       const pad = 40, colW = 400, defaultH = 180;
       const byYear = new Map<number, any[]>();
       const heightMap = new Map<string, number>();
@@ -570,6 +575,12 @@ function EduTreeCanvasInner() {
       });
 
       const maxYear = Math.max(5, ...Array.from(byYear.keys()));
+
+      if (maxYear > columnCountRef.current) {
+        columnCountRef.current = maxYear;
+        didFitRef.current = false;
+      }
+
       const laidOut: any[] = [];
       for (let year = 1; year <= maxYear; year++) {
         const yearNodes = byYear.get(year) || [];
@@ -600,7 +611,16 @@ function EduTreeCanvasInner() {
 
       layoutInProgressRef.current = false;
       setIsLayouting(false);
+    };
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(runLayout);
     });
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
   }, [reactFlowInstance, finalNodes, finalEdges, layoutVersion]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
