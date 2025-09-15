@@ -231,7 +231,7 @@ export const LocationOptimizerDrawer: React.FC<LocationOptimizerDrawerProps> = (
                     Missing: {parsedError.missing.join(', ')}
                   </p>
                 )}
-                {process.env.NODE_ENV === 'development' && (
+                {import.meta.env.DEV && (
                   <details className="mt-2">
                     <summary className="text-xs text-destructive/60 cursor-pointer">Debug Details</summary>
                     <pre className="text-xs text-destructive/60 mt-1 overflow-auto">{JSON.stringify({

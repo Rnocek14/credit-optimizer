@@ -49,7 +49,7 @@ const SecureLandingPage = () => {
             For support or access issues, contact your administrator.
           </p>
           
-          {process.env.NODE_ENV === 'development' && (
+          {import.meta.env.DEV && (
             <div className="pt-4">
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/dev-login">Development Login</Link>

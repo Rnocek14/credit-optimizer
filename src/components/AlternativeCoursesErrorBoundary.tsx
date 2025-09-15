@@ -57,7 +57,7 @@ export class AlternativeCoursesErrorBoundary extends React.Component<
           <CardContent className="space-y-4">
             <div className="text-sm text-muted-foreground">
               <p>Error: {this.state.error?.message || 'Unknown error'}</p>
-              {process.env.NODE_ENV === 'development' && (
+              {import.meta.env.DEV && (
                 <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
                   {this.state.error?.stack}
                 </pre>

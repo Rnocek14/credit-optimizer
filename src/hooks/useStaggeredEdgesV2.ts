@@ -45,7 +45,7 @@ export function useStaggeredEdgesV2(
 
     setVisibleEdges(allEdges);
     setIsRevealing(false);
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.log(`[StaggeredEdgesV2] Force revealed all ${allEdges.length} edges`);
     }
   };
@@ -159,7 +159,7 @@ export function useStaggeredEdgesV2(
       
       const timeout = setTimeout(() => {
         reveal([...cumulativeEdges]);
-        if (process.env.NODE_ENV !== 'production') {
+        if (import.meta.env.DEV) {
           console.log(`[StaggeredEdgesV2] Revealed batch ${index + 1}/${batchesInOrder.length}: ${batch.length} edges (total: ${cumulativeEdges.length})`);
         }
         
@@ -195,7 +195,7 @@ export function useStaggeredEdgesV2(
     if (lastLogKeyRef.current === batchKey) return;
     
     lastLogKeyRef.current = batchKey;
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       console.log(`[StaggeredEdgesV2] Created ${sortedColumns.length} batches for ${allEdges.length} edges`);
       console.log(`[StaggeredEdgesV2] Terminal edges: ${terminalEdges.length}`);
     }

@@ -240,7 +240,7 @@ export default function Demos() {
                   </Button>
                   
                   {/* Dev Tools - Only show in development */}
-                  {process.env.NODE_ENV === 'development' && (
+                  {import.meta.env.DEV && (
                     <Button
                       variant="outline"
                       size="sm"

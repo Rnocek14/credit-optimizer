@@ -6,7 +6,7 @@ import { Node } from '@xyflow/react';
 export function resolveAllCollisions(nodes: Node[], maxPasses = 15): Node[] {
   // Check if nodes have measurements - if not, warn and use estimates
   const missingMeasurements = nodes.filter(node => !(node as any).measured);
-  if (missingMeasurements.length > 0 && process.env.NODE_ENV === 'development') {
+  if (missingMeasurements.length > 0 && import.meta.env.DEV) {
     console.warn(`[CollisionResolver] ${missingMeasurements.length}/${nodes.length} nodes missing measurements, using estimates`);
   }
   
@@ -138,7 +138,7 @@ function getNodeRect(node: Node) {
   const height = measured?.height || getEstimatedNodeHeight(node);
   
   // Log missing measurements for debugging
-  if (!measured && process.env.NODE_ENV === 'development') {
+  if (!measured && import.meta.env.DEV) {
     console.warn(`[CollisionResolver] Node ${node.id} missing measurements, using estimates (w:${width}, h:${height})`);
   }
   

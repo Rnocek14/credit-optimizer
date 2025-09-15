@@ -57,7 +57,7 @@ export class EnhancedErrorBoundary extends Component<Props, State> {
               An error occurred while loading this component. This might be a temporary issue.
             </p>
             
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="bg-muted/50 p-3 rounded-lg text-xs">
                 <summary className="cursor-pointer font-medium">Technical Details</summary>
                 <pre className="mt-2 overflow-auto">

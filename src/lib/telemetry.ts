@@ -81,7 +81,7 @@ export function track(event: TelemetryEvent, payload: TelemetryPayload = {}) {
       trackEvent(userId, mappedEvent as any, enhancedPayload.source, enhancedPayload);
     } else {
       // For new events not yet in analytics, log to console in development
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         console.log('Telemetry:', event, enhancedPayload);
       }
     }

@@ -559,7 +559,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
                </p>
             </div>
 
-        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
+        {import.meta.env.DEV && user && currentStreak === 0 && (
               <div className="pt-3">
                 <Button
                   size="sm"
@@ -613,7 +613,7 @@ export function TodayDashboard({ onNextStepClick }: TodayDashboardProps) {
         )}
 
         {/* Demo Data Seeding */}
-        {process.env.NODE_ENV !== 'production' && user && currentStreak === 0 && (
+        {import.meta.env.DEV && user && currentStreak === 0 && (
           <Card className="md:col-span-2 lg:col-span-3">
             <CardContent className="pt-6 text-center">
               <Button

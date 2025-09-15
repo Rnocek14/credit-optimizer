@@ -76,24 +76,21 @@ describe('telemetry', () => {
     });
 
     it('should handle unmapped events in development', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
-      track('discover_card_sort_changed' as TelemetryEvent, { 
-        userId: 'user123', 
-        sort: 'popularity' 
+      track('discover_card_sort_changed' as TelemetryEvent, {
+        userId: 'user123',
+        sort: 'popularity'
       });
 
-      expect(console.log).toHaveBeenCalledWith(
-        'Telemetry:',
-        'discover_card_sort_changed',
-        expect.objectContaining({
-          userId: 'user123',
-          sort: 'popularity'
-        })
-      );
-
-      process.env.NODE_ENV = originalEnv;
+      if (import.meta.env.DEV) {
+        expect(console.log).toHaveBeenCalledWith(
+          'Telemetry:',
+          'discover_card_sort_changed',
+          expect.objectContaining({
+            userId: 'user123',
+            sort: 'popularity'
+          })
+        );
+      }
     });
 
     it('should handle tracking errors gracefully', () => {

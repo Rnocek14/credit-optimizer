@@ -293,7 +293,7 @@ export const CareerSwitchSimulator: React.FC<CareerSwitchSimulatorProps> = ({
                 Missing: {parsedError.missing.join(', ')}
               </p>
             )}
-            {process.env.NODE_ENV === 'development' && parsedError && (
+            {import.meta.env.DEV && parsedError && (
               <details className="mt-2">
                 <summary className="text-xs text-destructive/60 cursor-pointer">Debug Details</summary>
                 <pre className="text-xs text-destructive/60 mt-1 overflow-auto">{JSON.stringify({

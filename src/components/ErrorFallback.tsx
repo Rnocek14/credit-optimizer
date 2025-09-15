@@ -37,7 +37,7 @@ export function ErrorFallback({
           {description}
         </p>
         
-        {process.env.NODE_ENV === 'development' && error && (
+        {import.meta.env.DEV && error && (
           <details className="text-xs bg-muted p-3 rounded border">
             <summary className="cursor-pointer font-medium mb-2">
               Error Details (Development)

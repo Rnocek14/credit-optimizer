@@ -52,7 +52,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <p className="text-sm text-destructive/80">
               An unexpected error occurred. Please try refreshing the component.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="text-xs">
                 <summary className="cursor-pointer text-destructive/60">Error Details</summary>
                 <pre className="mt-2 p-2 bg-destructive/5 rounded text-destructive/70 overflow-auto">

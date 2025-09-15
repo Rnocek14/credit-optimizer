@@ -5,7 +5,7 @@ import { useSkillGaps } from '@/hooks/useSkillGaps'
 import type { SkillGap, UnifiedRecommendation } from '@/types'
 
 const debug = (...a: unknown[]) =>
-  process.env.NODE_ENV === 'development' && console.debug('[unified-recos]', ...a)
+  import.meta.env.DEV && console.debug('[unified-recos]', ...a)
 
 // Strongly-typed, readable dedupe
 function dedupeByKey<T>(arr: T[], key: (x: T) => string): T[] {

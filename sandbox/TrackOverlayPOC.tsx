@@ -105,7 +105,7 @@ export default function TrackOverlayPOC() {
 
   // Dev assertions for edge validation
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && overlayOn) {
+    if (import.meta.env.DEV && overlayOn) {
       const timer = setTimeout(() => {
         document.querySelectorAll('.react-flow__edge').forEach((e) => {
           const cls = e.className || '';
