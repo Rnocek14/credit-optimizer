@@ -138,7 +138,17 @@ function positionNodesInColumn(nodes: Node[], x: number): void {
     const nodeType = getNodeTypeFromData(node.data);
     const adaptiveSpacing = getAdaptiveVerticalSpacing(nodeType);
     
-    currentY += nodeHeight + adaptiveSpacing;
+    // Add extra margin for track comparison mode (nodes with highlight borders)
+    const hasHighlight = node.className?.includes('hl--') ?? false;
+    const extraMargin = hasHighlight ? 20 : 0; // Additional spacing for highlighted nodes
+    
+    const totalSpacing = adaptiveSpacing + extraMargin;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[SimpleLayout] Node ${node.id}: height=${nodeHeight}, spacing=${totalSpacing} (base=${adaptiveSpacing}, highlight=${extraMargin})`);
+    }
+    
+    currentY += nodeHeight + totalSpacing;
   });
 }
 
@@ -189,18 +199,18 @@ function getNodeTypeFromData(data: any): 'terminal' | 'course' | 'blockgroup' {
 }
 
 /**
- * Get adaptive vertical spacing based on node type
+ * Get adaptive vertical spacing based on node type (synchronized with collision resolver)
  */
 function getAdaptiveVerticalSpacing(nodeType: 'terminal' | 'course' | 'blockgroup'): number {
   switch (nodeType) {
     case 'terminal':
-      return 30; // Terminal nodes need less space
+      return 50; // Increased from 30px - matches collision resolver
     case 'course':
-      return 40; // Medium spacing for course nodes
+      return 60; // Increased from 40px - matches collision resolver  
     case 'blockgroup':
-      return 50; // Block groups need more space
+      return 70; // Increased from 50px - matches collision resolver
     default:
-      return 40;
+      return 60; // Safer default matches collision resolver
   }
 }
 
