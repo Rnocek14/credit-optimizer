@@ -81,8 +81,8 @@ function EduTreeCanvasInner() {
   const [selectedLens, setSelectedLens] = useState<PlanningLens>('fastest');
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
-  const layoutTimeoutRef = useRef<NodeJS.Timeout>();
   const layoutInProgressRef = useRef(false);
+  const [layoutVersion, setLayoutVersion] = useState(0);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
@@ -619,27 +619,6 @@ function EduTreeCanvasInner() {
     return () => cancelAnimationFrame(id);
   }, [reactFlowInstance, applyLayout]);
 
-  // Re-run layout when node/edge data changes
-  useEffect(() => {
-    applyLayout();
-  }, [applyLayout]);
-
-  // Recalculate layout when nodes resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
-      layoutTimeoutRef.current = setTimeout(() => {
-        applyLayout();
-      }, 100);
-    };
-
-    window.addEventListener('node:resized', handleResize);
-    return () => {
-      window.removeEventListener('node:resized', handleResize);
-      if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
-    };
-  }, [applyLayout]);
-
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
   // Render path logging for debugging
@@ -744,8 +723,8 @@ function EduTreeCanvasInner() {
           {/* Main Canvas */}
           <div className="h-full">
             <ReactFlow
-              nodes={finalNodes}
-              edges={finalEdges}
+              nodes={nodes}
+              edges={edges}
               onNodesChange={handleNodesChange}
               onEdgesChange={onEdgesChange}
               onInit={onInit}
@@ -810,8 +789,8 @@ function EduTreeCanvasInner() {
       {showTrackValidator && (
         <div className="absolute top-16 left-4 z-30">
           <TrackValidator
-            nodes={finalNodes}
-            edges={finalEdges}
+            nodes={nodes}
+            edges={edges}
             primaryTrack={TRACK_MAP.get(primaryTrackId)}
             isVisible={showTrackValidator}
           />
