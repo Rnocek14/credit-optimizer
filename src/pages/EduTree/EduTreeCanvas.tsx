@@ -560,7 +560,7 @@ function EduTreeCanvasInner() {
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
-          className="bg-background"
+          className="edu-tree-canvas bg-background"
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}

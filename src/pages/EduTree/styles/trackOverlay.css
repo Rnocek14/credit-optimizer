@@ -45,8 +45,8 @@
   box-shadow: 0 0 16px rgba(124, 242, 156, 0.4);
 }
 
-/* ReactFlow Edge Styles - Target the actual SVG paths */
-.react-flow__edge.hl.hl--dim .react-flow__edge-path {
+/* ReactFlow Edge Styles - Scoped to EduTree Canvas only */
+.edu-tree-canvas .react-flow__edge.hl.hl--dim .react-flow__edge-path {
   stroke: #c8c8c8 !important;
   stroke-width: 2px !important;
   opacity: 0.25 !important;
@@ -54,7 +54,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.react-flow__edge.hl.hl--primary .react-flow__edge-path {
+.edu-tree-canvas .react-flow__edge.hl.hl--primary .react-flow__edge-path {
   stroke: var(--lp-primary) !important;
   stroke-width: 3px !important;
   opacity: 1 !important;
@@ -63,7 +63,7 @@
   filter: drop-shadow(0 0 4px rgba(90, 176, 255, 0.3)) !important;
 }
 
-.react-flow__edge.hl.hl--comparison .react-flow__edge-path {
+.edu-tree-canvas .react-flow__edge.hl.hl--comparison .react-flow__edge-path {
   stroke: var(--lp-compare) !important;
   stroke-width: 3px !important;
   stroke-dasharray: 8 4 !important;
@@ -73,7 +73,7 @@
   filter: drop-shadow(0 0 4px rgba(255, 111, 166, 0.3)) !important;
 }
 
-.react-flow__edge.hl.hl--both .react-flow__edge-path {
+.edu-tree-canvas .react-flow__edge.hl.hl--both .react-flow__edge-path {
   stroke: var(--lp-shared) !important;
   stroke-width: 4px !important;
   opacity: 1 !important;
@@ -90,7 +90,7 @@
   z-index: 100;
 }
 
-.react-flow__edge.hl:hover .react-flow__edge-path {
+.edu-tree-canvas .react-flow__edge.hl:hover .react-flow__edge-path {
   opacity: 0.9 !important;
 }
 
