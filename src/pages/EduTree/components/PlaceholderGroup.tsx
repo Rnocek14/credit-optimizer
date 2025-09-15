@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { HelpCircle, Clock } from 'lucide-react';
+import { useNodeResize } from '@/hooks/useNodeResize';
 
 interface PlaceholderNodeData {
   label?: string;
@@ -9,12 +10,22 @@ interface PlaceholderNodeData {
   area?: string;
 }
 
-export const PlaceholderGroup: React.FC<NodeProps> = ({ data, selected }) => {
+export const PlaceholderGroup: React.FC<NodeProps> = ({ id, data, selected }) => {
   const placeholderData = data as PlaceholderNodeData;
   const { label, description, requiredCredits, area } = placeholderData;
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const { attachResizeObserver, detachResizeObserver } = useNodeResize(id);
+
+  useEffect(() => {
+    if (nodeRef.current) {
+      attachResizeObserver(nodeRef.current);
+      return () => detachResizeObserver();
+    }
+  }, [attachResizeObserver, detachResizeObserver]);
 
   return (
     <div
+      ref={nodeRef}
       className={`
         relative min-w-[180px] p-3 rounded-lg border-2 border-dashed border-muted-foreground/50 
         bg-muted/30 transition-all duration-200

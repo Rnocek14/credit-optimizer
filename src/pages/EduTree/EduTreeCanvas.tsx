@@ -539,21 +539,6 @@ function EduTreeCanvasInner() {
     const pad = 40, colW = 400, defaultH = 180; // Wider columns, default height
     const byYear = new Map<number, any[]>();
 
-    // Pre-calc node heights from ReactFlow instance when available
-    const heightMap = new Map<string, number>();
-    if (reactFlowInstance) {
-      try {
-        reactFlowInstance.getNodes().forEach((n: any) => {
-          const height = n.height || defaultH;
-          // Add bounds checking to prevent extreme values
-          const boundedHeight = Math.min(Math.max(height, 120), 400);
-          heightMap.set(String(n.id), boundedHeight);
-        });
-      } catch (e) {
-        console.warn('[layout:debug] getNodes failed, using defaults', e);
-      }
-    }
-
     // Group nodes by year, ensuring proper year extraction
     [...finalNodes].forEach(n => {
       const nodeData = n.data as any;
@@ -585,7 +570,7 @@ function EduTreeCanvasInner() {
       const yearNodes = byYear.get(year) || [];
       let yOffset = pad;
       yearNodes.forEach((n) => {
-        const h = heightMap.get(String(n.id)) || defaultH;
+        const h = defaultH;
         laidOut.push({
           ...n,
           position: {

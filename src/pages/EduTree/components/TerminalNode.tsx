@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { GraduationCap, Star } from 'lucide-react';
+import { useNodeResize } from '@/hooks/useNodeResize';
 
 interface TerminalNodeData {
   label?: string;
@@ -18,13 +19,23 @@ interface TerminalNodeData {
   };
 }
 
-export const TerminalNode: React.FC<NodeProps> = ({ data, selected }) => {
+export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const terminalData = data as TerminalNodeData;
   const { isEligible = false, degreeType, credits, block } = terminalData;
   const label = block?.title || terminalData.label || 'Terminal Node';
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const { attachResizeObserver, detachResizeObserver } = useNodeResize(id);
+
+  useEffect(() => {
+    if (nodeRef.current) {
+      attachResizeObserver(nodeRef.current);
+      return () => detachResizeObserver();
+    }
+  }, [attachResizeObserver, detachResizeObserver]);
 
   return (
     <div
+      ref={nodeRef}
       className={`
         relative min-w-[200px] p-4 rounded-lg border-2 transition-all duration-200
         ${isEligible 
