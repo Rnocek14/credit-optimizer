@@ -253,15 +253,10 @@ function EduTreeCanvasInner() {
     }
   }, [hasData, dataLoading]);
 
-  // Perform layout when data or node sizes change using enhanced layout system
+  // Phase 1: Set nodes immediately (basic positioning)
   useLayoutEffect(() => {
     if (!reactFlowInstance) {
       console.log('[EduTree Layout] ReactFlow instance not ready');
-      return;
-    }
-
-    if (layoutInProgressRef.current) {
-      console.log('[EduTree Layout] Layout already in progress, skipping');
       return;
     }
 
@@ -270,12 +265,40 @@ function EduTreeCanvasInner() {
       console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
+      setNodes([]);
+      setEdges([]);
       return;
     }
 
-    // Wait for React Flow to initialize and measure nodes before applying layout
+    // Always set nodes immediately with basic positioning (Phase 1)
+    console.log('[EduTree Layout] Phase 1: Setting', finalNodes.length, 'nodes with basic positioning');
+    setNodes(finalNodes);
+    setEdges(finalEdges);
+    setAllEdges(finalEdges);
+
+  }, [
+    reactFlowInstance,
+    finalNodes.length,
+    finalEdges.length,
+    finalNodesKey,
+    finalEdgesKey,
+    overlayEnabled
+  ]);
+
+  // Phase 2: Apply enhanced layout after measurements
+  useLayoutEffect(() => {
+    if (!reactFlowInstance || !finalNodes.length) {
+      return;
+    }
+
+    if (layoutInProgressRef.current) {
+      console.log('[EduTree Layout] Layout already in progress, skipping enhanced layout');
+      return;
+    }
+
+    // Wait for React Flow to initialize and measure nodes before applying enhanced layout
     if (!nodesInitialized) {
-      console.log('[EduTree Layout] Waiting for React Flow nodes to be initialized and measured');
+      console.log('[EduTree Layout] Phase 2: Waiting for React Flow nodes to be initialized and measured');
       return;
     }
 
@@ -284,23 +307,23 @@ function EduTreeCanvasInner() {
     const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
     const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
     
-    console.log('[EduTree Layout] Node measurement status:', {
+    console.log('[EduTree Layout] Phase 2: Node measurement status:', {
       totalNodes: currentNodes.length,
       measuredNodes: measuredNodes.length,
       measurementRatio: Math.round(measurementRatio * 100) + '%'
     });
 
-    // Only proceed if we have measurements for most nodes (80%+) or after a delay
+    // Only proceed with enhanced layout if we have measurements for most nodes (80%+)
     if (measurementRatio < 0.8 && currentNodes.length > 0) {
-      console.log('[EduTree Layout] Insufficient measurements, waiting...');
-      // Set a timeout to retry layout after nodes have had time to measure
+      console.log('[EduTree Layout] Phase 2: Insufficient measurements, waiting...');
+      // Set a timeout to retry enhanced layout after nodes have had time to measure
       const retryTimeout = setTimeout(() => {
         triggerLayout();
       }, 100);
       return () => clearTimeout(retryTimeout);
     }
 
-    console.log('[EduTree Layout] Starting enhanced layout for', finalNodes.length, 'nodes with', Math.round(measurementRatio * 100) + '% measured');
+    console.log('[EduTree Layout] Phase 2: Starting enhanced layout for', finalNodes.length, 'nodes with', Math.round(measurementRatio * 100) + '% measured');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -384,12 +407,7 @@ function EduTreeCanvasInner() {
   }, [
     reactFlowInstance,
     nodesInitialized,
-    finalNodes.length,
-    finalEdges.length,
-    finalNodesKey,
-    finalEdgesKey,
     layoutVersion,
-    overlayEnabled,
     triggerLayout
   ]);
 
