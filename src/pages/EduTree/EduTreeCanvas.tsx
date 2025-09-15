@@ -319,12 +319,27 @@ function EduTreeCanvasInner() {
     let timeoutId: NodeJS.Timeout;
     let cancelled = false;
 
-    // Unified cleanup function
+    // Unified cleanup function with guaranteed state reset
     const clearLayoutState = (flushPending = true) => {
+      // Always clear the timeout first
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
       const wasLayouting = layoutInProgressRef.current;
 
+      // CRITICAL: Always reset these flags immediately
       layoutInProgressRef.current = false;
       setIsLayouting(false);
+
+      if (DEV) {
+        console.log('[EduTree Layout] Layout state cleared', { 
+          wasLayouting, 
+          cancelled, 
+          flushPending,
+          overlayEnabled 
+        });
+      }
 
       if (!wasLayouting) {
         if (DEV) {
@@ -333,49 +348,75 @@ function EduTreeCanvasInner() {
         return;
       }
 
-      if (DEV) {
-        console.log('[EduTree Layout] Layout state cleared');
-      }
-
-      if (cancelled) {
+      // Skip pending flush if cancelled or in overlay mode
+      if (cancelled || !flushPending || overlayEnabled) {
         if (DEV) {
-          console.log('[EduTree Layout] Cleanup detected cancellation - skipping pending flush');
+          console.log('[EduTree Layout] Skipping pending flush:', { cancelled, flushPending, overlayEnabled });
         }
         return;
       }
 
-      // Only flush pending for normal mode to prevent infinite loops in overlay mode
-      if (flushPending && !overlayEnabled) {
-        const flushPendingLayout = () => {
-          if (pendingLayoutRef.current && !cancelled) {
-            pendingLayoutRef.current = false;
-            requestAnimationFrame(() => {
-              if (!cancelled) {
-                triggerLayout();
-              }
-            });
-          }
-        };
-        flushPendingLayout();
-      }
+      // Only flush pending for normal mode to prevent infinite loops
+      const flushPendingLayout = () => {
+        if (pendingLayoutRef.current && !cancelled) {
+          pendingLayoutRef.current = false;
+          requestAnimationFrame(() => {
+            if (!cancelled) {
+              triggerLayout();
+            }
+          });
+        }
+      };
+      flushPendingLayout();
     };
+
+    // Set up emergency timeout for BOTH overlay and normal modes
+    const emergencyTimeoutMs = overlayEnabled ? 2500 : 5000;
+    timeoutId = setTimeout(() => {
+      if (!cancelled) {
+        console.warn(`[EduTree Layout] Emergency timeout after ${emergencyTimeoutMs}ms - force clearing layout state`);
+        clearLayoutState(false);
+      }
+    }, emergencyTimeoutMs);
 
     // Unified layout execution function
     const runEnhancedLayout = async () => {
       try {
-        // Different measurement logic for overlay vs normal mode
+        if (DEV) {
+          console.log(`[EduTree Layout] Starting layout - Mode: ${overlayEnabled ? 'overlay' : 'normal'}, Nodes: ${finalNodes.length}`);
+        }
+
+        // Streamlined overlay mode - skip measurement checks
         if (overlayEnabled) {
           if (DEV) {
-            console.log('[EduTree Layout] Running enhanced layout system (overlay mode)');
+            console.log('[EduTree Layout] Overlay mode: applying layout directly');
           }
+          
+          // For overlay mode, just apply the layout without complex measurement checks
+          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+          const layoutResult = await layoutNodes(finalNodes, finalEdges);
+          
+          if (DEV) {
+            console.log('[EduTree Layout] Overlay layout completed:', {
+              nodes: layoutResult.nodes.length,
+              hasOverlaps: layoutResult.hasOverlaps,
+              layoutTime: layoutResult.layoutTime
+            });
+          }
+
+          // Update React Flow with the enhanced layout
+          setNodes(layoutResult.nodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
+          
         } else {
-          // Check measurements for normal mode
+          // Normal mode: Check measurements for layout quality
           const currentNodes = reactFlowInstance.getNodes();
           const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
           const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
           
           if (DEV) {
-            console.log('[EduTree Layout] Phase 2: Node measurement status:', {
+            console.log('[EduTree Layout] Normal mode measurement status:', {
               totalNodes: currentNodes.length,
               measuredNodes: measuredNodes.length,
               measurementRatio: Math.round(measurementRatio * 100) + '%'
@@ -392,7 +433,7 @@ function EduTreeCanvasInner() {
           
           if (!shouldProceed && currentNodes.length > 0) {
             if (DEV) {
-              console.log(`[EduTree Layout] Phase 2: Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
+              console.log(`[EduTree Layout] Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
             }
             
             // Clear state and set up retry
@@ -413,46 +454,47 @@ function EduTreeCanvasInner() {
 
           if (DEV) {
             const reason = measurementRatio >= 0.5 ? 'sufficient measurements' : 'max retries reached';
-            console.log(`[EduTree Layout] Phase 2: Starting enhanced layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
+            console.log(`[EduTree Layout] Starting normal layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
           }
-        }
-        
-        // Run the layout
-        const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-        const layoutResult = await layoutNodes(finalNodes, finalEdges);
-        
-        if (DEV) {
-          console.log('[EduTree Layout] Enhanced layout completed:', {
-            mode: overlayEnabled ? 'overlay' : 'normal',
-            nodes: layoutResult.nodes.length,
-            hasOverlaps: layoutResult.hasOverlaps,
-            layoutTime: layoutResult.layoutTime
-          });
-        }
 
-        // Update React Flow with the enhanced layout
-        setNodes(layoutResult.nodes);
-        setEdges(finalEdges);
-        setAllEdges(finalEdges);
+          // Run the layout for normal mode
+          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+          const layoutResult = await layoutNodes(finalNodes, finalEdges);
+          
+          if (DEV) {
+            console.log('[EduTree Layout] Normal layout completed:', {
+              nodes: layoutResult.nodes.length,
+              hasOverlaps: layoutResult.hasOverlaps,
+              layoutTime: layoutResult.layoutTime
+            });
+          }
 
-        if (layoutResult.hasOverlaps && DEV) {
-          console.warn('[EduTree Layout] Layout still has overlaps after resolution');
+          // Update React Flow with the enhanced layout
+          setNodes(layoutResult.nodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
+
+          if (layoutResult.hasOverlaps && DEV) {
+            console.warn('[EduTree Layout] Layout still has overlaps after resolution');
+          }
         }
 
       } catch (error) {
-        console.error('[EduTree Layout] Enhanced layout failed:', error);
+        console.error('[EduTree Layout] Layout execution failed:', error);
         // Fallback: set nodes without layout
         setNodes(finalNodes);
         setEdges(finalEdges);
         setAllEdges(finalEdges);
       } finally {
+        // CRITICAL: Always clear state in finally block
         clearLayoutState(true);
       }
     };
 
-    // Start the enhanced layout process
-    runEnhancedLayout().finally(() => {
-      clearTimeout(timeoutId);
+    // Start the enhanced layout process with proper cleanup
+    runEnhancedLayout().catch(error => {
+      console.error('[EduTree Layout] Unhandled layout error:', error);
+      clearLayoutState(false);
     });
 
     return () => {
@@ -460,8 +502,12 @@ function EduTreeCanvasInner() {
       if (DEV) {
         console.log('[EduTree Layout] Cleaning up enhanced layout effect');
       }
-      clearTimeout(timeoutId);
-      clearLayoutState(false); // Don't flush pending on cleanup to prevent loops
+      // Clear timeout immediately on cleanup
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Force clear layout state without pending flush to prevent loops
+      clearLayoutState(false);
     };
   }, [
     reactFlowInstance,
