@@ -272,7 +272,9 @@ function EduTreeCanvasInner() {
     const runLayout = () => {
       try {
         console.log('[EduTree Layout] Running layout calculations');
-        const pad = 40, colW = 400, defaultH = 180;
+        const pad = 80; // Increased for better vertical separation
+        const colW = 480; // Increased to accommodate wider nodes
+        const defaultH = 180;
         const byYear = new Map<number, any[]>();
         const heightMap = new Map<string, number>();
 
@@ -281,6 +283,31 @@ function EduTreeCanvasInner() {
           console.warn('[EduTree Layout] ReactFlow instance not fully initialized');
           return;
         }
+
+        // Improved height estimation based on node type
+        const getEstimatedHeight = (node: any): number => {
+          const nodeData = node.data as any;
+          
+          // BlockGroup nodes (larger, more content)
+          if (nodeData?.block) {
+            const courseCount = nodeData.block.courses?.length || 0;
+            const subBlockCount = nodeData.sub_blocks?.length || 0;
+            return Math.max(180 + (courseCount * 15) + (subBlockCount * 20), 200);
+          }
+          
+          // Course nodes (medium size) 
+          if (nodeData?.course || nodeData?.code) {
+            return 160;
+          }
+          
+          // Terminal nodes (smaller)
+          if (nodeData?.isEligible !== undefined) {
+            return 120;
+          }
+          
+          // Default fallback
+          return 180;
+        };
 
         flowNodes.forEach(n => {
           const selector = `.react-flow__node[data-id="${n.id}"]`;
@@ -293,8 +320,11 @@ function EduTreeCanvasInner() {
             h = rfNode?.height;
           }
 
-          const bounded = Math.min(Math.max(h || defaultH, 120), 400);
-          heightMap.set(String(n.id), bounded);
+          // Use improved estimation with safety margin
+          const estimated = getEstimatedHeight(n);
+          const finalHeight = h || estimated;
+          const safeHeight = Math.min(Math.max(finalHeight * 1.2, 120), 500);
+          heightMap.set(String(n.id), safeHeight);
 
           const nodeData = n.data as any;
           let year = 1;
@@ -313,6 +343,7 @@ function EduTreeCanvasInner() {
           console.log('[EduTree Layout] Column count increased to', maxYear);
         }
 
+        // Initial layout with improved spacing
         const laidOut: any[] = [];
         for (let year = 1; year <= maxYear; year++) {
           const yearNodes = byYear.get(year) || [];
@@ -326,12 +357,48 @@ function EduTreeCanvasInner() {
                 y: yOffset
               }
             });
-            yOffset += h + pad;
+            yOffset += h + pad; // Better spacing between nodes
           });
         }
 
+        // Collision detection and resolution
+        const resolveCollisions = (nodes: any[]): any[] => {
+          const resolved = [...nodes];
+          const minSpacing = 20; // Minimum space between nodes
+          
+          // Group by column (x position)
+          const columnGroups = new Map<number, any[]>();
+          resolved.forEach(node => {
+            const x = node.position.x;
+            if (!columnGroups.has(x)) columnGroups.set(x, []);
+            columnGroups.get(x)!.push(node);
+          });
+
+          // Check and resolve overlaps within each column
+          columnGroups.forEach(columnNodes => {
+            columnNodes.sort((a, b) => a.position.y - b.position.y);
+            
+            for (let i = 1; i < columnNodes.length; i++) {
+              const current = columnNodes[i];
+              const previous = columnNodes[i - 1];
+              const currentHeight = heightMap.get(String(current.id)) || defaultH;
+              const previousHeight = heightMap.get(String(previous.id)) || defaultH;
+              
+              const expectedY = previous.position.y + previousHeight + minSpacing;
+              if (current.position.y < expectedY) {
+                console.log(`[EduTree Layout] Resolving collision for node ${current.id}`);
+                current.position.y = expectedY;
+              }
+            }
+          });
+
+          return resolved;
+        };
+
+        const finalLayout = resolveCollisions(laidOut);
+
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        setNodes(laidOut);
+        setNodes(finalLayout);
         setEdges(flowEdges);
         setAllEdges(flowEdges);
 
