@@ -74,7 +74,7 @@ export const skillTreeDebug = {
 };
 
 // Make debug utilities available globally in development
-if (typeof window !== 'undefined' && import.meta.env.DEV) {
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).skillTreeDebug = skillTreeDebug;
   console.log('🛠️ Skill tree debug utilities available: window.skillTreeDebug');
 }

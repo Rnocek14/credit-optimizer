@@ -15,7 +15,6 @@ import {
   Background, 
   useNodesState, 
   useEdgesState,
-  useNodesInitialized,
   ReactFlowProvider,
   BackgroundVariant,
   MiniMap
@@ -58,7 +57,6 @@ import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
-import './styles/track-highlights.css';
 
 const DEV = import.meta.env.DEV;
 
@@ -86,15 +84,12 @@ function EduTreeCanvasInner() {
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutInProgressRef = useRef(false);
-  const pendingLayoutRef = useRef(false);
   const [layoutVersion, setLayoutVersion] = useState(0);
-  const triggerLayout = useCallback(() => {
-    setLayoutVersion(v => v + 1);
-  }, []);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
-  const nodesInitialized = useNodesInitialized();
+  
+  const columnCountRef = useRef(0);
   
   const VALID = useMemo(() => new Set(getAllTrackIds()), []);
 
@@ -190,28 +185,18 @@ function EduTreeCanvasInner() {
   // Use highlighted elements if overlay is on, otherwise use original elements
   const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
   const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
-  const finalNodesKey = useMemo(
-    () => finalNodes.map(node => `${node.id}:${(node.data as any)?.level_year ?? ''}`).join('|'),
-    [finalNodes]
-  );
-  const finalEdgesKey = useMemo(
-    () => finalEdges.map(edge => edge.id ?? `${edge.source}-${edge.target}`).join('|'),
-    [finalEdges]
-  );
 
   // Debug current component state
-  if (DEV) {
-    console.log('[EduTreeCanvas] Component State:', {
-      dataLoading,
-      dataError: !!dataError,
-      hasData,
-      flowNodesLength: flowNodes.length,
-      flowEdgesLength: flowEdges.length,
-      guardsOk,
-      isLayouting,
-      individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
-    });
-  }
+  console.log('[EduTreeCanvas] Component State:', {
+    dataLoading,
+    dataError: !!dataError,
+    hasData,
+    flowNodesLength: flowNodes.length,
+    flowEdgesLength: flowEdges.length,
+    guardsOk,
+    isLayouting,
+    individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
+  });
 
   // Track resize events to trigger re-layout
   useEffect(() => {
@@ -219,11 +204,8 @@ function EduTreeCanvasInner() {
 
     const scheduleLayout = () => {
       if (layoutInProgressRef.current) {
-        pendingLayoutRef.current = true;
         return;
       }
-
-      pendingLayoutRef.current = false;
 
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
@@ -231,7 +213,7 @@ function EduTreeCanvasInner() {
 
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        triggerLayout();
+        setLayoutVersion(v => v + 1);
       });
     };
 
@@ -243,7 +225,7 @@ function EduTreeCanvasInner() {
         cancelAnimationFrame(rafId);
       }
     };
-  }, [triggerLayout]);
+  }, []);
 
   // Clear loading state when there's no data to prevent infinite loading
   useEffect(() => {
@@ -253,278 +235,212 @@ function EduTreeCanvasInner() {
     }
   }, [hasData, dataLoading]);
 
-  // Phase 1: Set nodes immediately (basic positioning)
+  // Perform layout when data or node sizes change
   useLayoutEffect(() => {
     if (!reactFlowInstance) {
-      if (DEV) {
-        console.log('[EduTree Layout] ReactFlow instance not ready');
-      }
+      console.log('[EduTree Layout] ReactFlow instance not ready');
+      return;
+    }
+    
+    if (layoutInProgressRef.current) {
+      console.log('[EduTree Layout] Layout already in progress, skipping');
       return;
     }
 
     // Clear loading state immediately if there are no nodes to layout
     if (!finalNodes.length) {
-      if (DEV) {
-        console.log('[EduTree Layout] No nodes to layout, clearing loading state');
-      }
+      console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
-      setNodes([]);
-      setEdges([]);
       return;
     }
 
-    // Always set nodes immediately with basic positioning (Phase 1)
-    if (DEV) {
-      console.log('[EduTree Layout] Phase 1: Setting', finalNodes.length, 'nodes with basic positioning');
-    }
-    setNodes(finalNodes);
-    setEdges(finalEdges);
-    setAllEdges(finalEdges);
-
-  }, [
-    reactFlowInstance,
-    finalNodes.length,
-    finalEdges.length,
-    finalNodesKey,
-    finalEdgesKey,
-    overlayEnabled
-  ]);
-
-  // Phase 2: Apply enhanced layout after measurements
-  useLayoutEffect(() => {
-    if (!reactFlowInstance || !finalNodes.length) {
-      return;
-    }
-
-    if (layoutInProgressRef.current) {
-      if (DEV) {
-        console.log('[EduTree Layout] Layout already in progress, skipping enhanced layout');
-      }
-      return;
-    }
-
-    // Wait for React Flow to initialize and measure nodes before applying enhanced layout
-    if (!nodesInitialized) {
-      if (DEV) {
-        console.log('[EduTree Layout] Phase 2: Waiting for React Flow nodes to be initialized and measured');
-      }
-      return;
-    }
-
-    // Unified layout execution - single path for both overlay and normal modes
+    console.log('[EduTree Layout] Starting layout for', finalNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
+    let raf1 = 0;
+    let raf2 = 0;
     let timeoutId: NodeJS.Timeout;
-    let cancelled = false;
 
-    // Unified cleanup function with guaranteed state reset
-    const clearLayoutState = (flushPending = true) => {
-      // Always clear the timeout first
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-
-      const wasLayouting = layoutInProgressRef.current;
-
-      // CRITICAL: Always reset these flags immediately
+    const clearLayoutState = () => {
       layoutInProgressRef.current = false;
       setIsLayouting(false);
+      console.log('[EduTree Layout] Layout state cleared');
+    };
 
-      if (DEV) {
-        console.log('[EduTree Layout] Layout state cleared', { 
-          wasLayouting, 
-          cancelled, 
-          flushPending,
-          overlayEnabled 
+    const runLayout = () => {
+      try {
+        console.log('[EduTree Layout] Running layout calculations');
+        const pad = 80; // Increased for better vertical separation
+        const colW = 480; // Increased to accommodate wider nodes
+        const defaultH = 180;
+        const byYear = new Map<number, any[]>();
+        const heightMap = new Map<string, number>();
+
+        // Check if ReactFlow is properly initialized
+        if (!reactFlowInstance.getNodes) {
+          console.warn('[EduTree Layout] ReactFlow instance not fully initialized');
+          return;
+        }
+
+        // Improved height estimation based on node type
+        const getEstimatedHeight = (node: any): number => {
+          const nodeData = node.data as any;
+          
+          // BlockGroup nodes (larger, more content)
+          if (nodeData?.block) {
+            const courseCount = nodeData.block.courses?.length || 0;
+            const subBlockCount = nodeData.sub_blocks?.length || 0;
+            return Math.max(180 + (courseCount * 15) + (subBlockCount * 20), 200);
+          }
+          
+          // Course nodes (medium size) 
+          if (nodeData?.course || nodeData?.code) {
+            return 160;
+          }
+          
+          // Terminal nodes (smaller)
+          if (nodeData?.isEligible !== undefined) {
+            return 120;
+          }
+          
+          // Default fallback
+          return 180;
+        };
+
+        finalNodes.forEach(n => {
+          const selector = `.react-flow__node[data-id="${n.id}"]`;
+          const el = document.querySelector(selector) as HTMLElement | null;
+          const domHeight = el?.getBoundingClientRect().height;
+          let h = domHeight && !Number.isNaN(domHeight) ? domHeight : undefined;
+
+          if (h === undefined) {
+            const rfNode = reactFlowInstance.getNodes().find(rn => rn.id === n.id);
+            h = rfNode?.height;
+          }
+
+          // Use improved estimation with safety margin
+          const estimated = getEstimatedHeight(n);
+          const finalHeight = h || estimated;
+          const safeHeight = Math.min(Math.max(finalHeight * 1.2, 120), 500);
+          heightMap.set(String(n.id), safeHeight);
+
+          const nodeData = n.data as any;
+          let year = 1;
+          if (nodeData?.level_year) year = Number(nodeData.level_year);
+          else if (nodeData?.block?.level_year) year = Number(nodeData.block.level_year);
+          else if (nodeData?.courses?.length > 0) year = Number(nodeData.courses[0].level_year) || 1;
+          if (year < 1) year = 1;
+          if (!byYear.has(year)) byYear.set(year, []);
+          byYear.get(year)!.push(n);
         });
-      }
 
-      if (!wasLayouting) {
-        if (DEV) {
-          console.log('[EduTree Layout] Layout state already cleared - skipping additional cleanup');
+        const maxYear = Math.max(5, ...Array.from(byYear.keys()));
+
+        if (maxYear > columnCountRef.current) {
+          columnCountRef.current = maxYear;
+          console.log('[EduTree Layout] Column count increased to', maxYear);
         }
-        return;
-      }
 
-      // Skip pending flush if cancelled or in overlay mode
-      if (cancelled || !flushPending || overlayEnabled) {
-        if (DEV) {
-          console.log('[EduTree Layout] Skipping pending flush:', { cancelled, flushPending, overlayEnabled });
-        }
-        return;
-      }
-
-      // Only flush pending for normal mode to prevent infinite loops
-      const flushPendingLayout = () => {
-        if (pendingLayoutRef.current && !cancelled) {
-          pendingLayoutRef.current = false;
-          requestAnimationFrame(() => {
-            if (!cancelled) {
-              triggerLayout();
-            }
+        // Initial layout with improved spacing
+        const laidOut: any[] = [];
+        for (let year = 1; year <= maxYear; year++) {
+          const yearNodes = byYear.get(year) || [];
+          let yOffset = pad;
+          yearNodes.forEach(node => {
+            const h = heightMap.get(String(node.id)) || defaultH;
+            laidOut.push({
+              ...node,
+              position: {
+                x: pad + (year - 1) * colW,
+                y: yOffset
+              }
+            });
+            yOffset += h + pad; // Better spacing between nodes
           });
         }
-      };
-      flushPendingLayout();
-    };
 
-    // Set up emergency timeout for BOTH overlay and normal modes
-    const emergencyTimeoutMs = overlayEnabled ? 2500 : 5000;
-    timeoutId = setTimeout(() => {
-      if (!cancelled) {
-        console.warn(`[EduTree Layout] Emergency timeout after ${emergencyTimeoutMs}ms - force clearing layout state`);
-        clearLayoutState(false);
-      }
-    }, emergencyTimeoutMs);
-
-    // Unified layout execution function
-    const runEnhancedLayout = async () => {
-      try {
-        if (DEV) {
-          console.log(`[EduTree Layout] Starting layout - Mode: ${overlayEnabled ? 'overlay' : 'normal'}, Nodes: ${finalNodes.length}`);
-        }
-
-        // Streamlined overlay mode - skip measurement checks
-        if (overlayEnabled) {
-          if (DEV) {
-            console.log('[EduTree Layout] Overlay mode: applying layout directly');
-          }
+        // Collision detection and resolution
+        const resolveCollisions = (nodes: any[]): any[] => {
+          const resolved = [...nodes];
+          const minSpacing = 20; // Minimum space between nodes
           
-          // For overlay mode, just apply the layout without complex measurement checks
-          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-          const layoutResult = await layoutNodes(finalNodes, finalEdges);
-          
-          if (DEV) {
-            console.log('[EduTree Layout] Overlay layout completed:', {
-              nodes: layoutResult.nodes.length,
-              hasOverlaps: layoutResult.hasOverlaps,
-              layoutTime: layoutResult.layoutTime
-            });
-          }
+          // Group by column (x position)
+          const columnGroups = new Map<number, any[]>();
+          resolved.forEach(node => {
+            const x = node.position.x;
+            if (!columnGroups.has(x)) columnGroups.set(x, []);
+            columnGroups.get(x)!.push(node);
+          });
 
-          // Update React Flow with the enhanced layout
-          setNodes(layoutResult.nodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-          
-        } else {
-          // Normal mode: Check measurements for layout quality
-          const currentNodes = reactFlowInstance.getNodes();
-          const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
-          const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
-          
-          if (DEV) {
-            console.log('[EduTree Layout] Normal mode measurement status:', {
-              totalNodes: currentNodes.length,
-              measuredNodes: measuredNodes.length,
-              measurementRatio: Math.round(measurementRatio * 100) + '%'
-            });
-          }
-
-          // Track retry attempts to prevent infinite loops
-          const retryCountKey = `layout-retry-${layoutVersion}`;
-          const currentRetries = parseInt(sessionStorage.getItem(retryCountKey) || '0');
-          const maxRetries = 5;
-
-          // Proceed with layout if we have good measurements (50%+) OR we've hit max retries
-          const shouldProceed = measurementRatio >= 0.5 || currentRetries >= maxRetries;
-          
-          if (!shouldProceed && currentNodes.length > 0) {
-            if (DEV) {
-              console.log(`[EduTree Layout] Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
-            }
+          // Check and resolve overlaps within each column
+          columnGroups.forEach(columnNodes => {
+            columnNodes.sort((a, b) => a.position.y - b.position.y);
             
-            // Clear state and set up retry
-            clearLayoutState(false);
-            sessionStorage.setItem(retryCountKey, String(currentRetries + 1));
-            
-            // Set a timeout to retry enhanced layout after nodes have had time to measure
-            const retryTimeout = setTimeout(() => {
-              if (!cancelled) {
-                triggerLayout();
+            for (let i = 1; i < columnNodes.length; i++) {
+              const current = columnNodes[i];
+              const previous = columnNodes[i - 1];
+              const currentHeight = heightMap.get(String(current.id)) || defaultH;
+              const previousHeight = heightMap.get(String(previous.id)) || defaultH;
+              
+              const expectedY = previous.position.y + previousHeight + minSpacing;
+              if (current.position.y < expectedY) {
+                console.log(`[EduTree Layout] Resolving collision for node ${current.id}`);
+                current.position.y = expectedY;
               }
-            }, 150);
-            return () => clearTimeout(retryTimeout);
-          }
+            }
+          });
 
-          // Clear retry counter when we proceed
-          sessionStorage.removeItem(retryCountKey);
+          return resolved;
+        };
 
-          if (DEV) {
-            const reason = measurementRatio >= 0.5 ? 'sufficient measurements' : 'max retries reached';
-            console.log(`[EduTree Layout] Starting normal layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
-          }
+        const finalLayout = resolveCollisions(laidOut);
 
-          // Run the layout for normal mode
-          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-          const layoutResult = await layoutNodes(finalNodes, finalEdges);
-          
-          if (DEV) {
-            console.log('[EduTree Layout] Normal layout completed:', {
-              nodes: layoutResult.nodes.length,
-              hasOverlaps: layoutResult.hasOverlaps,
-              layoutTime: layoutResult.layoutTime
-            });
-          }
-
-          // Update React Flow with the enhanced layout
-          setNodes(layoutResult.nodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-
-          if (layoutResult.hasOverlaps && DEV) {
-            console.warn('[EduTree Layout] Layout still has overlaps after resolution');
-          }
-        }
-
-      } catch (error) {
-        console.error('[EduTree Layout] Layout execution failed:', error);
-        // Fallback: set nodes without layout
-        setNodes(finalNodes);
+        console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
+        setNodes(finalLayout);
         setEdges(finalEdges);
         setAllEdges(finalEdges);
+
+        console.log('[EduTree Layout] Layout completed successfully');
+      } catch (error) {
+        console.error('[EduTree Layout] Layout failed:', error);
       } finally {
-        // CRITICAL: Always clear state in finally block
-        clearLayoutState(true);
+        clearLayoutState();
       }
     };
 
-    // Start the enhanced layout process with proper cleanup
-    runEnhancedLayout().catch(error => {
-      console.error('[EduTree Layout] Unhandled layout error:', error);
-      clearLayoutState(false);
+    // Set up timeout fallback (5 seconds)
+    timeoutId = setTimeout(() => {
+      console.warn('[EduTree Layout] Layout timed out, clearing state');
+      clearLayoutState();
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    }, 5000);
+
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        try {
+          clearTimeout(timeoutId);
+          runLayout();
+        } finally {
+          clearLayoutState();
+        }
+      });
     });
 
     return () => {
-      cancelled = true;
-      if (DEV) {
-        console.log('[EduTree Layout] Cleaning up enhanced layout effect');
-      }
-      // Clear timeout immediately on cleanup
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      // Force clear layout state without pending flush to prevent loops
-      clearLayoutState(false);
+      console.log('[EduTree Layout] Cleaning up layout effect');
+      clearTimeout(timeoutId);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      clearLayoutState();
     };
-  }, [
-    reactFlowInstance,
-    finalNodes.length,
-    finalEdges.length,
-    finalNodesKey,
-    finalEdgesKey,
-    layoutVersion,
-    nodesInitialized,
-    overlayEnabled
-  ]);
+  }, [reactFlowInstance, finalNodes.length, finalEdges.length, layoutVersion, overlayEnabled]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
-    if (DEV) {
-      console.log('[EduTreeCanvas] Rendering loading state');
-    }
+    console.log('[EduTreeCanvas] Rendering loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -553,9 +469,7 @@ function EduTreeCanvasInner() {
 
   // Show error state if there's a data error
   if (dataError) {
-    if (DEV) {
-      console.log('[EduTreeCanvas] Rendering error state:', dataError);
-    }
+    console.log('[EduTreeCanvas] Rendering error state:', dataError);
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -578,9 +492,7 @@ function EduTreeCanvasInner() {
 
   // Show no data state if no education data is available
   if (!hasData) {
-    if (DEV) {
-      console.log('[EduTreeCanvas] Rendering no data state');
-    }
+    console.log('[EduTreeCanvas] Rendering no data state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -600,9 +512,7 @@ function EduTreeCanvasInner() {
   }
 
   if (!guardsOk) {
-    if (DEV) {
-      console.log('[EduTreeCanvas] Rendering guards failed state');
-    }
+    console.log('[EduTreeCanvas] Rendering guards failed state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -622,9 +532,7 @@ function EduTreeCanvasInner() {
     );
   }
 
-  if (DEV) {
-    console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
-  }
+  console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative h-screen bg-background">
       {/* Track Comparison Overlay Controls */}

@@ -158,7 +158,7 @@ export function TrackComparisonControls({
             )}
 
             {/* Debug Info (DEV only) */}
-            {import.meta.env.DEV && debugInfo && (
+            {process.env.NODE_ENV === 'development' && debugInfo && (
               <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
                 <div>OverlayReady: {String(debugInfo.overlayReady)}</div>
                 <div>Resolved Blocks: {debugInfo.resolvedBlocks}</div>

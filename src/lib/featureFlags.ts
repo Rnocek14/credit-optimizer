@@ -31,7 +31,7 @@ interface FeatureFlags {
  */
 export function getFeatureFlags(): FeatureFlags {
   const searchParams = new URLSearchParams(window.location.search);
-  const isProduction = !import.meta.env.DEV;
+  const isProduction = process.env.NODE_ENV === 'production';
   
   // Helper function to get flag value with fallback parameter names and boolean coercion
   const getFlagValue = (primaryParam: string, fallbackParam?: string, defaultValue: string = 'false'): string => {

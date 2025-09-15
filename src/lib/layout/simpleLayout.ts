@@ -1,7 +1,5 @@
 import { Node, Edge } from '@xyflow/react';
 
-const DEV = import.meta.env.DEV;
-
 /**
  * ULTRA-SIMPLE layout system that just works
  * Two stages: Initial layout → React Flow measurement → Re-layout if needed
@@ -23,26 +21,22 @@ let isLayoutInProgress = false;
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
-
+  
   // Prevent concurrent layout operations
   if (isLayoutInProgress) {
-    if (DEV) {
-      console.log('⏭️ Layout already in progress, skipping...');
-    }
+    console.log('⏭️ Layout already in progress, skipping...');
     return {
       nodes: [...nodes], // Return a copy of current nodes
       hasOverlaps: false,
       layoutTime: 0
     };
   }
-
+  
   isLayoutInProgress = true;
-
+  
   try {
-    if (DEV) {
-      console.log(`🎯 Simple layout for ${nodes.length} nodes`);
-    }
-
+    console.log(`🎯 Simple layout for ${nodes.length} nodes`);
+    
     if (nodes.length === 0) {
       return {
         nodes: [],
@@ -51,34 +45,21 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
       };
     }
 
-    // Work on a cloned set of nodes so we don't mutate upstream references
-    const workingNodes = nodes.map(node => ({
-      ...node,
-      position: {
-        x: node.position?.x ?? 0,
-        y: node.position?.y ?? 0
-      }
-    }));
-
-    // Apply simple year-based layout with generous spacing
-    let layoutedNodes = applyYearBasedLayout(workingNodes);
-
-    // Import and apply collision resolution
-    const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
-
-    // Resolve any overlaps
-    if (DEV) {
-      console.log('🔧 Resolving collisions...');
-    }
-    layoutedNodes = resolveAllCollisions(layoutedNodes);
+  // Apply simple year-based layout with generous spacing
+  let layoutedNodes = applyYearBasedLayout([...nodes]);
+  
+  // Import and apply collision resolution
+  const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
+  
+  // Resolve any overlaps
+  console.log('🔧 Resolving collisions...');
+  layoutedNodes = resolveAllCollisions(layoutedNodes);
   
     // Validate final layout
     const hasOverlaps = !validateLayout(layoutedNodes);
     
     const layoutTime = performance.now() - startTime;
-    if (DEV) {
-      console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
-    }
+    console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
     
     return {
       nodes: layoutedNodes,
@@ -97,7 +78,7 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
 function applyYearBasedLayout(nodes: Node[]): Node[] {
   // Group nodes by year
   const nodesByYear = new Map<number, Node[]>();
-
+  
   nodes.forEach(node => {
     const data = node.data as any;
     const year = data.level_year ?? 1;
@@ -108,17 +89,11 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
   });
 
   const sortedYears = Array.from(nodesByYear.keys()).sort((a, b) => a - b);
-  if (sortedYears.length === 0) {
-    return nodes;
-  }
-
-  const minYear = sortedYears[0];
-  const columnSpacing = 520; // Slightly wider spacing for readability
-  const startX = 40;
-
+  let currentX = 40; // Start position
+  
   sortedYears.forEach(year => {
     const yearNodes = nodesByYear.get(year)!;
-
+    
     // Sort nodes within year
     yearNodes.sort((a, b) => {
       const aData = a.data as any;
@@ -127,8 +102,8 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
     });
 
     // Position nodes in column with massive spacing
-    const columnOffset = startX + (year - minYear) * columnSpacing;
-    positionNodesInColumn(yearNodes, columnOffset);
+    positionNodesInColumn(yearNodes, currentX);
+    currentX += 480; // Reduced column spacing for better balance
   });
 
   return nodes;
@@ -138,27 +113,17 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
  * Position nodes vertically with generous spacing
  */
 function positionNodesInColumn(nodes: Node[], x: number): void {
-  let currentY = 80; // Start position with additional padding for headers
-
+  let currentY = 50; // Start position with reduced padding
+  
   nodes.forEach((node) => {
     node.position = { x, y: currentY };
-
+    
     // Adaptive spacing based on node type with improved balance
     const nodeHeight = (node as any).measured?.height || getEstimatedHeight(node);
     const nodeType = getNodeTypeFromData(node.data);
     const adaptiveSpacing = getAdaptiveVerticalSpacing(nodeType);
     
-    // Add extra margin for track comparison mode (nodes with highlight borders)
-    const hasHighlight = node.className?.includes('hl--') ?? false;
-    const extraMargin = hasHighlight ? 20 : 0; // Additional spacing for highlighted nodes
-    
-    const totalSpacing = adaptiveSpacing + extraMargin;
-    
-    if (DEV) {
-      console.log(`[SimpleLayout] Node ${node.id}: height=${nodeHeight}, spacing=${totalSpacing} (base=${adaptiveSpacing}, highlight=${extraMargin})`);
-    }
-    
-    currentY += nodeHeight + totalSpacing;
+    currentY += nodeHeight + adaptiveSpacing;
   });
 }
 
@@ -209,19 +174,75 @@ function getNodeTypeFromData(data: any): 'terminal' | 'course' | 'blockgroup' {
 }
 
 /**
- * Get adaptive vertical spacing based on node type (synchronized with collision resolver)
+ * Get adaptive vertical spacing based on node type
  */
 function getAdaptiveVerticalSpacing(nodeType: 'terminal' | 'course' | 'blockgroup'): number {
   switch (nodeType) {
     case 'terminal':
-      return 50; // Increased from 30px - matches collision resolver
+      return 30; // Terminal nodes need less space
     case 'course':
-      return 60; // Increased from 40px - matches collision resolver  
+      return 40; // Medium spacing for course nodes
     case 'blockgroup':
-      return 70; // Increased from 50px - matches collision resolver
+      return 50; // Block groups need more space
     default:
-      return 60; // Safer default matches collision resolver
+      return 40;
   }
+}
+
+/**
+ * Calculate total height needed for a year column
+ */
+function calculateYearColumnHeight(
+  nodes: Node[], 
+  measurements: Map<string, { width: number; height: number }>
+): number {
+  let totalHeight = 40; // Initial padding
+  
+  nodes.forEach((node, index) => {
+    const dimensions = measurements.get(node.id) || { width: 320, height: 180 };
+    totalHeight += dimensions.height;
+    
+    if (index < nodes.length - 1) {
+      totalHeight += 64; // Minimum spacing
+    }
+  });
+  
+  return totalHeight + 40; // Bottom padding
+}
+
+/**
+ * Intelligently distribute nodes into columns based on content height
+ */
+function distributeNodesIntoColumns(
+  nodes: Node[], 
+  measurements: Map<string, { width: number; height: number }>,
+  maxColumnHeight: number
+): Node[][] {
+  const columns: Node[][] = [];
+  let currentColumn: Node[] = [];
+  let currentColumnHeight = 40; // Initial padding
+  
+  nodes.forEach((node, index) => {
+    const dimensions = measurements.get(node.id) || { width: 320, height: 180 };
+    const nodeWithSpacing = dimensions.height + (index < nodes.length - 1 ? 64 : 0);
+    
+    if (currentColumnHeight + nodeWithSpacing > maxColumnHeight && currentColumn.length > 0) {
+      // Start new column
+      columns.push(currentColumn);
+      currentColumn = [node];
+      currentColumnHeight = 40 + dimensions.height;
+    } else {
+      // Add to current column
+      currentColumn.push(node);
+      currentColumnHeight += nodeWithSpacing;
+    }
+  });
+  
+  if (currentColumn.length > 0) {
+    columns.push(currentColumn);
+  }
+  
+  return columns.length > 0 ? columns : [nodes];
 }
 
 // Removed duplicate collision resolution functions - using enhanced version from collisionResolver.ts

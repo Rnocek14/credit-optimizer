@@ -156,7 +156,7 @@ export class CalmModeErrorBoundary extends Component<Props, State> {
             </div>
           </div>
           
-          {showDebugInfo && import.meta.env.DEV && error && (
+          {showDebugInfo && process.env.NODE_ENV === 'development' && error && (
             <details className="text-xs bg-muted p-3 rounded border">
               <summary className="cursor-pointer font-medium mb-2 flex items-center gap-2">
                 <Bug className="h-4 w-4" />

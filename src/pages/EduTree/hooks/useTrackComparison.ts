@@ -100,7 +100,7 @@ export function useTrackComparison({
     }
 
     // Log resolution results
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV === 'development') {
       console.log(`[Resolve ${primaryTrackId}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
       if (comparisonTrack) {
         console.log(`[Resolve ${comparisonTrackId}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);
@@ -173,18 +173,10 @@ export function useTrackComparison({
         classes.push('node--dim');
       }
 
-      // CRITICAL: Preserve React Flow's measured property for accurate collision detection
-      const newNode = {
+      return {
         ...node,
         className: classes.join(' ')
       };
-
-      // Preserve any React Flow internal properties (especially measured dimensions)
-      if ((node as any).measured) {
-        (newNode as any).measured = (node as any).measured;
-      }
-
-      return newNode;
     });
   }, [nodes, highlights, overlayEnabled]);
 
@@ -205,14 +197,11 @@ export function useTrackComparison({
         classes.push('edge--dim');
       }
 
-      // Preserve any React Flow internal properties
-      const newEdge = {
+      return {
         ...edge,
         id: edgeId,
         className: classes.join(' ')
       };
-
-      return newEdge;
     });
   }, [edges, highlights, overlayEnabled]);
 

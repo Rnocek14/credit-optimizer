@@ -8,7 +8,7 @@ import { FALLBACK_SKILLS, SkillGap, QUERY_KEYS, type SkillPriority } from '@/typ
 
 // Development-only debug logging
 const debug = (...args: any[]) => {
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     console.debug('[skill-gaps]', ...args);
   }
 };

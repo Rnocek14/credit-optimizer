@@ -822,7 +822,7 @@ const App = () => {
                 </div>
                 <MobileNavigation className="block md:hidden" />
                 <XPCelebrationOverlay />
-                {import.meta.env.DEV && <DevMenu />}
+                {process.env.NODE_ENV !== 'production' && <DevMenu />}
                 <DemoLauncher />
               </BrowserRouter>
              </EnhancedErrorBoundary>

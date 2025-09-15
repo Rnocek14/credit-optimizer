@@ -384,7 +384,7 @@ export const SkillTreeEngine: React.FC<SkillTreeEngineProps> = ({
                 </ErrorBoundaryWrapper>
                 
                 {/* Debug Info (dev only) */}
-                {import.meta.env.DEV && (
+                {process.env.NODE_ENV === 'development' && (
                   <div className="absolute top-2 left-2 text-xs bg-black/75 text-white p-2 rounded pointer-events-none font-mono">
                     Mode: {mode} | Nodes: {finalNodes.length} | Edges: {finalEdges.length} | Track: {activeTrackId ? 'Active' : 'None'}
                   </div>

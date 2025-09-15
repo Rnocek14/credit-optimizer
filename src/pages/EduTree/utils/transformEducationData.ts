@@ -10,8 +10,6 @@ import {
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
 
-const DEV = import.meta.env.DEV;
-
 export interface TransformInput {
   blocks: RequirementBlock[];
   courses: EduCourse[];
@@ -39,17 +37,15 @@ export function transformEducationData(
   const gates = Array.isArray(input.gates) ? input.gates : [];
   const gateEdges = Array.isArray(input.gateEdges) ? input.gateEdges : [];
 
-  if (DEV) {
-    console.log('[EduTree][Transform][Raw]', {
-      blocks: blocks.length,
-      courses: courses.length,
-      blockMembers: blockMembers.length,
-      gates: gates.length,
-      gateEdges: gateEdges.length,
-      sampleBlock: blocks?.[0],
-      sampleGateEdge: gateEdges?.[0],
-    });
-  }
+  console.log('[EduTree][Transform][Raw]', {
+    blocks: blocks.length,
+    courses: courses.length,
+    blockMembers: blockMembers.length,
+    gates: gates.length,
+    gateEdges: gateEdges.length,
+    sampleBlock: blocks?.[0],
+    sampleGateEdge: gateEdges?.[0],
+  });
 
   // Build safe maps
   const blockById = new Map(blocks.map(b => [String(b.id), b]));
@@ -285,14 +281,12 @@ export function transformEducationData(
   const nodes: Node[] = [...regularNodes, degreeNode];
   const edges: Edge[] = normalizeEdges([...regularEdges, ...degreeEdges]);
 
-  if (DEV) {
-    console.log('[EduTree][Transform][Result]', {
-      nodes: nodes.length,
-      edges: edges.length,
-      flowNodes: nodes.length,
-      sampleEdgeId: edges[0]?.id
-    });
-  }
+  console.log('[EduTree][Transform][Result]', { 
+    nodes: nodes.length, 
+    edges: edges.length, 
+    flowNodes: nodes.length,
+    sampleEdgeId: edges[0]?.id 
+  });
 
   return { nodes, edges, blocksWithCourses };
 }

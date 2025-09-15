@@ -382,7 +382,7 @@ export function AlternativeCoursesList() {
     <AlternativeCoursesErrorBoundary>
       <div className="space-y-4">
         {/* Debug info */}
-        {(import.meta.env.DEV || new URLSearchParams(window.location.search).get('alt_debug') === '1') && (
+        {(process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).get('alt_debug') === '1') && (
           <div className="text-xs opacity-80 p-3 bg-muted/40 rounded border border-dashed space-y-1">
             <div>[flags] altCoursesEnabled={String(altCoursesEnabled)} | skillFallback={String(skillTreeForceTagsFallback)}</div>
             <div>track={activeTrackId ? activeTrackId.slice(0, 8) + '...' : 'None'} | catalog={catalog.length} | usage={usage.length}</div>

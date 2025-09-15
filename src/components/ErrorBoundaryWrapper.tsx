@@ -63,7 +63,7 @@ export class ErrorBoundaryWrapper extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               The skill tree encountered an error. This usually happens during layout calculation.
             </p>
-            {import.meta.env.DEV && this.state.error && (
+            {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="text-xs bg-muted p-2 rounded">
                 <summary className="cursor-pointer font-medium">Error Details</summary>
                 <pre className="mt-2 overflow-auto whitespace-pre-wrap">
