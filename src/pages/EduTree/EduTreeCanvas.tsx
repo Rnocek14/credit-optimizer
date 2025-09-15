@@ -312,159 +312,103 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // In multipath overlay mode, skip measurement checks and proceed immediately
-    if (overlayEnabled) {
-      if (DEV) {
-        console.log('[EduTree Layout] Phase 2: Multipath overlay mode - proceeding immediately without measurement checks');
-      }
-      layoutInProgressRef.current = true;
-      setIsLayouting(true);
-
-      let timeoutId: NodeJS.Timeout;
-      let cancelled = false;
-
-      const clearLayoutState = (flushPending = true) => {
-        layoutInProgressRef.current = false;
-        setIsLayouting(false);
-        if (DEV) {
-          console.log('[EduTree Layout] Layout state cleared');
-        }
-      };
-
-      const runEnhancedLayout = async () => {
-        try {
-          if (DEV) {
-            console.log('[EduTree Layout] Running enhanced layout system (overlay mode)');
-          }
-          
-          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-          const layoutResult = await layoutNodes(finalNodes, finalEdges);
-          
-          if (DEV) {
-            console.log('[EduTree Layout] Enhanced layout completed (overlay mode):', {
-              nodes: layoutResult.nodes.length,
-              hasOverlaps: layoutResult.hasOverlaps,
-              layoutTime: layoutResult.layoutTime
-            });
-          }
-
-          setNodes(layoutResult.nodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-
-        } catch (error) {
-          console.error('[EduTree Layout] Enhanced layout failed:', error);
-          setNodes(finalNodes);
-          setEdges(finalEdges);
-          setAllEdges(finalEdges);
-        } finally {
-          clearLayoutState(true);
-        }
-      };
-
-      // Shorter timeout for overlay mode
-      timeoutId = setTimeout(() => {
-        console.warn('[EduTree Layout] Enhanced layout timed out (overlay mode), clearing state');
-        clearLayoutState(true);
-      }, 2000);
-
-      runEnhancedLayout().finally(() => {
-        clearTimeout(timeoutId);
-      });
-
-      return () => {
-        cancelled = true;
-        clearTimeout(timeoutId);
-        clearLayoutState(false);
-      };
-    }
-
-    // Check if nodes have real measurements (normal mode only)
-    const currentNodes = reactFlowInstance.getNodes();
-    const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
-    const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
-    
-    if (DEV) {
-      console.log('[EduTree Layout] Phase 2: Node measurement status:', {
-        totalNodes: currentNodes.length,
-        measuredNodes: measuredNodes.length,
-        measurementRatio: Math.round(measurementRatio * 100) + '%'
-      });
-    }
-
-    // Track retry attempts to prevent infinite loops
-    const retryCountKey = `layout-retry-${layoutVersion}`;
-    const currentRetries = parseInt(sessionStorage.getItem(retryCountKey) || '0');
-    const maxRetries = 5;
-
-    // Proceed with layout if we have good measurements (50%+) OR we've hit max retries
-    const shouldProceed = measurementRatio >= 0.5 || currentRetries >= maxRetries;
-    
-    if (!shouldProceed && currentNodes.length > 0) {
-      if (DEV) {
-        console.log(`[EduTree Layout] Phase 2: Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
-      }
-      
-      // Increment retry counter
-      sessionStorage.setItem(retryCountKey, String(currentRetries + 1));
-      
-      // Set a timeout to retry enhanced layout after nodes have had time to measure
-      const retryTimeout = setTimeout(() => {
-        triggerLayout();
-      }, 150);
-      return () => clearTimeout(retryTimeout);
-    }
-
-    // Clear retry counter when we proceed
-    sessionStorage.removeItem(retryCountKey);
-
-    if (DEV) {
-      const reason = measurementRatio >= 0.5 ? 'sufficient measurements' : 'max retries reached';
-      console.log(`[EduTree Layout] Phase 2: Starting enhanced layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
-    }
+    // Unified layout execution - single path for both overlay and normal modes
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
     let timeoutId: NodeJS.Timeout;
     let cancelled = false;
 
-    const flushPendingLayout = () => {
-      if (pendingLayoutRef.current && !cancelled) {
-        pendingLayoutRef.current = false;
-        requestAnimationFrame(() => {
-          if (!cancelled) {
-            triggerLayout();
-          }
-        });
-      }
-    };
-
+    // Unified cleanup function
     const clearLayoutState = (flushPending = true) => {
+      if (cancelled) return; // Prevent double cleanup
+      
       layoutInProgressRef.current = false;
       setIsLayouting(false);
       if (DEV) {
         console.log('[EduTree Layout] Layout state cleared');
       }
 
-      if (flushPending) {
+      // Only flush pending for normal mode to prevent infinite loops in overlay mode
+      if (flushPending && !overlayEnabled) {
+        const flushPendingLayout = () => {
+          if (pendingLayoutRef.current && !cancelled) {
+            pendingLayoutRef.current = false;
+            requestAnimationFrame(() => {
+              if (!cancelled) {
+                triggerLayout();
+              }
+            });
+          }
+        };
         flushPendingLayout();
       }
     };
 
+    // Unified layout execution function
     const runEnhancedLayout = async () => {
       try {
-        if (DEV) {
-          console.log('[EduTree Layout] Running enhanced layout system');
+        // Different measurement logic for overlay vs normal mode
+        if (overlayEnabled) {
+          if (DEV) {
+            console.log('[EduTree Layout] Running enhanced layout system (overlay mode)');
+          }
+        } else {
+          // Check measurements for normal mode
+          const currentNodes = reactFlowInstance.getNodes();
+          const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
+          const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
+          
+          if (DEV) {
+            console.log('[EduTree Layout] Phase 2: Node measurement status:', {
+              totalNodes: currentNodes.length,
+              measuredNodes: measuredNodes.length,
+              measurementRatio: Math.round(measurementRatio * 100) + '%'
+            });
+          }
+
+          // Track retry attempts to prevent infinite loops
+          const retryCountKey = `layout-retry-${layoutVersion}`;
+          const currentRetries = parseInt(sessionStorage.getItem(retryCountKey) || '0');
+          const maxRetries = 5;
+
+          // Proceed with layout if we have good measurements (50%+) OR we've hit max retries
+          const shouldProceed = measurementRatio >= 0.5 || currentRetries >= maxRetries;
+          
+          if (!shouldProceed && currentNodes.length > 0) {
+            if (DEV) {
+              console.log(`[EduTree Layout] Phase 2: Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
+            }
+            
+            // Clear state and set up retry
+            clearLayoutState(false);
+            sessionStorage.setItem(retryCountKey, String(currentRetries + 1));
+            
+            // Set a timeout to retry enhanced layout after nodes have had time to measure
+            const retryTimeout = setTimeout(() => {
+              if (!cancelled) {
+                triggerLayout();
+              }
+            }, 150);
+            return () => clearTimeout(retryTimeout);
+          }
+
+          // Clear retry counter when we proceed
+          sessionStorage.removeItem(retryCountKey);
+
+          if (DEV) {
+            const reason = measurementRatio >= 0.5 ? 'sufficient measurements' : 'max retries reached';
+            console.log(`[EduTree Layout] Phase 2: Starting enhanced layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
+          }
         }
         
-        // Import and use the enhanced layout system
+        // Run the layout
         const { layoutNodes } = await import('@/lib/layout/simpleLayout');
-        
-        // Apply enhanced layout to final nodes (which includes highlighting)
         const layoutResult = await layoutNodes(finalNodes, finalEdges);
         
         if (DEV) {
           console.log('[EduTree Layout] Enhanced layout completed:', {
+            mode: overlayEnabled ? 'overlay' : 'normal',
             nodes: layoutResult.nodes.length,
             hasOverlaps: layoutResult.hasOverlaps,
             layoutTime: layoutResult.layoutTime
@@ -476,7 +420,7 @@ function EduTreeCanvasInner() {
         setEdges(finalEdges);
         setAllEdges(finalEdges);
 
-        if (layoutResult.hasOverlaps) {
+        if (layoutResult.hasOverlaps && DEV) {
           console.warn('[EduTree Layout] Layout still has overlaps after resolution');
         }
 
@@ -491,12 +435,6 @@ function EduTreeCanvasInner() {
       }
     };
 
-    // Set up timeout fallback (5 seconds for enhanced layout to prevent stuck states)
-    timeoutId = setTimeout(() => {
-      console.warn('[EduTree Layout] Enhanced layout timed out, clearing state');
-      clearLayoutState(true);
-    }, 5000);
-
     // Start the enhanced layout process
     runEnhancedLayout().finally(() => {
       clearTimeout(timeoutId);
@@ -508,13 +446,17 @@ function EduTreeCanvasInner() {
         console.log('[EduTree Layout] Cleaning up enhanced layout effect');
       }
       clearTimeout(timeoutId);
-      clearLayoutState(false);
+      clearLayoutState(false); // Don't flush pending on cleanup to prevent loops
     };
   }, [
     reactFlowInstance,
-    nodesInitialized,
+    finalNodes.length,
+    finalEdges.length,
+    finalNodesKey,
+    finalEdgesKey,
     layoutVersion,
-    triggerLayout
+    nodesInitialized,
+    overlayEnabled
   ]);
 
   // Show loading state while data is being fetched
