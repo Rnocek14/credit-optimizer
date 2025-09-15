@@ -30,17 +30,24 @@ export function useTrackComparison({
   overlayEnabled
 }: UseTrackComparisonProps) {
   
-  // Build node ID lookup map from rendered nodes
+  // Build node ID lookup map from rendered nodes (by slug)
   const nodeIdByBlockId = useMemo(() => {
     const map = new Map<string, string>();
     nodes.forEach(node => {
-      // Extract block ID from node data
+      // Extract block slug from node data
       const blockData = node.data as any;
-      const blockId = blockData?.block?.id || blockData?.blockId || node.id;
-      if (blockId) {
-        map.set(blockId, node.id);
+      const blockSlug = blockData?.block?.slug || blockData?.slug || blockData?.blockSlug;
+      if (blockSlug) {
+        map.set(blockSlug, node.id);
       }
     });
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[NodeMapping] Total nodes:', nodes.length);
+      console.log('[NodeMapping] Mapped by slug:', map.size);
+      console.log('[NodeMapping] Sample mappings:', Array.from(map.entries()).slice(0, 3));
+    }
+    
     return map;
   }, [nodes]);
 
@@ -161,16 +168,16 @@ export function useTrackComparison({
     if (!overlayEnabled) return nodes;
 
     return nodes.map(node => {
-      const classes = [node.className, 'node'].filter(Boolean);
+      const classes = [node.className, 'hl'].filter(Boolean);
       
       if (highlights.sharedNodes.has(node.id)) {
-        classes.push('node--both');
+        classes.push('hl--both');
       } else if (highlights.primaryNodes.has(node.id)) {
-        classes.push('node--primary');
+        classes.push('hl--primary');
       } else if (highlights.comparisonNodes.has(node.id)) {
-        classes.push('node--comparison');
+        classes.push('hl--comparison');
       } else {
-        classes.push('node--dim');
+        classes.push('hl--dim');
       }
 
       return {
@@ -185,16 +192,16 @@ export function useTrackComparison({
 
     return edges.map(edge => {
       const edgeId = edge.id || eid(String(edge.source), String(edge.target));
-      const classes = [edge.className, 'edge'].filter(Boolean);
+      const classes = [edge.className, 'hl'].filter(Boolean);
       
       if (highlights.sharedEdges.has(edgeId)) {
-        classes.push('edge--both');
+        classes.push('hl--both');
       } else if (highlights.primaryEdges.has(edgeId)) {
-        classes.push('edge--primary');
+        classes.push('hl--primary');
       } else if (highlights.comparisonEdges.has(edgeId)) {
-        classes.push('edge--comparison');
+        classes.push('hl--comparison');
       } else {
-        classes.push('edge--dim');
+        classes.push('hl--dim');
       }
 
       return {
