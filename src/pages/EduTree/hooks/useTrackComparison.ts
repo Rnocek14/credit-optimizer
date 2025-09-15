@@ -14,25 +14,19 @@ export interface TrackHighlights {
   sharedEdges: Set<string>;
 }
 
-export interface ResolvedTrack {
-  name: string;
-  blockIds: string[];
-  missingSlugs: string[];
-}
-
 export interface UseTrackComparisonProps {
   nodes: Node[];
   edges: Edge[];
-  resolvedPrimaryTrack?: ResolvedTrack | null;
-  resolvedComparisonTrack?: ResolvedTrack | null;
+  primaryTrackId?: TrackId;
+  comparisonTrackId?: TrackId;
   overlayEnabled: boolean;
 }
 
 export function useTrackComparison({
   nodes,
   edges,
-  resolvedPrimaryTrack,
-  resolvedComparisonTrack,
+  primaryTrackId,
+  comparisonTrackId,
   overlayEnabled
 }: UseTrackComparisonProps) {
   
@@ -52,7 +46,7 @@ export function useTrackComparison({
 
   // Compute highlight sets
   const highlights = useMemo((): TrackHighlights => {
-    if (!overlayEnabled || !resolvedPrimaryTrack) {
+    if (!overlayEnabled || !primaryTrackId) {
       return {
         primaryNodes: new Set(),
         primaryEdges: new Set(),
@@ -63,44 +57,59 @@ export function useTrackComparison({
       };
     }
 
-    // Use resolved track data with database IDs
+    const primaryTrack = TRACK_MAP.get(primaryTrackId);
+    const comparisonTrack = comparisonTrackId ? TRACK_MAP.get(comparisonTrackId) : undefined;
+
+    if (!primaryTrack) {
+      console.warn(`[TrackComparison] Primary track not found: ${primaryTrackId}`);
+      return {
+        primaryNodes: new Set(),
+        primaryEdges: new Set(),
+        comparisonNodes: new Set(),
+        comparisonEdges: new Set(),
+        sharedNodes: new Set(),
+        sharedEdges: new Set()
+      };
+    }
+
+    // Resolve block slugs to actual node IDs
     const primaryNodeIds = new Set<string>();
     const primaryMissing: string[] = [];
     
-    resolvedPrimaryTrack.blockIds.forEach(blockId => {
-      const nodeId = nodeIdByBlockId.get(blockId);
+    primaryTrack.blockIds.forEach(blockSlug => {
+      const nodeId = nodeIdByBlockId.get(blockSlug);
       if (nodeId) {
         primaryNodeIds.add(nodeId);
       } else {
-        primaryMissing.push(blockId);
+        primaryMissing.push(blockSlug);
       }
     });
 
     let comparisonNodeIds = new Set<string>();
     let comparisonMissing: string[] = [];
     
-    if (resolvedComparisonTrack) {
-      resolvedComparisonTrack.blockIds.forEach(blockId => {
-        const nodeId = nodeIdByBlockId.get(blockId);
+    if (comparisonTrack) {
+      comparisonTrack.blockIds.forEach(blockSlug => {
+        const nodeId = nodeIdByBlockId.get(blockSlug);
         if (nodeId) {
           comparisonNodeIds.add(nodeId);
         } else {
-          comparisonMissing.push(blockId);
+          comparisonMissing.push(blockSlug);
         }
       });
     }
 
     // Log resolution results
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Resolve ${resolvedPrimaryTrack.name}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
-      if (resolvedComparisonTrack) {
-        console.log(`[Resolve ${resolvedComparisonTrack.name}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);
+      console.log(`[Resolve ${primaryTrackId}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
+      if (comparisonTrack) {
+        console.log(`[Resolve ${comparisonTrackId}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);
       }
     }
 
     // Compute shared nodes
     const sharedNodeIds = new Set<string>();
-    if (resolvedComparisonTrack) {
+    if (comparisonTrack) {
       primaryNodeIds.forEach(id => {
         if (comparisonNodeIds.has(id)) {
           sharedNodeIds.add(id);
@@ -145,7 +154,7 @@ export function useTrackComparison({
       sharedEdges: sharedEdgeIds
     };
 
-  }, [overlayEnabled, resolvedPrimaryTrack, resolvedComparisonTrack, nodeIdByBlockId, edges]);
+  }, [overlayEnabled, primaryTrackId, comparisonTrackId, nodeIdByBlockId, edges]);
 
   // Apply highlight classes to nodes and edges
   const highlightedNodes = useMemo(() => {
@@ -198,13 +207,13 @@ export function useTrackComparison({
 
   // Debug info
   const debugInfo = useMemo(() => ({
-    overlayReady: overlayEnabled && !!resolvedPrimaryTrack,
+    overlayReady: overlayEnabled && !!primaryTrackId,
     resolvedBlocks: nodeIdByBlockId.size,
     anyMatches: highlights.primaryNodes.size > 0,
     primaryCount: highlights.primaryNodes.size,
     comparisonCount: highlights.comparisonNodes.size,
     sharedCount: highlights.sharedNodes.size
-  }), [overlayEnabled, resolvedPrimaryTrack, nodeIdByBlockId.size, highlights]);
+  }), [overlayEnabled, primaryTrackId, nodeIdByBlockId.size, highlights]);
 
   return {
     highlightedNodes,
