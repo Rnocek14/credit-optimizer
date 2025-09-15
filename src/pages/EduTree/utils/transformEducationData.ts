@@ -279,7 +279,7 @@ export function transformEducationData(
   }
 
   const nodes: Node[] = [...regularNodes, degreeNode];
-  const edges: Edge[] = normalizeEdges([...regularEdges, ...degreeEdges]);
+  const edges: Edge[] = [...regularEdges, ...degreeEdges];
 
   console.log('[EduTree][Transform][Result]', { 
     nodes: nodes.length, 

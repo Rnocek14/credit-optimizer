@@ -87,7 +87,6 @@ function EduTreeCanvasInner() {
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [allEdges, setAllEdges] = useState<Edge[]>([]);
   
   const columnCountRef = useRef(0);
   
@@ -185,6 +184,17 @@ function EduTreeCanvasInner() {
   // Use highlighted elements if overlay is on, otherwise use original elements
   const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
   const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
+
+  // Debug edge flow
+  console.log('[EduTreeCanvas] Edge Flow:', {
+    overlayEnabled,
+    flowEdgesCount: flowEdges.length,
+    highlightedEdgesCount: highlightedEdges.length,
+    finalEdgesCount: finalEdges.length,
+    sampleFlowEdge: flowEdges[0]?.id,
+    sampleHighlightedEdge: highlightedEdges[0]?.id,
+    sampleFinalEdge: finalEdges[0]?.id
+  });
 
   // Debug current component state
   console.log('[EduTreeCanvas] Component State:', {
@@ -398,9 +408,9 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
+        console.log('[EduTree Layout] Edge count:', finalEdges.length, 'Sample IDs:', finalEdges.slice(0, 3).map(e => e.id));
         setNodes(finalLayout);
         setEdges(finalEdges);
-        setAllEdges(finalEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
