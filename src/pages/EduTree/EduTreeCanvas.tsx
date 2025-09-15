@@ -312,7 +312,74 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // Check if nodes have real measurements
+    // In multipath overlay mode, skip measurement checks and proceed immediately
+    if (overlayEnabled) {
+      if (DEV) {
+        console.log('[EduTree Layout] Phase 2: Multipath overlay mode - proceeding immediately without measurement checks');
+      }
+      layoutInProgressRef.current = true;
+      setIsLayouting(true);
+
+      let timeoutId: NodeJS.Timeout;
+      let cancelled = false;
+
+      const clearLayoutState = (flushPending = true) => {
+        layoutInProgressRef.current = false;
+        setIsLayouting(false);
+        if (DEV) {
+          console.log('[EduTree Layout] Layout state cleared');
+        }
+      };
+
+      const runEnhancedLayout = async () => {
+        try {
+          if (DEV) {
+            console.log('[EduTree Layout] Running enhanced layout system (overlay mode)');
+          }
+          
+          const { layoutNodes } = await import('@/lib/layout/simpleLayout');
+          const layoutResult = await layoutNodes(finalNodes, finalEdges);
+          
+          if (DEV) {
+            console.log('[EduTree Layout] Enhanced layout completed (overlay mode):', {
+              nodes: layoutResult.nodes.length,
+              hasOverlaps: layoutResult.hasOverlaps,
+              layoutTime: layoutResult.layoutTime
+            });
+          }
+
+          setNodes(layoutResult.nodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
+
+        } catch (error) {
+          console.error('[EduTree Layout] Enhanced layout failed:', error);
+          setNodes(finalNodes);
+          setEdges(finalEdges);
+          setAllEdges(finalEdges);
+        } finally {
+          clearLayoutState(true);
+        }
+      };
+
+      // Shorter timeout for overlay mode
+      timeoutId = setTimeout(() => {
+        console.warn('[EduTree Layout] Enhanced layout timed out (overlay mode), clearing state');
+        clearLayoutState(true);
+      }, 2000);
+
+      runEnhancedLayout().finally(() => {
+        clearTimeout(timeoutId);
+      });
+
+      return () => {
+        cancelled = true;
+        clearTimeout(timeoutId);
+        clearLayoutState(false);
+      };
+    }
+
+    // Check if nodes have real measurements (normal mode only)
     const currentNodes = reactFlowInstance.getNodes();
     const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
     const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
