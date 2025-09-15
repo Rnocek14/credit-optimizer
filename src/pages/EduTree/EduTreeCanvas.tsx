@@ -96,8 +96,6 @@ function EduTreeCanvasInner() {
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
   const nodesInitialized = useNodesInitialized();
   
-  const columnCountRef = useRef(0);
-  
   const VALID = useMemo(() => new Set(getAllTrackIds()), []);
 
   // helpers

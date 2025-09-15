@@ -1,69 +1,48 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { Node } from '@xyflow/react';
+import { layoutNodes } from '@/lib/layout/simpleLayout';
 
 describe('EduTree layout', () => {
-  const pad = 40;
-  const colW = 360;
-  const rowH = 220;
-
-  function layoutYearColumns(list: Node[]): Node[] {
-    const byYear = new Map<number, Node[]>();
-    list
-      .slice()
-      .sort((a, b) => String(a.id).localeCompare(String(b.id)))
-      .forEach(n => {
-        const y = Number((n.data as any)?.level_year) || 1;
-        const arr = byYear.get(y) || [];
-        arr.push(n);
-        byYear.set(y, arr);
-      });
-    const out: Node[] = [];
-    for (const [y, col] of byYear) {
-      col.forEach((n, i) => {
-        out.push({ ...n, position: { x: pad + (y - 1) * colW, y: pad + i * rowH } });
-      });
-    }
-    return out;
-  }
-
-  it('places B.S. Software Engineering node in year 5', () => {
+  it('places B.S. Software Engineering node in year 5', async () => {
     const nodes: Node[] = [
       { id: 'a', type: 'blockGroup', position: { x: 0, y: 0 }, data: { level_year: 1 } },
       { id: 'degree-completion', type: 'terminalNode', position: { x: 0, y: 0 }, data: { level_year: 5, block: { title: 'B.S. Software Engineering' } } }
     ];
-    const laidOut = layoutYearColumns(nodes);
+    const { nodes: laidOut } = await layoutNodes(nodes, []);
     const degreeNode = laidOut.find(n => n.id === 'degree-completion');
-    expect(degreeNode?.position.x).toBe(pad + (5 - 1) * colW);
+    const expectedX = 40 + (5 - 1) * 520;
+    expect(degreeNode?.position.x).toBe(expectedX);
   });
 
-  it('triggers fitView when column count increases', () => {
-    const columnCountRef = { current: 4 };
-    const didFitRef = { current: true };
-    const reactFlowInstance = { fitView: vi.fn(), getNodes: () => [] };
+  it('stacks nodes of the same year without overlap', async () => {
     const nodes: Node[] = [
-      { id: 'degree-completion', type: 'terminalNode', position: { x: 0, y: 0 }, data: { level_year: 5 } }
+      {
+        id: 'block-1',
+        type: 'blockGroup',
+        position: { x: 0, y: 0 },
+        data: { level_year: 1, sortOrder: 0, block: { courses: [1, 2, 3] } }
+      },
+      {
+        id: 'block-2',
+        type: 'blockGroup',
+        position: { x: 0, y: 0 },
+        data: { level_year: 1, sortOrder: 1, block: { courses: [1, 2] } }
+      },
+      {
+        id: 'block-3',
+        type: 'blockGroup',
+        position: { x: 0, y: 0 },
+        data: { level_year: 1, sortOrder: 2, block: { courses: [1] } }
+      }
     ];
 
-    const byYear = new Map<number, Node[]>();
-    nodes.forEach(n => {
-      const year = Number((n.data as any)?.level_year) || 1;
-      const arr = byYear.get(year) || [];
-      arr.push(n);
-      byYear.set(year, arr);
-    });
+    const { nodes: laidOut, hasOverlaps } = await layoutNodes(nodes, []);
+    const yearOneNodes = laidOut.filter(n => (n.data as any)?.level_year === 1);
+    const yPositions = yearOneNodes.map(n => n.position.y).sort((a, b) => a - b);
 
-    const maxYear = Math.max(5, ...Array.from(byYear.keys()));
-    if (maxYear > columnCountRef.current) {
-      columnCountRef.current = maxYear;
-      didFitRef.current = false;
-    }
-
-    if (reactFlowInstance && !didFitRef.current) {
-      reactFlowInstance.fitView();
-      didFitRef.current = true;
-    }
-
-    expect(reactFlowInstance.fitView).toHaveBeenCalled();
-    expect(columnCountRef.current).toBe(5);
+    expect(hasOverlaps).toBe(false);
+    expect(yPositions.length).toBe(3);
+    expect(yPositions[0]).toBeLessThan(yPositions[1]);
+    expect(yPositions[1]).toBeLessThan(yPositions[2]);
   });
 });
