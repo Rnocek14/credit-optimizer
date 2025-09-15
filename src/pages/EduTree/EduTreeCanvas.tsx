@@ -527,88 +527,89 @@ function EduTreeCanvasInner() {
 
   // Year-based layout with proper grouping and diagnostics
   const applyLayout = useCallback(() => {
-    if (!finalNodes.length || !reactFlowInstance) return;
+    if (!finalNodes.length) return;
 
-    // Log node data for debugging
-    console.log('[layout:debug] Node data samples:', finalNodes.slice(0, 3).map(n => ({
-      id: n.id,
-      level_year: (n.data as any)?.level_year,
-      title: (n.data as any)?.block?.title || (n.data as any)?.displayTitle
-    })));
+    // Wait for nodes to render so DOM measurements are accurate
+    requestAnimationFrame(() => {
+      if (!reactFlowInstance) return;
 
-    const pad = 40, colW = 400, defaultH = 180; // Wider columns, tighter rows
-    const byYear = new Map<number, any[]>();
+      console.log('[layout:debug] Node data samples:', finalNodes.slice(0, 3).map(n => ({
+        id: n.id,
+        level_year: (n.data as any)?.level_year,
+        title: (n.data as any)?.block?.title || (n.data as any)?.displayTitle
+      })));
 
-    // Pre-calc node heights from ReactFlow instance when available
-    const heightMap = new Map<string, number>();
-    try {
-      reactFlowInstance.getNodes().forEach((n: any) => {
-        const h = n.height || defaultH;
-        // Prevent zero/huge heights from breaking spacing
-        const bounded = Math.min(Math.max(h, 120), 400);
+      const pad = 40, colW = 400, defaultH = 180; // Wider columns, tighter rows
+      const byYear = new Map<number, any[]>();
+      const heightMap = new Map<string, number>();
+
+      // Measure each node's height directly from the DOM for accuracy
+      finalNodes.forEach(n => {
+        const selector = `.react-flow__node[data-id="${n.id}"]`;
+        const el = document.querySelector(selector) as HTMLElement | null;
+        const domHeight = el?.getBoundingClientRect().height;
+        let h = domHeight && !Number.isNaN(domHeight) ? domHeight : undefined;
+
+        if (h === undefined) {
+          const rfNode = reactFlowInstance.getNodes().find(rn => rn.id === n.id);
+          h = rfNode?.height;
+        }
+
+        const bounded = Math.min(Math.max(h || defaultH, 120), 400);
         heightMap.set(String(n.id), bounded);
+
+        const nodeData = n.data as any;
+        let year = 1;
+        if (nodeData?.level_year) {
+          year = Number(nodeData.level_year);
+        } else if (nodeData?.block?.level_year) {
+          year = Number(nodeData.block.level_year);
+        } else if (nodeData?.courses?.length > 0) {
+          year = Number(nodeData.courses[0].level_year) || 1;
+        }
+        if (year < 1 || year > 4) year = 1;
+        if (!byYear.has(year)) byYear.set(year, []);
+        byYear.get(year)!.push(n);
       });
-    } catch (e) {
-      console.warn('[layout:debug] getNodes failed, using defaults', e);
-    }
 
-    // Group nodes by year, ensuring proper year extraction
-    [...finalNodes].forEach(n => {
-      const nodeData = n.data as any;
-      let year = 1; // default
+      console.log('[layout:debug] Year distribution:', Object.fromEntries(
+        Array.from(byYear.entries()).map(([year, nodes]) => [year, nodes.length])
+      ));
 
-      // Try multiple ways to get year
-      if (nodeData?.level_year) {
-        year = Number(nodeData.level_year);
-      } else if (nodeData?.block?.level_year) {
-        year = Number(nodeData.block.level_year);
-      } else if (nodeData?.courses?.length > 0) {
-        // Use year from first course
-        year = Number(nodeData.courses[0].level_year) || 1;
+      const laidOut: any[] = [];
+      for (let year = 1; year <= 4; year++) {
+        const yearNodes = byYear.get(year) || [];
+        // Preserve original order for stability
+        yearNodes.forEach((node, idx) => {
+          const h = heightMap.get(String(node.id)) || defaultH;
+          const yOffset = pad + yearNodes
+            .slice(0, idx)
+            .reduce((acc, n) => acc + (heightMap.get(String(n.id)) || defaultH) + pad, 0);
+          laidOut.push({
+            ...node,
+            position: {
+              x: pad + (year - 1) * colW,
+              y: yOffset
+            }
+          });
+        });
       }
 
-      if (year < 1 || year > 4) year = 1; // clamp to valid range
+      console.log('[layout:debug] Final layout positions:', laidOut.slice(0, 3).map(n => ({
+        id: n.id, position: n.position
+      })));
 
-      if (!byYear.has(year)) byYear.set(year, []);
-      byYear.get(year)!.push(n);
+      setNodes(laidOut);
+      setEdges(finalEdges);
+      setAllEdges(finalEdges);
+
+      if (reactFlowInstance && !didFitRef.current) {
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+          didFitRef.current = true;
+        }, 100);
+      }
     });
-
-    console.log('[layout:debug] Year distribution:', Object.fromEntries(
-      Array.from(byYear.entries()).map(([year, nodes]) => [year, nodes.length])
-    ));
-
-    // Layout nodes in year columns (Year 1, 2, 3, 4)
-    const laidOut: any[] = [];
-    for (let year = 1; year <= 4; year++) {
-      const yearNodes = byYear.get(year) || [];
-      let yOffset = pad;
-      yearNodes.forEach((n) => {
-        const h = heightMap.get(String(n.id)) || defaultH;
-        laidOut.push({
-          ...n,
-          position: {
-            x: pad + (year - 1) * colW, // Year columns
-            y: yOffset
-          }
-        });
-        yOffset += h + pad;
-      });
-    }
-
-    console.log('[layout:debug] Final layout positions:', laidOut.slice(0, 3).map(n => ({
-      id: n.id, position: n.position
-    })));
-
-    setNodes(laidOut);
-    setEdges(finalEdges);
-    setAllEdges(finalEdges);
-
-    if (reactFlowInstance && !didFitRef.current) {
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-        didFitRef.current = true;
-      }, 100);
-    }
   }, [finalNodes, finalEdges, reactFlowInstance]);
 
   // Initial layout once ReactFlow instance is ready
