@@ -100,7 +100,7 @@ export function useTrackComparison({
     }
 
     // Log resolution results
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log(`[Resolve ${primaryTrackId}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
       if (comparisonTrack) {
         console.log(`[Resolve ${comparisonTrackId}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);

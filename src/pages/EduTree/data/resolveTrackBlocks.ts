@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TRACK_MAP, type TrackId } from './trackDefinitions';
 
+const DEV = import.meta.env.DEV;
+
 export async function resolveTrackBlockIds(trackKey: TrackId) {
   const track = TRACK_MAP.get(trackKey);
   if (!track) {
@@ -25,11 +27,13 @@ export async function resolveTrackBlockIds(trackKey: TrackId) {
     id ? blockIds.push(id) : missing.push(slug);
   }
 
-  console.log(`[Resolve ${trackKey}]`, { 
-    desired: track.blockIds, 
-    resolved: blockIds.length, 
-    missing: missing.length > 0 ? missing : 'none' 
-  });
+  if (DEV) {
+    console.log(`[Resolve ${trackKey}]`, {
+      desired: track.blockIds,
+      resolved: blockIds.length,
+      missing: missing.length > 0 ? missing : 'none'
+    });
+  }
 
   return { 
     name: track.name, 

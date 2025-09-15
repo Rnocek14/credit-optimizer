@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  EduCourse, 
-  RequirementBlock, 
-  BlockMember, 
-  BlockGate, 
-  GateEdge 
+import {
+  EduCourse,
+  RequirementBlock,
+  BlockMember,
+  BlockGate,
+  GateEdge
 } from '@/lib/types/eduTree';
+
+const DEV = import.meta.env.DEV;
 
 export interface EduTreeDataResult {
   data: {
@@ -115,16 +117,18 @@ export function useEduTreeData(): EduTreeDataResult {
   };
 
   // Debug logging
-  console.log('[useEduTreeData] Query States:', {
-    courses: { loading: coursesQuery.isLoading, success: coursesQuery.isSuccess, error: !!coursesQuery.error, dataLength: coursesQuery.data?.length },
-    blocks: { loading: blocksQuery.isLoading, success: blocksQuery.isSuccess, error: !!blocksQuery.error, dataLength: blocksQuery.data?.length },
-    blockMembers: { loading: blockMembersQuery.isLoading, success: blockMembersQuery.isSuccess, error: !!blockMembersQuery.error },
-    gates: { loading: gatesQuery.isLoading, success: gatesQuery.isSuccess, error: !!gatesQuery.error },
-    gateEdges: { loading: gateEdgesQuery.isLoading, success: gateEdgesQuery.isSuccess, error: !!gateEdgesQuery.error },
-    anyLoading,
-    coreSuccess,
-    errorCount: errors.length
-  });
+  if (DEV) {
+    console.log('[useEduTreeData] Query States:', {
+      courses: { loading: coursesQuery.isLoading, success: coursesQuery.isSuccess, error: !!coursesQuery.error, dataLength: coursesQuery.data?.length },
+      blocks: { loading: blocksQuery.isLoading, success: blocksQuery.isSuccess, error: !!blocksQuery.error, dataLength: blocksQuery.data?.length },
+      blockMembers: { loading: blockMembersQuery.isLoading, success: blockMembersQuery.isSuccess, error: !!blockMembersQuery.error },
+      gates: { loading: gatesQuery.isLoading, success: gatesQuery.isSuccess, error: !!gatesQuery.error },
+      gateEdges: { loading: gateEdgesQuery.isLoading, success: gateEdgesQuery.isSuccess, error: !!gateEdgesQuery.error },
+      anyLoading,
+      coreSuccess,
+      errorCount: errors.length
+    });
+  }
 
   // Still loading core data
   if (anyLoading) {
@@ -181,15 +185,17 @@ export function useEduTreeData(): EduTreeDataResult {
 
   const hasData = data.courses.length > 0 || data.blocks.length > 0;
   
-  console.log('[useEduTreeData] Final Result:', {
-    courses: data.courses.length,
-    blocks: data.blocks.length,
-    blockMembers: data.blockMembers.length,
-    gates: data.gates.length,
-    gateEdges: data.gateEdges.length,
-    hasData,
-    errorCount: errors.length
-  });
+  if (DEV) {
+    console.log('[useEduTreeData] Final Result:', {
+      courses: data.courses.length,
+      blocks: data.blocks.length,
+      blockMembers: data.blockMembers.length,
+      gates: data.gates.length,
+      gateEdges: data.gateEdges.length,
+      hasData,
+      errorCount: errors.length
+    });
+  }
 
   return {
     data,

@@ -1,5 +1,7 @@
 import { Node, Edge } from '@xyflow/react';
 
+const DEV = import.meta.env.DEV;
+
 /**
  * ULTRA-SIMPLE layout system that just works
  * Two stages: Initial layout → React Flow measurement → Re-layout if needed
@@ -24,7 +26,9 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
 
   // Prevent concurrent layout operations
   if (isLayoutInProgress) {
-    console.log('⏭️ Layout already in progress, skipping...');
+    if (DEV) {
+      console.log('⏭️ Layout already in progress, skipping...');
+    }
     return {
       nodes: [...nodes], // Return a copy of current nodes
       hasOverlaps: false,
@@ -35,7 +39,9 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
   isLayoutInProgress = true;
 
   try {
-    console.log(`🎯 Simple layout for ${nodes.length} nodes`);
+    if (DEV) {
+      console.log(`🎯 Simple layout for ${nodes.length} nodes`);
+    }
 
     if (nodes.length === 0) {
       return {
@@ -61,14 +67,18 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
     const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
 
     // Resolve any overlaps
-    console.log('🔧 Resolving collisions...');
+    if (DEV) {
+      console.log('🔧 Resolving collisions...');
+    }
     layoutedNodes = resolveAllCollisions(layoutedNodes);
   
     // Validate final layout
     const hasOverlaps = !validateLayout(layoutedNodes);
     
     const layoutTime = performance.now() - startTime;
-    console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
+    if (DEV) {
+      console.log(`✅ Simple layout complete (${layoutTime.toFixed(1)}ms) - Overlaps: ${hasOverlaps}`);
+    }
     
     return {
       nodes: layoutedNodes,
@@ -144,7 +154,7 @@ function positionNodesInColumn(nodes: Node[], x: number): void {
     
     const totalSpacing = adaptiveSpacing + extraMargin;
     
-    if (process.env.NODE_ENV === 'development') {
+    if (DEV) {
       console.log(`[SimpleLayout] Node ${node.id}: height=${nodeHeight}, spacing=${totalSpacing} (base=${adaptiveSpacing}, highlight=${extraMargin})`);
     }
     

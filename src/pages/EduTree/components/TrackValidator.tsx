@@ -128,7 +128,7 @@ export function TrackValidator({
 
 // Development audit function
 export function runTrackAudits(nodes: Node[], edges: Edge[]) {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     console.log('[Track Audit]', {
       totalNodes: nodes.length,
       totalEdges: edges.length,
