@@ -1,9 +1,15 @@
 import { Node } from '@xyflow/react';
 
 /**
- * Enhanced collision resolution with intelligent spacing and multiple strategies
+ * Enhanced collision resolution with measurement validation and retry logic
  */
 export function resolveAllCollisions(nodes: Node[], maxPasses = 15): Node[] {
+  // Check if nodes have measurements - if not, warn and use estimates
+  const missingMeasurements = nodes.filter(node => !(node as any).measured);
+  if (missingMeasurements.length > 0 && process.env.NODE_ENV === 'development') {
+    console.warn(`[CollisionResolver] ${missingMeasurements.length}/${nodes.length} nodes missing measurements, using estimates`);
+  }
+  
   let resolvedNodes = [...nodes];
   let pass = 0;
   let lastCollisionCount = Infinity;
@@ -124,11 +130,17 @@ function findHorizontalSpace(nodes: Node[], targetNode: Node, nodeWidth: number)
 }
 
 /**
- * Get node rectangle for collision detection (simple version)
+ * Get node rectangle for collision detection with measurement validation
  */
 function getNodeRect(node: Node) {
-  const width = (node as any).measured?.width || 320;
-  const height = (node as any).measured?.height || getEstimatedNodeHeight(node);
+  const measured = (node as any).measured;
+  const width = measured?.width || 320;
+  const height = measured?.height || getEstimatedNodeHeight(node);
+  
+  // Log missing measurements for debugging
+  if (!measured && process.env.NODE_ENV === 'development') {
+    console.warn(`[CollisionResolver] Node ${node.id} missing measurements, using estimates (w:${width}, h:${height})`);
+  }
   
   return {
     x: node.position.x,
@@ -215,18 +227,18 @@ function getNodeType(node1: Node, node2: Node): 'terminal' | 'course' | 'blockgr
 }
 
 /**
- * Get adaptive spacing based on node type
+ * Get adaptive spacing based on node type (increased for track comparison)
  */
 function getAdaptiveSpacing(nodeType: 'terminal' | 'course' | 'blockgroup'): number {
   switch (nodeType) {
     case 'terminal':
-      return 30; // Terminal nodes are smaller, need less space
+      return 50; // Increased from 30px - accounts for highlight borders
     case 'course':
-      return 40; // Medium spacing for course nodes
+      return 60; // Increased from 40px - more breathing room
     case 'blockgroup':
-      return 50; // Block groups are larger, need more space
+      return 70; // Increased from 50px - larger nodes need more space
     default:
-      return 40;
+      return 60; // Safer default
   }
 }
 
@@ -234,7 +246,8 @@ function getAdaptiveSpacing(nodeType: 'terminal' | 'course' | 'blockgroup'): num
  * Check if two rectangles overlap with buffer to prevent touching nodes
  */
 function hasOverlap(rect1: any, rect2: any): boolean {
-  const buffer = 40; // Consistent 40px minimum spacing
+  // Increased buffer for track comparison mode (accounts for highlight outlines)
+  const buffer = 60; // Increased from 40px to 60px for better spacing
   return !(rect1.x + rect1.width + buffer <= rect2.x || 
            rect2.x + rect2.width + buffer <= rect1.x || 
            rect1.y + rect1.height + buffer <= rect2.y || 

@@ -173,10 +173,18 @@ export function useTrackComparison({
         classes.push('node--dim');
       }
 
-      return {
+      // CRITICAL: Preserve React Flow's measured property for accurate collision detection
+      const newNode = {
         ...node,
         className: classes.join(' ')
       };
+
+      // Preserve any React Flow internal properties (especially measured dimensions)
+      if ((node as any).measured) {
+        (newNode as any).measured = (node as any).measured;
+      }
+
+      return newNode;
     });
   }, [nodes, highlights, overlayEnabled]);
 
@@ -197,11 +205,14 @@ export function useTrackComparison({
         classes.push('edge--dim');
       }
 
-      return {
+      // Preserve any React Flow internal properties
+      const newEdge = {
         ...edge,
         id: edgeId,
         className: classes.join(' ')
       };
+
+      return newEdge;
     });
   }, [edges, highlights, overlayEnabled]);
 
