@@ -181,99 +181,149 @@ function EduTreeCanvasInner() {
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
-    if (!reactFlowInstance) return;
-    if (layoutInProgressRef.current) return;
+    if (!reactFlowInstance) {
+      console.log('[EduTree Layout] ReactFlow instance not ready');
+      return;
+    }
+    
+    if (layoutInProgressRef.current) {
+      console.log('[EduTree Layout] Layout already in progress, skipping');
+      return;
+    }
 
     // Clear loading state immediately if there are no nodes to layout
     if (!flowNodes.length) {
+      console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
     }
 
+    console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
     let raf1 = 0;
     let raf2 = 0;
+    let timeoutId: NodeJS.Timeout;
 
-    const runLayout = () => {
-      const pad = 40, colW = 400, defaultH = 180;
-      const byYear = new Map<number, any[]>();
-      const heightMap = new Map<string, number>();
-
-      flowNodes.forEach(n => {
-        const selector = `.react-flow__node[data-id="${n.id}"]`;
-        const el = document.querySelector(selector) as HTMLElement | null;
-        const domHeight = el?.getBoundingClientRect().height;
-        let h = domHeight && !Number.isNaN(domHeight) ? domHeight : undefined;
-
-        if (h === undefined) {
-          const rfNode = reactFlowInstance.getNodes().find(rn => rn.id === n.id);
-          h = rfNode?.height;
-        }
-
-        const bounded = Math.min(Math.max(h || defaultH, 120), 400);
-        heightMap.set(String(n.id), bounded);
-
-        const nodeData = n.data as any;
-        let year = 1;
-        if (nodeData?.level_year) year = Number(nodeData.level_year);
-        else if (nodeData?.block?.level_year) year = Number(nodeData.block.level_year);
-        else if (nodeData?.courses?.length > 0) year = Number(nodeData.courses[0].level_year) || 1;
-        if (year < 1) year = 1;
-        if (!byYear.has(year)) byYear.set(year, []);
-        byYear.get(year)!.push(n);
-      });
-
-      const maxYear = Math.max(5, ...Array.from(byYear.keys()));
-
-      if (maxYear > columnCountRef.current) {
-        columnCountRef.current = maxYear;
-        didFitRef.current = false;
-      }
-
-      const laidOut: any[] = [];
-      for (let year = 1; year <= maxYear; year++) {
-        const yearNodes = byYear.get(year) || [];
-        let yOffset = pad;
-        yearNodes.forEach(node => {
-          const h = heightMap.get(String(node.id)) || defaultH;
-          laidOut.push({
-            ...node,
-            position: {
-              x: pad + (year - 1) * colW,
-              y: yOffset
-            }
-          });
-          yOffset += h + pad;
-        });
-      }
-
-      setNodes(laidOut);
-      setEdges(flowEdges);
-      setAllEdges(flowEdges);
-
-      if (reactFlowInstance && !didFitRef.current) {
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-          didFitRef.current = true;
-        }, 100);
-      }
-
+    const clearLayoutState = () => {
       layoutInProgressRef.current = false;
       setIsLayouting(false);
+      console.log('[EduTree Layout] Layout state cleared');
     };
 
+    const runLayout = () => {
+      try {
+        console.log('[EduTree Layout] Running layout calculations');
+        const pad = 40, colW = 400, defaultH = 180;
+        const byYear = new Map<number, any[]>();
+        const heightMap = new Map<string, number>();
+
+        // Check if ReactFlow is properly initialized
+        if (!reactFlowInstance.getNodes) {
+          console.warn('[EduTree Layout] ReactFlow instance not fully initialized');
+          clearLayoutState();
+          return;
+        }
+
+        flowNodes.forEach(n => {
+          const selector = `.react-flow__node[data-id="${n.id}"]`;
+          const el = document.querySelector(selector) as HTMLElement | null;
+          const domHeight = el?.getBoundingClientRect().height;
+          let h = domHeight && !Number.isNaN(domHeight) ? domHeight : undefined;
+
+          if (h === undefined) {
+            const rfNode = reactFlowInstance.getNodes().find(rn => rn.id === n.id);
+            h = rfNode?.height;
+          }
+
+          const bounded = Math.min(Math.max(h || defaultH, 120), 400);
+          heightMap.set(String(n.id), bounded);
+
+          const nodeData = n.data as any;
+          let year = 1;
+          if (nodeData?.level_year) year = Number(nodeData.level_year);
+          else if (nodeData?.block?.level_year) year = Number(nodeData.block.level_year);
+          else if (nodeData?.courses?.length > 0) year = Number(nodeData.courses[0].level_year) || 1;
+          if (year < 1) year = 1;
+          if (!byYear.has(year)) byYear.set(year, []);
+          byYear.get(year)!.push(n);
+        });
+
+        const maxYear = Math.max(5, ...Array.from(byYear.keys()));
+
+        if (maxYear > columnCountRef.current) {
+          columnCountRef.current = maxYear;
+          didFitRef.current = false;
+          console.log('[EduTree Layout] Column count increased to', maxYear);
+        }
+
+        const laidOut: any[] = [];
+        for (let year = 1; year <= maxYear; year++) {
+          const yearNodes = byYear.get(year) || [];
+          let yOffset = pad;
+          yearNodes.forEach(node => {
+            const h = heightMap.get(String(node.id)) || defaultH;
+            laidOut.push({
+              ...node,
+              position: {
+                x: pad + (year - 1) * colW,
+                y: yOffset
+              }
+            });
+            yOffset += h + pad;
+          });
+        }
+
+        console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
+        setNodes(laidOut);
+        setEdges(flowEdges);
+        setAllEdges(flowEdges);
+
+        if (reactFlowInstance && !didFitRef.current) {
+          setTimeout(() => {
+            try {
+              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
+              didFitRef.current = true;
+              console.log('[EduTree Layout] Fit view applied');
+            } catch (error) {
+              console.error('[EduTree Layout] Error fitting view:', error);
+            }
+          }, 100);
+        }
+
+        console.log('[EduTree Layout] Layout completed successfully');
+      } catch (error) {
+        console.error('[EduTree Layout] Layout failed:', error);
+      } finally {
+        clearLayoutState();
+      }
+    };
+
+    // Set up timeout fallback (5 seconds)
+    timeoutId = setTimeout(() => {
+      console.warn('[EduTree Layout] Layout timed out, clearing state');
+      clearLayoutState();
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    }, 5000);
+
     raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(runLayout);
+      raf2 = requestAnimationFrame(() => {
+        clearTimeout(timeoutId);
+        runLayout();
+      });
     });
 
     return () => {
+      console.log('[EduTree Layout] Cleaning up layout effect');
+      clearTimeout(timeoutId);
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
+      clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes, flowEdges, layoutVersion]);
+  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
