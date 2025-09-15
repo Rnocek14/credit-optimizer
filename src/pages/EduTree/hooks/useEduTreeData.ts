@@ -90,14 +90,6 @@ export function useEduTreeData(): EduTreeDataResult {
     },
   });
 
-  // Check if all queries are successful
-  const allSuccess =
-    coursesQuery.isSuccess &&
-    blocksQuery.isSuccess &&
-    blockMembersQuery.isSuccess &&
-    gatesQuery.isSuccess &&
-    gateEdgesQuery.isSuccess;
-
   // Check for any loading state
   const anyLoading =
     coursesQuery.isLoading ||
@@ -106,16 +98,36 @@ export function useEduTreeData(): EduTreeDataResult {
     gatesQuery.isLoading ||
     gateEdgesQuery.isLoading;
 
-  // Only treat real Supabase errors as "error"
-  const queryError =
-    coursesQuery.error ||
-    blocksQuery.error ||
-    blockMembersQuery.error ||
-    gatesQuery.error ||
-    gateEdgesQuery.error;
+  // Collect all errors
+  const errors = [
+    coursesQuery.error,
+    blocksQuery.error,
+    blockMembersQuery.error,
+    gatesQuery.error,
+    gateEdgesQuery.error
+  ].filter(Boolean);
 
-  // Return safe defaults if not all queries are successful yet
-  if (!allSuccess) {
+  // Core data (courses and blocks) must be available
+  const coreSuccess = coursesQuery.isSuccess && blocksQuery.isSuccess;
+  const coreData = {
+    courses: coursesQuery.data ?? [],
+    blocks: blocksQuery.data ?? [],
+  };
+
+  // Debug logging
+  console.log('[useEduTreeData] Query States:', {
+    courses: { loading: coursesQuery.isLoading, success: coursesQuery.isSuccess, error: !!coursesQuery.error, dataLength: coursesQuery.data?.length },
+    blocks: { loading: blocksQuery.isLoading, success: blocksQuery.isSuccess, error: !!blocksQuery.error, dataLength: blocksQuery.data?.length },
+    blockMembers: { loading: blockMembersQuery.isLoading, success: blockMembersQuery.isSuccess, error: !!blockMembersQuery.error },
+    gates: { loading: gatesQuery.isLoading, success: gatesQuery.isSuccess, error: !!gatesQuery.error },
+    gateEdges: { loading: gateEdgesQuery.isLoading, success: gateEdgesQuery.isSuccess, error: !!gateEdgesQuery.error },
+    anyLoading,
+    coreSuccess,
+    errorCount: errors.length
+  });
+
+  // Still loading core data
+  if (anyLoading) {
     return {
       data: { 
         courses: [], 
@@ -124,7 +136,7 @@ export function useEduTreeData(): EduTreeDataResult {
         gates: [], 
         gateEdges: [] 
       },
-      loading: anyLoading,
+      loading: true,
       error: null,
       hasData: false,
       coursesLoading: coursesQuery.isLoading,
@@ -135,20 +147,55 @@ export function useEduTreeData(): EduTreeDataResult {
     };
   }
 
-  // Normalize data here (no undefineds)
+  // Core data failed
+  if (!coreSuccess) {
+    const firstError = coursesQuery.error || blocksQuery.error;
+    console.error('[useEduTreeData] Core data failed:', firstError);
+    return {
+      data: { 
+        courses: [], 
+        blocks: [], 
+        blockMembers: [], 
+        gates: [], 
+        gateEdges: [] 
+      },
+      loading: false,
+      error: firstError as Error,
+      hasData: false,
+      coursesLoading: false,
+      blocksLoading: false,
+      blockMembersLoading: false,
+      gatesLoading: false,
+      gateEdgesLoading: false,
+    };
+  }
+
+  // Core data available, return with optional data (allow partial success)
   const data = {
-    courses: coursesQuery.data ?? [],
-    blocks: blocksQuery.data ?? [],
+    courses: coreData.courses,
+    blocks: coreData.blocks,
     blockMembers: blockMembersQuery.data ?? [],
     gates: gatesQuery.data ?? [],
     gateEdges: gateEdgesQuery.data ?? [],
   };
 
+  const hasData = data.courses.length > 0 || data.blocks.length > 0;
+  
+  console.log('[useEduTreeData] Final Result:', {
+    courses: data.courses.length,
+    blocks: data.blocks.length,
+    blockMembers: data.blockMembers.length,
+    gates: data.gates.length,
+    gateEdges: data.gateEdges.length,
+    hasData,
+    errorCount: errors.length
+  });
+
   return {
     data,
     loading: false,
-    error: (queryError as Error) || null,
-    hasData: data.courses.length + data.blocks.length > 0,
+    error: errors.length > 0 ? (errors[0] as Error) : null,
+    hasData,
     coursesLoading: false,
     blocksLoading: false,
     blockMembersLoading: false,

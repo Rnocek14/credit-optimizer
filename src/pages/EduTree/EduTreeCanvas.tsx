@@ -142,7 +142,12 @@ function EduTreeCanvasInner() {
     data: { courses, blocks, blockMembers, gates, gateEdges },
     loading: dataLoading,
     error: dataError,
-    hasData
+    hasData,
+    coursesLoading,
+    blocksLoading,
+    blockMembersLoading,
+    gatesLoading,
+    gateEdgesLoading
   } = useEduTreeData();
 
   // Transform data for React Flow (defensive)
@@ -163,6 +168,18 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.blockGroup === 'function' &&
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
+
+  // Debug current component state
+  console.log('[EduTreeCanvas] Component State:', {
+    dataLoading,
+    dataError: !!dataError,
+    hasData,
+    flowNodesLength: flowNodes.length,
+    flowEdgesLength: flowEdges.length,
+    guardsOk,
+    isLayouting,
+    individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
+  });
 
   // Track resize events to trigger re-layout
   useEffect(() => {
@@ -352,6 +369,7 @@ function EduTreeCanvasInner() {
 
   // Show loading state while data is being fetched
   if (dataLoading) {
+    console.log('[EduTreeCanvas] Rendering loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -361,6 +379,17 @@ function EduTreeCanvasInner() {
             <p className="text-muted-foreground">
               Fetching course and requirement information...
             </p>
+            {(coursesLoading || blocksLoading || blockMembersLoading || gatesLoading || gateEdgesLoading) && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Loading: {[
+                  coursesLoading && 'courses',
+                  blocksLoading && 'blocks', 
+                  blockMembersLoading && 'members',
+                  gatesLoading && 'gates',
+                  gateEdgesLoading && 'edges'
+                ].filter(Boolean).join(', ')}</p>
+              </div>
+            )}
           </div>
         </Card>
       </div>
@@ -369,6 +398,7 @@ function EduTreeCanvasInner() {
 
   // Show error state if there's a data error
   if (dataError) {
+    console.log('[EduTreeCanvas] Rendering error state:', dataError);
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -380,6 +410,9 @@ function EduTreeCanvasInner() {
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
               <p className="text-sm text-destructive">{String(dataError)}</p>
             </div>
+            <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+              Retry
+            </Button>
           </div>
         </Card>
       </div>
@@ -388,6 +421,7 @@ function EduTreeCanvasInner() {
 
   // Show no data state if no education data is available
   if (!hasData) {
+    console.log('[EduTreeCanvas] Rendering no data state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -407,6 +441,7 @@ function EduTreeCanvasInner() {
   }
 
   if (!guardsOk) {
+    console.log('[EduTreeCanvas] Rendering guards failed state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -415,12 +450,18 @@ function EduTreeCanvasInner() {
             <p className="text-muted-foreground">
               The education tree components failed validation. Check the console for details.
             </p>
+            <div className="text-xs text-muted-foreground">
+              <p>Nodes: {Array.isArray(flowNodes) ? 'OK' : 'FAIL'} ({flowNodes?.length || 0})</p>
+              <p>Edges: {Array.isArray(flowEdges) ? 'OK' : 'FAIL'} ({flowEdges?.length || 0})</p>
+              <p>NodeTypes: {typeof nodeTypes.blockGroup === 'function' ? 'OK' : 'FAIL'}</p>
+            </div>
           </div>
         </Card>
       </div>
     );
   }
 
+  console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative min-h-screen bg-background">
       {/* Main Canvas */}
