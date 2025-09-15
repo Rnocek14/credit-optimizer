@@ -1,4 +1,4 @@
-/* Track Comparison Overlay Styles */
+/* Track Comparison Overlay Styles - Single Source of Truth */
 
 /* Color palette for overlay */
 :root {
@@ -16,46 +16,87 @@
   pointer-events: auto;
 }
 
-/* Unified highlight classes - single source of truth */
+/* Base classes with transitions */
 .hl { 
-  opacity: 1; 
-  transition: opacity .2s ease; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* non-selected baseline */
+/* Node highlight states */
 .hl--dim { 
-  opacity: .2; 
+  opacity: 0.25;
+  filter: grayscale(60%);
 }
 
-/* primary vs comparison vs both */
 .hl--primary { 
   opacity: 1; 
-  outline: 2px solid var(--lp-primary); 
+  outline: 3px solid var(--lp-primary);
+  box-shadow: 0 0 12px rgba(90, 176, 255, 0.3);
 }
 
 .hl--comparison { 
   opacity: 1; 
-  outline: 2px dashed var(--lp-compare); 
+  outline: 3px dashed var(--lp-compare);
+  box-shadow: 0 0 12px rgba(255, 111, 166, 0.3);
 }
 
 .hl--both { 
   opacity: 1; 
-  outline: 3px solid var(--lp-shared); 
+  outline: 4px solid var(--lp-shared);
+  box-shadow: 0 0 16px rgba(124, 242, 156, 0.4);
 }
 
-/* optional edges */
-.edge.hl--dim { 
-  stroke-opacity: .15; 
+/* ReactFlow Edge Styles - Target the actual SVG paths */
+.react-flow__edge.hl.hl--dim .react-flow__edge-path {
+  stroke: #c8c8c8 !important;
+  stroke-width: 2px !important;
+  opacity: 0.25 !important;
+  stroke-linecap: round !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.edge.hl--primary { 
-  stroke-width: 2; 
+.react-flow__edge.hl.hl--primary .react-flow__edge-path {
+  stroke: var(--lp-primary) !important;
+  stroke-width: 3px !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  filter: drop-shadow(0 0 4px rgba(90, 176, 255, 0.3)) !important;
 }
 
-.edge.hl--comparison { 
-  stroke-dasharray: 6 4; 
+.react-flow__edge.hl.hl--comparison .react-flow__edge-path {
+  stroke: var(--lp-compare) !important;
+  stroke-width: 3px !important;
+  stroke-dasharray: 8 4 !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  filter: drop-shadow(0 0 4px rgba(255, 111, 166, 0.3)) !important;
 }
 
-.edge.hl--both { 
-  stroke-width: 3; 
+.react-flow__edge.hl.hl--both .react-flow__edge-path {
+  stroke: var(--lp-shared) !important;
+  stroke-width: 4px !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  filter: drop-shadow(0 0 6px rgba(124, 242, 156, 0.4)) !important;
+}
+
+/* Hover effects */
+.hl--primary:hover,
+.hl--comparison:hover,
+.hl--both:hover {
+  transform: scale(1.02);
+  z-index: 100;
+}
+
+.react-flow__edge.hl:hover .react-flow__edge-path {
+  opacity: 0.9 !important;
+}
+
+/* Focus states for accessibility */
+.hl--primary:focus,
+.hl--comparison:focus,
+.hl--both:focus {
+  outline-offset: 2px;
 }

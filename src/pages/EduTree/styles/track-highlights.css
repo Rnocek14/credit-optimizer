@@ -1,4 +1,4 @@
-/* Track comparison highlight styles */
+/* Track comparison highlight styles - Node styles only */
 
 /* Base node and edge classes */
 .node {
@@ -7,111 +7,6 @@
 
 .edge {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Node highlight modifiers */
-.node--primary {
-  border: 3px solid #007bff !important;
-  background: #e7f1ff !important;
-  box-shadow: 0 0 12px rgba(0, 123, 255, 0.3) !important;
-}
-
-.node--comparison {
-  border: 3px dashed #ff9300 !important;
-  background: #fff5e6 !important;
-  box-shadow: 0 0 12px rgba(255, 147, 0, 0.3) !important;
-}
-
-.node--both {
-  border: 4px solid #6f42c1 !important;
-  background: linear-gradient(135deg, #f5e6ff, #e7f1ff) !important;
-  box-shadow: 0 0 16px rgba(111, 66, 193, 0.4) !important;
-}
-
-.node--dim {
-  opacity: 0.25 !important;
-  filter: grayscale(60%) !important;
-}
-
-/* Ensure dim elements are still accessible */
-.edge--dim {
-  opacity: 0.25 !important;
-}
-
-/* Edge highlight modifiers */
-.react-flow__edge.edge--primary .react-flow__edge-path {
-  stroke: #0969da !important;
-  stroke-width: 3px !important;
-  opacity: 1 !important;
-  stroke-linecap: round !important;
-  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
-  filter: drop-shadow(0 0 4px rgba(0, 123, 255, 0.3)) !important;
-}
-
-.react-flow__edge.edge--comparison .react-flow__edge-path {
-  stroke: #ff9300 !important;
-  stroke-width: 3px !important;
-  stroke-dasharray: 6 !important;
-  opacity: 1 !important;
-  stroke-linecap: round !important;
-  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
-  filter: drop-shadow(0 0 4px rgba(255, 147, 0, 0.3)) !important;
-}
-
-.react-flow__edge.edge--both .react-flow__edge-path {
-  stroke: #6f42c1 !important;
-  stroke-width: 4px !important;
-  opacity: 1 !important;
-  stroke-linecap: round !important;
-  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
-  filter: drop-shadow(0 0 6px rgba(111, 66, 193, 0.4)) !important;
-}
-
-/* Better edge hit-target and visibility on dark backgrounds */
-.react-flow__edge .react-flow__edge-path {
-  pointer-events: stroke !important;
-}
-
-.react-flow__edge.edge--dim .react-flow__edge-path {
-  stroke: #c8c8c8 !important;
-  stroke-width: 2px !important;
-  opacity: 0.55 !important;
-  stroke-linecap: round !important;
-  transition: stroke 120ms, opacity 120ms, stroke-width 120ms !important;
-}
-
-/* Optional hover affordance for edges */
-.react-flow__edge:hover .react-flow__edge-path {
-  opacity: 0.9 !important;
-}
-
-/* Edge markers (arrows) */
-.react-flow__edge.edge--primary .react-flow__edge-path {
-  marker-end: url(#react-flow__arrowclosed-primary) !important;
-}
-
-.react-flow__edge.edge--comparison .react-flow__edge-path {
-  marker-end: url(#react-flow__arrowclosed-comparison) !important;
-}
-
-.react-flow__edge.edge--both .react-flow__edge-path {
-  marker-end: url(#react-flow__arrowclosed-both) !important;
-}
-
-/* Hover effects for highlighted elements */
-.node--primary:hover,
-.node--comparison:hover,
-.node--both:hover {
-  transform: scale(1.02) !important;
-  z-index: 100 !important;
-}
-
-/* Focus states for accessibility */
-.node--primary:focus,
-.node--comparison:focus,
-.node--both:focus {
-  outline: 3px solid currentColor !important;
-  outline-offset: 2px !important;
 }
 
 /* Animation for track transitions */
@@ -126,9 +21,9 @@
   }
 }
 
-.node--primary,
-.node--comparison,
-.node--both {
+.hl--primary,
+.hl--comparison,
+.hl--both {
   animation: track-highlight-in 0.3s ease-out;
 }
 
@@ -144,39 +39,30 @@
 
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-  .node--primary {
-    background: #1a365d !important;
-    border-color: #3182ce !important;
+  .hl--primary {
+    outline-color: #3182ce !important;
+    box-shadow: 0 0 12px rgba(49, 130, 206, 0.4) !important;
   }
   
-  .node--comparison {
-    background: #2d1b00 !important;
-    border-color: #ed8936 !important;
+  .hl--comparison {
+    outline-color: #ed8936 !important;
+    box-shadow: 0 0 12px rgba(237, 137, 54, 0.4) !important;
   }
   
-  .node--both {
-    background: linear-gradient(135deg, #2d1b69, #1a365d) !important;
-    border-color: #9f7aea !important;
+  .hl--both {
+    outline-color: #68d391 !important;
+    box-shadow: 0 0 16px rgba(104, 211, 145, 0.5) !important;
   }
 }
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-  .node--primary,
-  .node--comparison {
-    border-width: 2px !important;
+  .hl--primary,
+  .hl--comparison {
+    outline-width: 2px !important;
   }
   
-  .node--both {
-    border-width: 3px !important;
-  }
-  
-  .react-flow__edge.edge--primary path,
-  .react-flow__edge.edge--comparison path {
-    stroke-width: 2px !important;
-  }
-  
-  .react-flow__edge.edge--both path {
-    stroke-width: 3px !important;
+  .hl--both {
+    outline-width: 3px !important;
   }
 }
