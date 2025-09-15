@@ -27,7 +27,7 @@ export function CourseNode({ course, isCompleted = false, equivalencies = [], on
 
   return (
     <div className={`
-      relative p-4 rounded-lg border-2 bg-card min-w-[220px] max-w-[280px]
+      relative p-4 rounded-lg border-2 bg-card w-[320px]
       transition-all duration-200 hover:shadow-md cursor-pointer
       ${isCompleted ? 'border-primary bg-primary/10 ring-1 ring-primary/20' : 'border-muted-foreground/30 hover:border-muted-foreground/50'}
     `}

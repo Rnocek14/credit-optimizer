@@ -70,9 +70,9 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       />
 
       <Card className={`
-        ${isDegreeNode ? 'w-[380px]' : 'w-[320px]'} 
-        ${!isUnlocked ? 'opacity-65' : ''} 
-        ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' : 
+        ${isDegreeNode ? 'w-[420px]' : 'w-[360px]'}
+        ${!isUnlocked ? 'opacity-65' : ''}
+        ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' :
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
         ${isHighlighted ? 'ring-2 ring-primary shadow-xl border-primary' : ''}

@@ -89,8 +89,6 @@ function EduTreeCanvasInner() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
   
-  const didFitRef = useRef(false);
-  const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const columnCountRef = useRef(0);
   
   const VALID = useMemo(() => new Set(getAllTrackIds()), []);
@@ -312,7 +310,6 @@ function EduTreeCanvasInner() {
 
         if (maxYear > columnCountRef.current) {
           columnCountRef.current = maxYear;
-          didFitRef.current = false;
           console.log('[EduTree Layout] Column count increased to', maxYear);
         }
 
@@ -337,18 +334,6 @@ function EduTreeCanvasInner() {
         setNodes(laidOut);
         setEdges(flowEdges);
         setAllEdges(flowEdges);
-
-        if (reactFlowInstance && !didFitRef.current) {
-          setTimeout(() => {
-            try {
-              reactFlowInstance.fitView({ padding: 0.2, duration: 300 });
-              didFitRef.current = true;
-              console.log('[EduTree Layout] Fit view applied');
-            } catch (error) {
-              console.error('[EduTree Layout] Error fitting view:', error);
-            }
-          }, 100);
-        }
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -508,11 +493,10 @@ function EduTreeCanvasInner() {
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
-          fitView
           className="bg-background"
           minZoom={0.1}
           maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         >
           <Background
             variant={BackgroundVariant.Dots}
