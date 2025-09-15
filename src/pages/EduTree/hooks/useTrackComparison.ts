@@ -130,7 +130,6 @@ export function useTrackComparison({
     const sharedEdgeIds = new Set<string>();
 
     edges.forEach(edge => {
-      const edgeId = edge.id || eid(String(edge.source), String(edge.target));
       const sourceInPrimary = primaryNodeIds.has(String(edge.source));
       const targetInPrimary = primaryNodeIds.has(String(edge.target));
       const sourceInComparison = comparisonNodeIds.has(String(edge.source));
@@ -138,17 +137,17 @@ export function useTrackComparison({
 
       // Edge is in primary if both endpoints are in primary track
       if (sourceInPrimary && targetInPrimary) {
-        primaryEdgeIds.add(edgeId);
+        primaryEdgeIds.add(edge.id);
       }
 
       // Edge is in comparison if both endpoints are in comparison track
       if (sourceInComparison && targetInComparison) {
-        comparisonEdgeIds.add(edgeId);
+        comparisonEdgeIds.add(edge.id);
       }
 
       // Edge is shared if it's in both tracks
-      if (primaryEdgeIds.has(edgeId) && comparisonEdgeIds.has(edgeId)) {
-        sharedEdgeIds.add(edgeId);
+      if (primaryEdgeIds.has(edge.id) && comparisonEdgeIds.has(edge.id)) {
+        sharedEdgeIds.add(edge.id);
       }
     });
 
@@ -191,14 +190,13 @@ export function useTrackComparison({
     if (!overlayEnabled) return edges;
 
     return edges.map(edge => {
-      const edgeId = edge.id || eid(String(edge.source), String(edge.target));
       const classes = [edge.className, 'hl'].filter(Boolean);
       
-      if (highlights.sharedEdges.has(edgeId)) {
+      if (highlights.sharedEdges.has(edge.id)) {
         classes.push('hl--both');
-      } else if (highlights.primaryEdges.has(edgeId)) {
+      } else if (highlights.primaryEdges.has(edge.id)) {
         classes.push('hl--primary');
-      } else if (highlights.comparisonEdges.has(edgeId)) {
+      } else if (highlights.comparisonEdges.has(edge.id)) {
         classes.push('hl--comparison');
       } else {
         classes.push('hl--dim');
@@ -206,7 +204,6 @@ export function useTrackComparison({
 
       return {
         ...edge,
-        id: edgeId,
         className: classes.join(' ')
       };
     });
