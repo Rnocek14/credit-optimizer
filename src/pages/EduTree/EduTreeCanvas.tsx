@@ -525,9 +525,9 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Year-based layout with dynamic height calculations
+  // Year-based layout with proper grouping and diagnostics
   const applyLayout = useCallback(() => {
-    if (!finalNodes.length) return;
+    if (!finalNodes.length || !reactFlowInstance) return;
 
     // Log node data for debugging
     console.log('[layout:debug] Node data samples:', finalNodes.slice(0, 3).map(n => ({
@@ -536,8 +536,21 @@ function EduTreeCanvasInner() {
       title: (n.data as any)?.block?.title || (n.data as any)?.displayTitle
     })));
 
-    const pad = 40, colW = 400, defaultH = 180; // Wider columns, default height
+    const pad = 40, colW = 400, defaultH = 180; // Wider columns, tighter rows
     const byYear = new Map<number, any[]>();
+
+    // Pre-calc node heights from ReactFlow instance when available
+    const heightMap = new Map<string, number>();
+    try {
+      reactFlowInstance.getNodes().forEach((n: any) => {
+        const h = n.height || defaultH;
+        // Prevent zero/huge heights from breaking spacing
+        const bounded = Math.min(Math.max(h, 120), 400);
+        heightMap.set(String(n.id), bounded);
+      });
+    } catch (e) {
+      console.warn('[layout:debug] getNodes failed, using defaults', e);
+    }
 
     // Group nodes by year, ensuring proper year extraction
     [...finalNodes].forEach(n => {
@@ -564,13 +577,13 @@ function EduTreeCanvasInner() {
       Array.from(byYear.entries()).map(([year, nodes]) => [year, nodes.length])
     ));
 
-    // Layout nodes in year columns with dynamic heights
+    // Layout nodes in year columns (Year 1, 2, 3, 4)
     const laidOut: any[] = [];
     for (let year = 1; year <= 4; year++) {
       const yearNodes = byYear.get(year) || [];
       let yOffset = pad;
       yearNodes.forEach((n) => {
-        const h = defaultH;
+        const h = heightMap.get(String(n.id)) || defaultH;
         laidOut.push({
           ...n,
           position: {
@@ -598,21 +611,32 @@ function EduTreeCanvasInner() {
     }
   }, [finalNodes, finalEdges, reactFlowInstance]);
 
+  // Initial layout once ReactFlow instance is ready
+  useEffect(() => {
+    if (!reactFlowInstance) return;
+    const id = requestAnimationFrame(() => applyLayout());
+    return () => cancelAnimationFrame(id);
+  }, [reactFlowInstance, applyLayout]);
+
+  // Re-run layout when node/edge data changes
   useEffect(() => {
     applyLayout();
   }, [applyLayout]);
 
-  // Listen for node resize events to trigger re-layout
+  // Recalculate layout when nodes resize
   useEffect(() => {
-    const handleNodeResize = () => {
-      // Debounce to prevent excessive re-layouts
-      setTimeout(() => {
+    const handleResize = () => {
+      if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
+      layoutTimeoutRef.current = setTimeout(() => {
         applyLayout();
       }, 100);
     };
 
-    window.addEventListener('node:resized', handleNodeResize);
-    return () => window.removeEventListener('node:resized', handleNodeResize);
+    window.addEventListener('node:resized', handleResize);
+    return () => {
+      window.removeEventListener('node:resized', handleResize);
+      if (layoutTimeoutRef.current) clearTimeout(layoutTimeoutRef.current);
+    };
   }, [applyLayout]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
