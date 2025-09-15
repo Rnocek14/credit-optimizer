@@ -8,15 +8,32 @@ import { useUpdateNodeInternals } from '@xyflow/react';
 export function useNodeResize(nodeId: string) {
   const updateNodeInternals = useUpdateNodeInternals();
   const observerRef = useRef<ResizeObserver | null>(null);
-  
+  const previousSizeRef = useRef<{ width: number; height: number } | null>(null);
+
   const attachResizeObserver = useCallback((element: HTMLElement) => {
     if (!element || observerRef.current) return;
 
     observerRef.current = new ResizeObserver(() => {
+      const rect = element.getBoundingClientRect();
+      const previousSize = previousSizeRef.current;
+
+      if (
+        previousSize &&
+        previousSize.width === rect.width &&
+        previousSize.height === rect.height
+      ) {
+        return;
+      }
+
+      previousSizeRef.current = {
+        width: rect.width,
+        height: rect.height
+      };
+
       // Debounce the update to prevent excessive re-layouts
       setTimeout(() => {
         updateNodeInternals(nodeId);
-        
+
         // Emit event for canvas to trigger re-layout
         window.dispatchEvent(new CustomEvent('node:resized', {
           detail: { nodeId }
@@ -32,6 +49,7 @@ export function useNodeResize(nodeId: string) {
       observerRef.current.disconnect();
       observerRef.current = null;
     }
+    previousSizeRef.current = null;
   }, []);
 
   useEffect(() => {

@@ -166,9 +166,31 @@ function EduTreeCanvasInner() {
 
   // Track resize events to trigger re-layout
   useEffect(() => {
-    const handle = () => setLayoutVersion(v => v + 1);
-    window.addEventListener('node:resized', handle);
-    return () => window.removeEventListener('node:resized', handle);
+    let rafId: number | null = null;
+
+    const scheduleLayout = () => {
+      if (layoutInProgressRef.current) {
+        return;
+      }
+
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        setLayoutVersion(v => v + 1);
+      });
+    };
+
+    window.addEventListener('node:resized', scheduleLayout);
+
+    return () => {
+      window.removeEventListener('node:resized', scheduleLayout);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
   // Clear loading state when there's no data to prevent infinite loading
@@ -223,7 +245,6 @@ function EduTreeCanvasInner() {
         // Check if ReactFlow is properly initialized
         if (!reactFlowInstance.getNodes) {
           console.warn('[EduTree Layout] ReactFlow instance not fully initialized');
-          clearLayoutState();
           return;
         }
 
@@ -311,8 +332,12 @@ function EduTreeCanvasInner() {
 
     raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        clearTimeout(timeoutId);
-        runLayout();
+        try {
+          clearTimeout(timeoutId);
+          runLayout();
+        } finally {
+          clearLayoutState();
+        }
       });
     });
 
