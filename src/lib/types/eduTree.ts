@@ -15,6 +15,7 @@ export interface EduCourse {
 
 export interface RequirementBlock {
   id: string;
+  slug?: string; // stable identifier for consistent lookups
   title: string;
   rule_type: RuleType;
   k?: number | null;

@@ -129,8 +129,9 @@ export function transformEducationData(
   }
 
   // Create nodes (defensive)
+  const yearRowCounters = new Map<number, number>();
   const regularNodes: Node[] = sortedBlocks
-    .map((block, index) => {
+    .map(block => {
       // Validate block data
       if (!block || !block.id) {
         console.warn('[EduTree] Invalid block data:', block);
@@ -146,17 +147,21 @@ export function transformEducationData(
       
       const progress = {
         completed: completedCount,
-        required: block.rule_type === 'ALL' ? allCourses.length : 
+        required: block.rule_type === 'ALL' ? allCourses.length :
                  block.rule_type === 'K_OF_N' ? (block.k || 0) :
                  Math.ceil((block.credits_needed || 0) / 3) // Estimate courses needed for credits
       };
 
+      const levelYear = block.level_year || 0;
+      const rowIndex = yearRowCounters.get(levelYear) || 0;
+      yearRowCounters.set(levelYear, rowIndex + 1);
+
       return {
         id: String(block.id), // Ensure string ID
         type: 'blockGroup',
-        position: { 
-          x: (block.level_year || 0) * 320, 
-          y: index * 200 
+        position: {
+          x: levelYear * 320,
+          y: rowIndex * 200
         },
         data: {
           block,
@@ -164,7 +169,7 @@ export function transformEducationData(
           isUnlocked: unlockedBlocks.has(String(block.id)),
           progress,
           subBlocks,
-          level_year: block.level_year || 0,
+          level_year: levelYear,
           area: block.area || 'unknown',
           isHighlighted: false,
           planningLens: null,
