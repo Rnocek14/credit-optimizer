@@ -49,13 +49,11 @@ import {
   TrackComparisonControls
 } from './components';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
-import { useStableOverlay } from './hooks/useStableOverlay';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
-import { computeHighlights } from './overlay';
 import './styles/trackOverlay.css';
 
 const DEV = import.meta.env.DEV;
@@ -88,7 +86,7 @@ function EduTreeCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
-  const [primaryTrack, setPrimaryTrack] = useState<any>(null);
+  
   const didFitRef = useRef(false);
   const fitViewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -119,14 +117,24 @@ function EduTreeCanvasInner() {
     return raw && VALID.has(raw) ? raw : undefined;
   });
 
+  // Only allow overlay when the feature flag is on. URL can *enable* it,
+  // but only if allowed by the flag.
+  const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
+  const overlayAllowed = Boolean(flags.eduTreeMultiPathOverlay);
+  const overlayFlag = overlayAllowed && qsOverlay; // keep if you still reference overlayFlag elsewhere
+  const debug = Boolean(flags.advancedTelemetry); // Use existing flag as replacement
+
   // single sync (prevents loops)
   useEffect(() => {
     write(p => {
       p.set('primary', primaryTrackId);
       if (comparisonTrackId) p.set('comparison', comparisonTrackId); else p.delete('comparison');
-      p.set('eduTreeMultiPathOverlay', String(overlayEnabled));
+      // Persist the user's toggle choice, but if overlay is disallowed,
+      // force the effective value to 'false' in the URL so UX/tests match.
+      const effective = overlayAllowed ? overlayEnabled : false;
+      p.set('eduTreeMultiPathOverlay', String(effective));
     });
-  }, [primaryTrackId, comparisonTrackId, overlayEnabled, write]);
+  }, [primaryTrackId, comparisonTrackId, overlayEnabled, overlayAllowed, write]);
   
   // FIX 6: Node types mapping for ReactFlow - DEFENSIVE CHECK
   const nodeTypes = useMemo(() => {
@@ -145,11 +153,6 @@ function EduTreeCanvasInner() {
     
     return types;
   }, []);
-
-  // Feature flag source with querystring fallback
-  const qsOverlay = searchParams.get('eduTreeMultiPathOverlay') === 'true';
-  const overlayFlag = Boolean(flags.eduTreeMultiPathOverlay) || qsOverlay;
-  const debug = false; // Temporarily disabled
 
   // Data from Supabase
   const {
@@ -219,7 +222,9 @@ function EduTreeCanvasInner() {
   }, [safeNodes]);
 
   // Track node sets
-  const overlayActive = overlayEnabled && !isSafeMode;
+  // Gate the overlay by the feature flag. If overlayAllowed is false,
+  // nothing gets highlighted and controls can be disabled/hidden.
+  const overlayActive = overlayAllowed && overlayEnabled && !isSafeMode;
 
   // Enhanced slug mapping with diagnostics
   useEffect(() => {
@@ -661,6 +666,7 @@ function EduTreeCanvasInner() {
       <div data-testid="track-comparison-controls" className="track-comparison">
         <TrackComparisonControls
           overlayEnabled={overlayEnabled}
+          overlayAllowed={overlayAllowed}
           primaryTrackId={primaryTrackId}
           comparisonTrackId={comparisonTrackId}
           onOverlayToggle={setOverlayEnabled}

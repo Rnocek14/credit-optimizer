@@ -10,6 +10,7 @@ import { TRACK_DEFINITIONS, type TrackId } from '../data/trackDefinitions';
 
 export interface TrackComparisonControlsProps {
   overlayEnabled: boolean;
+  overlayAllowed?: boolean;
   onOverlayToggle: (enabled: boolean) => void;
   primaryTrackId?: TrackId;
   onPrimaryTrackChange: (trackId: TrackId | undefined) => void;
@@ -27,6 +28,7 @@ export interface TrackComparisonControlsProps {
 
 export function TrackComparisonControls({
   overlayEnabled,
+  overlayAllowed = true,
   onOverlayToggle,
   primaryTrackId,
   onPrimaryTrackChange,
@@ -55,7 +57,7 @@ export function TrackComparisonControls({
         {/* Overlay Toggle */}
         <div className="flex items-center justify-between">
           <Label htmlFor="overlay-toggle" className="text-sm">
-            Enable Overlay
+            Enable comparison
           </Label>
           <div className="flex items-center gap-2">
             {overlayEnabled ? (
@@ -65,11 +67,18 @@ export function TrackComparisonControls({
             )}
             <Switch
               id="overlay-toggle"
-              checked={overlayEnabled}
+              checked={overlayEnabled && overlayAllowed}
+              disabled={!overlayAllowed}
               onCheckedChange={onOverlayToggle}
             />
           </div>
         </div>
+
+        {!overlayAllowed && (
+          <p className="text-xs text-muted-foreground -mt-2">
+            Comparison is disabled by feature flag.
+          </p>
+        )}
 
         {overlayEnabled && (
           <>
