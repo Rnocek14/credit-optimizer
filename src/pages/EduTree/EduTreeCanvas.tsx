@@ -52,6 +52,7 @@ import {
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
+import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
@@ -168,6 +169,24 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.blockGroup === 'function' &&
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
+
+  // Apply track comparison highlighting when overlay is enabled
+  const { 
+    highlightedNodes, 
+    highlightedEdges, 
+    highlights, 
+    debugInfo 
+  } = useTrackComparison({
+    nodes: flowNodes,
+    edges: flowEdges,
+    primaryTrackId,
+    comparisonTrackId,
+    overlayEnabled
+  });
+
+  // Use highlighted elements if overlay is on, otherwise use original elements
+  const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
+  const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
 
   // Debug current component state
   console.log('[EduTreeCanvas] Component State:', {
@@ -316,8 +335,8 @@ function EduTreeCanvasInner() {
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
         setNodes(laidOut);
-        setEdges(flowEdges);
-        setAllEdges(flowEdges);
+        setEdges(finalEdges);
+        setAllEdges(finalEdges);
 
         if (reactFlowInstance && !didFitRef.current) {
           setTimeout(() => {
@@ -464,11 +483,27 @@ function EduTreeCanvasInner() {
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative h-screen bg-background">
+      {/* Track Comparison Overlay Controls */}
+      {flags.eduTreeMultiPathOverlay && (
+        <div className="absolute top-4 left-4 z-40">
+          <TrackComparisonControls
+            overlayEnabled={overlayEnabled}
+            overlayAllowed={true}
+            onOverlayToggle={setOverlayEnabled}
+            primaryTrackId={primaryTrackId}
+            onPrimaryTrackChange={setPrimaryTrackId}
+            comparisonTrackId={comparisonTrackId}
+            onComparisonTrackChange={setComparisonTrackId}
+            debugInfo={debugInfo}
+          />
+        </div>
+      )}
+      
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={finalNodes}
+          edges={finalEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
