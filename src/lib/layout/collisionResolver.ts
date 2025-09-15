@@ -44,11 +44,12 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
     const rect1 = getNodeRect(node1);
     const rect2 = getNodeRect(node2);
     
-    // EMERGENCY FIX: Massive spacing to guarantee no overlaps
-    const baseSpacing = 400; // MASSIVE increase for absolute safety
+    // Adaptive spacing based on node type and content
+    const nodeType = getNodeType(node1, node2);
+    const baseSpacing = getAdaptiveSpacing(nodeType);
     const largerNodeHeight = Math.max(rect1.height, rect2.height);
-    const contentSpacing = largerNodeHeight * 0.6; // Higher multiplier
-    const finalSpacing = Math.max(baseSpacing + contentSpacing, 500); // Ensure minimum 500px
+    const contentSpacing = largerNodeHeight * 0.15; // Reduced multiplier for better balance
+    const finalSpacing = Math.max(baseSpacing + contentSpacing, baseSpacing);
     
     // Determine which node to move (prefer moving the lower one)
     if (node2.position.y >= node1.position.y) {
@@ -56,7 +57,7 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
       node2.position.y = newY;
       
       // Check if we should consider horizontal distribution for tall layouts
-      if (newY > 800) { // Much lower threshold for earlier horizontal distribution
+      if (newY > 1200) { // Higher threshold - allow more vertical stacking
         const horizontalShift = findHorizontalSpace(nodes, node2, rect2.width);
         if (horizontalShift !== null) {
           node2.position.x = horizontalShift;
@@ -67,7 +68,7 @@ function resolveCollisionsSimple(nodes: Node[], collisions: any[]): Node[] {
       const newY = rect2.y + rect2.height + finalSpacing;
       node1.position.y = newY;
       
-      if (newY > 800) {
+      if (newY > 1200) {
         const horizontalShift = findHorizontalSpace(nodes, node1, rect1.width);
         if (horizontalShift !== null) {
           node1.position.x = horizontalShift;
@@ -143,28 +144,29 @@ function getEstimatedNodeHeight(node: Node): number {
   if (data.block && data.block.courses) {
     const courseCount = data.block.courses.length;
     
-    // EMERGENCY FIX: Account for ALL BlockGroup content
-    let height = 160; // Base card height (title, progress, unlock status)
-    height += courseCount * 72; // Each course row (increased from 60)
+    // Optimized height calculation with 10% safety margin
+    let height = 140; // Base card height (title, progress, unlock status)
+    height += courseCount * 56; // Each course row
     
-    // Account for specializations (subBlocks) - these can add significant height
+    // Account for specializations (subBlocks)
     if (data.subBlocks && data.subBlocks.length > 0) {
-      height += 120; // Collapsible header
+      height += 100; // Collapsible header
       if (data.subBlocksExpanded) {
-        height += data.subBlocks.length * 80; // Each specialization
+        height += data.subBlocks.length * 64; // Each specialization
       }
     }
     
     // Account for alt credit options
     if (data.altCreditOptions && data.altCreditOptions.length > 0) {
-      height += data.altCreditOptions.length * 60;
+      height += data.altCreditOptions.length * 48;
     }
     
-    // SAFETY: Minimum 400px height for complex blocks
-    return Math.max(height, 400);
+    // Apply 10% safety margin instead of 20%
+    return Math.floor(height * 1.1);
   }
   
-  return 450; // Much more generous default for safety
+  // Terminal or simple nodes - reduced default with 10% safety margin
+  return Math.floor(180 * 1.1);
 }
 
 /**
@@ -192,10 +194,47 @@ function detectCollisions(nodes: Node[]): { node1: Node; node2: Node; overlap: n
 }
 
 /**
+ * Get node type for adaptive spacing
+ */
+function getNodeType(node1: Node, node2: Node): 'terminal' | 'course' | 'blockgroup' {
+  const data1 = node1.data as any;
+  const data2 = node2.data as any;
+  
+  // Check if either node is a terminal node
+  if (data1.block?.title?.toLowerCase().includes('degree') || data2.block?.title?.toLowerCase().includes('degree')) {
+    return 'terminal';
+  }
+  
+  // Check if either node has courses (BlockGroup)
+  if (data1.block?.courses?.length > 0 || data2.block?.courses?.length > 0) {
+    return 'blockgroup';
+  }
+  
+  // Default to course node
+  return 'course';
+}
+
+/**
+ * Get adaptive spacing based on node type
+ */
+function getAdaptiveSpacing(nodeType: 'terminal' | 'course' | 'blockgroup'): number {
+  switch (nodeType) {
+    case 'terminal':
+      return 30; // Terminal nodes are smaller, need less space
+    case 'course':
+      return 40; // Medium spacing for course nodes
+    case 'blockgroup':
+      return 50; // Block groups are larger, need more space
+    default:
+      return 40;
+  }
+}
+
+/**
  * Check if two rectangles overlap with buffer to prevent touching nodes
  */
 function hasOverlap(rect1: any, rect2: any): boolean {
-  const buffer = 100; // MASSIVE buffer - nodes must be 100px apart minimum
+  const buffer = 40; // Consistent 40px minimum spacing
   return !(rect1.x + rect1.width + buffer <= rect2.x || 
            rect2.x + rect2.width + buffer <= rect1.x || 
            rect1.y + rect1.height + buffer <= rect2.y || 
