@@ -325,20 +325,35 @@ function EduTreeCanvasInner() {
       });
     }
 
-    // Only proceed with enhanced layout if we have measurements for most nodes (80%+)
-    if (measurementRatio < 0.8 && currentNodes.length > 0) {
+    // Track retry attempts to prevent infinite loops
+    const retryCountKey = `layout-retry-${layoutVersion}`;
+    const currentRetries = parseInt(sessionStorage.getItem(retryCountKey) || '0');
+    const maxRetries = 5;
+
+    // Proceed with layout if we have good measurements (50%+) OR we've hit max retries
+    const shouldProceed = measurementRatio >= 0.5 || currentRetries >= maxRetries;
+    
+    if (!shouldProceed && currentNodes.length > 0) {
       if (DEV) {
-        console.log('[EduTree Layout] Phase 2: Insufficient measurements, waiting...');
+        console.log(`[EduTree Layout] Phase 2: Insufficient measurements (${Math.round(measurementRatio * 100)}%), retry ${currentRetries + 1}/${maxRetries}`);
       }
+      
+      // Increment retry counter
+      sessionStorage.setItem(retryCountKey, String(currentRetries + 1));
+      
       // Set a timeout to retry enhanced layout after nodes have had time to measure
       const retryTimeout = setTimeout(() => {
         triggerLayout();
-      }, 100);
+      }, 150);
       return () => clearTimeout(retryTimeout);
     }
 
+    // Clear retry counter when we proceed
+    sessionStorage.removeItem(retryCountKey);
+
     if (DEV) {
-      console.log('[EduTree Layout] Phase 2: Starting enhanced layout for', finalNodes.length, 'nodes with', Math.round(measurementRatio * 100) + '% measured');
+      const reason = measurementRatio >= 0.5 ? 'sufficient measurements' : 'max retries reached';
+      console.log(`[EduTree Layout] Phase 2: Starting enhanced layout for ${finalNodes.length} nodes (${Math.round(measurementRatio * 100)}% measured, ${reason})`);
     }
     layoutInProgressRef.current = true;
     setIsLayouting(true);
@@ -409,11 +424,11 @@ function EduTreeCanvasInner() {
       }
     };
 
-    // Set up timeout fallback (10 seconds for enhanced layout)
+    // Set up timeout fallback (5 seconds for enhanced layout to prevent stuck states)
     timeoutId = setTimeout(() => {
       console.warn('[EduTree Layout] Enhanced layout timed out, clearing state');
       clearLayoutState(true);
-    }, 10000);
+    }, 5000);
 
     // Start the enhanced layout process
     runEnhancedLayout().finally(() => {
