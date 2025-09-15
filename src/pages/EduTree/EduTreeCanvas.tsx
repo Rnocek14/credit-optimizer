@@ -248,14 +248,14 @@ function EduTreeCanvasInner() {
     }
 
     // Clear loading state immediately if there are no nodes to layout
-    if (!flowNodes.length) {
+    if (!finalNodes.length) {
       console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
     }
 
-    console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
+    console.log('[EduTree Layout] Starting layout for', finalNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -309,7 +309,7 @@ function EduTreeCanvasInner() {
           return 180;
         };
 
-        flowNodes.forEach(n => {
+        finalNodes.forEach(n => {
           const selector = `.react-flow__node[data-id="${n.id}"]`;
           const el = document.querySelector(selector) as HTMLElement | null;
           const domHeight = el?.getBoundingClientRect().height;
@@ -399,8 +399,8 @@ function EduTreeCanvasInner() {
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
         setNodes(finalLayout);
-        setEdges(flowEdges);
-        setAllEdges(flowEdges);
+        setEdges(finalEdges);
+        setAllEdges(finalEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -436,7 +436,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion]);
+  }, [reactFlowInstance, finalNodes.length, finalEdges.length, layoutVersion]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -554,8 +554,8 @@ function EduTreeCanvasInner() {
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
-          nodes={overlayEnabled ? highlightedNodes : nodes}
-          edges={overlayEnabled ? highlightedEdges : edges}
+          nodes={finalNodes}
+          edges={finalEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
