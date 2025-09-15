@@ -321,12 +321,27 @@ function EduTreeCanvasInner() {
 
     // Unified cleanup function
     const clearLayoutState = (flushPending = true) => {
-      if (cancelled) return; // Prevent double cleanup
-      
+      const wasLayouting = layoutInProgressRef.current;
+
       layoutInProgressRef.current = false;
       setIsLayouting(false);
+
+      if (!wasLayouting) {
+        if (DEV) {
+          console.log('[EduTree Layout] Layout state already cleared - skipping additional cleanup');
+        }
+        return;
+      }
+
       if (DEV) {
         console.log('[EduTree Layout] Layout state cleared');
+      }
+
+      if (cancelled) {
+        if (DEV) {
+          console.log('[EduTree Layout] Cleanup detected cancellation - skipping pending flush');
+        }
+        return;
       }
 
       // Only flush pending for normal mode to prevent infinite loops in overlay mode
