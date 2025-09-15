@@ -118,11 +118,6 @@ function EduTreeCanvasInner() {
     return raw && VALID.has(raw) ? raw : undefined;
   });
 
-  // Track resolution state
-  const [resolvedPrimaryTrack, setResolvedPrimaryTrack] = useState<{ name: string; blockIds: string[]; missingSlugs: string[] } | null>(null);
-  const [resolvedComparisonTrack, setResolvedComparisonTrack] = useState<{ name: string; blockIds: string[]; missingSlugs: string[] } | null>(null);
-  const [trackResolutionLoading, setTrackResolutionLoading] = useState(false);
-
   // Node types mapping for ReactFlow
   const nodeTypes = useMemo(() => {
     const types = {
@@ -173,47 +168,6 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // Resolve tracks when track IDs change
-  useEffect(() => {
-    let mounted = true;
-    
-    const resolveTracks = async () => {
-      if (!primaryTrackId && !comparisonTrackId) return;
-      
-      setTrackResolutionLoading(true);
-      
-      try {
-        // Resolve primary track
-        if (primaryTrackId) {
-          const resolved = await resolveTrackBlockIds(primaryTrackId);
-          if (mounted) setResolvedPrimaryTrack(resolved);
-        } else {
-          if (mounted) setResolvedPrimaryTrack(null);
-        }
-        
-        // Resolve comparison track
-        if (comparisonTrackId) {
-          const resolved = await resolveTrackBlockIds(comparisonTrackId);
-          if (mounted) setResolvedComparisonTrack(resolved);
-        } else {
-          if (mounted) setResolvedComparisonTrack(null);
-        }
-      } catch (error) {
-        console.error('[Track Resolution] Failed:', error);
-        if (mounted) {
-          setResolvedPrimaryTrack(null);
-          setResolvedComparisonTrack(null);
-        }
-      } finally {
-        if (mounted) setTrackResolutionLoading(false);
-      }
-    };
-    
-    resolveTracks();
-    
-    return () => { mounted = false; };
-  }, [primaryTrackId, comparisonTrackId]);
-
   // Apply track comparison highlighting when overlay is enabled
   const { 
     highlightedNodes, 
@@ -223,8 +177,8 @@ function EduTreeCanvasInner() {
   } = useTrackComparison({
     nodes: flowNodes,
     edges: flowEdges,
-    resolvedPrimaryTrack,
-    resolvedComparisonTrack,
+    primaryTrackId,
+    comparisonTrackId,
     overlayEnabled
   });
 
