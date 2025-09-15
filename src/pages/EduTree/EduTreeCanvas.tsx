@@ -525,25 +525,26 @@ function EduTreeCanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Year-based layout with proper grouping and diagnostics
-  const applyLayout = useCallback(() => {
-    if (!finalNodes.length) return;
+  // Track resize events to trigger re-layout
+  useEffect(() => {
+    const handle = () => setLayoutVersion(v => v + 1);
+    window.addEventListener('node:resized', handle);
+    return () => window.removeEventListener('node:resized', handle);
+  }, []);
 
-    // Wait for nodes to render so DOM measurements are accurate
+  // Perform layout when data or node sizes change
+  useEffect(() => {
+    if (!reactFlowInstance || !finalNodes.length) return;
+    if (layoutInProgressRef.current) return;
+
+    layoutInProgressRef.current = true;
+    setIsLayouting(true);
+
     requestAnimationFrame(() => {
-      if (!reactFlowInstance) return;
-
-      console.log('[layout:debug] Node data samples:', finalNodes.slice(0, 3).map(n => ({
-        id: n.id,
-        level_year: (n.data as any)?.level_year,
-        title: (n.data as any)?.block?.title || (n.data as any)?.displayTitle
-      })));
-
-      const pad = 40, colW = 400, defaultH = 180; // Wider columns, tighter rows
+      const pad = 40, colW = 400, defaultH = 180;
       const byYear = new Map<number, any[]>();
       const heightMap = new Map<string, number>();
 
-      // Measure each node's height directly from the DOM for accuracy
       finalNodes.forEach(n => {
         const selector = `.react-flow__node[data-id="${n.id}"]`;
         const el = document.querySelector(selector) as HTMLElement | null;
@@ -560,31 +561,21 @@ function EduTreeCanvasInner() {
 
         const nodeData = n.data as any;
         let year = 1;
-        if (nodeData?.level_year) {
-          year = Number(nodeData.level_year);
-        } else if (nodeData?.block?.level_year) {
-          year = Number(nodeData.block.level_year);
-        } else if (nodeData?.courses?.length > 0) {
-          year = Number(nodeData.courses[0].level_year) || 1;
-        }
-        if (year < 1 || year > 4) year = 1;
+        if (nodeData?.level_year) year = Number(nodeData.level_year);
+        else if (nodeData?.block?.level_year) year = Number(nodeData.block.level_year);
+        else if (nodeData?.courses?.length > 0) year = Number(nodeData.courses[0].level_year) || 1;
+        if (year < 1) year = 1;
         if (!byYear.has(year)) byYear.set(year, []);
         byYear.get(year)!.push(n);
       });
 
-      console.log('[layout:debug] Year distribution:', Object.fromEntries(
-        Array.from(byYear.entries()).map(([year, nodes]) => [year, nodes.length])
-      ));
-
+      const maxYear = Math.max(5, ...Array.from(byYear.keys()));
       const laidOut: any[] = [];
-      for (let year = 1; year <= 4; year++) {
+      for (let year = 1; year <= maxYear; year++) {
         const yearNodes = byYear.get(year) || [];
-        // Preserve original order for stability
-        yearNodes.forEach((node, idx) => {
+        let yOffset = pad;
+        yearNodes.forEach(node => {
           const h = heightMap.get(String(node.id)) || defaultH;
-          const yOffset = pad + yearNodes
-            .slice(0, idx)
-            .reduce((acc, n) => acc + (heightMap.get(String(n.id)) || defaultH) + pad, 0);
           laidOut.push({
             ...node,
             position: {
@@ -592,12 +583,9 @@ function EduTreeCanvasInner() {
               y: yOffset
             }
           });
+          yOffset += h + pad;
         });
       }
-
-      console.log('[layout:debug] Final layout positions:', laidOut.slice(0, 3).map(n => ({
-        id: n.id, position: n.position
-      })));
 
       setNodes(laidOut);
       setEdges(finalEdges);
@@ -609,15 +597,11 @@ function EduTreeCanvasInner() {
           didFitRef.current = true;
         }, 100);
       }
-    });
-  }, [finalNodes, finalEdges, reactFlowInstance]);
 
-  // Initial layout once ReactFlow instance is ready
-  useEffect(() => {
-    if (!reactFlowInstance) return;
-    const id = requestAnimationFrame(() => applyLayout());
-    return () => cancelAnimationFrame(id);
-  }, [reactFlowInstance, applyLayout]);
+      layoutInProgressRef.current = false;
+      setIsLayouting(false);
+    });
+  }, [reactFlowInstance, finalNodes, finalEdges, layoutVersion]);
 
   // ===== CONDITIONAL RENDERING LOGIC - NO EARLY RETURNS BELOW =====
   
