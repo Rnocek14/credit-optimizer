@@ -335,8 +335,8 @@ function EduTreeCanvasInner() {
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
         setNodes(laidOut);
-        setEdges(finalEdges);
-        setAllEdges(finalEdges);
+        setEdges(flowEdges);
+        setAllEdges(flowEdges);
 
         if (reactFlowInstance && !didFitRef.current) {
           setTimeout(() => {
@@ -502,8 +502,8 @@ function EduTreeCanvasInner() {
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
-          nodes={finalNodes}
-          edges={finalEdges}
+          nodes={overlayEnabled ? highlightedNodes : nodes}
+          edges={overlayEnabled ? highlightedEdges : edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
