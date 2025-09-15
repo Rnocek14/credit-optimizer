@@ -57,6 +57,7 @@ import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
+import './styles/track-highlights.css';
 
 const DEV = import.meta.env.DEV;
 
@@ -84,7 +85,11 @@ function EduTreeCanvasInner() {
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutInProgressRef = useRef(false);
+  const pendingLayoutRef = useRef(false);
   const [layoutVersion, setLayoutVersion] = useState(0);
+  const triggerLayout = useCallback(() => {
+    setLayoutVersion(v => v + 1);
+  }, []);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
@@ -185,6 +190,14 @@ function EduTreeCanvasInner() {
   // Use highlighted elements if overlay is on, otherwise use original elements
   const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
   const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
+  const finalNodesKey = useMemo(
+    () => finalNodes.map(node => `${node.id}:${(node.data as any)?.level_year ?? ''}`).join('|'),
+    [finalNodes]
+  );
+  const finalEdgesKey = useMemo(
+    () => finalEdges.map(edge => edge.id ?? `${edge.source}-${edge.target}`).join('|'),
+    [finalEdges]
+  );
 
   // Debug current component state
   console.log('[EduTreeCanvas] Component State:', {
@@ -204,8 +217,11 @@ function EduTreeCanvasInner() {
 
     const scheduleLayout = () => {
       if (layoutInProgressRef.current) {
+        pendingLayoutRef.current = true;
         return;
       }
+
+      pendingLayoutRef.current = false;
 
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
@@ -213,7 +229,7 @@ function EduTreeCanvasInner() {
 
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        setLayoutVersion(v => v + 1);
+        triggerLayout();
       });
     };
 
@@ -225,7 +241,7 @@ function EduTreeCanvasInner() {
         cancelAnimationFrame(rafId);
       }
     };
-  }, []);
+  }, [triggerLayout]);
 
   // Clear loading state when there's no data to prevent infinite loading
   useEffect(() => {
@@ -241,7 +257,7 @@ function EduTreeCanvasInner() {
       console.log('[EduTree Layout] ReactFlow instance not ready');
       return;
     }
-    
+
     if (layoutInProgressRef.current) {
       console.log('[EduTree Layout] Layout already in progress, skipping');
       return;
@@ -260,11 +276,27 @@ function EduTreeCanvasInner() {
     setIsLayouting(true);
 
     let timeoutId: NodeJS.Timeout;
+    let cancelled = false;
 
-    const clearLayoutState = () => {
+    const flushPendingLayout = () => {
+      if (pendingLayoutRef.current && !cancelled) {
+        pendingLayoutRef.current = false;
+        requestAnimationFrame(() => {
+          if (!cancelled) {
+            triggerLayout();
+          }
+        });
+      }
+    };
+
+    const clearLayoutState = (flushPending = true) => {
       layoutInProgressRef.current = false;
       setIsLayouting(false);
       console.log('[EduTree Layout] Layout state cleared');
+
+      if (flushPending) {
+        flushPendingLayout();
+      }
     };
 
     const runEnhancedLayout = async () => {
@@ -299,14 +331,14 @@ function EduTreeCanvasInner() {
         setEdges(finalEdges);
         setAllEdges(finalEdges);
       } finally {
-        clearLayoutState();
+        clearLayoutState(true);
       }
     };
 
     // Set up timeout fallback (10 seconds for enhanced layout)
     timeoutId = setTimeout(() => {
       console.warn('[EduTree Layout] Enhanced layout timed out, clearing state');
-      clearLayoutState();
+      clearLayoutState(true);
     }, 10000);
 
     // Start the enhanced layout process
@@ -315,11 +347,21 @@ function EduTreeCanvasInner() {
     });
 
     return () => {
+      cancelled = true;
       console.log('[EduTree Layout] Cleaning up enhanced layout effect');
       clearTimeout(timeoutId);
-      clearLayoutState();
+      clearLayoutState(false);
     };
-  }, [reactFlowInstance, finalNodes.length, finalEdges.length, layoutVersion, overlayEnabled]);
+  }, [
+    reactFlowInstance,
+    finalNodes.length,
+    finalEdges.length,
+    finalNodesKey,
+    finalEdgesKey,
+    layoutVersion,
+    overlayEnabled,
+    triggerLayout
+  ]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {

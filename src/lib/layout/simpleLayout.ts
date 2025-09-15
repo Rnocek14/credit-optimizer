@@ -21,7 +21,7 @@ let isLayoutInProgress = false;
  */
 export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutResult> {
   const startTime = performance.now();
-  
+
   // Prevent concurrent layout operations
   if (isLayoutInProgress) {
     console.log('⏭️ Layout already in progress, skipping...');
@@ -31,12 +31,12 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
       layoutTime: 0
     };
   }
-  
+
   isLayoutInProgress = true;
-  
+
   try {
     console.log(`🎯 Simple layout for ${nodes.length} nodes`);
-    
+
     if (nodes.length === 0) {
       return {
         nodes: [],
@@ -45,15 +45,24 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
       };
     }
 
-  // Apply simple year-based layout with generous spacing
-  let layoutedNodes = applyYearBasedLayout([...nodes]);
-  
-  // Import and apply collision resolution
-  const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
-  
-  // Resolve any overlaps
-  console.log('🔧 Resolving collisions...');
-  layoutedNodes = resolveAllCollisions(layoutedNodes);
+    // Work on a cloned set of nodes so we don't mutate upstream references
+    const workingNodes = nodes.map(node => ({
+      ...node,
+      position: {
+        x: node.position?.x ?? 0,
+        y: node.position?.y ?? 0
+      }
+    }));
+
+    // Apply simple year-based layout with generous spacing
+    let layoutedNodes = applyYearBasedLayout(workingNodes);
+
+    // Import and apply collision resolution
+    const { resolveAllCollisions, validateLayout } = await import('./collisionResolver');
+
+    // Resolve any overlaps
+    console.log('🔧 Resolving collisions...');
+    layoutedNodes = resolveAllCollisions(layoutedNodes);
   
     // Validate final layout
     const hasOverlaps = !validateLayout(layoutedNodes);
@@ -78,7 +87,7 @@ export async function layoutNodes(nodes: Node[], edges: Edge[]): Promise<LayoutR
 function applyYearBasedLayout(nodes: Node[]): Node[] {
   // Group nodes by year
   const nodesByYear = new Map<number, Node[]>();
-  
+
   nodes.forEach(node => {
     const data = node.data as any;
     const year = data.level_year ?? 1;
@@ -89,11 +98,17 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
   });
 
   const sortedYears = Array.from(nodesByYear.keys()).sort((a, b) => a - b);
-  let currentX = 40; // Start position
-  
+  if (sortedYears.length === 0) {
+    return nodes;
+  }
+
+  const minYear = sortedYears[0];
+  const columnSpacing = 520; // Slightly wider spacing for readability
+  const startX = 40;
+
   sortedYears.forEach(year => {
     const yearNodes = nodesByYear.get(year)!;
-    
+
     // Sort nodes within year
     yearNodes.sort((a, b) => {
       const aData = a.data as any;
@@ -102,8 +117,8 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
     });
 
     // Position nodes in column with massive spacing
-    positionNodesInColumn(yearNodes, currentX);
-    currentX += 480; // Reduced column spacing for better balance
+    const columnOffset = startX + (year - minYear) * columnSpacing;
+    positionNodesInColumn(yearNodes, columnOffset);
   });
 
   return nodes;
@@ -113,11 +128,11 @@ function applyYearBasedLayout(nodes: Node[]): Node[] {
  * Position nodes vertically with generous spacing
  */
 function positionNodesInColumn(nodes: Node[], x: number): void {
-  let currentY = 50; // Start position with reduced padding
-  
+  let currentY = 80; // Start position with additional padding for headers
+
   nodes.forEach((node) => {
     node.position = { x, y: currentY };
-    
+
     // Adaptive spacing based on node type with improved balance
     const nodeHeight = (node as any).measured?.height || getEstimatedHeight(node);
     const nodeType = getNodeTypeFromData(node.data);
