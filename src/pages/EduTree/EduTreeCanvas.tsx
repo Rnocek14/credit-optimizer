@@ -15,6 +15,7 @@ import {
   Background, 
   useNodesState, 
   useEdgesState,
+  useNodesInitialized,
   ReactFlowProvider,
   BackgroundVariant,
   MiniMap
@@ -93,6 +94,7 @@ function EduTreeCanvasInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
+  const nodesInitialized = useNodesInitialized();
   
   const columnCountRef = useRef(0);
   
@@ -271,7 +273,34 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    console.log('[EduTree Layout] Starting enhanced layout for', finalNodes.length, 'nodes');
+    // Wait for React Flow to initialize and measure nodes before applying layout
+    if (!nodesInitialized) {
+      console.log('[EduTree Layout] Waiting for React Flow nodes to be initialized and measured');
+      return;
+    }
+
+    // Check if nodes have real measurements
+    const currentNodes = reactFlowInstance.getNodes();
+    const measuredNodes = currentNodes.filter(node => node.measured?.width && node.measured?.height);
+    const measurementRatio = currentNodes.length > 0 ? measuredNodes.length / currentNodes.length : 0;
+    
+    console.log('[EduTree Layout] Node measurement status:', {
+      totalNodes: currentNodes.length,
+      measuredNodes: measuredNodes.length,
+      measurementRatio: Math.round(measurementRatio * 100) + '%'
+    });
+
+    // Only proceed if we have measurements for most nodes (80%+) or after a delay
+    if (measurementRatio < 0.8 && currentNodes.length > 0) {
+      console.log('[EduTree Layout] Insufficient measurements, waiting...');
+      // Set a timeout to retry layout after nodes have had time to measure
+      const retryTimeout = setTimeout(() => {
+        triggerLayout();
+      }, 100);
+      return () => clearTimeout(retryTimeout);
+    }
+
+    console.log('[EduTree Layout] Starting enhanced layout for', finalNodes.length, 'nodes with', Math.round(measurementRatio * 100) + '% measured');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -354,6 +383,7 @@ function EduTreeCanvasInner() {
     };
   }, [
     reactFlowInstance,
+    nodesInitialized,
     finalNodes.length,
     finalEdges.length,
     finalNodesKey,
