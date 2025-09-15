@@ -463,9 +463,9 @@ function EduTreeCanvasInner() {
 
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative h-screen bg-background">
       {/* Main Canvas */}
-      <div className="h-full">
+      <div className="w-full h-full">
         <ReactFlow
           nodes={nodes}
           edges={edges}
