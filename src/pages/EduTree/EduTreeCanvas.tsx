@@ -54,7 +54,8 @@ import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './da
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
-import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
+import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, resolveEduTreeQAModeFlag } from '@/lib/eduTreeFlags';
+import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
 
@@ -166,6 +167,31 @@ function EduTreeCanvasInner() {
     { nodes: [], edges: [], blocksWithCourses: [] },
     'Transform'
   ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
+
+  // QA Mode: Compute and export metrics when enabled
+  const qaMode = resolveEduTreeQAModeFlag();
+  
+  useEffect(() => {
+    if (!qaMode) return;
+    
+    try {
+      const getLevelYear = (id: string) => blocks.find(b => String(b.id) === String(id))?.level_year;
+      const getTrackId = (id: string) => blocks.find(b => String(b.id) === String(id))?.track_id as any;
+      const metrics = computeGraphQAMetrics(flowNodes, flowEdges, {
+        getLevelYear, 
+        getTrackId,
+        flags: { 
+          eduTreePhaseA: resolveEduTreePhaseAFlag(), 
+          qaMode 
+        }
+      });
+      
+      (window as any).__EDUTREE_QA__ = metrics;
+      console.log('[MP QA][METRICS]', metrics);
+    } catch (e) {
+      console.warn('[MP QA][ERROR]', e);
+    }
+  }, [qaMode, flowNodes, flowEdges, blocks]);
 
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 

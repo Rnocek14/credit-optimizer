@@ -350,6 +350,23 @@ export function transformEducationData(
   const nodes: Node[] = regularNodes;
   const edges: Edge[] = regularEdges;
 
+  // PhaseA assertions (non-breaking)
+  if (flags.eduTreePhaseA) {
+    const badIds = edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
+    if (badIds.length) {
+      console.warn('[MP Overlay][ASSERT] Non-normalized edge IDs', badIds.slice(0, 5));
+    }
+    
+    const backwards = edges.filter(e => {
+      const s = sortedBlocks.find(b => String(b.id) === String(e.source))?.level_year ?? -1;
+      const t = sortedBlocks.find(b => String(b.id) === String(e.target))?.level_year ?? 999;
+      return !(t > s);
+    });
+    if (backwards.length) {
+      console.warn('[MP Overlay][ASSERT] Backward edges found', backwards.slice(0, 5));
+    }
+  }
+
   console.log('[EduTree][Transform][Result]', { 
     nodes: nodes.length, 
     edges: edges.length, 

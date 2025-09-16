@@ -56,6 +56,33 @@ export function resolveEduTreePhaseAFlag(): boolean {
 }
 
 /**
+ * QA mode flag resolution for multipath testing
+ * Precedence: Query param > localStorage > default (false)
+ */
+export function resolveEduTreeQAModeFlag(): boolean {
+  // URL query parameter (highest priority)
+  if (typeof window !== 'undefined') {
+    const url = new URL(window.location.href);
+    const fromQuery = url.searchParams.get('eduTreeQAMode');
+    
+    if (fromQuery === 'true' || fromQuery === 'false') {
+      const value = fromQuery === 'true';
+      localStorage.setItem('eduTreeQAMode', String(value));
+      return value;
+    }
+  }
+  
+  // Local storage override
+  const localValue = localStorage.getItem('eduTreeQAMode');
+  if (localValue !== null) {
+    return localValue === 'true';
+  }
+  
+  // Default to false for QA mode
+  return false;
+}
+
+/**
  * Check if user can bypass feature flag restrictions
  * Admins and mentors can see disabled features
  */
