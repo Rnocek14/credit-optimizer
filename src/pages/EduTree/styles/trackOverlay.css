@@ -48,35 +48,40 @@
   box-shadow: 0 0 8px hsla(140, 85%, 70%, 0.25);
 }
 
-/* ReactFlow Edge Styles - Surgical reset to prevent triple lines */
-/* Block transitions that could leak from other React Flow instances */
+/* ReactFlow Edge Styles - Comprehensive reset and base styling */
+
+/* Step 1: Block transitions from other React Flow instances */
 .edu-tree-canvas .react-flow__edge,
 .edu-tree-canvas .react-flow__node {
   transition: none !important;
 }
 
-/* Hide only React Flow's interaction paths - preserve main visual path */
+/* Step 2: Hide interaction paths (if they exist) */
 .edu-tree-canvas .react-flow__edge-interaction {
   display: none !important;
   visibility: hidden !important;
 }
 
-/* Reset any LifePath classes that might leak into EduTree */
+/* Step 3: CRITICAL - Base edge styles with maximum specificity */
+/* This MUST come before any resets to ensure visibility */
+.edu-tree-canvas .react-flow__edge .react-flow__edge-path,
+.edu-tree-canvas .react-flow__edge-path {
+  stroke: hsl(0, 0%, 70%) !important;
+  stroke-width: 2px !important;
+  opacity: 1 !important;
+  stroke-linecap: round !important;
+  transition: none !important;
+  fill: none !important;
+  pointer-events: stroke !important;
+}
+
+/* Step 4: Reset LifePath classes AFTER base styles are set */
 .edu-tree-canvas .react-flow__edge-path.lp-edge-on-path,
 .edu-tree-canvas .react-flow__edge-path.lp-edge-related,
 .edu-tree-canvas .react-flow__edge-path.lp-edge-off-path {
-  stroke: unset !important;
-  stroke-width: unset !important;
-  opacity: unset !important;
-}
-
-/* Base edge styles - clean default state */
-.edu-tree-canvas .react-flow__edge-path {
-  stroke: hsl(0, 0%, 80%) !important;
-  stroke-width: 1px !important;
-  opacity: 1 !important;
-  stroke-linecap: round !important;
-  transition: none !important; /* Prevent any inherited transitions */
+  stroke: hsl(0, 0%, 70%) !important; /* Don't unset, override with our color */
+  stroke-width: 2px !important; /* Don't unset, override with our width */
+  opacity: 1 !important; /* Don't unset, ensure visibility */
 }
 
 /* Degree edge specific styles */
