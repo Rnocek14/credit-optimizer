@@ -56,8 +56,16 @@
   transition: none !important;
 }
 
-/* Step 2: Hide interaction paths (if they exist) */
-.edu-tree-canvas .react-flow__edge-interaction {
+/* Step 2: Hide ALL non-visual edge paths - React Flow creates 3 paths per edge */
+.edu-tree-canvas .react-flow__edge-interaction,
+.edu-tree-canvas .react-flow__edge-background,
+.edu-tree-canvas .react-flow__edge-updater {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide extra paths using structural selectors as fallback */
+.edu-tree-canvas .react-flow__edge path:not(.react-flow__edge-path) {
   display: none !important;
   visibility: hidden !important;
 }
