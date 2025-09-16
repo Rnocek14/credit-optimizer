@@ -121,6 +121,12 @@ function EduTreeCanvasInner() {
     return raw && VALID.has(raw) ? raw : undefined;
   });
 
+  // ReactFlow key for remounting when overlay settings change
+  const reactFlowKey = useMemo(
+    () => `${overlayEnabled ? 'overlay' : 'base'}-${primaryTrackId}-${comparisonTrackId ?? 'none'}`,
+    [overlayEnabled, primaryTrackId, comparisonTrackId]
+  );
+
   // Node types mapping for ReactFlow
   const nodeTypes = useMemo(() => {
     const types = {
@@ -618,11 +624,6 @@ function EduTreeCanvasInner() {
       </div>
     );
   }
-
-  const reactFlowKey = useMemo(
-    () => `${overlayEnabled ? 'overlay' : 'base'}-${primaryTrackId}-${comparisonTrackId ?? 'none'}`,
-    [overlayEnabled, primaryTrackId, comparisonTrackId]
-  );
 
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
