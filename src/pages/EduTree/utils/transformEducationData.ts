@@ -39,6 +39,11 @@ export function transformEducationData(
   const gates = Array.isArray(input.gates) ? input.gates : [];
   const gateEdges = Array.isArray(input.gateEdges) ? input.gateEdges : [];
 
+  // PhaseA: Filter out hidden blocks when flag is enabled
+  if (flags.eduTreePhaseA) {
+    blocks = blocks.filter(block => !block.hidden);
+  }
+
   // Filter blocks by selected track when not in overlay mode
   if (selectedTrackId && !flags.overlayEnabled) {
     const trackDef = TRACK_MAP.get(selectedTrackId);
@@ -187,8 +192,18 @@ export function transformEducationData(
           area: block.area || 'unknown',
           isHighlighted: false,
           planningLens: null,
+          // PhaseA enhancements
+          phaseA: flags.eduTreePhaseA ? {
+            isShared: !block.track_id,
+            trackId: block.track_id,
+            trackBadge: block.track_id === 'software-engineering' ? 'SE' : 
+                       block.track_id === 'data-science' ? 'DS' : 
+                       'Shared'
+          } : undefined
         },
-        className: 'node'
+        className: flags.eduTreePhaseA ? 
+          `node ${block.track_id ? `track-${block.track_id}` : 'shared'}` : 
+          'node'
       };
     })
     .filter(Boolean) as Node[];
@@ -262,69 +277,78 @@ export function transformEducationData(
     });
   }
 
-  // Add degree completion node (defensive)
-  const capstoneBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('capstone'));
-  const architectureBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('architecture'));
-  
-  const isDegreeUnlocked = capstoneBlock && architectureBlock && 
-    isBlockComplete(capstoneBlock, capstoneBlock.courses || [], completedCourseIds) &&
-    isBlockComplete(architectureBlock, architectureBlock.courses || [], completedCourseIds);
+  // PhaseA: Skip degree completion node when flag is enabled
+  if (!flags.eduTreePhaseA) {
+    // Legacy mode: Add degree completion node (defensive)
+    const capstoneBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('capstone'));
+    const architectureBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('architecture'));
+    
+    const isDegreeUnlocked = capstoneBlock && architectureBlock && 
+      isBlockComplete(capstoneBlock, capstoneBlock.courses || [], completedCourseIds) &&
+      isBlockComplete(architectureBlock, architectureBlock.courses || [], completedCourseIds);
 
-  const totalCourses = courses.length;
-  const completedCourses = Array.from(completedCourseIds).length;
+    const totalCourses = courses.length;
+    const completedCourses = Array.from(completedCourseIds).length;
 
-  const degreeNode: Node = {
-    id: 'degree-completion',
-    type: 'terminalNode',
-    position: { x: 5 * 320, y: 0 },
-    data: {
-      block: {
-        id: 'degree-completion',
-        title: 'B.S. Software Engineering',
-        rule_type: 'ALL' as const,
-        level_year: 5,
-        area: 'degree',
-        courses: [],
-        gate: { id: 'degree-gate', block_id: 'degree-completion' }
+    const degreeNode: Node = {
+      id: 'degree-completion',
+      type: 'terminalNode',
+      position: { x: 5 * 320, y: 0 },
+      data: {
+        block: {
+          id: 'degree-completion',
+          title: 'B.S. Software Engineering',
+          rule_type: 'ALL' as const,
+          level_year: 5,
+          area: 'degree',
+          courses: [],
+          gate: { id: 'degree-gate', block_id: 'degree-completion' }
+        },
+        isEligible: isDegreeUnlocked || false,
+        degreeType: 'Bachelor of Science',
+        credits: totalCourses * 3,
+        completedCourseIds,
+        isUnlocked: isDegreeUnlocked || false,
+        progress: {
+          completed: completedCourses,
+          required: totalCourses
+        },
+        isDegreeNode: true,
+        isDegreeComplete: completedCourses === totalCourses
       },
-      isEligible: isDegreeUnlocked || false,
-      degreeType: 'Bachelor of Science',
-      credits: totalCourses * 3,
-      completedCourseIds,
-      isUnlocked: isDegreeUnlocked || false,
-      progress: {
-        completed: completedCourses,
-        required: totalCourses
-      },
-      isDegreeNode: true,
-      isDegreeComplete: completedCourses === totalCourses
-    },
-    className: 'node terminal-node'
-  };
+      className: 'node terminal-node'
+    };
 
-  // Add degree edges (defensive)
-  const degreeEdges: Edge[] = [];
-  if (capstoneBlock) {
-    degreeEdges.push({
-      id: 'capstone-to-degree',
-      source: String(capstoneBlock.id),
-      target: 'degree-completion',
-      type: 'smoothstep',
-      className: 'edge degree-edge'
-    });
-  }
-  if (architectureBlock) {
-    degreeEdges.push({
-      id: 'architecture-to-degree',
-      source: String(architectureBlock.id),
-      target: 'degree-completion',
-      type: 'smoothstep',
-      className: 'edge degree-edge'
-    });
+    // Add degree edges (defensive)
+    const degreeEdges: Edge[] = [];
+    if (capstoneBlock) {
+      degreeEdges.push({
+        id: 'capstone-to-degree',
+        source: String(capstoneBlock.id),
+        target: 'degree-completion',
+        type: 'smoothstep',
+        className: 'edge degree-edge'
+      });
+    }
+    if (architectureBlock) {
+      degreeEdges.push({
+        id: 'architecture-to-degree',
+        source: String(architectureBlock.id),
+        target: 'degree-completion',
+        type: 'smoothstep',
+        className: 'edge degree-edge'
+      });
+    }
+
+    const nodes: Node[] = [...regularNodes, degreeNode];
+    const edges: Edge[] = [...regularEdges, ...degreeEdges];
+    
+    return { nodes, edges, blocksWithCourses };
   }
 
-  const nodes: Node[] = [...regularNodes, degreeNode];
-  const edges: Edge[] = [...regularEdges, ...degreeEdges];
+  // PhaseA mode: No degree completion node, capstones are terminal
+  const nodes: Node[] = regularNodes;
+  const edges: Edge[] = regularEdges;
 
   console.log('[EduTree][Transform][Result]', { 
     nodes: nodes.length, 
@@ -335,7 +359,8 @@ export function transformEducationData(
     totalPrerequisites: edges.reduce((sum, e) => {
       const prereqs = e.data?.prerequisites;
       return sum + (Array.isArray(prereqs) ? prereqs.length : 0);
-    }, 0)
+    }, 0),
+    phaseAMode: flags.eduTreePhaseA
   });
 
   return { nodes, edges, blocksWithCourses };

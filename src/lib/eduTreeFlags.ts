@@ -29,6 +29,33 @@ export function resolveEduTreeFlag(): boolean {
 }
 
 /**
+ * PhaseA flag resolution for clean track structure
+ * Precedence: Query param > localStorage > default (true)
+ */
+export function resolveEduTreePhaseAFlag(): boolean {
+  // URL query parameter (highest priority)
+  if (typeof window !== 'undefined') {
+    const url = new URL(window.location.href);
+    const fromQuery = url.searchParams.get('eduTreePhaseA');
+    
+    if (fromQuery === 'true' || fromQuery === 'false') {
+      const value = fromQuery === 'true';
+      localStorage.setItem('eduTreePhaseA', String(value));
+      return value;
+    }
+  }
+  
+  // Local storage override
+  const localValue = localStorage.getItem('eduTreePhaseA');
+  if (localValue !== null) {
+    return localValue === 'true';
+  }
+  
+  // Default to true for PhaseA
+  return true;
+}
+
+/**
  * Check if user can bypass feature flag restrictions
  * Admins and mentors can see disabled features
  */

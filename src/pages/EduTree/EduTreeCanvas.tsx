@@ -54,7 +54,7 @@ import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './da
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
-import { EduTreeError } from '../../components/EduTreeError';
+import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
 
@@ -159,7 +159,7 @@ function EduTreeCanvasInner() {
     () => transformEducationData(
       { blocks, courses, blockMembers, gates, gateEdges },
       completedCourseIds,
-      { ...flags, overlayEnabled },
+      { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() },
       undefined,
       primaryTrackId
     ),
