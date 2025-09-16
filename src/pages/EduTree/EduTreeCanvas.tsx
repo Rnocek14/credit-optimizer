@@ -121,11 +121,7 @@ function EduTreeCanvasInner() {
     return raw && VALID.has(raw) ? raw : undefined;
   });
 
-  // ReactFlow key for remounting when overlay settings change
-  const reactFlowKey = useMemo(
-    () => `${overlayEnabled ? 'overlay' : 'base'}-${primaryTrackId}-${comparisonTrackId ?? 'none'}`,
-    [overlayEnabled, primaryTrackId, comparisonTrackId]
-  );
+  // Remove ReactFlow remounting - just change classes instead
 
   // Node types mapping for ReactFlow
   const nodeTypes = useMemo(() => {
@@ -627,7 +623,6 @@ function EduTreeCanvasInner() {
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
-          key={reactFlowKey}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}

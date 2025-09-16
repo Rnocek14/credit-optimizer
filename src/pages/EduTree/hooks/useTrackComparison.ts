@@ -193,17 +193,19 @@ export function useTrackComparison({
 
     return edges.map(edge => {
       // Preserve original classes but clean highlight management
-      const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-      let hlClass = 'hl';
+      const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('edge--')) : [];
+      let hlClass = '';
       
-      if (highlights.sharedEdges.has(edge.id)) {
-        hlClass += ' hl--both';
-      } else if (highlights.primaryEdges.has(edge.id)) {
-        hlClass += ' hl--primary';
-      } else if (highlights.comparisonEdges.has(edge.id)) {
-        hlClass += ' hl--comparison';
-      } else {
-        hlClass += ' hl--dim';
+      if (overlayEnabled) {
+        if (highlights.sharedEdges.has(edge.id)) {
+          hlClass = 'edge--both';
+        } else if (highlights.primaryEdges.has(edge.id)) {
+          hlClass = 'edge--primary';
+        } else if (highlights.comparisonEdges.has(edge.id)) {
+          hlClass = 'edge--comparison';
+        } else {
+          hlClass = 'edge--dim';
+        }
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -212,7 +214,7 @@ export function useTrackComparison({
 
       return {
         ...edge,
-        className: [...baseClasses, hlClass].join(' ')
+        className: [...baseClasses, hlClass].filter(Boolean).join(' ')
       };
     });
   }, [edges, highlights, overlayEnabled]);

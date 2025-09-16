@@ -1,6 +1,6 @@
-/* Track Comparison Overlay Styles - Single Source of Truth */
+/* Track Comparison Overlay Styles - Simplified approach based on POC */
 
-/* Color palette for overlay - refined and muted */
+/* Color palette for overlay */
 :root {
   --lp-primary:  hsl(210, 100%, 67%);
   --lp-compare:  hsl(340, 100%, 75%);
@@ -19,12 +19,7 @@
   pointer-events: auto;
 }
 
-/* Base classes - no transitions to prevent ghosting */
-.hl { 
-  /* Removed transitions to prevent visual artifacts */
-}
-
-/* Node highlight states - refined and subtle */
+/* Node highlight states */
 .hl--dim { 
   opacity: 0.4;
   filter: grayscale(30%);
@@ -48,92 +43,28 @@
   box-shadow: 0 0 8px hsla(140, 85%, 70%, 0.25);
 }
 
-/* ReactFlow Edge Styles - Comprehensive reset and base styling */
-
-/* Step 1: Block transitions from other React Flow instances */
-.edu-tree-canvas .react-flow__edge,
-.edu-tree-canvas .react-flow__node {
-  transition: none !important;
+/* Edge styles - Simple and direct like the POC */
+.edu-tree-canvas .react-flow__edge.edge--primary .react-flow__edge-path {
+  stroke: var(--lp-primary-muted);
+  stroke-width: 2px;
 }
 
-/* Step 2: Hide ALL non-visual edge paths - React Flow creates 3 paths per edge */
-.edu-tree-canvas .react-flow__edge-interaction,
-.edu-tree-canvas .react-flow__edge-background,
-.edu-tree-canvas .react-flow__edge-updater {
-  display: none !important;
-  visibility: hidden !important;
+.edu-tree-canvas .react-flow__edge.edge--comparison .react-flow__edge-path {
+  stroke: var(--lp-compare-muted);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
 }
 
-/* Hide extra paths using structural selectors as fallback */
-.edu-tree-canvas .react-flow__edge path:not(.react-flow__edge-path) {
-  display: none !important;
-  visibility: hidden !important;
+.edu-tree-canvas .react-flow__edge.edge--both .react-flow__edge-path {
+  stroke: var(--lp-shared-muted);
+  stroke-width: 4px;
 }
 
-/* Step 3: CRITICAL - Base edge styles with maximum specificity */
-/* This MUST come before any resets to ensure visibility */
-.edu-tree-canvas .react-flow__edge .react-flow__edge-path,
-.edu-tree-canvas .react-flow__edge-path {
-  stroke: hsl(0, 0%, 70%) !important;
-  stroke-width: 2px !important;
-  opacity: 1 !important;
-  stroke-linecap: round !important;
-  transition: none !important;
-  fill: none !important;
-  pointer-events: stroke !important;
+.edu-tree-canvas .react-flow__edge.edge--dim .react-flow__edge-path {
+  opacity: 0.25;
 }
 
-/* Step 4: Reset LifePath classes AFTER base styles are set */
-.edu-tree-canvas .react-flow__edge-path.lp-edge-on-path,
-.edu-tree-canvas .react-flow__edge-path.lp-edge-related,
-.edu-tree-canvas .react-flow__edge-path.lp-edge-off-path {
-  stroke: hsl(0, 0%, 70%) !important; /* Don't unset, override with our color */
-  stroke-width: 2px !important; /* Don't unset, override with our width */
-  opacity: 1 !important; /* Don't unset, ensure visibility */
-}
-
-/* Degree edge specific styles */
-.edu-tree-canvas .react-flow__edge.degree-edge .react-flow__edge-path {
-  stroke: hsl(45, 95%, 55%) !important; /* Gold color for degree edges */
-  stroke-width: 3px !important;
-  opacity: 0.8 !important;
-}
-
-/* Consolidated edge styles */
-.edu-tree-canvas .react-flow__edge.edge-consolidated .react-flow__edge-path {
-  stroke-width: 3px !important;
-}
-
-/* Highlight states - instant changes, no transitions */
-.edu-tree-canvas .react-flow__edge.hl.hl--dim .react-flow__edge-path {
-  stroke: hsl(0, 0%, 70%) !important;
-  stroke-width: 1px !important;
-  opacity: 0.3 !important;
-  stroke-linecap: round;
-}
-
-.edu-tree-canvas .react-flow__edge.hl.hl--primary .react-flow__edge-path {
-  stroke: var(--lp-primary-muted) !important;
-  stroke-width: 2px !important;
-  opacity: 1 !important;
-  stroke-linecap: round;
-}
-
-.edu-tree-canvas .react-flow__edge.hl.hl--comparison .react-flow__edge-path {
-  stroke: var(--lp-compare-muted) !important;
-  stroke-width: 2px !important;
-  opacity: 1 !important;
-  stroke-linecap: round;
-}
-
-.edu-tree-canvas .react-flow__edge.hl.hl--both .react-flow__edge-path {
-  stroke: var(--lp-shared-muted) !important;
-  stroke-width: 2.5px !important;
-  opacity: 1 !important;
-  stroke-linecap: round;
-}
-
-/* Hover effects - simplified */
+/* Hover effects */
 .hl--primary:hover,
 .hl--comparison:hover,
 .hl--both:hover {
