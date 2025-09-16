@@ -290,14 +290,20 @@ function EduTreeCanvasInner() {
     if (wasLayouting && !isLayouting) {
       console.log('[EduTree Layout] Layout complete, overlay hidden');
 
-      if (pendingResizeRef.current) {
+      // Add delay to prevent immediate re-layout and only if nodes exist
+      if (pendingResizeRef.current && flowNodes.length > 0) {
         console.log('[EduTree Layout] Running queued resize after layout completion');
-        scheduleLayout();
+        // Use timeout to break potential recursion
+        setTimeout(() => {
+          if (pendingResizeRef.current && !layoutInProgressRef.current) {
+            scheduleLayout();
+          }
+        }, 100);
       }
     }
 
     prevIsLayoutingRef.current = isLayouting;
-  }, [isLayouting, scheduleLayout]);
+  }, [isLayouting, scheduleLayout, flowNodes.length]);
 
   // Clear loading state when there's no data to prevent infinite loading
   useEffect(() => {
@@ -516,23 +522,18 @@ function EduTreeCanvasInner() {
       }
     };
 
-    // Set up timeout fallback (5 seconds)
+    // Set up timeout fallback (3 seconds - reduced)
     timeoutId = setTimeout(() => {
       console.warn('[EduTree Layout] Layout timed out, clearing state');
       clearLayoutState();
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
-    }, 5000);
+    }, 3000);
 
+    // Single RAF call to prevent double state clearing
     raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        try {
-          clearTimeout(timeoutId);
-          runLayout();
-        } finally {
-          clearLayoutState();
-        }
-      });
+      clearTimeout(timeoutId);
+      runLayout();
     });
 
     return () => {
@@ -542,7 +543,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId, highlights]);
+  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
