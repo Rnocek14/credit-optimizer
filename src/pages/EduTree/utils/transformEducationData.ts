@@ -179,17 +179,18 @@ export function transformEducationData(
     })
     .filter(Boolean) as Node[];
 
-  // Create edges with consolidation (defensive - drop any incomplete edge instead of throwing)
+  // Create edges without aggressive consolidation (defensive - drop any incomplete edge instead of throwing)
   const regularEdges: Edge[] = [];
   
-  // Group gate edges by target block to consolidate multiple prerequisites
-  const edgesByTarget = new Map<string, Array<{
+  // Track edges by unique source-target pair to identify true duplicates only
+  const edgeMap = new Map<string, {
     gateEdge: GateEdge;
     sourceBlockId: string;
+    targetBlockId: string;
     sourceBlock: BlockWithCourses | undefined;
-  }>>();
+  }[]>();
   
-  // First pass: collect and validate all edges
+  // First pass: collect and validate all edges, group only true duplicates
   for (const gateEdge of gateEdges) {
     if (!gateEdge?.source_gate_id || !gateEdge?.target_block_id) continue;
     
@@ -204,86 +205,52 @@ export function transformEducationData(
 
     const sourceBlock = blocksWithCourses.find(b => String(b.id) === sourceBlockId);
     
-    if (!edgesByTarget.has(targetBlockId)) {
-      edgesByTarget.set(targetBlockId, []);
+    // Create unique key for this specific source->target pair
+    const edgeKey = `${sourceBlockId}->${targetBlockId}`;
+    
+    if (!edgeMap.has(edgeKey)) {
+      edgeMap.set(edgeKey, []);
     }
     
-    edgesByTarget.get(targetBlockId)!.push({
+    edgeMap.get(edgeKey)!.push({
       gateEdge,
       sourceBlockId,
+      targetBlockId,
       sourceBlock
     });
   }
 
-  // Second pass: create consolidated edges
-  for (const [targetBlockId, edgeGroup] of edgesByTarget) {
-    if (edgeGroup.length === 1) {
-      // Single prerequisite - create normal edge
-      const { sourceBlockId } = edgeGroup[0];
-      regularEdges.push({
-        id: `e-${sourceBlockId}-${targetBlockId}`,
-        source: sourceBlockId,
-        target: targetBlockId,
-        type: 'smoothstep',
-        className: 'edge',
-        style: {
-          stroke: 'var(--primary)',
-          strokeWidth: 2,
-          opacity: 0.65
-        },
-        data: {
-          prerequisites: edgeGroup.map(e => ({
-            blockId: e.sourceBlockId,
-            title: e.sourceBlock?.title || 'Unknown',
-            levelYear: e.sourceBlock?.level_year || 0
-          }))
-        }
-      });
-    } else {
-      // Multiple prerequisites - create consolidated edge from the "primary" prerequisite
-      console.log(`[EduTree] Consolidating ${edgeGroup.length} prerequisites for target ${targetBlockId}:`, 
-        edgeGroup.map(e => `${e.sourceBlock?.title} (Y${e.sourceBlock?.level_year})`));
-      
-      // Primary = latest level_year, then alphabetically last title
-      const primary = edgeGroup.reduce((best, current) => {
-        const bestLevel = best.sourceBlock?.level_year || 0;
-        const currentLevel = current.sourceBlock?.level_year || 0;
-        
-        if (currentLevel > bestLevel) return current;
-        if (currentLevel < bestLevel) return best;
-        
-        // Same level - use alphabetically last title
-        const bestTitle = best.sourceBlock?.title || '';
-        const currentTitle = current.sourceBlock?.title || '';
-        return currentTitle > bestTitle ? current : best;
-      });
-
-      regularEdges.push({
-        id: `e-${primary.sourceBlockId}-${targetBlockId}`,
-        source: primary.sourceBlockId,
-        target: targetBlockId,
-        type: 'smoothstep',
-        className: 'edge edge-consolidated',
-        style: {
-          stroke: 'var(--primary)',
-          strokeWidth: 3, // Slightly thicker to indicate consolidation
-          opacity: 0.75
-        },
-        data: {
-          isConsolidated: true,
-          primaryPrerequisite: {
-            blockId: primary.sourceBlockId,
-            title: primary.sourceBlock?.title || 'Unknown',
-            levelYear: primary.sourceBlock?.level_year || 0
-          },
-          prerequisites: edgeGroup.map(e => ({
-            blockId: e.sourceBlockId,
-            title: e.sourceBlock?.title || 'Unknown',
-            levelYear: e.sourceBlock?.level_year || 0
-          }))
-        }
-      });
+  // Second pass: create edges - preserve all unique paths, consolidate only true duplicates
+  for (const [edgeKey, duplicates] of edgeMap) {
+    const { sourceBlockId, targetBlockId, sourceBlock } = duplicates[0];
+    
+    if (duplicates.length > 1) {
+      // True duplicates found - consolidate
+      console.log(`[EduTree] Found ${duplicates.length} duplicate edges for ${edgeKey}, consolidating`);
     }
+    
+    // Create single edge for this unique source->target path
+    regularEdges.push({
+      id: `e-${sourceBlockId}-${targetBlockId}`,
+      source: sourceBlockId,
+      target: targetBlockId,
+      type: 'smoothstep',
+      className: duplicates.length > 1 ? 'edge edge-consolidated' : 'edge',
+      style: {
+        stroke: 'var(--primary)',
+        strokeWidth: duplicates.length > 1 ? 3 : 2, // Thicker if consolidated
+        opacity: 0.65
+      },
+      data: {
+        isConsolidated: duplicates.length > 1,
+        prerequisite: {
+          blockId: sourceBlockId,
+          title: sourceBlock?.title || 'Unknown',
+          levelYear: sourceBlock?.level_year || 0
+        },
+        duplicateCount: duplicates.length
+      }
+    });
   }
 
   // Add degree completion node (defensive)
