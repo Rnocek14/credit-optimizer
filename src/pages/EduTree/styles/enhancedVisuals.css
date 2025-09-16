@@ -1,233 +1,265 @@
-/* Enhanced Visual Styling for EduTree - Better readability and reduced crossings */
+/* Enhanced visual styles for EduTree with clear track separation and improved flow */
 
-/* Enhanced track colors with better contrast */
-:root {
-  --track-software-engineering: hsl(220, 90%, 56%);
-  --track-data-science: hsl(160, 84%, 39%);
-  --track-shared: hsl(270, 60%, 60%);
-  --track-decision: hsl(45, 95%, 50%);
-  
-  /* Muted versions for subtle effects */
-  --track-software-engineering-muted: hsl(220, 60%, 45%);
-  --track-data-science-muted: hsl(160, 60%, 30%);
-  --track-shared-muted: hsl(270, 40%, 50%);
-  --track-decision-muted: hsl(45, 70%, 40%);
-  
-  /* Background lanes */
-  --lane-software-engineering: hsla(220, 90%, 56%, 0.03);
-  --lane-data-science: hsla(160, 84%, 39%, 0.03);
-  --lane-shared: hsla(270, 60%, 60%, 0.03);
-}
-
-/* Visual lanes for track separation */
-.edu-tree-canvas {
-  position: relative;
-}
-
-.edu-tree-canvas::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    var(--lane-shared) 0%,
-    var(--lane-shared) 33%,
-    var(--lane-software-engineering) 33%,
-    var(--lane-software-engineering) 66%,
-    var(--lane-data-science) 66%,
-    var(--lane-data-science) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Enhanced node styling based on track and role */
-.node {
+/* Base node styling with enhanced visual hierarchy */
+.react-flow__node {
+  border-radius: 16px;
+  border-width: 2px;
+  border-style: solid;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.12);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   position: relative;
-  z-index: 10;
+  overflow: hidden;
 }
 
-/* Decision point nodes - special highlighting */
-.node[data-is-decision-point="true"] {
-  position: relative;
+.react-flow__node:hover {
+  box-shadow: 
+    0 12px 28px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-3px);
 }
 
-.node[data-is-decision-point="true"]::before {
+/* Track-specific node styling with enhanced colors */
+.react-flow__node[data-track="data-science"] {
+  border-color: #2563EB;
+  background: linear-gradient(135deg, #F0F7FF 0%, #E0F0FF 100%);
+  box-shadow: 
+    0 4px 12px rgba(37, 99, 235, 0.15),
+    0 1px 3px rgba(37, 99, 235, 0.08);
+}
+
+.react-flow__node[data-track="software-engineering"] {
+  border-color: #059669;
+  background: linear-gradient(135deg, #F0FDF9 0%, #E0F9F0 100%);
+  box-shadow: 
+    0 4px 12px rgba(5, 150, 105, 0.15),
+    0 1px 3px rgba(5, 150, 105, 0.08);
+}
+
+.react-flow__node[data-track="core"] {
+  border-color: #4F46E5;
+  background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+  box-shadow: 
+    0 4px 12px rgba(79, 70, 229, 0.15),
+    0 1px 3px rgba(79, 70, 229, 0.08);
+}
+
+.react-flow__node[data-track="terminal"] {
+  border-color: #D97706;
+  background: linear-gradient(135deg, #FFFAF0 0%, #FEF3E2 100%);
+  border-width: 3px;
+  box-shadow: 
+    0 6px 20px rgba(217, 119, 6, 0.2),
+    0 2px 6px rgba(217, 119, 6, 0.1);
+}
+
+/* Decision point enhanced styling */
+.react-flow__node.decision-point {
+  border-width: 3px;
+  position: relative;
+  overflow: visible;
+}
+
+.react-flow__node.decision-point::before {
   content: '';
   position: absolute;
-  top: -8px;
-  left: -8px;
-  right: -8px;
-  bottom: -8px;
-  background: linear-gradient(135deg, var(--track-decision), var(--track-decision-muted));
-  border-radius: 12px;
-  opacity: 0.1;
-  z-index: -1;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border: 2px solid #4F46E5;
+  border-radius: 20px;
+  opacity: 0.4;
+  animation: decisionPulse 3s ease-in-out infinite;
 }
 
-.node[data-is-decision-point="true"]::after {
-  content: '⚡';
+.react-flow__node.decision-point::after {
+  content: 'Decision Point';
   position: absolute;
   top: -12px;
-  right: -12px;
-  font-size: 16px;
-  background: var(--track-decision);
+  right: -8px;
+  background: #4F46E5;
   color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  z-index: 20;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Track-specific node styling */
-.node[data-tracks*="software-engineering"] {
-  border-left: 4px solid var(--track-software-engineering);
+@keyframes decisionPulse {
+  0%, 100% { 
+    opacity: 0.4; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: scale(1.02);
+  }
 }
 
-.node[data-tracks*="data-science"] {
-  border-left: 4px solid var(--track-data-science);
-}
-
-.node[data-is-shared="true"] {
-  border-left: 4px solid var(--track-shared);
-  background: var(--lane-shared);
-}
-
-/* Enhanced edge styling with better routing visualization */
+/* Enhanced edge styling with track awareness */
 .react-flow__edge {
-  z-index: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* Base edge styles */
-.react-flow__edge .react-flow__edge-path {
-  stroke: hsl(var(--muted-foreground));
+.edge-enhanced {
   stroke-width: 2px;
   transition: all 0.3s ease;
 }
 
-/* Long span edges - thicker and more visible */
-.react-flow__edge.edge-long-span .react-flow__edge-path {
+.edge-enhanced:hover {
   stroke-width: 3px;
-  stroke: var(--track-shared-muted);
-  stroke-dasharray: 8 4;
-  animation: dash 2s linear infinite;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-/* Vertical span edges - different styling */
-.react-flow__edge.edge-vertical-span .react-flow__edge-path {
-  stroke-width: 2.5px;
-  stroke: var(--track-decision-muted);
-}
-
-/* Track-specific edge colors */
-.react-flow__edge.edge--primary .react-flow__edge-path {
-  stroke: var(--track-software-engineering);
+.edge-decision-branch {
   stroke-width: 3px;
+  stroke-dasharray: 8,4;
+  animation: dashFlow 2s linear infinite;
 }
 
-.react-flow__edge.edge--comparison .react-flow__edge-path {
-  stroke: var(--track-data-science);
-  stroke-width: 3px;
-  stroke-dasharray: 8 4;
+@keyframes dashFlow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 24; }
 }
 
-.react-flow__edge.edge--both .react-flow__edge-path {
-  stroke: var(--track-shared);
+.edge-terminal {
+  stroke-width: 5px;
+  filter: drop-shadow(0 3px 8px rgba(217, 119, 6, 0.25));
+}
+
+.edge-capstone {
   stroke-width: 4px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
 }
 
-.react-flow__edge.edge--dim .react-flow__edge-path {
-  opacity: 0.2;
-  stroke-width: 1px;
+.edge-long-vertical {
+  stroke-dasharray: 6,3;
+  opacity: 0.8;
 }
 
-/* Animated dash effect for long connections */
-@keyframes dash {
-  0% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -24;
-  }
+/* Track lane visual indicators */
+.edu-tree-container {
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.02) 0%, transparent 70%);
 }
 
-/* Enhanced hover effects */
-.node:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px hsla(var(--primary), 0.15);
+/* Data Science lane (left side) */
+.edu-tree-container::before {
+  content: 'Data Science Track';
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Software Engineering lane (right side) */
+.edu-tree-container::after {
+  content: 'Software Engineering Track';
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+/* Level progression indicators */
+.level-progression {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
   z-index: 100;
 }
 
-.node:hover .react-flow__edge[data-source] {
-  opacity: 1;
+.level-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #CBD5E1;
+  border: 2px solid #E2E8F0;
+  transition: all 0.3s ease;
 }
 
-.node:hover .react-flow__edge[data-target] {
-  opacity: 1;
+.level-dot.active {
+  background: #4F46E5;
+  border-color: #4F46E5;
+  box-shadow: 0 0 12px rgba(79, 70, 229, 0.4);
 }
 
-/* Focus states for accessibility */
-.node:focus {
-  outline: 2px solid var(--track-decision);
-  outline-offset: 4px;
-}
-
-/* Level indicators */
-.node::before {
-  content: attr(data-level);
+/* Connection flow lines (subtle background guides) */
+.track-flow-guide {
   position: absolute;
-  top: -8px;
-  left: 8px;
-  background: hsla(var(--muted), 0.8);
-  color: var(--muted-foreground);
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-  z-index: 15;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(79, 70, 229, 0.1) 20%,
+    rgba(79, 70, 229, 0.1) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: -1;
 }
 
-/* Progressive disclosure - hide level indicators when not needed */
-.edu-tree-canvas[data-overlay-enabled="true"] .node::before {
-  display: none;
+.track-flow-guide.data-science {
+  left: 25%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(37, 99, 235, 0.1) 20%,
+    rgba(37, 99, 235, 0.1) 80%,
+    transparent 100%
+  );
 }
 
-/* Responsive adjustments */
+.track-flow-guide.software-engineering {
+  right: 25%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(5, 150, 105, 0.1) 20%,
+    rgba(5, 150, 105, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+/* Responsive enhancements */
 @media (max-width: 768px) {
-  .node[data-is-decision-point="true"]::after {
-    width: 20px;
-    height: 20px;
+  .react-flow__node {
+    border-radius: 12px;
+  }
+  
+  .edu-tree-container::before,
+  .edu-tree-container::after {
     font-size: 10px;
-    top: -10px;
-    right: -10px;
+    padding: 6px 12px;
   }
   
-  .react-flow__edge .react-flow__edge-path {
-    stroke-width: 1.5px;
-  }
-  
-  .react-flow__edge.edge-long-span .react-flow__edge-path {
-    stroke-width: 2px;
-  }
-}
-
-/* Dark mode enhancements */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --lane-software-engineering: hsla(220, 90%, 56%, 0.05);
-    --lane-data-science: hsla(160, 84%, 39%, 0.05);
-    --lane-shared: hsla(270, 60%, 60%, 0.05);
-  }
-  
-  .node[data-is-decision-point="true"]::before {
-    opacity: 0.15;
+  .level-dot {
+    width: 10px;
+    height: 10px;
   }
 }

@@ -1,319 +1,275 @@
+// Enhanced layout algorithm for EduTree with better visual clarity and track separation
 import { Node, Edge } from '@xyflow/react';
-import { RequirementBlock } from '@/lib/types/eduTree';
-import { TrackId, TRACK_DEFINITIONS } from '../data/trackDefinitions';
 
-export interface LayoutNode {
-  id: string;
+interface LayoutNode extends Node {
   level: number;
-  blockId: string;
-  title: string;
-  isTrackSpecific: boolean;
-  tracks: TrackId[];
-  isDecisionPoint: boolean;
-  isDegreeNode: boolean;
-  children: string[];
+  trackAffinity?: string;
+  isDecisionPoint?: boolean;
+  trackSpecific?: boolean;
+  isCoreBlock?: boolean;
+  isTerminal?: boolean;
 }
 
-export interface LayoutConfig {
-  baseColumnWidth: number;
-  baseRowHeight: number;
-  levelPadding: number;
-  trackSeparation: number;
+interface LayoutConfig {
+  levelSpacing: number;
+  nodeSpacing: number;
+  trackLaneSpacing: number;
+  baseNodeWidth: number;
+  baseNodeHeight: number;
+  terminalNodeOffset: number;
   decisionPointSpacing: number;
-  enableSmartSpacing: boolean;
-  enableTrackLanes: boolean;
 }
 
 const DEFAULT_CONFIG: LayoutConfig = {
-  baseColumnWidth: 320,
-  baseRowHeight: 100,
-  levelPadding: 80,
-  trackSeparation: 60,
-  decisionPointSpacing: 40,
-  enableSmartSpacing: true,
-  enableTrackLanes: true
+  levelSpacing: 280,
+  nodeSpacing: 120,
+  trackLaneSpacing: 150,
+  baseNodeWidth: 200,
+  baseNodeHeight: 80,
+  terminalNodeOffset: 100,
+  decisionPointSpacing: 60
 };
 
-// Decision points where tracks diverge/merge
-const DECISION_POINTS = new Set(['specializations', 'data-analysis']);
-const SHARED_FOUNDATION = new Set(['foundations', 'mathematics', 'general-education', 'core-i', 'core-ii']);
+// Track definitions for visual separation
+const TRACK_DEFINITIONS = {
+  'data-science': {
+    color: '#2563EB',
+    lane: -1,
+    blocks: ['data-analysis', 'machine-learning', 'capstone-data-science']
+  },
+  'software-engineering': {
+    color: '#059669',
+    lane: 1,
+    blocks: ['specializations', 'architecture', 'capstone-software-engineering']
+  },
+  'core': {
+    color: '#4F46E5',
+    lane: 0,
+    blocks: ['foundations', 'general-education', 'mathematics', 'core-i', 'core-ii']
+  },
+  'terminal': {
+    color: '#D97706',
+    lane: 0,
+    blocks: ['degree-completion']
+  }
+};
 
-/**
- * Enhanced layout algorithm that addresses:
- * 1. Level overcrowding through smart column width
- * 2. Edge crossings through track-aware positioning
- * 3. Visual hierarchy through decision point emphasis
- * 4. Track separation through visual lanes
- */
-export function enhancedEduTreeLayout(
+export const enhancedEduTreeLayout = (
   nodes: Node[],
   edges: Edge[],
-  primaryTrackId?: TrackId,
+  primaryTrack?: string,
   config: Partial<LayoutConfig> = {}
-): { nodes: Node[]; edges: Edge[] } {
-  const layoutConfig = { ...DEFAULT_CONFIG, ...config };
+): { nodes: Node[]; edges: Edge[] } => {
+  const finalConfig = { ...DEFAULT_CONFIG, ...config };
   
-  // Build layout node structure
+  // Build layout nodes with enhanced metadata and track assignment
   const layoutNodes = buildLayoutNodes(nodes, edges);
   
-  // Group nodes by level
+  // Group nodes by level for positioning
   const nodesByLevel = groupNodesByLevel(layoutNodes);
   
-  // Calculate smart column widths based on level density
-  const columnWidths = calculateSmartColumnWidths(nodesByLevel, layoutConfig);
-  
-  // Position nodes using enhanced algorithm
-  const positionedNodes = positionNodesWithTrackAwareness(
-    nodes, 
-    layoutNodes, 
-    nodesByLevel, 
-    columnWidths, 
-    primaryTrackId,
-    layoutConfig
+  // Calculate smart positioning with track lanes
+  const positionedNodes = positionNodesWithTrackLanes(
+    nodesByLevel,
+    finalConfig
   );
   
-  // Generate enhanced edges with routing
-  const enhancedEdges = enhanceEdgeRouting(edges, positionedNodes, layoutConfig);
+  // Enhance edge routing with track-aware styling
+  const enhancedEdges = enhanceEdgeRoutingWithTracks(edges, positionedNodes);
   
   return {
     nodes: positionedNodes,
     edges: enhancedEdges
   };
-}
+};
 
-function buildLayoutNodes(nodes: Node[], edges: Edge[]): Map<string, LayoutNode> {
-  const layoutNodes = new Map<string, LayoutNode>();
-  
-  // Build adjacency list for children
-  const childrenMap = new Map<string, string[]>();
-  edges.forEach(edge => {
-    if (!childrenMap.has(edge.source)) {
-      childrenMap.set(edge.source, []);
-    }
-    childrenMap.get(edge.source)!.push(edge.target);
-  });
-  
-  nodes.forEach(node => {
-    const blockData = node.data?.block as any;
-    if (!blockData) return;
-    
-    const slug = blockData.slug || blockData.id || node.id;
-    const level = blockData.level_year || 0;
-    
-    // Determine which tracks this node belongs to
-    const belongsToTracks: TrackId[] = [];
-    TRACK_DEFINITIONS.forEach(track => {
-      if (track.blockIds.includes(slug)) {
-        belongsToTracks.push(track.id);
-      }
-    });
-    
-    const isTrackSpecific = belongsToTracks.length > 0 && belongsToTracks.length < TRACK_DEFINITIONS.length;
-    const isDecisionPoint = DECISION_POINTS.has(slug);
-    const isDegreeNode = node.type === 'terminalNode' || slug === 'degree-completion';
-    
-    layoutNodes.set(node.id, {
-      id: node.id,
-      level,
-      blockId: slug,
-      title: (blockData as any).title || 'Unknown',
-      isTrackSpecific,
-      tracks: belongsToTracks,
-      isDecisionPoint,
-      isDegreeNode,
-      children: childrenMap.get(node.id) || []
-    });
-  });
-  
-  return layoutNodes;
-}
-
-function groupNodesByLevel(layoutNodes: Map<string, LayoutNode>): Map<number, LayoutNode[]> {
-  const nodesByLevel = new Map<number, LayoutNode[]>();
-  
-  layoutNodes.forEach(node => {
-    if (!nodesByLevel.has(node.level)) {
-      nodesByLevel.set(node.level, []);
-    }
-    nodesByLevel.get(node.level)!.push(node);
-  });
-  
-  // Sort nodes within each level for consistent ordering
-  nodesByLevel.forEach(levelNodes => {
-    levelNodes.sort((a, b) => {
-      // Decision points first
-      if (a.isDecisionPoint && !b.isDecisionPoint) return -1;
-      if (!a.isDecisionPoint && b.isDecisionPoint) return 1;
-      
-      // Shared foundation next
-      const aIsShared = SHARED_FOUNDATION.has(a.blockId);
-      const bIsShared = SHARED_FOUNDATION.has(b.blockId);
-      if (aIsShared && !bIsShared) return -1;
-      if (!aIsShared && bIsShared) return 1;
-      
-      // Then by title
-      return a.title.localeCompare(b.title);
-    });
-  });
-  
-  return nodesByLevel;
-}
-
-function calculateSmartColumnWidths(
-  nodesByLevel: Map<number, LayoutNode[]>,
-  config: LayoutConfig
-): Map<number, number> {
-  const columnWidths = new Map<number, number>();
-  
-  nodesByLevel.forEach((levelNodes, level) => {
-    const nodeCount = levelNodes.length;
-    
-    // Base width adjusted for node density
-    let width = config.baseColumnWidth;
-    
-    if (nodeCount > 3) {
-      // Expand column for crowded levels
-      width = config.baseColumnWidth * 1.4;
-    } else if (nodeCount === 1) {
-      // Compress column for single nodes
-      width = config.baseColumnWidth * 0.8;
-    }
-    
-    // Extra width for decision points
-    const hasDecisionPoint = levelNodes.some(node => node.isDecisionPoint);
-    if (hasDecisionPoint) {
-      width += config.decisionPointSpacing;
-    }
-    
-    columnWidths.set(level, width);
-  });
-  
-  return columnWidths;
-}
-
-function positionNodesWithTrackAwareness(
-  nodes: Node[],
-  layoutNodes: Map<string, LayoutNode>,
-  nodesByLevel: Map<number, LayoutNode[]>,
-  columnWidths: Map<number, number>,
-  primaryTrackId: TrackId | undefined,
-  config: LayoutConfig
-): Node[] {
-  let cumulativeX = 0;
-  const levelPositions = new Map<number, number>();
-  
-  // Calculate X positions for each level
-  Array.from(nodesByLevel.keys()).sort((a, b) => a - b).forEach(level => {
-    levelPositions.set(level, cumulativeX);
-    cumulativeX += columnWidths.get(level) || config.baseColumnWidth;
-  });
-  
+// Helper functions for enhanced layout
+function buildLayoutNodes(nodes: Node[], edges: Edge[]): LayoutNode[] {
   return nodes.map(node => {
-    const layoutNode = layoutNodes.get(node.id);
-    if (!layoutNode) return node;
+    const blockData = node.data?.block as any;
+    const slug = blockData?.slug || '';
     
-    const levelNodes = nodesByLevel.get(layoutNode.level) || [];
-    const nodeIndex = levelNodes.findIndex(n => n.id === node.id);
-    const baseX = levelPositions.get(layoutNode.level) || 0;
-    
-    // Calculate Y position with track-aware spacing
-    let yOffset = 0;
-    if (config.enableTrackLanes && layoutNode.isTrackSpecific) {
-      // Group track-specific nodes with slight vertical offset
-      const trackOffset = getTrackOffset(layoutNode.tracks, primaryTrackId);
-      yOffset = trackOffset * config.trackSeparation;
-    }
-    
-    // Special positioning for decision points
-    if (layoutNode.isDecisionPoint) {
-      yOffset -= config.decisionPointSpacing * 0.5; // Center decision points
-    }
-    
-    const x = baseX;
-    const y = nodeIndex * config.baseRowHeight + yOffset;
+    // Determine track affinity and characteristics
+    const trackInfo = getTrackInfo(slug);
+    const isDecisionPoint = ['core-ii'].includes(slug);
+    const isCoreBlock = TRACK_DEFINITIONS.core.blocks.includes(slug);
+    const isTerminal = slug === 'degree-completion';
     
     return {
       ...node,
-      position: { x, y },
-      data: {
-        ...node.data,
-        layoutInfo: {
-          level: layoutNode.level,
-          isDecisionPoint: layoutNode.isDecisionPoint,
-          isTrackSpecific: layoutNode.isTrackSpecific,
-          tracks: layoutNode.tracks
-        }
-      }
+      level: blockData?.level_year || 1,
+      trackAffinity: trackInfo.track,
+      isDecisionPoint,
+      trackSpecific: !isCoreBlock && !isTerminal,
+      isCoreBlock,
+      isTerminal
     };
   });
 }
 
-function getTrackOffset(nodeTracks: TrackId[], primaryTrackId?: TrackId): number {
-  if (!primaryTrackId || nodeTracks.length === 0) return 0;
-  
-  // Primary track nodes get slight upward offset
-  if (nodeTracks.includes(primaryTrackId)) {
-    return -0.3;
+function getTrackInfo(slug: string): { track: string; lane: number; color: string } {
+  for (const [trackName, trackData] of Object.entries(TRACK_DEFINITIONS)) {
+    if (trackData.blocks.includes(slug)) {
+      return {
+        track: trackName,
+        lane: trackData.lane,
+        color: trackData.color
+      };
+    }
   }
-  
-  // Other track-specific nodes get slight downward offset
-  return 0.3;
+  return { track: 'core', lane: 0, color: TRACK_DEFINITIONS.core.color };
 }
 
-function enhanceEdgeRouting(
-  edges: Edge[],
-  nodes: Node[],
-  config: LayoutConfig
-): Edge[] {
-  const nodePositions = new Map<string, { x: number; y: number }>();
+function groupNodesByLevel(nodes: LayoutNode[]): Map<number, LayoutNode[]> {
+  const grouped = new Map<number, LayoutNode[]>();
+  
   nodes.forEach(node => {
-    nodePositions.set(node.id, node.position);
+    const level = node.level;
+    if (!grouped.has(level)) {
+      grouped.set(level, []);
+    }
+    grouped.get(level)!.push(node);
   });
   
+  // Sort nodes within each level for optimal visual flow
+  grouped.forEach(levelNodes => {
+    levelNodes.sort((a, b) => {
+      // Core blocks go in center
+      if (a.isCoreBlock && !b.isCoreBlock) return 0;
+      if (!a.isCoreBlock && b.isCoreBlock) return 0;
+      
+      // Terminal nodes go to center
+      if (a.isTerminal) return 0;
+      if (b.isTerminal) return 0;
+      
+      // Sort by track lane (data science left, software engineering right)
+      const aLane = getTrackInfo(a.data?.block?.slug || '').lane;
+      const bLane = getTrackInfo(b.data?.block?.slug || '').lane;
+      return aLane - bLane;
+    });
+  });
+  
+  return grouped;
+}
+
+function positionNodesWithTrackLanes(
+  nodesByLevel: Map<number, LayoutNode[]>,
+  config: LayoutConfig
+): Node[] {
+  const positionedNodes: Node[] = [];
+  let currentX = 100; // Start with some padding
+  
+  // Sort levels for proper left-to-right progression
+  const sortedLevels = Array.from(nodesByLevel.keys()).sort((a, b) => a - b);
+  
+  sortedLevels.forEach(level => {
+    const levelNodes = nodesByLevel.get(level) || [];
+    
+    // Group nodes by track lane for this level
+    const nodesByLane = new Map<number, LayoutNode[]>();
+    levelNodes.forEach(node => {
+      const lane = getTrackInfo(node.data?.block?.slug || '').lane;
+      if (!nodesByLane.has(lane)) {
+        nodesByLane.set(lane, []);
+      }
+      nodesByLane.get(lane)!.push(node);
+    });
+    
+    // Position nodes in their respective lanes
+    nodesByLane.forEach((laneNodes, lane) => {
+      const laneY = lane * config.trackLaneSpacing; // Vertical separation by track
+      let laneNodeY = laneY - ((laneNodes.length - 1) * config.nodeSpacing) / 2;
+      
+      laneNodes.forEach(node => {
+        let finalX = currentX;
+        let finalY = laneNodeY;
+        
+        // Special positioning for terminal node (degree completion)
+        if (node.isTerminal) {
+          finalX += config.terminalNodeOffset;
+          finalY = 0; // Center terminal node
+        }
+        
+        // Special positioning for decision points
+        if (node.isDecisionPoint) {
+          finalY = 0; // Center decision points
+        }
+        
+        const positionedNode: Node = {
+          ...node,
+          position: { x: finalX, y: finalY },
+          // Add track-specific data for styling
+          data: {
+            ...node.data,
+            trackInfo: getTrackInfo(node.data?.block?.slug || '')
+          }
+        };
+        
+        positionedNodes.push(positionedNode);
+        laneNodeY += config.nodeSpacing;
+      });
+    });
+    
+    currentX += config.levelSpacing;
+  });
+  
+  return positionedNodes;
+}
+
+function enhanceEdgeRoutingWithTracks(edges: Edge[], nodes: Node[]): Edge[] {
   return edges.map(edge => {
-    const sourcePos = nodePositions.get(edge.source);
-    const targetPos = nodePositions.get(edge.target);
+    const sourceNode = nodes.find(n => n.id === edge.source);
+    const targetNode = nodes.find(n => n.id === edge.target);
     
-    if (!sourcePos || !targetPos) return edge;
+    if (!sourceNode || !targetNode) return edge;
     
-    // Calculate if this edge needs special routing
-    const horizontalDistance = Math.abs(targetPos.x - sourcePos.x);
-    const verticalDistance = Math.abs(targetPos.y - sourcePos.y);
+    const sourceTrackInfo = (sourceNode.data as any)?.trackInfo || getTrackInfo('');
+    const targetTrackInfo = (targetNode.data as any)?.trackInfo || getTrackInfo('');
+    
+    const distance = Math.abs(targetNode.position.x - sourceNode.position.x);
+    const verticalDistance = Math.abs(targetNode.position.y - sourceNode.position.y);
+    const isCrossTrack = sourceTrackInfo.track !== targetTrackInfo.track;
+    const isToCapstone = (targetNode.data as any)?.block?.slug?.includes('capstone');
+    const isFromDecisionPoint = (sourceNode as LayoutNode).isDecisionPoint;
+    
+    let edgeStyle: React.CSSProperties = {
+      strokeWidth: 2,
+      stroke: sourceTrackInfo.color
+    };
     
     let edgeType = 'smoothstep';
-    let markerEnd = undefined;
+    const classes = ['edge-enhanced'];
     
-    // Use bezier for long horizontal connections to reduce crossings
-    if (horizontalDistance > config.baseColumnWidth * 1.5) {
+    if (isCrossTrack && isFromDecisionPoint) {
+      classes.push('edge-decision-branch');
+      edgeStyle.strokeDasharray = '6,3';
+      edgeStyle.strokeWidth = 3;
+      edgeStyle.stroke = targetTrackInfo.color;
+    }
+    
+    if ((targetNode.data as any)?.block?.slug === 'degree-completion') {
+      classes.push('edge-terminal');
       edgeType = 'bezier';
+      edgeStyle.strokeWidth = 4;
+      edgeStyle.stroke = TRACK_DEFINITIONS.terminal.color;
     }
     
-    // Special styling for different edge types
-    let className = edge.className || 'edge';
-    
-    // Mark edges that cross multiple levels as important
-    if (horizontalDistance > config.baseColumnWidth * 2) {
-      className += ' edge-long-span';
+    if (isToCapstone) {
+      classes.push('edge-capstone');
+      edgeStyle.strokeWidth = 3;
+      edgeStyle.stroke = targetTrackInfo.color;
     }
     
-    // Mark vertical edges differently
-    if (verticalDistance > config.baseRowHeight * 2) {
-      className += ' edge-vertical-span';
+    if (verticalDistance > 100) {
+      classes.push('edge-long-vertical');
     }
     
     return {
       ...edge,
       type: edgeType,
-      className,
-      markerEnd,
-      data: {
-        ...edge.data,
-        routingInfo: {
-          horizontalDistance,
-          verticalDistance,
-          isLongSpan: horizontalDistance > config.baseColumnWidth * 2
-        }
-      }
+      style: edgeStyle,
+      className: classes.join(' '),
+      animated: isFromDecisionPoint && isCrossTrack
     };
   });
 }
