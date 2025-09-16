@@ -9,6 +9,12 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Consolidated edge styles - represents multiple prerequisites */
+.edge-consolidated {
+  stroke-width: 3px !important;
+  opacity: 0.75 !important;
+}
+
 /* Animation for track transitions */
 @keyframes track-highlight-in {
   from {
