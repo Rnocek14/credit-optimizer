@@ -360,7 +360,7 @@ export function transformEducationData(
     const backwards = edges.filter(e => {
       const s = sortedBlocks.find(b => String(b.id) === String(e.source))?.level_year ?? -1;
       const t = sortedBlocks.find(b => String(b.id) === String(e.target))?.level_year ?? 999;
-      return !(t > s);
+      return t < s; // <-- changed from !(t > s)
     });
     if (backwards.length) {
       console.warn('[MP Overlay][ASSERT] Backward edges found', backwards.slice(0, 5));

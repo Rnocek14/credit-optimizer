@@ -10,7 +10,8 @@ export type GraphQAMetrics = {
   divergenceGateId?: string;         // shared node with edges → SE & DS
   crossingsApprox: number;           // simple O(E^2) segment intersection count (approx)
   throughNodesApprox: number;        // edges whose straight segment bbox intersects any 3rd node bbox
-  forwardEdgeViolations: number;     // edges that go from higher->lower level_year or same-level if disallowed
+  forwardEdgeViolations: number;     // strictly backward edges only now
+  sameLevelEdges: number;          // allowed, but tracked
   duplicateEdges: number;            // after id normalization
   cycleDetected: boolean;
   perf: { transformMs?: number; renderMs?: number };
@@ -102,12 +103,16 @@ export function computeGraphQAMetrics(
     }
   }
 
-  // forward-edge violations (must go to strictly higher level_year)
+  // forward-edge violations (strictly backward edges only) + same-level edges
   let forwardEdgeViolations = 0;
+  let sameLevelEdges = 0;
   for (const e of edges) {
     const lyS = opts.getLevelYear(String(e.source));
     const lyT = opts.getLevelYear(String(e.target));
-    if (lyS != null && lyT != null && !(lyT > lyS)) forwardEdgeViolations++;
+    if (lyS != null && lyT != null) {
+      if (lyT < lyS) forwardEdgeViolations++;   // backward (bad)
+      else if (lyT === lyS) sameLevelEdges++;   // allowed, track
+    }
   }
 
   // naive crossings/through-nodes (bbox approx; OK for QA)
@@ -171,7 +176,8 @@ export function computeGraphQAMetrics(
     crossingsApprox, 
     throughNodesApprox,
     forwardEdgeViolations, 
-    duplicateEdges, 
+    sameLevelEdges,
+    duplicateEdges,
     cycleDetected,
     perf: {}, 
     flags: opts.flags, 
