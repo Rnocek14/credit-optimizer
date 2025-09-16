@@ -53,12 +53,10 @@ import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
-import { useEnhancedOverlay } from './hooks/useEnhancedOverlay';
 import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
-import './styles/enhanced-overlay.css';
 
 const DEV = import.meta.env.DEV;
 const RESIZE_DEBOUNCE_MS = 120;
@@ -175,33 +173,18 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // Get enhanced track comparison highlights  
+  // Get track comparison highlights and processed edges
   const { 
-    highlightedElements,
-    trackStats
-  } = useEnhancedOverlay({
-    overlayEnabled, 
+    highlights, 
+    highlightedEdges,
+    debugInfo 
+  } = useTrackComparison({
     nodes: flowNodes,
     edges: flowEdges,
-    primaryTrack: primaryTrackId ? { 
-      name: TRACK_MAP.get(primaryTrackId)?.name || '',
-      blockIds: TRACK_MAP.get(primaryTrackId)?.blockIds || []
-    } : undefined,
-    comparisonTrack: comparisonTrackId ? {
-      name: TRACK_MAP.get(comparisonTrackId)?.name || '',
-      blockIds: TRACK_MAP.get(comparisonTrackId)?.blockIds || []
-    } : undefined
+    primaryTrackId,
+    comparisonTrackId,
+    overlayEnabled
   });
-
-  // Legacy compatibility for existing debug info
-  const debugInfo = {
-    overlayReady: true,
-    resolvedBlocks: flowNodes.length,
-    anyMatches: trackStats.shared > 0 || trackStats.primaryOnly > 0,
-    primaryCount: trackStats.shared + trackStats.primaryOnly,
-    comparisonCount: trackStats.shared + trackStats.comparisonOnly,
-    sharedCount: trackStats.shared
-  };
 
   // Remove finalNodes/finalEdges - apply highlighting directly in layout effect
 
@@ -490,8 +473,8 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        setNodes(highlightedElements.nodes.length > 0 ? highlightedElements.nodes : finalLayout);
-        setEdges(highlightedElements.edges.length > 0 ? highlightedElements.edges : flowEdges);
+        setNodes(finalLayout);
+        setEdges(highlightedEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -632,7 +615,6 @@ function EduTreeCanvasInner() {
             onPrimaryTrackChange={setPrimaryTrackId}
             comparisonTrackId={comparisonTrackId}
             onComparisonTrackChange={setComparisonTrackId}
-            trackStats={trackStats}
             debugInfo={debugInfo}
           />
         </div>
