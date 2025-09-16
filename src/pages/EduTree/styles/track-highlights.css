@@ -1,18 +1,12 @@
-/* Track comparison highlight styles - Node styles only */
+/* Track comparison highlight styles - Animations and Performance Only */
 
-/* Base node and edge classes */
+/* Base transitions for smooth animations */
 .node {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .edge {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Consolidated edge styles - represents multiple prerequisites */
-.edge-consolidated {
-  stroke-width: 3px !important;
-  opacity: 0.75 !important;
 }
 
 /* Animation for track transitions */
@@ -43,32 +37,11 @@
   will-change: opacity, transform;
 }
 
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .hl--primary {
-    outline-color: #3182ce !important;
-    box-shadow: 0 0 12px rgba(49, 130, 206, 0.4) !important;
-  }
-  
-  .hl--comparison {
-    outline-color: #ed8936 !important;
-    box-shadow: 0 0 12px rgba(237, 137, 54, 0.4) !important;
-  }
-  
-  .hl--both {
-    outline-color: #68d391 !important;
-    box-shadow: 0 0 16px rgba(104, 211, 145, 0.5) !important;
-  }
-}
-
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
   .hl--primary,
-  .hl--comparison {
-    outline-width: 2px !important;
-  }
-  
+  .hl--comparison,
   .hl--both {
-    outline-width: 3px !important;
+    outline-width: 2px !important;
   }
 }
