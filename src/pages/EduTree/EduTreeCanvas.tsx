@@ -59,6 +59,7 @@ import { safe } from './safe';
 import './styles/trackOverlay.css';
 
 const DEV = import.meta.env.DEV;
+const RESIZE_DEBOUNCE_MS = 120;
 
 // Type definitions
 type ViewMode = 'flow' | 'board';
@@ -84,6 +85,9 @@ function EduTreeCanvasInner() {
   const [showOutcomePanel, setShowOutcomePanel] = useState(true);
   const [isLayouting, setIsLayouting] = useState(false);
   const layoutInProgressRef = useRef(false);
+  const pendingResizeRef = useRef(false);
+  const resizeDebounceRef = useRef<number | null>(null);
+  const prevIsLayoutingRef = useRef(false);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -205,34 +209,76 @@ function EduTreeCanvasInner() {
     individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
   });
 
-  // Track resize events to trigger re-layout
-  useEffect(() => {
-    let rafId: number | null = null;
+  const scheduleLayout = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
 
-    const scheduleLayout = () => {
+    if (layoutInProgressRef.current) {
+      console.log('[EduTree Layout] Resize received during layout, queueing rerun');
+      pendingResizeRef.current = true;
+      return;
+    }
+
+    pendingResizeRef.current = false;
+
+    if (resizeDebounceRef.current !== null) {
+      window.clearTimeout(resizeDebounceRef.current);
+    }
+
+    resizeDebounceRef.current = window.setTimeout(() => {
+      resizeDebounceRef.current = null;
+
       if (layoutInProgressRef.current) {
+        console.log('[EduTree Layout] Debounced resize fired during layout, queueing rerun');
+        pendingResizeRef.current = true;
         return;
       }
 
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
+      console.log('[EduTree Layout] Incrementing layout version after quiet period');
+      setLayoutVersion(v => v + 1);
+    }, RESIZE_DEBOUNCE_MS);
+  }, [setLayoutVersion]);
 
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        setLayoutVersion(v => v + 1);
-      });
+  // Track resize events to trigger re-layout
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleNodeResized = () => {
+      console.log('[EduTree Layout] node:resized event received');
+      scheduleLayout();
     };
 
-    window.addEventListener('node:resized', scheduleLayout);
+    window.addEventListener('node:resized', handleNodeResized);
 
     return () => {
-      window.removeEventListener('node:resized', scheduleLayout);
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      window.removeEventListener('node:resized', handleNodeResized);
+
+      if (resizeDebounceRef.current !== null) {
+        window.clearTimeout(resizeDebounceRef.current);
+        resizeDebounceRef.current = null;
       }
+
+      pendingResizeRef.current = false;
     };
-  }, []);
+  }, [scheduleLayout]);
+
+  useEffect(() => {
+    const wasLayouting = prevIsLayoutingRef.current;
+
+    if (wasLayouting && !isLayouting) {
+      console.log('[EduTree Layout] Layout complete, overlay hidden');
+
+      if (pendingResizeRef.current) {
+        console.log('[EduTree Layout] Running queued resize after layout completion');
+        scheduleLayout();
+      }
+    }
+
+    prevIsLayoutingRef.current = isLayouting;
+  }, [isLayouting, scheduleLayout]);
 
   // Clear loading state when there's no data to prevent infinite loading
   useEffect(() => {
@@ -407,27 +453,35 @@ function EduTreeCanvasInner() {
         // Apply track highlighting directly here to ensure synchronization
         let processedEdges = flowEdges;
         if (overlayEnabled && highlights) {
-          console.log('[EduTree Layout] Applying track highlights - Primary:', highlights.primaryEdges.size, 'Comparison:', highlights.comparisonEdges.size, 'Shared:', highlights.sharedEdges.size);
-          processedEdges = flowEdges.map(edge => {
-            // Preserve original classes but clean highlight management
-            const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-            let hlClass = 'hl';
-            
-            if (highlights.sharedEdges.has(edge.id)) {
-              hlClass = 'hl--both';
-            } else if (highlights.primaryEdges.has(edge.id)) {
-              hlClass = 'hl--primary';
-            } else if (highlights.comparisonEdges.has(edge.id)) {
-              hlClass = 'hl--comparison';
-            } else {
-              hlClass = 'hl--dim';
-            }
+          const highlightEdgeIds = new Set<string>();
+          highlights.primaryEdges.forEach(id => highlightEdgeIds.add(id));
+          highlights.comparisonEdges.forEach(id => highlightEdgeIds.add(id));
+          highlights.sharedEdges.forEach(id => highlightEdgeIds.add(id));
 
-            return {
-              ...edge,
-              className: [...baseClasses, hlClass].join(' ')
-            };
-          });
+          console.log('[EduTree Layout] Applying track highlights - Primary:', highlights.primaryEdges.size, 'Comparison:', highlights.comparisonEdges.size, 'Shared:', highlights.sharedEdges.size, 'Total filtered:', highlightEdgeIds.size);
+
+          processedEdges = flowEdges
+            .filter(edge => highlightEdgeIds.has(edge.id))
+            .map(edge => {
+              // Preserve original classes but clean highlight management
+              const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
+              let hlClass = 'hl';
+
+              if (highlights.sharedEdges.has(edge.id)) {
+                hlClass = 'hl--both';
+              } else if (highlights.primaryEdges.has(edge.id)) {
+                hlClass = 'hl--primary';
+              } else if (highlights.comparisonEdges.has(edge.id)) {
+                hlClass = 'hl--comparison';
+              } else {
+                hlClass = 'hl--dim';
+              }
+
+              return {
+                ...edge,
+                className: [...baseClasses, hlClass].join(' ')
+              };
+            });
         }
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
@@ -565,6 +619,11 @@ function EduTreeCanvasInner() {
     );
   }
 
+  const reactFlowKey = useMemo(
+    () => `${overlayEnabled ? 'overlay' : 'base'}-${primaryTrackId}-${comparisonTrackId ?? 'none'}`,
+    [overlayEnabled, primaryTrackId, comparisonTrackId]
+  );
+
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative h-screen bg-background">
@@ -587,6 +646,7 @@ function EduTreeCanvasInner() {
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
+          key={reactFlowKey}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
