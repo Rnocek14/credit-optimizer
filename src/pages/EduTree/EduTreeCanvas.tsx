@@ -254,6 +254,19 @@ function EduTreeCanvasInner() {
 
     const handleNodeResized = () => {
       console.log('[EduTree Layout] node:resized event received');
+      
+      // Prevent infinite loop: ignore resize events during active layout
+      if (layoutInProgressRef.current) {
+        console.log('[EduTree Layout] Ignoring resize event during active layout');
+        return;
+      }
+      
+      // Only schedule layout if we actually have nodes to layout
+      if (flowNodes.length === 0) {
+        console.log('[EduTree Layout] Ignoring resize event - no nodes to layout');
+        return;
+      }
+      
       scheduleLayout();
     };
 
@@ -269,7 +282,7 @@ function EduTreeCanvasInner() {
 
       pendingResizeRef.current = false;
     };
-  }, [scheduleLayout]);
+  }, [scheduleLayout, flowNodes.length]);
 
   useEffect(() => {
     const wasLayouting = prevIsLayoutingRef.current;
