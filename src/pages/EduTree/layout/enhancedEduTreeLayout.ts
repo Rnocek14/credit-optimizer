@@ -143,8 +143,10 @@ function groupNodesByLevel(nodes: LayoutNode[]): Map<number, LayoutNode[]> {
       if (b.isTerminal) return 0;
       
       // Sort by track lane (data science left, software engineering right)
-      const aLane = getTrackInfo(a.data?.block?.slug || '').lane;
-      const bLane = getTrackInfo(b.data?.block?.slug || '').lane;
+      const aSlug = (a.data as any)?.block?.slug || '';
+      const bSlug = (b.data as any)?.block?.slug || '';
+      const aLane = getTrackInfo(aSlug).lane;
+      const bLane = getTrackInfo(bSlug).lane;
       return aLane - bLane;
     });
   });
@@ -168,7 +170,8 @@ function positionNodesWithTrackLanes(
     // Group nodes by track lane for this level
     const nodesByLane = new Map<number, LayoutNode[]>();
     levelNodes.forEach(node => {
-      const lane = getTrackInfo(node.data?.block?.slug || '').lane;
+      const blockSlug = (node.data as any)?.block?.slug || '';
+      const lane = getTrackInfo(blockSlug).lane;
       if (!nodesByLane.has(lane)) {
         nodesByLane.set(lane, []);
       }
@@ -195,13 +198,14 @@ function positionNodesWithTrackLanes(
           finalY = 0; // Center decision points
         }
         
+        const blockSlug = (node.data as any)?.block?.slug || '';
         const positionedNode: Node = {
           ...node,
           position: { x: finalX, y: finalY },
           // Add track-specific data for styling
           data: {
             ...node.data,
-            trackInfo: getTrackInfo(node.data?.block?.slug || '')
+            trackInfo: getTrackInfo(blockSlug)
           }
         };
         
