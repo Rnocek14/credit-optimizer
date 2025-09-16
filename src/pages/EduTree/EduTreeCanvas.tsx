@@ -177,9 +177,10 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // Get track comparison highlights for debugging - but apply inside layout effect
+  // Get track comparison highlights and processed edges
   const { 
     highlights, 
+    highlightedEdges,
     debugInfo 
   } = useTrackComparison({
     nodes: flowNodes,
@@ -475,44 +476,10 @@ function EduTreeCanvasInner() {
 
         const finalLayout = resolveCollisions(laidOut);
 
-        // Apply track highlighting directly here to ensure synchronization
-        let processedEdges = flowEdges;
-        if (overlayEnabled && highlights) {
-          const highlightEdgeIds = new Set<string>();
-          highlights.primaryEdges.forEach(id => highlightEdgeIds.add(id));
-          highlights.comparisonEdges.forEach(id => highlightEdgeIds.add(id));
-          highlights.sharedEdges.forEach(id => highlightEdgeIds.add(id));
-
-          console.log('[EduTree Layout] Applying track highlights - Primary:', highlights.primaryEdges.size, 'Comparison:', highlights.comparisonEdges.size, 'Shared:', highlights.sharedEdges.size, 'Total filtered:', highlightEdgeIds.size);
-
-          processedEdges = flowEdges
-            .filter(edge => highlightEdgeIds.has(edge.id))
-            .map(edge => {
-              // Preserve original classes but clean highlight management
-              const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-              let hlClass = 'hl';
-
-              if (highlights.sharedEdges.has(edge.id)) {
-                hlClass = 'hl--both';
-              } else if (highlights.primaryEdges.has(edge.id)) {
-                hlClass = 'hl--primary';
-              } else if (highlights.comparisonEdges.has(edge.id)) {
-                hlClass = 'hl--comparison';
-              } else {
-                hlClass = 'hl--dim';
-              }
-
-              return {
-                ...edge,
-                className: [...baseClasses, hlClass].join(' ')
-              };
-            });
-        }
-
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        console.log('[EduTree Layout] Edge count:', processedEdges.length, 'Overlay:', overlayEnabled, 'Sample IDs:', processedEdges.slice(0, 3).map(e => e.id));
+        console.log('[EduTree Layout] Edge count:', highlightedEdges.length, 'Overlay:', overlayEnabled, 'Sample IDs:', highlightedEdges.slice(0, 3).map(e => e.id));
         setNodes(finalLayout);
-        setEdges(processedEdges);
+        setEdges(highlightedEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
