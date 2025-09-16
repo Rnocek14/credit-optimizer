@@ -1,13 +1,11 @@
 /* Track comparison highlight styles - Animations and Performance Only */
 
-/* Base transitions for smooth animations */
+/* Base transitions for smooth animations - edges removed to prevent conflicts */
 .node {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.edge {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Edge transitions removed - handled by trackOverlay.css */
 
 /* Animation for track transitions */
 @keyframes track-highlight-in {
@@ -27,15 +25,8 @@
   animation: track-highlight-in 0.3s ease-out;
 }
 
-/* Performance optimization for large graphs */
-.react-flow__renderer {
-  will-change: transform;
-}
-
-.node,
-.react-flow__edge {
-  will-change: opacity, transform;
-}
+/* Performance optimization for large graphs - moved from track-highlights.css */
+/* Removed to prevent conflicts with trackOverlay.css */
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {

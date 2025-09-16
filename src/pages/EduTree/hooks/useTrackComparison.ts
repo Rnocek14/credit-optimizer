@@ -167,21 +167,23 @@ export function useTrackComparison({
     if (!overlayEnabled) return nodes;
 
     return nodes.map(node => {
-      const classes = [node.className, 'hl'].filter(Boolean);
+      // Keep original classes but ensure clean highlight class management
+      const baseClasses = node.className ? node.className.split(' ').filter(c => !c.startsWith('hl')) : [];
+      let hlClass = 'hl';
       
       if (highlights.sharedNodes.has(node.id)) {
-        classes.push('hl--both');
+        hlClass += ' hl--both';
       } else if (highlights.primaryNodes.has(node.id)) {
-        classes.push('hl--primary');
+        hlClass += ' hl--primary';
       } else if (highlights.comparisonNodes.has(node.id)) {
-        classes.push('hl--comparison');
+        hlClass += ' hl--comparison';
       } else {
-        classes.push('hl--dim');
+        hlClass += ' hl--dim';
       }
 
       return {
         ...node,
-        className: classes.join(' ')
+        className: [...baseClasses, hlClass].join(' ')
       };
     });
   }, [nodes, highlights, overlayEnabled]);
@@ -190,21 +192,26 @@ export function useTrackComparison({
     if (!overlayEnabled) return edges;
 
     return edges.map(edge => {
-      const classes = [edge.className, 'hl'].filter(Boolean);
+      // Replace classes completely to prevent conflicts
+      let hlClass = 'hl';
       
       if (highlights.sharedEdges.has(edge.id)) {
-        classes.push('hl--both');
+        hlClass += ' hl--both';
       } else if (highlights.primaryEdges.has(edge.id)) {
-        classes.push('hl--primary');
+        hlClass += ' hl--primary';
       } else if (highlights.comparisonEdges.has(edge.id)) {
-        classes.push('hl--comparison');
+        hlClass += ' hl--comparison';
       } else {
-        classes.push('hl--dim');
+        hlClass += ' hl--dim';
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[EdgeClass] ${edge.id}: ${hlClass}`);
       }
 
       return {
         ...edge,
-        className: classes.join(' ')
+        className: hlClass // Complete replacement, no appending
       };
     });
   }, [edges, highlights, overlayEnabled]);
