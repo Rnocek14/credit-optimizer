@@ -19,9 +19,9 @@
   pointer-events: auto;
 }
 
-/* Base classes with transitions */
+/* Base classes - no transitions to prevent ghosting */
 .hl { 
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Removed transitions to prevent visual artifacts */
 }
 
 /* Node highlight states - refined and subtle */
@@ -49,48 +49,49 @@
 }
 
 /* ReactFlow Edge Styles - Scoped to EduTree Canvas only */
-.edu-tree-canvas .react-flow__edge.hl.hl--dim .react-flow__edge-path {
-  stroke: hsl(0, 0%, 70%);
-  stroke-width: 1.5px;
-  opacity: 0.4;
+/* Reset base edge styles first */
+.edu-tree-canvas .react-flow__edge .react-flow__edge-path {
+  stroke: hsl(0, 0%, 80%);
+  stroke-width: 1px;
+  opacity: 1;
   stroke-linecap: round;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Highlight states - instant changes, no transitions */
+.edu-tree-canvas .react-flow__edge.hl.hl--dim .react-flow__edge-path {
+  stroke: hsl(0, 0%, 70%) !important;
+  stroke-width: 1px !important;
+  opacity: 0.3 !important;
+  stroke-linecap: round;
 }
 
 .edu-tree-canvas .react-flow__edge.hl.hl--primary .react-flow__edge-path {
-  stroke: var(--lp-primary-muted);
-  stroke-width: 2px;
-  opacity: 0.85;
+  stroke: var(--lp-primary-muted) !important;
+  stroke-width: 2px !important;
+  opacity: 1 !important;
   stroke-linecap: round;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .edu-tree-canvas .react-flow__edge.hl.hl--comparison .react-flow__edge-path {
-  stroke: var(--lp-compare-muted);
-  stroke-width: 2px;
-  opacity: 0.85;
+  stroke: var(--lp-compare-muted) !important;
+  stroke-width: 2px !important;
+  opacity: 1 !important;
   stroke-linecap: round;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .edu-tree-canvas .react-flow__edge.hl.hl--both .react-flow__edge-path {
-  stroke: var(--lp-shared-muted);
-  stroke-width: 2.5px;
-  opacity: 0.9;
+  stroke: var(--lp-shared-muted) !important;
+  stroke-width: 2.5px !important;
+  opacity: 1 !important;
   stroke-linecap: round;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hover effects */
+/* Hover effects - simplified */
 .hl--primary:hover,
 .hl--comparison:hover,
 .hl--both:hover {
   transform: scale(1.02);
   z-index: 100;
-}
-
-.edu-tree-canvas .react-flow__edge.hl:hover .react-flow__edge-path {
-  opacity: 0.9 !important;
 }
 
 /* Focus states for accessibility */
