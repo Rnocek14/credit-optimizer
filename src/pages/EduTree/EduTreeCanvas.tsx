@@ -159,11 +159,13 @@ function EduTreeCanvasInner() {
     () => transformEducationData(
       { blocks, courses, blockMembers, gates, gateEdges },
       completedCourseIds,
-      flags
+      { ...flags, overlayEnabled },
+      undefined,
+      primaryTrackId
     ),
     { nodes: [], edges: [], blocksWithCourses: [] },
     'Transform'
-  ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags]);
+  ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
 
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 
