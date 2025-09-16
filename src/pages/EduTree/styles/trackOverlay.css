@@ -48,31 +48,17 @@
   box-shadow: 0 0 8px hsla(140, 85%, 70%, 0.25);
 }
 
-/* ReactFlow Edge Styles - Complete control for overlay system */
-/* CRITICAL: Reset ALL global edge styling to prevent triple lines */
-.edu-tree-canvas .react-flow__edge,
-.edu-tree-canvas .react-flow__edge.lp-edge-on-path,
-.edu-tree-canvas .react-flow__edge.lp-edge-related,
-.edu-tree-canvas .react-flow__edge.lp-edge-off-path {
-  stroke: none !important;
-  stroke-width: 0 !important;
-}
-
-/* Block ALL global React Flow styles that could leak into EduTree */
+/* ReactFlow Edge Styles - Surgical reset to prevent triple lines */
+/* Block transitions that could leak from other React Flow instances */
 .edu-tree-canvas .react-flow__edge,
 .edu-tree-canvas .react-flow__node {
   transition: none !important;
 }
 
-/* Hide React Flow's interaction and background paths - comprehensive approach */
-.edu-tree-canvas .react-flow__edge-interaction,
-.edu-tree-canvas .react-flow__edge-background,
-.edu-tree-canvas .react-flow__edge .react-flow__edge-interaction,
-.edu-tree-canvas .react-flow__edge .react-flow__edge-background,
-.edu-tree-canvas svg g:not(.react-flow__edge-paths) {
+/* Hide only React Flow's interaction paths - preserve main visual path */
+.edu-tree-canvas .react-flow__edge-interaction {
   display: none !important;
   visibility: hidden !important;
-  opacity: 0 !important;
 }
 
 /* Reset any LifePath classes that might leak into EduTree */
