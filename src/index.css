@@ -680,23 +680,7 @@
   opacity: 0.7;
 }
 
-.lp-edge-on-path {
-  stroke: var(--edge-on-path) !important;
-  stroke-width: 3 !important;
-  opacity: 1 !important;
-}
-
-.lp-edge-related {
-  stroke: var(--edge-related) !important;
-  stroke-width: 2 !important;
-  opacity: 0.6 !important;
-}
-
-.lp-edge-off-path {
-  stroke: var(--edge-off-path) !important;
-  stroke-width: 1 !important;
-  opacity: 0.25 !important;
-}
+/* LifePath edge classes moved to src/styles/lifePath.css and properly scoped under .life-path-canvas */
 
 /* Enhanced Utility Classes and Animations */
 @layer utilities {

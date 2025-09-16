@@ -49,10 +49,22 @@
 }
 
 /* ReactFlow Edge Styles - Complete control for overlay system */
-/* Reset any global edge styling that might interfere */
-.edu-tree-canvas .react-flow__edge {
+/* CRITICAL: Reset ALL global edge styling to prevent triple lines */
+.edu-tree-canvas .react-flow__edge,
+.edu-tree-canvas .react-flow__edge.lp-edge-on-path,
+.edu-tree-canvas .react-flow__edge.lp-edge-related,
+.edu-tree-canvas .react-flow__edge.lp-edge-off-path {
   stroke: none !important;
   stroke-width: 0 !important;
+}
+
+/* Reset any LifePath classes that might leak into EduTree */
+.edu-tree-canvas .react-flow__edge-path.lp-edge-on-path,
+.edu-tree-canvas .react-flow__edge-path.lp-edge-related,
+.edu-tree-canvas .react-flow__edge-path.lp-edge-off-path {
+  stroke: unset !important;
+  stroke-width: unset !important;
+  opacity: unset !important;
 }
 
 /* Base edge styles - clean default state */
