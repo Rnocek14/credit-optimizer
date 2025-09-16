@@ -167,10 +167,8 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // Apply track comparison highlighting when overlay is enabled
+  // Get track comparison highlights for debugging - but apply inside layout effect
   const { 
-    highlightedNodes, 
-    highlightedEdges, 
     highlights, 
     debugInfo 
   } = useTrackComparison({
@@ -181,19 +179,15 @@ function EduTreeCanvasInner() {
     overlayEnabled
   });
 
-  // Use highlighted elements if overlay is on, otherwise use original elements
-  const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
-  const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
+  // Remove finalNodes/finalEdges - apply highlighting directly in layout effect
 
   // Debug edge flow
   console.log('[EduTreeCanvas] Edge Flow:', {
     overlayEnabled,
     flowEdgesCount: flowEdges.length,
-    highlightedEdgesCount: highlightedEdges.length,
-    finalEdgesCount: finalEdges.length,
     sampleFlowEdge: flowEdges[0]?.id,
-    sampleHighlightedEdge: highlightedEdges[0]?.id,
-    sampleFinalEdge: finalEdges[0]?.id
+    primaryTrackId,
+    comparisonTrackId
   });
 
   // Debug current component state
@@ -205,6 +199,9 @@ function EduTreeCanvasInner() {
     flowEdgesLength: flowEdges.length,
     guardsOk,
     isLayouting,
+    overlayEnabled,
+    primaryTrackId,
+    comparisonTrackId,
     individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
   });
 
@@ -258,14 +255,14 @@ function EduTreeCanvasInner() {
     }
 
     // Clear loading state immediately if there are no nodes to layout
-    if (!finalNodes.length) {
+    if (!flowNodes.length) {
       console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
     }
 
-    console.log('[EduTree Layout] Starting layout for', finalNodes.length, 'nodes');
+    console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -319,7 +316,7 @@ function EduTreeCanvasInner() {
           return 180;
         };
 
-        finalNodes.forEach(n => {
+        flowNodes.forEach(n => {
           const selector = `.react-flow__node[data-id="${n.id}"]`;
           const el = document.querySelector(selector) as HTMLElement | null;
           const domHeight = el?.getBoundingClientRect().height;
@@ -407,10 +404,36 @@ function EduTreeCanvasInner() {
 
         const finalLayout = resolveCollisions(laidOut);
 
+        // Apply track highlighting directly here to ensure synchronization
+        let processedEdges = flowEdges;
+        if (overlayEnabled && highlights) {
+          console.log('[EduTree Layout] Applying track highlights - Primary:', highlights.primaryEdges.size, 'Comparison:', highlights.comparisonEdges.size, 'Shared:', highlights.sharedEdges.size);
+          processedEdges = flowEdges.map(edge => {
+            // Preserve original classes but clean highlight management
+            const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
+            let hlClass = 'hl';
+            
+            if (highlights.sharedEdges.has(edge.id)) {
+              hlClass = 'hl--both';
+            } else if (highlights.primaryEdges.has(edge.id)) {
+              hlClass = 'hl--primary';
+            } else if (highlights.comparisonEdges.has(edge.id)) {
+              hlClass = 'hl--comparison';
+            } else {
+              hlClass = 'hl--dim';
+            }
+
+            return {
+              ...edge,
+              className: [...baseClasses, hlClass].join(' ')
+            };
+          });
+        }
+
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        console.log('[EduTree Layout] Edge count:', finalEdges.length, 'Sample IDs:', finalEdges.slice(0, 3).map(e => e.id));
+        console.log('[EduTree Layout] Edge count:', processedEdges.length, 'Overlay:', overlayEnabled, 'Sample IDs:', processedEdges.slice(0, 3).map(e => e.id));
         setNodes(finalLayout);
-        setEdges(finalEdges);
+        setEdges(processedEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -446,7 +469,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, finalNodes.length, finalEdges.length, layoutVersion, overlayEnabled]);
+  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId, highlights]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -586,7 +609,7 @@ function EduTreeCanvasInner() {
       </div>
 
       {/* Loading overlay for layout operations */}
-      {isLayouting && finalNodes.length > 0 && (
+      {isLayouting && flowNodes.length > 0 && (
         <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-50">
           <div className="text-center space-y-2">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
