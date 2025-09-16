@@ -24,7 +24,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'specializations',
       'architecture',
       'capstone',
-      'degree-completion'
+      'degree-completion-software-engineering'
     ]
   },
   {
@@ -40,7 +40,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'data-analysis',
       'machine-learning',
       'capstone',
-      'degree-completion'
+      'degree-completion-data-science'
     ]
   },
   {
@@ -56,7 +56,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'security-fundamentals',
       'advanced-security',
       'capstone',
-      'degree-completion'
+      'degree-completion-cybersecurity'
     ]
   },
   {
@@ -72,7 +72,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'mobile-frameworks',
       'advanced-mobile',
       'capstone',
-      'degree-completion'
+      'degree-completion-mobile'
     ]
   }
 ];
