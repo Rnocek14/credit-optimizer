@@ -107,9 +107,7 @@ function EduTreeCanvasInner() {
   // init (single source of truth)
   const isSafeMode = read('safe') === '1';
 
-  const [overlayEnabled, setOverlayEnabled] = useState(
-    () => read('eduTreeMultiPathOverlay') === 'true' || !!read('comparison')
-  );
+  const [overlayEnabled, setOverlayEnabled] = useState(true);
 
   const [primaryTrackId, setPrimaryTrackId] = useState<TrackId>(() => {
     const raw = read('primary') as TrackId | null;
@@ -118,7 +116,7 @@ function EduTreeCanvasInner() {
 
   const [comparisonTrackId, setComparisonTrackId] = useState<TrackId | undefined>(() => {
     const raw = read('comparison') as TrackId | null;
-    return raw && VALID.has(raw) ? raw : undefined;
+    return raw && VALID.has(raw) ? raw : 'data-science';
   });
 
   // Remove ReactFlow remounting - just change classes instead
