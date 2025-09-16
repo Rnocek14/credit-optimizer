@@ -24,7 +24,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'specializations',
       'architecture',
       'capstone-software-engineering',
-      'degree-completion-software-engineering'
+      'degree-completion'
     ]
   },
   {
@@ -37,10 +37,11 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'mathematics',
       'general-education', 
       'core-i',
+      'core-ii',
       'data-analysis',
       'machine-learning',
       'capstone-data-science',
-      'degree-completion-data-science'
+      'degree-completion'
     ]
   }
 ];
