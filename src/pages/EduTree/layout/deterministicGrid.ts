@@ -15,6 +15,8 @@ export type LayoutOpts = {
   lanePaddingY?: number; // top padding
   // optional fixed column ordering by slug (strong hint)
   columnOrderBySlug?: Record<string, number>;
+  // hard anchors for track positioning per lane
+  trackAnchorsByLane?: { [lane: number]: { se?: number; ds?: number; sharedMax?: number } };
 };
 
 /**
@@ -100,6 +102,34 @@ export function computeDeterministicGrid(
       }
       rank.set(String(b.id), suggested >= 0 ? suggested : col++);
     });
+
+    // Apply hard anchors if configured for this lane
+    const anchors = opts.trackAnchorsByLane?.[laneNo];
+    if (anchors) {
+      // Apply sharedMax constraint
+      if (typeof anchors.sharedMax === 'number') {
+        shared.forEach(b => {
+          const currentCol = rank.get(String(b.id)) ?? 0;
+          if (currentCol > anchors.sharedMax!) {
+            rank.set(String(b.id), anchors.sharedMax!);
+          }
+        });
+      }
+      
+      // Snap SE tracks to anchor
+      if (typeof anchors.se === 'number') {
+        track.filter(b => b.track_id === 'software-engineering').forEach(b => {
+          rank.set(String(b.id), anchors.se!);
+        });
+      }
+      
+      // Snap DS tracks to anchor  
+      if (typeof anchors.ds === 'number') {
+        track.filter(b => b.track_id === 'data-science').forEach(b => {
+          rank.set(String(b.id), anchors.ds!);
+        });
+      }
+    }
 
     return rank;
   }

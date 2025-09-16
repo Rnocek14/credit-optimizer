@@ -393,6 +393,10 @@ export function transformEducationData(
           'machine-learning': 6,
           'capstone-software-engineering': 7,
           'capstone-data-science': 7
+        },
+        trackAnchorsByLane: {
+          3: { sharedMax: 5, se: 6, ds: 8 }, // Y3: SE left, DS right
+          4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
         }
       }
     );
