@@ -10,6 +10,9 @@ import {
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
 import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
+import { computeGraphQAMetrics } from '../qa/multipathQA';
+import { resolveEduTreeQAModeFlag, resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
+import { computeDeterministicGrid } from '../layout/deterministicGrid';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -249,6 +252,16 @@ export function transformEducationData(
     });
   }
 
+  // Edge track classification for path identity
+  const edgeClass = (sid: string, tid: string) => {
+    const s = sortedBlocks.find(b => String(b.id) === sid);
+    const t = sortedBlocks.find(b => String(b.id) === tid);
+    const tr = t?.track_id ?? s?.track_id ?? null;
+    return tr === 'software-engineering' ? 'edge--se'
+         : tr === 'data-science' ? 'edge--ds'
+         : 'edge--shared';
+  };
+
   // Second pass: create edges - preserve all unique paths, consolidate only true duplicates
   for (const [edgeKey, duplicates] of edgeMap) {
     const { sourceBlockId, targetBlockId, sourceBlock } = duplicates[0];
@@ -259,12 +272,13 @@ export function transformEducationData(
     }
     
     // Create single edge for this unique source->target path
+    const trackClass = edgeClass(sourceBlockId, targetBlockId);
     regularEdges.push({
       id: `e-${sourceBlockId}-${targetBlockId}`,
       source: sourceBlockId,
       target: targetBlockId,
       type: 'smoothstep',
-      className: duplicates.length > 1 ? 'edge edge-consolidated' : 'edge',
+      className: duplicates.length > 1 ? `edge ${trackClass} edge-consolidated` : `edge ${trackClass}`,
       data: {
         isConsolidated: duplicates.length > 1,
         prerequisite: {
@@ -347,8 +361,47 @@ export function transformEducationData(
   }
 
   // PhaseA mode: No degree completion node, capstones are terminal
-  const nodes: Node[] = regularNodes;
+  let nodes: Node[] = regularNodes;
   const edges: Edge[] = regularEdges;
+
+  // Apply deterministic grid layout when in overlay mode with PhaseA
+  if (flags.eduTreePhaseA && flags.overlayEnabled) {
+    const layout = computeDeterministicGrid(
+      sortedBlocks.map(b => ({ 
+        id: b.id, 
+        slug: b.slug, 
+        title: b.title, 
+        level_year: b.level_year, 
+        track_id: b.track_id 
+      })),
+      edges.map(e => ({ source: String(e.source), target: String(e.target) })),
+      {
+        laneHeight: 220, 
+        colWidth: 320, 
+        lanePaddingX: 64, 
+        lanePaddingY: 24,
+        columnOrderBySlug: {
+          'general-education': 0,
+          'foundations': 1,
+          'mathematics': 2,
+          'core-i': 3,
+          'core-ii': 4,
+          'specializations': 5, // divergence gate (shared title)
+          'data-analysis': 5,   // Y3 DS divergence label
+          // Y4 anchor hints:
+          'architecture': 6,
+          'machine-learning': 6,
+          'capstone-software-engineering': 7,
+          'capstone-data-science': 7
+        }
+      }
+    );
+
+    nodes = nodes.map(n => {
+      const L = layout[String(n.id)];
+      return L ? { ...n, position: { x: L.x, y: L.y }, draggable: false } : n;
+    });
+  }
 
   // PhaseA assertions (non-breaking)
   if (flags.eduTreePhaseA) {

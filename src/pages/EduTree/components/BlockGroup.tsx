@@ -59,8 +59,19 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
     }
   }, [attachResizeObserver, detachResizeObserver]);
 
+  // Track classification for path identity
+  const trackClass = !block.track_id ? 'node--shared'
+    : block.track_id === 'software-engineering' ? 'node--se'
+    : 'node--ds';
+
   return (
-    <div className="relative" ref={nodeRef}>
+    <div 
+      className={`relative node ${trackClass}`}
+      ref={nodeRef}
+      data-node-id={block.id}
+      data-track={block.track_id ?? ''}
+      data-level-year={block.level_year}
+    >
       {/* Fixed connection handles for better edge routing */}
       <Handle
         type="target"
@@ -80,6 +91,14 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
         transition-all duration-200
       `}>
         <CardHeader className="pb-3 space-y-3">
+          {/* Track identity badges */}
+          <div className="node-badge-row">
+            {!block.track_id && <span className="chip chip--shared">Shared</span>}
+            {block.track_id === 'software-engineering' && <span className="chip chip--se">SE</span>}
+            {block.track_id === 'data-science' && <span className="chip chip--ds">DS</span>}
+            <span className="chip chip--year">Y{block.level_year}</span>
+          </div>
+          
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               {!isUnlocked && !isDegreeNode && (

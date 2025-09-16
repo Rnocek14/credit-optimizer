@@ -58,6 +58,7 @@ import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, res
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
+import './styles/pathIdentity.css';
 
 const DEV = import.meta.env.DEV;
 const RESIZE_DEBOUNCE_MS = 120;
@@ -212,6 +213,13 @@ function EduTreeCanvasInner() {
       console.warn('[MP QA][ERROR]', e);
     }
   }, [qaMode, flowNodes, flowEdges, blocks]);
+
+  // Set primary track for global dimming effect
+  useEffect(() => {
+    if (!overlayEnabled) return;
+    document.body.setAttribute('data-primary-track', primaryTrackId || '');
+    return () => document.body.removeAttribute('data-primary-track');
+  }, [overlayEnabled, primaryTrackId]);
 
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 
@@ -666,6 +674,21 @@ function EduTreeCanvasInner() {
             debugInfo={debugInfo}
           />
         </div>
+      )}
+
+      {/* Legend and Lane Headers for Overlay Mode */}
+      {overlayEnabled && (
+        <>
+          <div className="legend">
+            <span className="chip chip--shared">Shared</span>
+            <span className="chip chip--se">SE</span>
+            <span className="chip chip--ds">DS</span>
+          </div>
+          
+          {[1,2,3,4].map(y => (
+            <div key={y} className="lane-header" style={{ top: 24 + (y-1)*220 }}>{`Y${y}`}</div>
+          ))}
+        </>
       )}
       
       {/* Main Canvas */}
