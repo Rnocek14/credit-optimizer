@@ -172,11 +172,8 @@ function EduTreeCanvasInner() {
   // Apply enhanced layout for better visual organization
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => safe(
     () => enhancedEduTreeLayout(rawNodes, rawEdges, primaryTrackId, {
-      levelSpacing: 280,
-      nodeSpacing: 100,
-      trackLaneSpacing: 140,
-      terminalNodeOffset: 80,
-      decisionPointSpacing: 60
+      enableSmartSpacing: true,
+      enableTrackLanes: overlayEnabled
     }),
     { nodes: rawNodes, edges: rawEdges },
     'Enhanced Layout'
