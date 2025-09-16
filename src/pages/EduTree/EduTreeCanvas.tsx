@@ -214,12 +214,15 @@ function EduTreeCanvasInner() {
     }
   }, [qaMode, flowNodes, flowEdges, blocks]);
 
-  // Set primary track for global dimming effect
+  // Parse comparePrimary parameter for balanced mode
+  const comparePrimary = read('comparePrimary');
+  
+  // Set primary track for global dimming effect (skip if balanced mode)
   useEffect(() => {
-    if (!overlayEnabled) return;
+    if (!overlayEnabled || comparePrimary === 'both') return;
     document.body.setAttribute('data-primary-track', primaryTrackId || '');
     return () => document.body.removeAttribute('data-primary-track');
-  }, [overlayEnabled, primaryTrackId]);
+  }, [overlayEnabled, primaryTrackId, comparePrimary]);
 
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 
