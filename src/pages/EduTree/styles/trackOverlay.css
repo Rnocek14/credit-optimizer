@@ -64,6 +64,18 @@
   transition: none !important; /* Prevent any inherited transitions */
 }
 
+/* Degree edge specific styles */
+.edu-tree-canvas .react-flow__edge.degree-edge .react-flow__edge-path {
+  stroke: hsl(45, 95%, 55%) !important; /* Gold color for degree edges */
+  stroke-width: 3px !important;
+  opacity: 0.8 !important;
+}
+
+/* Consolidated edge styles */
+.edu-tree-canvas .react-flow__edge.edge-consolidated .react-flow__edge-path {
+  stroke-width: 3px !important;
+}
+
 /* Highlight states - instant changes, no transitions */
 .edu-tree-canvas .react-flow__edge.hl.hl--dim .react-flow__edge-path {
   stroke: hsl(0, 0%, 70%) !important;

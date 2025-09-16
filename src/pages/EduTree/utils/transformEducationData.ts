@@ -236,11 +236,6 @@ export function transformEducationData(
       target: targetBlockId,
       type: 'smoothstep',
       className: duplicates.length > 1 ? 'edge edge-consolidated' : 'edge',
-      style: {
-        stroke: 'var(--primary)',
-        strokeWidth: duplicates.length > 1 ? 3 : 2, // Thicker if consolidated
-        opacity: 0.65
-      },
       data: {
         isConsolidated: duplicates.length > 1,
         prerequisite: {
@@ -301,12 +296,7 @@ export function transformEducationData(
       source: String(capstoneBlock.id),
       target: 'degree-completion',
       type: 'smoothstep',
-      className: 'edge degree-edge',
-      style: {
-        stroke: 'var(--accent-gold)',
-        strokeWidth: 3,
-        opacity: 0.8
-      }
+      className: 'edge degree-edge'
     });
   }
   if (architectureBlock) {
@@ -315,12 +305,7 @@ export function transformEducationData(
       source: String(architectureBlock.id),
       target: 'degree-completion',
       type: 'smoothstep',
-      className: 'edge degree-edge',
-      style: {
-        stroke: 'var(--accent-gold)',
-        strokeWidth: 3,
-        opacity: 0.8
-      }
+      className: 'edge degree-edge'
     });
   }
 
