@@ -171,10 +171,30 @@ function EduTreeCanvasInner() {
   // QA Mode: Compute and export metrics when enabled
   const qaMode = resolveEduTreeQAModeFlag();
   
+  // Debug QA mode state
+  console.log('[MP QA][DEBUG]', { 
+    qaMode, 
+    hasNodes: flowNodes.length > 0, 
+    hasEdges: flowEdges.length > 0, 
+    hasBlocks: blocks.length > 0,
+    url: window.location.search
+  });
+  
   useEffect(() => {
-    if (!qaMode) return;
+    console.log('[MP QA][EFFECT]', { qaMode, nodeCount: flowNodes.length, edgeCount: flowEdges.length, blockCount: blocks.length });
+    
+    if (!qaMode) {
+      console.log('[MP QA][SKIP] QA mode disabled');
+      return;
+    }
+    
+    if (flowNodes.length === 0 || flowEdges.length === 0 || blocks.length === 0) {
+      console.log('[MP QA][SKIP] Insufficient data for QA');
+      return;
+    }
     
     try {
+      console.log('[MP QA][COMPUTE] Starting metrics computation...');
       const getLevelYear = (id: string) => blocks.find(b => String(b.id) === String(id))?.level_year;
       const getTrackId = (id: string) => blocks.find(b => String(b.id) === String(id))?.track_id as any;
       const metrics = computeGraphQAMetrics(flowNodes, flowEdges, {
