@@ -58,6 +58,13 @@
   stroke-width: 0 !important;
 }
 
+/* Hide React Flow's extra paths that cause triple lines */
+.edu-tree-canvas .react-flow__edge-interaction,
+.edu-tree-canvas .react-flow__edge-background {
+  display: none !important;
+  visibility: hidden !important;
+}
+
 /* Reset any LifePath classes that might leak into EduTree */
 .edu-tree-canvas .react-flow__edge-path.lp-edge-on-path,
 .edu-tree-canvas .react-flow__edge-path.lp-edge-related,
