@@ -477,7 +477,6 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        console.log('[EduTree Layout] Edge count:', highlightedEdges.length, 'Overlay:', overlayEnabled, 'Sample IDs:', highlightedEdges.slice(0, 3).map(e => e.id));
         setNodes(finalLayout);
         setEdges(highlightedEdges);
 
