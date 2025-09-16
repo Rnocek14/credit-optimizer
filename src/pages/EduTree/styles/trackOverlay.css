@@ -58,11 +58,21 @@
   stroke-width: 0 !important;
 }
 
-/* Hide React Flow's extra paths that cause triple lines */
+/* Block ALL global React Flow styles that could leak into EduTree */
+.edu-tree-canvas .react-flow__edge,
+.edu-tree-canvas .react-flow__node {
+  transition: none !important;
+}
+
+/* Hide React Flow's interaction and background paths - comprehensive approach */
 .edu-tree-canvas .react-flow__edge-interaction,
-.edu-tree-canvas .react-flow__edge-background {
+.edu-tree-canvas .react-flow__edge-background,
+.edu-tree-canvas .react-flow__edge .react-flow__edge-interaction,
+.edu-tree-canvas .react-flow__edge .react-flow__edge-background,
+.edu-tree-canvas svg g:not(.react-flow__edge-paths) {
   display: none !important;
   visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 /* Reset any LifePath classes that might leak into EduTree */

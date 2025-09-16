@@ -106,9 +106,9 @@
   backdrop-filter: blur(4px);
 }
 
-/* Smooth transitions for tier changes */
-.react-flow__node,
-.react-flow__edge {
+/* Smooth transitions for tier changes - scoped to LifePath only */
+.life-path-canvas .react-flow__node,
+.life-path-canvas .react-flow__edge {
   transition: opacity 0.2s ease-in-out;
 }
 
