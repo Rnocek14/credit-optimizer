@@ -49,6 +49,12 @@
 }
 
 /* ReactFlow Edge Styles - Complete control for overlay system */
+/* Reset any global edge styling that might interfere */
+.edu-tree-canvas .react-flow__edge {
+  stroke: none !important;
+  stroke-width: 0 !important;
+}
+
 /* Base edge styles - clean default state */
 .edu-tree-canvas .react-flow__edge-path {
   stroke: hsl(0, 0%, 80%) !important;

@@ -192,7 +192,8 @@ export function useTrackComparison({
     if (!overlayEnabled) return edges;
 
     return edges.map(edge => {
-      // Replace classes completely to prevent conflicts
+      // Preserve original classes but clean highlight management
+      const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('hl')) : [];
       let hlClass = 'hl';
       
       if (highlights.sharedEdges.has(edge.id)) {
@@ -206,12 +207,12 @@ export function useTrackComparison({
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[EdgeClass] ${edge.id}: ${hlClass}`);
+        console.log(`[EdgeClass] ${edge.id}: base(${baseClasses.join(' ')}) + ${hlClass}`);
       }
 
       return {
         ...edge,
-        className: hlClass // Complete replacement, no appending
+        className: [...baseClasses, hlClass].join(' ')
       };
     });
   }, [edges, highlights, overlayEnabled]);
