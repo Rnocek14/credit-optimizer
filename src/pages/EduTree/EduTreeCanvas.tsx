@@ -54,9 +54,11 @@ import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './da
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
+import { enhancedEduTreeLayout } from './layout/enhancedEduTreeLayout';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
+import './styles/enhancedVisuals.css';
 
 const DEV = import.meta.env.DEV;
 const RESIZE_DEBOUNCE_MS = 120;
@@ -155,7 +157,7 @@ function EduTreeCanvasInner() {
   } = useEduTreeData();
 
   // Transform data for React Flow (defensive)
-  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => safe(
+  const { nodes: rawNodes, edges: rawEdges, blocksWithCourses } = useMemo(() => safe(
     () => transformEducationData(
       { blocks, courses, blockMembers, gates, gateEdges },
       completedCourseIds,
@@ -166,6 +168,16 @@ function EduTreeCanvasInner() {
     { nodes: [], edges: [], blocksWithCourses: [] },
     'Transform'
   ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
+
+  // Apply enhanced layout for better visual organization
+  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => safe(
+    () => enhancedEduTreeLayout(rawNodes, rawEdges, primaryTrackId, {
+      enableSmartSpacing: true,
+      enableTrackLanes: overlayEnabled
+    }),
+    { nodes: rawNodes, edges: rawEdges },
+    'Enhanced Layout'
+  ), [rawNodes, rawEdges, primaryTrackId, overlayEnabled]);
 
   // Absolute guardrails before ReactFlow
   const guardsOk = useMemo(() => 
