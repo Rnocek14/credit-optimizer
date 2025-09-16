@@ -8,71 +8,47 @@ export interface TrackDefinition {
   blockIds: string[]; // ordered block ids (using slugs)
 }
 
-// Track definitions using block slugs
+// Track definitions using block slugs - Academic Year Structure
 export const TRACK_DEFINITIONS: TrackDefinition[] = [
   {
     id: 'software-engineering',
     name: 'Software Engineering',
-    description: 'Full-stack development track',
+    description: 'Full-stack development track with strong foundation in computer science principles',
     color: '#3b82f6',
     blockIds: [
+      // Year 1: Foundation
       'foundations',
       'mathematics', 
       'general-education',
+      // Year 2: Core
       'core-i',
+      // Year 3: Specialization (SE Track)
       'core-ii',
       'specializations',
       'architecture',
-      'capstone',
+      // Year 4: Capstone & Degree
+      'capstone-software-engineering',
       'degree-completion-software-engineering'
     ]
   },
   {
     id: 'data-science',
     name: 'Data Science',
-    description: 'Analytics and machine learning track',
+    description: 'Analytics and machine learning track with emphasis on statistical modeling',
     color: '#10b981',
     blockIds: [
+      // Year 1: Foundation (Shared)
       'foundations',
       'mathematics',
       'general-education', 
+      // Year 2: Core (Shared)
       'core-i',
+      // Year 3: Specialization (DS Track)
       'data-analysis',
       'machine-learning',
-      'capstone',
+      // Year 4: Capstone & Degree
+      'capstone-data-science',
       'degree-completion-data-science'
-    ]
-  },
-  {
-    id: 'cybersecurity',
-    name: 'Cybersecurity',
-    description: 'Security and risk management track',
-    color: '#f59e0b',
-    blockIds: [
-      'foundations',
-      'mathematics',
-      'general-education',
-      'core-i',
-      'security-fundamentals',
-      'advanced-security',
-      'capstone',
-      'degree-completion-cybersecurity'
-    ]
-  },
-  {
-    id: 'mobile-development',
-    name: 'Mobile Development', 
-    description: 'iOS and Android development track',
-    color: '#8b5cf6',
-    blockIds: [
-      'foundations',
-      'mathematics',
-      'general-education',
-      'core-i',
-      'mobile-frameworks',
-      'advanced-mobile',
-      'capstone',
-      'degree-completion-mobile'
     ]
   }
 ];

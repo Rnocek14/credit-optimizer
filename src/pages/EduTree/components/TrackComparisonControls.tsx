@@ -16,6 +16,12 @@ export interface TrackComparisonControlsProps {
   onPrimaryTrackChange: (trackId: TrackId | undefined) => void;
   comparisonTrackId?: TrackId;
   onComparisonTrackChange: (trackId: TrackId | undefined) => void;
+  trackStats?: {
+    shared: number;
+    primaryOnly: number;
+    comparisonOnly: number;
+    divergencePoint: string | null;
+  };
   debugInfo?: {
     overlayReady: boolean;
     resolvedBlocks: number;
@@ -34,6 +40,7 @@ export function TrackComparisonControls({
   onPrimaryTrackChange,
   comparisonTrackId,
   onComparisonTrackChange,
+  trackStats,
   debugInfo
 }: TrackComparisonControlsProps) {
 
@@ -137,22 +144,39 @@ export function TrackComparisonControls({
               )}
             </div>
 
-            {/* Status Badges */}
-            {primaryTrackId && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Badge variant="outline" className="text-xs">
-                  <GitBranch className="h-3 w-3 mr-1" />
-                  Primary: {debugInfo?.primaryCount || 0} blocks
-                </Badge>
-                {comparisonTrackId && (
-                  <>
-                    <Badge variant="outline" className="text-xs">
-                      Compare: {debugInfo?.comparisonCount || 0} blocks
+            {/* Track Statistics */}
+            {overlayEnabled && primaryTrackId && trackStats && trackStats.shared > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Track Analysis</h4>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <Badge variant="secondary" className="justify-center bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                      Shared ({trackStats.shared})
+                    </div>
+                  </Badge>
+                  {primaryTrackId === 'software-engineering' && (
+                    <Badge variant="secondary" className="justify-center bg-blue-50 text-blue-700 border-blue-200">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        SE ({trackStats.primaryOnly})
+                      </div>
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      Shared: {debugInfo?.sharedCount || 0} blocks
+                  )}
+                  {comparisonTrackId === 'data-science' && (
+                    <Badge variant="secondary" className="justify-center bg-orange-50 text-orange-700 border-orange-200">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                        DS ({trackStats.comparisonOnly})
+                      </div>
                     </Badge>
-                  </>
+                  )}
+                </div>
+                {trackStats.divergencePoint && (
+                  <div className="text-xs text-muted-foreground">
+                    <GitBranch className="h-3 w-3 inline mr-1" />
+                    Tracks diverge at: {trackStats.divergencePoint}
+                  </div>
                 )}
               </div>
             )}
