@@ -707,6 +707,16 @@ export function transformEducationData(
           lane: (pos as any).lane
         }))
       });
+      
+      // STAGE 0.6 FIX: Validate grid positions before applying
+      const validPositions = Object.values(layout).filter(pos => 
+        pos && !isNaN(pos.x) && !isNaN(pos.y) && pos.x >= 0 && pos.y >= 0
+      );
+      console.log('[Layout] PhaseA grid validation:', {
+        totalPositions: Object.keys(layout).length,
+        validPositions: validPositions.length,
+        allValid: validPositions.length === Object.keys(layout).length
+      });
     } catch (err) {
       console.warn('[Layout] layout crashed, skipping layout', err);
     }
@@ -715,9 +725,19 @@ export function transformEducationData(
     nodes = nodes.map(n => {
       if (n.type === 'laneBridge') return n; // leave bridge nodes alone
       const L = layout[String(n.id)];
-      if (!L) return n;
+      if (!L) {
+        console.warn('[Layout] No grid position found for node:', n.id);
+        return n;
+      }
       
       const pos = { x: L.x, y: L.y };
+      
+      // STAGE 0.6 FIX: Validate position before applying
+      if (isNaN(pos.x) || isNaN(pos.y) || pos.x < 0 || pos.y < 0) {
+        console.warn('[Layout] Invalid grid position for node:', n.id, pos);
+        return n;
+      }
+      
       return { 
         ...n, 
         position: pos,
@@ -726,9 +746,17 @@ export function transformEducationData(
         draggable: false,
         data: {
           ...n.data,
-          hasGridLayout: true  // Mark nodes that received deterministic grid layout
+          hasGridLayout: true,  // Mark nodes that received deterministic grid layout
+          gridPosition: pos,    // Store original grid position for debugging
+          phaseA: true          // Mark as PhaseA node
         }
       };
+    });
+    
+    console.log('[Layout] PhaseA nodes marked with grid layout:', {
+      totalNodes: nodes.length,
+      nodesWithGrid: nodes.filter(n => n.data?.hasGridLayout).length,
+      sampleNode: nodes[0] ? { id: nodes[0].id, position: nodes[0].position, hasGrid: nodes[0].data?.hasGridLayout } : null
     });
   }
 

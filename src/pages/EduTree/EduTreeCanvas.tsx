@@ -399,8 +399,15 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // STAGE 3.7 FIX: Check if nodes already have deterministic grid layout
+    // STAGE 0.6 FIX: Check if nodes already have deterministic grid layout
     const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
+    console.log('[EduTree Layout] Grid layout detection:', { 
+      hasGridLayout, 
+      totalNodes: flowNodes.length, 
+      nodesWithGrid: flowNodes.filter(n => n.data?.hasGridLayout).length,
+      sampleNodeData: flowNodes[0]?.data 
+    });
+    
     if (hasGridLayout) {
       console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
       
@@ -440,9 +447,9 @@ function EduTreeCanvasInner() {
 
     const runLayout = () => {
       try {
-        console.log('[EduTree Layout] Running layout calculations');
+        console.log('[EduTree Layout] Running LEGACY layout calculations');
         const pad = 80; // Increased for better vertical separation
-        const colW = 480; // Increased to accommodate wider nodes
+        const colW = 540; // STAGE 0.6 FIX: Updated to match PhaseA grid spacing
         const defaultH = 180;
         const byYear = new Map<number, any[]>();
         const heightMap = new Map<string, number>();
