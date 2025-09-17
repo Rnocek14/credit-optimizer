@@ -56,12 +56,9 @@ import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
 import './utils/positionCapture'; // Initialize position capture utilities
-import './utils/layoutDebug'; // Initialize layout debugging
 import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, resolveEduTreeQAModeFlag } from '@/lib/eduTreeFlags';
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
-import { layoutDebugger } from './utils/layoutDebug';
-import { phaseAGuard } from './utils/phaseAGuard';
 import './styles/trackOverlay.css';
 import './styles/pathIdentity.css';
 
@@ -237,10 +234,7 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // PR-A: COMPLETELY bypass overlay in PhaseA - no highlighting at all
-  const isPhaseA = flags.eduTreePhaseA;
-  
-  // Get track comparison highlights and processed edges ONLY if not PhaseA
+  // Get track comparison highlights and processed edges
   const { 
     highlightedNodes,
     highlightedEdges,
@@ -251,8 +245,7 @@ function EduTreeCanvasInner() {
     edges: flowEdges,
     primaryTrackId,
     comparisonTrackId,
-    overlayEnabled,
-    phaseAEnabled: isPhaseA
+    overlayEnabled
   });
 
   // Remove finalNodes/finalEdges - apply highlighting directly in layout effect
@@ -385,83 +378,62 @@ function EduTreeCanvasInner() {
     const edgeCount = flowEdges.length;
     const firstNodeId = flowNodes[0]?.id || '';
     const lastNodeId = flowNodes[nodeCount - 1]?.id || '';
-    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}`;
-  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id]);
+    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
+  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
-  // Perform layout when data or node sizes change - STABLE DEPENDENCIES
+  // Perform layout when data or node sizes change
   useLayoutEffect(() => {
-    // PR-A: Add layout pass tracking
-    if (typeof window !== 'undefined') {
-      (window as any).__layoutPasses = (window as any).__layoutPasses || [];
-    }
-
     if (!reactFlowInstance) {
-      console.log('[EduTreeCanvas][Skip] ReactFlow instance not ready');
+      console.log('[EduTree Layout] ReactFlow instance not ready');
       return;
     }
     
     if (layoutInProgressRef.current) {
-      console.log('[EduTreeCanvas][Skip] Layout already in progress, skipping');
+      console.log('[EduTree Layout] Layout already in progress, skipping');
       return;
     }
 
     // Clear loading state immediately if there are no nodes to layout
     if (!flowNodes.length) {
-      console.log('[EduTreeCanvas][Skip] No nodes to layout, clearing loading state');
+      console.log('[EduTree Layout] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
     }
 
-    // PR-A: PhaseA guard - use stable references to prevent any re-renders
-    if (isPhaseA) {
-      if (!phaseAGuard.trackLayoutPass('phaseA')) {
-        console.error('[PhaseA][ERROR] Multiple layout passes detected - aborting');
+    // STAGE 0.6 FIX: Check if nodes already have deterministic grid layout
+    const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
+    console.log('[EduTree Layout] Grid layout detection:', { 
+      hasGridLayout, 
+      totalNodes: flowNodes.length, 
+      nodesWithGrid: flowNodes.filter(n => n.data?.hasGridLayout).length,
+      sampleNodeData: flowNodes[0]?.data 
+    });
+    
+    if (hasGridLayout) {
+      console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
+      
+      // Validate grid positions before applying
+      const validNodes = flowNodes.filter(node => {
+        const pos = node.position;
+        return pos && !isNaN(pos.x) && !isNaN(pos.y) && pos.x >= 0 && pos.y >= 0;
+      });
+      
+      if (validNodes.length !== flowNodes.length) {
+        console.warn('[EduTree Layout] Invalid grid positions detected, falling back to legacy layout');
+        // Don't return - let it fall through to legacy layout
+      } else {
+        // Apply highlighting based on overlay state - use highlightedNodes when overlay enabled
+        const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
+        setNodes(finalNodes);
+        setEdges(highlightedEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
         return;
       }
-      
-      console.log('[EduTreeCanvas][PhaseA] Using PhaseA guard system');
-      
-      // Get absolutely stable references that never change
-      const stableNodes = phaseAGuard.getStableNodes(highlightedNodes);
-      const stableEdges = phaseAGuard.getStableEdges(highlightedEdges);
-      
-      // Check if ReactFlow already has the same nodes to prevent unnecessary updates
-      const currentNodes = reactFlowInstance.getNodes();
-      const needsUpdate = currentNodes.length !== stableNodes.length ||
-                         currentNodes.some((node, i) => node.id !== stableNodes[i]?.id);
-      
-      if (needsUpdate) {
-        console.log('[PhaseA][Apply] Initial setup with guarded references');
-        layoutDebugger.logLayoutAction('PhaseA Guard System', stableNodes, 'phaseA');
-        
-        // Single atomic update with guaranteed stable references
-        setNodes(stableNodes);
-        setEdges(stableEdges);
-      } else {
-        console.log('[PhaseA][Skip] Guard references already applied');
-      }
-      
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      return;
-    }
-    
-    // Legacy mode: use overlay nodes when overlay is enabled
-    if (overlayEnabled) {
-      (window as any).__layoutPasses.push('overlay');
-      console.log('[EduTreeCanvas][Overlay] Using overlay nodes (legacy mode)');
-      setNodes(highlightedNodes);
-      setEdges(highlightedEdges);
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      return;
     }
 
-    (window as any).__layoutPasses.push('legacy');
-    console.log('[EduTreeCanvas][Legacy] Running legacy layout branch for', flowNodes.length, 'nodes');
+    console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -477,13 +449,6 @@ function EduTreeCanvasInner() {
 
     const runLayout = () => {
       try {
-        // PR-A: Guard against running legacy layout when PhaseA is active
-        if (flags.eduTreePhaseA) {
-          console.warn('[EduTreeCanvas][Guard] Prevented legacy layout from running during PhaseA mode');
-          clearLayoutState();
-          return;
-        }
-        
         console.log('[EduTree Layout] Running LEGACY layout calculations');
         const pad = 80; // Increased for better vertical separation
         const colW = 540; // STAGE 0.6 FIX: Updated to match PhaseA grid spacing
@@ -643,25 +608,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [
-    reactFlowInstance, 
-    dataHash, 
-    layoutVersion,
-    isPhaseA,
-    // Include overlay state to ensure proper re-render timing
-    overlayEnabled,
-    highlightedNodes.length,
-    highlightedEdges.length
-  ]);
-
-  // Reset PhaseA guard when switching modes or unmounting
-  useEffect(() => {
-    return () => {
-      if (isPhaseA) {
-        phaseAGuard.reset();
-      }
-    };
-  }, [isPhaseA]);
+  }, [reactFlowInstance, dataHash, layoutVersion]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -809,13 +756,11 @@ function EduTreeCanvasInner() {
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          nodesDraggable={!flags.eduTreePhaseA}
-          nodesConnectable={false}
-          elementsSelectable={!flags.eduTreePhaseA}
-          onNodeDrag={flags.eduTreePhaseA ? undefined : (event, node) => {
+          nodesDraggable={true}
+          onNodeDrag={(event, node) => {
             console.log('🔄 Node drag:', node.id, node.position);
           }}
-          onNodeDragStop={flags.eduTreePhaseA ? undefined : (event, node) => {
+          onNodeDragStop={(event, node) => {
             console.log('✅ Node drag stop:', node.id, node.position);
             // Store manual position for analysis
             if (!(window as any).manualPositions) {
@@ -830,8 +775,7 @@ function EduTreeCanvasInner() {
             size={1}
           />
           <Controls />
-          {/* Disable MiniMap during PhaseA to prevent layout interference */}
-          {!flags.eduTreePhaseA && <MiniMap />}
+          <MiniMap />
         </ReactFlow>
       </div>
 

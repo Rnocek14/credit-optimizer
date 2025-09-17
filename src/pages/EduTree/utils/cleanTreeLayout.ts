@@ -70,10 +70,6 @@ export function applyCleanTreeLayout(nodes: Node[]): Node[] {
       positionedNodes.push({
         ...node,
         position: { x: xPosition, y: yPosition },
-        data: {
-          ...node.data,
-          hasCleanTreeLayout: true
-        },
         draggable: true  // Enable dragging for manual positioning
       });
     });
