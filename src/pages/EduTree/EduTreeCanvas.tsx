@@ -389,6 +389,18 @@ function EduTreeCanvasInner() {
       return;
     }
 
+    // STAGE 3.7 FIX: Check if nodes already have deterministic grid layout
+    const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
+    if (hasGridLayout) {
+      console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
+      // Directly apply the grid-positioned nodes and highlighted edges
+      setNodes(flowNodes);
+      setEdges(highlightedEdges);
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
+      return;
+    }
+
     console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);

@@ -723,7 +723,11 @@ export function transformEducationData(
         position: pos,
         positionAbsolute: pos,  // Force both position properties for React Flow
         dragging: false,
-        draggable: false 
+        draggable: false,
+        data: {
+          ...n.data,
+          hasGridLayout: true  // Mark nodes that received deterministic grid layout
+        }
       };
     });
   }
