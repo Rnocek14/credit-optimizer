@@ -10,15 +10,7 @@ import {
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
 import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
-import { computeGraphQAMetrics } from '../qa/multipathQA';
-import { resolveEduTreeQAModeFlag, resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
-import { computeDeterministicGrid } from '../layout/deterministicGrid';
-import { 
-  analyzeManualLayout, 
-  applyLearnedLayout, 
-  hasManualLayoutData, 
-  getManualPositions 
-} from './improvedLayoutAlgorithm';
+import { applyCleanTreeLayout } from './cleanTreeLayout';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -187,10 +179,7 @@ export function transformEducationData(
       return {
         id: String(block.id), // Ensure string ID
         type: 'blockGroup',
-        position: {
-          x: levelYear * 320,
-          y: rowIndex * 200
-        },
+        position: { x: 0, y: 0 }, // Will be set by clean tree layout
         data: {
           block,
           completedCourseIds,
@@ -366,8 +355,11 @@ export function transformEducationData(
     return { nodes, edges, blocksWithCourses };
   }
 
-  // PhaseA mode: No degree completion node, capstones are terminal
-  let nodes: Node[] = [...regularNodes];  // Ensure mutable copies
+  // Apply clean tree layout to all nodes
+  const layoutedNodes = applyCleanTreeLayout(regularNodes);
+
+  // PhaseA mode: No degree completion node, capstones are terminal  
+  let nodes: Node[] = [...layoutedNodes];  // Use tree-positioned nodes
   let edges: Edge[] = [...regularEdges];
 
   // === Overlay-only gate + edge cleanup ======================================
@@ -532,255 +524,7 @@ export function transformEducationData(
   const isSingleData = !flags.overlayEnabled && presentTracks.size === 1;
   const activeTrack = selectedTrackId || [...presentTracks][0] || null;
 
-  // Optional force switch for QA:
-  const forceLayout = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('qaForceLayout') === 'true';
-  
-  if (flags.eduTreePhaseA && (isCompare || isSingleData || forceLayout)) {
-    console.log('[Layout][mode]', { 
-      isCompare, isSingleData, activeTrack, presentTracks: [...presentTracks],
-      selectedTrackId, forceLayout
-    });
-    // Hard guard layout inputs
-    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
-      console.warn('[Layout] nodes/edges not arrays; skipping layout');
-      return { nodes: regularNodes, edges: regularEdges, blocksWithCourses };
-    }
-
-  const mode = isCompare ? 'compare' : isSingleData ? 'single' : 'none';
-  console.log('[Layout] applying deterministic grid', { 
-    mode, 
-    selectedTrackId,
-    nodesCount: nodes?.length,
-    edgesCount: edges?.length,
-    hasGateNode: nodes?.some(n => String(n.id) === 'divergence-gate'),
-    hasGateEdge: edges?.some(e => String(e.source) === 'divergence-gate' || String(e.target) === 'divergence-gate'),
-    flags: {
-      eduTreePhaseA: flags.eduTreePhaseA,
-      overlayEnabled: flags.overlayEnabled
-    }
-  });
-
-  // Log first few node slugs to verify data
-  const firstFiveNodes = nodes.slice(0, 5).map(n => {
-    const block = (n.data as any)?.block || {};
-    return { id: n.id, slug: block.slug, track_id: block.track_id, level_year: block.level_year };
-  });
-  console.log('[Layout] first 5 nodes:', firstFiveNodes);
-
-  // Log key DS/SE nodes we're trying to anchor
-  const keyNodes = nodes.filter(n => {
-    const slug = (n.data as any)?.block?.slug;
-    return ['data-analysis', 'machine-learning', 'capstone-data-science', 
-            'specializations', 'architecture', 'capstone-software-engineering'].includes(slug);
-  }).map(n => {
-    const block = (n.data as any)?.block || {};
-    return { id: n.id, slug: block.slug, track_id: block.track_id, level_year: block.level_year };
-  });
-  console.log('[Layout] key anchor nodes found:', keyNodes);
-
-    // Use only real nodes for layout (exclude virtual lane bridges)
-    const layoutNodes = nodes.filter(n => n.type !== 'laneBridge');
-    
-    // Build blocks for layout from real nodes only
-    const layoutBlocks = layoutNodes.map(n => {
-      const b = (n.data as any)?.block || {};
-      return {
-        id: n.id, 
-        slug: b.slug, 
-        title: b.title, 
-        level_year: b.level_year, 
-        track_id: b.track_id ?? null
-      };
-    });
-    
-    // Configure layout options based on mode
-    let layoutOptions;
-    
-    if (isCompare) {
-      // Compare mode: full layout with gate and both tracks
-      layoutOptions = {
-        laneHeight: 220, 
-        colWidth: 540, // Proper spacing for 420px wide BlockGroups
-        lanePaddingX: 64, 
-        lanePaddingY: 24,
-        columnOrderBySlug: {
-          'general-education': 0,
-          'foundations': 1,
-          'mathematics': 2,
-          'core-i': 3,
-          'core-ii': 5,                    // moved right to avoid gate conflict
-          'divergence-gate': 4,            // gate gets clean column 4
-          'specializations': 6,            // Y3 SE anchor
-          'data-analysis': 8,              // Y3 DS anchor
-          'architecture': 10,              // Y4 SE anchor
-          'machine-learning': 12,          // Y4 DS anchor
-          'capstone-software-engineering': 13,
-          'capstone-data-science': 14
-        },
-        trackAnchorsByLane: {
-          3: { sharedMax: 4, se: 6, ds: 8 }, // Y3: gate at 4, SE left, DS right
-          4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
-        },
-        reservedColsByLane: {
-          3: [4, 6, 8], // Reserve gate, SE anchor, DS anchor
-          4: [10, 12, 13, 14] // Reserve SE, DS, and both capstones
-        }
-      };
-    } else if (isSingleData && activeTrack === 'data-science') {
-      // Single-track DS: compact layout, no gate
-      console.log('[Layout] Using DS single-track layout configuration');
-      layoutOptions = {
-        laneHeight: 220, 
-        colWidth: 540, // Proper spacing for 420px wide BlockGroups
-        lanePaddingX: 64, 
-        lanePaddingY: 24,
-        columnOrderBySlug: {
-          'general-education': 0,
-          'foundations': 1,
-          'mathematics': 2,
-          'core-i': 3,
-          'core-ii': 4,
-          'data-analysis': 6,              // Y3 DS anchor
-          'machine-learning': 8,           // Y4 DS anchor
-          'capstone-data-science': 9
-        },
-        trackAnchorsByLane: {
-          3: { sharedMax: 5, ds: 6 },      // Y3: shared up to 5, DS at 6
-          4: { sharedMax: 7, ds: 8 }       // Y4: shared up to 7, DS at 8
-        },
-        reservedColsByLane: {
-          3: [6],     // Reserve DS anchor
-          4: [8, 9]   // Reserve DS anchor and capstone
-        }
-      };
-    } else if (isSingleData && activeTrack === 'software-engineering') {
-      // Single-track SE: compact layout, no gate
-      console.log('[Layout] Using SE single-track layout configuration');
-      layoutOptions = {
-        laneHeight: 220, 
-        colWidth: 540, // Proper spacing for 420px wide BlockGroups
-        lanePaddingX: 64, 
-        lanePaddingY: 24,
-        columnOrderBySlug: {
-          'general-education': 0,
-          'foundations': 1,
-          'mathematics': 2,
-          'core-i': 3,
-          'core-ii': 4,
-          'specializations': 5,            // Y3: Column 5 (after core blocks)
-          'architecture': 6,               // Y4: Column 6 (consecutive)
-          'capstone-software-engineering': 7  // Y4: Column 7 (consecutive)
-        }
-        // No trackAnchorsByLane or reservedColsByLane needed for single-track - no gaps
-      };
-    } else {
-      // Fallback for other tracks or undefined primary
-      layoutOptions = {
-        laneHeight: 220, 
-        colWidth: 540, // Proper spacing for 420px wide BlockGroups
-        lanePaddingX: 64, 
-        lanePaddingY: 24
-      };
-    }
-    
-    // Check if we have manual positioning data to learn from
-    const manualPositions = getManualPositions();
-    if (manualPositions && hasManualLayoutData()) {
-      console.log('[Layout] Found manual positions data, applying learned layout');
-      
-      // Analyze the manual positions to extract layout rules
-      const layoutRules = analyzeManualLayout(manualPositions);
-      
-      // Apply learned layout to nodes  
-      const getLevelYear = (node: any) => {
-        const blockData = node.data?.block;
-        return blockData?.level_year || 1;
-      };
-      
-      nodes = applyLearnedLayout(nodes.filter(n => n.type !== 'laneBridge'), layoutRules, getLevelYear)
-        .concat(nodes.filter(n => n.type === 'laneBridge')); // Keep bridge nodes as-is
-      
-      console.log('[Layout] Applied learned layout to nodes');
-    } else {
-      // Fall back to original PhaseA grid layout
-      console.log('[Layout] No manual positions found, using PhaseA grid layout');
-      
-      // Defensive layout call
-    let layout: Record<string, { x: number; y: number }> = {};
-    try {
-      console.log('[Layout] calling computeDeterministicGrid with:', {
-        blocksCount: layoutBlocks.length,
-        edgesCount: edges.length,
-        layoutOptions: Object.keys(layoutOptions)
-      });
-      
-      layout = computeDeterministicGrid(
-        layoutBlocks,
-        edges.map(e => ({ source: String(e.source), target: String(e.target) })),
-        layoutOptions
-      );
-      
-      console.log('[Layout] grid computation result:', {
-        layoutKeysCount: Object.keys(layout).length,
-        firstFewPositions: Object.entries(layout).slice(0, 5).map(([id, pos]) => ({
-          id, x: pos.x, y: pos.y, 
-          col: (pos as any).col, 
-          lane: (pos as any).lane
-        }))
-      });
-      
-      // STAGE 0.6 FIX: Validate grid positions before applying
-      const validPositions = Object.values(layout).filter(pos => 
-        pos && !isNaN(pos.x) && !isNaN(pos.y) && pos.x >= 0 && pos.y >= 0
-      );
-      console.log('[Layout] PhaseA grid validation:', {
-        totalPositions: Object.keys(layout).length,
-        validPositions: validPositions.length,
-        allValid: validPositions.length === Object.keys(layout).length
-      });
-    } catch (err) {
-      console.warn('[Layout] layout crashed, skipping layout', err);
-    }
-
-      // Apply positions to real nodes only with GUARANTEED position application
-      nodes = nodes.map(n => {
-        if (n.type === 'laneBridge') return n; // leave bridge nodes alone
-        const L = layout[String(n.id)];
-        if (!L) {
-          console.warn('[Layout] No grid position found for node:', n.id);
-          return n;
-        }
-        
-        const pos = { x: L.x, y: L.y };
-        
-        // STAGE 0.6 FIX: Validate position before applying
-        if (isNaN(pos.x) || isNaN(pos.y) || pos.x < 0 || pos.y < 0) {
-          console.warn('[Layout] Invalid grid position for node:', n.id, pos);
-          return n;
-        }
-        
-        return { 
-          ...n, 
-          position: pos,
-          positionAbsolute: pos,  // Force both position properties for React Flow
-          dragging: false,
-          draggable: true,  // Enable dragging for manual positioning
-          data: {
-            ...n.data,
-            hasGridLayout: true,  // Mark nodes that received deterministic grid layout
-            gridPosition: pos,    // Store original grid position for debugging
-            phaseA: true          // Mark as PhaseA node
-          }
-        };
-      });
-      
-      console.log('[Layout] PhaseA nodes marked with grid layout:', {
-        totalNodes: nodes.length,
-        nodesWithGrid: nodes.filter(n => n.data?.hasGridLayout).length,
-        sampleNode: nodes[0] ? { id: nodes[0].id, position: nodes[0].position, hasGrid: nodes[0].data?.hasGridLayout } : null
-      });
-    }
-  }
+  console.log('[Layout] Using clean tree layout for all nodes');
 
   // Enhanced debugging: log edge generation and type standardization
   console.log('[Layout] Edge generation complete:', {
