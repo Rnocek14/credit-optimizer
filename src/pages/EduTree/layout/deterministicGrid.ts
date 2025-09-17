@@ -142,6 +142,12 @@ export function computeDeterministicGrid(
         const seNodes = track.filter(b => b.track_id === 'software-engineering');
         console.log(`[Layout] Anchoring ${seNodes.length} SE nodes to col ${anchors.se}:`, seNodes.map(n => n.slug));
         seNodes.forEach(b => {
+          // Respect absolute column assignments from columnOrderBySlug
+          const absoluteCol = fixed[b.slug ?? ''];
+          if (absoluteCol !== undefined && absoluteCol !== 9999) {
+            console.log(`[Layout] Hard anchor: skipping ${b.slug} - has absolute column ${absoluteCol}`);
+            return;
+          }
           rank.set(String(b.id), anchors.se!);
         });
       }
@@ -151,6 +157,12 @@ export function computeDeterministicGrid(
         const dsNodes = track.filter(b => b.track_id === 'data-science');
         console.log(`[Layout] Anchoring ${dsNodes.length} DS nodes to col ${anchors.ds}:`, dsNodes.map(n => n.slug));
         dsNodes.forEach(b => {
+          // Respect absolute column assignments from columnOrderBySlug
+          const absoluteCol = fixed[b.slug ?? ''];
+          if (absoluteCol !== undefined && absoluteCol !== 9999) {
+            console.log(`[Layout] Hard anchor: skipping ${b.slug} - has absolute column ${absoluteCol}`);
+            return;
+          }
           rank.set(String(b.id), anchors.ds!);
         });
       }
