@@ -61,6 +61,7 @@ import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, res
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
 import { layoutDebugger } from './utils/layoutDebug';
+import { phaseAGuard } from './utils/phaseAGuard';
 import './styles/trackOverlay.css';
 import './styles/pathIdentity.css';
 
@@ -248,9 +249,9 @@ function EduTreeCanvasInner() {
   } = useTrackComparison({
     nodes: flowNodes,
     edges: flowEdges,
-    primaryTrackId: isPhaseA ? undefined : primaryTrackId,
-    comparisonTrackId: isPhaseA ? undefined : comparisonTrackId,
-    overlayEnabled: isPhaseA ? false : overlayEnabled,
+    primaryTrackId,
+    comparisonTrackId,
+    overlayEnabled,
     phaseAEnabled: isPhaseA
   });
 
@@ -387,7 +388,7 @@ function EduTreeCanvasInner() {
     return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}`;
   }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id]);
 
-  // Perform layout when data or node sizes change
+  // Perform layout when data or node sizes change - STABLE DEPENDENCIES
   useLayoutEffect(() => {
     // PR-A: Add layout pass tracking
     if (typeof window !== 'undefined') {
@@ -412,52 +413,36 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // PR-A: PhaseA bypass - COMPLETELY skip all layout logic in PhaseA
+    // PR-A: PhaseA guard - use stable references to prevent any re-renders
     if (isPhaseA) {
-      (window as any).__layoutPasses.push('phaseA');
-      console.log('[EduTreeCanvas][PhaseA] COMPLETE bypass - using original flow nodes only');
+      if (!phaseAGuard.trackLayoutPass('phaseA')) {
+        console.error('[PhaseA][ERROR] Multiple layout passes detected - aborting');
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+        return;
+      }
       
-      // Create stable node references with preserved positions
-      const stableNodes = flowNodes.map((n, index) => ({
-        ...n,
-        // Generate stable key to prevent React re-creation
-        key: `phaseA-${n.id}-${index}`,
-        position: n.position ?? { x: 0, y: 0 },
-        data: { 
-          ...(n.data || {}), 
-          hasGridLayout: true,
-          phaseAProtected: true,
-          stableRef: true
-        },
-        dragging: false,
-        draggable: true
-      }));
+      console.log('[EduTreeCanvas][PhaseA] Using PhaseA guard system');
       
-      const stableEdges = flowEdges.map((e, index) => ({
-        ...e,
-        key: `phaseA-${e.id}-${index}`,
-        data: { 
-          ...(e.data || {}), 
-          phaseAProtected: true 
-        }
-      }));
+      // Get absolutely stable references that never change
+      const stableNodes = phaseAGuard.getStableNodes(highlightedNodes);
+      const stableEdges = phaseAGuard.getStableEdges(highlightedEdges);
       
-      // Log and apply PhaseA layout
-      layoutDebugger.logLayoutAction('PhaseA Stable Layout', stableNodes, 'phaseA');
+      // Check if ReactFlow already has the same nodes to prevent unnecessary updates
+      const currentNodes = reactFlowInstance.getNodes();
+      const needsUpdate = currentNodes.length !== stableNodes.length ||
+                         currentNodes.some((node, i) => node.id !== stableNodes[i]?.id);
       
-      console.log('[PhaseA][Apply] Using stable node references:', {
-        nodeCount: stableNodes.length,
-        edgeCount: stableEdges.length,
-        sampleNode: stableNodes[0] ? {
-          id: stableNodes[0].id,
-          position: stableNodes[0].position,
-          hasStableRef: !!stableNodes[0].data?.stableRef
-        } : null
-      });
-      
-      // Single atomic update to prevent competition
-      setNodes(stableNodes);
-      setEdges(stableEdges);
+      if (needsUpdate) {
+        console.log('[PhaseA][Apply] Initial setup with guarded references');
+        layoutDebugger.logLayoutAction('PhaseA Guard System', stableNodes, 'phaseA');
+        
+        // Single atomic update with guaranteed stable references
+        setNodes(stableNodes);
+        setEdges(stableEdges);
+      } else {
+        console.log('[PhaseA][Skip] Guard references already applied');
+      }
       
       setIsLayouting(false);
       layoutInProgressRef.current = false;
@@ -662,9 +647,21 @@ function EduTreeCanvasInner() {
     reactFlowInstance, 
     dataHash, 
     layoutVersion,
-    // PR-A: Add PhaseA to dependencies to ensure single run in PhaseA mode
-    isPhaseA
+    isPhaseA,
+    // Include overlay state to ensure proper re-render timing
+    overlayEnabled,
+    highlightedNodes.length,
+    highlightedEdges.length
   ]);
+
+  // Reset PhaseA guard when switching modes or unmounting
+  useEffect(() => {
+    return () => {
+      if (isPhaseA) {
+        phaseAGuard.reset();
+      }
+    };
+  }, [isPhaseA]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -812,11 +809,13 @@ function EduTreeCanvasInner() {
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          nodesDraggable={true}
-          onNodeDrag={(event, node) => {
+          nodesDraggable={!flags.eduTreePhaseA}
+          nodesConnectable={false}
+          elementsSelectable={!flags.eduTreePhaseA}
+          onNodeDrag={flags.eduTreePhaseA ? undefined : (event, node) => {
             console.log('🔄 Node drag:', node.id, node.position);
           }}
-          onNodeDragStop={(event, node) => {
+          onNodeDragStop={flags.eduTreePhaseA ? undefined : (event, node) => {
             console.log('✅ Node drag stop:', node.id, node.position);
             // Store manual position for analysis
             if (!(window as any).manualPositions) {

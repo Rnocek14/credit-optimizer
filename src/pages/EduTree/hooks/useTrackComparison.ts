@@ -33,6 +33,30 @@ export function useTrackComparison({
   phaseAEnabled = false
 }: UseTrackComparisonProps) {
   
+  // COMPLETE PhaseA bypass - return original nodes/edges with no processing
+  if (phaseAEnabled) {
+    return {
+      highlightedNodes: nodes,
+      highlightedEdges: edges,
+      highlights: {
+        primaryNodes: new Set<string>(),
+        primaryEdges: new Set<string>(),
+        comparisonNodes: new Set<string>(),
+        comparisonEdges: new Set<string>(),
+        sharedNodes: new Set<string>(),
+        sharedEdges: new Set<string>()
+      },
+      debugInfo: {
+        overlayReady: false,
+        resolvedBlocks: 0,
+        anyMatches: false,
+        primaryCount: 0,
+        comparisonCount: 0,
+        sharedCount: 0
+      }
+    };
+  }
+  
   // Build node ID lookup map from rendered nodes (by slug)
   const nodeIdByBlockId = useMemo(() => {
     const map = new Map<string, string>();
@@ -168,44 +192,6 @@ export function useTrackComparison({
   // Apply layout and highlight classes to nodes
   const highlightedNodes = useMemo(() => {
     if (!overlayEnabled) return nodes;
-
-    // PhaseA Guard: Never reposition when PhaseA is active
-    if (phaseAEnabled) {
-      console.log('[Overlay][Guard] PhaseA active → overlay will style only (no positioning)');
-      
-      // Preserve all existing positions and grid layout flags
-      let processedNodes = nodes.map(node => ({
-        ...node,
-        position: node.position,
-        positionAbsolute: node.position,
-        data: {
-          ...node.data,
-          // Preserve existing grid layout if it exists
-          hasGridLayout: (node.data as any)?.hasGridLayout || false
-        }
-      }));
-      
-      // Apply only highlight classes, never reposition
-      return processedNodes.map(node => {
-        const baseClasses = node.className ? node.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-        let hlClass = 'hl';
-        
-        if (highlights.sharedNodes.has(node.id)) {
-          hlClass += ' hl--both';
-        } else if (highlights.primaryNodes.has(node.id)) {
-          hlClass += ' hl--primary';
-        } else if (highlights.comparisonNodes.has(node.id)) {
-          hlClass += ' hl--comparison';
-        } else {
-          hlClass += ' hl--dim';
-        }
-
-        return {
-          ...node,
-          className: [...baseClasses, hlClass].join(' ')
-        };
-      });
-    }
 
     // Legacy path: Check if we should apply comparison layout
     const useComparisonLayout = isComparisonLayoutActive(primaryTrackId, comparisonTrackId, overlayEnabled, phaseAEnabled);
