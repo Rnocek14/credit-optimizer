@@ -236,7 +236,10 @@ function EduTreeCanvasInner() {
     typeof nodeTypes.terminalNode === 'function'
   , [flowNodes, flowEdges, nodeTypes]);
 
-  // Get track comparison highlights and processed edges
+  // PR-A: COMPLETELY bypass overlay in PhaseA - no highlighting at all
+  const isPhaseA = flags.eduTreePhaseA;
+  
+  // Get track comparison highlights and processed edges ONLY if not PhaseA
   const { 
     highlightedNodes,
     highlightedEdges,
@@ -245,10 +248,10 @@ function EduTreeCanvasInner() {
   } = useTrackComparison({
     nodes: flowNodes,
     edges: flowEdges,
-    primaryTrackId,
-    comparisonTrackId,
-    overlayEnabled,
-    phaseAEnabled: flags.eduTreePhaseA
+    primaryTrackId: isPhaseA ? undefined : primaryTrackId,
+    comparisonTrackId: isPhaseA ? undefined : comparisonTrackId,
+    overlayEnabled: isPhaseA ? false : overlayEnabled,
+    phaseAEnabled: isPhaseA
   });
 
   // Remove finalNodes/finalEdges - apply highlighting directly in layout effect
@@ -409,68 +412,52 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // PR-A: PhaseA bypass - skip legacy layout when PhaseA is active
-    const isPhaseA = flags.eduTreePhaseA;
+    // PR-A: PhaseA bypass - COMPLETELY skip all layout logic in PhaseA
     if (isPhaseA) {
       (window as any).__layoutPasses.push('phaseA');
-      console.log('[EduTreeCanvas][PhaseA] Bypassing legacy layout, applying flow directly');
-      console.log('[EduTree Layout] PhaseA active - bypassing legacy layout');
+      console.log('[EduTreeCanvas][PhaseA] COMPLETE bypass - using original flow nodes only');
       
-      // Position preservation: Add defensive guards to prevent position overwrites
-      const preservePositions = (n: Node) => ({
+      // Create stable node references with preserved positions
+      const stableNodes = flowNodes.map((n, index) => ({
         ...n,
+        // Generate stable key to prevent React re-creation
+        key: `phaseA-${n.id}-${index}`,
         position: n.position ?? { x: 0, y: 0 },
         data: { 
           ...(n.data || {}), 
           hasGridLayout: true,
-          phaseAProtected: true 
+          phaseAProtected: true,
+          stableRef: true
         },
         dragging: false,
         draggable: true
-      });
+      }));
       
-      const finalNodes = (overlayEnabled ? highlightedNodes : flowNodes).map(preservePositions);
-      const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
-      
-      // Debug layout action
-      layoutDebugger.logLayoutAction('PhaseA Layout Applied', finalNodes, 'phaseA');
-      
-      // Expose for debugging
-      (window as any).__flowNodes__ = finalNodes;
-      (window as any).__flowEdges__ = finalEdges;
-      
-      console.log('[Layout][Grid] PhaseA nodes applied:', {
-        totalNodes: finalNodes.length,
-        gridNodes: finalNodes.filter((n: any) => n.data?.hasGridLayout).length,
-        protectedNodes: finalNodes.filter((n: any) => n.data?.phaseAProtected).length,
-        samplePositions: finalNodes.slice(0, 5).map((n: any) => ({
-          id: n.id,
-          x: n.position?.x,
-          y: n.position?.y,
-          hasGrid: n.data?.hasGridLayout,
-          protected: n.data?.phaseAProtected
-        }))
-      });
-      
-      setNodes(finalNodes);
-      setEdges(finalEdges);
-      
-      // Add layout competition detection
-      setTimeout(() => {
-        const currentNodes = reactFlowInstance?.getNodes?.() || [];
-        const positionChanged = layoutDebugger.detectPositionChanges(finalNodes, currentNodes);
-        
-        if (positionChanged) {
-          console.warn('[PhaseA][Competition] Node positions changed after PhaseA layout - layout competition detected!');
-          console.warn('[PhaseA][Competition] Expected positions preserved, but detected changes. Check for overlay interference.');
-          
-          // Re-apply positions if they were changed
-          console.log('[PhaseA][Recovery] Re-applying protected PhaseA positions');
-          setNodes(finalNodes);
-        } else {
-          console.log('[PhaseA][Guard] ✅ Position integrity maintained - no layout competition detected');
+      const stableEdges = flowEdges.map((e, index) => ({
+        ...e,
+        key: `phaseA-${e.id}-${index}`,
+        data: { 
+          ...(e.data || {}), 
+          phaseAProtected: true 
         }
-      }, 100);
+      }));
+      
+      // Log and apply PhaseA layout
+      layoutDebugger.logLayoutAction('PhaseA Stable Layout', stableNodes, 'phaseA');
+      
+      console.log('[PhaseA][Apply] Using stable node references:', {
+        nodeCount: stableNodes.length,
+        edgeCount: stableEdges.length,
+        sampleNode: stableNodes[0] ? {
+          id: stableNodes[0].id,
+          position: stableNodes[0].position,
+          hasStableRef: !!stableNodes[0].data?.stableRef
+        } : null
+      });
+      
+      // Single atomic update to prevent competition
+      setNodes(stableNodes);
+      setEdges(stableEdges);
       
       setIsLayouting(false);
       layoutInProgressRef.current = false;
@@ -671,7 +658,13 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, dataHash, layoutVersion]);
+  }, [
+    reactFlowInstance, 
+    dataHash, 
+    layoutVersion,
+    // PR-A: Add PhaseA to dependencies to ensure single run in PhaseA mode
+    isPhaseA
+  ]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
