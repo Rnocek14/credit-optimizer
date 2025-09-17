@@ -525,15 +525,37 @@ export function transformEducationData(
       return { nodes: regularNodes, edges: regularEdges, blocksWithCourses };
     }
 
-    const mode = isCompare ? 'compare' : isSingleTrack ? 'single' : 'none';
-    console.log('[Layout] applying deterministic grid', { 
-      mode, 
-      selectedTrackId,
-      nodesCount: nodes?.length,
-      edgesCount: edges?.length,
-      hasGateNode: nodes?.some(n => String(n.id) === 'divergence-gate'),
-      hasGateEdge: edges?.some(e => String(e.source) === 'divergence-gate' || String(e.target) === 'divergence-gate')
-    });
+  const mode = isCompare ? 'compare' : isSingleTrack ? 'single' : 'none';
+  console.log('[Layout] applying deterministic grid', { 
+    mode, 
+    selectedTrackId,
+    nodesCount: nodes?.length,
+    edgesCount: edges?.length,
+    hasGateNode: nodes?.some(n => String(n.id) === 'divergence-gate'),
+    hasGateEdge: edges?.some(e => String(e.source) === 'divergence-gate' || String(e.target) === 'divergence-gate'),
+    flags: {
+      eduTreePhaseA: flags.eduTreePhaseA,
+      overlayEnabled: flags.overlayEnabled
+    }
+  });
+
+  // Log first few node slugs to verify data
+  const firstFiveNodes = nodes.slice(0, 5).map(n => {
+    const block = (n.data as any)?.block || {};
+    return { id: n.id, slug: block.slug, track_id: block.track_id, level_year: block.level_year };
+  });
+  console.log('[Layout] first 5 nodes:', firstFiveNodes);
+
+  // Log key DS/SE nodes we're trying to anchor
+  const keyNodes = nodes.filter(n => {
+    const slug = (n.data as any)?.block?.slug;
+    return ['data-analysis', 'machine-learning', 'capstone-data-science', 
+            'specializations', 'architecture', 'capstone-software-engineering'].includes(slug);
+  }).map(n => {
+    const block = (n.data as any)?.block || {};
+    return { id: n.id, slug: block.slug, track_id: block.track_id, level_year: block.level_year };
+  });
+  console.log('[Layout] key anchor nodes found:', keyNodes);
 
     // Use only real nodes for layout (exclude virtual lane bridges)
     const layoutNodes = nodes.filter(n => n.type !== 'laneBridge');
@@ -585,6 +607,7 @@ export function transformEducationData(
       };
     } else if (selectedTrackId === 'data-science') {
       // Single-track DS: compact layout, no gate
+      console.log('[Layout] Using DS single-track layout configuration');
       layoutOptions = {
         laneHeight: 220, 
         colWidth: 320, 
@@ -611,6 +634,7 @@ export function transformEducationData(
       };
     } else if (selectedTrackId === 'software-engineering') {
       // Single-track SE: compact layout, no gate
+      console.log('[Layout] Using SE single-track layout configuration');
       layoutOptions = {
         laneHeight: 220, 
         colWidth: 320, 
@@ -648,13 +672,28 @@ export function transformEducationData(
     // Defensive layout call
     let layout: Record<string, { x: number; y: number }> = {};
     try {
+      console.log('[Layout] calling computeDeterministicGrid with:', {
+        blocksCount: layoutBlocks.length,
+        edgesCount: edges.length,
+        layoutOptions: Object.keys(layoutOptions)
+      });
+      
       layout = computeDeterministicGrid(
         layoutBlocks,
         edges.map(e => ({ source: String(e.source), target: String(e.target) })),
         layoutOptions
       );
+      
+      console.log('[Layout] grid computation result:', {
+        layoutKeysCount: Object.keys(layout).length,
+        firstFewPositions: Object.entries(layout).slice(0, 5).map(([id, pos]) => ({
+          id, x: pos.x, y: pos.y, 
+          col: (pos as any).col, 
+          lane: (pos as any).lane
+        }))
+      });
     } catch (err) {
-      console.warn('[Overlay] layout crashed, skipping layout', err);
+      console.warn('[Layout] layout crashed, skipping layout', err);
     }
 
     // Apply positions to real nodes only
