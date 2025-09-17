@@ -22,8 +22,7 @@
   padding: 2px 6px; 
   border-radius: 999px; 
   margin-right: 6px; 
-  background: var(--muted);
-  color: var(--muted-foreground);
+  background: hsl(var(--muted)); 
 }
 
 .chip--shared { 
@@ -42,8 +41,8 @@
 }
 
 .chip--year { 
-  background: var(--muted); 
-  color: var(--muted-foreground); 
+  background: hsl(var(--muted)); 
+  color: hsl(var(--muted-foreground)); 
 }
 
 /* Edge track colors */

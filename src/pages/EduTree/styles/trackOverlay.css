@@ -64,17 +64,12 @@
   opacity: 0.25;
 }
 
-/* Hover effects - disabled during layout to prevent conflicts */
-.edu-tree-canvas:not(.layout-in-progress) .hl--primary:hover,
-.edu-tree-canvas:not(.layout-in-progress) .hl--comparison:hover,
-.edu-tree-canvas:not(.layout-in-progress) .hl--both:hover {
+/* Hover effects */
+.hl--primary:hover,
+.hl--comparison:hover,
+.hl--both:hover {
   transform: scale(1.02);
   z-index: 100;
-}
-
-/* CSS containment to prevent layout calculation cascading */
-.edu-tree-canvas .react-flow__node {
-  contain: layout style;
 }
 
 /* Focus states for accessibility */

@@ -1,5 +1,5 @@
 import React from 'react';
-import { resolveEduTreeFlag, canBypassEduTreeFlag, isStorageAvailable } from '@/lib/eduTreeFlags';
+import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
 import { EduTreeCanvas } from './EduTreeCanvas';
 
@@ -17,9 +17,7 @@ export default function EduTree() {
   if (!enabled && !canBypass) {
     console.log('[EduTree] Feature disabled, showing disabled screen');
     const handleEnableForSession = () => {
-      if (isStorageAvailable()) {
-        window.localStorage.setItem('eduTree', 'true');
-      }
+      localStorage.setItem('eduTree', 'true');
       window.location.reload();
     };
 

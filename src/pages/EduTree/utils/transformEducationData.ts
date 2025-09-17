@@ -503,46 +503,13 @@ export function transformEducationData(
 
       if (newNodes.length) {
         nodes = [...nodes, ...newNodes];
-        // Handle-safe edge transform for multi-lane mode
-        const canUseHandles = (id: string) => {
-          const n = nodes.find(nn => String(nn.id) === String(id));
-          return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
-        };
-        
-        edges = newEdges.map(ed => {
-          const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
-          return useHandles 
-            ? { ...ed, sourceHandle: 'r', targetHandle: 'l' }
-            : ed;
-        });
+        edges = newEdges;
       } else {
-        // Handle-safe edge transform: only assign handles when both nodes support them
-        const canUseHandles = (id: string) => {
-          const n = nodes.find(nn => String(nn.id) === String(id));
-          return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
-        };
-
-        edges = edges.map(ed => {
-          const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
-          return useHandles 
-            ? { ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }
-            : { ...ed, type: 'step' };
-        });
+        edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
       }
     } else {
-      // Handle-safe edge transform: only assign handles when both nodes support them
-      const canUseHandles = (id: string) => {
-        const n = nodes.find(nn => String(nn.id) === String(id));
-        return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
-      };
-
-      // no splitting; convert to step edges with conditional handles
-      edges = edges.map(ed => {
-        const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
-        return useHandles 
-          ? { ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }
-          : { ...ed, type: 'step' };
-      });
+      // no splitting; just convert to step edges with proper handles
+      edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
     }
   }
   // === end overlay gate + edge cleanup =======================================

@@ -156,31 +156,18 @@ function EduTreeCanvasInner() {
     gateEdgesLoading
   } = useEduTreeData();
 
-  // Transform data for React Flow (defensive) with stabilized output
-  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => {
-    const result = safe(
-      () => transformEducationData(
-        { blocks, courses, blockMembers, gates, gateEdges },
-        completedCourseIds,
-        { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() },
-        undefined,
-        primaryTrackId
-      ),
-      { nodes: [], edges: [], blocksWithCourses: [] },
-      'Transform'
-    );
-    
-    // Expose for debugging
-    (window as any).__flowNodes__ = result.nodes;
-    (window as any).__flowEdges__ = result.edges;
-    
-    return result;
-  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
-
-  // Stable data hash to prevent unnecessary layout triggering
-  const dataHash = useMemo(() => {
-    return `${blocks.length}-${courses.length}-${flowNodes.length}`;
-  }, [blocks.length, courses.length, flowNodes.length]);
+  // Transform data for React Flow (defensive)
+  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => safe(
+    () => transformEducationData(
+      { blocks, courses, blockMembers, gates, gateEdges },
+      completedCourseIds,
+      { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() },
+      undefined,
+      primaryTrackId
+    ),
+    { nodes: [], edges: [], blocksWithCourses: [] },
+    'Transform'
+  ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
 
   // QA Mode: Compute and export metrics when enabled
   const qaMode = resolveEduTreeQAModeFlag();
@@ -247,7 +234,7 @@ function EduTreeCanvasInner() {
 
   // Get track comparison highlights and processed edges
   const { 
-    highlightedNodes,
+    highlights, 
     highlightedEdges,
     debugInfo 
   } = useTrackComparison({
@@ -384,70 +371,31 @@ function EduTreeCanvasInner() {
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
-    const isPhaseA = flags?.eduTreePhaseA === true;
-    
-    // Circuit breaker: prevent running during active layout operations
-    if (layoutInProgressRef.current) {
-      console.log('[EduTree Layout] Layout already in progress, skipping to prevent circular dependency');
-      return;
-    }
-    
     if (!reactFlowInstance) {
       console.log('[EduTree Layout] ReactFlow instance not ready');
       return;
     }
     
-    if (isPhaseA) {
-      // PhaseA: Apply deterministic grid positions with position validation
-      console.log('[EduTree Layout] PhaseA mode - applying deterministic grid positions');
-      
-      // Debug flag for layout mode verification
-      (window as any).__layoutMode__ = 'phaseA-grid';
-      
-      // Position validation: Check if nodes have valid grid layout positions
-      const validGridNodes = flowNodes.filter(n => 
-        n.data?.hasGridLayout && 
-        n.position && 
-        typeof n.position.x === 'number' && 
-        typeof n.position.y === 'number' &&
-        n.position.x > 0 && n.position.y > 0
-      );
-      
-      console.log('[EduTree Layout] Position validation:', {
-        totalNodes: flowNodes.length,
-        validGridNodes: validGridNodes.length,
-        missingGridLayout: flowNodes.filter(n => !n.data?.hasGridLayout).length,
-        invalidPositions: flowNodes.filter(n => !n.position || n.position.x <= 0 || n.position.y <= 0).length
-      });
-      
-      // Recovery mechanism: If nodes lost their grid positions, force re-layout
-      if (validGridNodes.length === 0 && flowNodes.length > 0) {
-        console.warn('[EduTree Layout] No valid grid positions found, triggering recovery layout');
-        setLayoutVersion(v => v + 1);
-        return;
-      }
-      
-      // Always apply positions in PhaseA mode (remove aggressive comparison checks)
-      console.log('[EduTree Layout] Applying node and edge updates');
-      const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
-      setNodes(finalNodes);
-      setEdges(highlightedEdges);
-      
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      
-      // FitView only if we have positioned nodes
-      if (validGridNodes.length > 0) {
-        requestAnimationFrame(() => {
-          setTimeout(() => reactFlowInstance.fitView?.({ padding: 0.2, duration: 250 }), 50);
-        });
-      }
+    if (layoutInProgressRef.current) {
+      console.log('[EduTree Layout] Layout already in progress, skipping');
       return;
     }
 
     // Clear loading state immediately if there are no nodes to layout
     if (!flowNodes.length) {
       console.log('[EduTree Layout] No nodes to layout, clearing loading state');
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
+      return;
+    }
+
+    // STAGE 3.7 FIX: Check if nodes already have deterministic grid layout
+    const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
+    if (hasGridLayout) {
+      console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
+      // Directly apply the grid-positioned nodes and highlighted edges
+      setNodes(flowNodes);
+      setEdges(highlightedEdges);
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
@@ -596,24 +544,8 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        // Apply overlay highlighting to final layout nodes
-        const finalNodes = overlayEnabled ? highlightedNodes : finalLayout;
-        setNodes(prev => {
-          if (prev.length === finalNodes.length && 
-              prev.every((n, i) => n.id === finalNodes[i]?.id && 
-                                 n.position?.x === finalNodes[i]?.position?.x && 
-                                 n.position?.y === finalNodes[i]?.position?.y)) {
-            return prev; // No actual changes, keep reference
-          }
-          return finalNodes;
-        });
-        setEdges(prev => {
-          if (prev.length === highlightedEdges.length &&
-              prev.every((e, i) => e.id === highlightedEdges[i]?.id)) {
-            return prev; // No actual changes, keep reference
-          }
-          return highlightedEdges;
-        });
+        setNodes(finalLayout);
+        setEdges(highlightedEdges);
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -644,23 +576,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes.length, highlightedEdges.length, flags?.eduTreePhaseA, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
-
-  // Debug logging effect for PhaseA (separate from render cycle)
-  useEffect(() => {
-    if (flags?.eduTreePhaseA && flowNodes.length > 0) {
-      // Expose flowNodes globally for verification
-      (window as any).__flowNodes__ = flowNodes;
-      
-      console.log('[EduTree] Final render state:', {
-        nodeCount: flowNodes.length,
-        edgeCount: highlightedEdges.length,
-        hasGridNodes: flowNodes.filter(n => n.data?.hasGridLayout).length,
-        positionedNodes: flowNodes.filter(n => n.position && (n.position.x !== 0 || n.position.y !== 0)).length,
-        samplePositions: flowNodes.slice(0, 3).map(n => ({ id: n.id, pos: n.position }))
-      });
-    }
-  }, [flags?.eduTreePhaseA, flowNodes.length, highlightedEdges.length]);
+  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -792,7 +708,6 @@ function EduTreeCanvasInner() {
       
       {/* Main Canvas */}
       <div className="w-full h-full">
-        
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -800,7 +715,7 @@ function EduTreeCanvasInner() {
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
-          className={`edu-tree-canvas bg-background ${isLayouting ? 'layout-in-progress' : ''}`}
+          className="edu-tree-canvas bg-background"
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}

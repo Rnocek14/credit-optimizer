@@ -16,24 +16,31 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const { attachResizeObserver, detachResizeObserver } = useNodeResize(props.id);
   
-  // Apply null-safety guards for all destructured properties
-  const block = (props.data as any)?.block ?? {};
-  const progress = (props.data as any)?.progress ?? { completed: 0, required: 0 };
-  const completedCourseIds = (props.data as any)?.completedCourseIds ?? new Set();
-  const isUnlocked = !!(props.data as any)?.isUnlocked;
-  const subBlocks = (props.data as any)?.subBlocks ?? [];
-  const altCreditOptions = (props.data as any)?.altCreditOptions ?? [];
-  const isHighlighted = !!(props.data as any)?.isHighlighted;
-  const planningLens = (props.data as any)?.planningLens ?? null;
-  const isDegreeNode = !!(props.data as any)?.isDegreeNode;
-  const isDegreeComplete = !!(props.data as any)?.isDegreeComplete;
-  const onCourseClick = (props.data as any)?.onCourseClick;
-
-  // Expose handle capabilities for edge safety
-  if (props.data) {
-    (props.data as any).hasLeftHandle = true;
-    (props.data as any).hasRightHandle = true;
-  }
+  const { 
+    block, 
+    completedCourseIds, 
+    isUnlocked, 
+    progress, 
+    subBlocks = [], 
+    altCreditOptions = [],
+    isHighlighted = false,
+    planningLens = null,
+    isDegreeNode = false,
+    isDegreeComplete = false,
+    onCourseClick
+  } = props.data as {
+    block: BlockWithCourses;
+    completedCourseIds: Set<string>;
+    isUnlocked: boolean;
+    progress: { completed: number; required: number };
+    subBlocks?: BlockWithCourses[];
+    altCreditOptions?: AltCreditOption[];
+    isHighlighted?: boolean;
+    planningLens?: string | null;
+    isDegreeNode?: boolean;
+    isDegreeComplete?: boolean;
+    onCourseClick?: (course: any) => void;
+  };
   
   const [showAltCredits, setShowAltCredits] = useState(false);
   const [subBlocksExpanded, setSubBlocksExpanded] = useState(false);
@@ -94,7 +101,7 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
 
       <Card className={`
         ${isDegreeNode ? 'w-[420px]' : 'w-[360px]'}
-        ${!isUnlocked ? 'opacity-[0.65]' : ''}
+        ${!isUnlocked ? 'opacity-65' : ''}
         ${isDegreeNode && isDegreeComplete ? 'border-accent-gold bg-gradient-to-br from-accent-gold/20 to-accent-gold/10 ring-2 ring-accent-gold/50 shadow-lg shadow-accent-gold/20' :
           isDegreeNode ? 'border-accent-gold/60 bg-accent-gold/5 ring-1 ring-accent-gold/30' :
           isComplete ? 'border-primary bg-primary/10 ring-1 ring-primary/25' : 'border-muted-foreground/40 bg-card hover:border-muted-foreground/60'}
