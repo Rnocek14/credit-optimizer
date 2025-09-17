@@ -370,12 +370,14 @@ function EduTreeCanvasInner() {
     }
   }, [hasData, dataLoading]);
 
-  // Create stable data hash for layout dependencies
+  // Create stable data hash for layout dependencies - avoid array dependencies
   const dataHash = useMemo(() => {
-    const nodeIds = flowNodes.map(n => n.id).sort().join(',');
-    const edgeIds = flowEdges.map(e => e.id).sort().join(',');
-    return `${nodeIds}-${edgeIds}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
-  }, [flowNodes, flowEdges, overlayEnabled, primaryTrackId, comparisonTrackId]);
+    const nodeCount = flowNodes.length;
+    const edgeCount = flowEdges.length;
+    const firstNodeId = flowNodes[0]?.id || '';
+    const lastNodeId = flowNodes[nodeCount - 1]?.id || '';
+    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
+  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
@@ -401,13 +403,25 @@ function EduTreeCanvasInner() {
     const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
     if (hasGridLayout) {
       console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
-      // Apply highlighting based on overlay state - use highlightedNodes when overlay enabled
-      const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
-      setNodes(finalNodes);
-      setEdges(highlightedEdges);
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      return;
+      
+      // Validate grid positions before applying
+      const validNodes = flowNodes.filter(node => {
+        const pos = node.position;
+        return pos && !isNaN(pos.x) && !isNaN(pos.y) && pos.x >= 0 && pos.y >= 0;
+      });
+      
+      if (validNodes.length !== flowNodes.length) {
+        console.warn('[EduTree Layout] Invalid grid positions detected, falling back to legacy layout');
+        // Don't return - let it fall through to legacy layout
+      } else {
+        // Apply highlighting based on overlay state - use highlightedNodes when overlay enabled
+        const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
+        setNodes(finalNodes);
+        setEdges(highlightedEdges);
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+        return;
+      }
     }
 
     console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');

@@ -41,8 +41,8 @@
 }
 
 .chip--year { 
-  background: hsl(var(--muted)); 
-  color: hsl(var(--muted-foreground)); 
+  background: var(--muted); 
+  color: var(--muted-foreground); 
 }
 
 /* Edge track colors */
