@@ -131,6 +131,17 @@ export function computeDeterministicGrid(
       }
     }
 
+    // Ensure unique columns within the lane (pack to the right if collision)
+    const entries = laneBlocks.map(b => [String(b.id), rank.get(String(b.id)) ?? 0]) as [string, number][];
+    entries.sort((a, b) => a[1] - b[1]); // by column
+    const used = new Set<number>();
+    for (const [id, colIdx] of entries) {
+      let c = colIdx;
+      while (used.has(c)) c++;
+      used.add(c);
+      rank.set(id, c);
+    }
+
     return rank;
   }
 

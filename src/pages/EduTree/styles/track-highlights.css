@@ -5,6 +5,16 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Stage 3: Divergence Gate and Bridge Node Styles */
+.node--gate { 
+  outline: 2px dashed hsl(var(--primary)); 
+  background: hsla(var(--primary), 0.05); 
+}
+
+.node--bridge { 
+  display: none; 
+}
+
 /* Edge transitions removed - handled by trackOverlay.css */
 
 /* Animation for track transitions */

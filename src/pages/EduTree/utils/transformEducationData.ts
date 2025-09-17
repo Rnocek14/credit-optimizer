@@ -362,7 +362,123 @@ export function transformEducationData(
 
   // PhaseA mode: No degree completion node, capstones are terminal
   let nodes: Node[] = regularNodes;
-  const edges: Edge[] = regularEdges;
+  let edges: Edge[] = regularEdges;
+
+  // === Overlay-only gate + edge cleanup ======================================
+  const WANT_OVERLAY = !!flags.overlayEnabled && !!flags.eduTreePhaseA;
+  const GATE_ID = 'divergence-gate';
+
+  if (WANT_OVERLAY) {
+    // 1) Inject virtual gate node (shared, sits at Y3 boundary)
+    const gateNode: Node = {
+      id: GATE_ID,
+      type: 'blockGroup',
+      data: {
+        block: {
+          id: GATE_ID,
+          slug: 'divergence-gate',
+          title: 'Track Gate',
+          rule_type: 'ALL' as const,
+          level_year: 3,
+          track_id: null,
+          courses: []
+        }
+      },
+      position: { x: 0, y: 0 },
+      draggable: false,
+      className: 'node node--shared node--gate'
+    };
+    nodes.push(gateNode);
+
+    // 2) Rewire Y2(shared) → Gate → Y3(track starts)
+    const idToBlock = new Map<string, BlockWithCourses>(sortedBlocks.map(b => [String(b.id), b]));
+    const isY2Shared = (b: BlockWithCourses) => b?.level_year === 2 && !b?.track_id;
+    const isY3TrackStart = (b: BlockWithCourses) =>
+      b?.level_year === 3 && (b?.slug === 'specializations' || b?.slug === 'data-analysis');
+
+    // remove direct edges (Y2 shared) -> (Y3 start)
+    edges = edges.filter(e => {
+      const s = idToBlock.get(String(e.source));
+      const t = idToBlock.get(String(e.target));
+      return !(s && t && isY2Shared(s) && isY3TrackStart(t));
+    });
+
+    const y2SharedIds = sortedBlocks.filter(isY2Shared).map(b => String(b.id));
+    const y3StartIds  = sortedBlocks.filter(isY3TrackStart).map(b => String(b.id));
+
+    const seenEdge = new Set<string>();
+    const addEdge = (src: string, tgt: string, cls: string) => {
+      const id = `e-${src}-${tgt}`;
+      if (seenEdge.has(id)) return;
+      seenEdge.add(id);
+      edges.push({ id, source: src, target: tgt, type: 'step', className: `edge ${cls}` });
+    };
+
+    // (Y2 shared) -> Gate (shared tint)
+    y2SharedIds.forEach(s => addEdge(s, GATE_ID, 'edge--shared'));
+
+    // Gate -> Track starts (inherit target track tint)
+    y3StartIds.forEach(t => {
+      const tb = idToBlock.get(String(t));
+      const cls = tb?.track_id === 'software-engineering' ? 'edge--se'
+               : tb?.track_id === 'data-science' ? 'edge--ds'
+               : 'edge--shared';
+      addEdge(GATE_ID, t, cls);
+    });
+
+    // 3) Force overlay edges to orthogonal step routing and split multi-lane jumps
+    const levelYear = (id: string): number | undefined => {
+      if (id === GATE_ID) return 3;
+      return idToBlock.get(String(id))?.level_year;
+    };
+
+    const newNodes: Node[] = [];
+    const newEdges: Edge[] = [];
+
+    const makeBridgeId = (prefix: string, lane: number) => `bridge-${prefix}-y${lane}`;
+
+    for (const e of edges) {
+      const sLY = levelYear(String(e.source));
+      const tLY = levelYear(String(e.target));
+      if (typeof sLY === 'number' && typeof tLY === 'number' && tLY - sLY > 1) {
+        // Split into adjacent-lane segments with invisible bridge nodes
+        let prev = String(e.source);
+        for (let y = sLY + 1; y <= tLY; y++) {
+          const lastHop = y === tLY;
+          const bridgeId = lastHop ? String(e.target) : makeBridgeId(prev, y);
+          if (!lastHop) {
+            newNodes.push({
+              id: bridgeId,
+              type: 'laneBridge',
+              data: { block: { id: bridgeId, title: '', level_year: y, track_id: null } },
+              position: { x: 0, y: 0 },
+              draggable: false,
+              hidden: true,
+              className: 'node node--bridge'
+            });
+          }
+          newEdges.push({
+            id: `e-${prev}-${bridgeId}`,
+            source: prev,
+            target: bridgeId,
+            type: 'step',
+            className: e.className || 'edge'
+          });
+          prev = bridgeId;
+        }
+      } else {
+        newEdges.push({ ...e, type: 'step' });
+      }
+    }
+
+    if (newNodes.length) {
+      nodes = [...nodes, ...newNodes];
+      edges = newEdges;
+    } else {
+      edges = edges.map(ed => ({ ...ed, type: 'step' }));
+    }
+  }
+  // === end overlay gate + edge cleanup =======================================
 
   // Apply deterministic grid layout when in overlay mode with PhaseA
   if (flags.eduTreePhaseA && flags.overlayEnabled) {
@@ -386,13 +502,13 @@ export function transformEducationData(
           'mathematics': 2,
           'core-i': 3,
           'core-ii': 4,
-          'specializations': 5, // divergence gate (shared title)
-          'data-analysis': 5,   // Y3 DS divergence label
-          // Y4 anchor hints:
-          'architecture': 6,
-          'machine-learning': 6,
-          'capstone-software-engineering': 7,
-          'capstone-data-science': 7
+          'divergence-gate': 5,            // new
+          'specializations': 6,            // Y3 SE anchor
+          'data-analysis': 8,              // Y3 DS anchor
+          'architecture': 10,              // Y4 SE anchor
+          'machine-learning': 12,          // Y4 DS anchor
+          'capstone-software-engineering': 13,
+          'capstone-data-science': 13
         },
         trackAnchorsByLane: {
           3: { sharedMax: 5, se: 6, ds: 8 }, // Y3: SE left, DS right
