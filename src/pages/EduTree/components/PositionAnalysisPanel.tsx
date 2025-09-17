@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
+import { ApplyLearnedLayoutButton } from './ApplyLearnedLayoutButton';
 
 /**
  * Panel for analyzing and exporting manual node positions
@@ -72,6 +73,8 @@ export function PositionAnalysisPanel() {
         >
           Clear Positions
         </Button>
+        
+        <ApplyLearnedLayoutButton />
         
         <div className="text-xs text-muted-foreground pt-2 border-t">
           <strong>Instructions:</strong>

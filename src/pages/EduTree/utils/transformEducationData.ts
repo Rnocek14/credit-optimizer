@@ -13,6 +13,12 @@ import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
 import { computeGraphQAMetrics } from '../qa/multipathQA';
 import { resolveEduTreeQAModeFlag, resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
 import { computeDeterministicGrid } from '../layout/deterministicGrid';
+import { 
+  analyzeManualLayout, 
+  applyLearnedLayout, 
+  hasManualLayoutData, 
+  getManualPositions 
+} from './improvedLayoutAlgorithm';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -677,7 +683,29 @@ export function transformEducationData(
       };
     }
     
-    // Defensive layout call
+    // Check if we have manual positioning data to learn from
+    const manualPositions = getManualPositions();
+    if (manualPositions && hasManualLayoutData()) {
+      console.log('[Layout] Found manual positions data, applying learned layout');
+      
+      // Analyze the manual positions to extract layout rules
+      const layoutRules = analyzeManualLayout(manualPositions);
+      
+      // Apply learned layout to nodes  
+      const getLevelYear = (node: any) => {
+        const blockData = node.data?.block;
+        return blockData?.level_year || 1;
+      };
+      
+      nodes = applyLearnedLayout(nodes.filter(n => n.type !== 'laneBridge'), layoutRules, getLevelYear)
+        .concat(nodes.filter(n => n.type === 'laneBridge')); // Keep bridge nodes as-is
+      
+      console.log('[Layout] Applied learned layout to nodes');
+    } else {
+      // Fall back to original PhaseA grid layout
+      console.log('[Layout] No manual positions found, using PhaseA grid layout');
+      
+      // Defensive layout call
     let layout: Record<string, { x: number; y: number }> = {};
     try {
       console.log('[Layout] calling computeDeterministicGrid with:', {
@@ -714,43 +742,44 @@ export function transformEducationData(
       console.warn('[Layout] layout crashed, skipping layout', err);
     }
 
-    // Apply positions to real nodes only with GUARANTEED position application
-    nodes = nodes.map(n => {
-      if (n.type === 'laneBridge') return n; // leave bridge nodes alone
-      const L = layout[String(n.id)];
-      if (!L) {
-        console.warn('[Layout] No grid position found for node:', n.id);
-        return n;
-      }
-      
-      const pos = { x: L.x, y: L.y };
-      
-      // STAGE 0.6 FIX: Validate position before applying
-      if (isNaN(pos.x) || isNaN(pos.y) || pos.x < 0 || pos.y < 0) {
-        console.warn('[Layout] Invalid grid position for node:', n.id, pos);
-        return n;
-      }
-      
-      return { 
-        ...n, 
-        position: pos,
-        positionAbsolute: pos,  // Force both position properties for React Flow
-        dragging: false,
-        draggable: true,  // Enable dragging for manual positioning
-        data: {
-          ...n.data,
-          hasGridLayout: true,  // Mark nodes that received deterministic grid layout
-          gridPosition: pos,    // Store original grid position for debugging
-          phaseA: true          // Mark as PhaseA node
+      // Apply positions to real nodes only with GUARANTEED position application
+      nodes = nodes.map(n => {
+        if (n.type === 'laneBridge') return n; // leave bridge nodes alone
+        const L = layout[String(n.id)];
+        if (!L) {
+          console.warn('[Layout] No grid position found for node:', n.id);
+          return n;
         }
-      };
-    });
-    
-    console.log('[Layout] PhaseA nodes marked with grid layout:', {
-      totalNodes: nodes.length,
-      nodesWithGrid: nodes.filter(n => n.data?.hasGridLayout).length,
-      sampleNode: nodes[0] ? { id: nodes[0].id, position: nodes[0].position, hasGrid: nodes[0].data?.hasGridLayout } : null
-    });
+        
+        const pos = { x: L.x, y: L.y };
+        
+        // STAGE 0.6 FIX: Validate position before applying
+        if (isNaN(pos.x) || isNaN(pos.y) || pos.x < 0 || pos.y < 0) {
+          console.warn('[Layout] Invalid grid position for node:', n.id, pos);
+          return n;
+        }
+        
+        return { 
+          ...n, 
+          position: pos,
+          positionAbsolute: pos,  // Force both position properties for React Flow
+          dragging: false,
+          draggable: true,  // Enable dragging for manual positioning
+          data: {
+            ...n.data,
+            hasGridLayout: true,  // Mark nodes that received deterministic grid layout
+            gridPosition: pos,    // Store original grid position for debugging
+            phaseA: true          // Mark as PhaseA node
+          }
+        };
+      });
+      
+      console.log('[Layout] PhaseA nodes marked with grid layout:', {
+        totalNodes: nodes.length,
+        nodesWithGrid: nodes.filter(n => n.data?.hasGridLayout).length,
+        sampleNode: nodes[0] ? { id: nodes[0].id, position: nodes[0].position, hasGrid: nodes[0].data?.hasGridLayout } : null
+      });
+    }
   }
 
   // Enhanced debugging: log edge generation and type standardization
