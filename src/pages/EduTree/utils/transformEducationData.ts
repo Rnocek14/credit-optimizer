@@ -393,18 +393,17 @@ export function transformEducationData(
     // 2) Rewire Y2(shared) → Gate → Y3(track starts)
     const idToBlock = new Map<string, BlockWithCourses>(sortedBlocks.map(b => [String(b.id), b]));
     const isY2Shared = (b: BlockWithCourses) => b?.level_year === 2 && !b?.track_id;
-    const isY3TrackStart = (b: BlockWithCourses) =>
-      b?.level_year === 3 && (b?.slug === 'specializations' || b?.slug === 'data-analysis');
+    const isTrackY3 = (b: BlockWithCourses) => b?.level_year === 3 && !!b?.track_id;
 
-    // remove direct edges (Y2 shared) -> (Y3 start)
+    // remove ANY Y2-shared -> Y3-track edge to ensure gate owns the fork
     edges = edges.filter(e => {
       const s = idToBlock.get(String(e.source));
       const t = idToBlock.get(String(e.target));
-      return !(s && t && isY2Shared(s) && isY3TrackStart(t));
+      return !(s && t && s.level_year === 2 && !s.track_id && isTrackY3(t));
     });
 
     const y2SharedIds = sortedBlocks.filter(isY2Shared).map(b => String(b.id));
-    const y3StartIds  = sortedBlocks.filter(isY3TrackStart).map(b => String(b.id));
+    const y3StartIds  = sortedBlocks.filter(isTrackY3).map(b => String(b.id));
 
     const seenEdge = new Set<string>();
     const addEdge = (src: string, tgt: string, cls: string) => {
@@ -426,55 +425,62 @@ export function transformEducationData(
       addEdge(GATE_ID, t, cls);
     });
 
-    // 3) Force overlay edges to orthogonal step routing and split multi-lane jumps
+    // 3) Force overlay edges to orthogonal step routing and optionally split multi-lane jumps
+    const splitMultiLane = new URLSearchParams(window.location.search).get('qaSplitMultiLane') === 'true';
     const levelYear = (id: string): number | undefined => {
       if (id === GATE_ID) return 3;
       return idToBlock.get(String(id))?.level_year;
     };
 
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
+    if (splitMultiLane) {
+      // Multi-lane splitting enabled - create bridge nodes for long jumps
+      const newNodes: Node[] = [];
+      const newEdges: Edge[] = [];
 
-    const makeBridgeId = (prefix: string, lane: number) => `bridge-${prefix}-y${lane}`;
+      const makeBridgeId = (prefix: string, lane: number) => `bridge-${prefix}-y${lane}`;
 
-    for (const e of edges) {
-      const sLY = levelYear(String(e.source));
-      const tLY = levelYear(String(e.target));
-      if (typeof sLY === 'number' && typeof tLY === 'number' && tLY - sLY > 1) {
-        // Split into adjacent-lane segments with invisible bridge nodes
-        let prev = String(e.source);
-        for (let y = sLY + 1; y <= tLY; y++) {
-          const lastHop = y === tLY;
-          const bridgeId = lastHop ? String(e.target) : makeBridgeId(prev, y);
-          if (!lastHop) {
-            newNodes.push({
-              id: bridgeId,
-              type: 'laneBridge',
-              data: { block: { id: bridgeId, title: '', level_year: y, track_id: null } },
-              position: { x: 0, y: 0 },
-              draggable: false,
-              hidden: true,
-              className: 'node node--bridge'
+      for (const e of edges) {
+        const sLY = levelYear(String(e.source));
+        const tLY = levelYear(String(e.target));
+        if (typeof sLY === 'number' && typeof tLY === 'number' && tLY - sLY > 1) {
+          // Split into adjacent-lane segments with invisible bridge nodes
+          let prev = String(e.source);
+          for (let y = sLY + 1; y <= tLY; y++) {
+            const lastHop = y === tLY;
+            const bridgeId = lastHop ? String(e.target) : makeBridgeId(prev, y);
+            if (!lastHop) {
+              newNodes.push({
+                id: bridgeId,
+                type: 'laneBridge',
+                data: { block: { id: bridgeId, title: '', level_year: y, track_id: null } },
+                position: { x: 0, y: 0 },
+                draggable: false,
+                hidden: true,
+                className: 'node node--bridge'
+              });
+            }
+            newEdges.push({
+              id: `e-${prev}-${bridgeId}`,
+              source: prev,
+              target: bridgeId,
+              type: 'step',
+              className: e.className || 'edge'
             });
+            prev = bridgeId;
           }
-          newEdges.push({
-            id: `e-${prev}-${bridgeId}`,
-            source: prev,
-            target: bridgeId,
-            type: 'step',
-            className: e.className || 'edge'
-          });
-          prev = bridgeId;
+        } else {
+          newEdges.push({ ...e, type: 'step' });
         }
-      } else {
-        newEdges.push({ ...e, type: 'step' });
       }
-    }
 
-    if (newNodes.length) {
-      nodes = [...nodes, ...newNodes];
-      edges = newEdges;
+      if (newNodes.length) {
+        nodes = [...nodes, ...newNodes];
+        edges = newEdges;
+      } else {
+        edges = edges.map(ed => ({ ...ed, type: 'step' }));
+      }
     } else {
+      // no splitting; just convert to step edges
       edges = edges.map(ed => ({ ...ed, type: 'step' }));
     }
   }
@@ -482,14 +488,23 @@ export function transformEducationData(
 
   // Apply deterministic grid layout when in overlay mode with PhaseA
   if (flags.eduTreePhaseA && flags.overlayEnabled) {
-    const layout = computeDeterministicGrid(
-      sortedBlocks.map(b => ({ 
-        id: b.id, 
+    // Use only real nodes for layout (exclude virtual lane bridges)
+    const layoutNodes = nodes.filter(n => n.type !== 'laneBridge');
+    
+    // Build blocks for layout from real nodes only
+    const layoutBlocks = layoutNodes.map(n => {
+      const b = (n.data as any)?.block || {};
+      return {
+        id: n.id, 
         slug: b.slug, 
         title: b.title, 
         level_year: b.level_year, 
-        track_id: b.track_id 
-      })),
+        track_id: b.track_id ?? null
+      };
+    });
+    
+    const layout = computeDeterministicGrid(
+      layoutBlocks,
       edges.map(e => ({ source: String(e.source), target: String(e.target) })),
       {
         laneHeight: 220, 
@@ -517,7 +532,9 @@ export function transformEducationData(
       }
     );
 
+    // Apply positions to real nodes only
     nodes = nodes.map(n => {
+      if (n.type === 'laneBridge') return n; // leave bridge nodes alone
       const L = layout[String(n.id)];
       return L ? { ...n, position: { x: L.x, y: L.y }, draggable: false } : n;
     });

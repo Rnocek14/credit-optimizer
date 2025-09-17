@@ -7,8 +7,8 @@
 
 /* Stage 3: Divergence Gate and Bridge Node Styles */
 .node--gate { 
-  outline: 2px dashed hsl(var(--primary)); 
-  background: hsla(var(--primary), 0.05); 
+  outline: 2px dashed var(--lp-shared-muted); 
+  background: hsla(140, 85%, 70%, 0.05); 
 }
 
 .node--bridge { 
