@@ -612,5 +612,11 @@ export function transformEducationData(
     phaseAMode: flags.eduTreePhaseA
   });
 
+  // Fix 7: Add edge hygiene validation
+  const badEdges = edges.filter(e => !e.source || !e.target || e.id == null);
+  if (badEdges.length) {
+    console.warn('[Transform][Edges] Incomplete edges:', badEdges.slice(0, 5));
+  }
+
   return { nodes, edges, blocksWithCourses };
 }

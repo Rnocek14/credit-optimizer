@@ -11,6 +11,7 @@ export interface GridLayoutOpts extends GridLayoutConfig {
   columnOrderBySlug?: { [slug: string]: number };
   trackAnchorsByLane?: { [lane: number]: { se?: number; ds?: number; sharedMax?: number } };
   reservedColsByLane?: { [lane: number]: number[] };
+  qaSplitMultiLane?: boolean;
 }
 
 const DEFAULT_GRID_CONFIG: GridLayoutConfig = {
@@ -18,6 +19,20 @@ const DEFAULT_GRID_CONFIG: GridLayoutConfig = {
   baseY: 100,
   yearSpacing: 400,
   trackLaneSpacing: 300
+};
+
+// Extended config for hardening
+interface ExtendedGridConfig extends GridLayoutConfig {
+  laneOffsetCompare: number;
+  laneOffsetSingle: number;
+  nodeSpacing: number;
+}
+
+const DEFAULT_EXTENDED_CONFIG: ExtendedGridConfig = {
+  ...DEFAULT_GRID_CONFIG,
+  laneOffsetCompare: 200,
+  laneOffsetSingle: 0,
+  nodeSpacing: 50
 };
 
 /**
@@ -40,6 +55,7 @@ export function applyYearGridLayout(
     sampleNode: nodes[0]?.id
   });
 
+  const extendedOpts: ExtendedGridConfig = { ...DEFAULT_EXTENDED_CONFIG, ...config };
   const opts: GridLayoutOpts = { ...DEFAULT_GRID_CONFIG, ...config };
 
   // Extract level_year from node data
@@ -86,10 +102,30 @@ export function applyYearGridLayout(
     }))
   });
 
+  // Helper function for consistent position setting
+  const createPositionedNode = (node: Node, x: number, y: number): Node => ({
+    ...node,
+    position: { x, y },
+    draggable: false,
+    dragging: false,
+    data: {
+      ...node.data,
+      hasGridLayout: true
+    }
+  });
+
+  // Stable sorting function for deterministic lane ordering
+  const getNodeSortKey = (node: Node): string => {
+    const data = node.data as any;
+    return (data?.block?.slug ?? data?.block?.title ?? node.id).toString();
+  };
+
   // Position nodes using year-based grid
   const positionedNodes: Node[] = [];
 
-  for (const [year, yearNodes] of nodesByYear) {
+  // Fix 1: Sort years to ensure deterministic iteration order
+  for (const year of [...nodesByYear.keys()].sort((a, b) => a - b)) {
+    const yearNodes = nodesByYear.get(year)!;
     const baseX = year * opts.colWidth;
     const baseYearY = opts.baseY + (year - 1) * opts.yearSpacing;
 
@@ -98,6 +134,11 @@ export function applyYearGridLayout(
     const seNodes = yearNodes.filter(n => getTrackId(n) === 'software-engineering');
     const dsNodes = yearNodes.filter(n => getTrackId(n) === 'data-science');
     
+    // Fix 2: Deterministic ordering within lanes
+    sharedNodes.sort((a, b) => getNodeSortKey(a).localeCompare(getNodeSortKey(b)));
+    seNodes.sort((a, b) => getNodeSortKey(a).localeCompare(getNodeSortKey(b)));
+    dsNodes.sort((a, b) => getNodeSortKey(a).localeCompare(getNodeSortKey(b)));
+    
     console.log('[Layout][Grid] Year', year, 'distribution:', {
       shared: sharedNodes.length,
       se: seNodes.length,  
@@ -105,24 +146,15 @@ export function applyYearGridLayout(
     });
 
     let yOffset = 0;
-    const nodeSpacing = 50;
+    const nodeSpacing = extendedOpts.nodeSpacing;
+    const laneOffset = isCompare ? extendedOpts.laneOffsetCompare : extendedOpts.laneOffsetSingle;
 
     // Position shared nodes first (centered)
     sharedNodes.forEach((node, index) => {
       const x = baseX;
       const y = baseYearY + yOffset;
       
-      positionedNodes.push({
-        ...node,
-        position: { x, y },
-        draggable: false,
-        dragging: false,
-        data: {
-          ...node.data,
-          hasGridLayout: true
-        }
-      });
-      
+      positionedNodes.push(createPositionedNode(node, x, y));
       yOffset += nodeSpacing;
     });
 
@@ -131,58 +163,42 @@ export function applyYearGridLayout(
       yOffset += opts.trackLaneSpacing;
     }
 
+    // Fix 4: Clean Y-offset math with configurable spacing
+    let laneYOffset = yOffset;
+    if (seNodes.length > 0 && dsNodes.length > 0) {
+      laneYOffset += 100; // inter-lane gap
+    }
+
     // Position SE nodes (left lane in compare mode)
     if (seNodes.length > 0) {
-      const seX = isCompare ? baseX - 200 : baseX;
+      const seX = baseX - laneOffset;
       seNodes.forEach((node, index) => {
         const x = seX;
         const y = baseYearY + yOffset + (index * nodeSpacing);
-        
-        positionedNodes.push({
-          ...node,
-          position: { x, y },
-          draggable: false,
-          dragging: false,
-          data: {
-            ...node.data,
-            hasGridLayout: true
-          }
-        });
+        positionedNodes.push(createPositionedNode(node, x, y));
       });
-      
-      if (dsNodes.length > 0) {
-        yOffset += (seNodes.length * nodeSpacing) + 100;
-      }
     }
 
     // Position DS nodes (right lane in compare mode) 
     if (dsNodes.length > 0) {
-      const dsX = isCompare ? baseX + 200 : baseX;
-      const dsY = seNodes.length > 0 ? yOffset : yOffset;
+      const dsX = baseX + laneOffset;
+      const dsStartY = baseYearY + (seNodes.length > 0 ? laneYOffset : yOffset);
       
       dsNodes.forEach((node, index) => {
         const x = dsX;
-        const y = baseYearY + dsY + (index * nodeSpacing);
-        
-        positionedNodes.push({
-          ...node,
-          position: { x, y },
-          draggable: false,
-          dragging: false,
-          data: {
-            ...node.data,
-            hasGridLayout: true
-          }
-        });
+        const y = dsStartY + (index * nodeSpacing);
+        positionedNodes.push(createPositionedNode(node, x, y));
       });
     }
   }
 
-  // Add any bridge nodes back without layout (keep original positions)
+  // Fix 5: Add bridge nodes back with proper hiding when not in QA split mode
   const bridgeNodes = nodes.filter(node => node.type === 'laneBridge');
   bridgeNodes.forEach(node => {
+    const shouldHide = !config.qaSplitMultiLane;
     positionedNodes.push({
       ...node,
+      hidden: shouldHide,
       data: {
         ...node.data,
         hasGridLayout: false // Bridge nodes are not laid out
@@ -190,14 +206,24 @@ export function applyYearGridLayout(
     });
   });
 
+  // Fix 7: ID/Edge hygiene validation
+  const idCounts = new Map<string, number>();
+  positionedNodes.forEach(n => idCounts.set(n.id, (idCounts.get(n.id) || 0) + 1));
+  const dupes = [...idCounts].filter(([_, c]) => c > 1);
+  if (dupes.length) {
+    console.warn('[Layout][Grid][IDs] Duplicate node IDs:', dupes.slice(0, 5));
+  }
+
   console.log('[Layout][Grid] Layout complete:', {
     totalNodes: positionedNodes.length,
     layoutedNodes: positionedNodes.filter(n => n.data?.hasGridLayout).length,
     bridgeNodes: positionedNodes.filter(n => !n.data?.hasGridLayout).length,
+    hiddenNodes: positionedNodes.filter(n => n.hidden).length,
+    duplicateIds: dupes.length,
     samplePositions: positionedNodes.slice(0, 3).map(n => ({
       id: n.id,
-      x: n.position.x,
-      y: n.position.y,
+      x: n.position?.x,
+      y: n.position?.y,
       hasGrid: n.data?.hasGridLayout
     }))
   });
