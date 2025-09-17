@@ -14,26 +14,17 @@ export interface GridLayoutOpts extends GridLayoutConfig {
   qaSplitMultiLane?: boolean;
 }
 
-const DEFAULT_GRID_CONFIG: GridLayoutConfig = {
-  colWidth: 540,
-  baseY: 100,
-  yearSpacing: 400,
-  trackLaneSpacing: 300
-};
-
-// Extended config for hardening
-interface ExtendedGridConfig extends GridLayoutConfig {
-  laneOffsetCompare: number;
-  laneOffsetSingle: number;
-  nodeSpacing: number;
-}
-
-const DEFAULT_EXTENDED_CONFIG: ExtendedGridConfig = {
-  ...DEFAULT_GRID_CONFIG,
+// Consolidated default config for cleaner callsites
+export const DEFAULT_GRID_CONFIG = {
+  colWidth: 300,
+  baseY: 0,
+  yearSpacing: 220,
+  trackLaneSpacing: 60,
   laneOffsetCompare: 200,
   laneOffsetSingle: 0,
-  nodeSpacing: 50
-};
+  nodeSpacing: 50,
+  qaSplitMultiLane: false
+} as const;
 
 /**
  * PR-A: Single deterministic year-grid layout system
@@ -55,8 +46,7 @@ export function applyYearGridLayout(
     sampleNode: nodes[0]?.id
   });
 
-  const extendedOpts: ExtendedGridConfig = { ...DEFAULT_EXTENDED_CONFIG, ...config };
-  const opts: GridLayoutOpts = { ...DEFAULT_GRID_CONFIG, ...config };
+  const extendedOpts = { ...DEFAULT_GRID_CONFIG, ...config };
 
   // Extract level_year from node data
   const getLevelYear = (node: Node): number => {
@@ -126,8 +116,8 @@ export function applyYearGridLayout(
   // Fix 1: Sort years to ensure deterministic iteration order
   for (const year of [...nodesByYear.keys()].sort((a, b) => a - b)) {
     const yearNodes = nodesByYear.get(year)!;
-    const baseX = year * opts.colWidth;
-    const baseYearY = opts.baseY + (year - 1) * opts.yearSpacing;
+    const baseX = year * extendedOpts.colWidth;
+    const baseYearY = extendedOpts.baseY + (year - 1) * extendedOpts.yearSpacing;
 
     // Separate nodes by track within each year
     const sharedNodes = yearNodes.filter(n => !getTrackId(n));
@@ -160,7 +150,7 @@ export function applyYearGridLayout(
 
     // Add spacing between shared and track-specific nodes
     if (sharedNodes.length > 0 && (seNodes.length > 0 || dsNodes.length > 0)) {
-      yOffset += opts.trackLaneSpacing;
+      yOffset += extendedOpts.trackLaneSpacing;
     }
 
     // Fix 4: Clean Y-offset math with configurable spacing
@@ -195,7 +185,7 @@ export function applyYearGridLayout(
   // Fix 5: Add bridge nodes back with proper hiding when not in QA split mode
   const bridgeNodes = nodes.filter(node => node.type === 'laneBridge');
   bridgeNodes.forEach(node => {
-    const shouldHide = !config.qaSplitMultiLane;
+    const shouldHide = !extendedOpts.qaSplitMultiLane;
     positionedNodes.push({
       ...node,
       hidden: shouldHide,

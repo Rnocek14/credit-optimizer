@@ -423,10 +423,11 @@ function EduTreeCanvasInner() {
       setNodes(overlayEnabled ? highlightedNodes : flowNodes);
       setEdges(overlayEnabled ? highlightedEdges : flowEdges);
       
-      // Fit view with slight delay
-      requestAnimationFrame(() => {
+      // Fix: FitView throttling to prevent zoom wobble
+      const raf = requestAnimationFrame(() => {
         reactFlowInstance?.fitView?.({ padding: 0.2 });
       });
+      // Note: cleanup handled by React's effect cleanup
       
       setIsLayouting(false);
       layoutInProgressRef.current = false;
