@@ -401,18 +401,21 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // Check if nodes already have deterministic layout (grid or clean tree)
+    // Check if nodes already have deterministic layout (grid, clean tree, or comparison)
     const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
     const hasCleanTreeLayout = flowNodes.some(node => node.data?.hasCleanTreeLayout);
-    const hasExistingLayout = hasGridLayout || hasCleanTreeLayout;
+    const hasComparisonLayout = flowNodes.some(node => node.data?.hasComparisonLayout);
+    const hasExistingLayout = hasGridLayout || hasCleanTreeLayout || hasComparisonLayout;
     
     console.log('[EduTree Layout] Layout detection:', { 
       hasGridLayout, 
       hasCleanTreeLayout,
+      hasComparisonLayout,
       hasExistingLayout,
       totalNodes: flowNodes.length, 
       nodesWithGrid: flowNodes.filter(n => n.data?.hasGridLayout).length,
       nodesWithCleanTree: flowNodes.filter(n => n.data?.hasCleanTreeLayout).length,
+      nodesWithComparison: flowNodes.filter(n => n.data?.hasComparisonLayout).length,
       sampleNodeData: flowNodes[0]?.data 
     });
     
