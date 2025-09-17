@@ -245,7 +245,8 @@ function EduTreeCanvasInner() {
     edges: flowEdges,
     primaryTrackId,
     comparisonTrackId,
-    overlayEnabled
+    overlayEnabled,
+    phaseAEnabled: flags.eduTreePhaseA
   });
 
   // Remove finalNodes/finalEdges - apply highlighting directly in layout effect
