@@ -589,7 +589,20 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
+  }, [reactFlowInstance, flowNodes, highlightedEdges, flags?.eduTreePhaseA, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
+
+  // Debug logging effect for PhaseA (separate from render cycle)
+  useEffect(() => {
+    if (flags?.eduTreePhaseA && flowNodes.length > 0) {
+      console.log('[EduTree] Final render state:', {
+        nodeCount: flowNodes.length,
+        edgeCount: highlightedEdges.length,
+        hasGridNodes: flowNodes.filter(n => n.data?.hasGridLayout).length,
+        positionedNodes: flowNodes.filter(n => n.position && (n.position.x !== 0 || n.position.y !== 0)).length,
+        samplePositions: flowNodes.slice(0, 3).map(n => ({ id: n.id, pos: n.position }))
+      });
+    }
+  }, [flags?.eduTreePhaseA, flowNodes.length, highlightedEdges.length]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -721,19 +734,6 @@ function EduTreeCanvasInner() {
       
       {/* Main Canvas */}
       <div className="w-full h-full">
-        {/* Stage 3.7 Debug Logging */}
-        {(() => {
-          if (flags?.eduTreePhaseA) {
-            console.log('[EduTree] Final render state:', {
-              nodeCount: flowNodes.length,
-              edgeCount: highlightedEdges.length,
-              hasGridNodes: flowNodes.filter(n => n.data?.hasGridLayout).length,
-              positionedNodes: flowNodes.filter(n => n.position && (n.position.x !== 0 || n.position.y !== 0)).length,
-              samplePositions: flowNodes.slice(0, 3).map(n => ({ id: n.id, pos: n.position }))
-            });
-          }
-          return null;
-        })()}
         
         <ReactFlow
           nodes={nodes}
