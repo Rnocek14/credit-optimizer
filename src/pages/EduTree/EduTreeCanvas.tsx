@@ -47,13 +47,15 @@ import {
   DegreeOutcomeBanner,
   TrackValidator,
   SimpleTrackPicker,
-  TrackComparisonControls
+  TrackComparisonControls,
+  PositionAnalysisPanel
 } from './components';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
+import './utils/positionCapture'; // Initialize position capture utilities
 import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, resolveEduTreeQAModeFlag } from '@/lib/eduTreeFlags';
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
@@ -705,6 +707,11 @@ function EduTreeCanvasInner() {
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative h-screen bg-background">
+      {/* Position Analysis Panel */}
+      <div className="absolute bottom-4 right-4 z-40">
+        <PositionAnalysisPanel />
+      </div>
+
       {/* Track Comparison Overlay Controls */}
       {flags.eduTreeMultiPathOverlay && (
         <div className="absolute top-4 left-4 z-40">
@@ -749,6 +756,18 @@ function EduTreeCanvasInner() {
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          nodesDraggable={true}
+          onNodeDrag={(event, node) => {
+            console.log('🔄 Node drag:', node.id, node.position);
+          }}
+          onNodeDragStop={(event, node) => {
+            console.log('✅ Node drag stop:', node.id, node.position);
+            // Store manual position for analysis
+            if (!(window as any).manualPositions) {
+              (window as any).manualPositions = {};
+            }
+            (window as any).manualPositions[node.id] = node.position;
+          }}
         >
           <Background
             variant={BackgroundVariant.Dots}

@@ -410,7 +410,7 @@ export function transformEducationData(
         }
       },
       position: { x: 0, y: 0 },
-      draggable: false,
+      draggable: true,  // Enable dragging for manual positioning
       className: 'node node--shared node--gate'
     };
     
@@ -482,7 +482,7 @@ export function transformEducationData(
                 type: 'laneBridge',
                 data: { block: { id: bridgeId, title: '', level_year: y, track_id: null } },
                 position: { x: 0, y: 0 },
-                draggable: false,
+                draggable: true,  // Enable dragging for manual positioning
                 hidden: true,
                 className: 'node node--bridge'
               });
@@ -736,7 +736,7 @@ export function transformEducationData(
         position: pos,
         positionAbsolute: pos,  // Force both position properties for React Flow
         dragging: false,
-        draggable: false,
+        draggable: true,  // Enable dragging for manual positioning
         data: {
           ...n.data,
           hasGridLayout: true,  // Mark nodes that received deterministic grid layout

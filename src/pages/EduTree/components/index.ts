@@ -9,3 +9,4 @@ export { DegreeOutcomeBanner } from './DegreeOutcomeBanner';
 export { TrackValidator } from './TrackValidator';
 export { SimpleTrackPicker } from './SimpleTrackPicker';
 export { TrackComparisonControls } from './TrackComparisonControls';
+export { PositionAnalysisPanel } from './PositionAnalysisPanel';
