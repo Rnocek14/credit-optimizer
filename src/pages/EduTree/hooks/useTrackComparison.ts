@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { TRACK_MAP, type TrackId } from '../data/trackDefinitions';
 import { applyComparisonLayout, isComparisonLayoutActive } from '../utils/comparisonLayout';
+import { resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
 
 // Edge ID normalization helper
 export const eid = (source: string, target: string) => `e-${String(source)}-${String(target)}`;
@@ -30,6 +31,33 @@ export function useTrackComparison({
   comparisonTrackId,
   overlayEnabled
 }: UseTrackComparisonProps) {
+  
+  // CRITICAL: Complete bypass in PhaseA mode to prevent layout competition
+  const isPhaseA = resolveEduTreePhaseAFlag();
+  
+  if (isPhaseA) {
+    console.log('[useTrackComparison] PhaseA mode - complete bypass');
+    return {
+      highlightedNodes: nodes,
+      highlightedEdges: edges,
+      highlights: {
+        primaryNodes: new Set<string>(),
+        primaryEdges: new Set<string>(),
+        comparisonNodes: new Set<string>(),
+        comparisonEdges: new Set<string>(),
+        sharedNodes: new Set<string>(),
+        sharedEdges: new Set<string>()
+      },
+      debugInfo: {
+        overlayReady: false,
+        resolvedBlocks: 0,
+        anyMatches: false,
+        primaryCount: 0,
+        comparisonCount: 0, 
+        sharedCount: 0
+      }
+    };
+  }
   
   // Build node ID lookup map from rendered nodes (by slug)
   const nodeIdByBlockId = useMemo(() => {
