@@ -24,6 +24,7 @@ interface FeatureFlags {
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
   eduTreeStaggeredEdgesV2: boolean; // V2 staggered edge system
   eduTreeMultiPathOverlay: boolean; // Multipath track comparison overlay
+  eduTreePhaseA: boolean; // PhaseA clean track structure
 }
 
 /**
@@ -103,6 +104,8 @@ export function getFeatureFlags(): FeatureFlags {
     }
     return url !== null ? toBool(url) : resolved;
   })(),
+  // EduTree PhaseA clean track structure
+  eduTreePhaseA: toBool(getFlagValue('eduTreePhaseA', 'edu-tree-phase-a', 'true')),
   };
   
   // Single consolidated debug log (only once per session)

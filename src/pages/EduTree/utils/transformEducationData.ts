@@ -514,15 +514,21 @@ export function transformEducationData(
   }
   // === end overlay gate + edge cleanup =======================================
 
-  // Apply deterministic grid layout when in overlay mode with PhaseA
-  if (flags.eduTreePhaseA && flags.overlayEnabled) {
+  // Apply deterministic grid layout for PhaseA (comparison or single-track mode)
+  const isCompare = !!flags.overlayEnabled;
+  const isSingleTrack = !flags.overlayEnabled && !!selectedTrackId;
+  
+  if (flags.eduTreePhaseA && (isCompare || isSingleTrack)) {
     // Hard guard layout inputs
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
-      console.warn('[Overlay] nodes/edges not arrays; skipping layout');
+      console.warn('[Layout] nodes/edges not arrays; skipping layout');
       return { nodes: regularNodes, edges: regularEdges, blocksWithCourses };
     }
 
-    console.log('[Overlay] pre-layout', {
+    const mode = isCompare ? 'compare' : isSingleTrack ? 'single' : 'none';
+    console.log('[Layout] applying deterministic grid', { 
+      mode, 
+      selectedTrackId,
       nodesCount: nodes?.length,
       edgesCount: edges?.length,
       hasGateNode: nodes?.some(n => String(n.id) === 'divergence-gate'),
@@ -544,40 +550,108 @@ export function transformEducationData(
       };
     });
     
+    // Configure layout options based on mode
+    let layoutOptions;
+    
+    if (isCompare) {
+      // Compare mode: full layout with gate and both tracks
+      layoutOptions = {
+        laneHeight: 220, 
+        colWidth: 320, 
+        lanePaddingX: 64, 
+        lanePaddingY: 24,
+        columnOrderBySlug: {
+          'general-education': 0,
+          'foundations': 1,
+          'mathematics': 2,
+          'core-i': 3,
+          'core-ii': 5,                    // moved right to avoid gate conflict
+          'divergence-gate': 4,            // gate gets clean column 4
+          'specializations': 6,            // Y3 SE anchor
+          'data-analysis': 8,              // Y3 DS anchor
+          'architecture': 10,              // Y4 SE anchor
+          'machine-learning': 12,          // Y4 DS anchor
+          'capstone-software-engineering': 13,
+          'capstone-data-science': 13
+        },
+        trackAnchorsByLane: {
+          3: { sharedMax: 4, se: 6, ds: 8 }, // Y3: gate at 4, SE left, DS right
+          4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
+        },
+        reservedColsByLane: {
+          3: [4, 6, 8], // Reserve gate, SE anchor, DS anchor
+          4: [10, 12, 13] // Reserve SE, DS, capstones
+        }
+      };
+    } else if (selectedTrackId === 'data-science') {
+      // Single-track DS: compact layout, no gate
+      layoutOptions = {
+        laneHeight: 220, 
+        colWidth: 320, 
+        lanePaddingX: 64, 
+        lanePaddingY: 24,
+        columnOrderBySlug: {
+          'general-education': 0,
+          'foundations': 1,
+          'mathematics': 2,
+          'core-i': 3,
+          'core-ii': 4,
+          'data-analysis': 6,              // Y3 DS anchor
+          'machine-learning': 8,           // Y4 DS anchor
+          'capstone-data-science': 9
+        },
+        trackAnchorsByLane: {
+          3: { sharedMax: 5, ds: 6 },      // Y3: shared up to 5, DS at 6
+          4: { sharedMax: 7, ds: 8 }       // Y4: shared up to 7, DS at 8
+        },
+        reservedColsByLane: {
+          3: [6],     // Reserve DS anchor
+          4: [8, 9]   // Reserve DS anchor and capstone
+        }
+      };
+    } else if (selectedTrackId === 'software-engineering') {
+      // Single-track SE: compact layout, no gate
+      layoutOptions = {
+        laneHeight: 220, 
+        colWidth: 320, 
+        lanePaddingX: 64, 
+        lanePaddingY: 24,
+        columnOrderBySlug: {
+          'general-education': 0,
+          'foundations': 1,
+          'mathematics': 2,
+          'core-i': 3,
+          'core-ii': 4,
+          'specializations': 6,            // Y3 SE anchor
+          'architecture': 8,               // Y4 SE anchor
+          'capstone-software-engineering': 9
+        },
+        trackAnchorsByLane: {
+          3: { sharedMax: 5, se: 6 },      // Y3: shared up to 5, SE at 6
+          4: { sharedMax: 7, se: 8 }       // Y4: shared up to 7, SE at 8
+        },
+        reservedColsByLane: {
+          3: [6],     // Reserve SE anchor
+          4: [8, 9]   // Reserve SE anchor and capstone
+        }
+      };
+    } else {
+      // Fallback for other tracks or undefined primary
+      layoutOptions = {
+        laneHeight: 220, 
+        colWidth: 320, 
+        lanePaddingX: 64, 
+        lanePaddingY: 24
+      };
+    }
+    
     // Defensive layout call
     let layout: Record<string, { x: number; y: number }> = {};
     try {
       layout = computeDeterministicGrid(
         layoutBlocks,
         edges.map(e => ({ source: String(e.source), target: String(e.target) })),
-        {
-          laneHeight: 220, 
-          colWidth: 320, 
-          lanePaddingX: 64, 
-          lanePaddingY: 24,
-          columnOrderBySlug: {
-            'general-education': 0,
-            'foundations': 1,
-            'mathematics': 2,
-            'core-i': 3,
-            'core-ii': 5,                    // moved right to avoid gate conflict
-            'divergence-gate': 4,            // gate gets clean column 4
-            'specializations': 6,            // Y3 SE anchor
-            'data-analysis': 8,              // Y3 DS anchor
-            'architecture': 10,              // Y4 SE anchor
-            'machine-learning': 12,          // Y4 DS anchor
-            'capstone-software-engineering': 13,
-            'capstone-data-science': 13
-          },
-          trackAnchorsByLane: {
-            3: { sharedMax: 4, se: 6, ds: 8 }, // Y3: gate at 4, SE left, DS right
-            4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
-          },
-          reservedColsByLane: {
-            3: [4, 6, 8], // Reserve gate, SE anchor, DS anchor
-            4: [10, 12, 13] // Reserve SE, DS, capstones
-          }
-        }
+        layoutOptions
       );
     } catch (err) {
       console.warn('[Overlay] layout crashed, skipping layout', err);

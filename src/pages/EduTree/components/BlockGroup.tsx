@@ -295,8 +295,16 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
         </CardContent>
       </Card>
 
-      {/* Output handle for edges - only render if not already rendered above */}
-      {!flags.eduTreeMultiPathOverlay && (
+      {/* Handles for PhaseA mode - always render left/right for clean edges */}
+      {flags.eduTreePhaseA && (
+        <>
+          <Handle type="target" position={Position.Left} isConnectable={false} />
+          <Handle type="source" position={Position.Right} isConnectable={false} />
+        </>
+      )}
+      
+      {/* Fallback handle for non-PhaseA modes */}
+      {!flags.eduTreePhaseA && !flags.eduTreeMultiPathOverlay && (
         <Handle
           type="source"
           position={Position.Right}
