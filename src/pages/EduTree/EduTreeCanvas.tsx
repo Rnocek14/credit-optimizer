@@ -234,8 +234,9 @@ function EduTreeCanvasInner() {
 
   // Get track comparison highlights and processed edges
   const { 
-    highlights, 
+    highlightedNodes,
     highlightedEdges,
+    highlights, 
     debugInfo 
   } = useTrackComparison({
     nodes: flowNodes,
@@ -369,6 +370,13 @@ function EduTreeCanvasInner() {
     }
   }, [hasData, dataLoading]);
 
+  // Create stable data hash for layout dependencies
+  const dataHash = useMemo(() => {
+    const nodeIds = flowNodes.map(n => n.id).sort().join(',');
+    const edgeIds = flowEdges.map(e => e.id).sort().join(',');
+    return `${nodeIds}-${edgeIds}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
+  }, [flowNodes, flowEdges, overlayEnabled, primaryTrackId, comparisonTrackId]);
+
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
     if (!reactFlowInstance) {
@@ -393,8 +401,9 @@ function EduTreeCanvasInner() {
     const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
     if (hasGridLayout) {
       console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
-      // Directly apply the grid-positioned nodes and highlighted edges
-      setNodes(flowNodes);
+      // Apply highlighting based on overlay state - use highlightedNodes when overlay enabled
+      const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
+      setNodes(finalNodes);
       setEdges(highlightedEdges);
       setIsLayouting(false);
       layoutInProgressRef.current = false;
@@ -576,7 +585,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, flowNodes.length, flowEdges.length, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
+  }, [reactFlowInstance, dataHash, layoutVersion]);
 
   // Show loading state while data is being fetched
   if (dataLoading) {

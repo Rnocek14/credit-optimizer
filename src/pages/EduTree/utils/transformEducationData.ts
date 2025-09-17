@@ -594,7 +594,7 @@ export function transformEducationData(
       // Compare mode: full layout with gate and both tracks
       layoutOptions = {
         laneHeight: 220, 
-        colWidth: 320, 
+        colWidth: 480, // Increased to accommodate BlockGroup width (~420px)
         lanePaddingX: 64, 
         lanePaddingY: 24,
         columnOrderBySlug: {
@@ -625,7 +625,7 @@ export function transformEducationData(
       console.log('[Layout] Using DS single-track layout configuration');
       layoutOptions = {
         laneHeight: 220, 
-        colWidth: 320, 
+        colWidth: 480, // Increased to accommodate BlockGroup width (~420px)
         lanePaddingX: 64, 
         lanePaddingY: 24,
         columnOrderBySlug: {
@@ -652,7 +652,7 @@ export function transformEducationData(
       console.log('[Layout] Using SE single-track layout configuration');
       layoutOptions = {
         laneHeight: 220, 
-        colWidth: 320, 
+        colWidth: 480, // Increased to accommodate BlockGroup width (~420px)
         lanePaddingX: 64, 
         lanePaddingY: 24,
         columnOrderBySlug: {
@@ -678,7 +678,7 @@ export function transformEducationData(
       // Fallback for other tracks or undefined primary
       layoutOptions = {
         laneHeight: 220, 
-        colWidth: 320, 
+        colWidth: 480, // Increased to accommodate BlockGroup width (~420px)
         lanePaddingX: 64, 
         lanePaddingY: 24
       };
