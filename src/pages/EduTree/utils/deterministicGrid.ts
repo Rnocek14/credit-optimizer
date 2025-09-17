@@ -16,13 +16,13 @@ export interface GridLayoutOpts extends GridLayoutConfig {
 
 // Consolidated default config for cleaner callsites
 export const DEFAULT_GRID_CONFIG = {
-  colWidth: 300,
+  colWidth: 440,
   baseY: 0,
-  yearSpacing: 220,
-  trackLaneSpacing: 60,
-  laneOffsetCompare: 200,
-  laneOffsetSingle: 0,
-  nodeSpacing: 50,
+  yearSpacing: 320,
+  trackLaneSpacing: 80,
+  laneOffsetCompare: 320,
+  laneOffsetSingle: 140,
+  nodeSpacing: 64,
   qaSplitMultiLane: false
 } as const;
 
@@ -139,45 +139,58 @@ export function applyYearGridLayout(
     const nodeSpacing = extendedOpts.nodeSpacing;
     const laneOffset = isCompare ? extendedOpts.laneOffsetCompare : extendedOpts.laneOffsetSingle;
 
-    // Position shared nodes first (centered)
-    sharedNodes.forEach((node, index) => {
-      const x = baseX;
-      const y = baseYearY + yOffset;
-      
+    // Smart placement helpers to prevent stacking in single-track mode
+    const placeShared = (node: Node, y: number) => {
+      const x = baseX - (isSingleTrack ? Math.round(laneOffset * 0.8) : 0);
       positionedNodes.push(createPositionedNode(node, x, y));
-      yOffset += nodeSpacing;
+    };
+
+    const placeSE = (node: Node, y: number) => {
+      const x = isCompare ? (baseX - laneOffset)
+                          : (isSingleTrack && activeTrack === 'software-engineering' ? baseX : baseX + laneOffset);
+      positionedNodes.push(createPositionedNode(node, x, y));
+    };
+
+    const placeDS = (node: Node, y: number) => {
+      const x = isCompare ? (baseX + laneOffset)
+                          : (isSingleTrack && activeTrack === 'data-science' ? baseX : baseX + laneOffset);
+      positionedNodes.push(createPositionedNode(node, x, y));
+    };
+
+    // Position shared nodes first
+    sharedNodes.forEach((node, index) => {
+      const y = baseYearY + yOffset + (index * nodeSpacing);
+      placeShared(node, y);
     });
+    if (sharedNodes.length > 0) {
+      yOffset += sharedNodes.length * nodeSpacing;
+    }
 
     // Add spacing between shared and track-specific nodes
     if (sharedNodes.length > 0 && (seNodes.length > 0 || dsNodes.length > 0)) {
       yOffset += extendedOpts.trackLaneSpacing;
     }
 
-    // Fix 4: Clean Y-offset math with configurable spacing
-    let laneYOffset = yOffset;
-    if (seNodes.length > 0 && dsNodes.length > 0) {
-      laneYOffset += 100; // inter-lane gap
-    }
-
-    // Position SE nodes (left lane in compare mode)
+    // Position SE nodes
     if (seNodes.length > 0) {
-      const seX = baseX - laneOffset;
       seNodes.forEach((node, index) => {
-        const x = seX;
         const y = baseYearY + yOffset + (index * nodeSpacing);
-        positionedNodes.push(createPositionedNode(node, x, y));
+        placeSE(node, y);
       });
+      yOffset += seNodes.length * nodeSpacing;
     }
 
-    // Position DS nodes (right lane in compare mode) 
+    // Add inter-lane gap if both SE and DS nodes exist
+    if (seNodes.length > 0 && dsNodes.length > 0) {
+      yOffset += 100; // inter-lane gap
+    }
+
+    // Position DS nodes
     if (dsNodes.length > 0) {
-      const dsX = baseX + laneOffset;
-      const dsStartY = baseYearY + (seNodes.length > 0 ? laneYOffset : yOffset);
-      
+      const dsStartY = baseYearY + (seNodes.length > 0 ? yOffset : yOffset);
       dsNodes.forEach((node, index) => {
-        const x = dsX;
         const y = dsStartY + (index * nodeSpacing);
-        positionedNodes.push(createPositionedNode(node, x, y));
+        placeDS(node, y);
       });
     }
   }
