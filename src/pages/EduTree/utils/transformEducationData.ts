@@ -361,14 +361,23 @@ export function transformEducationData(
   }
 
   // PhaseA mode: No degree completion node, capstones are terminal
-  let nodes: Node[] = regularNodes;
-  let edges: Edge[] = regularEdges;
+  let nodes: Node[] = [...regularNodes];  // Ensure mutable copies
+  let edges: Edge[] = [...regularEdges];
 
   // === Overlay-only gate + edge cleanup ======================================
   const WANT_OVERLAY = !!flags.overlayEnabled && !!flags.eduTreePhaseA;
   const GATE_ID = 'divergence-gate';
 
   if (WANT_OVERLAY) {
+    console.log('[Overlay][PhaseA] start', {
+      overlay: flags.overlayEnabled,
+      phaseA: flags.eduTreePhaseA,
+      count: {
+        regularNodes: regularNodes?.length,
+        regularEdges: regularEdges?.length,
+      }
+    });
+
     // 1) Inject virtual gate node (shared, sits at Y3 boundary)
     const gateNode: Node = {
       id: GATE_ID,
@@ -382,13 +391,32 @@ export function transformEducationData(
           level_year: 3,
           track_id: null,
           courses: []
+        },
+        completedCourseIds,
+        isUnlocked: true,
+        progress: {
+          completed: 0,
+          required: 0
+        },
+        subBlocks: [],
+        level_year: 3,
+        area: 'gate',
+        isHighlighted: false,
+        planningLens: null,
+        phaseA: {
+          isShared: true,
+          trackId: null,
+          trackBadge: 'Gate'
         }
       },
       position: { x: 0, y: 0 },
       draggable: false,
       className: 'node node--shared node--gate'
     };
-    nodes.push(gateNode);
+    
+    if (!nodes.some(n => String(n.id) === GATE_ID)) {
+      nodes.push(gateNode);
+    }
 
     // 2) Rewire Y2(shared) → Gate → Y3(track starts)
     const idToBlock = new Map<string, BlockWithCourses>(sortedBlocks.map(b => [String(b.id), b]));
@@ -488,6 +516,19 @@ export function transformEducationData(
 
   // Apply deterministic grid layout when in overlay mode with PhaseA
   if (flags.eduTreePhaseA && flags.overlayEnabled) {
+    // Hard guard layout inputs
+    if (!Array.isArray(nodes) || !Array.isArray(edges)) {
+      console.warn('[Overlay] nodes/edges not arrays; skipping layout');
+      return { nodes: regularNodes, edges: regularEdges, blocksWithCourses };
+    }
+
+    console.log('[Overlay] pre-layout', {
+      nodesCount: nodes?.length,
+      edgesCount: edges?.length,
+      hasGateNode: nodes?.some(n => String(n.id) === 'divergence-gate'),
+      hasGateEdge: edges?.some(e => String(e.source) === 'divergence-gate' || String(e.target) === 'divergence-gate')
+    });
+
     // Use only real nodes for layout (exclude virtual lane bridges)
     const layoutNodes = nodes.filter(n => n.type !== 'laneBridge');
     
@@ -503,34 +544,40 @@ export function transformEducationData(
       };
     });
     
-    const layout = computeDeterministicGrid(
-      layoutBlocks,
-      edges.map(e => ({ source: String(e.source), target: String(e.target) })),
-      {
-        laneHeight: 220, 
-        colWidth: 320, 
-        lanePaddingX: 64, 
-        lanePaddingY: 24,
-        columnOrderBySlug: {
-          'general-education': 0,
-          'foundations': 1,
-          'mathematics': 2,
-          'core-i': 3,
-          'core-ii': 4,
-          'divergence-gate': 5,            // new
-          'specializations': 6,            // Y3 SE anchor
-          'data-analysis': 8,              // Y3 DS anchor
-          'architecture': 10,              // Y4 SE anchor
-          'machine-learning': 12,          // Y4 DS anchor
-          'capstone-software-engineering': 13,
-          'capstone-data-science': 13
-        },
-        trackAnchorsByLane: {
-          3: { sharedMax: 5, se: 6, ds: 8 }, // Y3: SE left, DS right
-          4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
+    // Defensive layout call
+    let layout: Record<string, { x: number; y: number }> = {};
+    try {
+      layout = computeDeterministicGrid(
+        layoutBlocks,
+        edges.map(e => ({ source: String(e.source), target: String(e.target) })),
+        {
+          laneHeight: 220, 
+          colWidth: 320, 
+          lanePaddingX: 64, 
+          lanePaddingY: 24,
+          columnOrderBySlug: {
+            'general-education': 0,
+            'foundations': 1,
+            'mathematics': 2,
+            'core-i': 3,
+            'core-ii': 4,
+            'divergence-gate': 5,            // new
+            'specializations': 6,            // Y3 SE anchor
+            'data-analysis': 8,              // Y3 DS anchor
+            'architecture': 10,              // Y4 SE anchor
+            'machine-learning': 12,          // Y4 DS anchor
+            'capstone-software-engineering': 13,
+            'capstone-data-science': 13
+          },
+          trackAnchorsByLane: {
+            3: { sharedMax: 5, se: 6, ds: 8 }, // Y3: SE left, DS right
+            4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
+          }
         }
-      }
-    );
+      );
+    } catch (err) {
+      console.warn('[Overlay] layout crashed, skipping layout', err);
+    }
 
     // Apply positions to real nodes only
     nodes = nodes.map(n => {
