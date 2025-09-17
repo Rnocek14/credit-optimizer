@@ -661,18 +661,11 @@ export function transformEducationData(
           'mathematics': 2,
           'core-i': 3,
           'core-ii': 4,
-          'specializations': 5,            // Y3 SE anchor - consecutive after shared
-          'architecture': 6,               // Y4 SE anchor - consecutive
-          'capstone-software-engineering': 7  // Capstone - consecutive
-        },
-        trackAnchorsByLane: {
-          3: { sharedMax: 4, se: 5 },      // Y3: shared up to 4, SE at 5
-          4: { sharedMax: 5, se: 6 }       // Y4: shared up to 5, SE at 6
-        },
-        reservedColsByLane: {
-          3: [5],     // Reserve SE anchor
-          4: [6, 7]   // Reserve SE anchor and capstone
+          'specializations': 0,            // Y3: Start at column 0 (no shared blocks in Y3)
+          'architecture': 0,               // Y4: Start at column 0 (no shared blocks in Y4)
+          'capstone-software-engineering': 1  // Y4: Column 1 (consecutive with architecture)
         }
+        // No trackAnchorsByLane or reservedColsByLane needed for single-track - no gaps
       };
     } else {
       // Fallback for other tracks or undefined primary
