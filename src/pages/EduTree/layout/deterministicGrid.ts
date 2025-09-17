@@ -164,6 +164,13 @@ export function computeDeterministicGrid(
         const seNodes = track.filter(b => b.track_id === 'software-engineering');
         seNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
         seNodes.forEach((node, idx) => {
+          // Respect absolute column assignments from columnOrderBySlug
+          const absoluteCol = fixed[node.slug ?? ''];
+          if (absoluteCol !== undefined && absoluteCol !== 9999) {
+            console.log(`[Layout] SE bucket spacing: skipping ${node.slug} - has absolute column ${absoluteCol}`);
+            return;
+          }
+          
           const col = anchorConfig.se! + idx; // anchor + 0, anchor + 1, etc.
           rank.set(String(node.id), col);
           console.log(`[Layout] SE bucket spacing: ${node.slug} -> col ${col} (anchor=${anchorConfig.se}, idx=${idx})`);
@@ -175,6 +182,13 @@ export function computeDeterministicGrid(
         const dsNodes = track.filter(b => b.track_id === 'data-science');
         dsNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
         dsNodes.forEach((node, idx) => {
+          // Respect absolute column assignments from columnOrderBySlug
+          const absoluteCol = fixed[node.slug ?? ''];
+          if (absoluteCol !== undefined && absoluteCol !== 9999) {
+            console.log(`[Layout] DS bucket spacing: skipping ${node.slug} - has absolute column ${absoluteCol}`);
+            return;
+          }
+          
           const col = anchorConfig.ds! + idx; // anchor + 0, anchor + 1, etc.
           rank.set(String(node.id), col);
           console.log(`[Layout] DS bucket spacing: ${node.slug} -> col ${col} (anchor=${anchorConfig.ds}, idx=${idx})`);
