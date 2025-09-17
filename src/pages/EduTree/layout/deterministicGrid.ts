@@ -63,6 +63,9 @@ export function computeDeterministicGrid(
     const fixed = opts.columnOrderBySlug ?? {};
     const isShared = (b: BlockLike) => !b.track_id;
 
+    console.log(`[Layout] Processing Lane ${laneNo} with ${laneBlocks.length} blocks:`, laneBlocks.map(b => b.slug));
+    console.log(`[Layout] Column order config:`, fixed);
+
     // Start with shared blocks left-to-right by fixed order (GE, Foundations, Math, Core I/II, Gate, etc.)
     const shared = laneBlocks.filter(isShared);
     shared.sort((a, b) => {
@@ -73,7 +76,10 @@ export function computeDeterministicGrid(
       const tb = (b.title ?? '').toLowerCase();
       return ta.localeCompare(tb) || String(a.id).localeCompare(String(b.id));
     });
-    shared.forEach((b, i) => rank.set(String(b.id), i));
+    shared.forEach((b, i) => {
+      rank.set(String(b.id), i);
+      console.log(`[Layout] Shared block ${b.slug} -> column ${i}`);
+    });
 
     // Track-specific next; compute in-lane indegree to keep prereqs left of dependents
     const track = laneBlocks.filter(b => !isShared(b));
@@ -95,6 +101,14 @@ export function computeDeterministicGrid(
 
     let col = rank.size; // continue after shared
     track.forEach(b => {
+      // Check if block has absolute column position specified
+      const absoluteCol = fixed[b.slug ?? ''];
+      if (absoluteCol !== undefined && absoluteCol !== 9999) {
+        console.log(`[Layout] Using absolute column for ${b.slug}: ${absoluteCol}`);
+        rank.set(String(b.id), absoluteCol);
+        return;
+      }
+
       // Try to align with its dominant predecessor column (if same lane)
       const preds = (ins.get(String(b.id)) ?? []).filter(x => (byId.get(x)?.level_year ?? laneNo) === laneNo);
       let suggested = -1;
@@ -102,7 +116,9 @@ export function computeDeterministicGrid(
         const cols = preds.map(p => rank.get(String(p))).filter((c): c is number => c != null);
         suggested = cols.length ? Math.max(...cols) + 1 : -1;
       }
-      rank.set(String(b.id), suggested >= 0 ? suggested : col++);
+      const finalCol = suggested >= 0 ? suggested : col++;
+      console.log(`[Layout] Track block ${b.slug} assigned to column ${finalCol} (suggested: ${suggested}, sequential: ${col-1})`);
+      rank.set(String(b.id), finalCol);
     });
 
     // Apply hard anchors if configured for this lane
