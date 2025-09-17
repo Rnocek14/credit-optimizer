@@ -170,22 +170,39 @@ export function computeDeterministicGrid(
 
     // Enhanced bucket spacing: spread same-track nodes with Y-offset for divergence gate fan-out
     const anchorConfig = opts.trackAnchorsByLane?.[laneNo];
+    console.log(`[Layout] Lane ${laneNo} - Enhanced bucket spacing check:`, {
+      hasAnchorConfig: !!anchorConfig,
+      anchorConfig,
+      seAnchor: anchorConfig?.se,
+      dsAnchor: anchorConfig?.ds
+    });
+    
+    // SAFETY: In single-track mode, there should be NO trackAnchorsByLane config
+    // If somehow anchors exist, we still must respect absolute column assignments
     if (anchorConfig) {
+      console.log(`[Layout] Lane ${laneNo} - Running enhanced bucket spacing with anchors:`, anchorConfig);
+      console.log(`[Layout] Lane ${laneNo} - WARNING: Bucket spacing running - this may override absolute columns!`);
       // SE track spacing - deterministic sort then spread from anchor
       if (typeof anchorConfig.se === 'number') {
         const seNodes = track.filter(b => b.track_id === 'software-engineering');
+        console.log(`[Layout] Lane ${laneNo} - SE bucket spacing: processing ${seNodes.length} nodes:`, seNodes.map(n => n.slug));
+        console.log(`[Layout] Lane ${laneNo} - SE anchor: ${anchorConfig.se}`);
+        
         seNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
         seNodes.forEach((node, idx) => {
           // Respect absolute column assignments from columnOrderBySlug
           const absoluteCol = fixed[node.slug ?? ''];
+          console.log(`[Layout] SE bucket ${node.slug}: absoluteCol=${absoluteCol}, currentCol=${rank.get(String(node.id))}, anchor=${anchorConfig.se}, idx=${idx}`);
+          
           if (absoluteCol !== undefined && absoluteCol !== 9999) {
             console.log(`[Layout] SE bucket spacing: skipping ${node.slug} - has absolute column ${absoluteCol}`);
             return;
           }
           
           const col = anchorConfig.se! + idx; // anchor + 0, anchor + 1, etc.
+          const beforeCol = rank.get(String(node.id));
           rank.set(String(node.id), col);
-          console.log(`[Layout] SE bucket spacing: ${node.slug} -> col ${col} (anchor=${anchorConfig.se}, idx=${idx})`);
+          console.log(`[Layout] SE bucket spacing: ${node.slug} -> col ${col} (was ${beforeCol}, anchor=${anchorConfig.se}, idx=${idx})`);
         });
       }
       
