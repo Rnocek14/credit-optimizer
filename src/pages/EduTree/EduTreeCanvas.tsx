@@ -389,14 +389,19 @@ function EduTreeCanvasInner() {
     if (isPhaseA) {
       // PhaseA: Only apply pre-computed positions, never run legacy layout
       console.log('[EduTree Layout] PhaseA mode - applying deterministic grid positions');
-      setNodes(flowNodes);
-      setEdges(highlightedEdges);
+      
+      // Debug flag for layout mode verification
+      (window as any).__layoutMode__ = 'phaseA-grid';
+      
+      // Guard setNodes/Edges with referential equality to prevent redundant writes
+      setNodes(prev => (prev === flowNodes ? prev : flowNodes));
+      setEdges(prev => (prev === highlightedEdges ? prev : highlightedEdges));
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       
-      // Fit view after positions are applied
+      // Debounce fitView to avoid layout conflicts
       requestAnimationFrame(() => {
-        reactFlowInstance.fitView?.({ padding: 0.2, duration: 300 });
+        setTimeout(() => reactFlowInstance.fitView?.({ padding: 0.2, duration: 250 }), 0);
       });
       return;
     }
@@ -557,8 +562,9 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        setNodes(finalLayout);
-        setEdges(highlightedEdges);
+        // Guard setNodes/Edges with referential equality to prevent redundant writes
+        setNodes(prev => (prev === finalLayout ? prev : finalLayout));
+        setEdges(prev => (prev === highlightedEdges ? prev : highlightedEdges));
 
         console.log('[EduTree Layout] Layout completed successfully');
       } catch (error) {
@@ -594,6 +600,9 @@ function EduTreeCanvasInner() {
   // Debug logging effect for PhaseA (separate from render cycle)
   useEffect(() => {
     if (flags?.eduTreePhaseA && flowNodes.length > 0) {
+      // Expose flowNodes globally for verification
+      (window as any).__flowNodes__ = flowNodes;
+      
       console.log('[EduTree] Final render state:', {
         nodeCount: flowNodes.length,
         edgeCount: highlightedEdges.length,
