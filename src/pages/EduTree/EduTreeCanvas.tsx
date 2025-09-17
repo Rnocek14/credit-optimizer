@@ -378,8 +378,8 @@ function EduTreeCanvasInner() {
     const edgeCount = flowEdges.length;
     const firstNodeId = flowNodes[0]?.id || '';
     const lastNodeId = flowNodes[nodeCount - 1]?.id || '';
-    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
-  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id, overlayEnabled, primaryTrackId, comparisonTrackId]);
+    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}`;
+  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id]);
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
@@ -401,17 +401,23 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // STAGE 0.6 FIX: Check if nodes already have deterministic grid layout
+    // Check if nodes already have deterministic layout (grid or clean tree)
     const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
-    console.log('[EduTree Layout] Grid layout detection:', { 
+    const hasCleanTreeLayout = flowNodes.some(node => node.data?.hasCleanTreeLayout);
+    const hasExistingLayout = hasGridLayout || hasCleanTreeLayout;
+    
+    console.log('[EduTree Layout] Layout detection:', { 
       hasGridLayout, 
+      hasCleanTreeLayout,
+      hasExistingLayout,
       totalNodes: flowNodes.length, 
       nodesWithGrid: flowNodes.filter(n => n.data?.hasGridLayout).length,
+      nodesWithCleanTree: flowNodes.filter(n => n.data?.hasCleanTreeLayout).length,
       sampleNodeData: flowNodes[0]?.data 
     });
     
-    if (hasGridLayout) {
-      console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
+    if (hasExistingLayout) {
+      console.log('[EduTree Layout] Nodes already have deterministic layout, skipping legacy layout');
       
       // Validate grid positions before applying
       const validNodes = flowNodes.filter(node => {
