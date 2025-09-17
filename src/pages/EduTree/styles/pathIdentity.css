@@ -59,7 +59,7 @@
   stroke: hsl(31, 91%, 51%); 
 }
 
-/* Track dimming in comparison mode */
+/* Track dimming in comparison mode - only when primary track is set */
 body[data-primary-track="software-engineering"] .node--ds,
 body[data-primary-track="software-engineering"] .edge--ds {
   opacity: 0.35; 
@@ -77,6 +77,24 @@ body[data-primary-track] .node--shared,
 body[data-primary-track] .edge--shared {
   opacity: 1 !important; 
   filter: none !important; 
+}
+
+/* Balanced mode: ensure equal visual weight for both tracks */
+body:not([data-primary-track]) .node--ds,
+body:not([data-primary-track]) .node--se {
+  opacity: 1;
+  filter: none;
+}
+
+/* Strengthen DS visual identity to match SE */
+.node--ds {
+  outline: 1.5px solid hsl(31, 91%, 51%);
+  outline-offset: 1px;
+}
+
+.node--se {
+  outline: 1.5px solid hsl(217, 91%, 60%);
+  outline-offset: 1px;
 }
 
 /* Badge row layout */

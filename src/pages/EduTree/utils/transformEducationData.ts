@@ -561,7 +561,7 @@ export function transformEducationData(
             'mathematics': 2,
             'core-i': 3,
             'core-ii': 4,
-            'divergence-gate': 5,            // new
+            'divergence-gate': 4,            // moved left for better fan-out
             'specializations': 6,            // Y3 SE anchor
             'data-analysis': 8,              // Y3 DS anchor
             'architecture': 10,              // Y4 SE anchor
@@ -570,8 +570,12 @@ export function transformEducationData(
             'capstone-data-science': 13
           },
           trackAnchorsByLane: {
-            3: { sharedMax: 5, se: 6, ds: 8 }, // Y3: SE left, DS right
+            3: { sharedMax: 4, se: 6, ds: 8 }, // Y3: gate at 4, SE left, DS right
             4: { sharedMax: 9, se: 10, ds: 12 } // Y4: SE left, DS right
+          },
+          reservedColsByLane: {
+            3: [4, 6, 8], // Reserve gate, SE anchor, DS anchor
+            4: [10, 12, 13] // Reserve SE, DS, capstones
           }
         }
       );

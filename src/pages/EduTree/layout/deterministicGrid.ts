@@ -17,6 +17,8 @@ export type LayoutOpts = {
   columnOrderBySlug?: Record<string, number>;
   // hard anchors for track positioning per lane
   trackAnchorsByLane?: { [lane: number]: { se?: number; ds?: number; sharedMax?: number } };
+  // reserved columns that cannot be reassigned by collision packer
+  reservedColsByLane?: { [lane: number]: number[] };
 };
 
 /**
@@ -131,13 +133,45 @@ export function computeDeterministicGrid(
       }
     }
 
-    // Ensure unique columns within the lane (pack to the right if collision)
+    // Bucket spacing: spread same-track nodes after anchoring to avoid congestion
+    const anchorSpacing = (trackId: string | null, baseCol: number, nodes: BlockLike[]) => {
+      const trackNodes = nodes.filter(b => b.track_id === trackId);
+      trackNodes.forEach((node, idx) => {
+        if (idx === 0) {
+          rank.set(String(node.id), baseCol); // first node takes anchor
+        } else {
+          rank.set(String(node.id), baseCol + idx); // spread others
+        }
+      });
+    };
+
+    // Apply bucket spacing for track anchors
+    const anchorConfig = opts.trackAnchorsByLane?.[laneNo];
+    if (anchorConfig) {
+      if (typeof anchorConfig.se === 'number') {
+        const seNodes = track.filter(b => b.track_id === 'software-engineering');
+        anchorSpacing('software-engineering', anchorConfig.se, seNodes);
+      }
+      if (typeof anchorConfig.ds === 'number') {
+        const dsNodes = track.filter(b => b.track_id === 'data-science');
+        anchorSpacing('data-science', anchorConfig.ds, dsNodes);
+      }
+    }
+
+    // Ensure unique columns within the lane (pack to the right if collision, skip reserved)
+    const reserved = new Set(opts.reservedColsByLane?.[laneNo] ?? []);
     const entries = laneBlocks.map(b => [String(b.id), rank.get(String(b.id)) ?? 0]) as [string, number][];
     entries.sort((a, b) => a[1] - b[1]); // by column
     const used = new Set<number>();
     for (const [id, colIdx] of entries) {
       let c = colIdx;
-      while (used.has(c)) c++;
+      // If current column is reserved and this node doesn't belong there, find next available
+      if (reserved.has(c) && !rank.has(id)) {
+        c = colIdx + 1;
+      }
+      while (used.has(c) || (reserved.has(c) && rank.get(id) !== c)) {
+        c++;
+      }
       used.add(c);
       rank.set(id, c);
     }
