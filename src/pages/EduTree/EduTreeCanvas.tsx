@@ -247,7 +247,7 @@ function EduTreeCanvasInner() {
 
   // Get track comparison highlights and processed edges
   const { 
-    highlights, 
+    highlightedNodes,
     highlightedEdges,
     debugInfo 
   } = useTrackComparison({
@@ -429,7 +429,8 @@ function EduTreeCanvasInner() {
       
       // Always apply positions in PhaseA mode (remove aggressive comparison checks)
       console.log('[EduTree Layout] Applying node and edge updates');
-      setNodes(flowNodes);
+      const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
+      setNodes(finalNodes);
       setEdges(highlightedEdges);
       
       setIsLayouting(false);
@@ -595,15 +596,16 @@ function EduTreeCanvasInner() {
         const finalLayout = resolveCollisions(laidOut);
 
         console.log('[EduTree Layout] Layout calculated, updating nodes and edges');
-        // Deep comparison to prevent redundant writes that cause circular dependency
+        // Apply overlay highlighting to final layout nodes
+        const finalNodes = overlayEnabled ? highlightedNodes : finalLayout;
         setNodes(prev => {
-          if (prev.length === finalLayout.length && 
-              prev.every((n, i) => n.id === finalLayout[i]?.id && 
-                                 n.position?.x === finalLayout[i]?.position?.x && 
-                                 n.position?.y === finalLayout[i]?.position?.y)) {
+          if (prev.length === finalNodes.length && 
+              prev.every((n, i) => n.id === finalNodes[i]?.id && 
+                                 n.position?.x === finalNodes[i]?.position?.x && 
+                                 n.position?.y === finalNodes[i]?.position?.y)) {
             return prev; // No actual changes, keep reference
           }
-          return finalLayout;
+          return finalNodes;
         });
         setEdges(prev => {
           if (prev.length === highlightedEdges.length &&
