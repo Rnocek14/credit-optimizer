@@ -34,7 +34,7 @@ export function computeDeterministicGrid(
   opts: LayoutOpts = {}
 ): Record<string, { x: number; y: number; col: number; lane: number }> {
   const laneH = opts.laneHeight ?? 200;
-  const colW = opts.colWidth ?? 320;
+  const colW = opts.colWidth ?? 540;
   const padX = opts.lanePaddingX ?? 48;
   const padY = opts.lanePaddingY ?? 24;
   const byId = new Map(blocks.map(b => [String(b.id), b]));
@@ -108,11 +108,14 @@ export function computeDeterministicGrid(
     // Apply hard anchors if configured for this lane
     const anchors = opts.trackAnchorsByLane?.[laneNo];
     if (anchors) {
+      console.log(`[Layout] Lane ${laneNo} anchors:`, anchors);
+      
       // Apply sharedMax constraint
       if (typeof anchors.sharedMax === 'number') {
         shared.forEach(b => {
           const currentCol = rank.get(String(b.id)) ?? 0;
           if (currentCol > anchors.sharedMax!) {
+            console.log(`[Layout] Constraining shared block ${b.slug} from col ${currentCol} to ${anchors.sharedMax}`);
             rank.set(String(b.id), anchors.sharedMax!);
           }
         });
@@ -120,20 +123,24 @@ export function computeDeterministicGrid(
       
       // Snap SE tracks to anchor
       if (typeof anchors.se === 'number') {
-        track.filter(b => b.track_id === 'software-engineering').forEach(b => {
+        const seNodes = track.filter(b => b.track_id === 'software-engineering');
+        console.log(`[Layout] Anchoring ${seNodes.length} SE nodes to col ${anchors.se}:`, seNodes.map(n => n.slug));
+        seNodes.forEach(b => {
           rank.set(String(b.id), anchors.se!);
         });
       }
       
       // Snap DS tracks to anchor  
       if (typeof anchors.ds === 'number') {
-        track.filter(b => b.track_id === 'data-science').forEach(b => {
+        const dsNodes = track.filter(b => b.track_id === 'data-science');
+        console.log(`[Layout] Anchoring ${dsNodes.length} DS nodes to col ${anchors.ds}:`, dsNodes.map(n => n.slug));
+        dsNodes.forEach(b => {
           rank.set(String(b.id), anchors.ds!);
         });
       }
     }
 
-    // Bucket spacing: spread same-track nodes after anchoring to avoid congestion
+    // Enhanced bucket spacing: spread same-track nodes with Y-offset for divergence gate fan-out
     const anchorConfig = opts.trackAnchorsByLane?.[laneNo];
     if (anchorConfig) {
       // SE track spacing - deterministic sort then spread from anchor
@@ -141,7 +148,9 @@ export function computeDeterministicGrid(
         const seNodes = track.filter(b => b.track_id === 'software-engineering');
         seNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
         seNodes.forEach((node, idx) => {
-          rank.set(String(node.id), anchorConfig.se! + idx); // anchor + 0, anchor + 1, etc.
+          const col = anchorConfig.se! + idx; // anchor + 0, anchor + 1, etc.
+          rank.set(String(node.id), col);
+          console.log(`[Layout] SE bucket spacing: ${node.slug} -> col ${col} (anchor=${anchorConfig.se}, idx=${idx})`);
         });
       }
       
@@ -150,7 +159,9 @@ export function computeDeterministicGrid(
         const dsNodes = track.filter(b => b.track_id === 'data-science');
         dsNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
         dsNodes.forEach((node, idx) => {
-          rank.set(String(node.id), anchorConfig.ds! + idx); // anchor + 0, anchor + 1, etc.
+          const col = anchorConfig.ds! + idx; // anchor + 0, anchor + 1, etc.
+          rank.set(String(node.id), col);
+          console.log(`[Layout] DS bucket spacing: ${node.slug} -> col ${col} (anchor=${anchorConfig.ds}, idx=${idx})`);
         });
       }
     }
@@ -193,19 +204,32 @@ export function computeDeterministicGrid(
   }
 
   const layout: Record<string, { x: number; y: number; col: number; lane: number }> = {};
+  
+  console.log('[Layout] Computing final positions with colW =', colW);
+  
   for (let lane = 1; lane <= 4; lane++) {
     const laneBlocks = (byLane.get(lane) ?? []).slice();
     if (!laneBlocks.length) continue;
+    
     const r = rankLane(laneBlocks, lane);
+    console.log(`[Layout] Lane ${lane} final rankings:`, 
+      Array.from(r.entries()).map(([id, col]) => {
+        const block = byId.get(id);
+        return `${block?.slug}(${block?.track_id || 'shared'})->col${col}`;
+      }).join(', ')
+    );
+    
     laneBlocks.forEach(b => {
       const c = r.get(String(b.id)) ?? 0;
-      layout[String(b.id)] = {
-        col: c,
-        lane,
-        x: padX + c * colW,
-        y: padY + (lane - 1) * laneH
-      };
+      const x = padX + c * colW;
+      const y = padY + (lane - 1) * laneH;
+      
+      layout[String(b.id)] = { col: c, lane, x, y };
+      
+      console.log(`[Layout] ${b.slug || b.id}(${b.track_id || 'shared'}) -> lane=${lane}, col=${c}, x=${x}, y=${y}`);
     });
   }
+  
+  console.log('[Layout] Final node count:', Object.keys(layout).length);
   return layout;
 }

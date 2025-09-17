@@ -81,3 +81,23 @@
 .hl--both:focus {
   outline-offset: 2px;
 }
+
+/* STAGE 0.7 FIX: Balanced Mode CSS - Ensure both SE/DS tracks have full opacity when comparePrimary=both */
+/* When in balanced comparison mode, both tracks should have equal visual weight */
+body[data-compare-primary="both"] .hl--primary,
+body[data-compare-primary="both"] .hl--comparison,
+body[data-compare-primary="both"] .node--se,
+body[data-compare-primary="both"] .node--ds,
+body[data-compare-primary="both"] .edge--se,
+body[data-compare-primary="both"] .edge--ds {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Ensure shared nodes remain prominent in all comparison modes */
+body[data-compare-primary] .hl--both,
+body[data-compare-primary] .node--shared,
+body[data-compare-primary] .edge--shared {
+  opacity: 1 !important;
+  filter: none !important;
+}

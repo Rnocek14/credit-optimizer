@@ -609,7 +609,7 @@ export function transformEducationData(
           'architecture': 10,              // Y4 SE anchor
           'machine-learning': 12,          // Y4 DS anchor
           'capstone-software-engineering': 13,
-          'capstone-data-science': 13
+          'capstone-data-science': 14
         },
         trackAnchorsByLane: {
           3: { sharedMax: 4, se: 6, ds: 8 }, // Y3: gate at 4, SE left, DS right
@@ -617,7 +617,7 @@ export function transformEducationData(
         },
         reservedColsByLane: {
           3: [4, 6, 8], // Reserve gate, SE anchor, DS anchor
-          4: [10, 12, 13] // Reserve SE, DS, capstones
+          4: [10, 12, 13, 14] // Reserve SE, DS, and both capstones
         }
       };
     } else if (isSingleData && activeTrack === 'data-science') {
@@ -760,6 +760,19 @@ export function transformEducationData(
     });
   }
 
+  // Enhanced debugging: log edge generation and type standardization
+  console.log('[Layout] Edge generation complete:', {
+    totalEdges: edges.length,
+    stepEdges: edges.filter(e => e.type === 'step').length,
+    handledEdges: edges.filter(e => e.sourceHandle === 'r' && e.targetHandle === 'l').length,
+    sampleEdgeTypes: edges.slice(0, 3).map(e => ({ 
+      id: e.id, 
+      type: e.type, 
+      sourceHandle: e.sourceHandle, 
+      targetHandle: e.targetHandle 
+    }))
+  });
+
   // PhaseA assertions (non-breaking)
   if (flags.eduTreePhaseA) {
     const badIds = edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
@@ -774,6 +787,16 @@ export function transformEducationData(
     });
     if (backwards.length) {
       console.warn('[MP Overlay][ASSERT] Backward edges found', backwards.slice(0, 5));
+    }
+    
+    // STAGE 0.7 FIX: Validate bridge node exclusion
+    const bridgeNodesInLayout = nodes.filter(n => n.type === 'laneBridge' && n.data?.hasGridLayout);
+    if (bridgeNodesInLayout.length > 0) {
+      console.warn('[Layout][ASSERT] Bridge nodes found in grid layout - this should not happen:', 
+        bridgeNodesInLayout.map(n => n.id)
+      );
+    } else {
+      console.log('[Layout] ✓ Bridge node exclusion verified - no bridge nodes in grid layout');
     }
   }
 
