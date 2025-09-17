@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { TRACK_MAP, type TrackId } from '../data/trackDefinitions';
+import { applyComparisonLayout, isComparisonLayoutActive } from '../utils/comparisonLayout';
 
 // Edge ID normalization helper
 export const eid = (source: string, target: string) => `e-${String(source)}-${String(target)}`;
@@ -162,11 +163,20 @@ export function useTrackComparison({
 
   }, [overlayEnabled, primaryTrackId, comparisonTrackId, nodeIdByBlockId, edges]);
 
-  // Apply highlight classes to nodes and edges
+  // Apply layout and highlight classes to nodes
   const highlightedNodes = useMemo(() => {
     if (!overlayEnabled) return nodes;
 
-    return nodes.map(node => {
+    // Check if we should apply comparison layout
+    const useComparisonLayout = isComparisonLayoutActive(primaryTrackId, comparisonTrackId, overlayEnabled);
+    
+    // Apply comparison layout if needed
+    let processedNodes = useComparisonLayout 
+      ? applyComparisonLayout(nodes, highlights)
+      : nodes;
+
+    // Apply highlight classes
+    return processedNodes.map(node => {
       // Keep original classes but ensure clean highlight class management
       const baseClasses = node.className ? node.className.split(' ').filter(c => !c.startsWith('hl')) : [];
       let hlClass = 'hl';
@@ -186,7 +196,7 @@ export function useTrackComparison({
         className: [...baseClasses, hlClass].join(' ')
       };
     });
-  }, [nodes, highlights, overlayEnabled]);
+  }, [nodes, highlights, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   const highlightedEdges = useMemo(() => {
     if (!overlayEnabled) return edges;

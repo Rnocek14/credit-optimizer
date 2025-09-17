@@ -378,8 +378,8 @@ function EduTreeCanvasInner() {
     const edgeCount = flowEdges.length;
     const firstNodeId = flowNodes[0]?.id || '';
     const lastNodeId = flowNodes[nodeCount - 1]?.id || '';
-    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}-${overlayEnabled}-${primaryTrackId}-${comparisonTrackId}`;
-  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id, overlayEnabled, primaryTrackId, comparisonTrackId]);
+    return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}`;
+  }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id]);
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
@@ -401,36 +401,15 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // STAGE 0.6 FIX: Check if nodes already have deterministic grid layout
-    const hasGridLayout = flowNodes.some(node => node.data?.hasGridLayout);
-    console.log('[EduTree Layout] Grid layout detection:', { 
-      hasGridLayout, 
-      totalNodes: flowNodes.length, 
-      nodesWithGrid: flowNodes.filter(n => n.data?.hasGridLayout).length,
-      sampleNodeData: flowNodes[0]?.data 
-    });
-    
-    if (hasGridLayout) {
-      console.log('[EduTree Layout] Nodes already have deterministic grid layout, skipping legacy layout');
-      
-      // Validate grid positions before applying
-      const validNodes = flowNodes.filter(node => {
-        const pos = node.position;
-        return pos && !isNaN(pos.x) && !isNaN(pos.y) && pos.x >= 0 && pos.y >= 0;
-      });
-      
-      if (validNodes.length !== flowNodes.length) {
-        console.warn('[EduTree Layout] Invalid grid positions detected, falling back to legacy layout');
-        // Don't return - let it fall through to legacy layout
-      } else {
-        // Apply highlighting based on overlay state - use highlightedNodes when overlay enabled
-        const finalNodes = overlayEnabled ? highlightedNodes : flowNodes;
-        setNodes(finalNodes);
-        setEdges(highlightedEdges);
-        setIsLayouting(false);
-        layoutInProgressRef.current = false;
-        return;
-      }
+    // Always use highlightedNodes when overlay is enabled (includes comparison layout)
+    // Otherwise use flowNodes and apply legacy layout if needed
+    if (overlayEnabled) {
+      console.log('[EduTree Layout] Using overlay nodes (includes comparison layout)');
+      setNodes(highlightedNodes);
+      setEdges(highlightedEdges);
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
+      return;
     }
 
     console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
