@@ -10,7 +10,7 @@ import {
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
 import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
-import { applyCleanTreeLayout } from './cleanTreeLayout';
+import { applyBranchingTreeLayout } from './cleanTreeLayout';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -355,8 +355,8 @@ export function transformEducationData(
     return { nodes, edges, blocksWithCourses };
   }
 
-  // Apply clean tree layout to all nodes
-  const layoutedNodes = applyCleanTreeLayout(regularNodes);
+  // Apply branching tree layout to all nodes
+  const layoutedNodes = applyBranchingTreeLayout(regularNodes);
 
   // PhaseA mode: No degree completion node, capstones are terminal  
   let nodes: Node[] = [...layoutedNodes];  // Use tree-positioned nodes

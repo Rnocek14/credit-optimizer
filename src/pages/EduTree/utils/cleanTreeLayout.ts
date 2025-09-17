@@ -1,70 +1,119 @@
 /**
- * Clean Tree Layout Algorithm
- * Based on user's proven manual positioning patterns
+ * Branching Tree Layout Algorithm
+ * Implements proper educational track branching visualization
  */
 
 import { Node } from '@xyflow/react';
 
-interface TreeLayoutConfig {
+interface BranchingLayoutConfig {
   startY: number;
   yearSpacing: number;
-  columnPositions: number[];
+  centerColumn: number;
+  leftBranch: number;
+  rightBranch: number;
+  branchingYear: number; // Year when tracks split
 }
 
 /**
- * Clean tree layout configuration extracted from user's manual positioning
+ * Branching layout configuration for educational track visualization
  */
-const TREE_LAYOUT_CONFIG: TreeLayoutConfig = {
+const BRANCHING_LAYOUT_CONFIG: BranchingLayoutConfig = {
   startY: -200,           // Starting Y position (top of tree)
-  yearSpacing: 700,       // Vertical spacing between year levels
-  columnPositions: [-30, 515, 1025]  // Three column positions for horizontal distribution
+  yearSpacing: 700,       // Vertical spacing between year levels  
+  centerColumn: 515,      // Center column for shared blocks
+  leftBranch: -30,        // Left branch for software engineering
+  rightBranch: 1025,      // Right branch for data science
+  branchingYear: 3        // Year 3 is when tracks diverge
 };
 
 /**
- * Apply clean tree layout positioning to React Flow nodes
+ * Apply branching tree layout positioning to React Flow nodes
+ * Creates proper educational track branching visualization
  */
-export function applyCleanTreeLayout(nodes: Node[]): Node[] {
-  console.log('[CleanTreeLayout] Applying tree layout to', nodes.length, 'nodes');
+export function applyBranchingTreeLayout(nodes: Node[]): Node[] {
+  console.log('[BranchingLayout] Applying branching layout to', nodes.length, 'nodes');
   
-  // Group nodes by level_year
+  // Group nodes by level_year and track
   const nodesByYear = new Map<number, Node[]>();
+  const sharedNodes: Node[] = [];
+  const softwareNodes: Node[] = [];
+  const dataNodes: Node[] = [];
+  
   nodes.forEach(node => {
     const blockData = node.data as any;
     const year = (blockData?.level_year || blockData?.block?.level_year || 0) as number;
+    const trackId = blockData?.block?.track_id || blockData?.phaseA?.trackId;
+    
+    // Group by year for overall structure
     if (!nodesByYear.has(year)) {
       nodesByYear.set(year, []);
     }
     nodesByYear.get(year)!.push(node);
+    
+    // Also group by track for branching logic
+    if (!trackId) {
+      sharedNodes.push(node);
+    } else if (trackId === 'software-engineering') {
+      softwareNodes.push(node);
+    } else if (trackId === 'data-science') {
+      dataNodes.push(node);
+    }
   });
   
   const positionedNodes: Node[] = [];
   const sortedYears = Array.from(nodesByYear.keys()).sort((a, b) => a - b);
   
+  console.log('[BranchingLayout] Track distribution:', {
+    shared: sharedNodes.length,
+    software: softwareNodes.length,
+    dataScience: dataNodes.length,
+    years: sortedYears
+  });
+  
   sortedYears.forEach((year, yearIndex) => {
     const yearNodes = nodesByYear.get(year)!;
-    const yPosition = TREE_LAYOUT_CONFIG.startY + (yearIndex * TREE_LAYOUT_CONFIG.yearSpacing);
+    const yPosition = BRANCHING_LAYOUT_CONFIG.startY + (yearIndex * BRANCHING_LAYOUT_CONFIG.yearSpacing);
     
-    console.log('[CleanTreeLayout] Year', year, '- positioning', yearNodes.length, 'nodes at Y:', yPosition);
+    console.log('[BranchingLayout] Year', year, '- positioning', yearNodes.length, 'nodes at Y:', yPosition);
     
-    // Distribute nodes across available column positions
+    // Position nodes based on branching logic
     yearNodes.forEach((node, nodeIndex) => {
+      const blockData = node.data as any;
+      const trackId = blockData?.block?.track_id || blockData?.phaseA?.trackId;
       let xPosition: number;
       
-      if (yearNodes.length === 1) {
-        // Single node - use leftmost column (foundation pattern)
-        xPosition = TREE_LAYOUT_CONFIG.columnPositions[0];
-      } else if (yearNodes.length === 2) {
-        // Two nodes - use left and center-right columns
-        xPosition = nodeIndex === 0 ? 
-          TREE_LAYOUT_CONFIG.columnPositions[0] : 
-          TREE_LAYOUT_CONFIG.columnPositions[1];
-      } else if (yearNodes.length === 3) {
-        // Three nodes - use all three columns
-        xPosition = TREE_LAYOUT_CONFIG.columnPositions[nodeIndex];
+      if (year < BRANCHING_LAYOUT_CONFIG.branchingYear) {
+        // Pre-branching years (Y1-Y2): Center all shared blocks
+        xPosition = BRANCHING_LAYOUT_CONFIG.centerColumn;
+        
+        // If multiple blocks in same year, slightly offset to avoid overlap
+        if (yearNodes.length > 1) {
+          const offset = (nodeIndex - (yearNodes.length - 1) / 2) * 100;
+          xPosition += offset;
+        }
       } else {
-        // More than 3 nodes - distribute evenly across columns
-        const columnIndex = nodeIndex % TREE_LAYOUT_CONFIG.columnPositions.length;
-        xPosition = TREE_LAYOUT_CONFIG.columnPositions[columnIndex];
+        // Branching years (Y3+): Position by track
+        if (trackId === 'software-engineering') {
+          xPosition = BRANCHING_LAYOUT_CONFIG.leftBranch;
+        } else if (trackId === 'data-science') {
+          xPosition = BRANCHING_LAYOUT_CONFIG.rightBranch;
+        } else {
+          // Shared blocks in later years stay centered
+          xPosition = BRANCHING_LAYOUT_CONFIG.centerColumn;
+        }
+        
+        // Handle multiple nodes of same track in same year
+        const sameTrackNodes = yearNodes.filter(n => {
+          const nData = n.data as any;
+          const nTrackId = nData?.block?.track_id || nData?.phaseA?.trackId;
+          return nTrackId === trackId;
+        });
+        
+        if (sameTrackNodes.length > 1) {
+          const trackIndex = sameTrackNodes.indexOf(node);
+          const offset = trackIndex * 80; // Slight vertical stacking for same track
+          xPosition += (trackId === 'software-engineering' ? offset : -offset);
+        }
       }
       
       positionedNodes.push({
@@ -72,23 +121,33 @@ export function applyCleanTreeLayout(nodes: Node[]): Node[] {
         position: { x: xPosition, y: yPosition },
         data: {
           ...node.data,
-          hasCleanTreeLayout: true
+          hasBranchingLayout: true,
+          branchPosition: year < BRANCHING_LAYOUT_CONFIG.branchingYear ? 'shared' : 
+                         trackId === 'software-engineering' ? 'left-branch' :
+                         trackId === 'data-science' ? 'right-branch' : 'center'
         },
-        draggable: true  // Enable dragging for manual positioning
+        draggable: true
       });
     });
   });
   
-  console.log('[CleanTreeLayout] Positioned nodes:', {
+  console.log('[BranchingLayout] Positioned nodes:', {
     totalNodes: positionedNodes.length,
-    yearBreakdown: sortedYears.map(year => ({
-      year,
-      count: nodesByYear.get(year)?.length || 0,
-      sampleY: TREE_LAYOUT_CONFIG.startY + (sortedYears.indexOf(year) * TREE_LAYOUT_CONFIG.yearSpacing)
-    }))
+    sharedCount: positionedNodes.filter(n => n.data.branchPosition === 'shared').length,
+    leftBranchCount: positionedNodes.filter(n => n.data.branchPosition === 'left-branch').length,
+    rightBranchCount: positionedNodes.filter(n => n.data.branchPosition === 'right-branch').length,
+    centerCount: positionedNodes.filter(n => n.data.branchPosition === 'center').length
   });
   
   return positionedNodes;
+}
+
+/**
+ * Legacy clean tree layout for backward compatibility
+ */
+export function applyCleanTreeLayout(nodes: Node[]): Node[] {
+  // For now, use the new branching layout as the default
+  return applyBranchingTreeLayout(nodes);
 }
 
 /**

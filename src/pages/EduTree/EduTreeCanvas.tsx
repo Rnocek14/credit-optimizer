@@ -414,20 +414,29 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // CRITICAL: PhaseA mode - single stable layout pass only
+    // CRITICAL: PhaseA mode - single stable layout pass with branching
     if (isPhaseA) {
-      console.log('[EduTree Layout] PhaseA mode - single stable pass');
+      console.log('[EduTree Layout] PhaseA mode - single stable branching layout pass');
       if (phaseAGuard.layoutPassCount > 1) {
         console.log('[EduTree Layout] PhaseA emergency brake - preventing additional layout');
         return;
       }
       
-      // Atomic update for PhaseA - no overlay processing
+      // Atomic update for PhaseA - use stable references with proper branching
       const atomicUpdate = () => {
         setNodes(phaseAGuard.stableNodes);
         setEdges(phaseAGuard.stableEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
+        
+        // Disable ReactFlow dragging and selection in PhaseA to prevent repositioning
+        if (reactFlowInstance) {
+          reactFlowInstance.setOptions?.({
+            nodesDraggable: false,
+            nodesConnectable: false,
+            elementsSelectable: false
+          });
+        }
       };
       
       requestAnimationFrame(atomicUpdate);
