@@ -208,7 +208,7 @@ export function useTrackComparison({
     }
 
     // Legacy path: Check if we should apply comparison layout
-    const useComparisonLayout = isComparisonLayoutActive(primaryTrackId, comparisonTrackId, overlayEnabled);
+    const useComparisonLayout = isComparisonLayoutActive(primaryTrackId, comparisonTrackId, overlayEnabled, phaseAEnabled);
     
     // Apply comparison layout if needed
     let processedNodes = useComparisonLayout 

@@ -151,7 +151,14 @@ export function applyComparisonLayout(
 export function isComparisonLayoutActive(
   primaryTrackId?: string,
   comparisonTrackId?: string,
-  overlayEnabled?: boolean
+  overlayEnabled?: boolean,
+  phaseAEnabled?: boolean
 ): boolean {
+  // PhaseA Guard: Never allow comparison layout when PhaseA is active
+  if (phaseAEnabled) {
+    console.log('[ComparisonLayout][Guard] PhaseA active → comparison layout disabled');
+    return false;
+  }
+  
   return !!(overlayEnabled && primaryTrackId && comparisonTrackId);
 }

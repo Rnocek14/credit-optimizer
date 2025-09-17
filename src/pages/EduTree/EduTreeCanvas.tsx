@@ -56,9 +56,11 @@ import { useEduTreeData } from './hooks/useEduTreeData';
 import { useTrackComparison } from './hooks/useTrackComparison';
 import { transformEducationData } from './utils/transformEducationData';
 import './utils/positionCapture'; // Initialize position capture utilities
+import './utils/layoutDebug'; // Initialize layout debugging
 import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, resolveEduTreeQAModeFlag } from '@/lib/eduTreeFlags';
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
+import { layoutDebugger } from './utils/layoutDebug';
 import './styles/trackOverlay.css';
 import './styles/pathIdentity.css';
 
@@ -413,29 +415,62 @@ function EduTreeCanvasInner() {
       (window as any).__layoutPasses.push('phaseA');
       console.log('[EduTreeCanvas][PhaseA] Bypassing legacy layout, applying flow directly');
       console.log('[EduTree Layout] PhaseA active - bypassing legacy layout');
+      
+      // Position preservation: Add defensive guards to prevent position overwrites
+      const preservePositions = (n: Node) => ({
+        ...n,
+        position: n.position ?? { x: 0, y: 0 },
+        data: { 
+          ...(n.data || {}), 
+          hasGridLayout: true,
+          phaseAProtected: true 
+        },
+        dragging: false,
+        draggable: true
+      });
+      
+      const finalNodes = (overlayEnabled ? highlightedNodes : flowNodes).map(preservePositions);
+      const finalEdges = overlayEnabled ? highlightedEdges : flowEdges;
+      
+      // Debug layout action
+      layoutDebugger.logLayoutAction('PhaseA Layout Applied', finalNodes, 'phaseA');
+      
       // Expose for debugging
-      (window as any).__flowNodes__ = overlayEnabled ? highlightedNodes : flowNodes;
-      (window as any).__flowEdges__ = overlayEnabled ? highlightedEdges : flowEdges;
+      (window as any).__flowNodes__ = finalNodes;
+      (window as any).__flowEdges__ = finalEdges;
       
       console.log('[Layout][Grid] PhaseA nodes applied:', {
-        totalNodes: (overlayEnabled ? highlightedNodes : flowNodes).length,
-        gridNodes: (overlayEnabled ? highlightedNodes : flowNodes).filter((n: any) => n.data?.hasGridLayout).length,
-        samplePositions: (overlayEnabled ? highlightedNodes : flowNodes).slice(0, 5).map((n: any) => ({
+        totalNodes: finalNodes.length,
+        gridNodes: finalNodes.filter((n: any) => n.data?.hasGridLayout).length,
+        protectedNodes: finalNodes.filter((n: any) => n.data?.phaseAProtected).length,
+        samplePositions: finalNodes.slice(0, 5).map((n: any) => ({
           id: n.id,
           x: n.position?.x,
           y: n.position?.y,
-          hasGrid: n.data?.hasGridLayout
+          hasGrid: n.data?.hasGridLayout,
+          protected: n.data?.phaseAProtected
         }))
       });
       
-      setNodes(overlayEnabled ? highlightedNodes : flowNodes);
-      setEdges(overlayEnabled ? highlightedEdges : flowEdges);
+      setNodes(finalNodes);
+      setEdges(finalEdges);
       
-      // Fix: FitView throttling to prevent zoom wobble
-      const raf = requestAnimationFrame(() => {
-        reactFlowInstance?.fitView?.({ padding: 0.2 });
-      });
-      // Note: cleanup handled by React's effect cleanup
+      // Add layout competition detection
+      setTimeout(() => {
+        const currentNodes = reactFlowInstance?.getNodes?.() || [];
+        const positionChanged = layoutDebugger.detectPositionChanges(finalNodes, currentNodes);
+        
+        if (positionChanged) {
+          console.warn('[PhaseA][Competition] Node positions changed after PhaseA layout - layout competition detected!');
+          console.warn('[PhaseA][Competition] Expected positions preserved, but detected changes. Check for overlay interference.');
+          
+          // Re-apply positions if they were changed
+          console.log('[PhaseA][Recovery] Re-applying protected PhaseA positions');
+          setNodes(finalNodes);
+        } else {
+          console.log('[PhaseA][Guard] ✅ Position integrity maintained - no layout competition detected');
+        }
+      }, 100);
       
       setIsLayouting(false);
       layoutInProgressRef.current = false;
@@ -803,7 +838,8 @@ function EduTreeCanvasInner() {
             size={1}
           />
           <Controls />
-          <MiniMap />
+          {/* Disable MiniMap during PhaseA to prevent layout interference */}
+          {!flags.eduTreePhaseA && <MiniMap />}
         </ReactFlow>
       </div>
 
