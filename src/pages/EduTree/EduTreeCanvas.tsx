@@ -383,19 +383,24 @@ function EduTreeCanvasInner() {
 
   // Perform layout when data or node sizes change
   useLayoutEffect(() => {
+    // PR-A: Add layout pass tracking
+    if (typeof window !== 'undefined') {
+      (window as any).__layoutPasses = (window as any).__layoutPasses || [];
+    }
+
     if (!reactFlowInstance) {
-      console.log('[EduTree Layout] ReactFlow instance not ready');
+      console.log('[EduTreeCanvas][Skip] ReactFlow instance not ready');
       return;
     }
     
     if (layoutInProgressRef.current) {
-      console.log('[EduTree Layout] Layout already in progress, skipping');
+      console.log('[EduTreeCanvas][Skip] Layout already in progress, skipping');
       return;
     }
 
     // Clear loading state immediately if there are no nodes to layout
     if (!flowNodes.length) {
-      console.log('[EduTree Layout] No nodes to layout, clearing loading state');
+      console.log('[EduTreeCanvas][Skip] No nodes to layout, clearing loading state');
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       return;
@@ -404,6 +409,8 @@ function EduTreeCanvasInner() {
     // PR-A: PhaseA bypass - skip legacy layout when PhaseA is active
     const isPhaseA = flags.eduTreePhaseA;
     if (isPhaseA) {
+      (window as any).__layoutPasses.push('phaseA');
+      console.log('[EduTreeCanvas][PhaseA] Bypassing legacy layout, applying flow directly');
       console.log('[EduTree Layout] PhaseA active - bypassing legacy layout');
       // Expose for debugging
       (window as any).__flowNodes__ = overlayEnabled ? highlightedNodes : flowNodes;
@@ -436,7 +443,8 @@ function EduTreeCanvasInner() {
     
     // Legacy mode: use overlay nodes when overlay is enabled
     if (overlayEnabled) {
-      console.log('[EduTree Layout] Using overlay nodes (legacy mode)');
+      (window as any).__layoutPasses.push('overlay');
+      console.log('[EduTreeCanvas][Overlay] Using overlay nodes (legacy mode)');
       setNodes(highlightedNodes);
       setEdges(highlightedEdges);
       setIsLayouting(false);
@@ -444,7 +452,8 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    console.log('[EduTree Layout] Starting layout for', flowNodes.length, 'nodes');
+    (window as any).__layoutPasses.push('legacy');
+    console.log('[EduTreeCanvas][Legacy] Running legacy layout branch for', flowNodes.length, 'nodes');
     layoutInProgressRef.current = true;
     setIsLayouting(true);
 
@@ -460,6 +469,13 @@ function EduTreeCanvasInner() {
 
     const runLayout = () => {
       try {
+        // PR-A: Guard against running legacy layout when PhaseA is active
+        if (flags.eduTreePhaseA) {
+          console.warn('[EduTreeCanvas][Guard] Prevented legacy layout from running during PhaseA mode');
+          clearLayoutState();
+          return;
+        }
+        
         console.log('[EduTree Layout] Running LEGACY layout calculations');
         const pad = 80; // Increased for better vertical separation
         const colW = 540; // STAGE 0.6 FIX: Updated to match PhaseA grid spacing

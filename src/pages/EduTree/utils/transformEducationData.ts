@@ -374,7 +374,7 @@ export function transformEducationData(
     const isSingleTrack = !flags.overlayEnabled && presentTracks.size === 1;
     const activeTrack = selectedTrackId || [...presentTracks][0] || null;
     
-    console.log('[Layout][Mode] Data-driven detection:', {
+    console.log('[Transform][Grid] Data-driven detection:', {
       isCompare,
       isSingleTrack, 
       activeTrack,
@@ -386,14 +386,31 @@ export function transformEducationData(
     // Apply deterministic year-grid layout
     layoutedNodes = applyYearGridLayout(regularNodes, isCompare, isSingleTrack, activeTrack as any);
   } else {
-    // Legacy mode: use clean tree layout
-    console.log('[Layout] Using legacy clean tree layout (non-PhaseA)');
-    layoutedNodes = applyCleanTreeLayout(regularNodes);
+    // PR-A: Guard against legacy layout when PhaseA is expected
+    if (flags.eduTreePhaseA) {
+      console.warn('[Transform][Guard] PhaseA flag is true but shouldUseGrid is false - using grid anyway to prevent layout competition');
+      layoutedNodes = applyYearGridLayout(regularNodes, false, false, null);
+    } else {
+      // Legacy mode: use clean tree layout
+      console.log('[Transform][Legacy] Using legacy clean tree layout (non-PhaseA)');
+      layoutedNodes = applyCleanTreeLayout(regularNodes);
+    }
   }
 
   // PhaseA mode: No degree completion node, capstones are terminal  
   let nodes: Node[] = [...layoutedNodes];  // Use tree-positioned nodes
   let edges: Edge[] = [...regularEdges];
+
+  // PR-A: Add final transform debugging
+  console.log('[Transform][Final]', {
+    phaseA: flags.eduTreePhaseA,
+    overlay: flags.overlayEnabled,
+    nodes: nodes.length,
+    edges: edges.length,
+    hasGate: nodes.some(n => n.id === 'divergence-gate'),
+    gridNodes: nodes.filter(n => (n.data as any)?.hasGridLayout).length,
+    samplePositions: nodes.slice(0, 3).map(n => ({ id: n.id, x: n.position?.x, y: n.position?.y }))
+  });
 
   // === Overlay-only gate + edge cleanup ======================================
   const WANT_OVERLAY = !!flags.overlayEnabled && !!flags.eduTreePhaseA;

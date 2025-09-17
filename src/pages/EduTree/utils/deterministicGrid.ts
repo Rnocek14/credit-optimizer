@@ -15,7 +15,7 @@ export interface GridLayoutOpts extends GridLayoutConfig {
 }
 
 // Consolidated default config for cleaner callsites
-export const DEFAULT_GRID_CONFIG = {
+export const DEFAULT_GRID_CONFIG = Object.freeze({
   colWidth: 440,
   baseY: 0,
   yearSpacing: 320,
@@ -24,7 +24,7 @@ export const DEFAULT_GRID_CONFIG = {
   laneOffsetSingle: 140,
   nodeSpacing: 64,
   qaSplitMultiLane: false
-} as const;
+} as const);
 
 /**
  * PR-A: Single deterministic year-grid layout system
@@ -47,6 +47,19 @@ export function applyYearGridLayout(
   });
 
   const extendedOpts = { ...DEFAULT_GRID_CONFIG, ...config };
+
+  // PR-A: Add debugging instrumentation
+  if (typeof window !== 'undefined') {
+    (window as any).__lastGridRun = {
+      when: Date.now(),
+      isCompare,
+      isSingleTrack,
+      activeTrack,
+      opts: extendedOpts
+    };
+    console.log('[Grid][ResolvedConfig]', extendedOpts);
+    console.log('[Grid][LayoutMode]', { isCompare, isSingleTrack, activeTrack, nodeCount: nodes.length });
+  }
 
   // Extract level_year from node data
   const getLevelYear = (node: Node): number => {
