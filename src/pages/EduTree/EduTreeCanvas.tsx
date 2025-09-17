@@ -401,10 +401,41 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // Always use highlightedNodes when overlay is enabled (includes comparison layout)
-    // Otherwise use flowNodes and apply legacy layout if needed
+    // PR-A: PhaseA bypass - skip legacy layout when PhaseA is active
+    const isPhaseA = flags.eduTreePhaseA;
+    if (isPhaseA) {
+      console.log('[EduTree Layout] PhaseA active - bypassing legacy layout');
+      // Expose for debugging
+      (window as any).__flowNodes__ = overlayEnabled ? highlightedNodes : flowNodes;
+      (window as any).__flowEdges__ = overlayEnabled ? highlightedEdges : flowEdges;
+      
+      console.log('[Layout][Grid] PhaseA nodes applied:', {
+        totalNodes: (overlayEnabled ? highlightedNodes : flowNodes).length,
+        gridNodes: (overlayEnabled ? highlightedNodes : flowNodes).filter((n: any) => n.data?.hasGridLayout).length,
+        samplePositions: (overlayEnabled ? highlightedNodes : flowNodes).slice(0, 5).map((n: any) => ({
+          id: n.id,
+          x: n.position?.x,
+          y: n.position?.y,
+          hasGrid: n.data?.hasGridLayout
+        }))
+      });
+      
+      setNodes(overlayEnabled ? highlightedNodes : flowNodes);
+      setEdges(overlayEnabled ? highlightedEdges : flowEdges);
+      
+      // Fit view with slight delay
+      requestAnimationFrame(() => {
+        reactFlowInstance?.fitView?.({ padding: 0.2 });
+      });
+      
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
+      return;
+    }
+    
+    // Legacy mode: use overlay nodes when overlay is enabled
     if (overlayEnabled) {
-      console.log('[EduTree Layout] Using overlay nodes (includes comparison layout)');
+      console.log('[EduTree Layout] Using overlay nodes (legacy mode)');
       setNodes(highlightedNodes);
       setEdges(highlightedEdges);
       setIsLayouting(false);

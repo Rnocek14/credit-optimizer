@@ -11,6 +11,7 @@ import {
 import { normalizeEdges } from './edgeNormalization';
 import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
 import { applyCleanTreeLayout } from './cleanTreeLayout';
+import { applyYearGridLayout } from './deterministicGrid';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -355,8 +356,40 @@ export function transformEducationData(
     return { nodes, edges, blocksWithCourses };
   }
 
-  // Apply clean tree layout to all nodes
-  const layoutedNodes = applyCleanTreeLayout(regularNodes);
+  // === PR-A: Single deterministic year-grid layout pipeline ===
+  const qaForceLayout = new URLSearchParams(window.location.search).get('qaForceLayout') === 'true';
+  const shouldUseGrid = flags.eduTreePhaseA || qaForceLayout;
+  
+  let layoutedNodes: Node[];
+  
+  if (shouldUseGrid) {
+    // Data-driven mode detection
+    const presentTracks = new Set(
+      regularNodes
+        .map(n => (n.data as any)?.block?.track_id)
+        .filter((t): t is 'software-engineering' | 'data-science' => !!t)
+    );
+    
+    const isCompare = !!flags.overlayEnabled && presentTracks.size > 1;
+    const isSingleTrack = !flags.overlayEnabled && presentTracks.size === 1;
+    const activeTrack = selectedTrackId || [...presentTracks][0] || null;
+    
+    console.log('[Layout][Mode] Data-driven detection:', {
+      isCompare,
+      isSingleTrack, 
+      activeTrack,
+      presentTracks: [...presentTracks],
+      overlayEnabled: flags.overlayEnabled,
+      phaseA: flags.eduTreePhaseA
+    });
+    
+    // Apply deterministic year-grid layout
+    layoutedNodes = applyYearGridLayout(regularNodes, isCompare, isSingleTrack, activeTrack as any);
+  } else {
+    // Legacy mode: use clean tree layout
+    console.log('[Layout] Using legacy clean tree layout (non-PhaseA)');
+    layoutedNodes = applyCleanTreeLayout(regularNodes);
+  }
 
   // PhaseA mode: No degree completion node, capstones are terminal  
   let nodes: Node[] = [...layoutedNodes];  // Use tree-positioned nodes
@@ -389,26 +422,26 @@ export function transformEducationData(
           level_year: 3,
           track_id: null,
           courses: []
-        },
-        completedCourseIds,
-        isUnlocked: true,
-        progress: {
-          completed: 0,
-          required: 0
-        },
-        subBlocks: [],
-        level_year: 3,
-        area: 'gate',
-        isHighlighted: false,
-        planningLens: null,
-        phaseA: {
-          isShared: true,
-          trackId: null,
-          trackBadge: 'Gate'
-        }
-      },
+         },
+         completedCourseIds: new Set<string>(),
+         isUnlocked: true,
+         progress: {
+           completed: 0,
+           required: 0
+         },
+         subBlocks: [],
+         level_year: 3,
+         area: 'gate',
+         isHighlighted: false,
+         planningLens: null,
+         phaseA: {
+           isShared: true,
+           trackId: null,
+           trackBadge: 'Gate'
+         }
+       },
       position: { x: 0, y: 0 },
-      draggable: true,  // Enable dragging for manual positioning
+      draggable: false,  // PR-A: Disable dragging for grid-positioned nodes
       className: 'node node--shared node--gate'
     };
     
@@ -524,7 +557,7 @@ export function transformEducationData(
   const isSingleData = !flags.overlayEnabled && presentTracks.size === 1;
   const activeTrack = selectedTrackId || [...presentTracks][0] || null;
 
-  console.log('[Layout] Using clean tree layout for all nodes');
+  console.log('[Layout] Layout system selection complete');
 
   // Enhanced debugging: log edge generation and type standardization
   console.log('[Layout] Edge generation complete:', {

@@ -16,11 +16,13 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const { attachResizeObserver, detachResizeObserver } = useNodeResize(props.id);
   
+  // PR-A: Add defensive guards for virtual node safety
+  const nodeData = props.data || {};
   const { 
     block, 
-    completedCourseIds, 
-    isUnlocked, 
-    progress, 
+    completedCourseIds = new Set<string>(), 
+    isUnlocked = true, 
+    progress = { completed: 0, required: 0 }, 
     subBlocks = [], 
     altCreditOptions = [],
     isHighlighted = false,
@@ -28,11 +30,11 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
     isDegreeNode = false,
     isDegreeComplete = false,
     onCourseClick
-  } = props.data as {
-    block: BlockWithCourses;
-    completedCourseIds: Set<string>;
-    isUnlocked: boolean;
-    progress: { completed: number; required: number };
+  } = nodeData as {
+    block?: BlockWithCourses;
+    completedCourseIds?: Set<string>;
+    isUnlocked?: boolean;
+    progress?: { completed: number; required: number };
     subBlocks?: BlockWithCourses[];
     altCreditOptions?: AltCreditOption[];
     isHighlighted?: boolean;
@@ -41,6 +43,18 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
     isDegreeComplete?: boolean;
     onCourseClick?: (course: any) => void;
   };
+
+  // Defensive guard for missing block data
+  if (!block) {
+    console.warn('[BlockGroup] Missing block data for node:', props.id);
+    return (
+      <div className="relative node node--error">
+        <div className="w-[420px] p-4 border border-destructive bg-destructive/10 rounded">
+          <div className="text-sm text-destructive">Invalid node data</div>
+        </div>
+      </div>
+    );
+  }
   
   const [showAltCredits, setShowAltCredits] = useState(false);
   const [subBlocksExpanded, setSubBlocksExpanded] = useState(false);
