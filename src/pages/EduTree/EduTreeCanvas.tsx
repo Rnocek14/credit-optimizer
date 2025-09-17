@@ -398,34 +398,47 @@ function EduTreeCanvasInner() {
     }
     
     if (isPhaseA) {
-      // PhaseA: Only apply pre-computed positions, never run legacy layout
+      // PhaseA: Apply deterministic grid positions with position validation
       console.log('[EduTree Layout] PhaseA mode - applying deterministic grid positions');
       
       // Debug flag for layout mode verification
       (window as any).__layoutMode__ = 'phaseA-grid';
       
-      // Stable comparison to prevent unnecessary updates
-      const currentNodes = nodes;
-      const currentEdges = edges;
-      const needsNodeUpdate = currentNodes.length !== flowNodes.length || 
-        currentNodes.some((n, i) => n.id !== flowNodes[i]?.id);
-      const needsEdgeUpdate = currentEdges.length !== highlightedEdges.length ||
-        currentEdges.some((e, i) => e.id !== highlightedEdges[i]?.id);
+      // Position validation: Check if nodes have valid grid layout positions
+      const validGridNodes = flowNodes.filter(n => 
+        n.data?.hasGridLayout && 
+        n.position && 
+        typeof n.position.x === 'number' && 
+        typeof n.position.y === 'number' &&
+        n.position.x > 0 && n.position.y > 0
+      );
       
-      if (needsNodeUpdate) {
-        setNodes(flowNodes);
+      console.log('[EduTree Layout] Position validation:', {
+        totalNodes: flowNodes.length,
+        validGridNodes: validGridNodes.length,
+        missingGridLayout: flowNodes.filter(n => !n.data?.hasGridLayout).length,
+        invalidPositions: flowNodes.filter(n => !n.position || n.position.x <= 0 || n.position.y <= 0).length
+      });
+      
+      // Recovery mechanism: If nodes lost their grid positions, force re-layout
+      if (validGridNodes.length === 0 && flowNodes.length > 0) {
+        console.warn('[EduTree Layout] No valid grid positions found, triggering recovery layout');
+        setLayoutVersion(v => v + 1);
+        return;
       }
-      if (needsEdgeUpdate) {
-        setEdges(highlightedEdges);
-      }
+      
+      // Always apply positions in PhaseA mode (remove aggressive comparison checks)
+      console.log('[EduTree Layout] Applying node and edge updates');
+      setNodes(flowNodes);
+      setEdges(highlightedEdges);
       
       setIsLayouting(false);
       layoutInProgressRef.current = false;
       
-      // Debounce fitView to avoid layout conflicts
-      if (needsNodeUpdate || needsEdgeUpdate) {
+      // FitView only if we have positioned nodes
+      if (validGridNodes.length > 0) {
         requestAnimationFrame(() => {
-          setTimeout(() => reactFlowInstance.fitView?.({ padding: 0.2, duration: 250 }), 0);
+          setTimeout(() => reactFlowInstance.fitView?.({ padding: 0.2, duration: 250 }), 50);
         });
       }
       return;
@@ -629,7 +642,7 @@ function EduTreeCanvasInner() {
       cancelAnimationFrame(raf2);
       clearLayoutState();
     };
-  }, [reactFlowInstance, dataHash, flags?.eduTreePhaseA, layoutVersion]);
+  }, [reactFlowInstance, flowNodes.length, highlightedEdges.length, flags?.eduTreePhaseA, layoutVersion, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   // Debug logging effect for PhaseA (separate from render cycle)
   useEffect(() => {
@@ -785,7 +798,7 @@ function EduTreeCanvasInner() {
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
-          className="edu-tree-canvas bg-background"
+          className={`edu-tree-canvas bg-background ${isLayouting ? 'layout-in-progress' : ''}`}
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
