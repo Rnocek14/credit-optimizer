@@ -505,27 +505,42 @@ export function transformEducationData(
         nodes = [...nodes, ...newNodes];
         edges = newEdges;
       } else {
-        edges = edges.map(ed => ({ ...ed, type: 'step' }));
+        edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
       }
     } else {
-      // no splitting; just convert to step edges
-      edges = edges.map(ed => ({ ...ed, type: 'step' }));
+      // no splitting; just convert to step edges with proper handles
+      edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
     }
   }
   // === end overlay gate + edge cleanup =======================================
 
-  // Apply deterministic grid layout for PhaseA (comparison or single-track mode)
+  // === ROBUST MODE DETECTION (data-driven) ===
+  // Detect compare vs single-track from data, not just flags
+  const presentTracks = new Set(
+    sortedBlocks
+      .map(b => b.track_id)
+      .filter((t): t is 'software-engineering' | 'data-science' => !!t)
+  );
+
   const isCompare = !!flags.overlayEnabled;
-  const isSingleTrack = !flags.overlayEnabled && !!selectedTrackId;
+  const isSingleData = !flags.overlayEnabled && presentTracks.size === 1;
+  const activeTrack = selectedTrackId || [...presentTracks][0] || null;
+
+  // Optional force switch for QA:
+  const forceLayout = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('qaForceLayout') === 'true';
   
-  if (flags.eduTreePhaseA && (isCompare || isSingleTrack)) {
+  if (flags.eduTreePhaseA && (isCompare || isSingleData || forceLayout)) {
+    console.log('[Layout][mode]', { 
+      isCompare, isSingleData, activeTrack, presentTracks: [...presentTracks],
+      selectedTrackId, forceLayout
+    });
     // Hard guard layout inputs
     if (!Array.isArray(nodes) || !Array.isArray(edges)) {
       console.warn('[Layout] nodes/edges not arrays; skipping layout');
       return { nodes: regularNodes, edges: regularEdges, blocksWithCourses };
     }
 
-  const mode = isCompare ? 'compare' : isSingleTrack ? 'single' : 'none';
+  const mode = isCompare ? 'compare' : isSingleData ? 'single' : 'none';
   console.log('[Layout] applying deterministic grid', { 
     mode, 
     selectedTrackId,
@@ -605,7 +620,7 @@ export function transformEducationData(
           4: [10, 12, 13] // Reserve SE, DS, capstones
         }
       };
-    } else if (selectedTrackId === 'data-science') {
+    } else if (isSingleData && activeTrack === 'data-science') {
       // Single-track DS: compact layout, no gate
       console.log('[Layout] Using DS single-track layout configuration');
       layoutOptions = {
@@ -632,7 +647,7 @@ export function transformEducationData(
           4: [8, 9]   // Reserve DS anchor and capstone
         }
       };
-    } else if (selectedTrackId === 'software-engineering') {
+    } else if (isSingleData && activeTrack === 'software-engineering') {
       // Single-track SE: compact layout, no gate
       console.log('[Layout] Using SE single-track layout configuration');
       layoutOptions = {
@@ -696,11 +711,20 @@ export function transformEducationData(
       console.warn('[Layout] layout crashed, skipping layout', err);
     }
 
-    // Apply positions to real nodes only
+    // Apply positions to real nodes only with GUARANTEED position application
     nodes = nodes.map(n => {
       if (n.type === 'laneBridge') return n; // leave bridge nodes alone
       const L = layout[String(n.id)];
-      return L ? { ...n, position: { x: L.x, y: L.y }, draggable: false } : n;
+      if (!L) return n;
+      
+      const pos = { x: L.x, y: L.y };
+      return { 
+        ...n, 
+        position: pos,
+        positionAbsolute: pos,  // Force both position properties for React Flow
+        dragging: false,
+        draggable: false 
+      };
     });
   }
 

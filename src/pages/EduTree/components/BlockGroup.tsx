@@ -298,8 +298,8 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       {/* Handles for PhaseA mode - always render left/right for clean edges */}
       {flags.eduTreePhaseA && (
         <>
-          <Handle type="target" position={Position.Left} isConnectable={false} />
-          <Handle type="source" position={Position.Right} isConnectable={false} />
+          <Handle id="l" type="target" position={Position.Left} isConnectable={false} />
+          <Handle id="r" type="source" position={Position.Right} isConnectable={false} />
         </>
       )}
       
