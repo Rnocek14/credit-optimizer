@@ -560,8 +560,8 @@ export function transformEducationData(
             'foundations': 1,
             'mathematics': 2,
             'core-i': 3,
-            'core-ii': 4,
-            'divergence-gate': 4,            // moved left for better fan-out
+            'core-ii': 5,                    // moved right to avoid gate conflict
+            'divergence-gate': 4,            // gate gets clean column 4
             'specializations': 6,            // Y3 SE anchor
             'data-analysis': 8,              // Y3 DS anchor
             'architecture': 10,              // Y4 SE anchor

@@ -134,47 +134,60 @@ export function computeDeterministicGrid(
     }
 
     // Bucket spacing: spread same-track nodes after anchoring to avoid congestion
-    const anchorSpacing = (trackId: string | null, baseCol: number, nodes: BlockLike[]) => {
-      const trackNodes = nodes.filter(b => b.track_id === trackId);
-      trackNodes.forEach((node, idx) => {
-        if (idx === 0) {
-          rank.set(String(node.id), baseCol); // first node takes anchor
-        } else {
-          rank.set(String(node.id), baseCol + idx); // spread others
-        }
-      });
-    };
-
-    // Apply bucket spacing for track anchors
     const anchorConfig = opts.trackAnchorsByLane?.[laneNo];
     if (anchorConfig) {
+      // SE track spacing - deterministic sort then spread from anchor
       if (typeof anchorConfig.se === 'number') {
         const seNodes = track.filter(b => b.track_id === 'software-engineering');
-        anchorSpacing('software-engineering', anchorConfig.se, seNodes);
+        seNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
+        seNodes.forEach((node, idx) => {
+          rank.set(String(node.id), anchorConfig.se! + idx); // anchor + 0, anchor + 1, etc.
+        });
       }
+      
+      // DS track spacing - deterministic sort then spread from anchor
       if (typeof anchorConfig.ds === 'number') {
         const dsNodes = track.filter(b => b.track_id === 'data-science');
-        anchorSpacing('data-science', anchorConfig.ds, dsNodes);
+        dsNodes.sort((a, b) => (a.slug || '').localeCompare(b.slug || '') || String(a.id).localeCompare(String(b.id)));
+        dsNodes.forEach((node, idx) => {
+          rank.set(String(node.id), anchorConfig.ds! + idx); // anchor + 0, anchor + 1, etc.
+        });
       }
     }
 
-    // Ensure unique columns within the lane (pack to the right if collision, skip reserved)
+    // Reserved column collision resolution - proper pinned/non-pinned separation
     const reserved = new Set(opts.reservedColsByLane?.[laneNo] ?? []);
-    const entries = laneBlocks.map(b => [String(b.id), rank.get(String(b.id)) ?? 0]) as [string, number][];
-    entries.sort((a, b) => a[1] - b[1]); // by column
+    const ids = laneBlocks.map(b => String(b.id));
+
+    // Identify pinned nodes (those that should stay in reserved columns)
+    const pinned = new Set<string>();
+    ids.forEach(id => {
+      const c = rank.get(id) ?? 0;
+      if (reserved.has(c)) pinned.add(id);
+    });
+
+    // Process pinned first (lock their reserved columns), then pack non-pinned around them
     const used = new Set<number>();
-    for (const [id, colIdx] of entries) {
-      let c = colIdx;
-      // If current column is reserved and this node doesn't belong there, find next available
-      if (reserved.has(c) && !rank.has(id)) {
-        c = colIdx + 1;
-      }
-      while (used.has(c) || (reserved.has(c) && rank.get(id) !== c)) {
-        c++;
-      }
-      used.add(c);
-      rank.set(id, c);
-    }
+    
+    // Lock pinned nodes in their reserved columns
+    ids.filter(id => pinned.has(id))
+       .sort((a, b) => (rank.get(a)! - rank.get(b)!))
+       .forEach(id => {
+         const c = rank.get(id)!;
+         used.add(c);
+       });
+    
+    // Pack non-pinned nodes, avoiding reserved columns
+    ids.filter(id => !pinned.has(id))
+       .sort((a, b) => (rank.get(a)! - rank.get(b)!))
+       .forEach(id => {
+         let c = rank.get(id)!;
+         while (used.has(c) || reserved.has(c)) {
+           c++;
+         }
+         used.add(c);
+         rank.set(id, c);
+       });
 
     return rank;
   }

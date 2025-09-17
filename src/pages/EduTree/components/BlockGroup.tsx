@@ -72,13 +72,32 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
       data-track={block.track_id ?? ''}
       data-level-year={block.level_year}
     >
-      {/* Fixed connection handles for better edge routing */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3 h-3 bg-primary border-2 border-background"
-        style={{ left: -6 }}
-      />
+      {/* Left/Right handles for overlay step edges when multipath overlay is enabled */}
+      {flags.eduTreeMultiPathOverlay ? (
+        <>
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-3 h-3 bg-primary border-2 border-background"
+            style={{ left: -6 }}
+            isConnectable={false}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-3 h-3 bg-primary border-2 border-background"
+            style={{ right: -6 }}
+            isConnectable={false}
+          />
+        </>
+      ) : (
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3 h-3 bg-primary border-2 border-background"
+          style={{ left: -6 }}
+        />
+      )}
 
       <Card className={`
         ${isDegreeNode ? 'w-[420px]' : 'w-[360px]'}
@@ -276,13 +295,15 @@ export const BlockGroup: React.FC<NodeProps> = (props: NodeProps) => {
         </CardContent>
       </Card>
 
-      {/* Output handle for edges */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 bg-primary border-2 border-background"
-        style={{ right: -6 }}
-      />
+      {/* Output handle for edges - only render if not already rendered above */}
+      {!flags.eduTreeMultiPathOverlay && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-3 h-3 bg-primary border-2 border-background"
+          style={{ right: -6 }}
+        />
+      )}
     </div>
   );
 }
