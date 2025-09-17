@@ -503,13 +503,46 @@ export function transformEducationData(
 
       if (newNodes.length) {
         nodes = [...nodes, ...newNodes];
-        edges = newEdges;
+        // Handle-safe edge transform for multi-lane mode
+        const canUseHandles = (id: string) => {
+          const n = nodes.find(nn => String(nn.id) === String(id));
+          return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
+        };
+        
+        edges = newEdges.map(ed => {
+          const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
+          return useHandles 
+            ? { ...ed, sourceHandle: 'r', targetHandle: 'l' }
+            : ed;
+        });
       } else {
-        edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
+        // Handle-safe edge transform: only assign handles when both nodes support them
+        const canUseHandles = (id: string) => {
+          const n = nodes.find(nn => String(nn.id) === String(id));
+          return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
+        };
+
+        edges = edges.map(ed => {
+          const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
+          return useHandles 
+            ? { ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }
+            : { ...ed, type: 'step' };
+        });
       }
     } else {
-      // no splitting; just convert to step edges with proper handles
-      edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
+      // Handle-safe edge transform: only assign handles when both nodes support them
+      const canUseHandles = (id: string) => {
+        const n = nodes.find(nn => String(nn.id) === String(id));
+        return n?.data?.hasLeftHandle && n?.data?.hasRightHandle;
+      };
+
+      // no splitting; convert to step edges with conditional handles
+      edges = edges.map(ed => {
+        const useHandles = canUseHandles(String(ed.source)) && canUseHandles(String(ed.target));
+        return useHandles 
+          ? { ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }
+          : { ...ed, type: 'step' };
+      });
     }
   }
   // === end overlay gate + edge cleanup =======================================
