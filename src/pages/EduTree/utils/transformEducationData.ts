@@ -661,9 +661,9 @@ export function transformEducationData(
           'mathematics': 2,
           'core-i': 3,
           'core-ii': 4,
-          'specializations': 0,            // Y3: Start at column 0 (no shared blocks in Y3)
-          'architecture': 0,               // Y4: Start at column 0 (no shared blocks in Y4)
-          'capstone-software-engineering': 1  // Y4: Column 1 (consecutive with architecture)
+          'specializations': 5,            // Y3: Column 5 (after core blocks)
+          'architecture': 6,               // Y4: Column 6 (consecutive)
+          'capstone-software-engineering': 7  // Y4: Column 7 (consecutive)
         }
         // No trackAnchorsByLane or reservedColsByLane needed for single-track - no gaps
       };
