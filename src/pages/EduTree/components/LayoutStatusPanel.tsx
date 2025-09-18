@@ -7,17 +7,20 @@ interface LayoutStatusPanelProps {
   edges: any[];
   isLayouting: boolean;
   layoutPassCount: number;
+  isLayoutLocked?: boolean;
 }
 
-export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount }: LayoutStatusPanelProps) {
-  const [layoutLocked, setLayoutLocked] = useState(false);
+export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount, isLayoutLocked }: LayoutStatusPanelProps) {
+  const [cssLocked, setCssLocked] = useState(false);
   const isPhaseA = resolveEduTreePhaseAFlag();
   
   useEffect(() => {
-    setLayoutLocked(document.body.classList.contains('phaseA-layout-locked'));
+    setCssLocked(document.body.classList.contains('phaseA-layout-locked'));
   }, [layoutPassCount]);
 
   if (!import.meta.env.DEV) return null;
+
+  const actuallyLocked = isLayoutLocked || cssLocked;
 
   return (
     <Card className="fixed top-20 right-4 p-4 z-50 bg-background/90 backdrop-blur-sm text-sm">
@@ -27,7 +30,7 @@ export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount }
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           <span className="text-muted-foreground">Mode:</span>
           <span className={isPhaseA ? 'text-green-600 font-medium' : 'text-blue-600'}>
-            {isPhaseA ? 'PhaseA' : 'Standard'}
+            {isPhaseA ? `PhaseA${actuallyLocked ? ' (LOCKED)' : ' (Stable)'}` : 'Standard'}
           </span>
           
           <span className="text-muted-foreground">Nodes:</span>
@@ -41,26 +44,28 @@ export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount }
             {isLayouting ? 'YES' : 'NO'}
           </span>
           
-          <span className="text-muted-foreground">Layout Passes:</span>
+          <span className="text-muted-foreground">Layout Attempts:</span>
           <span className={`font-mono ${layoutPassCount > 1 ? 'text-red-600 font-bold' : 'text-green-600'}`}>
             {layoutPassCount}
+            {actuallyLocked && <span className="text-yellow-600 ml-1">🔒</span>}
           </span>
           
           <span className="text-muted-foreground">Position Lock:</span>
-          <span className={`font-medium ${layoutLocked ? 'text-green-600' : 'text-gray-600'}`}>
-            {layoutLocked ? 'LOCKED' : 'FREE'}
+          <span className={`font-medium ${actuallyLocked ? 'text-green-600' : 'text-gray-600'}`}>
+            {actuallyLocked ? 'LOCKED' : 'FREE'}
           </span>
         </div>
         
-        {layoutPassCount > 1 && (
-          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-            ⚠️ Multiple layout passes detected! This causes scrambling.
+        {/* Layout Status Messages */}
+        {layoutPassCount > 1 && !actuallyLocked && (
+          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
+            ⚠️ Multiple layout attempts detected! Locking layout...
           </div>
         )}
-        
-        {layoutLocked && (
-          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-            ✅ Layout frozen - no more repositioning allowed
+
+        {actuallyLocked && (
+          <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
+            🔒 Layout locked to prevent scrambling
           </div>
         )}
       </div>

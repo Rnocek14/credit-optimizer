@@ -6,20 +6,25 @@ import type { Node, Edge } from '@xyflow/react';
  * and single layout pass in PhaseA mode
  */
 
-let phaseALayoutPassCount = 0;
+let phaseALayoutSessionId = '';
+let phaseALayoutAttempts = 0;
 let phaseANodesCache: Node[] | null = null;
 let phaseAEdgesCache: Edge[] | null = null;
 let lastDataHash = '';
+let layoutLocked = false;
 
 export interface PhaseAGuardResult {
   shouldBypassOverlay: boolean;
   stableNodes: Node[];
   stableEdges: Edge[];
   layoutPassCount: number;
+  startLayoutSession: () => void;
+  isLayoutLocked: boolean;
 }
 
 /**
  * Guards against layout competition in PhaseA mode
+ * NOW ONLY TRACKS ACTUAL LAYOUT ATTEMPTS, NOT RENDERS
  */
 export function usePhaseAGuard(
   nodes: Node[],
@@ -33,10 +38,13 @@ export function usePhaseAGuard(
   const dataChanged = currentDataHash !== lastDataHash;
   
   if (dataChanged) {
+    console.log('[PhaseAGuard] Data changed, resetting session');
     lastDataHash = currentDataHash;
-    phaseALayoutPassCount = 0;
+    phaseALayoutSessionId = `session-${Date.now()}`;
+    phaseALayoutAttempts = 0;
     phaseANodesCache = null;
     phaseAEdgesCache = null;
+    layoutLocked = false;
   }
 
   if (!isPhaseA) {
@@ -45,31 +53,34 @@ export function usePhaseAGuard(
       shouldBypassOverlay: false,
       stableNodes: nodes,
       stableEdges: edges,
-      layoutPassCount: 0
+      layoutPassCount: 0,
+      startLayoutSession: () => {},
+      isLayoutLocked: false
     };
   }
 
-  // PhaseA mode - IMMEDIATE LAYOUT FREEZE after first pass
-  phaseALayoutPassCount++;
-  
-  console.log('[PhaseAGuard] Layout pass:', phaseALayoutPassCount, {
-    isPhaseA,
-    overlayEnabled,
-    dataChanged,
-    nodesCount: nodes.length,
-    edgesCount: edges.length
-  });
+  // Function to start a layout session (called only during actual layout attempts)
+  const startLayoutSession = () => {
+    if (layoutLocked) {
+      console.warn('[PhaseAGuard] Layout is LOCKED - no more attempts allowed');
+      return;
+    }
+    
+    phaseALayoutAttempts++;
+    console.log('[PhaseAGuard] Layout session started:', phaseALayoutAttempts, {
+      sessionId: phaseALayoutSessionId,
+      isPhaseA,
+      overlayEnabled,
+      nodesCount: nodes.length,
+      edgesCount: edges.length
+    });
 
-  // EMERGENCY BRAKE - Only allow ONE layout pass to prevent scrambling
-  if (phaseALayoutPassCount > 1) {
-    console.warn('[PhaseAGuard] LAYOUT FREEZE: Preventing layout competition, using stable cache');
-    return {
-      shouldBypassOverlay: true,
-      stableNodes: phaseANodesCache || nodes,
-      stableEdges: phaseAEdgesCache || edges,
-      layoutPassCount: phaseALayoutPassCount
-    };
-  }
+    // EMERGENCY BRAKE - Only allow ONE layout attempt to prevent scrambling
+    if (phaseALayoutAttempts > 1) {
+      console.warn('[PhaseAGuard] LAYOUT FREEZE: Multiple attempts detected, locking layout');
+      layoutLocked = true;
+    }
+  };
 
   // Cache stable references for PhaseA - LOCK POSITIONS
   if (!phaseANodesCache || dataChanged) {
@@ -79,7 +90,7 @@ export function usePhaseAGuard(
       selectable: false,
       style: { 
         ...node.style,
-        pointerEvents: 'none' // Prevent any interaction that could trigger repositioning
+        pointerEvents: layoutLocked ? 'none' : node.style?.pointerEvents // Only lock interactions when layout is locked
       }
     }));
   }
@@ -92,7 +103,9 @@ export function usePhaseAGuard(
     shouldBypassOverlay: true, // Always bypass overlay in PhaseA
     stableNodes: phaseANodesCache,
     stableEdges: phaseAEdgesCache,
-    layoutPassCount: phaseALayoutPassCount
+    layoutPassCount: phaseALayoutAttempts,
+    startLayoutSession,
+    isLayoutLocked: layoutLocked
   };
 }
 
@@ -100,9 +113,11 @@ export function usePhaseAGuard(
  * Resets PhaseA guard state - call when transitioning modes
  */
 export function resetPhaseAGuard() {
-  phaseALayoutPassCount = 0;
+  phaseALayoutSessionId = '';
+  phaseALayoutAttempts = 0;
   phaseANodesCache = null;
   phaseAEdgesCache = null;
   lastDataHash = '';
+  layoutLocked = false;
   console.log('[PhaseAGuard] State reset');
 }
