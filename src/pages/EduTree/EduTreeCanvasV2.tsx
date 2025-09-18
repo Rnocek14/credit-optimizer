@@ -207,33 +207,35 @@ export default function EduTreeCanvasV2({
 
       {/* Dev Controls Panel */}
       {showDev && (
-        <div className="fixed top-3 left-3 z-[9999] pointer-events-auto bg-black/70 text-white backdrop-blur px-3 py-2 rounded-lg flex items-center gap-3 text-sm">
+        <div className="fixed top-3 left-3 z-[9999] pointer-events-auto bg-gray-900 text-white border border-gray-700 px-3 py-2 rounded-lg flex items-center gap-3 text-sm shadow-lg">
           <label className="flex items-center gap-2">
-            <span>Filter</span>
+            <span className="text-white">Filter</span>
             <select
               value={effectiveFilterMode ?? 'compare-tracks'}
               onChange={e => setDev(d => ({ ...d, filterMode: e.target.value as FilterMode }))}
-              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+              className="bg-gray-800 border border-gray-600 px-2 py-1 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ color: 'white' }}
             >
-              <option value="compare-tracks">compare-tracks</option>
-              <option value="se">se</option>
-              <option value="ds">ds</option>
-              <option value="compare-programs">compare-programs</option>
-              <option value="bs_cs">bs_cs</option>
-              <option value="bs_it">bs_it</option>
+              <option value="compare-tracks" style={{ background: '#1f2937', color: 'white' }}>compare-tracks</option>
+              <option value="se" style={{ background: '#1f2937', color: 'white' }}>se</option>
+              <option value="ds" style={{ background: '#1f2937', color: 'white' }}>ds</option>
+              <option value="compare-programs" style={{ background: '#1f2937', color: 'white' }}>compare-programs</option>
+              <option value="bs_cs" style={{ background: '#1f2937', color: 'white' }}>bs_cs</option>
+              <option value="bs_it" style={{ background: '#1f2937', color: 'white' }}>bs_it</option>
             </select>
           </label>
 
           <label className="flex items-center gap-2">
-            <span>Layout</span>
+            <span className="text-white">Layout</span>
             <select
               value={effectiveFlags.eduTreeLayoutMode}
               onChange={e => setDev(d => ({ ...d, eduTreeLayoutMode: e.target.value as any }))}
-              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+              className="bg-gray-800 border border-gray-600 px-2 py-1 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ color: 'white' }}
             >
-              <option value="legacy">legacy</option>
-              <option value="manual_v1">manual_v1</option>
-              <option value="grid_v2">grid_v2</option>
+              <option value="legacy" style={{ background: '#1f2937', color: 'white' }}>legacy</option>
+              <option value="manual_v1" style={{ background: '#1f2937', color: 'white' }}>manual_v1</option>
+              <option value="grid_v2" style={{ background: '#1f2937', color: 'white' }}>grid_v2</option>
             </select>
           </label>
 
@@ -242,13 +244,14 @@ export default function EduTreeCanvasV2({
               type="checkbox"
               checked={!!effectiveFlags.eduTreeV2Grid}
               onChange={e => setDev(d => ({ ...d, eduTreeV2Grid: e.target.checked }))}
+              className="rounded border-gray-600"
             />
-            <span>Grid V2</span>
+            <span className="text-white">Grid V2</span>
           </label>
 
           <button
             onClick={() => setDev({})}
-            className="px-2 py-1 rounded bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
+            className="px-2 py-1 rounded bg-gray-700 border border-gray-600 hover:bg-gray-600 transition-colors text-white"
           >
             Reset
           </button>
