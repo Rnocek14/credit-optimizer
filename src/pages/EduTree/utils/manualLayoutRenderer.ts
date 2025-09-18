@@ -182,17 +182,17 @@ export function applyManualLayout(
   // Apply vertical stacking for single-track straight mode to prevent overlaps
   if (useGridAnchors && singleTrackStraight) {
     const CENTER_BY_YEAR: Record<number, number> = { 1: 360, 2: 360, 3: 360, 4: 360 };
-    const ROW_GAP = 140; // generous gap to avoid overlap
-
-    // Priority helps put "Core" near the midline
-    const PRIORITY: Record<string, number> = {
-      foundation: 0,
-      core: 1,          // CS Core, IT Core, SE/DS Core
-      track_core: 2,
-      elective_pool: 3, // electives
-      gen_ed: 4,
-      capstone: 5,
+    
+    // Deterministic vertical order by year and type (so SE/DS look identical)
+    const ORDER_BY_YEAR_AND_TYPE: Record<number, Record<string, number>> = {
+      1: { foundation: 0, core: 1, gen_ed: 2 },          // Y1: foundation on spine, core below, gen_ed further
+      2: { core: 0, elective_pool: 1, gen_ed: 2 },       // Y2: core on spine, electives below
+      3: { track_core: 0, elective_pool: 1 },            // Y3: track core on spine, electives below  
+      4: { capstone: 0 },                                // Y4: capstone on spine
     };
+    
+    const orderFor = (year: number, type?: string) =>
+      (ORDER_BY_YEAR_AND_TYPE[year]?.[type ?? ''] ?? 99);
 
     // group by year (skip virtual nodes)
     const byYear = new Map<number, typeof nodes>();
@@ -204,14 +204,20 @@ export function applyManualLayout(
       byYear.get(col)!.push(n);
     });
 
-    // symmetrical fan-out around center
+    // symmetrical fan-out around center with adaptive spacing
     byYear.forEach((list, year) => {
-      // stable sort: priority, then id
+      // stable sort: year-specific order, then id
       list.sort((a, b) => {
-        const pa = PRIORITY[a.data?.ruleType ?? ''] ?? 99;
-        const pb = PRIORITY[b.data?.ruleType ?? ''] ?? 99;
+        const ya = a.data?.phaseAPlan?.col ?? 0;
+        const yb = b.data?.phaseAPlan?.col ?? 0;
+        const pa = orderFor(ya, a.data?.ruleType);
+        const pb = orderFor(yb, b.data?.ruleType);
         return pa - pb || String(a.id).localeCompare(String(b.id));
       });
+
+      // Adaptive row gap - more spacing for crowded years
+      const baseGap = 120;
+      const ROW_GAP = Math.min(180, baseGap + Math.max(0, list.length - 3) * 12);
 
       const centerY = CENTER_BY_YEAR[year] ?? 360;
       const n = list.length;
