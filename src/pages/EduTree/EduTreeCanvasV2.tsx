@@ -8,6 +8,8 @@ import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Cont
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { useFeatureFlags } from '@/lib/featureFlags';
+import { type FilterMode } from './data/seedDataV2';
+import { LaneHeaders } from './components/LaneHeaders';
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => (
@@ -29,19 +31,25 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => (
   </div>
 );
 
-const GateNode = ({ data }: { data: V2NodeData }) => (
-  <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
-    <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
-    <div className="font-semibold">Track Gate</div>
-    <div className="mt-1 text-xs opacity-70">Choose Track</div>
+const GateNode = ({ data }: { data: V2NodeData }) => {
+  const gateType = data.title?.includes('Program') ? 'program' : 'track';
+  const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
+  const subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
+  
+  return (
+    <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
+      <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
+      <div className="font-semibold">{gateTitle}</div>
+      <div className="mt-1 text-xs opacity-70">{subtitle}</div>
 
-    {/* source handles */}
-    <Handle id="out-se" type="source" position={Position.Top} />
-    <Handle id="out-ds" type="source" position={Position.Bottom} />
-    {/* target handle */}
-    <Handle id="in" type="target" position={Position.Left} />
-  </div>
-);
+      {/* source handles */}
+      <Handle id="out-se" type="source" position={Position.Top} />
+      <Handle id="out-ds" type="source" position={Position.Bottom} />
+      {/* target handle */}
+      <Handle id="in" type="target" position={Position.Left} />
+    </div>
+  );
+};
 
 const nodeTypes = {
   requirement: RequirementNode,
@@ -49,12 +57,12 @@ const nodeTypes = {
 };
 
 interface EduTreeCanvasV2Props {
-  trackFilter?: 'se' | 'ds' | 'compare' | null;
+  filterMode?: FilterMode;
 }
 
-export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
+export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
-  const { blocks, edges, isV2Mode } = useEduTreeV2Data(trackFilter);
+  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(filterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -175,8 +183,8 @@ export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
       
       {/* Debug info in bottom corner */}
       <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-        <div>V2 Manual Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
-        <div>Track: {trackFilter || 'compare'}</div>
+        <div>V2 Multi-Gate Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
+        <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
         <div>Flags: V2Grid={String(flags.eduTreeV2Grid)}, Mode={flags.eduTreeLayoutMode}</div>
       </div>
     </div>

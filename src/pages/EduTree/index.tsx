@@ -3,7 +3,7 @@ import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
 import { EduTreeCanvas } from './EduTreeCanvas';
-import { EduTreeCanvasV2 } from './EduTreeCanvasV2';
+import EduTreeCanvasV2 from './EduTreeCanvasV2';
 
 export default function EduTree() {
   console.log('[EduTree] Component mounting...');

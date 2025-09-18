@@ -5,17 +5,17 @@
 
 import { useMemo } from 'react';
 import { useFeatureFlags } from '@/lib/featureFlags';
-import { GOLDEN_LAYOUT_SEED, filterBlocksByTrack, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge } from '../data/seedDataV2';
+import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
 
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
   edges: V2Edge[];
   isLoading: boolean;
   isV2Mode: boolean;
-  trackFilter: 'se' | 'ds' | 'compare' | null;
+  filterMode: FilterMode;
 }
 
-export function useEduTreeV2Data(trackFilter: 'se' | 'ds' | 'compare' | null = null): UseEduTreeV2DataResult {
+export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2DataResult {
   const flags = useFeatureFlags();
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
@@ -25,29 +25,29 @@ export function useEduTreeV2Data(trackFilter: 'se' | 'ds' | 'compare' | null = n
       return { blocks: [], edges: [] };
     }
     
-    console.log('[EduTreeV2Data] Using golden layout seed with track filter:', trackFilter);
+    console.log('[EduTreeV2Data] Using golden layout seed with filter mode:', filterMode);
     
-    // Apply track filtering
-    const filteredBlocks = filterBlocksByTrack(GOLDEN_LAYOUT_SEED.blocks, trackFilter);
+    // Apply enhanced filtering
+    const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, filterMode);
     const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, filteredBlocks);
     
     console.log('[EduTreeV2Data] Filtered to', {
       blocks: filteredBlocks.length,
       edges: filteredEdges.length,
-      trackFilter
+      filterMode
     });
     
     return {
       blocks: filteredBlocks,
       edges: filteredEdges
     };
-  }, [isV2Mode, trackFilter]);
+  }, [isV2Mode, filterMode]);
   
   return {
     blocks,
     edges,
     isLoading: false, // No async loading in manual mode
     isV2Mode,
-    trackFilter
+    filterMode
   };
 }

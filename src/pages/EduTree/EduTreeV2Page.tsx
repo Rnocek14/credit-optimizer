@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { EduTreeCanvasV2 } from "./EduTreeCanvasV2";
+import EduTreeCanvasV2 from "./EduTreeCanvasV2";
+import { type FilterMode } from "./data/seedDataV2";
 
 export default function EduTreeV2Page() {
   // Enable the feature for this tab/session (optional convenience)
@@ -9,8 +10,13 @@ export default function EduTreeV2Page() {
   }, []);
 
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const track =
-    (params.get("track") as "se" | "ds" | "compare" | null) ?? "compare";
+  const trackParam = params.get("track") as "se" | "ds" | "compare" | null;
+  
+  // Map legacy track filter to new filter mode
+  const filterMode: FilterMode = useMemo(() => {
+    if (trackParam === "compare") return "compare-tracks";
+    return trackParam;
+  }, [trackParam]);
 
   // Flags via query params (explicit)
   const url = new URL(window.location.href);
@@ -25,7 +31,7 @@ export default function EduTreeV2Page() {
   return (
     <div className="h-[calc(100vh-64px)] w-full">
       <ReactFlowProvider>
-        <EduTreeCanvasV2 trackFilter={track} />
+        <EduTreeCanvasV2 filterMode={filterMode} />
       </ReactFlowProvider>
     </div>
   );

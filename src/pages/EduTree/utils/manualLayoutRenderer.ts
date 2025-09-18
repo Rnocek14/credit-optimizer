@@ -45,15 +45,27 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
   }));
 }
 
+// Lane registry for multi-gate support
+const LANE_BY_TARGET: Record<string, 'up' | 'down'> = {
+  // Program lanes (Y2)
+  'y2-cs-core': 'up', 'y2-cs-elec': 'up',
+  'y2-it-core': 'down', 'y2-it-elec': 'down',
+  // Track lanes (Y3)
+  'y3-se-core': 'up', 'y3-se-elec': 'up', 'y4-se-cap': 'up',
+  'y3-ds-core': 'down', 'y3-ds-elec': 'down', 'y4-ds-cap': 'down',
+  // IT capstone
+  'y4-it-cap': 'down'
+};
+
 /**
- * Convert V2 edges to ReactFlow edges
- * Direct mapping with consistent styling
+ * Convert V2 edges to ReactFlow edges with multi-gate support
  */
 export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
   return edges.map((edge) => {
-    const isFromGate = edge.source === 'divergence-gate';
-    const toSE = /(^y3-se-)|(-se-)/.test(edge.target);
-    const sourceHandle = isFromGate ? (toSE ? 'out-se' : 'out-ds') : undefined;
+    const isFromGate = edge.source.startsWith('gate-');
+    const targetLane = LANE_BY_TARGET[edge.target];
+    const sourceHandle = isFromGate && targetLane ? 
+      (targetLane === 'up' ? 'out-se' : 'out-ds') : undefined;
 
     return {
       id: `${edge.source}-${edge.target}`,

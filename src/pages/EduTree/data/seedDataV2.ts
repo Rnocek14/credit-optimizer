@@ -5,8 +5,8 @@
 
 export interface V2RequirementBlock {
   id: string;
-  program_id: string;
-  track_id: string | null;
+  program_id?: string;
+  track_id?: string | null;
   title: string;
   rule_type: 'ALL' | 'K_OF_N' | 'CREDITS';
   level_year: number;
@@ -17,111 +17,151 @@ export interface V2RequirementBlock {
   is_virtual?: boolean;
 }
 
+export interface Junction {
+  id: string;
+  level_year: number;
+  junction_type: 'program' | 'track';
+  title: string;
+  position_x: number;
+  position_y: number;
+  outputs: Array<{
+    id: string;
+    lane: 'up' | 'down';
+  }>;
+}
+
 export interface V2Edge {
   source: string;
   target: string;
 }
 
+// Coordinate constants for consistent positioning
+export const LAYOUT_CONSTANTS = {
+  YEAR_COLUMNS: { Y1: 200, Y2: 600, Y3: 1300, Y4: 1700 },
+  GATE_POSITIONS: { 
+    Y1_TO_Y2: 400,  // Program gate after Y1
+    Y2_TO_Y3: 900   // Track gate after Y2
+  },
+  LANE_ROWS: {
+    GATE_Y: 360,
+    UP_CORE: 240, UP_ELECTIVES: 120, UP_CAPSTONE: 80,
+    DOWN_CORE: 480, DOWN_ELECTIVES: 600, DOWN_CAPSTONE: 640
+  }
+};
+
 /**
- * Minimal golden layout - demonstrates perfect Y1→Y2→Gate→Y3(SE|DS)→Y4 branching
- * Fixed coordinates that never change, proving the visual concept works
+ * Multi-gate layout - demonstrates Y1→ProgramGate→Y2(CS|IT)→TrackGate→Y3(SE|DS)→Y4
+ * Supports both program-level and track-level branching
  */
 export const GOLDEN_LAYOUT_SEED: {
   blocks: V2RequirementBlock[];
   edges: V2Edge[];
+  junctions: Junction[];
 } = {
   blocks: [
-    // Year 1 - Shared Foundation
+    // Year 1 - Shared Foundation (All Programs)
     {
       id: "y1-found",
-      program_id: "bs_cs",
-      track_id: null,
       title: "Foundations",
       rule_type: "ALL",
       level_year: 1,
       area: "foundation",
       credits_needed: 6,
-      position_x: 200,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y1,
       position_y: 100
     },
     {
       id: "y1-math",
-      program_id: "bs_cs", 
-      track_id: null,
       title: "Math I",
       rule_type: "ALL",
       level_year: 1,
       area: "core",
       credits_needed: 3,
-      position_x: 200,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y1,
       position_y: 300
     },
     {
       id: "y1-genedAB",
-      program_id: "bs_cs",
-      track_id: null, 
       title: "Gen Ed A/B",
       rule_type: "ALL",
       level_year: 1,
       area: "gen_ed",
       credits_needed: 6,
-      position_x: 200,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y1,
       position_y: 500
     },
 
-    // Year 2 - Shared Core
+    // Year 2 - Computer Science Program (Upper Lane)
     {
-      id: "y2-core1",
+      id: "y2-cs-core",
       program_id: "bs_cs",
-      track_id: null,
-      title: "Core I", 
+      title: "CS Core",
       rule_type: "ALL",
       level_year: 2,
       area: "core",
-      credits_needed: 3,
-      position_x: 600,
-      position_y: 180
-    },
-    {
-      id: "y2-core2", 
-      program_id: "bs_cs",
-      track_id: null,
-      title: "Core II",
-      rule_type: "ALL", 
-      level_year: 2,
-      area: "core",
-      credits_needed: 3,
-      position_x: 600,
-      position_y: 360
-    },
-    {
-      id: "y2-genedC",
-      program_id: "bs_cs",
-      track_id: null,
-      title: "Gen Ed C",
-      rule_type: "ALL",
-      level_year: 2, 
-      area: "gen_ed",
       credits_needed: 6,
-      position_x: 600,
-      position_y: 540
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CORE
+    },
+    {
+      id: "y2-cs-elec",
+      program_id: "bs_cs",
+      title: "CS Electives",
+      rule_type: "K_OF_N",
+      level_year: 2,
+      area: "elective_pool",
+      credits_needed: 3,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_ELECTIVES
     },
 
-    // Divergence Gate - Virtual Node
+    // Year 2 - Information Technology Program (Lower Lane)
     {
-      id: "divergence-gate",
-      program_id: "bs_cs",
-      track_id: null,
+      id: "y2-it-core",
+      program_id: "bs_it",
+      title: "IT Core",
+      rule_type: "ALL",
+      level_year: 2,
+      area: "core",
+      credits_needed: 6,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CORE
+    },
+    {
+      id: "y2-it-elec",
+      program_id: "bs_it",
+      title: "IT Electives",
+      rule_type: "K_OF_N",
+      level_year: 2,
+      area: "elective_pool",
+      credits_needed: 3,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_ELECTIVES
+    },
+
+    // Track Gates (Virtual Nodes)
+    {
+      id: "gate-y2-programs",
+      title: "Program Gate",
+      rule_type: "ALL",
+      level_year: 2,
+      area: "support",
+      position_x: LAYOUT_CONSTANTS.GATE_POSITIONS.Y1_TO_Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.GATE_Y,
+      is_virtual: true
+    },
+    {
+      id: "gate-y3-tracks",
       title: "Track Gate",
       rule_type: "ALL",
       level_year: 3,
-      area: "support", 
-      position_x: 900,
-      position_y: 360,
+      area: "support",
+      position_x: LAYOUT_CONSTANTS.GATE_POSITIONS.Y2_TO_Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.GATE_Y,
       is_virtual: true
     },
 
-    // Year 3 - Software Engineering Track (Above Gate)
+    // Year 3 - CS Tracks: Software Engineering (Upper Lane)
     {
       id: "y3-se-core",
       program_id: "bs_cs",
@@ -131,46 +171,46 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: 1300,
-      position_y: 240
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CORE
     },
     {
       id: "y3-se-elec",
-      program_id: "bs_cs", 
+      program_id: "bs_cs",
       track_id: "se",
       title: "SE Electives (pick 2)",
       rule_type: "K_OF_N",
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: 1300,
-      position_y: 120
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_ELECTIVES
     },
 
-    // Year 3 - Data Science Track (Below Gate)
+    // Year 3 - CS Tracks: Data Science (Lower Lane)
     {
       id: "y3-ds-core",
       program_id: "bs_cs",
-      track_id: "ds", 
+      track_id: "ds",
       title: "DS Core",
       rule_type: "ALL",
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: 1300,
-      position_y: 480
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CORE
     },
     {
       id: "y3-ds-elec",
       program_id: "bs_cs",
       track_id: "ds",
-      title: "DS Electives (pick 2)", 
+      title: "DS Electives (pick 2)",
       rule_type: "K_OF_N",
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: 1300,
-      position_y: 600
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_ELECTIVES
     },
 
     // Year 4 - Capstones
@@ -181,13 +221,13 @@ export const GOLDEN_LAYOUT_SEED: {
       title: "SE Capstone",
       rule_type: "ALL",
       level_year: 4,
-      area: "capstone", 
+      area: "capstone",
       credits_needed: 3,
-      position_x: 1700,
-      position_y: 80
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE
     },
     {
-      id: "y4-ds-cap", 
+      id: "y4-ds-cap",
       program_id: "bs_cs",
       track_id: "ds",
       title: "DS Capstone",
@@ -195,52 +235,157 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 4,
       area: "capstone",
       credits_needed: 3,
-      position_x: 1700,
-      position_y: 640
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CAPSTONE
+    },
+    {
+      id: "y4-it-cap",
+      program_id: "bs_it",
+      title: "IT Capstone",
+      rule_type: "ALL",
+      level_year: 4,
+      area: "capstone",
+      credits_needed: 3,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CAPSTONE
     }
   ],
 
   edges: [
-    // Y1 → Y2 connections
-    { source: "y1-found", target: "y2-core1" },
-    { source: "y1-math", target: "y2-core1" },
-    { source: "y1-genedAB", target: "y2-core2" },
+    // Y1 → Program Gate
+    { source: "y1-found", target: "gate-y2-programs" },
+    { source: "y1-math", target: "gate-y2-programs" },
+    { source: "y1-genedAB", target: "gate-y2-programs" },
     
-    // Y2 → Divergence Gate
-    { source: "y2-core1", target: "divergence-gate" },
-    { source: "y2-core2", target: "divergence-gate" }, 
-    { source: "y2-genedC", target: "divergence-gate" },
+    // Program Gate → Y2 Programs
+    { source: "gate-y2-programs", target: "y2-cs-core" },
+    { source: "gate-y2-programs", target: "y2-it-core" },
     
-    // Gate → Y3 Track Specialization
-    { source: "divergence-gate", target: "y3-se-core" },
-    { source: "divergence-gate", target: "y3-ds-core" },
+    // Y2 Program Connections
+    { source: "y2-cs-core", target: "y2-cs-elec" },
+    { source: "y2-it-core", target: "y2-it-elec" },
     
-    // Y3 → Y3 Within Tracks
+    // CS Program → Track Gate
+    { source: "y2-cs-core", target: "gate-y3-tracks" },
+    { source: "y2-cs-elec", target: "gate-y3-tracks" },
+    
+    // Track Gate → Y3 CS Tracks
+    { source: "gate-y3-tracks", target: "y3-se-core" },
+    { source: "gate-y3-tracks", target: "y3-ds-core" },
+    
+    // Y3 Track Connections
     { source: "y3-se-core", target: "y3-se-elec" },
     { source: "y3-ds-core", target: "y3-ds-elec" },
     
     // Y3 → Y4 Capstones
     { source: "y3-se-elec", target: "y4-se-cap" },
-    { source: "y3-ds-elec", target: "y4-ds-cap" }
+    { source: "y3-ds-elec", target: "y4-ds-cap" },
+    { source: "y2-it-elec", target: "y4-it-cap" }
+  ],
+
+  junctions: [
+    {
+      id: "gate-y2-programs",
+      level_year: 2,
+      junction_type: "program",
+      title: "Program Gate",
+      position_x: LAYOUT_CONSTANTS.GATE_POSITIONS.Y1_TO_Y2,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.GATE_Y,
+      outputs: [
+        { id: "bs_cs", lane: "up" },
+        { id: "bs_it", lane: "down" }
+      ]
+    },
+    {
+      id: "gate-y3-tracks",
+      level_year: 3,
+      junction_type: "track",
+      title: "Track Gate",
+      position_x: LAYOUT_CONSTANTS.GATE_POSITIONS.Y2_TO_Y3,
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.GATE_Y,
+      outputs: [
+        { id: "se", lane: "up" },
+        { id: "ds", lane: "down" }
+      ]
+    }
   ]
 };
 
 /**
- * Track filtering logic for different views
+ * Enhanced filtering logic for programs and tracks
  */
+export type FilterMode = 'compare-programs' | 'compare-tracks' | 'bs_cs' | 'bs_it' | 'se' | 'ds' | null;
+
+export function filterBlocksByMode(
+  blocks: V2RequirementBlock[], 
+  filterMode: FilterMode
+): V2RequirementBlock[] {
+  if (!filterMode) return blocks;
+  
+  switch (filterMode) {
+    case 'compare-programs':
+      // Show Y1 + both programs + program gate (hide track gate)
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        block.program_id === 'bs_cs' || 
+        block.program_id === 'bs_it' ||
+        (block.is_virtual && block.id === 'gate-y2-programs')
+      );
+      
+    case 'compare-tracks':
+      // Show CS program + both tracks + track gate (hide program gate)
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        block.program_id === 'bs_cs' ||
+        (block.is_virtual && block.id === 'gate-y3-tracks')
+      );
+      
+    case 'bs_cs':
+      // Show Y1 + CS program + track gate + both CS tracks
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        block.program_id === 'bs_cs' ||
+        (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
+      );
+      
+    case 'bs_it':
+      // Show Y1 + IT program only
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        block.program_id === 'bs_it' ||
+        (block.is_virtual && block.id === 'gate-y2-programs')
+      );
+      
+    case 'se':
+      // Show Y1 + CS program + SE track
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        (block.program_id === 'bs_cs' && !block.track_id) || // CS program blocks
+        block.track_id === 'se' ||
+        (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
+      );
+      
+    case 'ds':
+      // Show Y1 + CS program + DS track
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        (block.program_id === 'bs_cs' && !block.track_id) || // CS program blocks
+        block.track_id === 'ds' ||
+        (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
+      );
+      
+    default:
+      return blocks;
+  }
+}
+
+// Legacy function for backward compatibility
 export function filterBlocksByTrack(
   blocks: V2RequirementBlock[], 
   trackFilter: 'se' | 'ds' | 'compare' | null
 ): V2RequirementBlock[] {
-  if (!trackFilter || trackFilter === 'compare') {
-    return blocks; // Show all blocks in compare mode
-  }
-  
-  return blocks.filter(block => 
-    block.track_id === null || // Always show shared blocks  
-    block.track_id === trackFilter || // Show blocks for selected track
-    block.is_virtual // Always show virtual nodes like gates
-  );
+  if (trackFilter === 'compare') return filterBlocksByMode(blocks, 'compare-tracks');
+  return filterBlocksByMode(blocks, trackFilter);
 }
 
 /**
