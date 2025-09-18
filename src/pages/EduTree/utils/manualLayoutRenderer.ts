@@ -89,13 +89,16 @@ function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, Lane> {
  * Convert V2 edges to ReactFlow edges with educational edge kinds and header routing
  */
 export function edgesToReactFlowEdges(
-  edges: V2Edge[], 
-  blocks: V2RequirementBlock[], 
-  singleRailStraight: boolean = false,
-  filterMode: string = '',
-  useV2EdgeKinds: boolean = false
+  edges: V2Edge[],
+  blocks: V2RequirementBlock[],
+  opts: {
+    singleRailStraight: boolean;
+    filterMode: string;
+    useV2EdgeKinds: boolean;
+    laneByTarget: Record<string, 'up' | 'down' | undefined>;
+  }
 ): Edge[] {
-  const laneByTarget = buildLaneMapping(blocks);
+  const { singleRailStraight, filterMode, useV2EdgeKinds, laneByTarget } = opts;
   
   // Edge styling by kind (educational standards)
   const styleFor = (kind: EdgeKind) => {
@@ -383,7 +386,15 @@ export function applyManualLayout(
     });
   }
   
-  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleRailStraight, filterMode, useV2EdgeKinds);
+  // Build lane mapping for edge routing
+  const laneByTarget = buildLaneMapping(blocks);
+  
+  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, {
+    singleRailStraight,
+    filterMode,
+    useV2EdgeKinds,
+    laneByTarget
+  });
   
   // Combine regular nodes with header nodes
   const allNodes = [...nodes, ...headerNodes];
