@@ -16,7 +16,8 @@ export const reservedColsByYear: Record<number, Record<string, number>> = {
   2: { 
     shared: 600,  // Fallback for shared Y2 content
     up: 600,      // SE/CS lane - upper track
-    down: 600     // DS/IT lane - lower track  
+    down: 600,    // DS/IT lane - lower track
+    gate: 400     // Program gate between Y1 and Y2
   },
   3: { 
     gate: 900,    // Gate position between Y2 and Y3
@@ -61,7 +62,7 @@ export function applyDeterministicGrid(
   manualX: number,
   manualY: number,
   useGrid: boolean,
-  singleTrackStraight: boolean = false
+  singleRailStraight: boolean = false
 ): { x: number; y: number } {
   if (!useGrid) {
     return { x: manualX, y: manualY };
@@ -89,8 +90,8 @@ export function applyDeterministicGrid(
 
   // Use reserved row Y if available, otherwise keep manual Y
   let gridY = manualY;
-  if (singleTrackStraight) {
-    // In single-track straight mode, use center line for all nodes
+  if (singleRailStraight) {
+    // In single-rail straight mode, use center line for all nodes
     gridY = reservedRowsByLane[levelYear]?.center ?? 360;
   } else if (lane && reservedRowsByLane[levelYear]?.[lane] !== undefined) {
     gridY = reservedRowsByLane[levelYear][lane];

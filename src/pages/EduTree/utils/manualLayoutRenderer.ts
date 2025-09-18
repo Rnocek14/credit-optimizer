@@ -19,7 +19,7 @@ export interface V2NodeData {
   programId?: string | null;
   isVirtual?: boolean;
   junctionType?: 'program' | 'track';
-  singleTrackStraight?: boolean;
+  singleRailStraight?: boolean;
   phaseAPlan?: {
     lane: 'up' | 'down' | undefined;
     col: number;
@@ -86,7 +86,7 @@ function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, Lane> {
 /**
  * Convert V2 edges to ReactFlow edges with multi-gate support
  */
-export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[], singleTrackStraight: boolean = false): Edge[] {
+export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[], singleRailStraight: boolean = false): Edge[] {
   const laneByTarget = buildLaneMapping(blocks);
 
   return edges.map((edge) => {
@@ -96,8 +96,8 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
     // Compute sourceHandle for gate nodes based on target lane
     let sourceHandle: string | undefined = undefined;
     if (edge.source.startsWith('gate-')) {
-      if (singleTrackStraight) {
-        // In single-track straight mode, no source handle for horizontal flow
+      if (singleRailStraight) {
+        // In single-rail straight mode, no source handle for horizontal flow
         sourceHandle = undefined;
       } else {
         const targetBlock = blocks.find(b => b.id === edge.target);
@@ -139,7 +139,7 @@ export function applyManualLayout(
   onApply: (nodes: Node<V2NodeData>[], edges: Edge[]) => void,
   fitView: () => void,
   useGridAnchors: boolean = false,
-  singleTrackStraight: boolean = false
+  singleRailStraight: boolean = false
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)');
@@ -164,7 +164,7 @@ export function applyManualLayout(
                     360; // shared/gate row
     
     // Apply deterministic grid if enabled
-    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleTrackStraight);
+    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleRailStraight);
     
     if (useGridAnchors && process.env.NODE_ENV === 'development') {
       console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
@@ -179,8 +179,8 @@ export function applyManualLayout(
     };
   });
   
-  // Apply vertical stacking for single-track straight mode to prevent overlaps
-  if (useGridAnchors && singleTrackStraight) {
+  // Apply vertical stacking for single-rail straight mode to prevent overlaps
+  if (useGridAnchors && singleRailStraight) {
     const CENTER_BY_YEAR: Record<number, number> = { 1: 360, 2: 360, 3: 360, 4: 360 };
     
     // Deterministic vertical order by year and type (so SE/DS look identical)
@@ -231,7 +231,7 @@ export function applyManualLayout(
     });
   }
   
-  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleTrackStraight);
+  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleRailStraight);
   
   // Final sanitizer: ensure no bad handles survive regardless of source
   const clean = (h: unknown): SourceHandle =>
