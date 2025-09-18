@@ -11,6 +11,8 @@ import { exposeGridValidation } from './utils/deterministicGrid';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
+import HeaderNode from './nodes/HeaderNode';
+import { DevToggle } from './components/DevToggle';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -82,7 +84,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
 
 const nodeTypes = {
   requirement: RequirementNode,
-  gate: GateNode
+  gate: GateNode,
+  header: HeaderNode
 };
 
 interface EduTreeCanvasV2Props {
@@ -160,6 +163,10 @@ export default function EduTreeCanvasV2({
         
         // Apply grid layout if conditions met
         const finalNodes = usePlan ? newNodes.map(n => {
+          // Skip header nodes - they don't have phaseAPlan
+          if (n.type === 'header') {
+            return n;
+          }
           if (n.data?.isVirtual) {
             // Add singleRailStraight flag to gate nodes
             return { 
@@ -167,7 +174,7 @@ export default function EduTreeCanvasV2({
               data: { ...n.data, singleRailStraight } 
             };
           }
-          const p = n.data?.phaseAPlan;
+          const p = (n.data as V2NodeData)?.phaseAPlan;
           if (!p) { 
             console.warn('[V2] Missing phaseAPlan for', n.id); 
             return n; 
@@ -192,7 +199,9 @@ export default function EduTreeCanvasV2({
       },
       fitView,
       usePlan, // Use deterministic grid anchors when in single-rail grid mode
-      singleRailStraight // Pass single-rail straight flag
+      singleRailStraight, // Pass single-rail straight flag
+      filterMode || 'compare-tracks', // Pass filter mode for header routing
+      flags.eduTreeV2EdgeKinds // Pass V2 edge kinds flag
     );
   }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode]);
   
@@ -379,6 +388,9 @@ export default function EduTreeCanvasV2({
         <div className="fixed bottom-3 right-3 z-[1000] text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
           Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
         </div>
+
+        {/* Dev Controls */}
+        <DevToggle />
       </div>
     </>
   );

@@ -30,9 +30,12 @@ export interface Junction {
   }>;
 }
 
+export type EdgeKind = 'gate' | 'prereq' | 'coreq' | 'advisory';
+
 export interface V2Edge {
   source: string;
   target: string;
+  kind?: EdgeKind; // Educational edge type for styling and behavior
 }
 
 // Coordinate constants for consistent positioning

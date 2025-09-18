@@ -4,8 +4,9 @@
  */
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
-import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
+import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import { applyDeterministicGrid, type Lane } from './deterministicGrid';
+import { HeaderNodeData } from '../nodes/HeaderNode';
 
 type SourceHandle = 'out-se' | 'out-ds' | undefined;
 
@@ -85,14 +86,85 @@ function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, Lane> {
 }
 
 /**
- * Convert V2 edges to ReactFlow edges with multi-gate support
+ * Convert V2 edges to ReactFlow edges with educational edge kinds and header routing
  */
-export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[], singleRailStraight: boolean = false): Edge[] {
+export function edgesToReactFlowEdges(
+  edges: V2Edge[], 
+  blocks: V2RequirementBlock[], 
+  singleRailStraight: boolean = false,
+  filterMode: string = '',
+  useV2EdgeKinds: boolean = false
+): Edge[] {
   const laneByTarget = buildLaneMapping(blocks);
+  
+  // Edge styling by kind (educational standards)
+  const styleFor = (kind: EdgeKind) => {
+    switch (kind) {
+      case 'coreq':
+        return { 
+          strokeWidth: 3, 
+          strokeDasharray: undefined, 
+          markerStart: MarkerType.ArrowClosed, 
+          markerEnd: MarkerType.ArrowClosed, 
+          opacity: 1 
+        };
+      case 'advisory':
+        return { 
+          strokeWidth: 2, 
+          strokeDasharray: '6 6', 
+          markerStart: undefined, 
+          markerEnd: MarkerType.ArrowClosed, 
+          opacity: 0.65 
+        };
+      case 'gate':
+        return { 
+          strokeWidth: 4, 
+          strokeDasharray: undefined, 
+          markerStart: undefined, 
+          markerEnd: MarkerType.ArrowClosed, 
+          opacity: 1 
+        };
+      case 'prereq':
+      default:
+        return { 
+          strokeWidth: 3, 
+          strokeDasharray: undefined, 
+          markerStart: undefined, 
+          markerEnd: MarkerType.ArrowClosed, 
+          opacity: 1 
+        };
+    }
+  };
+
+  // Reroute gate edges to header nodes in compare modes
+  const remapGateTarget = (edge: V2Edge): string => {
+    const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
+    
+    if (kind !== 'gate' || !useV2EdgeKinds) return edge.target;
+    
+    if (filterMode === 'compare-programs') {
+      const targetBlock = blocks.find(b => b.id === edge.target);
+      if (targetBlock?.program_id === 'bs_cs') return 'program-header:bs_cs';
+      if (targetBlock?.program_id === 'bs_it') return 'program-header:bs_it';
+    } else if (filterMode === 'compare-tracks') {
+      const targetBlock = blocks.find(b => b.id === edge.target);
+      if (targetBlock?.track_id === 'se') return 'track-header:se';
+      if (targetBlock?.track_id === 'ds') return 'track-header:ds';
+    }
+    
+    return edge.target; // single-rail or fallback
+  };
 
   return edges.map((edge) => {
-    const isFromGate = edge.source.startsWith('gate-');
-    const targetLane = laneByTarget[edge.target];
+    const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
+    const target = remapGateTarget(edge);
+    const styling = useV2EdgeKinds ? styleFor(kind) : {
+      strokeWidth: 3,
+      strokeDasharray: undefined,
+      markerStart: undefined,
+      markerEnd: MarkerType.ArrowClosed,
+      opacity: 1
+    };
 
     // Compute sourceHandle for gate nodes based on target lane
     let sourceHandle: string | undefined = undefined;
@@ -118,18 +190,83 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
     }
 
     return {
-      id: `${edge.source}-${edge.target}`,
+      id: `${edge.source}-${target}`,
       source: edge.source,
-      target: edge.target,
+      target,
       sourceHandle, // Always computed, never from seed
       type: singleRailStraight ? 'straight' : 'step',
       animated: false,
-      style: { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 3, strokeLinecap: 'round' },
-      markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.85)' }
+      style: { 
+        stroke: 'rgba(255,255,255,0.85)', 
+        strokeWidth: styling.strokeWidth, 
+        strokeLinecap: 'round',
+        strokeDasharray: styling.strokeDasharray,
+        opacity: styling.opacity
+      },
+      markerStart: styling.markerStart ? { type: styling.markerStart, color: 'rgba(255,255,255,0.85)' } : undefined,
+      markerEnd: styling.markerEnd ? { type: styling.markerEnd, color: 'rgba(255,255,255,0.85)' } : undefined
     };
   });
 }
 
+/**
+ * Create header nodes for lane identification in compare modes
+ */
+function createHeaderNodes(opts: {
+  filterMode: string;
+  cols: { y1: number; y2: number; y3: number; y4: number; pg: number; tg: number };
+  singleRailStraight: boolean;
+  useV2EdgeKinds: boolean;
+}): Node[] {
+  const { filterMode, cols, singleRailStraight, useV2EdgeKinds } = opts;
+
+  if (singleRailStraight || !useV2EdgeKinds) return []; // no lane headers in single-rail or when feature disabled
+
+  // use standard lane positioning
+  const Y_UP = 240;
+  const Y_DOWN = 480;
+
+  if (filterMode === 'compare-programs') {
+    return [
+      {
+        id: 'program-header:bs_cs',
+        type: 'header',
+        position: { x: cols.y2, y: Y_UP - 70 },
+        data: { label: 'BS Computer Science' },
+        draggable: false,
+        selectable: false
+      },
+      {
+        id: 'program-header:bs_it',
+        type: 'header',
+        position: { x: cols.y2, y: Y_DOWN + 70 },
+        data: { label: 'BS Information Technology' },
+        draggable: false,
+        selectable: false
+      }
+    ];
+  }
+
+  // default to track headers for compare-tracks mode
+  return [
+    {
+      id: 'track-header:se',
+      type: 'header', 
+      position: { x: cols.y3, y: Y_UP - 70 },
+      data: { label: 'Software Engineering' },
+      draggable: false,
+      selectable: false
+    },
+    {
+      id: 'track-header:ds',
+      type: 'header',
+      position: { x: cols.y3, y: Y_DOWN + 70 },
+      data: { label: 'Data Science' },
+      draggable: false,
+      selectable: false
+    }
+  ];
+}
 /**
  * Apply manual layout - just set positions and call fitView once
  * No continuous layout fighting or algorithm interference
@@ -137,13 +274,27 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
 export function applyManualLayout(
   blocks: V2RequirementBlock[],
   edges: V2Edge[],
-  onApply: (nodes: Node<V2NodeData>[], edges: Edge[]) => void,
+  onApply: (nodes: Node[], edges: Edge[]) => void,
   fitView: () => void,
   useGridAnchors: boolean = false,
-  singleRailStraight: boolean = false
+  singleRailStraight: boolean = false,
+  filterMode: string = '',
+  useV2EdgeKinds: boolean = false
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
-    useGridAnchors ? '(with grid anchors)' : '(manual positions)');
+    useGridAnchors ? '(with grid anchors)' : '(manual positions)',
+    useV2EdgeKinds ? '(with V2 edge kinds)' : '(legacy edges)');
+  
+  // Create column anchors for header positioning
+  const cols = { y1: 200, pg: 400, y2: 600, tg: 900, y3: 1300, y4: 1700 };
+  
+  // Create header nodes if V2 edge kinds enabled
+  const headerNodes = createHeaderNodes({
+    filterMode,
+    cols,
+    singleRailStraight,
+    useV2EdgeKinds
+  });
   
   // Create nodes with phase A planning data
   const nodes = blocksToNodes(blocks, singleRailStraight).map(node => {
@@ -232,7 +383,10 @@ export function applyManualLayout(
     });
   }
   
-  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleRailStraight);
+  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleRailStraight, filterMode, useV2EdgeKinds);
+  
+  // Combine regular nodes with header nodes
+  const allNodes = [...nodes, ...headerNodes];
   
   // Final sanitizer: ensure no bad handles survive regardless of source
   const clean = (h: unknown): SourceHandle => {
@@ -248,11 +402,11 @@ export function applyManualLayout(
   }));
   
   // Apply immediately - no delays or animations
-  onApply(nodes, sanitizedEdges);
+  onApply(allNodes, sanitizedEdges);
   
   // Debug: expose to window for validation tests (development only)
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    (window as any).__flowNodes__ = nodes;
+    (window as any).__flowNodes__ = allNodes;
     (window as any).__flowEdges__ = sanitizedEdges;
   }
   

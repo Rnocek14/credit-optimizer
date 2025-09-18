@@ -24,6 +24,7 @@ interface FeatureFlags {
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
   eduTreeStaggeredEdgesV2: boolean; // V2 staggered edge system
   eduTreeMultiPathOverlay: boolean; // Multipath track comparison overlay
+  eduTreeV2EdgeKinds: boolean; // V2 educational edge types and header nodes
   
   // Clean Slate V2 Flags
   eduTreeV2Grid: boolean; // Master flag for V2 system
@@ -94,6 +95,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
+    eduTreeV2EdgeKinds: toBool(getFlagValue('eduTreeV2EdgeKinds', 'edu-tree-v2-edge-kinds', 'false')),
     // EduTree multipath overlay for track comparison
     eduTreeMultiPathOverlay: (() => {
       const url = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') : null;
