@@ -74,7 +74,7 @@ function buildLaneMapping(
       block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' : 
       undefined;
     
-    const lane = explicitLane || derivedLane;
+    const lane = explicitLane ?? derivedLane;
     if (lane) {
       laneByTarget[block.id] = lane;
     }
