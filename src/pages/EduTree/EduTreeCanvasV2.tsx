@@ -32,7 +32,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => (
 );
 
 const GateNode = ({ data }: { data: V2NodeData }) => {
-  const gateType = data.title?.includes('Program') ? 'program' : 'track';
+  const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
   const subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
   

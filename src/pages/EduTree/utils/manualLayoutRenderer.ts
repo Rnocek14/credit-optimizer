@@ -13,7 +13,15 @@ export interface V2NodeData extends Record<string, unknown> {
   area: string;
   creditsNeeded?: number;
   trackId?: string | null;
+  programId?: string | null;
   isVirtual?: boolean;
+  junctionType?: 'program' | 'track';
+  phaseAPlan?: {
+    lane: 'up' | 'down' | undefined;
+    col: number;
+    x: number;
+    y: number;
+  };
 }
 
 /**
@@ -35,7 +43,9 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
       area: block.area,
       creditsNeeded: block.credits_needed,
       trackId: block.track_id,
-      isVirtual: block.is_virtual
+      programId: block.program_id,
+      isVirtual: block.is_virtual,
+      junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined
     },
     // Add default handles for edge connections
     sourcePosition: Position.Right,
@@ -45,29 +55,41 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
   }));
 }
 
-// Lane registry for multi-gate support
-const LANE_BY_TARGET: Record<string, 'up' | 'down'> = {
-  // Program lanes (Y2)
-  'y2-cs-core': 'up', 'y2-cs-elec': 'up',
-  'y2-it-core': 'down', 'y2-it-elec': 'down',
-  // Track lanes (Y3)
-  'y3-se-core': 'up', 'y3-se-elec': 'up', 'y4-se-cap': 'up',
-  'y3-ds-core': 'down', 'y3-ds-elec': 'down', 'y4-ds-cap': 'down',
-  // IT capstone
-  'y4-it-cap': 'down'
-};
+/**
+ * Build lane mapping from blocks data (data-driven approach)
+ */
+function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, 'up' | 'down'> {
+  const laneByTarget: Record<string, 'up' | 'down'> = {};
+  
+  for (const block of blocks) {
+    // Derive lane from program/track IDs
+    const lane = 
+      block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
+      block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' : 
+      undefined;
+    
+    if (lane) {
+      laneByTarget[block.id] = lane;
+    }
+  }
+  
+  return laneByTarget;
+}
 
 /**
  * Convert V2 edges to ReactFlow edges with multi-gate support
  */
-export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
+export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[]): Edge[] {
+  const laneByTarget = buildLaneMapping(blocks);
+  
   return edges.map((edge) => {
     const isFromGate = edge.source.startsWith('gate-');
-    const targetLane = LANE_BY_TARGET[edge.target];
+    const targetLane = laneByTarget[edge.target];
     
-    // Only set sourceHandle for gate edges with valid target lanes
+    // Only set sourceHandle for gate edges going to nodes with lanes
+    // Do NOT set sourceHandle for edges going TO gates or gates without target lanes
     let sourceHandle: string | undefined = undefined;
-    if (isFromGate && targetLane) {
+    if (isFromGate && targetLane && !edge.target.startsWith('gate-')) {
       sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
     }
 
@@ -75,7 +97,7 @@ export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
       id: `${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
-      sourceHandle, // only for gate edges
+      sourceHandle, // only for gate->node edges with valid lanes
       type: 'step',
       animated: false,
       style: {
@@ -103,8 +125,33 @@ export function applyManualLayout(
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks');
   
-  const nodes = blocksToNodes(blocks);
-  const reactFlowEdges = edgesToReactFlowEdges(edges);
+  // Create nodes with phase A planning data
+  const nodes = blocksToNodes(blocks).map(node => {
+    const block = blocks.find(b => b.id === node.id);
+    if (!block || block.is_virtual) return node;
+    
+    // Compute phase A plan for future grid mode
+    const lane: 'up' | 'down' | undefined = 
+      block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
+      block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' : 
+      undefined;
+    
+    const col = block.level_year;
+    const colX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
+    const rowY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
+                 lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
+                 360; // shared/gate row
+    
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        phaseAPlan: { lane, col, x: colX, y: rowY }
+      }
+    };
+  });
+  
+  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks);
   
   // Apply immediately - no delays or animations
   onApply(nodes, reactFlowEdges);
