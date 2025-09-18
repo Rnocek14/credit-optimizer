@@ -3,7 +3,7 @@
  * Bypasses all legacy layout systems when flags are active
  */
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
@@ -11,6 +11,12 @@ import { exposeGridValidation } from './utils/deterministicGrid';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
+
+type DevOverrides = {
+  filterMode?: FilterMode;
+  eduTreeLayoutMode?: 'legacy' | 'manual_v1' | 'grid_v2';
+  eduTreeV2Grid?: boolean;
+};
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => (
@@ -73,14 +79,18 @@ export default function EduTreeCanvasV2({
 }: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
   
-  // Use overrides when provided, otherwise fall back to feature flags
+  // Dev panel state (always available in dev)
+  const [showDev, setShowDev] = useState(true);
+  const [dev, setDev] = useState<DevOverrides>({});
+  
+  // Use dev overrides first, then props overrides, then feature flags
   const effectiveFlags = {
-    eduTreeV2Grid: overrideFlags?.eduTreeV2Grid ?? flags.eduTreeV2Grid,
-    eduTreeLayoutMode: overrideFlags?.eduTreeLayoutMode ?? flags.eduTreeLayoutMode,
+    eduTreeV2Grid: dev.eduTreeV2Grid ?? overrideFlags?.eduTreeV2Grid ?? flags.eduTreeV2Grid,
+    eduTreeLayoutMode: dev.eduTreeLayoutMode ?? overrideFlags?.eduTreeLayoutMode ?? flags.eduTreeLayoutMode,
   };
   
-  // Use override filter mode when provided
-  const effectiveFilterMode = overrideFilterMode ?? filterMode;
+  // Use dev override filter mode when provided, then props, then default
+  const effectiveFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
   const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -153,7 +163,7 @@ export default function EduTreeCanvasV2({
       fitView,
       usePlan // Use deterministic grid anchors when in single-track grid mode
     );
-  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, flags.eduTreeV2Grid, flags.eduTreeLayoutMode]);
+  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode]);
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode
@@ -185,18 +195,78 @@ export default function EduTreeCanvasV2({
   }
   
   return (
-    <div className="h-full w-full">
-      {/* Lane Headers */}
-      <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-        <div className="bg-background/80 px-2 py-1 rounded border">
-          ▲ Software Engineering Lane
+    <>
+      {/* Dev Controls Toggle */}
+      <button
+        onClick={() => setShowDev(v => !v)}
+        className="fixed top-3 right-3 z-[10000] rounded-full px-3 py-2 bg-black/70 text-white hover:bg-black/80 transition-colors"
+        title="Toggle Dev Controls"
+      >
+        ⚙️
+      </button>
+
+      {/* Dev Controls Panel */}
+      {showDev && (
+        <div className="fixed top-3 left-3 z-[9999] pointer-events-auto bg-black/70 text-white backdrop-blur px-3 py-2 rounded-lg flex items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            <span>Filter</span>
+            <select
+              value={effectiveFilterMode ?? 'compare-tracks'}
+              onChange={e => setDev(d => ({ ...d, filterMode: e.target.value as FilterMode }))}
+              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+            >
+              <option value="compare-tracks">compare-tracks</option>
+              <option value="se">se</option>
+              <option value="ds">ds</option>
+              <option value="compare-programs">compare-programs</option>
+              <option value="bs_cs">bs_cs</option>
+              <option value="bs_it">bs_it</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <span>Layout</span>
+            <select
+              value={effectiveFlags.eduTreeLayoutMode}
+              onChange={e => setDev(d => ({ ...d, eduTreeLayoutMode: e.target.value as any }))}
+              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+            >
+              <option value="legacy">legacy</option>
+              <option value="manual_v1">manual_v1</option>
+              <option value="grid_v2">grid_v2</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!effectiveFlags.eduTreeV2Grid}
+              onChange={e => setDev(d => ({ ...d, eduTreeV2Grid: e.target.checked }))}
+            />
+            <span>Grid V2</span>
+          </label>
+
+          <button
+            onClick={() => setDev({})}
+            className="px-2 py-1 rounded bg-white/20 border border-white/30 hover:bg-white/30 transition-colors"
+          >
+            Reset
+          </button>
         </div>
-      </div>
-      <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-        <div className="bg-background/80 px-2 py-1 rounded border">
-          ▼ Data Science Lane
+      )}
+
+      <div className="h-full w-full">
+        {/* Lane Headers */}
+        <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+          <div className="bg-background/80 px-2 py-1 rounded border">
+            ▲ Software Engineering Lane
+          </div>
         </div>
-      </div>
+        <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+          <div className="bg-background/80 px-2 py-1 rounded border">
+            ▼ Data Science Lane
+          </div>
+        </div>
 
       {/* Midline spine at gate row */}
       <div
@@ -237,17 +307,18 @@ export default function EduTreeCanvasV2({
         <Background />
       </ReactFlow>
       
-      {/* Debug info in bottom corner */}
-      <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-        <div>V2 Multi-Gate Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
-        <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
-        <div>Flags: V2Grid={String(flags.eduTreeV2Grid)}, Mode={flags.eduTreeLayoutMode}</div>
-      </div>
+        {/* Debug info in bottom corner */}
+        <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
+          <div>V2 Multi-Gate Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
+          <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
+          <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
+        </div>
 
-      {/* Mode badge */}
-      <div className="fixed bottom-3 right-3 z-[1000] text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
-        Mode: {flags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'}
+        {/* Mode badge */}
+        <div className="fixed bottom-3 right-3 z-[1000] text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
+          Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
