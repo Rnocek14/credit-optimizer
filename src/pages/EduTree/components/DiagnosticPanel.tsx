@@ -6,54 +6,29 @@ import { TRACK_DEFINITIONS } from '../data/trackDefinitions';
 export function DiagnosticPanel() {
   const { data, loading, hasData } = useEduTreeData();
 
-  // Force console logging
-  React.useEffect(() => {
-    console.log('[DIAGNOSTIC] EduTreeData State:', {
-      loading,
-      hasData,
-      blocks: data.blocks?.length || 0,
-      courses: data.courses?.length || 0,
-      blockMembers: data.blockMembers?.length || 0,
-      gates: data.gates?.length || 0,
-      gateEdges: data.gateEdges?.length || 0,
-      sampleBlock: data.blocks?.[0]
-    });
-
-    console.log('[DIAGNOSTIC] Track Definitions:', {
-      trackCount: TRACK_DEFINITIONS.length,
-      tracks: TRACK_DEFINITIONS.map(t => ({
-        id: t.id,
-        name: t.name,
-        blockIds: t.blockIds
-      }))
-    });
-
-    // Check URL params
-    const params = new URLSearchParams(window.location.search);
-    console.log('[DIAGNOSTIC] URL Parameters:', {
-      primary: params.get('primary'),
-      comparison: params.get('comparison'),
-      overlayEnabled: params.get('eduTreeMultiPathOverlay'),
-      phaseA: params.get('eduTreePhaseA')
-    });
-  }, [data, loading, hasData]);
+  if (!import.meta.env.DEV) return null;
 
   return (
-    <Card className="fixed bottom-4 left-4 z-50 p-4 max-w-md">
-      <div className="space-y-2 text-sm">
-        <h3 className="font-semibold">EduTree Diagnostics</h3>
-        <div>Loading: {loading ? 'YES' : 'NO'}</div>
-        <div>Has Data: {hasData ? 'YES' : 'NO'}</div>
-        <div>Blocks: {data.blocks?.length || 0}</div>
-        <div>Courses: {data.courses?.length || 0}</div>
-        <div>Block Members: {data.blockMembers?.length || 0}</div>
-        <div>Gates: {data.gates?.length || 0}</div>
-        <div>Gate Edges: {data.gateEdges?.length || 0}</div>
-        {data.blocks?.[0] && (
-          <div className="text-xs mt-2 p-2 bg-muted rounded">
-            Sample Block: {data.blocks[0].title} (Level {data.blocks[0].level_year})
-          </div>
-        )}
+    <Card className="fixed bottom-4 left-4 z-50 p-3 max-w-xs bg-background/90 backdrop-blur-sm">
+      <div className="space-y-1 text-xs">
+        <h4 className="font-semibold text-primary text-sm">Data Status</h4>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+          <span className="text-muted-foreground">Loading:</span>
+          <span className={loading ? 'text-orange-600' : 'text-green-600'}>
+            {loading ? 'YES' : 'NO'}
+          </span>
+          
+          <span className="text-muted-foreground">Has Data:</span>
+          <span className={hasData ? 'text-green-600' : 'text-red-600'}>
+            {hasData ? 'YES' : 'NO'}
+          </span>
+          
+          <span className="text-muted-foreground">Blocks:</span>
+          <span className="font-mono">{data.blocks?.length || 0}</span>
+          
+          <span className="text-muted-foreground">Courses:</span>
+          <span className="font-mono">{data.courses?.length || 0}</span>
+        </div>
       </div>
     </Card>
   );

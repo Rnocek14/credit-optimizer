@@ -60,6 +60,7 @@ import { transformEducationData } from './utils/transformEducationData';
 import './utils/positionCapture'; // Initialize position capture utilities
 import { resolveEduTreeFlag, canBypassEduTreeFlag, resolveEduTreePhaseAFlag, resolveEduTreeQAModeFlag } from '@/lib/eduTreeFlags';
 import { usePhaseAGuard, resetPhaseAGuard } from './utils/phaseAGuard';
+import { stabilizeLayout, resetLayoutStabilizer } from './utils/layoutStabilizer';
 import { computeGraphQAMetrics } from './qa/multipathQA';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
@@ -263,7 +264,7 @@ function EduTreeCanvasInner() {
   const phaseAGuard = usePhaseAGuard(flowNodes, flowEdges, overlayEnabled);
   const isPhaseA = resolveEduTreePhaseAFlag();
   
-  // Get track comparison highlights and processed edges
+  // Get track comparison highlights and processed edges with stabilization
   const { 
     highlightedNodes,
     highlightedEdges,
@@ -277,9 +278,19 @@ function EduTreeCanvasInner() {
     overlayEnabled: overlayEnabled && !phaseAGuard.shouldBypassOverlay
   });
 
+  // Apply layout stabilization for additional scrambling protection
+  const { 
+    nodes: finalStableNodes, 
+    edges: finalStableEdges, 
+    isStabilized 
+  } = stabilizeLayout(highlightedNodes, highlightedEdges, { 
+    enableFreeze: isPhaseA && phaseAGuard.isLayoutLocked 
+  });
+
   // Reset PhaseA guard when overlay mode changes - SINGLE EFFECT
   useEffect(() => {
     resetPhaseAGuard();
+    resetLayoutStabilizer(); // Also reset layout stabilizer
     // Remove any layout locks when switching modes
     document.body.classList.remove('phaseA-layout-locked');
   }, [overlayEnabled, primaryTrackId, comparisonTrackId]);
@@ -436,75 +447,74 @@ function EduTreeCanvasInner() {
     return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}-${overlayEnabled}-${layoutVersion}`;
   }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id, overlayEnabled, layoutVersion]);
 
-  // PHASEÁ LAYOUT FREEZE - Stop all layout competition
+  // CIRCUIT BREAKER LAYOUT FREEZE - Complete Layout Stabilization
   useLayoutEffect(() => {
     if (!reactFlowInstance) {
       console.log('[EduTree Layout] ReactFlow instance not ready');
       return;
     }
     
-    // IMMEDIATE: Disable ReactFlow internal positioning in PhaseA mode
+    // CIRCUIT BREAKER: Check if layout is permanently locked
+    if (isPhaseA && phaseAGuard.isLayoutLocked) {
+      console.log('[EduTree Layout] CIRCUIT BREAKER: Layout permanently locked, using stable positions');
+      setNodes(phaseAGuard.stableNodes);
+      setEdges(phaseAGuard.stableEdges);
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
+      return; // TOTAL EXIT - no further processing
+    }
+    
+    // IMMEDIATE: Configure ReactFlow for zero-movement mode in PhaseA
     if (isPhaseA) {
-      console.log('[EduTree Layout] PhaseA mode - configuring ReactFlow');
+      console.log('[EduTree Layout] PhaseA SINGLE-PASS mode - locking ReactFlow');
       reactFlowInstance.setOptions?.({
         nodesDraggable: false,
         nodesConnectable: false,
-        elementsSelectable: false,
-        panOnDrag: false,
-        zoomOnScroll: false,
-        zoomOnPinch: false,
-        zoomOnDoubleClick: false,
+        elementsSelectable: true, // Keep selection for interaction
+        panOnDrag: true, // Allow pan but no node drag
+        zoomOnScroll: true, // Allow zoom
+        zoomOnPinch: true,
+        zoomOnDoubleClick: true,
         selectNodesOnDrag: false,
-        fitView: false
+        fitView: false // Critical: disable auto-fit that triggers repositioning
       });
       
-      // Check if layout is already locked
-      if (phaseAGuard.isLayoutLocked) {
-        console.log('[EduTree Layout] PhaseA LAYOUT IS LOCKED - using cached positions');
-        setNodes(phaseAGuard.stableNodes);
-        setEdges(phaseAGuard.stableEdges);
-        setIsLayouting(false);
-        layoutInProgressRef.current = false;
-        document.body.classList.add('phaseA-layout-locked');
-        return; // EXIT - no more layout allowed
-      }
-      
-      // Start layout session ONLY when actually needed
+      // ONE-TIME LAYOUT: Execute layout session immediately and lock
       if (phaseAGuard.stableNodes.length > 0 && phaseAGuard.layoutPassCount === 0) {
-        console.log('[EduTree Layout] PhaseA - Starting SINGLE layout session');
-        phaseAGuard.startLayoutSession(); // This increments the counter
+        console.log('[EduTree Layout] PhaseA - Executing ONE-TIME layout and permanent lock');
+        phaseAGuard.startLayoutSession(); // Triggers circuit breaker
         
-        // Single atomic update - LOCK POSITIONS
-        console.log('[EduTree Layout] PhaseA - FINAL atomic update, locking positions');
+        // ATOMIC FINAL UPDATE - No more changes after this
         setNodes(phaseAGuard.stableNodes);
         setEdges(phaseAGuard.stableEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
         
-        // Add CSS lock to prevent any future repositioning
-        document.body.classList.add('phaseA-layout-locked');
-        return; // EXIT - no more layout allowed
+        console.log('[EduTree Layout] PhaseA - LAYOUT COMPLETE AND PERMANENTLY LOCKED');
+        return; // TOTAL EXIT
       }
     }
     
-    // Non-PhaseA mode continues with normal layout
-    if (layoutInProgressRef.current) {
-      console.log('[EduTree Layout] Layout already in progress, skipping');
-      return; // Skip if already layouting
-    }
+    // Standard mode layout (only if not PhaseA)
+    if (!isPhaseA) {
+      if (layoutInProgressRef.current) {
+        console.log('[EduTree Layout] Standard mode - layout in progress, skipping');
+        return;
+      }
 
-    if (!phaseAGuard.stableNodes.length) {
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      return;
+      if (!phaseAGuard.stableNodes.length) {
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+        return;
+      }
     }
 
     // Non-PhaseA overlay mode
     if (overlayEnabled && !phaseAGuard.shouldBypassOverlay) {
       console.log('[EduTree Layout] Using overlay nodes (includes comparison layout)');
       const atomicUpdate = () => {
-        setNodes(highlightedNodes);
-        setEdges(highlightedEdges);
+        setNodes(finalStableNodes);
+        setEdges(finalStableEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
       };
@@ -796,11 +806,11 @@ function EduTreeCanvasInner() {
 
       {/* Layout Status Panel */}
       <LayoutStatusPanel 
-        nodes={nodes}
-        edges={edges}
+        nodes={finalStableNodes}
+        edges={finalStableEdges}
         isLayouting={isLayouting}
         layoutPassCount={phaseAGuard.layoutPassCount}
-        isLayoutLocked={phaseAGuard.isLayoutLocked}
+        isLayoutLocked={phaseAGuard.isLayoutLocked || isStabilized}
       />
 
       {/* Position Analysis Panel */}
@@ -842,8 +852,8 @@ function EduTreeCanvasInner() {
       {/* Main Canvas */}
       <div className="w-full h-full">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={finalStableNodes}
+          edges={finalStableEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onInit={setReactFlowInstance}
@@ -852,11 +862,11 @@ function EduTreeCanvasInner() {
           minZoom={0.1}
           maxZoom={1.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          nodesDraggable={!isPhaseA} // Disable dragging in PhaseA to prevent position drift
+          nodesDraggable={!isPhaseA || !phaseAGuard.isLayoutLocked} // Lock dragging in PhaseA when locked
           nodesConnectable={false}
-          elementsSelectable={!isPhaseA} // Disable selection in PhaseA
-          panOnDrag={!isPhaseA} // Disable pan on drag in PhaseA to prevent conflicts
-          fitView={false} // Never auto-fit to prevent conflicts
+          elementsSelectable={true} // Keep selection for interaction
+          panOnDrag={true} // Allow panning
+          fitView={false} // Never auto-fit to prevent layout conflicts
           onNodeDrag={(event, node) => {
             if (!isPhaseA) {
               console.log('🔄 Node drag:', node.id, node.position);

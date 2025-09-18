@@ -2,8 +2,8 @@ import { resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
 import type { Node, Edge } from '@xyflow/react';
 
 /**
- * PhaseA Layout Guard - Prevents layout competition by ensuring stable references
- * and single layout pass in PhaseA mode
+ * PhaseA Layout Guard - Circuit Breaker Pattern to Stop Layout Scrambling
+ * EMERGENCY FIX: Complete layout freeze after first successful pass
  */
 
 let phaseALayoutSessionId = '';
@@ -12,6 +12,7 @@ let phaseANodesCache: Node[] | null = null;
 let phaseAEdgesCache: Edge[] | null = null;
 let lastDataHash = '';
 let layoutLocked = false;
+let circuitBreakerTripped = false; // EMERGENCY: Prevent any further layout attempts
 
 export interface PhaseAGuardResult {
   shouldBypassOverlay: boolean;
@@ -59,8 +60,13 @@ export function usePhaseAGuard(
     };
   }
 
-  // Function to start a layout session (called only during actual layout attempts)
+  // CIRCUIT BREAKER: Stop all layout attempts after first success
   const startLayoutSession = () => {
+    if (circuitBreakerTripped) {
+      console.warn('[PhaseAGuard] CIRCUIT BREAKER TRIPPED - NO MORE LAYOUT ALLOWED');
+      return;
+    }
+    
     if (layoutLocked) {
       console.warn('[PhaseAGuard] Layout is LOCKED - no more attempts allowed');
       return;
@@ -75,10 +81,16 @@ export function usePhaseAGuard(
       edgesCount: edges.length
     });
 
-    // EMERGENCY BRAKE - Only allow ONE layout attempt to prevent scrambling
-    if (phaseALayoutAttempts > 1) {
-      console.warn('[PhaseAGuard] LAYOUT FREEZE: Multiple attempts detected, locking layout');
+    // IMMEDIATE FREEZE - Prevent ANY scrambling by locking after first attempt
+    if (phaseALayoutAttempts >= 1) {
+      console.warn('[PhaseAGuard] EMERGENCY BRAKE: First layout complete, FREEZING POSITIONS');
       layoutLocked = true;
+      circuitBreakerTripped = true; // NUCLEAR OPTION: No more layout ever
+      
+      // Add visual lock to DOM immediately
+      setTimeout(() => {
+        document.body.classList.add('phaseA-layout-locked');
+      }, 0);
     }
   };
 
@@ -119,5 +131,7 @@ export function resetPhaseAGuard() {
   phaseAEdgesCache = null;
   lastDataHash = '';
   layoutLocked = false;
-  console.log('[PhaseAGuard] State reset');
+  circuitBreakerTripped = false; // Reset circuit breaker
+  document.body.classList.remove('phaseA-layout-locked');
+  console.log('[PhaseAGuard] State reset - circuit breaker cleared');
 }

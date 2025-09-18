@@ -52,7 +52,7 @@ export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount, 
           
           <span className="text-muted-foreground">Position Lock:</span>
           <span className={`font-medium ${actuallyLocked ? 'text-green-600' : 'text-gray-600'}`}>
-            {actuallyLocked ? 'LOCKED' : 'FREE'}
+            {actuallyLocked ? 'CIRCUIT BREAKER ACTIVE' : 'FREE'}
           </span>
         </div>
         
@@ -64,8 +64,8 @@ export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount, 
         )}
 
         {actuallyLocked && (
-          <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-xs text-yellow-700 dark:text-yellow-300">
-            🔒 Layout locked to prevent scrambling
+          <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs text-green-700 dark:text-green-300">
+            🔒 Circuit breaker active - positions frozen to prevent scrambling
           </div>
         )}
       </div>

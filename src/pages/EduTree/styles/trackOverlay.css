@@ -102,23 +102,32 @@ body[data-compare-primary] .edge--shared {
   filter: none !important;
 }
 
-/* PhaseA Layout Lock - Prevent ALL repositioning after initial layout */
+/* PhaseA Layout Lock - ReactFlow Compatible Positioning Freeze */
 body.phaseA-layout-locked .react-flow__node {
-  position: fixed !important;
-  transform: none !important;
+  position: absolute !important;
   transition: none !important;
-  pointer-events: none !important;
+  will-change: auto !important;
+  pointer-events: auto !important; /* Keep interactions enabled */
 }
 
 body.phaseA-layout-locked .react-flow__edge {
-  pointer-events: none !important;
+  transition: none !important;
+  will-change: auto !important;
 }
 
-body.phaseA-layout-locked .react-flow__pane {
-  pointer-events: none !important;
-}
-
-/* Force static positioning in PhaseA to prevent any movement */
+/* Disable ReactFlow internal transforms that cause repositioning */
 body.phaseA-layout-locked .react-flow__renderer {
-  transform: none !important;
+  transition: none !important;
+}
+
+/* CIRCUIT BREAKER: Completely disable layout calculations */
+body.phaseA-layout-locked .react-flow__viewport {
+  transition: none !important;
+}
+
+/* Lock node dimensions to prevent resize-triggered layouts */
+body.phaseA-layout-locked [data-testid="rf__node"] {
+  max-width: none !important;
+  max-height: none !important;
+  resize: none !important;
 }
