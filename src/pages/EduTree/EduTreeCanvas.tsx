@@ -50,7 +50,8 @@ import {
   TrackComparisonControls,
   PositionAnalysisPanel
 } from './components';
-import { DiagnosticPanel } from './components/DiagnosticPanel';
+  import { DiagnosticPanel } from './components/DiagnosticPanel';
+  import { LayoutStatusPanel } from './components/LayoutStatusPanel';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
@@ -276,14 +277,11 @@ function EduTreeCanvasInner() {
     overlayEnabled: overlayEnabled && !phaseAGuard.shouldBypassOverlay
   });
 
-  // Reset PhaseA guard when overlay mode changes
+  // Reset PhaseA guard when overlay mode changes - SINGLE EFFECT
   useEffect(() => {
     resetPhaseAGuard();
-  }, [overlayEnabled, primaryTrackId, comparisonTrackId]);
-
-  // Reset PhaseA guard when overlay mode changes
-  useEffect(() => {
-    resetPhaseAGuard();
+    // Remove any layout locks when switching modes
+    document.body.classList.remove('phaseA-layout-locked');
   }, [overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   // Debug edge flow
@@ -438,69 +436,56 @@ function EduTreeCanvasInner() {
     return `${nodeCount}-${edgeCount}-${firstNodeId}-${lastNodeId}`;
   }, [flowNodes.length, flowEdges.length, flowNodes[0]?.id, flowNodes[flowNodes.length - 1]?.id]);
 
-  // Perform layout when data or node sizes change  
+  // PHASEÁ LAYOUT FREEZE - Stop all layout competition
   useLayoutEffect(() => {
     if (!reactFlowInstance) {
       console.log('[EduTree Layout] ReactFlow instance not ready');
       return;
     }
     
-    if (layoutInProgressRef.current) {
-      console.log('[EduTree Layout] Layout already in progress, skipping');
-      return;
-    }
-
-    // Clear loading state immediately if there are no nodes to layout
-    if (!phaseAGuard.stableNodes.length) {
-      console.log('[EduTree Layout] No nodes to layout, clearing loading state');
-      setIsLayouting(false);
-      layoutInProgressRef.current = false;
-      return;
-    }
-
-  // CRITICAL: PhaseA mode - single stable layout pass with branching
+    // IMMEDIATE: Disable ReactFlow internal positioning in PhaseA mode
     if (isPhaseA) {
-      console.log('[EduTree Layout] PhaseA mode - single stable branching layout pass');
-      console.log('[EduTree Layout] PhaseA Data Check:', {
-        stableNodesCount: phaseAGuard.stableNodes.length,
-        stableEdgesCount: phaseAGuard.stableEdges.length,
-        layoutPassCount: phaseAGuard.layoutPassCount,
-        shouldBypassOverlay: phaseAGuard.shouldBypassOverlay,
-        sampleNode: phaseAGuard.stableNodes[0]?.id
+      console.log('[EduTree Layout] PhaseA - DISABLING all ReactFlow positioning');
+      reactFlowInstance.setOptions?.({
+        nodesDraggable: false,
+        nodesConnectable: false,
+        elementsSelectable: false,
+        panOnDrag: false,
+        zoomOnScroll: false,
+        zoomOnPinch: false,
+        zoomOnDoubleClick: false,
+        selectNodesOnDrag: false,
+        fitView: false
       });
       
+      // EMERGENCY: Prevent ANY layout competition
       if (phaseAGuard.layoutPassCount > 1) {
-        console.log('[EduTree Layout] PhaseA emergency brake - preventing additional layout');
-        return;
+        console.log('[EduTree Layout] PhaseA LAYOUT FREEZE - NO MORE REPOSITIONING');
+        return; // STOP ALL LAYOUT OPERATIONS
       }
       
-      // Skip if no stable nodes
-      if (!phaseAGuard.stableNodes.length) {
-        console.log('[EduTree Layout] PhaseA - no stable nodes available');
-        setIsLayouting(false);
-        layoutInProgressRef.current = false;
-        return;
-      }
-      
-      // Atomic update for PhaseA - use stable references with proper branching
-      const atomicUpdate = () => {
-        console.log('[EduTree Layout] PhaseA - applying atomic update with', phaseAGuard.stableNodes.length, 'nodes');
+      // Single atomic update - LOCK POSITIONS FOREVER
+      if (phaseAGuard.stableNodes.length > 0 && phaseAGuard.layoutPassCount === 1) {
+        console.log('[EduTree Layout] PhaseA - FINAL atomic update, locking positions');
         setNodes(phaseAGuard.stableNodes);
         setEdges(phaseAGuard.stableEdges);
         setIsLayouting(false);
         layoutInProgressRef.current = false;
         
-        // Disable ReactFlow dragging and selection in PhaseA to prevent repositioning
-        if (reactFlowInstance) {
-          reactFlowInstance.setOptions?.({
-            nodesDraggable: false,
-            nodesConnectable: false,
-            elementsSelectable: false
-          });
-        }
-      };
-      
-      requestAnimationFrame(atomicUpdate);
+        // Add CSS lock to prevent any future repositioning
+        document.body.classList.add('phaseA-layout-locked');
+        return; // EXIT - no more layout allowed
+      }
+    }
+    
+    // Non-PhaseA mode continues with normal layout
+    if (layoutInProgressRef.current || isPhaseA) {
+      return; // Skip if already layouting or in PhaseA
+    }
+
+    if (!phaseAGuard.stableNodes.length) {
+      setIsLayouting(false);
+      layoutInProgressRef.current = false;
       return;
     }
 
@@ -798,6 +783,14 @@ function EduTreeCanvasInner() {
     <div className="relative h-screen bg-background">
       {/* Diagnostic Panel */}
       <DiagnosticPanel />
+
+      {/* Layout Status Panel */}
+      <LayoutStatusPanel 
+        nodes={nodes}
+        edges={edges}
+        isLayouting={isLayouting}
+        layoutPassCount={phaseAGuard.layoutPassCount}
+      />
 
       {/* Position Analysis Panel */}
       <div className="absolute bottom-4 right-4 z-40">

@@ -49,7 +49,7 @@ export function usePhaseAGuard(
     };
   }
 
-  // PhaseA mode - apply guards
+  // PhaseA mode - IMMEDIATE LAYOUT FREEZE after first pass
   phaseALayoutPassCount++;
   
   console.log('[PhaseAGuard] Layout pass:', phaseALayoutPassCount, {
@@ -60,9 +60,9 @@ export function usePhaseAGuard(
     edgesCount: edges.length
   });
 
-  // Emergency brake - prevent excessive layout passes
-  if (phaseALayoutPassCount > 2) {
-    console.warn('[PhaseAGuard] EMERGENCY BRAKE: Too many layout passes, using cached data');
+  // EMERGENCY BRAKE - Only allow ONE layout pass to prevent scrambling
+  if (phaseALayoutPassCount > 1) {
+    console.warn('[PhaseAGuard] LAYOUT FREEZE: Preventing layout competition, using stable cache');
     return {
       shouldBypassOverlay: true,
       stableNodes: phaseANodesCache || nodes,
@@ -71,9 +71,17 @@ export function usePhaseAGuard(
     };
   }
 
-  // Cache stable references for PhaseA
+  // Cache stable references for PhaseA - LOCK POSITIONS
   if (!phaseANodesCache || dataChanged) {
-    phaseANodesCache = nodes.map(node => ({ ...node }));
+    phaseANodesCache = nodes.map(node => ({ 
+      ...node,
+      draggable: false,
+      selectable: false,
+      style: { 
+        ...node.style,
+        pointerEvents: 'none' // Prevent any interaction that could trigger repositioning
+      }
+    }));
   }
   
   if (!phaseAEdgesCache || dataChanged) {
