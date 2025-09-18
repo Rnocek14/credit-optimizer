@@ -64,8 +64,12 @@ export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
   return edges.map((edge) => {
     const isFromGate = edge.source.startsWith('gate-');
     const targetLane = LANE_BY_TARGET[edge.target];
-    const sourceHandle = isFromGate && targetLane ? 
-      (targetLane === 'up' ? 'out-se' : 'out-ds') : undefined;
+    
+    // Only set sourceHandle for gate edges with valid target lanes
+    let sourceHandle: string | undefined = undefined;
+    if (isFromGate && targetLane) {
+      sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
+    }
 
     return {
       id: `${edge.source}-${edge.target}`,
