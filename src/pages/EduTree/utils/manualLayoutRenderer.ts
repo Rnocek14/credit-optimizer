@@ -59,16 +59,22 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
 /**
  * Build lane mapping from blocks data (data-driven approach)
  */
-function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, 'up' | 'down'> {
+function buildLaneMapping(
+  blocks: V2RequirementBlock[]
+): Record<string, 'up' | 'down'> {
   const laneByTarget: Record<string, 'up' | 'down'> = {};
   
   for (const block of blocks) {
-    // Derive lane from program/track IDs
-    const lane = 
+    // Future-proof: prefer explicit lane from seed data
+    const explicitLane = (block as any).lane as 'up' | 'down' | undefined;
+    
+    // Fallback: derive lane from program/track IDs
+    const derivedLane = 
       block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
       block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' : 
       undefined;
     
+    const lane = explicitLane || derivedLane;
     if (lane) {
       laneByTarget[block.id] = lane;
     }
