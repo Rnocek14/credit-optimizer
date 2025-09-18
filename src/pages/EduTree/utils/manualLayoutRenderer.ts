@@ -19,6 +19,7 @@ export interface V2NodeData {
   programId?: string | null;
   isVirtual?: boolean;
   junctionType?: 'program' | 'track';
+  singleTrackStraight?: boolean;
   phaseAPlan?: {
     lane: 'up' | 'down' | undefined;
     col: number;
@@ -85,20 +86,34 @@ function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, Lane> {
 /**
  * Convert V2 edges to ReactFlow edges with multi-gate support
  */
-export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[]): Edge[] {
+export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[], singleTrackStraight: boolean = false): Edge[] {
   const laneByTarget = buildLaneMapping(blocks);
 
   return edges.map((edge) => {
     const isFromGate = edge.source.startsWith('gate-');
     const targetLane = laneByTarget[edge.target];
 
-    // Always compute sourceHandle - ignore any incoming values from seed
-    let sourceHandle: SourceHandle = undefined;
-    if (isFromGate && targetLane && !edge.target.startsWith('gate-')) {
-      sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
-    } else if (isFromGate && !targetLane && !edge.target.startsWith('gate-')) {
-      // Optional: helps catch missing lane in seed
-      console.warn('[V2] Gate edge missing lane for target:', edge.target);
+    // Compute sourceHandle for gate nodes based on target lane
+    let sourceHandle: string | undefined = undefined;
+    if (edge.source.startsWith('gate-')) {
+      if (singleTrackStraight) {
+        // In single-track straight mode, no source handle for horizontal flow
+        sourceHandle = undefined;
+      } else {
+        const targetBlock = blocks.find(b => b.id === edge.target);
+        const targetLane = laneByTarget[edge.target];
+        if (targetLane) {
+          sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
+        } else if (targetBlock?.track_id === 'se') {
+          sourceHandle = 'out-se';
+        } else if (targetBlock?.track_id === 'ds') {
+          sourceHandle = 'out-ds';
+        }
+        
+        if (!sourceHandle && !edge.target.startsWith('gate-')) {
+          console.warn('[V2] Gate edge missing lane for target:', edge.target, targetBlock?.track_id);
+        }
+      }
     }
 
     return {
@@ -123,7 +138,8 @@ export function applyManualLayout(
   edges: V2Edge[],
   onApply: (nodes: Node<V2NodeData>[], edges: Edge[]) => void,
   fitView: () => void,
-  useGridAnchors: boolean = false
+  useGridAnchors: boolean = false,
+  singleTrackStraight: boolean = false
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)');
@@ -148,7 +164,7 @@ export function applyManualLayout(
                     360; // shared/gate row
     
     // Apply deterministic grid if enabled
-    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors);
+    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleTrackStraight);
     
     if (useGridAnchors && process.env.NODE_ENV === 'development') {
       console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
@@ -163,7 +179,7 @@ export function applyManualLayout(
     };
   });
   
-  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks);
+  const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleTrackStraight);
   
   // Final sanitizer: ensure no bad handles survive regardless of source
   const clean = (h: unknown): SourceHandle =>

@@ -42,6 +42,7 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
   const subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
+  const singleTrackStraight = data.singleTrackStraight;
   
   return (
     <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
@@ -49,9 +50,16 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
       <div className="font-semibold">{gateTitle}</div>
       <div className="mt-1 text-xs opacity-70">{subtitle}</div>
 
-      {/* source handles */}
-      <Handle id="out-se" type="source" position={Position.Top} />
-      <Handle id="out-ds" type="source" position={Position.Bottom} />
+      {/* Handles - only show vertical handles when NOT in single-track straight mode */}
+      {!singleTrackStraight && (
+        <>
+          <Handle id="out-se" type="source" position={Position.Top} />
+          <Handle id="out-ds" type="source" position={Position.Bottom} />
+        </>
+      )}
+      {singleTrackStraight && (
+        <Handle id="out" type="source" position={Position.Right} />
+      )}
       {/* target handle */}
       <Handle id="in" type="target" position={Position.Left} />
     </div>
@@ -97,6 +105,12 @@ export default function EduTreeCanvasV2({
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
   
+  // Calculate track mode flags - needed both in useEffect and render
+  const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
+  const singleTrack = presentTracks.size === 1;
+  const singleTrackStraight = singleTrack && effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2';
+  const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && singleTrack;
+  
   // Apply manual layout when data changes
   useEffect(() => {
     if (!isV2Mode || blocks.length === 0) {
@@ -108,19 +122,11 @@ export default function EduTreeCanvasV2({
     
     // Expose grid validation tools for development
     exposeGridValidation();
-    
-    // Detect single track presence
-    const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
-    const singleTrack = presentTracks.size === 1;
-    
-    const usePlan =
-      effectiveFlags.eduTreeV2Grid &&
-      effectiveFlags.eduTreeLayoutMode === 'grid_v2' &&
-      singleTrack;
       
     console.log('[EduTreeV2] Layout mode:', { 
       presentTracks: [...presentTracks], 
       singleTrack, 
+      singleTrackStraight,
       usePlan,
       layoutMode: effectiveFlags.eduTreeLayoutMode 
     });
@@ -136,7 +142,13 @@ export default function EduTreeCanvasV2({
         
         // Apply grid layout if conditions met
         const finalNodes = usePlan ? newNodes.map(n => {
-          if (n.data?.isVirtual) return n;
+          if (n.data?.isVirtual) {
+            // Add singleTrackStraight flag to gate nodes
+            return { 
+              ...n, 
+              data: { ...n.data, singleTrackStraight } 
+            };
+          }
           const p = n.data?.phaseAPlan;
           if (!p) { 
             console.warn('[V2] Missing phaseAPlan for', n.id); 
@@ -145,9 +157,9 @@ export default function EduTreeCanvasV2({
           return { 
             ...n, 
             position: { x: p.x, y: p.y }, 
-            data: { ...n.data, hasGridLayout: true } 
+            data: { ...n.data, hasGridLayout: true, singleTrackStraight } 
           };
-        }) : newNodes;
+        }) : newNodes.map(n => ({ ...n, data: { ...n.data, singleTrackStraight } }));
         
         setNodes(finalNodes);
         setEdges(newEdges);
@@ -161,7 +173,8 @@ export default function EduTreeCanvasV2({
         }
       },
       fitView,
-      usePlan // Use deterministic grid anchors when in single-track grid mode
+      usePlan, // Use deterministic grid anchors when in single-track grid mode
+      singleTrackStraight // Pass single-track straight flag
     );
   }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode]);
   
@@ -259,17 +272,21 @@ export default function EduTreeCanvasV2({
       )}
 
       <div className="h-full w-full">
-        {/* Lane Headers */}
-        <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-          <div className="bg-background/80 px-2 py-1 rounded border">
-            ▲ Software Engineering Lane
-          </div>
-        </div>
-        <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-          <div className="bg-background/80 px-2 py-1 rounded border">
-            ▼ Data Science Lane
-          </div>
-        </div>
+        {/* Lane Headers - hide in single-track straight mode */}
+        {!singleTrackStraight && (
+          <>
+            <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+              <div className="bg-background/80 px-2 py-1 rounded border">
+                ▲ Software Engineering Lane
+              </div>
+            </div>
+            <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+              <div className="bg-background/80 px-2 py-1 rounded border">
+                ▼ Data Science Lane
+              </div>
+            </div>
+          </>
+        )}
 
       {/* Midline spine at gate row */}
       <div
@@ -281,9 +298,13 @@ export default function EduTreeCanvasV2({
         }}
       />
 
-      {/* Faint horizontal lane dividers */}
-      <div className="absolute top-0 left-[1250px] w-[500px] h-[200px] bg-primary/5 rounded-lg pointer-events-none" />
-      <div className="absolute top-[400px] left-[1250px] w-[500px] h-[300px] bg-secondary/5 rounded-lg pointer-events-none" />
+      {/* Faint horizontal lane dividers - hide in single-track straight mode */}
+      {!singleTrackStraight && (
+        <>
+          <div className="absolute top-0 left-[1250px] w-[500px] h-[200px] bg-primary/5 rounded-lg pointer-events-none" />
+          <div className="absolute top-[400px] left-[1250px] w-[500px] h-[300px] bg-secondary/5 rounded-lg pointer-events-none" />
+        </>
+      )}
 
       <ReactFlow
         nodes={nodes}

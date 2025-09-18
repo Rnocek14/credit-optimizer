@@ -33,18 +33,21 @@ export const reservedColsByYear: Record<number, Record<string, number>> = {
  * Reserved Y coordinates for up/down lanes by year
  * Preserves vertical relationships from manual seed
  */
-export const reservedRowsByLane: Record<number, Record<Lane, number>> = {
+export const reservedRowsByLane: Record<number, Record<Lane | 'center', number>> = {
   2: {
     up: 240,     // Upper lane Y2 courses
-    down: 480    // Lower lane Y2 courses  
+    down: 480,   // Lower lane Y2 courses
+    center: 360  // Single-track straight line
   },
   3: {
     up: 240,     // Upper lane Y3 courses
-    down: 480    // Lower lane Y3 courses
+    down: 480,   // Lower lane Y3 courses
+    center: 360  // Single-track straight line
   },
   4: {
     up: 80,      // Upper lane Y4 courses (higher up)
-    down: 640    // Lower lane Y4 courses (lower down)
+    down: 640,   // Lower lane Y4 courses (lower down)
+    center: 360  // Single-track straight line
   }
 };
 
@@ -57,7 +60,8 @@ export function applyDeterministicGrid(
   lane: Lane | undefined,
   manualX: number,
   manualY: number,
-  useGrid: boolean
+  useGrid: boolean,
+  singleTrackStraight: boolean = false
 ): { x: number; y: number } {
   if (!useGrid) {
     return { x: manualX, y: manualY };
@@ -85,7 +89,10 @@ export function applyDeterministicGrid(
 
   // Use reserved row Y if available, otherwise keep manual Y
   let gridY = manualY;
-  if (lane && reservedRowsByLane[levelYear]?.[lane] !== undefined) {
+  if (singleTrackStraight) {
+    // In single-track straight mode, use center line for all nodes
+    gridY = reservedRowsByLane[levelYear]?.center ?? 360;
+  } else if (lane && reservedRowsByLane[levelYear]?.[lane] !== undefined) {
     gridY = reservedRowsByLane[levelYear][lane];
   }
 
