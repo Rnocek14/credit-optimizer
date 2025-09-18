@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect } from 'react';
-import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls } from '@xyflow/react';
+import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { useFeatureFlags } from '@/lib/featureFlags';
@@ -128,13 +128,14 @@ export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
       >
-        <Background />
+        <MiniMap />
         <Controls />
+        <Background />
       </ReactFlow>
       
       {/* Debug info in bottom corner */}
       <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-        <div>V2 Manual Mode: {nodes.length} nodes, {flowEdges.length} edges</div>
+        <div>V2 Manual Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
         <div>Track: {trackFilter || 'compare'}</div>
         <div>Flags: V2Grid={String(flags.eduTreeV2Grid)}, Mode={flags.eduTreeLayoutMode}</div>
       </div>

@@ -130,6 +130,7 @@ import { initializeCircuitBreaker } from "./lib/edgeFunctionClient";
 import { MobileNavigation } from "./components/MobileNavigation";
 import { useEffect } from "react";
 import EduTree from "./pages/EduTree";
+import EduTreeV2Page from "./pages/EduTree/EduTreeV2Page";
 import { EduTreeError } from "./components/EduTreeError";
 import { PageLoader } from "./components/PageLoader";
 import { isFeatureEnabled } from "./lib/featureFlags";
@@ -283,6 +284,11 @@ const App = () => {
                 </React.Suspense>
               </EnhancedErrorBoundary>
             }
+          />
+          {/* EduTree V2 - Clean slate implementation */}
+          <Route 
+            path="/edu-tree-v2" 
+            element={<EduTreeV2Page />}
           />
           {/* Sandbox route for TrackOverlayPOC (dev only) */}
           <Route path="/sandbox/track-overlay" element={<TrackOverlayPOCPage />} />
