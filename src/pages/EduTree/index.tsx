@@ -1,20 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { resolveEduTreeFlag, canBypassEduTreeFlag } from '@/lib/eduTreeFlags';
-import { useFeatureFlags } from '@/lib/featureFlags';
 import { DisabledFeature } from '@/components/DisabledFeature';
 import { EduTreeCanvas } from './EduTreeCanvas';
 import EduTreeCanvasV2 from './EduTreeCanvasV2';
+import type { FilterMode } from './data/seedDataV2';
 
 export default function EduTree() {
   console.log('[EduTree] Component mounting...');
   
   const enabled = resolveEduTreeFlag();
-  const flags = useFeatureFlags();
-  console.log('[EduTree] Flag resolved:', enabled);
-  console.log('[EduTree] V2 Flags:', { 
-    v2Grid: flags.eduTreeV2Grid, 
-    layoutMode: flags.eduTreeLayoutMode 
-  });
   
   // TODO: Get user role from auth context when available
   const userRole = undefined; // Replace with actual user role
@@ -38,12 +32,66 @@ export default function EduTree() {
     );
   }
 
-  // Check if V2 clean slate mode is active
-  const useV2 = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
+  // Dev controls for V2 testing
+  const [filterMode, setFilterMode] = useState<FilterMode>("compare-tracks");
+  const [layoutMode, setLayoutMode] = useState<"legacy"|"manual_v1"|"grid_v2">("manual_v1");
+  const [v2Grid, setV2Grid] = useState<boolean>(true);
+
+  const useV2 = v2Grid && (layoutMode === 'manual_v1' || layoutMode === 'grid_v2');
   
   if (useV2) {
-    console.log('[EduTree] Using V2 Clean Slate Canvas...');
-    return <EduTreeCanvasV2 />;
+    console.log('[EduTree] Using V2 Canvas with dev controls...');
+    return (
+      <div className="w-full h-full relative">
+        {/* Dev controls (always visible in dev) */}
+        <div className="absolute top-3 left-3 z-50 rounded-xl bg-black/50 backdrop-blur p-3 flex gap-3 items-center text-sm text-white">
+          <label className="flex items-center gap-2">
+            Filter
+            <select 
+              value={filterMode} 
+              onChange={e=>setFilterMode(e.target.value as FilterMode)} 
+              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+            >
+              <option value="compare-tracks">compare-tracks</option>
+              <option value="se">se</option>
+              <option value="ds">ds</option>
+              <option value="compare-programs">compare-programs</option>
+              <option value="bs_cs">bs_cs</option>
+              <option value="bs_it">bs_it</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            Layout
+            <select 
+              value={layoutMode} 
+              onChange={e=>setLayoutMode(e.target.value as any)} 
+              className="bg-white/20 border border-white/30 px-2 py-1 rounded text-white"
+            >
+              <option value="legacy">legacy</option>
+              <option value="manual_v1">manual_v1</option>
+              <option value="grid_v2">grid_v2</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            Grid V2
+            <input 
+              type="checkbox" 
+              checked={v2Grid} 
+              onChange={e=>setV2Grid(e.target.checked)} 
+              className="scale-110"
+            />
+          </label>
+        </div>
+
+        {/* Pass overrides down */}
+        <EduTreeCanvasV2
+          overrideFilterMode={filterMode}
+          overrideFlags={{ eduTreeV2Grid: v2Grid, eduTreeLayoutMode: layoutMode }}
+        />
+      </div>
+    );
   }
 
   console.log('[EduTree] Using Legacy EduTreeCanvas...');

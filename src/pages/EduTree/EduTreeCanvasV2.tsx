@@ -59,11 +59,30 @@ const nodeTypes = {
 
 interface EduTreeCanvasV2Props {
   filterMode?: FilterMode;
+  overrideFilterMode?: FilterMode;
+  overrideFlags?: Partial<{ 
+    eduTreeV2Grid: boolean; 
+    eduTreeLayoutMode: "legacy"|"manual_v1"|"grid_v2"; 
+  }>;
 }
 
-export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Props) {
+export default function EduTreeCanvasV2({ 
+  filterMode = null, 
+  overrideFilterMode,
+  overrideFlags 
+}: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
-  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(filterMode);
+  
+  // Use overrides when provided, otherwise fall back to feature flags
+  const effectiveFlags = {
+    eduTreeV2Grid: overrideFlags?.eduTreeV2Grid ?? flags.eduTreeV2Grid,
+    eduTreeLayoutMode: overrideFlags?.eduTreeLayoutMode ?? flags.eduTreeLayoutMode,
+  };
+  
+  // Use override filter mode when provided
+  const effectiveFilterMode = overrideFilterMode ?? filterMode;
+  
+  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -85,15 +104,15 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
     const singleTrack = presentTracks.size === 1;
     
     const usePlan =
-      flags.eduTreeV2Grid &&
-      flags.eduTreeLayoutMode === 'grid_v2' &&
+      effectiveFlags.eduTreeV2Grid &&
+      effectiveFlags.eduTreeLayoutMode === 'grid_v2' &&
       singleTrack;
       
     console.log('[EduTreeV2] Layout mode:', { 
       presentTracks: [...presentTracks], 
       singleTrack, 
       usePlan,
-      layoutMode: flags.eduTreeLayoutMode 
+      layoutMode: effectiveFlags.eduTreeLayoutMode 
     });
     
     applyManualLayout(
