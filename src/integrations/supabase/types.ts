@@ -7430,9 +7430,13 @@ export type Database = {
           credits_needed: number | null
           hidden: boolean | null
           id: string
+          is_virtual: boolean | null
           k: number | null
           level_year: number
           parent_block_id: string | null
+          position_x: number | null
+          position_y: number | null
+          program_id: string | null
           rule_type: string
           slug: string | null
           title: string
@@ -7445,9 +7449,13 @@ export type Database = {
           credits_needed?: number | null
           hidden?: boolean | null
           id?: string
+          is_virtual?: boolean | null
           k?: number | null
           level_year: number
           parent_block_id?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          program_id?: string | null
           rule_type: string
           slug?: string | null
           title: string
@@ -7460,9 +7468,13 @@ export type Database = {
           credits_needed?: number | null
           hidden?: boolean | null
           id?: string
+          is_virtual?: boolean | null
           k?: number | null
           level_year?: number
           parent_block_id?: string | null
+          position_x?: number | null
+          position_y?: number | null
+          program_id?: string | null
           rule_type?: string
           slug?: string | null
           title?: string

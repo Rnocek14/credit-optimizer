@@ -94,19 +94,19 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
-  // EduTree multipath overlay for track comparison
-  eduTreeMultiPathOverlay: (() => {
-    const url = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') : null;
-    const resolved = toBool(getFlagValue('eduTreeMultiPathOverlay','edu-tree-multipath-overlay','true'));
-    if (typeof window !== 'undefined') {
-      console.log('[Flags]', {
-        url,
-        resolved,
-        final: url !== null ? toBool(url) : resolved
-      });
-    }
-    return url !== null ? toBool(url) : resolved;
-  })(),
+    // EduTree multipath overlay for track comparison
+    eduTreeMultiPathOverlay: (() => {
+      const url = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') : null;
+      const resolved = toBool(getFlagValue('eduTreeMultiPathOverlay','edu-tree-multipath-overlay','true'));
+      if (typeof window !== 'undefined') {
+        console.log('[Flags]', {
+          url,
+          resolved,
+          final: url !== null ? toBool(url) : resolved
+        });
+      }
+      return url !== null ? toBool(url) : resolved;
+    })(),
   
   // Clean Slate V2 Flags
   eduTreeV2Grid: toBool(getFlagValue('eduTreeV2Grid', 'edu-tree-v2-grid', 'false')),
@@ -143,7 +143,8 @@ export function useFeatureFlags(): FeatureFlags {
 
 /**
  * Check if a specific feature is enabled
+ * Only works with boolean feature flags
  */
-export function isFeatureEnabled(feature: keyof FeatureFlags): boolean {
-  return getFeatureFlags()[feature];
+export function isFeatureEnabled(feature: Exclude<keyof FeatureFlags, 'eduTreeLayoutMode'>): boolean {
+  return getFeatureFlags()[feature] as boolean;
 }
