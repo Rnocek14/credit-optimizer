@@ -404,6 +404,11 @@ export class GraphLayoutEngine {
       return this.calculateHierarchicalLayout();
     }
 
+    // Use first root node or specified focus node
+    const rootNode = this.config.focusNodeId 
+      ? this.nodes.find(n => `${n.type}:${n.id}` === this.config.focusNodeId) || rootNodes[0]
+      : rootNodes[0];
+
     const layoutNodes: Node[] = [];
     const visited = new Set<string>();
     
@@ -426,10 +431,10 @@ export class GraphLayoutEngine {
         }
       });
 
-      // Position children using prerequisite edges (consistent with root finding)
+      // Position children
       const children = this.edges
         .filter(edge => 
-          edge.edge_type === 'prerequisite' && 
+          edge.edge_type === 'unlocks' && 
           `${edge.from_type}:${edge.from_id}` === nodeKey
         )
         .map(edge => this.nodes.find(n => `${n.type}:${n.id}` === `${edge.to_type}:${edge.to_id}`))
@@ -449,12 +454,7 @@ export class GraphLayoutEngine {
       return Math.max(x + style.width + this.config.spacing.nodeGap, childX);
     };
 
-    // Process ALL root nodes, spacing them horizontally
-    let currentX = 0;
-    rootNodes.forEach(rootNode => {
-      const treeWidth = positionTree(rootNode, currentX, 0, 0);
-      currentX = treeWidth + this.config.spacing.levelGap; // Space between separate trees
-    });
+    positionTree(rootNode, 0, 0, 0);
 
     const bounds = this.calculateBounds(layoutNodes);
 

@@ -19,31 +19,28 @@
   pointer-events: auto;
 }
 
-/* Node highlight states - Enhanced visibility */
+/* Node highlight states */
 .hl--dim { 
-  opacity: 0.25;
-  filter: grayscale(50%);
+  opacity: 0.4;
+  filter: grayscale(30%);
 }
 
 .hl--primary { 
   opacity: 1; 
-  outline: 3px solid var(--lp-primary-muted);
-  box-shadow: 0 0 12px hsla(210, 100%, 67%, 0.35);
-  background: hsla(210, 100%, 67%, 0.05);
+  outline: 2px solid var(--lp-primary-muted);
+  box-shadow: 0 0 6px hsla(210, 100%, 67%, 0.2);
 }
 
 .hl--comparison { 
   opacity: 1; 
-  outline: 3px solid var(--lp-compare-muted);
-  box-shadow: 0 0 12px hsla(340, 100%, 75%, 0.35);
-  background: hsla(340, 100%, 75%, 0.05);
+  outline: 2px solid var(--lp-compare-muted);
+  box-shadow: 0 0 6px hsla(340, 100%, 75%, 0.2);
 }
 
 .hl--both { 
   opacity: 1; 
-  outline: 4px solid var(--lp-shared-muted);
-  box-shadow: 0 0 16px hsla(140, 85%, 70%, 0.4);
-  background: hsla(140, 85%, 70%, 0.08);
+  outline: 2.5px solid var(--lp-shared-muted);
+  box-shadow: 0 0 8px hsla(140, 85%, 70%, 0.25);
 }
 
 /* Edge styles - Simple and direct like the POC */
@@ -80,54 +77,4 @@
 .hl--comparison:focus,
 .hl--both:focus {
   outline-offset: 2px;
-}
-
-/* STAGE 0.7 FIX: Balanced Mode CSS - Ensure both SE/DS tracks have full opacity when comparePrimary=both */
-/* When in balanced comparison mode, both tracks should have equal visual weight */
-body[data-compare-primary="both"] .hl--primary,
-body[data-compare-primary="both"] .hl--comparison,
-body[data-compare-primary="both"] .node--se,
-body[data-compare-primary="both"] .node--ds,
-body[data-compare-primary="both"] .edge--se,
-body[data-compare-primary="both"] .edge--ds {
-  opacity: 1 !important;
-  filter: none !important;
-}
-
-/* Ensure shared nodes remain prominent in all comparison modes */
-body[data-compare-primary] .hl--both,
-body[data-compare-primary] .node--shared,
-body[data-compare-primary] .edge--shared {
-  opacity: 1 !important;
-  filter: none !important;
-}
-
-/* PhaseA Layout Lock - ReactFlow Compatible Positioning Freeze */
-body.phaseA-layout-locked .react-flow__node {
-  position: absolute !important;
-  transition: none !important;
-  will-change: auto !important;
-  pointer-events: auto !important; /* Keep interactions enabled */
-}
-
-body.phaseA-layout-locked .react-flow__edge {
-  transition: none !important;
-  will-change: auto !important;
-}
-
-/* Disable ReactFlow internal transforms that cause repositioning */
-body.phaseA-layout-locked .react-flow__renderer {
-  transition: none !important;
-}
-
-/* CIRCUIT BREAKER: Completely disable layout calculations */
-body.phaseA-layout-locked .react-flow__viewport {
-  transition: none !important;
-}
-
-/* Lock node dimensions to prevent resize-triggered layouts */
-body.phaseA-layout-locked [data-testid="rf__node"] {
-  max-width: none !important;
-  max-height: none !important;
-  resize: none !important;
 }

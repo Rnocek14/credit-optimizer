@@ -10,7 +10,6 @@ import {
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
 import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
-import { applyBranchingTreeLayout } from './cleanTreeLayout';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -40,65 +39,16 @@ export function transformEducationData(
   const gates = Array.isArray(input.gates) ? input.gates : [];
   const gateEdges = Array.isArray(input.gateEdges) ? input.gateEdges : [];
 
-  // PhaseA: Filter out hidden blocks when flag is enabled
-  if (flags.eduTreePhaseA) {
-    console.log('[EduTree][Transform][PhaseA] Filtering hidden blocks. Before:', blocks.length);
-    blocks = blocks.filter(block => !block.hidden);
-    console.log('[EduTree][Transform][PhaseA] After filtering hidden blocks:', blocks.length);
-  }
-
-  // DIAGNOSTIC: Log all blocks before track filtering
-  console.log('[EduTree][Transform][PreTrackFilter] All blocks:', blocks.map(b => ({
-    id: b.id,
-    slug: b.slug, 
-    title: b.title,
-    track_id: b.track_id,
-    level_year: b.level_year
-  })));
-
-  // DIAGNOSTIC: Check overlay and track filtering logic
-  console.log('[EduTree][Transform][FilterLogic]', {
-    selectedTrackId,
-    overlayEnabled: flags.overlayEnabled,
-    shouldFilter: selectedTrackId && !flags.overlayEnabled,
-    originalBlockCount: blocks.length
-  });
-
-  // Filter blocks by selected track when not in overlay mode  
+  // Filter blocks by selected track when not in overlay mode
   if (selectedTrackId && !flags.overlayEnabled) {
     const trackDef = TRACK_MAP.get(selectedTrackId);
-    console.log('[EduTree][Transform][TrackFilter]', {
-      selectedTrackId,
-      trackDef: trackDef ? trackDef.name : 'NOT_FOUND',
-      allowedBlockIds: trackDef?.blockIds || [],
-      blocksBeforeFilter: blocks.length,
-      overlayEnabled: flags.overlayEnabled
-    });
-    
     if (trackDef) {
       const allowedBlockSlugs = new Set(trackDef.blockIds);
-      const originalBlocks = [...blocks];
       blocks = blocks.filter(block => {
         const slug = block.slug || block.id;
-        const isAllowed = allowedBlockSlugs.has(slug);
-        if (!isAllowed) {
-          console.log('[EduTree][Transform][FilterOut]', { blockId: block.id, slug, title: block.title });
-        }
-        return isAllowed;
-      });
-      console.log('[EduTree][Transform][AfterFilter]', { 
-        blocksAfterFilter: blocks.length,
-        filteredOut: originalBlocks.length - blocks.length,
-        remainingBlocks: blocks.map(b => ({ id: b.id, slug: b.slug, title: b.title }))
+        return allowedBlockSlugs.has(slug);
       });
     }
-  } else {
-    console.log('[EduTree][Transform][NoTrackFilter]', {
-      selectedTrackId,
-      overlayEnabled: flags.overlayEnabled,
-      reason: !selectedTrackId ? 'no-track-selected' : 'overlay-enabled',
-      keepingAllBlocks: blocks.length
-    });
   }
 
   console.log('[EduTree][Transform][Raw]', {
@@ -107,8 +57,6 @@ export function transformEducationData(
     blockMembers: blockMembers.length,
     gates: gates.length,
     gateEdges: gateEdges.length,
-    selectedTrackId,
-    trackDefExists: selectedTrackId ? !!TRACK_MAP.get(selectedTrackId) : 'no-track',
     sampleBlock: blocks?.[0],
     sampleGateEdge: gateEdges?.[0],
   });
@@ -225,7 +173,10 @@ export function transformEducationData(
       return {
         id: String(block.id), // Ensure string ID
         type: 'blockGroup',
-        position: { x: 0, y: 0 }, // Will be set by clean tree layout
+        position: {
+          x: levelYear * 320,
+          y: rowIndex * 200
+        },
         data: {
           block,
           completedCourseIds,
@@ -236,18 +187,8 @@ export function transformEducationData(
           area: block.area || 'unknown',
           isHighlighted: false,
           planningLens: null,
-          // PhaseA enhancements
-          phaseA: flags.eduTreePhaseA ? {
-            isShared: !block.track_id,
-            trackId: block.track_id,
-            trackBadge: block.track_id === 'software-engineering' ? 'SE' : 
-                       block.track_id === 'data-science' ? 'DS' : 
-                       'Shared'
-          } : undefined
         },
-        className: flags.eduTreePhaseA ? 
-          `node ${block.track_id ? `track-${block.track_id}` : 'shared'}` : 
-          'node'
+        className: 'node'
       };
     })
     .filter(Boolean) as Node[];
@@ -293,16 +234,6 @@ export function transformEducationData(
     });
   }
 
-  // Edge track classification for path identity
-  const edgeClass = (sid: string, tid: string) => {
-    const s = sortedBlocks.find(b => String(b.id) === sid);
-    const t = sortedBlocks.find(b => String(b.id) === tid);
-    const tr = t?.track_id ?? s?.track_id ?? null;
-    return tr === 'software-engineering' ? 'edge--se'
-         : tr === 'data-science' ? 'edge--ds'
-         : 'edge--shared';
-  };
-
   // Second pass: create edges - preserve all unique paths, consolidate only true duplicates
   for (const [edgeKey, duplicates] of edgeMap) {
     const { sourceBlockId, targetBlockId, sourceBlock } = duplicates[0];
@@ -313,13 +244,12 @@ export function transformEducationData(
     }
     
     // Create single edge for this unique source->target path
-    const trackClass = edgeClass(sourceBlockId, targetBlockId);
     regularEdges.push({
       id: `e-${sourceBlockId}-${targetBlockId}`,
       source: sourceBlockId,
       target: targetBlockId,
       type: 'smoothstep',
-      className: duplicates.length > 1 ? `edge ${trackClass} edge-consolidated` : `edge ${trackClass}`,
+      className: duplicates.length > 1 ? 'edge edge-consolidated' : 'edge',
       data: {
         isConsolidated: duplicates.length > 1,
         prerequisite: {
@@ -332,285 +262,69 @@ export function transformEducationData(
     });
   }
 
-  // PhaseA: Skip degree completion node when flag is enabled
-  if (!flags.eduTreePhaseA) {
-    // Legacy mode: Add degree completion node (defensive)
-    const capstoneBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('capstone'));
-    const architectureBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('architecture'));
-    
-    const isDegreeUnlocked = capstoneBlock && architectureBlock && 
-      isBlockComplete(capstoneBlock, capstoneBlock.courses || [], completedCourseIds) &&
-      isBlockComplete(architectureBlock, architectureBlock.courses || [], completedCourseIds);
+  // Add degree completion node (defensive)
+  const capstoneBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('capstone'));
+  const architectureBlock = sortedBlocks.find(b => b?.title?.toLowerCase().includes('architecture'));
+  
+  const isDegreeUnlocked = capstoneBlock && architectureBlock && 
+    isBlockComplete(capstoneBlock, capstoneBlock.courses || [], completedCourseIds) &&
+    isBlockComplete(architectureBlock, architectureBlock.courses || [], completedCourseIds);
 
-    const totalCourses = courses.length;
-    const completedCourses = Array.from(completedCourseIds).length;
+  const totalCourses = courses.length;
+  const completedCourses = Array.from(completedCourseIds).length;
 
-    const degreeNode: Node = {
-      id: 'degree-completion',
-      type: 'terminalNode',
-      position: { x: 5 * 320, y: 0 },
-      data: {
-        block: {
-          id: 'degree-completion',
-          title: 'B.S. Software Engineering',
-          rule_type: 'ALL' as const,
-          level_year: 5,
-          area: 'degree',
-          courses: [],
-          gate: { id: 'degree-gate', block_id: 'degree-completion' }
-        },
-        isEligible: isDegreeUnlocked || false,
-        degreeType: 'Bachelor of Science',
-        credits: totalCourses * 3,
-        completedCourseIds,
-        isUnlocked: isDegreeUnlocked || false,
-        progress: {
-          completed: completedCourses,
-          required: totalCourses
-        },
-        isDegreeNode: true,
-        isDegreeComplete: completedCourses === totalCourses
+  const degreeNode: Node = {
+    id: 'degree-completion',
+    type: 'terminalNode',
+    position: { x: 5 * 320, y: 0 },
+    data: {
+      block: {
+        id: 'degree-completion',
+        title: 'B.S. Software Engineering',
+        rule_type: 'ALL' as const,
+        level_year: 5,
+        area: 'degree',
+        courses: [],
+        gate: { id: 'degree-gate', block_id: 'degree-completion' }
       },
-      className: 'node terminal-node'
-    };
-
-    // Add degree edges (defensive)
-    const degreeEdges: Edge[] = [];
-    if (capstoneBlock) {
-      degreeEdges.push({
-        id: 'capstone-to-degree',
-        source: String(capstoneBlock.id),
-        target: 'degree-completion',
-        type: 'smoothstep',
-        className: 'edge degree-edge'
-      });
-    }
-    if (architectureBlock) {
-      degreeEdges.push({
-        id: 'architecture-to-degree',
-        source: String(architectureBlock.id),
-        target: 'degree-completion',
-        type: 'smoothstep',
-        className: 'edge degree-edge'
-      });
-    }
-
-    const nodes: Node[] = [...regularNodes, degreeNode];
-    const edges: Edge[] = [...regularEdges, ...degreeEdges];
-    
-    return { nodes, edges, blocksWithCourses };
-  }
-
-  // Apply branching tree layout to all nodes
-  const layoutedNodes = applyBranchingTreeLayout(regularNodes);
-
-  // PhaseA mode: No degree completion node, capstones are terminal  
-  let nodes: Node[] = [...layoutedNodes];  // Use tree-positioned nodes
-  let edges: Edge[] = [...regularEdges];
-
-  // === Overlay-only gate + edge cleanup ======================================
-  const WANT_OVERLAY = !!flags.overlayEnabled && !!flags.eduTreePhaseA;
-  const GATE_ID = 'divergence-gate';
-
-  if (WANT_OVERLAY) {
-    console.log('[Overlay][PhaseA] start', {
-      overlay: flags.overlayEnabled,
-      phaseA: flags.eduTreePhaseA,
-      count: {
-        regularNodes: regularNodes?.length,
-        regularEdges: regularEdges?.length,
-      }
-    });
-
-    // 1) Inject virtual gate node (shared, sits at Y3 boundary)
-    const gateNode: Node = {
-      id: GATE_ID,
-      type: 'blockGroup',
-      data: {
-        block: {
-          id: GATE_ID,
-          slug: 'divergence-gate',
-          title: 'Track Gate',
-          rule_type: 'ALL' as const,
-          level_year: 3,
-          track_id: null,
-          courses: []
-        },
-        completedCourseIds,
-        isUnlocked: true,
-        progress: {
-          completed: 0,
-          required: 0
-        },
-        subBlocks: [],
-        level_year: 3,
-        area: 'gate',
-        isHighlighted: false,
-        planningLens: null,
-        phaseA: {
-          isShared: true,
-          trackId: null,
-          trackBadge: 'Gate'
-        }
+      isEligible: isDegreeUnlocked || false,
+      degreeType: 'Bachelor of Science',
+      credits: totalCourses * 3,
+      completedCourseIds,
+      isUnlocked: isDegreeUnlocked || false,
+      progress: {
+        completed: completedCourses,
+        required: totalCourses
       },
-      position: { x: 0, y: 0 },
-      draggable: true,  // Enable dragging for manual positioning
-      className: 'node node--shared node--gate'
-    };
-    
-    if (!nodes.some(n => String(n.id) === GATE_ID)) {
-      nodes.push(gateNode);
-    }
+      isDegreeNode: true,
+      isDegreeComplete: completedCourses === totalCourses
+    },
+    className: 'node terminal-node'
+  };
 
-    // 2) Rewire Y2(shared) → Gate → Y3(track starts)
-    const idToBlock = new Map<string, BlockWithCourses>(sortedBlocks.map(b => [String(b.id), b]));
-    const isY2Shared = (b: BlockWithCourses) => b?.level_year === 2 && !b?.track_id;
-    const isTrackY3 = (b: BlockWithCourses) => b?.level_year === 3 && !!b?.track_id;
-
-    // remove ANY Y2-shared -> Y3-track edge to ensure gate owns the fork
-    edges = edges.filter(e => {
-      const s = idToBlock.get(String(e.source));
-      const t = idToBlock.get(String(e.target));
-      return !(s && t && s.level_year === 2 && !s.track_id && isTrackY3(t));
+  // Add degree edges (defensive)
+  const degreeEdges: Edge[] = [];
+  if (capstoneBlock) {
+    degreeEdges.push({
+      id: 'capstone-to-degree',
+      source: String(capstoneBlock.id),
+      target: 'degree-completion',
+      type: 'smoothstep',
+      className: 'edge degree-edge'
     });
-
-    const y2SharedIds = sortedBlocks.filter(isY2Shared).map(b => String(b.id));
-    const y3StartIds  = sortedBlocks.filter(isTrackY3).map(b => String(b.id));
-
-    const seenEdge = new Set<string>();
-    const addEdge = (src: string, tgt: string, cls: string) => {
-      const id = `e-${src}-${tgt}`;
-      if (seenEdge.has(id)) return;
-      seenEdge.add(id);
-      edges.push({ id, source: src, target: tgt, type: 'step', className: `edge ${cls}` });
-    };
-
-    // (Y2 shared) -> Gate (shared tint)
-    y2SharedIds.forEach(s => addEdge(s, GATE_ID, 'edge--shared'));
-
-    // Gate -> Track starts (inherit target track tint)
-    y3StartIds.forEach(t => {
-      const tb = idToBlock.get(String(t));
-      const cls = tb?.track_id === 'software-engineering' ? 'edge--se'
-               : tb?.track_id === 'data-science' ? 'edge--ds'
-               : 'edge--shared';
-      addEdge(GATE_ID, t, cls);
-    });
-
-    // 3) Force overlay edges to orthogonal step routing and optionally split multi-lane jumps
-    const splitMultiLane = new URLSearchParams(window.location.search).get('qaSplitMultiLane') === 'true';
-    const levelYear = (id: string): number | undefined => {
-      if (id === GATE_ID) return 3;
-      return idToBlock.get(String(id))?.level_year;
-    };
-
-    if (splitMultiLane) {
-      // Multi-lane splitting enabled - create bridge nodes for long jumps
-      const newNodes: Node[] = [];
-      const newEdges: Edge[] = [];
-
-      const makeBridgeId = (prefix: string, lane: number) => `bridge-${prefix}-y${lane}`;
-
-      for (const e of edges) {
-        const sLY = levelYear(String(e.source));
-        const tLY = levelYear(String(e.target));
-        if (typeof sLY === 'number' && typeof tLY === 'number' && tLY - sLY > 1) {
-          // Split into adjacent-lane segments with invisible bridge nodes
-          let prev = String(e.source);
-          for (let y = sLY + 1; y <= tLY; y++) {
-            const lastHop = y === tLY;
-            const bridgeId = lastHop ? String(e.target) : makeBridgeId(prev, y);
-            if (!lastHop) {
-              newNodes.push({
-                id: bridgeId,
-                type: 'laneBridge',
-                data: { block: { id: bridgeId, title: '', level_year: y, track_id: null } },
-                position: { x: 0, y: 0 },
-                draggable: true,  // Enable dragging for manual positioning
-                hidden: true,
-                className: 'node node--bridge'
-              });
-            }
-            newEdges.push({
-              id: `e-${prev}-${bridgeId}`,
-              source: prev,
-              target: bridgeId,
-              type: 'step',
-              className: e.className || 'edge'
-            });
-            prev = bridgeId;
-          }
-        } else {
-          newEdges.push({ ...e, type: 'step' });
-        }
-      }
-
-      if (newNodes.length) {
-        nodes = [...nodes, ...newNodes];
-        edges = newEdges;
-      } else {
-        edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
-      }
-    } else {
-      // no splitting; just convert to step edges with proper handles
-      edges = edges.map(ed => ({ ...ed, type: 'step', sourceHandle: 'r', targetHandle: 'l' }));
-    }
   }
-  // === end overlay gate + edge cleanup =======================================
-
-  // === ROBUST MODE DETECTION (data-driven) ===
-  // Detect compare vs single-track from data, not just flags
-  const presentTracks = new Set(
-    sortedBlocks
-      .map(b => b.track_id)
-      .filter((t): t is 'software-engineering' | 'data-science' => !!t)
-  );
-
-  const isCompare = !!flags.overlayEnabled;
-  const isSingleData = !flags.overlayEnabled && presentTracks.size === 1;
-  const activeTrack = selectedTrackId || [...presentTracks][0] || null;
-
-  console.log('[Layout] Using clean tree layout for all nodes');
-
-  // Enhanced debugging: log edge generation and type standardization
-  console.log('[Layout] Edge generation complete:', {
-    totalEdges: edges.length,
-    stepEdges: edges.filter(e => e.type === 'step').length,
-    handledEdges: edges.filter(e => e.sourceHandle === 'r' && e.targetHandle === 'l').length,
-    sampleEdgeTypes: edges.slice(0, 3).map(e => ({ 
-      id: e.id, 
-      type: e.type, 
-      sourceHandle: e.sourceHandle, 
-      targetHandle: e.targetHandle 
-    }))
-  });
-
-  // PhaseA assertions (non-breaking)
-  if (flags.eduTreePhaseA) {
-    const badIds = edges.filter(e => !/^e-.+-.+$/.test(String(e.id)));
-    if (badIds.length) {
-      console.warn('[MP Overlay][ASSERT] Non-normalized edge IDs', badIds.slice(0, 5));
-    }
-    
-    const backwards = edges.filter(e => {
-      const s = sortedBlocks.find(b => String(b.id) === String(e.source))?.level_year ?? -1;
-      const t = sortedBlocks.find(b => String(b.id) === String(e.target))?.level_year ?? 999;
-      return t < s; // <-- changed from !(t > s)
+  if (architectureBlock) {
+    degreeEdges.push({
+      id: 'architecture-to-degree',
+      source: String(architectureBlock.id),
+      target: 'degree-completion',
+      type: 'smoothstep',
+      className: 'edge degree-edge'
     });
-    if (backwards.length) {
-      console.warn('[MP Overlay][ASSERT] Backward edges found', backwards.slice(0, 5));
-    }
-    
-    // STAGE 0.7 FIX: Validate bridge node exclusion
-    const bridgeNodesInLayout = nodes.filter(n => n.type === 'laneBridge' && n.data?.hasGridLayout);
-    if (bridgeNodesInLayout.length > 0) {
-      console.warn('[Layout][ASSERT] Bridge nodes found in grid layout - this should not happen:', 
-        bridgeNodesInLayout.map(n => n.id)
-      );
-    } else {
-      console.log('[Layout] ✓ Bridge node exclusion verified - no bridge nodes in grid layout');
-    }
   }
+
+  const nodes: Node[] = [...regularNodes, degreeNode];
+  const edges: Edge[] = [...regularEdges, ...degreeEdges];
 
   console.log('[EduTree][Transform][Result]', { 
     nodes: nodes.length, 
@@ -621,8 +335,7 @@ export function transformEducationData(
     totalPrerequisites: edges.reduce((sum, e) => {
       const prereqs = e.data?.prerequisites;
       return sum + (Array.isArray(prereqs) ? prereqs.length : 0);
-    }, 0),
-    phaseAMode: flags.eduTreePhaseA
+    }, 0)
   });
 
   return { nodes, edges, blocksWithCourses };

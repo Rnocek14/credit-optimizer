@@ -8,7 +8,7 @@ export interface TrackDefinition {
   blockIds: string[]; // ordered block ids (using slugs)
 }
 
-// Track definitions using block slugs - PhaseA: Remove degree-completion bottleneck
+// Track definitions using block slugs
 export const TRACK_DEFINITIONS: TrackDefinition[] = [
   {
     id: 'software-engineering',
@@ -23,7 +23,8 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'core-ii',
       'specializations',
       'architecture',
-      'capstone-software-engineering'
+      'capstone-software-engineering',
+      'degree-completion'
     ]
   },
   {
@@ -39,7 +40,8 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'core-ii',
       'data-analysis',
       'machine-learning',
-      'capstone-data-science'
+      'capstone-data-science',
+      'degree-completion'
     ]
   }
 ];

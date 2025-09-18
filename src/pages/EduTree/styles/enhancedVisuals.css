@@ -1,0 +1,233 @@
+/* Enhanced Visual Styling for EduTree - Better readability and reduced crossings */
+
+/* Enhanced track colors with better contrast */
+:root {
+  --track-software-engineering: hsl(220, 90%, 56%);
+  --track-data-science: hsl(160, 84%, 39%);
+  --track-shared: hsl(270, 60%, 60%);
+  --track-decision: hsl(45, 95%, 50%);
+  
+  /* Muted versions for subtle effects */
+  --track-software-engineering-muted: hsl(220, 60%, 45%);
+  --track-data-science-muted: hsl(160, 60%, 30%);
+  --track-shared-muted: hsl(270, 40%, 50%);
+  --track-decision-muted: hsl(45, 70%, 40%);
+  
+  /* Background lanes */
+  --lane-software-engineering: hsla(220, 90%, 56%, 0.03);
+  --lane-data-science: hsla(160, 84%, 39%, 0.03);
+  --lane-shared: hsla(270, 60%, 60%, 0.03);
+}
+
+/* Visual lanes for track separation */
+.edu-tree-canvas {
+  position: relative;
+}
+
+.edu-tree-canvas::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--lane-shared) 0%,
+    var(--lane-shared) 33%,
+    var(--lane-software-engineering) 33%,
+    var(--lane-software-engineering) 66%,
+    var(--lane-data-science) 66%,
+    var(--lane-data-science) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Enhanced node styling based on track and role */
+.node {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
+}
+
+/* Decision point nodes - special highlighting */
+.node[data-is-decision-point="true"] {
+  position: relative;
+}
+
+.node[data-is-decision-point="true"]::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  background: linear-gradient(135deg, var(--track-decision), var(--track-decision-muted));
+  border-radius: 12px;
+  opacity: 0.1;
+  z-index: -1;
+}
+
+.node[data-is-decision-point="true"]::after {
+  content: '⚡';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  font-size: 16px;
+  background: var(--track-decision);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  z-index: 20;
+}
+
+/* Track-specific node styling */
+.node[data-tracks*="software-engineering"] {
+  border-left: 4px solid var(--track-software-engineering);
+}
+
+.node[data-tracks*="data-science"] {
+  border-left: 4px solid var(--track-data-science);
+}
+
+.node[data-is-shared="true"] {
+  border-left: 4px solid var(--track-shared);
+  background: var(--lane-shared);
+}
+
+/* Enhanced edge styling with better routing visualization */
+.react-flow__edge {
+  z-index: 5;
+}
+
+/* Base edge styles */
+.react-flow__edge .react-flow__edge-path {
+  stroke: hsl(var(--muted-foreground));
+  stroke-width: 2px;
+  transition: all 0.3s ease;
+}
+
+/* Long span edges - thicker and more visible */
+.react-flow__edge.edge-long-span .react-flow__edge-path {
+  stroke-width: 3px;
+  stroke: var(--track-shared-muted);
+  stroke-dasharray: 8 4;
+  animation: dash 2s linear infinite;
+}
+
+/* Vertical span edges - different styling */
+.react-flow__edge.edge-vertical-span .react-flow__edge-path {
+  stroke-width: 2.5px;
+  stroke: var(--track-decision-muted);
+}
+
+/* Track-specific edge colors */
+.react-flow__edge.edge--primary .react-flow__edge-path {
+  stroke: var(--track-software-engineering);
+  stroke-width: 3px;
+}
+
+.react-flow__edge.edge--comparison .react-flow__edge-path {
+  stroke: var(--track-data-science);
+  stroke-width: 3px;
+  stroke-dasharray: 8 4;
+}
+
+.react-flow__edge.edge--both .react-flow__edge-path {
+  stroke: var(--track-shared);
+  stroke-width: 4px;
+}
+
+.react-flow__edge.edge--dim .react-flow__edge-path {
+  opacity: 0.2;
+  stroke-width: 1px;
+}
+
+/* Animated dash effect for long connections */
+@keyframes dash {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -24;
+  }
+}
+
+/* Enhanced hover effects */
+.node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px hsla(var(--primary), 0.15);
+  z-index: 100;
+}
+
+.node:hover .react-flow__edge[data-source] {
+  opacity: 1;
+}
+
+.node:hover .react-flow__edge[data-target] {
+  opacity: 1;
+}
+
+/* Focus states for accessibility */
+.node:focus {
+  outline: 2px solid var(--track-decision);
+  outline-offset: 4px;
+}
+
+/* Level indicators */
+.node::before {
+  content: attr(data-level);
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  background: hsla(var(--muted), 0.8);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  z-index: 15;
+}
+
+/* Progressive disclosure - hide level indicators when not needed */
+.edu-tree-canvas[data-overlay-enabled="true"] .node::before {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .node[data-is-decision-point="true"]::after {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    top: -10px;
+    right: -10px;
+  }
+  
+  .react-flow__edge .react-flow__edge-path {
+    stroke-width: 1.5px;
+  }
+  
+  .react-flow__edge.edge-long-span .react-flow__edge-path {
+    stroke-width: 2px;
+  }
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --lane-software-engineering: hsla(220, 90%, 56%, 0.05);
+    --lane-data-science: hsla(160, 84%, 39%, 0.05);
+    --lane-shared: hsla(270, 60%, 60%, 0.05);
+  }
+  
+  .node[data-is-decision-point="true"]::before {
+    opacity: 0.15;
+  }
+}

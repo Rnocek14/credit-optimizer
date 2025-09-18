@@ -23,9 +23,6 @@ export interface RequirementBlock {
   level_year: number;
   area: string;
   parent_block_id?: string | null;
-  // PhaseA columns
-  hidden?: boolean;
-  track_id?: string | null;
 }
 
 export interface BlockMember {

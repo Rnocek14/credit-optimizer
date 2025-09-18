@@ -38,8 +38,6 @@ export function useEduTreeData(): EduTreeDataResult {
       if (error) throw error;
       return (data as EduCourse[]) || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
   });
 
   const blocksQuery = useQuery({
@@ -54,8 +52,6 @@ export function useEduTreeData(): EduTreeDataResult {
       if (error) throw error;
       return (data as RequirementBlock[]) || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
   });
 
   const blockMembersQuery = useQuery({

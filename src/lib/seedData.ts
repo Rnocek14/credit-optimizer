@@ -31,22 +31,16 @@ const seedData = {
   ],
 
   blocks: [
-    // Shared blocks (Y1-Y2)
-    { title: "Foundations", rule_type: "K_OF_N", k: 2, level_year: 1, area: "foundation", track_id: null, slug: "foundations" },
-    { title: "Mathematics", rule_type: "K_OF_N", k: 2, level_year: 1, area: "mathematics", track_id: null, slug: "mathematics" },
-    { title: "General Education", rule_type: "K_OF_N", k: 3, level_year: 2, area: "general_education", track_id: null, slug: "general-education" },
-    { title: "Core I", rule_type: "K_OF_N", k: 2, level_year: 2, area: "core", track_id: null, slug: "core-i" },
-    { title: "Core II", rule_type: "K_OF_N", k: 2, level_year: 2, area: "core", track_id: null, slug: "core-ii" },
-    
-    // Software Engineering Track (Y3+)
-    { title: "Specializations", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization", track_id: "software-engineering", slug: "specializations" },
-    { title: "Architecture", rule_type: "ALL", level_year: 4, area: "software_engineering", track_id: "software-engineering", slug: "architecture" },
-    { title: "Software Engineering Capstone", rule_type: "ALL", level_year: 4, area: "capstone", track_id: "software-engineering", slug: "capstone-software-engineering" },
-    
-    // Data Science Track (Y3+)
-    { title: "Data Analysis", rule_type: "ALL", level_year: 3, area: "data_science", track_id: "data-science", slug: "data-analysis" },
-    { title: "Machine Learning", rule_type: "ALL", level_year: 4, area: "data_science", track_id: "data-science", slug: "machine-learning" },
-    { title: "Data Science Capstone", rule_type: "ALL", level_year: 4, area: "capstone", track_id: "data-science", slug: "capstone-data-science" }
+    { title: "Foundations", rule_type: "K_OF_N", k: 2, level_year: 1, area: "foundation" },
+    { title: "Mathematics", rule_type: "K_OF_N", k: 2, level_year: 1, area: "mathematics" },
+    { title: "General Education", rule_type: "K_OF_N", k: 3, level_year: 1, area: "general_education" },
+    { title: "Core I", rule_type: "K_OF_N", k: 2, level_year: 2, area: "core" },
+    { title: "Core II", rule_type: "K_OF_N", k: 2, level_year: 3, area: "core" },
+    { title: "Specializations", rule_type: "K_OF_N", k: 2, level_year: 3, area: "specialization" },
+    { title: "Web Development", rule_type: "ALL", level_year: 3, area: "specialization" },
+    { title: "Mobile Development", rule_type: "ALL", level_year: 3, area: "specialization" },
+    { title: "Architecture", rule_type: "ALL", level_year: 4, area: "software_engineering" },
+    { title: "Capstone", rule_type: "ALL", level_year: 4, area: "capstone" }
   ],
 
   blockCourseRelations: [
@@ -56,31 +50,21 @@ const seedData = {
     { blockTitle: 'Core I', courseCodes: ['CS-201', 'CS-202'] },
     { blockTitle: 'Core II', courseCodes: ['CS-301', 'CS-302'] },
     { blockTitle: 'Specializations', courseCodes: ['CS-351', 'CS-361'] },
+    { blockTitle: 'Web Development', courseCodes: ['CS-351'] },
+    { blockTitle: 'Mobile Development', courseCodes: ['CS-361'] },
     { blockTitle: 'Architecture', courseCodes: ['CS-401'] },
-    { blockTitle: 'Software Engineering Capstone', courseCodes: ['CS-499'] },
-    { blockTitle: 'Data Analysis', courseCodes: ['CS-351'] },
-    { blockTitle: 'Machine Learning', courseCodes: ['CS-361'] },
-    { blockTitle: 'Data Science Capstone', courseCodes: ['CS-499'] }
+    { blockTitle: 'Capstone', courseCodes: ['CS-499'] }
   ],
 
   edges: [
-    // Shared foundation connections
     { from: "Mathematics", to: "Core I" },
     { from: "General Education", to: "Core I" },
     { from: "Foundations", to: "Core I" },
     { from: "Core I", to: "Core II" },
-    
-    // Branching to tracks (Y2 -> Y3)
     { from: "Core II", to: "Specializations" },
-    { from: "Core II", to: "Data Analysis" },
-    
-    // Software Engineering track progression
-    { from: "Specializations", to: "Architecture" },
-    { from: "Architecture", to: "Software Engineering Capstone" },
-    
-    // Data Science track progression
-    { from: "Data Analysis", to: "Machine Learning" },
-    { from: "Machine Learning", to: "Data Science Capstone" }
+    { from: "Core II", to: "Architecture" },
+    { from: "Specializations", to: "Capstone" },
+    { from: "Architecture", to: "Capstone" }
   ]
 };
 
@@ -153,13 +137,11 @@ export async function seedEduTreeData({ destructive = false } = {}) {
 
     const blocksToInsert = seedData.blocks.map(block => ({
       title: block.title,
-      slug: (block as any).slug,
       rule_type: block.rule_type,
       k: (block as any).k ?? null,
       credits_needed: null,
       level_year: block.level_year,
-      area: block.area,
-      track_id: (block as any).track_id
+      area: block.area
     }));
 
     const { data: insertedBlocks, error: blocksError } = await supabase
@@ -174,14 +156,14 @@ export async function seedEduTreeData({ destructive = false } = {}) {
 
     const blockTitleToId = new Map(insertedBlocks?.map(block => [block.title, block.id]) || []);
 
-    // Remove legacy parent-child relationship update since we're using track-based branching
-    // const specializationsBlockId = blockTitleToId.get('Specializations');
-    // if (specializationsBlockId) {
-    //   await supabase
-    //     .from('requirement_blocks')
-    //     .update({ parent_block_id: specializationsBlockId })
-    //     .in('title', ['Web Development', 'Mobile Development']);
-    // }
+    // Update parent block relationships
+    const specializationsBlockId = blockTitleToId.get('Specializations');
+    if (specializationsBlockId) {
+      await supabase
+        .from('requirement_blocks')
+        .update({ parent_block_id: specializationsBlockId })
+        .in('title', ['Web Development', 'Mobile Development']);
+    }
 
     // Insert block members, gates, and edges
     const membersToInsert: any[] = [];
