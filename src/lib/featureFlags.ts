@@ -109,11 +109,36 @@ export function getFeatureFlags(): FeatureFlags {
     })(),
   
   // Clean Slate V2 Flags
-  eduTreeV2Grid: toBool(getFlagValue('eduTreeV2Grid', 'edu-tree-v2-grid', 'false')),
+  // V2: master grid switch (boolean)
+  eduTreeV2Grid: (() => {
+    const urlVal =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("eduTreeV2Grid")
+        : null;
+
+    const resolved = toBool(getFlagValue("eduTreeV2Grid", "edu-tree-v2-grid", "false"));
+
+    if (typeof window !== "undefined") {
+      console.log("[Flags][V2Grid]", { urlVal, resolved, final: urlVal !== null ? toBool(urlVal) : resolved });
+    }
+    return urlVal !== null ? toBool(urlVal) : resolved;
+  })(),
+
+  // V2: layout mode (string enum)
   eduTreeLayoutMode: (() => {
-    const mode = getFlagValue('eduTreeLayoutMode', 'edu-tree-layout-mode', 'legacy');
-    const validModes = ['legacy', 'manual_v1', 'grid_v2'];
-    return validModes.includes(mode) ? mode as 'legacy' | 'manual_v1' | 'grid_v2' : 'legacy';
+    const urlVal =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("eduTreeLayoutMode")
+        : null;
+
+    const raw = urlVal ?? getFlagValue("eduTreeLayoutMode", "edu-tree-layout-mode", "legacy");
+    const valid: Array<"legacy" | "manual_v1" | "grid_v2"> = ["legacy", "manual_v1", "grid_v2"];
+    const mode = (valid as readonly string[]).includes(raw) ? (raw as "legacy" | "manual_v1" | "grid_v2") : "legacy";
+
+    if (typeof window !== "undefined") {
+      console.log("[Flags][V2Mode]", { urlVal, final: mode });
+    }
+    return mode;
   })(),
   };
   

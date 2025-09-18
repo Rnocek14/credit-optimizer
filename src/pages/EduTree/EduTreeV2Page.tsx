@@ -16,7 +16,11 @@ export default function EduTreeV2Page() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has("eduTreeV2Grid")) url.searchParams.set("eduTreeV2Grid", "true");
   if (!url.searchParams.has("eduTreeLayoutMode")) url.searchParams.set("eduTreeLayoutMode", "manual_v1");
-  // Do NOT reload here; we'll rely on EduTreeCanvasV2 reading flags directly.
+  
+  // WRITE BACK to the address bar without reload:
+  if (window.location.href !== url.toString()) {
+    window.history.replaceState(null, "", url.toString());
+  }
 
   return (
     <div className="h-[calc(100vh-64px)] w-full">
