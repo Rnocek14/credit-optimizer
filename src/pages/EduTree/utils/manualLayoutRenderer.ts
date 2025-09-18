@@ -6,7 +6,7 @@
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
 
-export interface V2NodeData extends Record<string, unknown> {
+export interface V2NodeData {
   title: string;
   ruleType: string;
   levelYear: number;
@@ -22,6 +22,7 @@ export interface V2NodeData extends Record<string, unknown> {
     x: number;
     y: number;
   };
+  [key: string]: unknown; // Index signature for ReactFlow compatibility
 }
 
 /**
