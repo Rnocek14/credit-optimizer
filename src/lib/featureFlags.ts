@@ -24,6 +24,10 @@ interface FeatureFlags {
   eduTreePlaceholders: boolean; // Requirement placeholder nodes
   eduTreeStaggeredEdgesV2: boolean; // V2 staggered edge system
   eduTreeMultiPathOverlay: boolean; // Multipath track comparison overlay
+  
+  // Clean Slate V2 Flags
+  eduTreeV2Grid: boolean; // Master flag for V2 system
+  eduTreeLayoutMode: 'legacy' | 'manual_v1' | 'grid_v2'; // Layout system mode
 }
 
 /**
@@ -102,6 +106,14 @@ export function getFeatureFlags(): FeatureFlags {
       });
     }
     return url !== null ? toBool(url) : resolved;
+  })(),
+  
+  // Clean Slate V2 Flags
+  eduTreeV2Grid: toBool(getFlagValue('eduTreeV2Grid', 'edu-tree-v2-grid', 'false')),
+  eduTreeLayoutMode: (() => {
+    const mode = getFlagValue('eduTreeLayoutMode', 'edu-tree-layout-mode', 'legacy');
+    const validModes = ['legacy', 'manual_v1', 'grid_v2'];
+    return validModes.includes(mode) ? mode as 'legacy' | 'manual_v1' | 'grid_v2' : 'legacy';
   })(),
   };
   
