@@ -3,7 +3,7 @@
  * No algorithms, just direct coordinate mapping from database
  */
 
-import { Node, Edge } from '@xyflow/react';
+import { Node, Edge, MarkerType } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
 
 export interface V2NodeData extends Record<string, unknown> {
@@ -51,11 +51,16 @@ export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
     id: `${edge.source}-${edge.target}`,
     source: edge.source,
     target: edge.target,
-    type: 'smoothstep',
+    type: 'step',
     animated: false,
     style: {
-      stroke: 'hsl(var(--primary))',
-      strokeWidth: 2
+      stroke: 'rgba(255,255,255,0.85)',
+      strokeWidth: 3,
+      strokeLinecap: 'round'
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: 'rgba(255,255,255,0.85)'
     }
   }));
 }

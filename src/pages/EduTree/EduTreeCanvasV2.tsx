@@ -121,11 +121,21 @@ export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
           ▲ Software Engineering Lane
         </div>
       </div>
-      <div className="absolute top-4 left-[1300px] translate-y-[300px] text-xs opacity-70 z-10 pointer-events-none">
+      <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
         <div className="bg-background/80 px-2 py-1 rounded border">
           ▼ Data Science Lane
         </div>
       </div>
+
+      {/* Midline spine at gate row */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{ 
+          top: 360, 
+          height: 2, 
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)' 
+        }}
+      />
 
       {/* Faint horizontal lane dividers */}
       <div className="absolute top-0 left-[1250px] w-[500px] h-[200px] bg-primary/5 rounded-lg pointer-events-none" />
