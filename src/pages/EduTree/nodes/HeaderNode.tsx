@@ -8,7 +8,20 @@ export interface HeaderNodeData {
 
 export default function HeaderNode({ data }: { data: HeaderNodeData }) {
   return (
-    <div className="px-3 py-1 rounded-full bg-background/80 border border-border/20 text-foreground/70 text-xs tracking-wide backdrop-blur-sm">
+    <div
+      style={{
+        pointerEvents: 'none',           // never intercept clicks/drags
+        padding: '4px 10px',
+        borderRadius: 999,
+        background: 'rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 12,
+        lineHeight: '16px',
+        backdropFilter: 'blur(2px)',
+        boxShadow: '0 0 0 1px rgba(0,0,0,0.25) inset',
+      }}
+    >
       {data.label}
       {/* Hidden handles for edge connections */}
       <Handle 

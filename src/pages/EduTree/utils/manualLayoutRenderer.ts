@@ -228,24 +228,30 @@ function createHeaderNodes(opts: {
   // use standard lane positioning
   const Y_UP = 240;
   const Y_DOWN = 480;
+  
+  // Position headers slightly left of their respective columns for visibility
+  const TRACK_HEADER_X = cols.y3 - 60; // move off the cards a bit
+  const PROGRAM_HEADER_X = cols.y2 - 60;
 
   if (filterMode === 'compare-programs') {
     return [
       {
         id: 'program-header:bs_cs',
         type: 'header',
-        position: { x: cols.y2, y: Y_UP - 70 },
+        position: { x: PROGRAM_HEADER_X, y: Y_UP - 70 },
         data: { label: 'BS Computer Science' },
         draggable: false,
-        selectable: false
+        selectable: false,
+        style: { zIndex: 1000 }
       },
       {
         id: 'program-header:bs_it',
         type: 'header',
-        position: { x: cols.y2, y: Y_DOWN + 70 },
+        position: { x: PROGRAM_HEADER_X, y: Y_DOWN + 70 },
         data: { label: 'BS Information Technology' },
         draggable: false,
-        selectable: false
+        selectable: false,
+        style: { zIndex: 1000 }
       }
     ];
   }
@@ -255,18 +261,20 @@ function createHeaderNodes(opts: {
     {
       id: 'track-header:se',
       type: 'header', 
-      position: { x: cols.y3, y: Y_UP - 70 },
+      position: { x: TRACK_HEADER_X, y: Y_UP - 70 },
       data: { label: 'Software Engineering' },
       draggable: false,
-      selectable: false
+      selectable: false,
+      style: { zIndex: 1000 }
     },
     {
       id: 'track-header:ds',
       type: 'header',
-      position: { x: cols.y3, y: Y_DOWN + 70 },
+      position: { x: TRACK_HEADER_X, y: Y_DOWN + 70 },
       data: { label: 'Data Science' },
       draggable: false,
-      selectable: false
+      selectable: false,
+      style: { zIndex: 1000 }
     }
   ];
 }
