@@ -41,7 +41,21 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => (
 const GateNode = ({ data }: { data: V2NodeData }) => {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
-  const subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
+  
+  // Show chosen program/track in single-rail mode
+  let subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
+  if (data.singleRailStraight) {
+    if (gateType === 'program') {
+      subtitle = data.programId === 'bs_cs' ? 'BS Computer Science chosen' : 
+                  data.programId === 'bs_it' ? 'BS Information Technology chosen' : 
+                  'Program chosen';
+    } else {
+      subtitle = data.trackId === 'se' ? 'Software Engineering chosen' : 
+                  data.trackId === 'ds' ? 'Data Science chosen' : 
+                  'Track chosen';
+    }
+  }
+  
   const singleRailStraight = data.singleRailStraight;
   
   return (

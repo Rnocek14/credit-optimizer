@@ -122,7 +122,7 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
       source: edge.source,
       target: edge.target,
       sourceHandle, // Always computed, never from seed
-      type: 'step',
+      type: singleRailStraight ? 'straight' : 'step',
       animated: false,
       style: { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 3, strokeLinecap: 'round' },
       markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.85)' }
@@ -235,13 +235,16 @@ export function applyManualLayout(
   const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleRailStraight);
   
   // Final sanitizer: ensure no bad handles survive regardless of source
-  const clean = (h: unknown): SourceHandle =>
-    h === 'out-se' || h === 'out-ds' ? (h as 'out-se'|'out-ds') : undefined;
+  const clean = (h: unknown): SourceHandle => {
+    if (h === 'out-se' || h === 'out-ds') return h as 'out-se'|'out-ds';
+    if (h === null || h === 'null' || h === '') return undefined;
+    return undefined;
+  };
 
   const sanitizedEdges = reactFlowEdges.map(e => ({
     ...e,
     sourceHandle: clean(e.sourceHandle),
-    targetHandle: clean((e as any).targetHandle) // we don't use targetHandle but sanitize anyway
+    targetHandle: undefined // We don't use target handles
   }));
   
   // Apply immediately - no delays or animations
