@@ -76,6 +76,22 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
     
     console.log('[EduTreeV2] Applying manual layout for', blocks.length, 'blocks');
     
+    // Detect single track presence
+    const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
+    const singleTrack = presentTracks.size === 1;
+    
+    const usePlan =
+      flags.eduTreeV2Grid &&
+      flags.eduTreeLayoutMode === 'grid_v2' &&
+      singleTrack;
+      
+    console.log('[EduTreeV2] Layout mode:', { 
+      presentTracks: [...presentTracks], 
+      singleTrack, 
+      usePlan,
+      layoutMode: flags.eduTreeLayoutMode 
+    });
+    
     applyManualLayout(
       blocks,
       edges,
@@ -84,11 +100,27 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
           nodes: newNodes.length, 
           edges: newEdges.length 
         });
-        setNodes(newNodes);
+        
+        // Apply grid layout if conditions met
+        const finalNodes = usePlan ? newNodes.map(n => {
+          if (n.data?.isVirtual) return n;
+          const p = n.data?.phaseAPlan;
+          if (!p) { 
+            console.warn('[V2] Missing phaseAPlan for', n.id); 
+            return n; 
+          }
+          return { 
+            ...n, 
+            position: { x: p.x, y: p.y }, 
+            data: { ...n.data, hasGridLayout: true } 
+          };
+        }) : newNodes;
+        
+        setNodes(finalNodes);
         setEdges(newEdges);
         
         // Validate no overlaps (acceptance criteria)
-        const validation = validateNoOverlaps(newNodes);
+        const validation = validateNoOverlaps(finalNodes);
         if (validation.hasOverlaps) {
           console.warn('[EduTreeV2] Node overlaps detected:', validation.overlaps);
         } else {
@@ -97,7 +129,7 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
       },
       fitView
     );
-  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView]);
+  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, flags.eduTreeV2Grid, flags.eduTreeLayoutMode]);
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode
