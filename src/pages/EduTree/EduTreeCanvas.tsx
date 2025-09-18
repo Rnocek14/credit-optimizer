@@ -50,6 +50,7 @@ import {
   TrackComparisonControls,
   PositionAnalysisPanel
 } from './components';
+import { DiagnosticPanel } from './components/DiagnosticPanel';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
@@ -159,18 +160,40 @@ function EduTreeCanvasInner() {
     gateEdgesLoading
   } = useEduTreeData();
 
-  // Transform data for React Flow (defensive)
-  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => safe(
-    () => transformEducationData(
-      { blocks, courses, blockMembers, gates, gateEdges },
-      completedCourseIds,
-      { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() },
-      undefined,
-      primaryTrackId
-    ),
-    { nodes: [], edges: [], blocksWithCourses: [] },
-    'Transform'
-  ), [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
+  // Transform data for React Flow (defensive) - ENHANCED DEBUG
+  const { nodes: flowNodes, edges: flowEdges, blocksWithCourses } = useMemo(() => {
+    console.log('[EduTreeCanvas] Starting transform with:', {
+      blocks: blocks.length,
+      courses: courses.length,
+      blockMembers: blockMembers.length,
+      gates: gates.length,
+      gateEdges: gateEdges.length,
+      primaryTrackId,
+      overlayEnabled,
+      flags: { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() }
+    });
+    
+    const result = safe(
+      () => transformEducationData(
+        { blocks, courses, blockMembers, gates, gateEdges },
+        completedCourseIds,
+        { ...flags, overlayEnabled, eduTreePhaseA: resolveEduTreePhaseAFlag() },
+        undefined,
+        primaryTrackId
+      ),
+      { nodes: [], edges: [], blocksWithCourses: [] },
+      'Transform'
+    );
+    
+    console.log('[EduTreeCanvas] Transform result:', {
+      nodesCount: result.nodes.length,
+      edgesCount: result.edges.length,
+      blocksWithCoursesCount: result.blocksWithCourses.length,
+      sampleNode: result.nodes[0]
+    });
+    
+    return result;
+  }, [blocks, courses, blockMembers, gates, gateEdges, completedCourseIds, flags, overlayEnabled, primaryTrackId]);
 
   // QA Mode: Compute and export metrics when enabled
   const qaMode = resolveEduTreeQAModeFlag();
@@ -272,7 +295,9 @@ function EduTreeCanvasInner() {
     comparisonTrackId
   });
 
-  // Debug current component state
+  console.log('[EduTreeCanvas] Starting component render...');
+  
+  // Debug current component state - ENHANCED
   console.log('[EduTreeCanvas] Component State:', {
     dataLoading,
     dataError: !!dataError,
@@ -284,8 +309,27 @@ function EduTreeCanvasInner() {
     overlayEnabled,
     primaryTrackId,
     comparisonTrackId,
+    isPhaseA,
+    phaseAGuardInfo: {
+      stableNodesCount: phaseAGuard.stableNodes.length,
+      stableEdgesCount: phaseAGuard.stableEdges.length,
+      shouldBypassOverlay: phaseAGuard.shouldBypassOverlay,
+      layoutPassCount: phaseAGuard.layoutPassCount
+    },
     individual: { coursesLoading, blocksLoading, blockMembersLoading, gatesLoading, gateEdgesLoading }
   });
+
+  // EMERGENCY: Show debug info even if no nodes
+  if (flowNodes.length === 0 && hasData) {
+    console.error('[EduTreeCanvas] CRITICAL: hasData is true but no nodes generated!');
+    console.error('[EduTreeCanvas] Raw data counts:', {
+      blocks: blocks.length,
+      courses: courses.length, 
+      blockMembers: blockMembers.length,
+      gates: gates.length,
+      gateEdges: gateEdges.length
+    });
+  }
 
   const scheduleLayout = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -414,16 +458,33 @@ function EduTreeCanvasInner() {
       return;
     }
 
-    // CRITICAL: PhaseA mode - single stable layout pass with branching
+  // CRITICAL: PhaseA mode - single stable layout pass with branching
     if (isPhaseA) {
       console.log('[EduTree Layout] PhaseA mode - single stable branching layout pass');
+      console.log('[EduTree Layout] PhaseA Data Check:', {
+        stableNodesCount: phaseAGuard.stableNodes.length,
+        stableEdgesCount: phaseAGuard.stableEdges.length,
+        layoutPassCount: phaseAGuard.layoutPassCount,
+        shouldBypassOverlay: phaseAGuard.shouldBypassOverlay,
+        sampleNode: phaseAGuard.stableNodes[0]?.id
+      });
+      
       if (phaseAGuard.layoutPassCount > 1) {
         console.log('[EduTree Layout] PhaseA emergency brake - preventing additional layout');
         return;
       }
       
+      // Skip if no stable nodes
+      if (!phaseAGuard.stableNodes.length) {
+        console.log('[EduTree Layout] PhaseA - no stable nodes available');
+        setIsLayouting(false);
+        layoutInProgressRef.current = false;
+        return;
+      }
+      
       // Atomic update for PhaseA - use stable references with proper branching
       const atomicUpdate = () => {
+        console.log('[EduTree Layout] PhaseA - applying atomic update with', phaseAGuard.stableNodes.length, 'nodes');
         setNodes(phaseAGuard.stableNodes);
         setEdges(phaseAGuard.stableEdges);
         setIsLayouting(false);
@@ -735,6 +796,9 @@ function EduTreeCanvasInner() {
   console.log('[EduTreeCanvas] Rendering main ReactFlow canvas');
   return (
     <div className="relative h-screen bg-background">
+      {/* Diagnostic Panel */}
+      <DiagnosticPanel />
+
       {/* Position Analysis Panel */}
       <div className="absolute bottom-4 right-4 z-40">
         <PositionAnalysisPanel />

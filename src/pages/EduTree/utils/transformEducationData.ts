@@ -42,19 +42,63 @@ export function transformEducationData(
 
   // PhaseA: Filter out hidden blocks when flag is enabled
   if (flags.eduTreePhaseA) {
+    console.log('[EduTree][Transform][PhaseA] Filtering hidden blocks. Before:', blocks.length);
     blocks = blocks.filter(block => !block.hidden);
+    console.log('[EduTree][Transform][PhaseA] After filtering hidden blocks:', blocks.length);
   }
 
-  // Filter blocks by selected track when not in overlay mode
+  // DIAGNOSTIC: Log all blocks before track filtering
+  console.log('[EduTree][Transform][PreTrackFilter] All blocks:', blocks.map(b => ({
+    id: b.id,
+    slug: b.slug, 
+    title: b.title,
+    track_id: b.track_id,
+    level_year: b.level_year
+  })));
+
+  // DIAGNOSTIC: Check overlay and track filtering logic
+  console.log('[EduTree][Transform][FilterLogic]', {
+    selectedTrackId,
+    overlayEnabled: flags.overlayEnabled,
+    shouldFilter: selectedTrackId && !flags.overlayEnabled,
+    originalBlockCount: blocks.length
+  });
+
+  // Filter blocks by selected track when not in overlay mode  
   if (selectedTrackId && !flags.overlayEnabled) {
     const trackDef = TRACK_MAP.get(selectedTrackId);
+    console.log('[EduTree][Transform][TrackFilter]', {
+      selectedTrackId,
+      trackDef: trackDef ? trackDef.name : 'NOT_FOUND',
+      allowedBlockIds: trackDef?.blockIds || [],
+      blocksBeforeFilter: blocks.length,
+      overlayEnabled: flags.overlayEnabled
+    });
+    
     if (trackDef) {
       const allowedBlockSlugs = new Set(trackDef.blockIds);
+      const originalBlocks = [...blocks];
       blocks = blocks.filter(block => {
         const slug = block.slug || block.id;
-        return allowedBlockSlugs.has(slug);
+        const isAllowed = allowedBlockSlugs.has(slug);
+        if (!isAllowed) {
+          console.log('[EduTree][Transform][FilterOut]', { blockId: block.id, slug, title: block.title });
+        }
+        return isAllowed;
+      });
+      console.log('[EduTree][Transform][AfterFilter]', { 
+        blocksAfterFilter: blocks.length,
+        filteredOut: originalBlocks.length - blocks.length,
+        remainingBlocks: blocks.map(b => ({ id: b.id, slug: b.slug, title: b.title }))
       });
     }
+  } else {
+    console.log('[EduTree][Transform][NoTrackFilter]', {
+      selectedTrackId,
+      overlayEnabled: flags.overlayEnabled,
+      reason: !selectedTrackId ? 'no-track-selected' : 'overlay-enabled',
+      keepingAllBlocks: blocks.length
+    });
   }
 
   console.log('[EduTree][Transform][Raw]', {
@@ -63,6 +107,8 @@ export function transformEducationData(
     blockMembers: blockMembers.length,
     gates: gates.length,
     gateEdges: gateEdges.length,
+    selectedTrackId,
+    trackDefExists: selectedTrackId ? !!TRACK_MAP.get(selectedTrackId) : 'no-track',
     sampleBlock: blocks?.[0],
     sampleGateEdge: gateEdges?.[0],
   });
