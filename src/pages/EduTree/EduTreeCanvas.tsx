@@ -52,6 +52,7 @@ import {
 } from './components';
 import { DiagnosticPanel } from './components/DiagnosticPanel';
 import { LayoutStatusPanel } from './components/LayoutStatusPanel';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { resolveTrackBlockIds } from './data/resolveTrackBlocks';
 import { TRACK_DEFINITIONS, TRACK_MAP, getAllTrackIds, type TrackId } from './data/trackDefinitions';
 import { useEduTreeData } from './hooks/useEduTreeData';
@@ -218,10 +219,13 @@ function EduTreeCanvasInner() {
     unlockLayout
   } = useMasterLayoutController(highlightedNodes, highlightedEdges, overlayEnabled);
 
-  // Reset master layout when overlay mode changes
+  // EMERGENCY: Only reset on mount, never on prop changes to prevent loops
   useEffect(() => {
-    resetMasterLayoutController();
-  }, [overlayEnabled, primaryTrackId, comparisonTrackId]);
+    return () => {
+      // Only reset on unmount
+      resetMasterLayoutController();
+    };
+  }, []); // No dependencies to prevent loops
 
   // Set primary track for global dimming effect
   useEffect(() => {
@@ -257,26 +261,33 @@ function EduTreeCanvasInner() {
     }
   });
 
-  // MASTER LAYOUT EFFECT - Single authoritative layout system
+  // EMERGENCY STABILIZED LAYOUT - Reduced to minimal operations
   useLayoutEffect(() => {
-    if (!reactFlowInstance) return;
+    if (!reactFlowInstance || masterNodes.length === 0) return;
     
-    // Register ReactFlow instance with master controller
+    // ONE-TIME registration only
     setReactFlowInstance(reactFlowInstance);
     
-    // ALWAYS use master-controlled nodes and edges
-    setNodes(masterNodes);
-    setEdges(masterEdges);
+    // Apply nodes/edges only if they're actually different
+    setNodes(prev => {
+      if (prev.length !== masterNodes.length) {
+        console.log('[EduTree Layout] Applying new nodes:', masterNodes.length);
+        return masterNodes;
+      }
+      return prev;
+    });
+    
+    setEdges(prev => {
+      if (prev.length !== masterEdges.length) {
+        console.log('[EduTree Layout] Applying new edges:', masterEdges.length);
+        return masterEdges;
+      }
+      return prev;
+    });
+    
     setIsLayouting(false);
     layoutInProgressRef.current = false;
-    
-    // PhaseA gets immediate lock after first render
-    if (isPhaseA && !layoutIsLocked && masterNodes.length > 0) {
-      setTimeout(lockLayout, 0);
-    }
-    
-    console.log('[EduTree Layout] Master layout applied - nodes:', masterNodes.length, 'locked:', layoutIsLocked);
-  }, [masterNodes, masterEdges, layoutIsLocked, isPhaseA, lockLayout]);
+  }, [masterNodes.length, masterEdges.length, reactFlowInstance]); // Only depend on counts, not objects
 
   // Show loading state while data is being fetched
   if (dataLoading) {
@@ -443,11 +454,13 @@ function EduTreeCanvasInner() {
   );
 }
 
-// Wrap in ReactFlowProvider and export
+// Wrap in ReactFlowProvider with ErrorBoundary and export
 export default function EduTreeCanvas() {
   return (
-    <ReactFlowProvider>
-      <EduTreeCanvasInner />
-    </ReactFlowProvider>
+    <ErrorBoundary>
+      <ReactFlowProvider>
+        <EduTreeCanvasInner />
+      </ReactFlowProvider>
+    </ErrorBoundary>
   );
 }

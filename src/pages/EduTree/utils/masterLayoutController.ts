@@ -10,7 +10,13 @@ import { resolveEduTreePhaseAFlag } from '@/lib/eduTreeFlags';
 let isLayoutLocked = false;
 let masterPositions: Map<string, { x: number; y: number }> = new Map();
 let reactFlowInstance: any = null;
-let dataVersion = '';
+let layoutAttempts = 0;
+let lastStableData = '';
+let isInitialized = false;
+
+// Circuit breaker to prevent infinite loops
+const MAX_LAYOUT_ATTEMPTS = 2;
+const STABILITY_TIMEOUT = 100;
 
 export interface MasterLayoutResult {
   nodes: Node[];
@@ -21,7 +27,7 @@ export interface MasterLayoutResult {
 }
 
 /**
- * Single authoritative layout function - replaces all other layout systems
+ * EMERGENCY STABILIZED layout function - prevents infinite loops
  */
 export function useMasterLayoutController(
   originalNodes: Node[],
@@ -30,48 +36,43 @@ export function useMasterLayoutController(
 ): MasterLayoutResult {
   const isPhaseA = resolveEduTreePhaseAFlag();
   
-  // Create data version hash to detect changes
-  const currentVersion = `${originalNodes.length}-${originalEdges.length}-${originalNodes[0]?.id || ''}-${overlayEnabled}`;
+  // Create data signature for stability detection
+  const currentDataHash = `${originalNodes.length}-${originalEdges.length}`;
   
-  // Reset on data change
-  if (currentVersion !== dataVersion) {
-    console.log('[MasterLayout] Data changed - resetting layout lock');
-    dataVersion = currentVersion;
-    isLayoutLocked = false;
-    masterPositions.clear();
+  // CIRCUIT BREAKER: Prevent excessive layout attempts
+  if (layoutAttempts >= MAX_LAYOUT_ATTEMPTS && currentDataHash === lastStableData) {
+    console.log('[MasterLayout] Circuit breaker activated - preventing layout loop');
+    isLayoutLocked = true;
   }
   
-  // PHASE A: Immediate lock after first positions are set
-  if (isPhaseA && originalNodes.length > 0 && !isLayoutLocked) {
-    console.log('[MasterLayout] PhaseA - Capturing positions and LOCKING forever');
+  // STABILITY CHECK: Only process if data is genuinely different or not initialized
+  const isStableData = currentDataHash === lastStableData && isInitialized;
+  if (!isStableData) {
+    console.log('[MasterLayout] New stable data detected:', currentDataHash);
+    lastStableData = currentDataHash;
+    layoutAttempts = 0;
+    isInitialized = true;
+  }
+  
+  // PHASE A: ONE-TIME INITIALIZATION ONLY
+  if (isPhaseA && originalNodes.length > 0 && !isLayoutLocked && layoutAttempts < MAX_LAYOUT_ATTEMPTS) {
+    console.log('[MasterLayout] PhaseA - ONE-TIME position capture and lock');
+    layoutAttempts++;
     
-    // Capture current positions immediately
-    originalNodes.forEach(node => {
-      if (node.position) {
-        masterPositions.set(node.id, { ...node.position });
-      }
-    });
-    
-    // IMMEDIATE LOCK
-    isLayoutLocked = true;
-    
-    // Disable ReactFlow internal positioning completely
+    // EMERGENCY TIMEOUT to prevent hanging
     setTimeout(() => {
-      if (reactFlowInstance) {
-        reactFlowInstance.setOptions?.({
-          nodesDraggable: false,
-          nodesConnectable: false,
-          elementsSelectable: false,
-          panOnDrag: true,
-          zoomOnScroll: true,
-          fitView: false,
-          selectNodesOnDrag: false
-        });
-      }
+      // Capture current positions immediately
+      originalNodes.forEach(node => {
+        if (node.position) {
+          masterPositions.set(node.id, { ...node.position });
+        }
+      });
       
-      // Apply emergency CSS locks
+      // PERMANENT LOCK - no more changes
+      isLayoutLocked = true;
       document.body.classList.add('master-layout-locked');
-    }, 0);
+      console.log('[MasterLayout] PhaseA - PERMANENTLY LOCKED');
+    }, STABILITY_TIMEOUT);
   }
   
   const lockLayout = () => {
@@ -139,13 +140,15 @@ export function setReactFlowInstance(instance: any) {
 }
 
 /**
- * Emergency reset for mode changes
+ * EMERGENCY ONLY reset - use sparingly to prevent loops
  */
 export function resetMasterLayoutController() {
+  console.log('[MasterLayout] EMERGENCY reset - resetting all state');
   isLayoutLocked = false;
   masterPositions.clear();
-  dataVersion = '';
+  lastStableData = '';
+  layoutAttempts = 0;
+  isInitialized = false;
   reactFlowInstance = null;
   document.body.classList.remove('master-layout-locked');
-  console.log('[MasterLayout] Complete reset');
 }
