@@ -1893,6 +1893,7 @@ export type Database = {
           growth_potential: string | null
           icon: string | null
           id: string
+          is_active: boolean | null
           lqi_score: number | null
           order_index: number
           reasoning: string | null
@@ -1917,6 +1918,7 @@ export type Database = {
           growth_potential?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           lqi_score?: number | null
           order_index?: number
           reasoning?: string | null
@@ -1941,6 +1943,7 @@ export type Database = {
           growth_potential?: string | null
           icon?: string | null
           id?: string
+          is_active?: boolean | null
           lqi_score?: number | null
           order_index?: number
           reasoning?: string | null
@@ -7425,6 +7428,7 @@ export type Database = {
           area: string
           created_at: string | null
           credits_needed: number | null
+          hidden: boolean | null
           id: string
           k: number | null
           level_year: number
@@ -7432,12 +7436,14 @@ export type Database = {
           rule_type: string
           slug: string | null
           title: string
+          track_id: string | null
           updated_at: string | null
         }
         Insert: {
           area: string
           created_at?: string | null
           credits_needed?: number | null
+          hidden?: boolean | null
           id?: string
           k?: number | null
           level_year: number
@@ -7445,12 +7451,14 @@ export type Database = {
           rule_type: string
           slug?: string | null
           title: string
+          track_id?: string | null
           updated_at?: string | null
         }
         Update: {
           area?: string
           created_at?: string | null
           credits_needed?: number | null
+          hidden?: boolean | null
           id?: string
           k?: number | null
           level_year?: number
@@ -7458,6 +7466,7 @@ export type Database = {
           rule_type?: string
           slug?: string | null
           title?: string
+          track_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
