@@ -23,7 +23,7 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'core-ii',
       'specializations',
       'architecture',
-      'capstone-software-engineering',
+      'capstone',
       'degree-completion'
     ]
   },
@@ -37,10 +37,41 @@ export const TRACK_DEFINITIONS: TrackDefinition[] = [
       'mathematics',
       'general-education', 
       'core-i',
-      'core-ii',
       'data-analysis',
       'machine-learning',
-      'capstone-data-science',
+      'capstone',
+      'degree-completion'
+    ]
+  },
+  {
+    id: 'cybersecurity',
+    name: 'Cybersecurity',
+    description: 'Security and risk management track',
+    color: '#f59e0b',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'security-fundamentals',
+      'advanced-security',
+      'capstone',
+      'degree-completion'
+    ]
+  },
+  {
+    id: 'mobile-development',
+    name: 'Mobile Development', 
+    description: 'iOS and Android development track',
+    color: '#8b5cf6',
+    blockIds: [
+      'foundations',
+      'mathematics',
+      'general-education',
+      'core-i',
+      'mobile-frameworks',
+      'advanced-mobile',
+      'capstone',
       'degree-completion'
     ]
   }

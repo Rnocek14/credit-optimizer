@@ -9,7 +9,6 @@ import {
   isBlockComplete 
 } from '@/lib/types/eduTree';
 import { normalizeEdges } from './edgeNormalization';
-import { TRACK_MAP } from '@/pages/EduTree/data/trackDefinitions';
 
 export interface TransformInput {
   blocks: RequirementBlock[];
@@ -29,27 +28,14 @@ export function transformEducationData(
   input: TransformInput,
   completedCourseIds: Set<string> = new Set(),
   flags: any = {},
-  sortBlocksForLayout?: Function,
-  selectedTrackId?: string
+  sortBlocksForLayout?: Function
 ): TransformResult {
   // Defensive input validation
-  let blocks = Array.isArray(input.blocks) ? input.blocks : [];
+  const blocks = Array.isArray(input.blocks) ? input.blocks : [];
   const courses = Array.isArray(input.courses) ? input.courses : [];
   const blockMembers = Array.isArray(input.blockMembers) ? input.blockMembers : [];
   const gates = Array.isArray(input.gates) ? input.gates : [];
   const gateEdges = Array.isArray(input.gateEdges) ? input.gateEdges : [];
-
-  // Filter blocks by selected track when not in overlay mode
-  if (selectedTrackId && !flags.overlayEnabled) {
-    const trackDef = TRACK_MAP.get(selectedTrackId);
-    if (trackDef) {
-      const allowedBlockSlugs = new Set(trackDef.blockIds);
-      blocks = blocks.filter(block => {
-        const slug = block.slug || block.id;
-        return allowedBlockSlugs.has(slug);
-      });
-    }
-  }
 
   console.log('[EduTree][Transform][Raw]', {
     blocks: blocks.length,
