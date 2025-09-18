@@ -219,6 +219,11 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
         <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
         <div>Flags: V2Grid={String(flags.eduTreeV2Grid)}, Mode={flags.eduTreeLayoutMode}</div>
       </div>
+
+      {/* Mode badge */}
+      <div className="fixed bottom-3 right-3 z-[1000] text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
+        Mode: {flags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'}
+      </div>
     </div>
   );
 }
