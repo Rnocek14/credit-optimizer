@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect } from 'react';
-import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType } from '@xyflow/react';
+import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { useFeatureFlags } from '@/lib/featureFlags';
@@ -30,9 +30,16 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => (
 );
 
 const GateNode = ({ data }: { data: V2NodeData }) => (
-  <div className="px-6 py-4 shadow-lg rounded-lg border-2 border-dashed border-primary/50 bg-background/90 text-sm text-muted-foreground min-w-[120px] text-center">
-    <strong className="text-foreground">{data.title}</strong>
-    <div className="text-xs opacity-70 mt-1">Choose Track</div>
+  <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
+    <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
+    <div className="font-semibold">Track Gate</div>
+    <div className="mt-1 text-xs opacity-70">Choose Track</div>
+
+    {/* source handles */}
+    <Handle id="out-se" type="source" position={Position.Top} />
+    <Handle id="out-ds" type="source" position={Position.Bottom} />
+    {/* target handle */}
+    <Handle id="in" type="target" position={Position.Left} />
   </div>
 );
 

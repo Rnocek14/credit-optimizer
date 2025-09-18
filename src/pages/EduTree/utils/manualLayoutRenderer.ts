@@ -50,22 +50,29 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
  * Direct mapping with consistent styling
  */
 export function edgesToReactFlowEdges(edges: V2Edge[]): Edge[] {
-  return edges.map((edge, index) => ({
-    id: `${edge.source}-${edge.target}`,
-    source: edge.source,
-    target: edge.target,
-    type: 'step',
-    animated: false,
-    style: {
-      stroke: 'rgba(255,255,255,0.85)',
-      strokeWidth: 3,
-      strokeLinecap: 'round'
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: 'rgba(255,255,255,0.85)'
-    }
-  }));
+  return edges.map((edge) => {
+    const isFromGate = edge.source === 'divergence-gate';
+    const toSE = /(^y3-se-)|(-se-)/.test(edge.target);
+    const sourceHandle = isFromGate ? (toSE ? 'out-se' : 'out-ds') : undefined;
+
+    return {
+      id: `${edge.source}-${edge.target}`,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle, // only for gate edges
+      type: 'step',
+      animated: false,
+      style: {
+        stroke: 'rgba(255,255,255,0.85)',
+        strokeWidth: 3,
+        strokeLinecap: 'round'
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: 'rgba(255,255,255,0.85)'
+      }
+    };
+  });
 }
 
 /**
