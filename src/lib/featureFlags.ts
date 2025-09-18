@@ -146,5 +146,15 @@ export function useFeatureFlags(): FeatureFlags {
  * Only works with boolean feature flags
  */
 export function isFeatureEnabled(feature: Exclude<keyof FeatureFlags, 'eduTreeLayoutMode'>): boolean {
-  return getFeatureFlags()[feature] as boolean;
+  const flags = getFeatureFlags();
+  const value = flags[feature];
+  
+  // Ensure we're returning a boolean
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  
+  // This should never happen with proper typing, but fallback to false
+  console.warn(`[FeatureFlags] Expected boolean for ${String(feature)}, got:`, typeof value);
+  return false;
 }
