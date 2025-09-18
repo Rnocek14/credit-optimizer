@@ -99,11 +99,16 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
       console.warn('[V2] Gate edge missing lane for target:', edge.target);
     }
 
+    // Safety check: ensure sourceHandle is never the string "null" or null
+    if ((sourceHandle as any) === 'null' || sourceHandle === null) {
+      sourceHandle = undefined;
+    }
+
     return {
       id: `${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
-      sourceHandle, // undefined when unknown — never "null"
+      sourceHandle, // undefined when unknown — never "null" string
       type: 'step',
       animated: false,
       style: { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 3, strokeLinecap: 'round' },
@@ -154,6 +159,12 @@ export function applyManualLayout(
   
   // Apply immediately - no delays or animations
   onApply(nodes, reactFlowEdges);
+  
+  // Debug: expose to window for validation tests (development only)
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    (window as any).__flowNodes__ = nodes;
+    (window as any).__flowEdges__ = reactFlowEdges;
+  }
   
   // Fit view once after positions are set
   setTimeout(() => {
