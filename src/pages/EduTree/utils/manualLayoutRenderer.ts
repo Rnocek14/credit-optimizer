@@ -5,8 +5,8 @@
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
+import { applyDeterministicGrid, type Lane } from './deterministicGrid';
 
-type Lane = 'up' | 'down';
 type SourceHandle = 'out-se' | 'out-ds' | undefined;
 
 export interface V2NodeData {
@@ -122,9 +122,11 @@ export function applyManualLayout(
   blocks: V2RequirementBlock[],
   edges: V2Edge[],
   onApply: (nodes: Node<V2NodeData>[], edges: Edge[]) => void,
-  fitView: () => void
+  fitView: () => void,
+  useGridAnchors: boolean = false
 ): void {
-  console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks');
+  console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
+    useGridAnchors ? '(with grid anchors)' : '(manual positions)');
   
   // Create nodes with phase A planning data
   const nodes = blocksToNodes(blocks).map(node => {
@@ -138,16 +140,25 @@ export function applyManualLayout(
       undefined;
     
     const col = block.level_year;
-    const colX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
-    const rowY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
-                 lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
-                 360; // shared/gate row
+    
+    // Original manual coordinates as fallback
+    const manualX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
+    const manualY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
+                    lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
+                    360; // shared/gate row
+    
+    // Apply deterministic grid if enabled
+    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors);
+    
+    if (useGridAnchors && process.env.NODE_ENV === 'development') {
+      console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
+    }
     
     return {
       ...node,
       data: {
         ...node.data,
-        phaseAPlan: { lane, col, x: colX, y: rowY }
+        phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
     };
   });

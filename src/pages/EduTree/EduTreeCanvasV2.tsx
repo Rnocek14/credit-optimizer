@@ -7,6 +7,7 @@ import React, { useCallback, useEffect } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
+import { exposeGridValidation } from './utils/deterministicGrid';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -76,6 +77,9 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
     
     console.log('[EduTreeV2] Applying manual layout for', blocks.length, 'blocks');
     
+    // Expose grid validation tools for development
+    exposeGridValidation();
+    
     // Detect single track presence
     const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
     const singleTrack = presentTracks.size === 1;
@@ -127,7 +131,8 @@ export default function EduTreeCanvasV2({ filterMode = null }: EduTreeCanvasV2Pr
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
       },
-      fitView
+      fitView,
+      usePlan // Use deterministic grid anchors when in single-track grid mode
     );
   }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, flags.eduTreeV2Grid, flags.eduTreeLayoutMode]);
   
