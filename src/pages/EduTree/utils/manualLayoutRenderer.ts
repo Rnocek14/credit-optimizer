@@ -6,6 +6,8 @@
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
 
+type Lane = 'up' | 'down';
+
 export interface V2NodeData {
   title: string;
   ruleType: string;
@@ -59,27 +61,23 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
 /**
  * Build lane mapping from blocks data (data-driven approach)
  */
-function buildLaneMapping(
-  blocks: V2RequirementBlock[]
-): Record<string, 'up' | 'down'> {
-  const laneByTarget: Record<string, 'up' | 'down'> = {};
-  
+function buildLaneMapping(blocks: V2RequirementBlock[]): Record<string, Lane> {
+  const laneByTarget: Record<string, Lane> = {};
+
   for (const block of blocks) {
-    // Future-proof: prefer explicit lane from seed data
-    const explicitLane = (block as any).lane as 'up' | 'down' | undefined;
-    
-    // Fallback: derive lane from program/track IDs
-    const derivedLane = 
+    // Prefer explicit lane from seed
+    const explicit = (block as any).lane as Lane | undefined;
+
+    // Fallback: derive from program/track IDs
+    const derived: Lane | undefined =
       block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
-      block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' : 
+      block.track_id === 'ds' || block.program_id === 'bs_it' ? 'down' :
       undefined;
-    
-    const lane = explicitLane ?? derivedLane;
-    if (lane) {
-      laneByTarget[block.id] = lane;
-    }
+
+    const lane = explicit ?? derived;
+    if (lane) laneByTarget[block.id] = lane;
   }
-  
+
   return laneByTarget;
 }
 
@@ -88,34 +86,28 @@ function buildLaneMapping(
  */
 export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBlock[]): Edge[] {
   const laneByTarget = buildLaneMapping(blocks);
-  
+
   return edges.map((edge) => {
     const isFromGate = edge.source.startsWith('gate-');
     const targetLane = laneByTarget[edge.target];
-    
-    // Only set sourceHandle for gate edges going to nodes with lanes
-    // Do NOT set sourceHandle for edges going TO gates or gates without target lanes
-    let sourceHandle: string | undefined = undefined;
+
+    let sourceHandle: 'out-se' | 'out-ds' | undefined = undefined;
     if (isFromGate && targetLane && !edge.target.startsWith('gate-')) {
       sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
+    } else if (isFromGate && !targetLane && !edge.target.startsWith('gate-')) {
+      // Optional: helps catch missing lane in seed
+      console.warn('[V2] Gate edge missing lane for target:', edge.target);
     }
 
     return {
       id: `${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
-      sourceHandle, // only for gate->node edges with valid lanes
+      sourceHandle, // undefined when unknown — never "null"
       type: 'step',
       animated: false,
-      style: {
-        stroke: 'rgba(255,255,255,0.85)',
-        strokeWidth: 3,
-        strokeLinecap: 'round'
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: 'rgba(255,255,255,0.85)'
-      }
+      style: { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 3, strokeLinecap: 'round' },
+      markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.85)' }
     };
   });
 }
