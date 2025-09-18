@@ -53,8 +53,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
       {/* Handles - only show vertical handles when NOT in single-rail straight mode */}
       {!singleRailStraight && (
         <>
-          <Handle id="out-up" type="source" position={Position.Top} />
-          <Handle id="out-down" type="source" position={Position.Bottom} />
+          <Handle id="out-se" type="source" position={Position.Top} />
+          <Handle id="out-ds" type="source" position={Position.Bottom} />
         </>
       )}
       {singleRailStraight && (

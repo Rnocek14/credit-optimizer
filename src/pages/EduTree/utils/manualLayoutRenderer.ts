@@ -33,7 +33,7 @@ export interface V2NodeData {
  * Convert V2 blocks to ReactFlow nodes with direct position mapping
  * No layout computation - just applies stored coordinates
  */
-export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] {
+export function blocksToNodes(blocks: V2RequirementBlock[], singleRailStraight: boolean = false): Node<V2NodeData>[] {
   return blocks.map(block => ({
     id: block.id,
     type: block.is_virtual ? 'gate' : 'requirement',
@@ -50,7 +50,8 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
       trackId: block.track_id,
       programId: block.program_id,
       isVirtual: block.is_virtual,
-      junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined
+      junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
+      singleRailStraight
     },
     // Add default handles for edge connections
     sourcePosition: Position.Right,
@@ -104,9 +105,9 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
         const targetLane = laneByTarget[edge.target];
         if (targetLane) {
           sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
-        } else if (targetBlock?.track_id === 'se') {
+        } else if (targetBlock?.track_id === 'se' || targetBlock?.program_id === 'bs_cs') {
           sourceHandle = 'out-se';
-        } else if (targetBlock?.track_id === 'ds') {
+        } else if (targetBlock?.track_id === 'ds' || targetBlock?.program_id === 'bs_it') {
           sourceHandle = 'out-ds';
         }
         
@@ -145,7 +146,7 @@ export function applyManualLayout(
     useGridAnchors ? '(with grid anchors)' : '(manual positions)');
   
   // Create nodes with phase A planning data
-  const nodes = blocksToNodes(blocks).map(node => {
+  const nodes = blocksToNodes(blocks, singleRailStraight).map(node => {
     const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual) return node;
     
