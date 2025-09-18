@@ -3,7 +3,7 @@
  * No algorithms, just direct coordinate mapping from database
  */
 
-import { Node, Edge, MarkerType } from '@xyflow/react';
+import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
 
 export interface V2NodeData extends Record<string, unknown> {
@@ -37,6 +37,9 @@ export function blocksToNodes(blocks: V2RequirementBlock[]): Node<V2NodeData>[] 
       trackId: block.track_id,
       isVirtual: block.is_virtual
     },
+    // Add default handles for edge connections
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
     draggable: false, // Prevent user from moving manually positioned nodes
     selectable: true
   }));
