@@ -7,6 +7,7 @@ import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge } from '../data/seedDataV2';
 
 type Lane = 'up' | 'down';
+type SourceHandle = 'out-se' | 'out-ds' | undefined;
 
 export interface V2NodeData {
   title: string;
@@ -91,7 +92,8 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
     const isFromGate = edge.source.startsWith('gate-');
     const targetLane = laneByTarget[edge.target];
 
-    let sourceHandle: 'out-se' | 'out-ds' | undefined = undefined;
+    // Always compute sourceHandle - ignore any incoming values from seed
+    let sourceHandle: SourceHandle = undefined;
     if (isFromGate && targetLane && !edge.target.startsWith('gate-')) {
       sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
     } else if (isFromGate && !targetLane && !edge.target.startsWith('gate-')) {
@@ -99,16 +101,11 @@ export function edgesToReactFlowEdges(edges: V2Edge[], blocks: V2RequirementBloc
       console.warn('[V2] Gate edge missing lane for target:', edge.target);
     }
 
-    // Safety check: ensure sourceHandle is never the string "null" or null
-    if ((sourceHandle as any) === 'null' || sourceHandle === null) {
-      sourceHandle = undefined;
-    }
-
     return {
       id: `${edge.source}-${edge.target}`,
       source: edge.source,
       target: edge.target,
-      sourceHandle, // undefined when unknown — never "null" string
+      sourceHandle, // Always computed, never from seed
       type: 'step',
       animated: false,
       style: { stroke: 'rgba(255,255,255,0.85)', strokeWidth: 3, strokeLinecap: 'round' },
@@ -157,13 +154,23 @@ export function applyManualLayout(
   
   const reactFlowEdges = edgesToReactFlowEdges(edges, blocks);
   
+  // Final sanitizer: ensure no bad handles survive regardless of source
+  const clean = (h: unknown): SourceHandle =>
+    h === 'out-se' || h === 'out-ds' ? (h as 'out-se'|'out-ds') : undefined;
+
+  const sanitizedEdges = reactFlowEdges.map(e => ({
+    ...e,
+    sourceHandle: clean(e.sourceHandle),
+    targetHandle: clean((e as any).targetHandle) // we don't use targetHandle but sanitize anyway
+  }));
+  
   // Apply immediately - no delays or animations
-  onApply(nodes, reactFlowEdges);
+  onApply(nodes, sanitizedEdges);
   
   // Debug: expose to window for validation tests (development only)
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     (window as any).__flowNodes__ = nodes;
-    (window as any).__flowEdges__ = reactFlowEdges;
+    (window as any).__flowEdges__ = sanitizedEdges;
   }
   
   // Fit view once after positions are set
