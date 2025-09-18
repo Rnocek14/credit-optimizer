@@ -50,9 +50,9 @@ export function LayoutStatusPanel({ nodes, edges, isLayouting, layoutPassCount, 
             {actuallyLocked && <span className="text-yellow-600 ml-1">🔒</span>}
           </span>
           
-          <span className="text-muted-foreground">Position Lock:</span>
-          <span className={`font-medium ${actuallyLocked ? 'text-green-600' : 'text-gray-600'}`}>
-            {actuallyLocked ? 'CIRCUIT BREAKER ACTIVE' : 'FREE'}
+          <span className="text-muted-foreground">Master Layout:</span>
+          <span className={`font-medium ${isLayoutLocked ? 'text-red-600' : 'text-green-600'}`}>
+            {isLayoutLocked ? 'LOCKED' : 'Active'}
           </span>
         </div>
         
