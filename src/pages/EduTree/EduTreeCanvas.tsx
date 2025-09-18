@@ -417,11 +417,7 @@ function EduTreeCanvasInner() {
             layoutPassCount={0}
             isLayoutLocked={layoutIsLocked}
           />
-          <DiagnosticPanel 
-            nodes={masterNodes}
-            edges={masterEdges}
-            overlayEnabled={overlayEnabled}
-          />
+          <DiagnosticPanel />
         </>
       )}
 
