@@ -57,7 +57,7 @@ export const GOLDEN_LAYOUT_SEED: {
       position_y: 300
     },
     {
-      id: "y1-gened",
+      id: "y1-genedAB",
       program_id: "bs_cs",
       track_id: null, 
       title: "Gen Ed A/B",
@@ -95,7 +95,7 @@ export const GOLDEN_LAYOUT_SEED: {
       position_y: 360
     },
     {
-      id: "y2-gened",
+      id: "y2-genedC",
       program_id: "bs_cs",
       track_id: null,
       title: "Gen Ed C",
@@ -121,7 +121,7 @@ export const GOLDEN_LAYOUT_SEED: {
       is_virtual: true
     },
 
-    // Year 3 - Software Engineering Track
+    // Year 3 - Software Engineering Track (Above Gate)
     {
       id: "y3-se-core",
       program_id: "bs_cs",
@@ -131,8 +131,8 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: 1200,
-      position_y: 220
+      position_x: 1300,
+      position_y: 240
     },
     {
       id: "y3-se-elec",
@@ -143,11 +143,11 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: 1200,
-      position_y: 420
+      position_x: 1300,
+      position_y: 120
     },
 
-    // Year 3 - Data Science Track  
+    // Year 3 - Data Science Track (Below Gate)
     {
       id: "y3-ds-core",
       program_id: "bs_cs",
@@ -157,8 +157,8 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "track_core",
       credits_needed: 6,
-      position_x: 1500,
-      position_y: 220
+      position_x: 1300,
+      position_y: 480
     },
     {
       id: "y3-ds-elec",
@@ -169,8 +169,8 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 3,
       area: "elective_pool",
       credits_needed: 6,
-      position_x: 1500,
-      position_y: 420
+      position_x: 1300,
+      position_y: 600
     },
 
     // Year 4 - Capstones
@@ -183,8 +183,8 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 4,
       area: "capstone", 
       credits_needed: 3,
-      position_x: 1800,
-      position_y: 320
+      position_x: 1700,
+      position_y: 80
     },
     {
       id: "y4-ds-cap", 
@@ -195,8 +195,8 @@ export const GOLDEN_LAYOUT_SEED: {
       level_year: 4,
       area: "capstone",
       credits_needed: 3,
-      position_x: 2100,
-      position_y: 320
+      position_x: 1700,
+      position_y: 640
     }
   ],
 
@@ -204,12 +204,12 @@ export const GOLDEN_LAYOUT_SEED: {
     // Y1 → Y2 connections
     { source: "y1-found", target: "y2-core1" },
     { source: "y1-math", target: "y2-core1" },
-    { source: "y1-gened", target: "y2-core2" },
+    { source: "y1-genedAB", target: "y2-core2" },
     
     // Y2 → Divergence Gate
     { source: "y2-core1", target: "divergence-gate" },
     { source: "y2-core2", target: "divergence-gate" }, 
-    { source: "y2-gened", target: "divergence-gate" },
+    { source: "y2-genedC", target: "divergence-gate" },
     
     // Gate → Y3 Track Specialization
     { source: "divergence-gate", target: "y3-se-core" },

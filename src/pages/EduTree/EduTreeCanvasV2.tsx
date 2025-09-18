@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect } from 'react';
-import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
+import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { useFeatureFlags } from '@/lib/featureFlags';
@@ -30,10 +30,9 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => (
 );
 
 const GateNode = ({ data }: { data: V2NodeData }) => (
-  <div className="px-3 py-2 bg-primary/10 border-2 border-primary/30 rounded-full shadow-sm">
-    <div className="text-xs font-medium text-primary text-center">
-      {data.title}
-    </div>
+  <div className="px-6 py-4 shadow-lg rounded-lg border-2 border-dashed border-primary/50 bg-background/90 text-sm text-muted-foreground min-w-[120px] text-center">
+    <strong className="text-foreground">{data.title}</strong>
+    <div className="text-xs opacity-70 mt-1">Choose Track</div>
   </div>
 );
 
@@ -116,6 +115,22 @@ export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
   
   return (
     <div className="h-full w-full">
+      {/* Lane Headers */}
+      <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+        <div className="bg-background/80 px-2 py-1 rounded border">
+          ▲ Software Engineering Lane
+        </div>
+      </div>
+      <div className="absolute top-4 left-[1300px] translate-y-[300px] text-xs opacity-70 z-10 pointer-events-none">
+        <div className="bg-background/80 px-2 py-1 rounded border">
+          ▼ Data Science Lane
+        </div>
+      </div>
+
+      {/* Faint horizontal lane dividers */}
+      <div className="absolute top-0 left-[1250px] w-[500px] h-[200px] bg-primary/5 rounded-lg pointer-events-none" />
+      <div className="absolute top-[400px] left-[1250px] w-[500px] h-[300px] bg-secondary/5 rounded-lg pointer-events-none" />
+
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
@@ -127,6 +142,14 @@ export function EduTreeCanvasV2({ trackFilter = null }: EduTreeCanvasV2Props) {
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        defaultEdgeOptions={{
+          type: 'step',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+          },
+        }}
       >
         <MiniMap />
         <Controls />
