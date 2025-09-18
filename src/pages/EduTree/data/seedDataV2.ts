@@ -324,12 +324,11 @@ export function filterBlocksByMode(
   
   switch (filterMode) {
     case 'compare-programs':
-      // Show Y1 + both programs + program gate (hide track gate)
+      // Show Y1 shared + Y2 program-only + program gate (exclude track-level content)
       return blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
-        block.program_id === 'bs_cs' || 
-        block.program_id === 'bs_it' ||
-        (block.is_virtual && block.id === 'gate-y2-programs')
+        (block.program_id && !block.track_id) || // Y2 program-only blocks (CS Core/Electives, IT Core/Electives)
+        (block.is_virtual && block.id === 'gate-y2-programs') // Program gate only
       );
       
     case 'compare-tracks':

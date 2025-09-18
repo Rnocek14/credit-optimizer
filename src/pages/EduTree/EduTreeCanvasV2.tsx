@@ -290,21 +290,40 @@ export default function EduTreeCanvasV2({
       )}
 
       <div className="h-full w-full">
-        {/* Lane Headers - hide in single-rail straight mode */}
-        {!singleRailStraight && (
-          <>
-            <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-              <div className="bg-background/80 px-2 py-1 rounded border">
-                ▲ Software Engineering Lane
+        {/* Dynamic Lane Headers - hide in single-rail straight mode */}
+        {!singleRailStraight && (() => {
+          const getLaneHeaders = () => {
+            switch (filterMode) {
+              case 'compare-programs':
+                return {
+                  upper: '▲ BS Computer Science',
+                  lower: '▼ BS Information Technology'
+                };
+              case 'compare-tracks':
+              default:
+                return {
+                  upper: '▲ Software Engineering Lane',
+                  lower: '▼ Data Science Lane'
+                };
+            }
+          };
+          
+          const headers = getLaneHeaders();
+          return (
+            <>
+              <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+                <div className="bg-background/80 px-2 py-1 rounded border">
+                  {headers.upper}
+                </div>
               </div>
-            </div>
-            <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-              <div className="bg-background/80 px-2 py-1 rounded border">
-                ▼ Data Science Lane
+              <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
+                <div className="bg-background/80 px-2 py-1 rounded border">
+                  {headers.lower}
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          );
+        })()}
 
       {/* Midline spine at gate row */}
       <div
