@@ -179,6 +179,52 @@ export function applyManualLayout(
     };
   });
   
+  // Apply vertical stacking for single-track straight mode to prevent overlaps
+  if (useGridAnchors && singleTrackStraight) {
+    const CENTER_BY_YEAR: Record<number, number> = { 1: 360, 2: 360, 3: 360, 4: 360 };
+    const ROW_GAP = 140; // generous gap to avoid overlap
+
+    // Priority helps put "Core" near the midline
+    const PRIORITY: Record<string, number> = {
+      foundation: 0,
+      core: 1,          // CS Core, IT Core, SE/DS Core
+      track_core: 2,
+      elective_pool: 3, // electives
+      gen_ed: 4,
+      capstone: 5,
+    };
+
+    // group by year (skip virtual nodes)
+    const byYear = new Map<number, typeof nodes>();
+    nodes.forEach(n => {
+      if (n.data?.isVirtual) return;
+      const col = n.data?.phaseAPlan?.col;
+      if (!col) return;
+      if (!byYear.has(col)) byYear.set(col, []);
+      byYear.get(col)!.push(n);
+    });
+
+    // symmetrical fan-out around center
+    byYear.forEach((list, year) => {
+      // stable sort: priority, then id
+      list.sort((a, b) => {
+        const pa = PRIORITY[a.data?.ruleType ?? ''] ?? 99;
+        const pb = PRIORITY[b.data?.ruleType ?? ''] ?? 99;
+        return pa - pb || String(a.id).localeCompare(String(b.id));
+      });
+
+      const centerY = CENTER_BY_YEAR[year] ?? 360;
+      const n = list.length;
+      for (let i = 0; i < n; i++) {
+        const offset = (i - (n - 1) / 2) * ROW_GAP;
+        const p = list[i].data!.phaseAPlan!;
+        p.y = centerY + offset;   // update plan Y
+        // Also update the actual position
+        list[i].position.y = p.y;
+      }
+    });
+  }
+  
   const reactFlowEdges = edgesToReactFlowEdges(edges, blocks, singleTrackStraight);
   
   // Final sanitizer: ensure no bad handles survive regardless of source
