@@ -104,8 +104,7 @@ export function useMasterLayoutController(
           position: 'absolute' as const,
           transition: 'none',
           transform: 'none',
-          willChange: 'auto' as const,
-          pointerEvents: 'none' as const
+          willChange: 'auto' as const
         }
       };
     }
