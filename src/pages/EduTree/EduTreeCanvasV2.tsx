@@ -11,6 +11,7 @@ import { exposeGridValidation } from './utils/deterministicGrid';
 import { decideGatePositions } from './utils/divergence';
 import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
 import { runRegressionChecks } from './utils/regressionChecks';
+import { runSmokeTest } from './utils/smokeTest';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -370,6 +371,9 @@ export default function EduTreeCanvasV2({
           gatePositions,
           cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 }
         });
+        
+        // Run ChatGPT's smoke test
+        runSmokeTest();
       } catch (e) {
         console.warn('[EduTreeV2] Validation assertion failed:', e);
       }

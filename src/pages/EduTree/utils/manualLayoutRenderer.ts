@@ -286,7 +286,7 @@ export function edgesToReactFlowEdges(
     };
 
     // Only set handles when they are actually needed and valid
-    if (typeof sourceHandle === 'string' && sourceHandle !== 'null' && sourceHandle !== '') {
+    if (typeof sourceHandle === 'string' && sourceHandle !== 'null' && sourceHandle !== '' && sourceHandle !== 'undefined') {
       edgeObject.sourceHandle = sourceHandle;
     }
     if (sourcePosition !== undefined) {

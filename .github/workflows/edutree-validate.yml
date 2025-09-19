@@ -1,0 +1,58 @@
+name: EduTree Validation
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/pages/EduTree/**']
+  pull_request:
+    branches: [main]
+    paths: ['src/pages/EduTree/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run EduTree tests
+      run: npm test -- src/pages/EduTree
+    
+    - name: Type check EduTree
+      run: npx tsc --noEmit --project tsconfig.json
+    
+    - name: Run data model validation
+      run: |
+        if [ -f "scripts/validate-edutree.cjs" ]; then
+          node scripts/validate-edutree.cjs
+        else
+          echo "⚠️  Data model validator not found - skipping"
+        fi
+      continue-on-error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js  
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Lint EduTree code
+      run: npx eslint "src/pages/EduTree/**/*.{ts,tsx}" --max-warnings 0
