@@ -275,7 +275,7 @@ function createHeaderNodes(opts: {
       {
         id: 'program-header:bs_cs',
         type: 'header',
-        position: { x: PROGRAM_HEADER_X, y: Y_UP - 120 },
+        position: { x: PROGRAM_HEADER_X, y: Y_UP - 200 },
         data: { label: 'BS Computer Science' },
         draggable: false,
         selectable: false,
@@ -285,7 +285,7 @@ function createHeaderNodes(opts: {
       {
         id: 'program-header:bs_it',
         type: 'header',
-        position: { x: PROGRAM_HEADER_X, y: Y_DOWN + 120 },
+        position: { x: PROGRAM_HEADER_X, y: Y_DOWN + 200 },
         data: { label: 'BS Information Technology' },
         draggable: false,
         selectable: false,
@@ -300,7 +300,7 @@ function createHeaderNodes(opts: {
     {
       id: 'track-header:se',
       type: 'header', 
-      position: { x: TRACK_HEADER_X, y: Y_UP - 120 },
+      position: { x: TRACK_HEADER_X, y: Y_UP - 200 },
       data: { label: 'Software Engineering' },
       draggable: false,
       selectable: false,
@@ -310,7 +310,7 @@ function createHeaderNodes(opts: {
     {
       id: 'track-header:ds',
       type: 'header',
-      position: { x: TRACK_HEADER_X, y: Y_DOWN + 120 },
+      position: { x: TRACK_HEADER_X, y: Y_DOWN + 200 },
       data: { label: 'Data Science' },
       draggable: false,
       selectable: false,
