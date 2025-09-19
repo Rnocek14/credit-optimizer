@@ -13,6 +13,9 @@ const GateBranchEdge = ({
   markerEnd,
   data,
 }: EdgeProps) => {
+  // Debug logging to understand source position
+  console.log(`[DEBUG] GateBranchEdge ${id} - sourceX:${sourceX}, sourceY:${sourceY}, data:`, data);
+  
   // Calculate symmetric manual control points for perfect mirroring
   const dx = targetX - sourceX;
   const dy = targetY - sourceY;
