@@ -18,9 +18,12 @@ function metroPath(
   r = R,
   minH = MIN_H_GAP
 ): string {
+  // Pixel-grid snap helper (halves are crisp too)
+  const round = (n: number) => Math.round(n * 2) / 2;
+
   // If already roughly horizontal, draw a straight line
   if (Math.abs(sy - ty) <= 2) {
-    return `M ${sx},${sy} L ${tx},${ty}`;
+    return `M ${round(sx)},${round(sy)} L ${round(tx)},${round(ty)}`;
   }
 
   // 1) Go right from source by at least minH (or until halfway)
@@ -48,13 +51,13 @@ function metroPath(
   const bend3Y = ty;
 
   return [
-    `M ${sx},${sy}`,                   // start
-    `L ${elbowX},${elbowY}`,          // horizontal to elbow
-    `Q ${elbowX},${elbowY} ${bend1X},${bend1Y}`, // small round to start radius
-    `L ${bend2X},${bend2Y}`,          // tiny vertical to leave corner
-    `L ${nearTX},${nearTY}`,          // vertical leg
-    `Q ${tx},${ty} ${bend3X},${bend3Y}`,        // rounded into final horizontal
-    `L ${tx},${ty}`,                  // final short horizontal into header
+    `M ${round(sx)},${round(sy)}`,                   // start
+    `L ${round(elbowX)},${round(elbowY)}`,          // horizontal to elbow
+    `Q ${round(elbowX)},${round(elbowY)} ${round(bend1X)},${round(bend1Y)}`, // small round to start radius
+    `L ${round(bend2X)},${round(bend2Y)}`,          // tiny vertical to leave corner
+    `L ${round(nearTX)},${round(nearTY)}`,          // vertical leg
+    `Q ${round(tx)},${round(ty)} ${round(bend3X)},${round(bend3Y)}`,        // rounded into final horizontal
+    `L ${round(tx)},${round(ty)}`,                  // final short horizontal into header
   ].join(' ');
 }
 
@@ -82,13 +85,17 @@ export default function MetroGateEdge({
       {/* Wide invisible hitbox for easy hover/selection */}
       <path
         d={d}
-        stroke="transparent"
-        strokeWidth={Math.max(strokeWidth + 12, 16)}
+        stroke="rgba(0,0,0,0)"
+        strokeWidth={Math.max(strokeWidth + 12, 20)}
         fill="none"
         vectorEffect="non-scaling-stroke"
         pointerEvents="stroke"
+        tabIndex={0}
+        aria-label={`Gate to ${data?.label || 'header'} connection`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onFocus={() => setIsHovered(true)}
+        onBlur={() => setIsHovered(false)}
         style={{ cursor: 'pointer' }}
       />
       

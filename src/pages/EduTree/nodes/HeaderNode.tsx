@@ -36,7 +36,8 @@ export default function HeaderNode({ data }: { data: HeaderNodeData }) {
           transform: 'translateY(-50%)',
           opacity: 0,
           width: 1,
-          height: 1
+          height: 1,
+          pointerEvents: 'none'
         }}
       />
       <Handle 
