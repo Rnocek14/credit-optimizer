@@ -32,12 +32,13 @@ export default function HeaderNode({ data }: { data: HeaderNodeData }) {
         id="in" 
         position={Position.Left}
         style={{ 
-          top: '50%',
+          insetInlineStart: -8,
+          insetBlockStart: '50%',
           transform: 'translateY(-50%)',
           opacity: 0,
           width: 1,
           height: 1,
-          pointerEvents: 'none'
+          pointerEvents: 'auto' // Allow handle to be hit for edge connections
         }}
       />
       <Handle 

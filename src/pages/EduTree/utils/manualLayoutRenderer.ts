@@ -248,8 +248,11 @@ export function edgesToReactFlowEdges(
       });
     }
 
+    // Use deterministic ID for metro edges to prevent remount churn
+    const edgeId = edgeType === 'metroGate' ? `metro:${edge.source}->${target}` : `${edge.source}-${target}`;
+    
     const edgeObject: any = {
-      id: `${edge.source}-${target}`,
+      id: edgeId,
       source: edge.source,
       target,
       type: edgeType,
@@ -285,7 +288,11 @@ export function edgesToReactFlowEdges(
     if (sourcePosition !== undefined) {
       edgeObject.sourcePosition = sourcePosition;
     }
-    if (targetHandle !== undefined) {
+    
+    // Guard for metro edge target handles - only set when header target is confirmed
+    if (edgeType === 'metroGate' && isHeaderTarget && targetHandle === 'in') {
+      edgeObject.targetHandle = targetHandle;
+    } else if (targetHandle !== undefined && edgeType !== 'metroGate') {
       edgeObject.targetHandle = targetHandle;
     }
 

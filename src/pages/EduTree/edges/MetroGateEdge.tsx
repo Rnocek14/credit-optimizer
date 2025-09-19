@@ -131,6 +131,7 @@ export default function MetroGateEdge({
         strokeWidth={strokeWidth}
         strokeDasharray={strokeDasharray}
         opacity={displayOpacity}
+        vectorEffect="non-scaling-stroke"
         shapeRendering="geometricPrecision"
         strokeLinecap="round"
         strokeLinejoin="round"
