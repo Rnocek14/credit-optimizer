@@ -60,6 +60,8 @@ export default function MetroGateEdge({
   id, sourceX, sourceY, targetX, targetY,
   markerEnd, selected, data,
 }: EdgeProps) {
+  const [isHovered, setIsHovered] = React.useState(false);
+  
   const d = React.useMemo(
     () => metroPath(sourceX, sourceY, targetX, targetY),
     [sourceX, sourceY, targetX, targetY]
@@ -70,6 +72,9 @@ export default function MetroGateEdge({
   const strokeDasharray = typeof data?.strokeDasharray === 'string' ? data.strokeDasharray : undefined;
   const opacity = typeof data?.opacity === 'number' ? data.opacity : 1;
 
+  // Enhanced opacity and glow for hover state
+  const displayOpacity = isHovered ? Math.min(opacity + 0.3, 1) : opacity;
+
   return (
     <g data-id={id}>
       {/* Wide invisible hitbox for easy hover/selection */}
@@ -78,9 +83,24 @@ export default function MetroGateEdge({
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 12, 16)}
         fill="none"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ cursor: 'pointer' }}
       />
       
-      {/* Glow effect for selected state */}
+      {/* Subtle glow for hover state */}
+      {isHovered && (
+        <path
+          d={d}
+          fill="none"
+          stroke="rgba(255,255,255,0.3)"
+          strokeWidth={strokeWidth + 4}
+          opacity={0.4}
+          shapeRendering="geometricPrecision"
+        />
+      )}
+      
+      {/* Enhanced glow for selected state */}
       {selected && (
         <path
           d={d}
@@ -99,7 +119,7 @@ export default function MetroGateEdge({
         stroke={STROKE}
         strokeWidth={strokeWidth}
         strokeDasharray={strokeDasharray}
-        opacity={opacity}
+        opacity={displayOpacity}
         shapeRendering="geometricPrecision"
         markerEnd={markerEnd}
       />

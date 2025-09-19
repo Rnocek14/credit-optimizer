@@ -552,6 +552,27 @@ export default function EduTreeCanvasV2({
         <Background />
       </ReactFlow>
       
+        {/* Edge Type Legend - show in compare modes */}
+        {(filterMode === 'compare-tracks' || filterMode === 'compare-programs') && (
+          <div className="absolute top-4 right-4 bg-background/90 border rounded p-3 text-xs text-muted-foreground z-20">
+            <div className="font-medium text-white mb-2">Edge Types</div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-0.5 bg-white opacity-90" style={{ strokeWidth: 5 }}></div>
+                <span>Gate (thick)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-0.5 bg-white opacity-75" style={{ strokeWidth: 2 }}></div>
+                <span>Prerequisite (solid)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-0.5 bg-white opacity-60 border-dashed" style={{ strokeWidth: 2, strokeDasharray: '4 2' }}></div>
+                <span>Advisory (dashed)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
           <div>V2 Multi-Gate Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
