@@ -521,11 +521,27 @@ export function applyManualLayout(
     return undefined;
   };
 
-  const sanitizedEdges = reactFlowEdges.map(e => ({
-    ...e,
-    sourceHandle: cleanSource(e.sourceHandle),
-    targetHandle: cleanTarget(e.targetHandle)
-  }));
+  const sanitizedEdges = reactFlowEdges.map(e => {
+    const sourceHandle = cleanSource(e.sourceHandle);
+    const targetHandle = cleanTarget(e.targetHandle);
+    
+    // Build sanitized edge, completely omitting undefined keys
+    const sanitizedEdge: any = { ...e };
+    
+    if (sourceHandle !== undefined) {
+      sanitizedEdge.sourceHandle = sourceHandle;
+    } else {
+      delete sanitizedEdge.sourceHandle;
+    }
+    
+    if (targetHandle !== undefined) {
+      sanitizedEdge.targetHandle = targetHandle;
+    } else {
+      delete sanitizedEdge.targetHandle;
+    }
+    
+    return sanitizedEdge;
+  });
   
   // Apply immediately - no delays or animations
   onApply(allNodes, sanitizedEdges);

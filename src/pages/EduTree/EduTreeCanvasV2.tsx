@@ -82,13 +82,11 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
             type="source" 
             position={Position.Right}
             style={{ 
-              right: '-8px',
               top: '50%',
               transform: 'translateY(-50%)',
-              background: 'transparent',
-              border: 'none',
-              width: '12px',
-              height: '12px'
+              opacity: 0,
+              width: 1,
+              height: 1
             }}
           />
         </>
@@ -99,18 +97,27 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
           type="source" 
           position={Position.Right}
           style={{ 
-            right: '-8px',
             top: '50%',
             transform: 'translateY(-50%)',
-            background: 'transparent', 
-            border: 'none',
-            width: '12px',
-            height: '12px'
+            opacity: 0,
+            width: 1,
+            height: 1
           }}
         />
       )}
       {/* target handle */}
-      <Handle id="in" type="target" position={Position.Left} />
+      <Handle 
+        id="in" 
+        type="target" 
+        position={Position.Left}
+        style={{ 
+          top: '50%',
+          transform: 'translateY(-50%)',
+          opacity: 0,
+          width: 1,
+          height: 1
+        }}
+      />
     </div>
   );
 };
