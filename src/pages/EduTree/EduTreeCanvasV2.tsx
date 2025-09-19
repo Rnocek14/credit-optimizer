@@ -21,6 +21,8 @@ import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
 import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
+import { PathHighlightProvider } from './ctx/PathHighlightContext';
+import { useApplyDimming } from './hooks/useApplyDimming';
 import './components/StabilityStyles.css';
 
 type DevOverrides = {
@@ -162,6 +164,27 @@ export default function EduTreeCanvasV2({
   overrideFilterMode,
   overrideFlags 
 }: EduTreeCanvasV2Props) {
+  return (
+    <PathHighlightProvider filterMode={overrideFilterMode ?? filterMode ?? 'compare-tracks'}>
+      <EduTreeCanvasV2Content 
+        filterMode={filterMode}
+        overrideFilterMode={overrideFilterMode}
+        overrideFlags={overrideFlags}
+      />
+    </PathHighlightProvider>
+  );
+}
+
+function EduTreeCanvasV2Content({ 
+  filterMode = null, 
+  overrideFilterMode,
+  overrideFlags 
+}: EduTreeCanvasV2Props) {
+function EduTreeCanvasV2Content({ 
+  filterMode = null, 
+  overrideFilterMode,
+  overrideFlags 
+}: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
   
   // Dev panel state (always available in dev)
@@ -184,6 +207,13 @@ export default function EduTreeCanvasV2({
   const updateNodeInternals = useUpdateNodeInternals();
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
+  
+  // Apply dimming based on path highlighting
+  const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, flowEdges);
+  
+  // Use dimmed nodes and edges for rendering
+  const finalNodes = dimmedNodes;
+  const finalEdges = dimmedEdges;
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -274,7 +304,7 @@ export default function EduTreeCanvasV2({
           edges: newEdges.length 
         });
         
-        // Apply gate positioning decisions with proper guards
+        // Apply gate positioning decisions with proper guards and dimming
         const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
           if (n.id === 'gate-y2-programs') {
             if (!gatePositions.showPG || gatePositions.pgX == null) return { ...n, hidden: true };
@@ -541,8 +571,8 @@ export default function EduTreeCanvasV2({
       )}
 
       <ReactFlow
-        nodes={nodes}
-        edges={flowEdges}
+        nodes={finalNodes}
+        edges={finalEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -571,7 +601,7 @@ export default function EduTreeCanvasV2({
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-          <div>V2 Multi-Gate Mode • nodes {nodes.length} • edges {flowEdges.length}</div>
+          <div>V2 Multi-Gate Mode • nodes {finalNodes.length} • edges {finalEdges.length}</div>
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
           <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
         </div>
@@ -586,4 +616,7 @@ export default function EduTreeCanvasV2({
       </div>
     </>
   );
+}
+
+// Missing closing brace for EduTreeCanvasV2Content function
 }
