@@ -3,19 +3,20 @@
  * Bypasses all legacy layout systems when flags are active
  */
 
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { decideGatePositions } from './utils/divergence';
-import { validateEduTreeDataModel } from './data/validation';
+import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
 import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
+import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
 import './components/StabilityStyles.css';
 
@@ -122,7 +123,8 @@ const nodeTypes = {
 
 const edgeTypes = {
   gate: GateEdge,
-  gateBranch: GateBranchEdge
+  gateBranch: GateBranchEdge,
+  metroGate: MetroGateEdge
 };
 
 // Improved shallow equality functions to prevent layout churn
@@ -308,32 +310,12 @@ export default function EduTreeCanvasV2({
         setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
         setEdges(prev => prev.length === safeEdges.length && prev.every((e,i) => e.id === safeEdges[i].id) ? prev : safeEdges);
         
-        // Force React Flow to recalculate handle positions for visible gates only
-        requestAnimationFrame(() => {
-          const visibleGateIds = finalNodes.filter(n => n.type === 'gate' && !n.hidden).map(n => n.id);
-          visibleGateIds.forEach(updateNodeInternals);
-          console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateIds);
-          
-          // Store nodes in window for validation utilities and run GPT's validation functions
-          if (process.env.NODE_ENV === 'development') {
-            (window as any).__flowNodes__ = finalNodes;
-            (window as any).__flowEdges__ = safeEdges;
-            (window as any).gatePositions = gatePositions;
-            
-            // Run GPT's validation functions
-            try {
-              (window as any).assertNoDanglingHeaders?.({ edges: safeEdges, nodes: finalNodes });
-              (window as any).assertGateX?.({ 
-                nodes: finalNodes, 
-                gatePositions, 
-                cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
-              });
-              (window as any).assertHandlesOnce?.(finalNodes);
-            } catch (e) {
-              console.warn('[EduTreeV2] Validation assertion failed:', e);
-            }
-          }
-        });
+        // Store nodes in window for validation utilities  
+        if (process.env.NODE_ENV === 'development') {
+          (window as any).__flowNodes__ = finalNodes;
+          (window as any).__flowEdges__ = safeEdges;
+          (window as any).gatePositions = gatePositions;
+        }
         
         // Validate no overlaps (acceptance criteria)
         const validation = validateNoOverlaps(finalNodes);
@@ -353,6 +335,29 @@ export default function EduTreeCanvasV2({
       gatePositions // Pass gate positioning decisions
     );
   }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
+  
+  // Update handle internals using useLayoutEffect to prevent micro "pop"
+  useLayoutEffect(() => {
+    const visibleGateIds = nodes.filter(n => n.type === 'gate' && !n.hidden).map(n => n.id);
+    visibleGateIds.forEach(updateNodeInternals);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateIds);
+      
+      // Run GPT's validation functions
+      try {
+        assertNoDanglingHeaders({ edges: flowEdges, nodes });
+        assertGateX({ 
+          nodes, 
+          gatePositions, 
+          cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
+        });
+        assertHandlesOnce(nodes);
+      } catch (e) {
+        console.warn('[EduTreeV2] Validation assertion failed:', e);
+      }
+    }
+  }, [nodes, updateNodeInternals, flowEdges, gatePositions]);
   
   // Reset fitView flag when meaningful context changes
   useEffect(() => { 
