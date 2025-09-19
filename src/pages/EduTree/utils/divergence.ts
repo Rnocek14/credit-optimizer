@@ -89,7 +89,7 @@ export function computeProgramDivergence(
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
       if (y === 4) return { divergesAfter: null, forkBetween: null };
-      return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+      return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
   return { divergesAfter: null, forkBetween: null };
@@ -114,7 +114,7 @@ export function computeTrackDivergence(
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
       if (y === 4) return { divergesAfter: null, forkBetween: null };
-      return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+      return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
   return { divergesAfter: null, forkBetween: null };
