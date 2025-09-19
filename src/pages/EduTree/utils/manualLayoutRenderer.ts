@@ -172,6 +172,7 @@ export function edgesToReactFlowEdges(
     // Determine if this is a compare mode for smooth routing
     const isCompare = filterMode === 'compare-tracks' || filterMode === 'compare-programs';
     const isGateEdge = edge.source.startsWith('gate-');
+    const isHeaderTarget = edge.target.startsWith('track-header:') || edge.target.startsWith('program-header:');
 
     // Compute sourceHandle for gate nodes based on target lane
     let sourceHandle: string | undefined = undefined;
@@ -179,8 +180,13 @@ export function edgesToReactFlowEdges(
     
     if (isGateEdge) {
       if (singleRailStraight) {
-        // In single-rail straight mode, no source handle for horizontal flow
-        sourceHandle = undefined;
+        // In single-rail straight mode, use the right-side handle
+        sourceHandle = 'out';
+        sourcePosition = Position.Right;
+      } else if (isCompare && useV2EdgeKinds && isHeaderTarget) {
+        // Gate-to-header edges: force right-side exit for clean horizontal arrows
+        sourceHandle = 'out';
+        sourcePosition = Position.Right;
       } else if (isCompare && useV2EdgeKinds) {
         // Metro-style: force horizontal-first routing for gate edges in compare modes
         sourceHandle = undefined; // don't use lane handles
@@ -203,7 +209,6 @@ export function edgesToReactFlowEdges(
     }
 
     // Enhanced edge type selection - gate-to-header edges should be straight in compare modes
-    const isHeaderTarget = edge.target.startsWith('track-header:') || edge.target.startsWith('program-header:');
     const edgeType = singleRailStraight ? 'straight' : 
                      (isCompare && isGateEdge && isHeaderTarget) ? 'straight' : 
                      (isCompare ? 'smoothstep' : 'step');

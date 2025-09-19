@@ -66,11 +66,12 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
       <div className="font-semibold">{gateTitle}</div>
       <div className="mt-1 text-xs opacity-70">{subtitle}</div>
 
-      {/* Handles - only show vertical handles when NOT in single-rail straight mode */}
+      {/* Handles - show appropriate handles based on mode */}
       {!singleRailStraight && (
         <>
           <Handle id="out-se" type="source" position={Position.Top} />
           <Handle id="out-ds" type="source" position={Position.Bottom} />
+          <Handle id="out" type="source" position={Position.Right} />
         </>
       )}
       {singleRailStraight && (
