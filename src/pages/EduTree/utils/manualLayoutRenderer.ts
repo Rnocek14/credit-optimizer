@@ -224,13 +224,16 @@ export function edgesToReactFlowEdges(
       }
     }
 
-    // Enhanced edge type selection - use custom gateBranch for gate-to-header routing
+    // Enhanced edge type selection - use metroGate for gate-to-header routing
     const edgeType = singleRailStraight ? 'straight' : 
-                     (isCompare && isGateEdge && isHeaderTarget) ? 'gateBranch' : 
+                     (isCompare && isGateEdge && isHeaderTarget) ? 'metroGate' : 
                      (isCompare ? 'smoothstep' : 'step');
 
     // Refined arrow styling - smaller arrows for cleaner appearance (14-16px as recommended)
     const arrowSize = { width: 15, height: 15 };
+
+    // Set targetHandle for gate-to-header edges
+    const targetHandle = (isGateEdge && isHeaderTarget) ? 'in' : undefined;
 
     return {
       id: `${edge.source}-${target}`,
@@ -238,6 +241,7 @@ export function edgesToReactFlowEdges(
       target,
       sourceHandle, // Always computed, never from seed
       sourcePosition,
+      targetHandle,
       type: edgeType,
       animated: false,
       
@@ -472,16 +476,22 @@ export function applyManualLayout(
   const allNodes = [...nodes, ...headerNodes];
   
   // Final sanitizer: ensure no bad handles survive regardless of source
-  const clean = (h: unknown): SourceHandle => {
+  const cleanSource = (h: unknown): SourceHandle => {
     if (h === 'out' || h === 'out-se' || h === 'out-ds') return h as SourceHandle;
+    if (h === null || h === 'null' || h === '') return undefined;
+    return undefined;
+  };
+
+  const cleanTarget = (h: unknown): string | undefined => {
+    if (h === 'in') return 'in'; // Allow 'in' for gate-to-header edges
     if (h === null || h === 'null' || h === '') return undefined;
     return undefined;
   };
 
   const sanitizedEdges = reactFlowEdges.map(e => ({
     ...e,
-    sourceHandle: clean(e.sourceHandle),
-    targetHandle: undefined // We don't use target handles
+    sourceHandle: cleanSource(e.sourceHandle),
+    targetHandle: cleanTarget(e.targetHandle)
   }));
   
   // Apply immediately - no delays or animations

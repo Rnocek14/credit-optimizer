@@ -27,8 +27,8 @@ export default function HeaderNode({ data }: { data: HeaderNodeData }) {
       <Handle 
         type="target" 
         position={Position.Left} 
-        style={{ opacity: 0, pointerEvents: 'none' }}
-        id="target"
+        style={{ opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
+        id="in"
       />
       <Handle 
         type="source" 

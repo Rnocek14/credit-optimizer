@@ -53,13 +53,10 @@ function metroPath(
   ].join(' ');
 }
 
-export default function MetroGateEdge(props: EdgeProps) {
-  const {
-    id, sourceX, sourceY, targetX, targetY,
-    markerEnd, style, selected, data
-  } = props;
-
-  // Build once per geometry change
+export default function MetroGateEdge({
+  id, sourceX, sourceY, targetX, targetY,
+  markerEnd, selected, data,
+}: EdgeProps) {
   const d = React.useMemo(
     () => metroPath(sourceX, sourceY, targetX, targetY),
     [sourceX, sourceY, targetX, targetY]
