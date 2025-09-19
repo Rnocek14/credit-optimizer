@@ -16,6 +16,8 @@ export interface Columns {
   tg?: number; // optional explicit Track Gate x
 }
 
+type TracksByProgram = Record<ProgramId, ReadonlyArray<TrackCode>>;
+
 export interface DivergenceResult {
   divergesAfter: Year | null;        // 0 or null means "no prior year"
   forkBetween: [Year, Year] | null;  // e.g., [1,2]
@@ -91,7 +93,7 @@ export function computeProgramDivergence(
 export function computeTrackDivergence(
   blocks: any[],
   program: ProgramId,
-  tracks: TrackCode[]
+  tracks: ReadonlyArray<TrackCode>
 ): DivergenceResult {
   if (tracks.length < 2) {
     return { divergesAfter: null, forkBetween: null };
@@ -112,7 +114,7 @@ export function computeTrackDivergence(
 export function decideGatePositions(opts: {
   blocks: any[];
   programs: ProgramId[];
-  tracksByProgram: Record<ProgramId, TrackCode[]>;
+  tracksByProgram: TracksByProgram;
   cols: Columns;
 }): GatePositions {
   const { blocks, programs, tracksByProgram, cols } = opts;

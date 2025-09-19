@@ -61,6 +61,13 @@ export function validateEduTreeDataModel(gatePositions?: GatePositions): Validat
     const gateValidation = validateGateCoherency(gatePositions);
     errors.push(...gateValidation.errors);
     warnings.push(...gateValidation.warnings);
+
+    // Also validate header co-presence if we have access to nodes
+    if (typeof window !== 'undefined' && (window as any).__flowNodes__) {
+      const headerValidation = validateHeaderCoPresence(gatePositions, (window as any).__flowNodes__);
+      errors.push(...headerValidation.errors);
+      warnings.push(...headerValidation.warnings);
+    }
   }
   
   const result: ValidationResult = {
@@ -292,7 +299,43 @@ function validateGateCoherency(gatePositions: GatePositions): { errors: string[]
       warnings.push(`Track gate hidden but ${trackGateEdges.length} edge(s) still reference it: ${trackGateEdges.map(e => e.target).join(', ')}`);
     }
   }
-  
+
+  return { errors, warnings };
+}
+
+/**
+ * Validate header co-presence - headers should exist when corresponding gates are visible
+ */
+function validateHeaderCoPresence(gatePositions: GatePositions, nodes: any[]): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Check program headers when program gate is visible
+  if (gatePositions.showPG) {
+    const hasProgramHeaderCS = nodes.some(n => n.id === 'program-header:bs_cs');
+    const hasProgramHeaderIT = nodes.some(n => n.id === 'program-header:bs_it');
+    
+    if (!hasProgramHeaderCS) {
+      errors.push('Program gate visible but program-header:bs_cs missing');
+    }
+    if (!hasProgramHeaderIT) {
+      errors.push('Program gate visible but program-header:bs_it missing');
+    }
+  }
+
+  // Check track headers when track gate is visible
+  if (gatePositions.showTG) {
+    const hasTrackHeaderSE = nodes.some(n => n.id === 'track-header:se');
+    const hasTrackHeaderDS = nodes.some(n => n.id === 'track-header:ds');
+    
+    if (!hasTrackHeaderSE) {
+      errors.push('Track gate visible but track-header:se missing');
+    }
+    if (!hasTrackHeaderDS) {
+      errors.push('Track gate visible but track-header:ds missing');
+    }
+  }
+
   return { errors, warnings };
 }
 

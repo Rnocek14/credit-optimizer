@@ -3,7 +3,7 @@
  * Bypasses all legacy layout systems when flags are active
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
@@ -176,20 +176,20 @@ export default function EduTreeCanvasV2({
     
     console.log('[EduTreeV2] Applying manual layout for', blocks.length, 'blocks');
     
-    // Data-driven gate positioning
+    // Data-driven gate positioning - memoized for performance
     const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
     const programs = [...presentPrograms] as ('bs_cs' | 'bs_it')[];
     const tracksByProgram = {
-      bs_cs: ['se', 'ds'],
-      bs_it: [], // no tracks for IT (for now)
-    };
+      bs_cs: ['se', 'ds'] as const,
+      bs_it: [] as const, // no tracks for IT (for now)
+    } as const;
     
-    const gatePositions = decideGatePositions({
+    const gatePositions = useMemo(() => decideGatePositions({
       blocks, 
       programs, 
       tracksByProgram, 
       cols
-    });
+    }), [blocks, programs.join(','), JSON.stringify(tracksByProgram)]);
     
     // Expose grid validation tools for development
     exposeGridValidation();
