@@ -8,7 +8,7 @@ import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import { applyDeterministicGrid, type Lane } from './deterministicGrid';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 
-type SourceHandle = 'out-se' | 'out-ds' | undefined;
+type SourceHandle = 'out' | 'out-se' | 'out-ds' | undefined;
 
 export interface V2NodeData {
   title: string;
@@ -179,25 +179,20 @@ export function edgesToReactFlowEdges(
     let sourcePosition: Position | undefined = undefined;
     
     if (isGateEdge) {
-      console.log(`[DEBUG] Processing gate edge ${edge.source}->${edge.target} - singleRailStraight:${singleRailStraight}, isCompare:${isCompare}, useV2EdgeKinds:${useV2EdgeKinds}, isHeaderTarget:${isHeaderTarget}`);
-      
       // PRIORITY 1: Gate-to-header edges ALWAYS use middle-right handle
       if (isHeaderTarget) {
         sourceHandle = 'out';
         sourcePosition = Position.Right;
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - header target PRIORITY - sourceHandle:`, sourceHandle);
       }
       // PRIORITY 2: Single-rail mode uses middle-right handle
       else if (singleRailStraight) {
         sourceHandle = 'out';
         sourcePosition = Position.Right;
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - singleRailStraight mode - sourceHandle:`, sourceHandle);
       }
       // PRIORITY 3: Compare modes with V2 edge kinds use middle-right for clean routing
       else if (isCompare && useV2EdgeKinds) {
         sourceHandle = 'out';
         sourcePosition = Position.Right;
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - compare+V2 mode - sourceHandle:`, sourceHandle);
       }
       // FALLBACK: Legacy lane-based routing
       else {
@@ -213,7 +208,6 @@ export function edgesToReactFlowEdges(
           sourceHandle = 'out';
           sourcePosition = Position.Right;
         }
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - legacy lane mode - sourceHandle:`, sourceHandle, 'targetLane:', targetLane);
       }
     }
 
@@ -461,7 +455,7 @@ export function applyManualLayout(
   
   // Final sanitizer: ensure no bad handles survive regardless of source
   const clean = (h: unknown): SourceHandle => {
-    if (h === 'out-se' || h === 'out-ds') return h as 'out-se'|'out-ds';
+    if (h === 'out' || h === 'out-se' || h === 'out-ds') return h as SourceHandle;
     if (h === null || h === 'null' || h === '') return undefined;
     return undefined;
   };
