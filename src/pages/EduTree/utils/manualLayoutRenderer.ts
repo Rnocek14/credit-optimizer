@@ -208,13 +208,13 @@ export function edgesToReactFlowEdges(
       }
     }
 
-    // Enhanced edge type selection - gate-to-header edges use custom routing
+    // Enhanced edge type selection - use custom gateBranch for gate-to-header routing
     const edgeType = singleRailStraight ? 'straight' : 
-                     (isCompare && isGateEdge && isHeaderTarget) ? 'gate' : 
+                     (isCompare && isGateEdge && isHeaderTarget) ? 'gateBranch' : 
                      (isCompare ? 'smoothstep' : 'step');
 
-    // Refined arrow styling - smaller arrows for cleaner appearance
-    const arrowSize = { width: 18, height: 18 };
+    // Refined arrow styling - smaller arrows for cleaner appearance (14-16px as recommended)
+    const arrowSize = { width: 15, height: 15 };
 
     return {
       id: `${edge.source}-${target}`,
@@ -267,9 +267,9 @@ function createHeaderNodes(opts: {
   const Y_UP = 240;
   const Y_DOWN = 480;
   
-  // Position headers slightly left of their respective columns for visibility
-  const TRACK_HEADER_X = cols.y3 - 60; // move off the cards a bit
-  const PROGRAM_HEADER_X = cols.y2 - 60;
+  // Position headers further left to create shared junction effect for gate branches
+  const TRACK_HEADER_X = cols.y3 - 80; // move further left for metro-map junction
+  const PROGRAM_HEADER_X = cols.y2 - 80;
 
   if (filterMode === 'compare-programs') {
     return [

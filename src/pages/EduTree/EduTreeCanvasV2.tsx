@@ -13,6 +13,7 @@ import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
 import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
+import GateBranchEdge from './edges/GateBranchEdge';
 import { DevToggle } from './components/DevToggle';
 
 type DevOverrides = {
@@ -117,7 +118,8 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  gate: GateEdge
+  gate: GateEdge,
+  gateBranch: GateBranchEdge
 };
 
 interface EduTreeCanvasV2Props {
