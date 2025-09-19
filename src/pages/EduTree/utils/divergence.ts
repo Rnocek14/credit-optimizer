@@ -85,8 +85,12 @@ export function computeProgramDivergence(
 
   for (const y of years) {
     const slice = sets.map(s => s.get(y)!);
-    const same = slice.every(s => eqSets(s, slice[0]));
-    if (!same) return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+    const same = slice.every(s => s.size === slice[0].size && [...s].every(v => slice[0].has(v)));
+    if (!same) {
+      // If divergence only at Y4, return null (no gate needed)
+      if (y === 4) return { divergesAfter: null, forkBetween: null };
+      return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+    }
   }
   return { divergesAfter: null, forkBetween: null };
 }
@@ -106,8 +110,12 @@ export function computeTrackDivergence(
 
   for (const y of years) {
     const slice = sets.map(s => s.get(y)!);
-    const same = slice.every(s => eqSets(s, slice[0]));
-    if (!same) return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+    const same = slice.every(s => s.size === slice[0].size && [...s].every(v => slice[0].has(v)));
+    if (!same) {
+      // If divergence only at Y4, return null (no gate needed)
+      if (y === 4) return { divergesAfter: null, forkBetween: null };
+      return { divergesAfter: (y - 1) as Year, forkBetween: [y as Year, (y + 1) as Year] };
+    }
   }
   return { divergesAfter: null, forkBetween: null };
 }
@@ -120,17 +128,17 @@ export function decideGatePositions(opts: {
   programs: ProgramId[];
   tracksByProgram: TracksByProgram;
   cols: Columns;
-}): GatePositions {
+}): GatePositions & { _pgBetween: [Year, Year] | null; _tgBetween: [Year, Year] | null } {
   const { blocks, programs, tracksByProgram, cols } = opts;
 
-  // Program gate - use computed fork position
+  // Program gate - use computed fork position only, no fallbacks
   const pgDiv = computeProgramDivergence(blocks, programs);
   const showPG = !!pgDiv.forkBetween;
   const pgX = showPG && pgDiv.forkBetween
     ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
-    : cols.pg ?? ((cols.y1 + cols.y2) / 2);
+    : 0; // No fallback - use 0 when hidden
 
-  // Track gate - use computed fork position
+  // Track gate - use computed fork position only
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
   for (const p of programs) {
@@ -145,9 +153,16 @@ export function decideGatePositions(opts: {
   }
   const tgX = showTG && tgBetween
     ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
-    : cols.tg ?? ((cols.y2 + cols.y3) / 2);
+    : 0; // No fallback - use 0 when hidden
 
-  return { showPG, pgX, showTG, tgX };
+  return { 
+    showPG, 
+    pgX, 
+    showTG, 
+    tgX, 
+    _pgBetween: pgDiv.forkBetween ?? null,
+    _tgBetween: tgBetween 
+  };
 }
 
 // Dev utilities for console testing

@@ -167,23 +167,20 @@ export default function EduTreeCanvasV2({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
-  // Dynamic programs and tracks derived from data (data-driven)
+  // Stabilized programs and tracks derived from data (stable arrays)
   const programs = useMemo(
-    () => [...presentPrograms] as ('bs_cs' | 'bs_it')[],
-    [presentPrograms]
+    () => Array.from(new Set(blocks.map(b => b.program_id).filter(Boolean))) as ('bs_cs' | 'bs_it')[],
+    [blocks]
   );
 
   const tracksByProgram = useMemo(() => {
-    const map: Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]> = {
-      bs_cs: [],
-      bs_it: []
-    };
+    const map: Record<string, ('se' | 'ds')[]> = {};
     for (const p of programs) {
-      map[p] = [...new Set(
+      map[p] = Array.from(new Set(
         blocks.filter(b => b.program_id === p && b.track_id).map(b => b.track_id!)
-      )] as ('se' | 'ds')[];
+      )) as ('se' | 'ds')[];
     }
-    return map;
+    return map as Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]>;
   }, [blocks, programs]);
 
   // Data-driven gate positioning - moved out of useEffect to fix hook violation
@@ -279,18 +276,17 @@ export default function EduTreeCanvasV2({
         setEdges(newEdges);
         
         // Force React Flow to recalculate handle positions for gate nodes
-        setTimeout(() => {
-          const gateNodeIds = finalNodes.filter(n => n.type === 'gate').map(n => n.id);
-          gateNodeIds.forEach(nodeId => {
-            updateNodeInternals(nodeId);
-          });
-          console.log('[EduTreeV2] Updated handle internals for gate nodes:', gateNodeIds);
+        requestAnimationFrame(() => {
+          const visibleGateNodes = finalNodes.filter(n => n.type === 'gate' && !n.hidden);
+          visibleGateNodes.forEach(n => updateNodeInternals(n.id));
+          console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateNodes.map(n => n.id));
           
           // Store nodes in window for validation utilities
           if (process.env.NODE_ENV === 'development') {
             (window as any).__flowNodes__ = finalNodes;
+            (window as any).__flowEdges__ = newEdges;
           }
-        }, 100);
+        });
         
         // Validate no overlaps (acceptance criteria)
         const validation = validateNoOverlaps(finalNodes);
@@ -307,7 +303,7 @@ export default function EduTreeCanvasV2({
       flags.eduTreeV2EdgeKinds, // Pass V2 edge kinds flag
       gatePositions // Pass gate positioning decisions
     );
-  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, gatePositions, usePlan, singleRailStraight, filterMode, flags.eduTreeV2EdgeKinds]);
+  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, filterMode, flags.eduTreeV2EdgeKinds]);
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode
