@@ -127,7 +127,7 @@ export default function MetroGateEdge({
         shapeRendering="geometricPrecision"
         strokeLinecap="round"
         strokeLinejoin="round"
-        markerEnd={markerEnd}
+        markerEnd={undefined} // No arrowhead - header pill acts as terminator
       />
     </g>
   );

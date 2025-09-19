@@ -20,7 +20,7 @@ export default function HeaderNode({ data }: { data: HeaderNodeData }) {
         lineHeight: '16px',
         backdropFilter: 'blur(2px)',
         boxShadow: '0 0 0 1px rgba(0,0,0,0.25) inset',
-        zIndex: 10, // Ensure headers sit above edges
+        zIndex: 1000, // Ensure headers sit well above edges
         position: 'relative',
         left: '-60px', // Offset so arrow meets badge edge cleanly
       }}
