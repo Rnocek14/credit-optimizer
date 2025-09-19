@@ -285,8 +285,13 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they are actually needed and valid
-    if (typeof sourceHandle === 'string' && sourceHandle !== 'null' && sourceHandle !== '' && sourceHandle !== 'undefined') {
+    // Only set handles when they are actually needed and valid - strict null check
+    if (typeof sourceHandle === 'string' && 
+        sourceHandle !== 'null' && 
+        sourceHandle !== '' && 
+        sourceHandle !== 'undefined' && 
+        sourceHandle !== null &&
+        sourceHandle.length > 0) {
       edgeObject.sourceHandle = sourceHandle;
     }
     if (sourcePosition !== undefined) {
@@ -516,8 +521,9 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid sourceHandle value:', { value: h, type: typeof h });
     }
     
+    // Strict validation - only allow valid string values
     if (typeof h === 'string' && (h === 'out' || h === 'out-se' || h === 'out-ds')) return h as SourceHandle;
-    // Return undefined for any invalid values (null, 'null', empty string, etc.)
+    // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
     return undefined;
   };
 
@@ -527,8 +533,9 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid targetHandle value:', { value: h, type: typeof h });
     }
     
-    if (typeof h === 'string' && h === 'in') return 'in'; // Allow 'in' for gate-to-header edges
-    // Return undefined for any invalid values (null, 'null', empty string, etc.)
+    // Strict validation - only allow 'in' for target handles
+    if (typeof h === 'string' && h === 'in') return 'in';
+    // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
     return undefined;
   };
 
