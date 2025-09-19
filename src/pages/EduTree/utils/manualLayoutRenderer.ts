@@ -187,7 +187,7 @@ export function edgesToReactFlowEdges(
         // Gate-to-header edges: use middle-right handle for symmetric curves
         sourceHandle = 'out'; // use the middle-right handle
         sourcePosition = Position.Right;
-      } else if (isCompare && useV2EdgeKinds) {
+      } else if (isCompare && useV2EdgeKinds && !isHeaderTarget) {
         // Metro-style: force horizontal-first routing for gate edges in compare modes
         sourceHandle = undefined; // don't use lane handles
         sourcePosition = Position.Right; // force horizontal exit
