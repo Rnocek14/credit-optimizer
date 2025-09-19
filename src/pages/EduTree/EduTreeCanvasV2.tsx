@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position } from '@xyflow/react';
+import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
@@ -155,6 +155,7 @@ export default function EduTreeCanvasV2({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -222,6 +223,15 @@ export default function EduTreeCanvasV2({
         
         setNodes(finalNodes);
         setEdges(newEdges);
+        
+        // Force React Flow to recalculate handle positions for gate nodes
+        setTimeout(() => {
+          const gateNodeIds = finalNodes.filter(n => n.type === 'gate').map(n => n.id);
+          gateNodeIds.forEach(nodeId => {
+            updateNodeInternals(nodeId);
+          });
+          console.log('[EduTreeV2] Updated handle internals for gate nodes:', gateNodeIds);
+        }, 100);
         
         // Validate no overlaps (acceptance criteria)
         const validation = validateNoOverlaps(finalNodes);

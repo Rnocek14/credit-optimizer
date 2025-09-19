@@ -181,35 +181,39 @@ export function edgesToReactFlowEdges(
     if (isGateEdge) {
       console.log(`[DEBUG] Processing gate edge ${edge.source}->${edge.target} - singleRailStraight:${singleRailStraight}, isCompare:${isCompare}, useV2EdgeKinds:${useV2EdgeKinds}, isHeaderTarget:${isHeaderTarget}`);
       
-      if (singleRailStraight) {
-        // In single-rail straight mode, use the right-side handle
+      // PRIORITY 1: Gate-to-header edges ALWAYS use middle-right handle
+      if (isHeaderTarget) {
+        sourceHandle = 'out';
+        sourcePosition = Position.Right;
+        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - header target PRIORITY - sourceHandle:`, sourceHandle);
+      }
+      // PRIORITY 2: Single-rail mode uses middle-right handle
+      else if (singleRailStraight) {
         sourceHandle = 'out';
         sourcePosition = Position.Right;
         console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - singleRailStraight mode - sourceHandle:`, sourceHandle);
-      } else if (isCompare && useV2EdgeKinds && isHeaderTarget) {
-        // Gate-to-header edges: use middle-right handle for symmetric curves
-        sourceHandle = 'out'; // use the middle-right handle
+      }
+      // PRIORITY 3: Compare modes with V2 edge kinds use middle-right for clean routing
+      else if (isCompare && useV2EdgeKinds) {
+        sourceHandle = 'out';
         sourcePosition = Position.Right;
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - compare+header mode - sourceHandle:`, sourceHandle, 'isHeaderTarget:', isHeaderTarget);
-      } else if (isCompare && useV2EdgeKinds && !isHeaderTarget) {
-        // Metro-style: force horizontal-first routing for gate edges in compare modes
-        sourceHandle = undefined; // don't use lane handles
-        sourcePosition = Position.Right; // force horizontal exit
-        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - compare+non-header mode - sourceHandle:`, sourceHandle);
-      } else {
-        const targetBlock = blocks.find(b => b.id === edge.target);
+        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - compare+V2 mode - sourceHandle:`, sourceHandle);
+      }
+      // FALLBACK: Legacy lane-based routing
+      else {
         const targetLane = laneByTarget[edge.target];
-        if (targetLane) {
-          sourceHandle = targetLane === 'up' ? 'out-se' : 'out-ds';
-        } else if (targetBlock?.track_id === 'se' || targetBlock?.program_id === 'bs_cs') {
-          sourceHandle = 'out-se';
-        } else if (targetBlock?.track_id === 'ds' || targetBlock?.program_id === 'bs_it') {
-          sourceHandle = 'out-ds';
-        }
         
-        if (!sourceHandle && !edge.target.startsWith('gate-')) {
-          console.warn('[V2] Gate edge missing lane for target:', edge.target, targetBlock?.track_id);
+        if (targetLane === 'up') {
+          sourceHandle = 'out-se';
+          sourcePosition = Position.Top;
+        } else if (targetLane === 'down') {
+          sourceHandle = 'out-ds';
+          sourcePosition = Position.Bottom;
+        } else {
+          sourceHandle = 'out';
+          sourcePosition = Position.Right;
         }
+        console.log(`[DEBUG] Gate edge ${edge.source}->${edge.target} - legacy lane mode - sourceHandle:`, sourceHandle, 'targetLane:', targetLane);
       }
     }
 
