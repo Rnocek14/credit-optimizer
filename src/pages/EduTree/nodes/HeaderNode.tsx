@@ -20,15 +20,24 @@ export default function HeaderNode({ data }: { data: HeaderNodeData }) {
         lineHeight: '16px',
         backdropFilter: 'blur(2px)',
         boxShadow: '0 0 0 1px rgba(0,0,0,0.25) inset',
+        zIndex: 10, // Ensure headers sit above edges
+        position: 'relative',
+        left: '-60px', // Offset so arrow meets badge edge cleanly
       }}
     >
       {data.label}
       {/* Hidden handles for edge connections */}
       <Handle 
         type="target" 
-        position={Position.Left} 
-        style={{ opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
-        id="in"
+        id="in" 
+        position={Position.Left}
+        style={{ 
+          top: '50%',
+          transform: 'translateY(-50%)',
+          opacity: 0,
+          width: 1,
+          height: 1
+        }}
       />
       <Handle 
         type="source" 

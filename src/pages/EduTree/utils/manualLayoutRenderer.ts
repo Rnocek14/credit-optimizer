@@ -278,8 +278,8 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they actually have values - avoid undefined/null issues
-    if (sourceHandle !== undefined) {
+    // Only set handles when they are actually needed and valid
+    if (typeof sourceHandle === 'string' && sourceHandle !== 'null' && sourceHandle !== '') {
       edgeObject.sourceHandle = sourceHandle;
     }
     if (sourcePosition !== undefined) {
@@ -525,9 +525,10 @@ export function applyManualLayout(
     const sourceHandle = cleanSource(e.sourceHandle);
     const targetHandle = cleanTarget(e.targetHandle);
     
-    // Build sanitized edge, completely omitting undefined keys
+    // Build sanitized edge, completely omitting keys that are undefined
     const sanitizedEdge: any = { ...e };
     
+    // Only set handles if they are valid
     if (sourceHandle !== undefined) {
       sanitizedEdge.sourceHandle = sourceHandle;
     } else {

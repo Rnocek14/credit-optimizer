@@ -7,8 +7,8 @@ import { EdgeProps } from '@xyflow/react';
  *  - Rounded corner radius with automatic fallback when source/target align.
  */
 const R = 12;              // elbow radius
-const MIN_H_GAP = 28;      // minimum horizontal run out of the gate before turning
-const STROKE = 'rgba(255,255,255,0.88)';
+const MIN_H_GAP = 36;      // minimum horizontal run out of the gate before turning (increased for cleaner look)
+const STROKE = 'rgba(255,255,255,0.92)'; // Slightly brighter for gate edges
 
 function metroPath(
   sx: number,
@@ -27,19 +27,22 @@ function metroPath(
   const elbowX = Math.max(sx + minH, Math.min(tx - minH, (sx + tx) / 2));
   const elbowY = sy;
 
+  // Clamp radius so it never exceeds half the available span
+  const effectiveRadius = Math.min(r, Math.abs(tx - elbowX) / 4, Math.abs(ty - sy) / 4);
+
   // 2) Rounded elbow: right -> down/up
   const dirY = ty > sy ? 1 : -1; // 1=down, -1=up
-  const bend1X = elbowX + r;
+  const bend1X = elbowX + effectiveRadius;
   const bend1Y = sy;
-  const bend2X = elbowX + r;
-  const bend2Y = sy + r * dirY;
+  const bend2X = elbowX + effectiveRadius;
+  const bend2Y = sy + effectiveRadius * dirY;
 
   // 3) Vertical leg lands near target Y
-  const nearTX = tx - r;
-  const nearTY = ty - r * dirY;
+  const nearTX = tx - effectiveRadius;
+  const nearTY = ty - effectiveRadius * dirY;
 
   // 4) Rounded elbow: down/up -> right
-  const bend3X = tx - r;
+  const bend3X = tx - effectiveRadius;
   const bend3Y = ty;
 
   return [
@@ -63,7 +66,7 @@ export default function MetroGateEdge({
   );
 
   // Allow outer logic to pass styling via `data` (thickness, dash, opacity)
-  const strokeWidth = typeof data?.strokeWidth === 'number' ? data.strokeWidth : 4; // thicker for gates
+  const strokeWidth = typeof data?.strokeWidth === 'number' ? data.strokeWidth : 5; // thicker for gates (5px vs 2px for prereqs)
   const strokeDasharray = typeof data?.strokeDasharray === 'string' ? data.strokeDasharray : undefined;
   const opacity = typeof data?.opacity === 'number' ? data.opacity : 1;
 
@@ -73,9 +76,23 @@ export default function MetroGateEdge({
       <path
         d={d}
         stroke="transparent"
-        strokeWidth={Math.max(strokeWidth + 10, 14)}
+        strokeWidth={Math.max(strokeWidth + 12, 16)}
         fill="none"
       />
+      
+      {/* Glow effect for selected state */}
+      {selected && (
+        <path
+          d={d}
+          fill="none"
+          stroke="rgba(180,220,255,0.4)"
+          strokeWidth={strokeWidth + 8}
+          opacity={0.6}
+          shapeRendering="geometricPrecision"
+        />
+      )}
+      
+      {/* Main visible stroke */}
       <path
         d={d}
         fill="none"
@@ -86,15 +103,6 @@ export default function MetroGateEdge({
         shapeRendering="geometricPrecision"
         markerEnd={markerEnd}
       />
-      {selected && (
-        <path
-          d={d}
-          fill="none"
-          stroke="rgba(180,220,255,0.65)"
-          strokeWidth={strokeWidth + 6}
-          opacity={0.3}
-        />
-      )}
     </g>
   );
 }
