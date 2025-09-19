@@ -202,8 +202,11 @@ export function edgesToReactFlowEdges(
       }
     }
 
-    // Enhanced edge type selection
-    const edgeType = singleRailStraight ? 'straight' : (isCompare ? 'smoothstep' : 'step');
+    // Enhanced edge type selection - gate-to-header edges should be straight in compare modes
+    const isHeaderTarget = edge.target.startsWith('track-header:') || edge.target.startsWith('program-header:');
+    const edgeType = singleRailStraight ? 'straight' : 
+                     (isCompare && isGateEdge && isHeaderTarget) ? 'straight' : 
+                     (isCompare ? 'smoothstep' : 'step');
 
     // Refined arrow styling - smaller arrows for cleaner appearance
     const arrowSize = { width: 18, height: 18 };
