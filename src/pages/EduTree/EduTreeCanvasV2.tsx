@@ -78,6 +78,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
             position={Position.Right}
             style={{ 
               right: '-8px',
+              top: '50%',
+              transform: 'translateY(-50%)',
               background: 'transparent',
               border: 'none',
               width: '12px',
@@ -93,6 +95,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
           position={Position.Right}
           style={{ 
             right: '-8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
             background: 'transparent', 
             border: 'none',
             width: '12px',
