@@ -13,16 +13,25 @@ const GateBranchEdge = ({
   markerEnd,
   data,
 }: EdgeProps) => {
-  // Calculate the Bezier path with gentle control points for a soft "S" curve
-  const [edgePath] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition: sourcePosition || Position.Right,
-    targetPosition: targetPosition || Position.Left,
-    curvature: 0.25, // Keeps it calm and professional-looking
-  });
+  // Calculate symmetric manual control points for perfect mirroring
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  
+  // Shared horizontal control point - both branches bend at same X
+  const controlX = sourceX + (dx * 0.6);
+  
+  // Create symmetric vertical offsets
+  const isUpBranch = dy < 0;
+  const verticalOffset = Math.abs(dy) * 0.3; // Gentle vertical curve
+  
+  // Manual Bezier curve with symmetric control points
+  const cp1X = controlX;
+  const cp1Y = sourceY + (isUpBranch ? -verticalOffset : verticalOffset) * 0.3;
+  const cp2X = controlX;  
+  const cp2Y = targetY + (isUpBranch ? verticalOffset : -verticalOffset) * 0.3;
+  
+  // Create SVG path with manual control points for perfect symmetry
+  const edgePath = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
 
   return (
     <BaseEdge
