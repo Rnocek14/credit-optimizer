@@ -169,12 +169,22 @@ export function edgesToReactFlowEdges(
       opacity: 1
     };
 
+    // Determine if this is a compare mode for smooth routing
+    const isCompare = filterMode === 'compare-tracks' || filterMode === 'compare-programs';
+    const isGateEdge = edge.source.startsWith('gate-');
+
     // Compute sourceHandle for gate nodes based on target lane
     let sourceHandle: string | undefined = undefined;
-    if (edge.source.startsWith('gate-')) {
+    let sourcePosition: Position | undefined = undefined;
+    
+    if (isGateEdge) {
       if (singleRailStraight) {
         // In single-rail straight mode, no source handle for horizontal flow
         sourceHandle = undefined;
+      } else if (isCompare && useV2EdgeKinds) {
+        // Metro-style: force horizontal-first routing for gate edges in compare modes
+        sourceHandle = undefined; // don't use lane handles
+        sourcePosition = Position.Right; // force horizontal exit
       } else {
         const targetBlock = blocks.find(b => b.id === edge.target);
         const targetLane = laneByTarget[edge.target];
@@ -192,22 +202,41 @@ export function edgesToReactFlowEdges(
       }
     }
 
+    // Enhanced edge type selection
+    const edgeType = singleRailStraight ? 'straight' : (isCompare ? 'smoothstep' : 'step');
+
+    // Refined arrow styling - smaller arrows for cleaner appearance
+    const arrowSize = { width: 18, height: 18 };
+
     return {
       id: `${edge.source}-${target}`,
       source: edge.source,
       target,
       sourceHandle, // Always computed, never from seed
-      type: singleRailStraight ? 'straight' : 'step',
+      sourcePosition,
+      type: edgeType,
       animated: false,
       style: { 
         stroke: 'rgba(255,255,255,0.85)', 
         strokeWidth: styling.strokeWidth, 
         strokeLinecap: 'round',
         strokeDasharray: styling.strokeDasharray,
-        opacity: styling.opacity
+        opacity: styling.opacity,
+        // Subtle drop shadow for visual separation
+        filter: 'drop-shadow(0 0 1px rgba(255,255,255,0.35))'
       },
-      markerStart: styling.markerStart ? { type: styling.markerStart, color: 'rgba(255,255,255,0.85)' } : undefined,
-      markerEnd: styling.markerEnd ? { type: styling.markerEnd, color: 'rgba(255,255,255,0.85)' } : undefined
+      // Rounded corners for smooth metro-style routing in compare modes
+      pathOptions: isCompare ? { borderRadius: 18, offset: 8 } : undefined,
+      markerStart: styling.markerStart ? { 
+        type: styling.markerStart, 
+        color: 'rgba(255,255,255,0.85)',
+        ...arrowSize
+      } : undefined,
+      markerEnd: styling.markerEnd ? { 
+        type: styling.markerEnd, 
+        color: 'rgba(255,255,255,0.85)',
+        ...arrowSize
+      } : undefined
     };
   });
 }
@@ -242,7 +271,8 @@ function createHeaderNodes(opts: {
         data: { label: 'BS Computer Science' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000 }
+        style: { zIndex: 1000 },
+        targetPosition: Position.Left // Clean edge termination
       },
       {
         id: 'program-header:bs_it',
@@ -251,7 +281,8 @@ function createHeaderNodes(opts: {
         data: { label: 'BS Information Technology' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000 }
+        style: { zIndex: 1000 },
+        targetPosition: Position.Left // Clean edge termination
       }
     ];
   }
@@ -265,7 +296,8 @@ function createHeaderNodes(opts: {
       data: { label: 'Software Engineering' },
       draggable: false,
       selectable: false,
-      style: { zIndex: 1000 }
+      style: { zIndex: 1000 },
+      targetPosition: Position.Left // Clean edge termination
     },
     {
       id: 'track-header:ds',
@@ -274,7 +306,8 @@ function createHeaderNodes(opts: {
       data: { label: 'Data Science' },
       draggable: false,
       selectable: false,
-      style: { zIndex: 1000 }
+      style: { zIndex: 1000 },
+      targetPosition: Position.Left // Clean edge termination
     }
   ];
 }
