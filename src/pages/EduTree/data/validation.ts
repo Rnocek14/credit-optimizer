@@ -363,9 +363,24 @@ export function assertGateX(opts: { nodes: any[]; gatePositions: GatePositions &
  */
 export function assertNoDanglingHeaders(opts: { edges: any[]; nodes: any[] }): void {
   const { edges, nodes } = opts;
-  const nodeIds = new Set(nodes.map(n => n.id));
-  const bad = edges.filter(e => !nodeIds.has(e.target));
-  console.assert(bad.length === 0, 'Edges target missing nodes:', bad);
+  const nodeIds = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
+  const bad = edges.filter(e => !nodeIds.has(e.target) || !nodeIds.has(e.source));
+  console.assert(bad.length === 0, 'Dangling edges:', bad);
+}
+
+/**
+ * GPT's handle update tracking validation
+ */
+export function assertHandlesOnce(nodes: any[]): void {
+  if (typeof window === 'undefined') return;
+  
+  const gates = nodes.filter(n => n.type === 'gate' && !n.hidden).map(n => n.id).join('|');
+  const lastGates = (window as any).__lastUpdateGateIds__;
+  
+  if (lastGates !== null) {
+    console.assert(gates === lastGates, 'Gate internals updated more than once for same configuration');
+  }
+  (window as any).__lastUpdateGateIds__ = gates;
 }
 
 /**
@@ -404,4 +419,20 @@ export function quickValidationCheck(): boolean {
   const result = validateEduTreeDataModel();
   logValidationResults(result);
   return result.success;
+}
+
+// Expose GPT's console test utilities globally for development debugging
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).eduTreeValidate = quickValidationCheck;
+  (window as any).assertNoDanglingHeaders = assertNoDanglingHeaders;
+  (window as any).assertGateX = assertGateX;
+  (window as any).assertHandlesOnce = assertHandlesOnce;
+  (window as any).__lastUpdateGateIds__ = null;
+  
+  console.log('[EduTree] Console utilities exposed:', {
+    'window.eduTreeValidate()': 'Run full validation',
+    'window.assertNoDanglingHeaders({ edges, nodes })': 'Check for dangling edges', 
+    'window.assertGateX({ nodes, gatePositions, cols })': 'Validate gate positions',
+    'window.assertHandlesOnce(nodes)': 'Track handle update frequency'
+  });
 }

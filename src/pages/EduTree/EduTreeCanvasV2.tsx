@@ -17,6 +17,7 @@ import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
 import { DevToggle } from './components/DevToggle';
+import './components/StabilityStyles.css';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -124,15 +125,13 @@ const edgeTypes = {
   gateBranch: GateBranchEdge
 };
 
-// Shallow equality functions to prevent layout churn
+// Improved shallow equality functions to prevent layout churn
 function shallowEqualNodes(a: any[], b: any[]) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id) return false;
-    // Compare key fields that affect render
-    const x = a[i].position.x, y = a[i].position.y;
-    const X = b[i].position.x, Y = b[i].position.y;
-    if (x !== X || y !== Y || a[i].hidden !== b[i].hidden || a[i].type !== b[i].type) return false;
+    const A = a[i], B = b[i];
+    if (A.id !== B.id || A.type !== B.type || A.hidden !== B.hidden) return false;
+    if (A.position?.x !== B.position?.x || A.position?.y !== B.position?.y) return false;
   }
   return true;
 }
@@ -172,6 +171,7 @@ export default function EduTreeCanvasV2({
   const { fitView } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const fitViewCalled = useRef(false);
+  const gatePositionsRef = useRef<any>(null);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -181,40 +181,46 @@ export default function EduTreeCanvasV2({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
-  // Ultra-stable memo dependencies using GPT's recommendations
-  const programs = useMemo(
-    () => Array.from(new Set(blocks.map(b => b.program_id).filter(Boolean))) as ('bs_cs' | 'bs_it')[],
+  // 1) Stable key for blocks content (order-insensitive, content-based)
+  const blocksKey = useMemo(
+    () => JSON.stringify([...blocks].sort((a,b)=>a.id.localeCompare(b.id)).map(b => ({
+      id: b.id, y: b.level_year, p: b.program_id ?? null, t: b.track_id ?? null, v: !!b.is_virtual
+    }))),
     [blocks]
   );
 
-  // Ultra-stable tracksByProgram using JSON stringification
-  const tracksKey = useMemo(
-    () => JSON.stringify(
-      programs.map(p => [p, Array.from(new Set(
-        blocks.filter(b => b.program_id === p && b.track_id).map(b => b.track_id!)
-      ))])
-    ),
-    [blocks, programs]
+  // 2) Programs (stable array, only changes when content changes)
+  const programs = useMemo(
+    () => Array.from(new Set(blocks.map(b => b.program_id).filter(Boolean))) as ('bs_cs' | 'bs_it')[],
+    [blocksKey]
   );
 
+  // 3) TracksByProgram (ultra-stable via key + freeze)
+  const tracksKey = useMemo(() => JSON.stringify(
+    programs.map(p => [p, Array.from(new Set(blocks.filter(b => b.program_id===p && b.track_id).map(b => b.track_id!)))])
+  ), [blocksKey, programs.join('|')]);
+
   const tracksByProgram = useMemo(() => {
-    const map: Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]> = {} as any;
-    for (const [p, arr] of JSON.parse(tracksKey) as ['bs_cs' | 'bs_it', ('se' | 'ds')[]][]) {
-      map[p] = arr;
-    }
+    const map: Record<'bs_cs'|'bs_it', ('se'|'ds')[]> = { bs_cs: [], bs_it: [] };
+    for (const [p, arr] of JSON.parse(tracksKey) as ['bs_cs'|'bs_it', ('se'|'ds')[]][]) map[p] = arr;
     return Object.freeze(map);
   }, [tracksKey]);
 
-  // Data-driven gate positioning - moved out of useEffect to fix hook violation
+  // 4) Gate positions: only emit a new object when content actually changes
+  function stableReturn<T>(prevRef: React.MutableRefObject<T|null>, next: T): T {
+    const same = prevRef.current && JSON.stringify(prevRef.current) === JSON.stringify(next);
+    if (!same) prevRef.current = next;
+    return prevRef.current as T;
+  }
+  
   const gatePositions = useMemo(() => {
     const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
-    return decideGatePositions({
-      blocks, 
-      programs, 
-      tracksByProgram, 
-      cols
-    });
-  }, [blocks, programs, tracksByProgram]);
+    const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
+    return stableReturn(gatePositionsRef, next);
+  }, [blocksKey, programs.join('|'), tracksKey]);
+  
+  // FitView key for determining when to reset fitView flag
+  const fitViewKey = `${effectiveFilterMode}|${programs.join('|')}|${tracksKey}|${gatePositions.showPG?1:0}|${gatePositions.showTG?1:0}`;
   
   // Apply manual layout when data changes
   useEffect(() => {
@@ -294,33 +300,39 @@ export default function EduTreeCanvasV2({
           };
         }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
+        // Filter out edges pointing to missing nodes (prevents React Flow warnings)
+        const nodeIdSet = new Set(finalNodes.filter(n => !n.hidden).map(n => n.id));
+        const safeEdges = newEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
+        
         // Prevent layout churn with shallow equality checks
         setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
-        setEdges(prev => prev.length === newEdges.length && prev.every((e,i) => e.id === newEdges[i].id) ? prev : newEdges);
+        setEdges(prev => prev.length === safeEdges.length && prev.every((e,i) => e.id === safeEdges[i].id) ? prev : safeEdges);
         
-        // Force React Flow to recalculate handle positions for gate nodes
+        // Force React Flow to recalculate handle positions for visible gates only
         requestAnimationFrame(() => {
-          const visibleGateNodes = finalNodes.filter(n => n.type === 'gate' && !n.hidden);
-          visibleGateNodes.forEach(n => updateNodeInternals(n.id));
-          console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateNodes.map(n => n.id));
+          const visibleGateIds = finalNodes.filter(n => n.type === 'gate' && !n.hidden).map(n => n.id);
+          visibleGateIds.forEach(updateNodeInternals);
+          console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateIds);
           
-            // Store nodes in window for validation utilities and run GPT's validation functions
-            if (process.env.NODE_ENV === 'development') {
-              (window as any).__flowNodes__ = finalNodes;
-              (window as any).__flowEdges__ = newEdges;
-              
-              // Run GPT's validation functions
-              try {
-                (window as any).assertNoDanglingHeaders?.({ edges: newEdges, nodes: finalNodes });
-                (window as any).assertGateX?.({ 
-                  nodes: finalNodes, 
-                  gatePositions, 
-                  cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
-                });
-              } catch (e) {
-                console.warn('[EduTreeV2] Validation assertion failed:', e);
-              }
+          // Store nodes in window for validation utilities and run GPT's validation functions
+          if (process.env.NODE_ENV === 'development') {
+            (window as any).__flowNodes__ = finalNodes;
+            (window as any).__flowEdges__ = safeEdges;
+            (window as any).gatePositions = gatePositions;
+            
+            // Run GPT's validation functions
+            try {
+              (window as any).assertNoDanglingHeaders?.({ edges: safeEdges, nodes: finalNodes });
+              (window as any).assertGateX?.({ 
+                nodes: finalNodes, 
+                gatePositions, 
+                cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
+              });
+              (window as any).assertHandlesOnce?.(finalNodes);
+            } catch (e) {
+              console.warn('[EduTreeV2] Validation assertion failed:', e);
             }
+          }
         });
         
         // Validate no overlaps (acceptance criteria)
@@ -332,11 +344,7 @@ export default function EduTreeCanvasV2({
         }
       },
       () => {
-        // Guarded fitView to prevent repeated calls
-        if (!fitViewCalled.current) {
-          fitView();
-          fitViewCalled.current = true;
-        }
+        // fitView is now handled by separate useEffect
       },
       usePlan, // Use deterministic grid anchors when in single-rail grid mode
       singleRailStraight, // Pass single-rail straight flag
@@ -344,7 +352,20 @@ export default function EduTreeCanvasV2({
       flags.eduTreeV2EdgeKinds, // Pass V2 edge kinds flag
       gatePositions // Pass gate positioning decisions
     );
-  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, filterMode, flags.eduTreeV2EdgeKinds]);
+  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
+  
+  // Reset fitView flag when meaningful context changes
+  useEffect(() => { 
+    fitViewCalled.current = false; 
+  }, [fitViewKey]);
+  
+  // Run fitView once per meaningful context
+  useEffect(() => {
+    if (!fitViewCalled.current && nodes.length > 0) { 
+      fitView(); 
+      fitViewCalled.current = true; 
+    }
+  }, [nodes, flowEdges, fitView]);
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode

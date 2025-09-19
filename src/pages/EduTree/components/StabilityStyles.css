@@ -1,0 +1,27 @@
+/* GPT's stability styles - disable visual jitter during debugging */
+
+/* Disable edge transitions and animations to prevent visual jitter */
+.react-flow__edge path { 
+  transition: none !important; 
+}
+
+/* Disable edge animations */
+.react-flow__edge .animated { 
+  animation: none !important; 
+}
+
+/* Optional: Disable node position transitions during layout */
+.react-flow__node {
+  transition: none !important;
+}
+
+/* Prevent handle hover effects during stability testing */
+.react-flow__handle:hover {
+  transform: none !important;
+}
+
+/* Remove gate edge smooth transitions temporarily */
+.react-flow__edge.react-flow__edge-smoothstep path {
+  transition: none !important;
+  animation: none !important;
+}
