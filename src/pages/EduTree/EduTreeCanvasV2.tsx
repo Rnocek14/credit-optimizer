@@ -12,6 +12,7 @@ import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
 import HeaderNode from './nodes/HeaderNode';
+import GateEdge from './edges/GateEdge';
 import { DevToggle } from './components/DevToggle';
 
 type DevOverrides = {
@@ -109,6 +110,10 @@ const nodeTypes = {
   requirement: RequirementNode,
   gate: GateNode,
   header: HeaderNode
+};
+
+const edgeTypes = {
+  gate: GateEdge
 };
 
 interface EduTreeCanvasV2Props {
@@ -382,6 +387,7 @@ export default function EduTreeCanvasV2({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         minZoom={0.1}
         maxZoom={2}

@@ -208,9 +208,9 @@ export function edgesToReactFlowEdges(
       }
     }
 
-    // Enhanced edge type selection - gate-to-header edges should be straight in compare modes
+    // Enhanced edge type selection - gate-to-header edges use custom routing
     const edgeType = singleRailStraight ? 'straight' : 
-                     (isCompare && isGateEdge && isHeaderTarget) ? 'straight' : 
+                     (isCompare && isGateEdge && isHeaderTarget) ? 'gate' : 
                      (isCompare ? 'smoothstep' : 'step');
 
     // Refined arrow styling - smaller arrows for cleaner appearance
