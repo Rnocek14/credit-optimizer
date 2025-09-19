@@ -72,6 +72,12 @@ export default function MetroGateEdge({
     [sourceX, sourceY, targetX, targetY]
   );
 
+  // Calculate endpoint label position and zoom-based opacity
+  const labelX = targetX - 30;
+  const labelY = targetY - 12;
+  const endpointLabel = typeof data?.endpointLabel === 'string' ? data.endpointLabel : 
+                       typeof data?.label === 'string' ? data.label : null;
+
   // Allow outer logic to pass styling via `data` (thickness, dash, opacity)
   const strokeWidth = typeof data?.strokeWidth === 'number' ? data.strokeWidth : 5; // thicker for gates (5px vs 2px for prereqs)
   const strokeDasharray = typeof data?.strokeDasharray === 'string' ? data.strokeDasharray : undefined;
@@ -137,6 +143,35 @@ export default function MetroGateEdge({
         strokeLinejoin="round"
         markerEnd={undefined} // No arrowhead - header pill acts as terminator
       />
+
+      {/* SE/DS endpoint label that fades with zoom */}
+      {endpointLabel && (
+        <foreignObject
+          x={labelX - 15}
+          y={labelY - 8}
+          width="30"
+          height="16"
+          style={{ 
+            pointerEvents: 'none',
+            opacity: displayOpacity * 0.8
+          }}
+        >
+          <div 
+            style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: 'rgba(255,255,255,0.85)',
+              textAlign: 'center',
+              background: 'rgba(0,0,0,0.3)',
+              borderRadius: '4px',
+              padding: '1px 4px',
+              backdropFilter: 'blur(2px)'
+            }}
+          >
+            {endpointLabel}
+          </div>
+        </foreignObject>
+      )}
     </g>
   );
 }

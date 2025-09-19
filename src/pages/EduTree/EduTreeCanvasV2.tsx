@@ -10,9 +10,11 @@ import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { decideGatePositions } from './utils/divergence';
 import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
+import { runRegressionChecks } from './utils/regressionChecks';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
+import { EdgeLegend } from './components/EdgeLegend';
 import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
@@ -360,6 +362,14 @@ export default function EduTreeCanvasV2({
           cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
         });
         assertHandlesOnce(nodes);
+        
+        // Run comprehensive regression checks
+        runRegressionChecks({
+          edges: flowEdges,
+          nodes,
+          gatePositions,
+          cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 }
+        });
       } catch (e) {
         console.warn('[EduTreeV2] Validation assertion failed:', e);
       }
@@ -553,29 +563,7 @@ export default function EduTreeCanvasV2({
       </ReactFlow>
       
         {/* Edge Type Legend - show in compare modes */}
-        {(filterMode === 'compare-tracks' || filterMode === 'compare-programs') && (
-          <div 
-            className="absolute top-4 right-4 bg-background/90 border rounded p-3 text-xs text-muted-foreground z-20"
-            style={{ pointerEvents: 'none' }}
-            aria-label="Edge type legend"
-          >
-            <div className="font-medium text-white mb-2">Edge Types</div>
-            <ul className="space-y-2" role="list">
-              <li className="flex items-center gap-2" role="listitem">
-                <div className="w-6 h-0.5 bg-white opacity-90" style={{ strokeWidth: 5 }}></div>
-                <span>Gate (thick)</span>
-              </li>
-              <li className="flex items-center gap-2" role="listitem">
-                <div className="w-6 h-0.5 bg-white opacity-75" style={{ strokeWidth: 2 }}></div>
-                <span>Prerequisite (solid)</span>
-              </li>
-              <li className="flex items-center gap-2" role="listitem">
-                <div className="w-6 h-0.5 bg-white opacity-60 border-dashed" style={{ strokeWidth: 2, strokeDasharray: '4 2' }}></div>
-                <span>Advisory (dashed)</span>
-              </li>
-            </ul>
-          </div>
-        )}
+        <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">

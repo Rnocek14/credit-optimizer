@@ -7,22 +7,42 @@ export interface HeaderNodeData {
 }
 
 export default function HeaderNode({ data }: { data: HeaderNodeData }) {
+  const [isFocused, setIsFocused] = React.useState(false);
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // Future: toggle filter when header is focused
+      console.log('[HeaderNode] Key pressed:', e.key, 'on', data.label);
+    }
+  };
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${data.label} header - press Enter or Space to interact`}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       style={{
-        pointerEvents: 'none',           // never intercept clicks/drags
+        pointerEvents: 'auto', // Enable keyboard interaction
         padding: '4px 10px',
         borderRadius: 999,
         background: 'rgba(255,255,255,0.08)',
-        border: '1px solid rgba(255,255,255,0.18)',
+        border: `1px solid ${isFocused ? 'rgba(180,220,255,0.6)' : 'rgba(255,255,255,0.18)'}`,
         color: 'rgba(255,255,255,0.9)',
         fontSize: 12,
         lineHeight: '16px',
         backdropFilter: 'blur(2px)',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.25) inset',
+        boxShadow: isFocused 
+          ? '0 0 0 2px rgba(180,220,255,0.3), 0 0 0 1px rgba(0,0,0,0.25) inset'
+          : '0 0 0 1px rgba(0,0,0,0.25) inset',
         zIndex: 1000, // Ensure headers sit well above edges
         position: 'relative',
         left: '-60px', // Offset so arrow meets badge edge cleanly
+        cursor: 'pointer',
+        outline: 'none'
       }}
     >
       {data.label}

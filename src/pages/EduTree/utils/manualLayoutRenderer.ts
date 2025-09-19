@@ -278,6 +278,10 @@ export function edgesToReactFlowEdges(
         type: styling.markerEnd, 
         color: 'rgba(255,255,255,0.85)',
         ...arrowSize
+      } : undefined,
+      // Add endpoint label for metro edges
+      data: edgeType === 'metroGate' && isHeaderTarget ? {
+        endpointLabel: sourceHandle === 'out-se' ? 'SE' : sourceHandle === 'out-ds' ? 'DS' : null
       } : undefined
     };
 
