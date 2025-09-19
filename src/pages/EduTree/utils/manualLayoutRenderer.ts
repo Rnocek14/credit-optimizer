@@ -184,8 +184,8 @@ export function edgesToReactFlowEdges(
         sourceHandle = 'out';
         sourcePosition = Position.Right;
       } else if (isCompare && useV2EdgeKinds && isHeaderTarget) {
-        // Gate-to-header edges: force right-side exit for clean horizontal arrows
-        sourceHandle = 'out';
+        // Gate-to-header edges: use center origin for cleaner appearance
+        sourceHandle = undefined; // no handle = center of node
         sourcePosition = Position.Right;
       } else if (isCompare && useV2EdgeKinds) {
         // Metro-style: force horizontal-first routing for gate edges in compare modes
