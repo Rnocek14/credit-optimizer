@@ -8,6 +8,8 @@ import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Cont
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
+import { decideGatePositions } from './utils/divergence';
+import { validateEduTreeDataModel } from './data/validation';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -174,8 +176,31 @@ export default function EduTreeCanvasV2({
     
     console.log('[EduTreeV2] Applying manual layout for', blocks.length, 'blocks');
     
+    // Data-driven gate positioning
+    const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
+    const programs = [...presentPrograms] as ('bs_cs' | 'bs_it')[];
+    const tracksByProgram = {
+      bs_cs: ['se', 'ds'],
+      bs_it: [], // no tracks for IT (for now)
+    };
+    
+    const gatePositions = decideGatePositions({
+      blocks, 
+      programs, 
+      tracksByProgram, 
+      cols
+    });
+    
     // Expose grid validation tools for development
     exposeGridValidation();
+    
+    // Run validation with gate positions for development
+    if (process.env.NODE_ENV === 'development') {
+      const validation = validateEduTreeDataModel(gatePositions);
+      if (!validation.success) {
+        console.warn('[EduTreeV2] Validation issues detected:', validation);
+      }
+    }
       
     console.log('[EduTreeV2] Layout mode:', { 
       presentTracks: [...presentTracks],
@@ -184,7 +209,8 @@ export default function EduTreeCanvasV2({
       singleProgram, 
       singleRailStraight,
       usePlan,
-      layoutMode: effectiveFlags.eduTreeLayoutMode 
+      layoutMode: effectiveFlags.eduTreeLayoutMode,
+      gatePositions
     });
     
     applyManualLayout(
@@ -196,8 +222,21 @@ export default function EduTreeCanvasV2({
           edges: newEdges.length 
         });
         
+        // Apply gate positioning decisions
+        const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
+          if (n.id === 'gate-y2-programs') {
+            if (!gatePositions.showPG) return { ...n, hidden: true };
+            return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
+          }
+          if (n.id === 'gate-y3-tracks') {
+            if (!gatePositions.showTG) return { ...n, hidden: true };
+            return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
+          }
+          return n;
+        });
+        
         // Apply grid layout if conditions met
-        const finalNodes = usePlan ? newNodes.map(n => {
+        const finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
           // Skip header nodes - they don't have phaseAPlan
           if (n.type === 'header') {
             return n;
@@ -219,7 +258,7 @@ export default function EduTreeCanvasV2({
             position: { x: p.x, y: p.y }, 
             data: { ...n.data, hasGridLayout: true, singleRailStraight } 
           };
-        }) : newNodes.map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
+        }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
         setNodes(finalNodes);
         setEdges(newEdges);
@@ -245,7 +284,8 @@ export default function EduTreeCanvasV2({
       usePlan, // Use deterministic grid anchors when in single-rail grid mode
       singleRailStraight, // Pass single-rail straight flag
       filterMode || 'compare-tracks', // Pass filter mode for header routing
-      flags.eduTreeV2EdgeKinds // Pass V2 edge kinds flag
+      flags.eduTreeV2EdgeKinds, // Pass V2 edge kinds flag
+      gatePositions // Pass gate positioning decisions
     );
   }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode]);
   

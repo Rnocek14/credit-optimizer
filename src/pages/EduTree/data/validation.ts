@@ -8,6 +8,7 @@
 import { TRACK_DEFINITIONS, getAllTrackIds } from './trackDefinitions';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, type FilterMode } from './seedDataV2';
 import { validateSlugMappings, resolveBlockIds, getAllSeedBlockIds } from './blockMapping';
+import { type GatePositions } from '../utils/divergence';
 
 export interface ValidationResult {
   success: boolean;
@@ -24,7 +25,7 @@ export interface ValidationResult {
 /**
  * Run comprehensive validation of EduTree data model
  */
-export function validateEduTreeDataModel(): ValidationResult {
+export function validateEduTreeDataModel(gatePositions?: GatePositions): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   
@@ -53,6 +54,14 @@ export function validateEduTreeDataModel(): ValidationResult {
   const blockValidation = validateBlockConsistency();
   errors.push(...blockValidation.errors);
   warnings.push(...blockValidation.warnings);
+  
+  // 5. Validate gate coherency if gate positions provided
+  if (gatePositions) {
+    console.log('[EduTree Validation] Checking gate coherency...');
+    const gateValidation = validateGateCoherency(gatePositions);
+    errors.push(...gateValidation.errors);
+    warnings.push(...gateValidation.warnings);
+  }
   
   const result: ValidationResult = {
     success: errors.length === 0,
@@ -236,6 +245,52 @@ function validateBlockConsistency(): { errors: string[]; warnings: string[] } {
   
   if (crossProgramEdges.length > 0) {
     errors.push(`Found cross-program edges (should use gates): ${crossProgramEdges.map(e => `${e.source}->${e.target}`).join(', ')}`);
+  }
+  
+  return { errors, warnings };
+}
+
+/**
+ * Validate gate coherency - gates should only appear when divergence exists
+ */
+function validateGateCoherency(gatePositions: GatePositions): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // Program Gate validation
+  if (gatePositions.showPG) {
+    const programGateEdges = GOLDEN_LAYOUT_SEED.edges.filter(e => e.source === 'gate-y2-programs');
+    const invalidPGEdges = programGateEdges.filter(e => 
+      !e.target.startsWith('program-header:') && 
+      !GOLDEN_LAYOUT_SEED.blocks.find(b => b.id === e.target && b.program_id)
+    );
+    
+    if (invalidPGEdges.length > 0) {
+      errors.push(`Program gate shown but ${invalidPGEdges.length} edge(s) don't target program-scoped blocks: ${invalidPGEdges.map(e => e.target).join(', ')}`);
+    }
+  } else {
+    const programGateEdges = GOLDEN_LAYOUT_SEED.edges.filter(e => e.source === 'gate-y2-programs');
+    if (programGateEdges.length > 0) {
+      warnings.push(`Program gate hidden but ${programGateEdges.length} edge(s) still reference it: ${programGateEdges.map(e => e.target).join(', ')}`);
+    }
+  }
+
+  // Track Gate validation
+  if (gatePositions.showTG) {
+    const trackGateEdges = GOLDEN_LAYOUT_SEED.edges.filter(e => e.source === 'gate-y3-tracks');
+    const invalidTGEdges = trackGateEdges.filter(e => 
+      !e.target.startsWith('track-header:') && 
+      !GOLDEN_LAYOUT_SEED.blocks.find(b => b.id === e.target && b.track_id)
+    );
+    
+    if (invalidTGEdges.length > 0) {
+      errors.push(`Track gate shown but ${invalidTGEdges.length} edge(s) don't target track-scoped blocks: ${invalidTGEdges.map(e => e.target).join(', ')}`);
+    }
+  } else {
+    const trackGateEdges = GOLDEN_LAYOUT_SEED.edges.filter(e => e.source === 'gate-y3-tracks');
+    if (trackGateEdges.length > 0) {
+      warnings.push(`Track gate hidden but ${trackGateEdges.length} edge(s) still reference it: ${trackGateEdges.map(e => e.target).join(', ')}`);
+    }
   }
   
   return { errors, warnings };

@@ -7,6 +7,7 @@ import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import { applyDeterministicGrid, type Lane } from './deterministicGrid';
 import { HeaderNodeData } from '../nodes/HeaderNode';
+import { type GatePositions } from './divergence';
 
 type SourceHandle = 'out' | 'out-se' | 'out-ds' | undefined;
 
@@ -96,9 +97,10 @@ export function edgesToReactFlowEdges(
     filterMode: string;
     useV2EdgeKinds: boolean;
     laneByTarget: Record<string, 'up' | 'down' | undefined>;
+    gatePositions?: GatePositions;
   }
 ): Edge[] {
-  const { singleRailStraight, filterMode, useV2EdgeKinds, laneByTarget } = opts;
+  const { singleRailStraight, filterMode, useV2EdgeKinds, laneByTarget, gatePositions } = opts;
   
   // Edge styling by kind (educational standards)
   const styleFor = (kind: EdgeKind) => {
@@ -158,7 +160,14 @@ export function edgesToReactFlowEdges(
     return edge.target; // single-rail or fallback
   };
 
-  return edges.map((edge) => {
+  return edges.filter((edge) => {
+    // Filter out edges for hidden gates
+    if (gatePositions) {
+      if (edge.source === 'gate-y2-programs' && !gatePositions.showPG) return false;
+      if (edge.source === 'gate-y3-tracks' && !gatePositions.showTG) return false;
+    }
+    return true;
+  }).map((edge) => {
     const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
     const target = remapGateTarget(edge);
     const styling = useV2EdgeKinds ? styleFor(kind) : {
@@ -335,7 +344,8 @@ export function applyManualLayout(
   useGridAnchors: boolean = false,
   singleRailStraight: boolean = false,
   filterMode: string = '',
-  useV2EdgeKinds: boolean = false
+  useV2EdgeKinds: boolean = false,
+  gatePositions?: GatePositions
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
@@ -447,7 +457,8 @@ export function applyManualLayout(
     singleRailStraight,
     filterMode,
     useV2EdgeKinds,
-    laneByTarget
+    laneByTarget,
+    gatePositions
   });
   
   // Combine regular nodes with header nodes
