@@ -110,6 +110,8 @@ export function computeTrackDivergence(
   return { divergesAfter: null, forkBetween: null };
 }
 
+function mid(a: number, b: number) { return (a + b) / 2; }
+
 /** Decide which gates to show and where to place them. */
 export function decideGatePositions(opts: {
   blocks: any[];
@@ -119,24 +121,29 @@ export function decideGatePositions(opts: {
 }): GatePositions {
   const { blocks, programs, tracksByProgram, cols } = opts;
 
-  // Program gate
+  // Program gate - use computed fork position
   const pgDiv = computeProgramDivergence(blocks, programs);
-  const showPG = !!pgDiv.forkBetween; // fork exists
-  // prefer explicit column if provided; else midpoint between year columns
-  const pgX = cols.pg ?? ((cols.y1 + cols.y2) / 2);
+  const showPG = !!pgDiv.forkBetween;
+  const pgX = showPG && pgDiv.forkBetween
+    ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
+    : cols.pg ?? ((cols.y1 + cols.y2) / 2);
 
-  // Track gate (evaluate for each program; show if any has a track fork)
+  // Track gate - use computed fork position
   let showTG = false;
+  let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
     if (tracks.length < 2) continue;
     const tgDiv = computeTrackDivergence(blocks, p, tracks);
     if (tgDiv.forkBetween) { 
       showTG = true; 
+      tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];
       break; 
     }
   }
-  const tgX = cols.tg ?? ((cols.y2 + cols.y3) / 2);
+  const tgX = showTG && tgBetween
+    ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
+    : cols.tg ?? ((cols.y2 + cols.y3) / 2);
 
   return { showPG, pgX, showTG, tgX };
 }
@@ -146,4 +153,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).computeProgramDivergence = computeProgramDivergence;
   (window as any).computeTrackDivergence = computeTrackDivergence;
   (window as any).decideGatePositions = decideGatePositions;
+  
+  // GPT's validation utilities
+  const { assertGateX, assertNoDanglingHeaders } = require('../data/validation');
+  (window as any).assertGateX = assertGateX;
+  (window as any).assertNoDanglingHeaders = assertNoDanglingHeaders;
 }

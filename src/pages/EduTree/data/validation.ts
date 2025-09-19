@@ -340,6 +340,35 @@ function validateHeaderCoPresence(gatePositions: GatePositions, nodes: any[]): {
 }
 
 /**
+ * GPT's gate X positioning validation
+ */
+export function assertGateX(opts: { nodes: any[]; gatePositions: GatePositions & any; cols: any }): void {
+  const { nodes, gatePositions, cols } = opts;
+  
+  const pg = nodes.find(n => n.id === 'gate-y2-programs' && !n.hidden);
+  if (gatePositions.showPG && gatePositions._pgBetween) {
+    const exp = (cols[`y${gatePositions._pgBetween[0]}`] + cols[`y${gatePositions._pgBetween[1]}`]) / 2;
+    console.assert(Math.abs(pg?.position.x - exp) < 1, 'Program gate X mismatch');
+  }
+  
+  const tg = nodes.find(n => n.id === 'gate-y3-tracks' && !n.hidden);
+  if (gatePositions.showTG && gatePositions._tgBetween) {
+    const exp = (cols[`y${gatePositions._tgBetween[0]}`] + cols[`y${gatePositions._tgBetween[1]}`]) / 2;
+    console.assert(Math.abs(tg?.position.x - exp) < 1, 'Track gate X mismatch');
+  }
+}
+
+/**
+ * GPT's dangling header validation  
+ */
+export function assertNoDanglingHeaders(opts: { edges: any[]; nodes: any[] }): void {
+  const { edges, nodes } = opts;
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const bad = edges.filter(e => !nodeIds.has(e.target));
+  console.assert(bad.length === 0, 'Edges target missing nodes:', bad);
+}
+
+/**
  * Development utility to log validation results in a readable format
  */
 export function logValidationResults(result: ValidationResult) {

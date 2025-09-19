@@ -167,6 +167,36 @@ export default function EduTreeCanvasV2({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
+  // Dynamic programs and tracks derived from data (data-driven)
+  const programs = useMemo(
+    () => [...presentPrograms] as ('bs_cs' | 'bs_it')[],
+    [presentPrograms]
+  );
+
+  const tracksByProgram = useMemo(() => {
+    const map: Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]> = {
+      bs_cs: [],
+      bs_it: []
+    };
+    for (const p of programs) {
+      map[p] = [...new Set(
+        blocks.filter(b => b.program_id === p && b.track_id).map(b => b.track_id!)
+      )] as ('se' | 'ds')[];
+    }
+    return map;
+  }, [blocks, programs]);
+
+  // Data-driven gate positioning - moved out of useEffect to fix hook violation
+  const gatePositions = useMemo(() => {
+    const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
+    return decideGatePositions({
+      blocks, 
+      programs, 
+      tracksByProgram, 
+      cols
+    });
+  }, [blocks, programs, tracksByProgram]);
+  
   // Apply manual layout when data changes
   useEffect(() => {
     if (!isV2Mode || blocks.length === 0) {
@@ -175,21 +205,6 @@ export default function EduTreeCanvasV2({
     }
     
     console.log('[EduTreeV2] Applying manual layout for', blocks.length, 'blocks');
-    
-    // Data-driven gate positioning - memoized for performance
-    const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
-    const programs = [...presentPrograms] as ('bs_cs' | 'bs_it')[];
-    const tracksByProgram = {
-      bs_cs: ['se', 'ds'] as const,
-      bs_it: [] as const, // no tracks for IT (for now)
-    } as const;
-    
-    const gatePositions = useMemo(() => decideGatePositions({
-      blocks, 
-      programs, 
-      tracksByProgram, 
-      cols
-    }), [blocks, programs.join(','), JSON.stringify(tracksByProgram)]);
     
     // Expose grid validation tools for development
     exposeGridValidation();
@@ -270,6 +285,11 @@ export default function EduTreeCanvasV2({
             updateNodeInternals(nodeId);
           });
           console.log('[EduTreeV2] Updated handle internals for gate nodes:', gateNodeIds);
+          
+          // Store nodes in window for validation utilities
+          if (process.env.NODE_ENV === 'development') {
+            (window as any).__flowNodes__ = finalNodes;
+          }
         }, 100);
         
         // Validate no overlaps (acceptance criteria)
@@ -287,7 +307,7 @@ export default function EduTreeCanvasV2({
       flags.eduTreeV2EdgeKinds, // Pass V2 edge kinds flag
       gatePositions // Pass gate positioning decisions
     );
-  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode]);
+  }, [blocks, edges, isV2Mode, setNodes, setEdges, fitView, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, gatePositions, usePlan, singleRailStraight, filterMode, flags.eduTreeV2EdgeKinds]);
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode
