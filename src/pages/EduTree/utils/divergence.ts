@@ -27,9 +27,9 @@ export interface DivergenceResult {
 
 export interface GatePositions {
   showPG: boolean;
-  pgX: number;
+  pgX: number | undefined;
   showTG: boolean;
-  tgX: number;
+  tgX: number | undefined;
 }
 
 function eqSets<T>(a: Set<T>, b: Set<T>) {
@@ -136,7 +136,7 @@ export function decideGatePositions(opts: {
   const showPG = !!pgDiv.forkBetween;
   const pgX = showPG && pgDiv.forkBetween
     ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
-    : 0; // No fallback - use 0 when hidden
+    : undefined; // Use undefined when hidden (no fallbacks)
 
   // Track gate - use computed fork position only
   let showTG = false;
@@ -153,7 +153,7 @@ export function decideGatePositions(opts: {
   }
   const tgX = showTG && tgBetween
     ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
-    : 0; // No fallback - use 0 when hidden
+    : undefined; // Use undefined when hidden (no fallbacks)
 
   return { 
     showPG, 

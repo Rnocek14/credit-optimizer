@@ -3,7 +3,7 @@
  * Bypasses all legacy layout systems when flags are active
  */
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
@@ -124,6 +124,19 @@ const edgeTypes = {
   gateBranch: GateBranchEdge
 };
 
+// Shallow equality functions to prevent layout churn
+function shallowEqualNodes(a: any[], b: any[]) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id) return false;
+    // Compare key fields that affect render
+    const x = a[i].position.x, y = a[i].position.y;
+    const X = b[i].position.x, Y = b[i].position.y;
+    if (x !== X || y !== Y || a[i].hidden !== b[i].hidden || a[i].type !== b[i].type) return false;
+  }
+  return true;
+}
+
 interface EduTreeCanvasV2Props {
   filterMode?: FilterMode;
   overrideFilterMode?: FilterMode;
@@ -158,6 +171,7 @@ export default function EduTreeCanvasV2({
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
+  const fitViewCalled = useRef(false);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -167,21 +181,29 @@ export default function EduTreeCanvasV2({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
-  // Stabilized programs and tracks derived from data (stable arrays)
+  // Ultra-stable memo dependencies using GPT's recommendations
   const programs = useMemo(
     () => Array.from(new Set(blocks.map(b => b.program_id).filter(Boolean))) as ('bs_cs' | 'bs_it')[],
     [blocks]
   );
 
-  const tracksByProgram = useMemo(() => {
-    const map: Record<string, ('se' | 'ds')[]> = {};
-    for (const p of programs) {
-      map[p] = Array.from(new Set(
+  // Ultra-stable tracksByProgram using JSON stringification
+  const tracksKey = useMemo(
+    () => JSON.stringify(
+      programs.map(p => [p, Array.from(new Set(
         blocks.filter(b => b.program_id === p && b.track_id).map(b => b.track_id!)
-      )) as ('se' | 'ds')[];
+      ))])
+    ),
+    [blocks, programs]
+  );
+
+  const tracksByProgram = useMemo(() => {
+    const map: Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]> = {} as any;
+    for (const [p, arr] of JSON.parse(tracksKey) as ['bs_cs' | 'bs_it', ('se' | 'ds')[]][]) {
+      map[p] = arr;
     }
-    return map as Record<'bs_cs' | 'bs_it', ('se' | 'ds')[]>;
-  }, [blocks, programs]);
+    return Object.freeze(map);
+  }, [tracksKey]);
 
   // Data-driven gate positioning - moved out of useEffect to fix hook violation
   const gatePositions = useMemo(() => {
@@ -234,14 +256,14 @@ export default function EduTreeCanvasV2({
           edges: newEdges.length 
         });
         
-        // Apply gate positioning decisions
+        // Apply gate positioning decisions with proper guards
         const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
           if (n.id === 'gate-y2-programs') {
-            if (!gatePositions.showPG) return { ...n, hidden: true };
+            if (!gatePositions.showPG || gatePositions.pgX == null) return { ...n, hidden: true };
             return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
           }
           if (n.id === 'gate-y3-tracks') {
-            if (!gatePositions.showTG) return { ...n, hidden: true };
+            if (!gatePositions.showTG || gatePositions.tgX == null) return { ...n, hidden: true };
             return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
           }
           return n;
@@ -272,8 +294,9 @@ export default function EduTreeCanvasV2({
           };
         }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
-        setNodes(finalNodes);
-        setEdges(newEdges);
+        // Prevent layout churn with shallow equality checks
+        setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
+        setEdges(prev => prev.length === newEdges.length && prev.every((e,i) => e.id === newEdges[i].id) ? prev : newEdges);
         
         // Force React Flow to recalculate handle positions for gate nodes
         requestAnimationFrame(() => {
@@ -281,11 +304,23 @@ export default function EduTreeCanvasV2({
           visibleGateNodes.forEach(n => updateNodeInternals(n.id));
           console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateNodes.map(n => n.id));
           
-          // Store nodes in window for validation utilities
-          if (process.env.NODE_ENV === 'development') {
-            (window as any).__flowNodes__ = finalNodes;
-            (window as any).__flowEdges__ = newEdges;
-          }
+            // Store nodes in window for validation utilities and run GPT's validation functions
+            if (process.env.NODE_ENV === 'development') {
+              (window as any).__flowNodes__ = finalNodes;
+              (window as any).__flowEdges__ = newEdges;
+              
+              // Run GPT's validation functions
+              try {
+                (window as any).assertNoDanglingHeaders?.({ edges: newEdges, nodes: finalNodes });
+                (window as any).assertGateX?.({ 
+                  nodes: finalNodes, 
+                  gatePositions, 
+                  cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
+                });
+              } catch (e) {
+                console.warn('[EduTreeV2] Validation assertion failed:', e);
+              }
+            }
         });
         
         // Validate no overlaps (acceptance criteria)
@@ -296,7 +331,13 @@ export default function EduTreeCanvasV2({
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
       },
-      fitView,
+      () => {
+        // Guarded fitView to prevent repeated calls
+        if (!fitViewCalled.current) {
+          fitView();
+          fitViewCalled.current = true;
+        }
+      },
       usePlan, // Use deterministic grid anchors when in single-rail grid mode
       singleRailStraight, // Pass single-rail straight flag
       filterMode || 'compare-tracks', // Pass filter mode for header routing
