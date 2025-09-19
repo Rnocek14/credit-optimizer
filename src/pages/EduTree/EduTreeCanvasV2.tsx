@@ -180,11 +180,6 @@ function EduTreeCanvasV2Content({
   overrideFilterMode,
   overrideFlags 
 }: EduTreeCanvasV2Props) {
-function EduTreeCanvasV2Content({ 
-  filterMode = null, 
-  overrideFilterMode,
-  overrideFlags 
-}: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
   
   // Dev panel state (always available in dev)
@@ -616,7 +611,4 @@ function EduTreeCanvasV2Content({
       </div>
     </>
   );
-}
-
-// Missing closing brace for EduTreeCanvasV2Content function
 }
