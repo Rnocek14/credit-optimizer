@@ -235,13 +235,23 @@ export function edgesToReactFlowEdges(
     // Set targetHandle for gate-to-header edges
     const targetHandle = (isGateEdge && isHeaderTarget) ? 'in' : undefined;
 
-    return {
+    // Debug logging for handle assignment (development only)
+    if (import.meta.env.DEV && edge.source.includes('y3-se-core')) {
+      console.log('[DEBUG] Edge handle assignment:', {
+        edgeId: `${edge.source}-${target}`,
+        isGateEdge,
+        isHeaderTarget,
+        sourceHandle,
+        targetHandle,
+        edgeSource: edge.source,
+        edgeTarget: target
+      });
+    }
+
+    const edgeObject: any = {
       id: `${edge.source}-${target}`,
       source: edge.source,
       target,
-      sourceHandle, // Always computed, never from seed
-      sourcePosition,
-      targetHandle,
       type: edgeType,
       animated: false,
       
@@ -267,6 +277,19 @@ export function edgesToReactFlowEdges(
         ...arrowSize
       } : undefined
     };
+
+    // Only set handles when they actually have values - avoid undefined/null issues
+    if (sourceHandle !== undefined) {
+      edgeObject.sourceHandle = sourceHandle;
+    }
+    if (sourcePosition !== undefined) {
+      edgeObject.sourcePosition = sourcePosition;
+    }
+    if (targetHandle !== undefined) {
+      edgeObject.targetHandle = targetHandle;
+    }
+
+    return edgeObject;
   });
 }
 
@@ -477,14 +500,24 @@ export function applyManualLayout(
   
   // Final sanitizer: ensure no bad handles survive regardless of source
   const cleanSource = (h: unknown): SourceHandle => {
-    if (h === 'out' || h === 'out-se' || h === 'out-ds') return h as SourceHandle;
-    if (h === null || h === 'null' || h === '') return undefined;
+    // Debug logging for problematic handles (development only)
+    if (import.meta.env.DEV && h !== undefined && typeof h === 'string' && !['out', 'out-se', 'out-ds'].includes(h)) {
+      console.warn('[SANITIZER] Invalid sourceHandle value:', { value: h, type: typeof h });
+    }
+    
+    if (typeof h === 'string' && (h === 'out' || h === 'out-se' || h === 'out-ds')) return h as SourceHandle;
+    // Return undefined for any invalid values (null, 'null', empty string, etc.)
     return undefined;
   };
 
   const cleanTarget = (h: unknown): string | undefined => {
-    if (h === 'in') return 'in'; // Allow 'in' for gate-to-header edges
-    if (h === null || h === 'null' || h === '') return undefined;
+    // Debug logging for problematic handles (development only)
+    if (import.meta.env.DEV && h !== undefined && typeof h === 'string' && h !== 'in') {
+      console.warn('[SANITIZER] Invalid targetHandle value:', { value: h, type: typeof h });
+    }
+    
+    if (typeof h === 'string' && h === 'in') return 'in'; // Allow 'in' for gate-to-header edges
+    // Return undefined for any invalid values (null, 'null', empty string, etc.)
     return undefined;
   };
 
