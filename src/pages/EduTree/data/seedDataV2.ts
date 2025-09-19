@@ -283,7 +283,13 @@ export const GOLDEN_LAYOUT_SEED: {
     // Y3 → Y4 Capstones
     { source: "y3-se-elec", target: "y4-se-cap" },
     { source: "y3-ds-elec", target: "y4-ds-cap" },
-    { source: "y2-it-elec", target: "y4-it-cap" }
+    { source: "y2-it-elec", target: "y4-it-cap" },
+    
+    // Gate-to-Header edges for compare modes (straight arrows)
+    { source: "gate-y2-programs", target: "program-header:bs_cs", kind: "gate" },
+    { source: "gate-y2-programs", target: "program-header:bs_it", kind: "gate" },
+    { source: "gate-y3-tracks", target: "track-header:se", kind: "gate" },
+    { source: "gate-y3-tracks", target: "track-header:ds", kind: "gate" }
   ],
 
   junctions: [
@@ -399,7 +405,17 @@ export function filterEdgesByBlocks(
 ): V2Edge[] {
   const visibleBlockIds = new Set(visibleBlocks.map(b => b.id));
   
-  return edges.filter(edge => 
-    visibleBlockIds.has(edge.source) && visibleBlockIds.has(edge.target)
-  );
+  return edges.filter(edge => {
+    // Source must be visible
+    if (!visibleBlockIds.has(edge.source)) return false;
+    
+    // Special case: header targets are always considered "visible" when their mode is active
+    // Headers are not blocks but are created dynamically in manualLayoutRenderer
+    if (edge.target.startsWith('program-header:') || edge.target.startsWith('track-header:')) {
+      return true; // Headers are handled by the renderer's filter mode logic
+    }
+    
+    // Regular case: target must be in visible blocks
+    return visibleBlockIds.has(edge.target);
+  });
 }
