@@ -27,8 +27,10 @@ function metroPath(
   const elbowX = Math.max(sx + minH, Math.min(tx - minH, (sx + tx) / 2));
   const elbowY = sy;
 
-  // Clamp radius so it never exceeds half the available span
-  const effectiveRadius = Math.min(r, Math.abs(tx - elbowX) / 4, Math.abs(ty - sy) / 4);
+  // Clamp radius to available space to prevent over-rounding on short runs
+  const dx = Math.abs(tx - sx);
+  const dy = Math.abs(ty - sy);
+  const effectiveRadius = Math.min(r, Math.max(6, dx / 4), Math.max(6, dy / 4));
 
   // 2) Rounded elbow: right -> down/up
   const dirY = ty > sy ? 1 : -1; // 1=down, -1=up
@@ -83,6 +85,8 @@ export default function MetroGateEdge({
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 12, 16)}
         fill="none"
+        vectorEffect="non-scaling-stroke"
+        pointerEvents="stroke"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: 'pointer' }}
@@ -121,6 +125,8 @@ export default function MetroGateEdge({
         strokeDasharray={strokeDasharray}
         opacity={displayOpacity}
         shapeRendering="geometricPrecision"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         markerEnd={markerEnd}
       />
     </g>
