@@ -71,11 +71,33 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
         <>
           <Handle id="out-se" type="source" position={Position.Top} />
           <Handle id="out-ds" type="source" position={Position.Bottom} />
-          <Handle id="out" type="source" position={Position.Right} />
+          <Handle 
+            id="out" 
+            type="source" 
+            position={Position.Right}
+            style={{ 
+              right: '-8px',
+              background: 'transparent',
+              border: 'none',
+              width: '12px',
+              height: '12px'
+            }}
+          />
         </>
       )}
       {singleRailStraight && (
-        <Handle id="out" type="source" position={Position.Right} />
+        <Handle 
+          id="out" 
+          type="source" 
+          position={Position.Right}
+          style={{ 
+            right: '-8px',
+            background: 'transparent', 
+            border: 'none',
+            width: '12px',
+            height: '12px'
+          }}
+        />
       )}
       {/* target handle */}
       <Handle id="in" type="target" position={Position.Left} />
