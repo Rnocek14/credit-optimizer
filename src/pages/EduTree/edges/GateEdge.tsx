@@ -11,10 +11,11 @@ const GateEdge = ({
   targetPosition,
   style = {},
   markerEnd,
+  data,
 }: EdgeProps) => {
-  // Force the edge to start from the right edge of the gate node
-  // Offset the sourceX by the gate node width (approximately 110px from center)
-  const adjustedSourceX = sourceX + 110;
+  // Conditionally apply offset based on edge data
+  // Gate-to-header edges use center positioning, others use right edge
+  const adjustedSourceX = data?.useCenterPosition ? sourceX : sourceX + 110;
   
   const [edgePath] = getStraightPath({
     sourceX: adjustedSourceX,
