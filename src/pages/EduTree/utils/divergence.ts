@@ -3,6 +3,8 @@
  * Detects where programs/tracks actually branch in the curriculum
  */
 
+import { assertGateX, assertNoDanglingHeaders } from '../data/validation';
+
 type Year = 1 | 2 | 3 | 4;
 type ProgramId = 'bs_cs' | 'bs_it' | (string & {});
 type TrackCode = 'se' | 'ds' | (string & {});
@@ -155,7 +157,6 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).decideGatePositions = decideGatePositions;
   
   // GPT's validation utilities
-  const { assertGateX, assertNoDanglingHeaders } = require('../data/validation');
   (window as any).assertGateX = assertGateX;
   (window as any).assertNoDanglingHeaders = assertNoDanglingHeaders;
 }
