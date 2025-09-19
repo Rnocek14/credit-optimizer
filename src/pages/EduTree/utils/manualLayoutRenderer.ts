@@ -285,7 +285,7 @@ function createHeaderNodes(opts: {
       {
         id: 'program-header:bs_it',
         type: 'header',
-        position: { x: PROGRAM_HEADER_X, y: Y_DOWN + 200 },
+        position: { x: PROGRAM_HEADER_X, y: Y_DOWN + 250 },
         data: { label: 'BS Information Technology' },
         draggable: false,
         selectable: false,
@@ -310,7 +310,7 @@ function createHeaderNodes(opts: {
     {
       id: 'track-header:ds',
       type: 'header',
-      position: { x: TRACK_HEADER_X, y: Y_DOWN + 200 },
+      position: { x: TRACK_HEADER_X, y: Y_DOWN + 250 },
       data: { label: 'Data Science' },
       draggable: false,
       selectable: false,
