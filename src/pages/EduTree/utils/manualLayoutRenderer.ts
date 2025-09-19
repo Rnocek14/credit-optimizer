@@ -224,7 +224,7 @@ export function edgesToReactFlowEdges(
       sourcePosition,
       type: edgeType,
       animated: false,
-      data: (isCompare && useV2EdgeKinds && isHeaderTarget) ? { useCenterPosition: true } : undefined,
+      
       style: { 
         stroke: 'rgba(255,255,255,0.85)', 
         strokeWidth: styling.strokeWidth, 
