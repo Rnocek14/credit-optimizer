@@ -6,6 +6,7 @@
 import { useMemo } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { usePathHighlight, type Selection, type Blockish } from '../ctx/PathHighlightContext';
+import { withNodeHL, withEdgeHL } from '../utils/highlightClasses';
 
 interface UseApplyDimmingV2Props {
   nodes: Node[];
@@ -22,11 +23,11 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
   // Build trackToProgram map from current nodes
   const trackToProgram = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map = new Map<string, string>();
     nodes.forEach(node => {
       const blockish = extractBlockish(node);
       if (blockish?.track_id && blockish?.program_id) {
-        map[blockish.track_id] = blockish.program_id;
+        map.set(blockish.track_id, blockish.program_id);
       }
     });
     return map;
@@ -61,7 +62,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       
       // Program-shared blocks: check if track belongs to block's program
       if (blockish.program_id && !blockish.track_id) {
-        const trackProgram = trackToProgram[id];
+        const trackProgram = trackToProgram.get(id);
         return blockish.program_id === trackProgram;
       }
     }
@@ -83,8 +84,8 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     
     if (primaryKind === 'track' && secondaryKind === 'track') {
       // Track vs Track (same program): global + program-shared
-      const primaryProgram = trackToProgram[primarySel.id];
-      const secondaryProgram = trackToProgram[secondarySel.id];
+      const primaryProgram = trackToProgram.get(primarySel.id);
+      const secondaryProgram = trackToProgram.get(secondarySel.id);
       
       if (primaryProgram === secondaryProgram) {
         // Same program: include program-shared blocks
@@ -121,7 +122,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         if (dimmed) {
           return {
             ...node,
-            className: `${node.className || ''} hl--dim`.trim(),
+            className: withNodeHL(node.className, 'hl--dim'),
             style: { ...node.style, opacity: 0.4 }
           };
         }
@@ -137,9 +138,6 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       }
 
       const blockish = extractBlockish(node);
-      
-      let className = node.className || '';
-      let opacity = 1;
 
       if (primarySelection && secondarySelection) {
         // Dual selection: compute A-only, B-only, shared, dim
@@ -148,31 +146,25 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         const isShared = isSharedBetween(blockish, primarySelection, secondarySelection);
 
         if (isShared) {
-          className = `${className} hl--both`.trim();
+          return { ...node, className: withNodeHL(node.className, 'hl--both'), style: { ...node.style, opacity: 1 } };
         } else if (belongsA) {
-          className = `${className} hl--primary`.trim();
+          return { ...node, className: withNodeHL(node.className, 'hl--primary'), style: { ...node.style, opacity: 1 } };
         } else if (belongsB) {
-          className = `${className} hl--comparison`.trim();
+          return { ...node, className: withNodeHL(node.className, 'hl--comparison'), style: { ...node.style, opacity: 1 } };
         } else {
-          className = `${className} hl--dim`.trim();
-          opacity = 0.25;
+          return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
         }
       } else if (primarySelection) {
         // Primary selection only
         const belongsA = belongsToSelection(blockish, primarySelection);
         if (belongsA) {
-          className = `${className} hl--primary`.trim();
+          return { ...node, className: withNodeHL(node.className, 'hl--primary'), style: { ...node.style, opacity: 1 } };
         } else {
-          className = `${className} hl--dim`.trim();
-          opacity = 0.25;
+          return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
         }
       }
 
-      return {
-        ...node,
-        className,
-        style: { ...node.style, opacity }
-      };
+      return node;
     });
   }, [nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram]);
 
@@ -193,7 +185,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         if (dimmed) {
           return {
             ...edge,
-            className: `${edge.className || ''} edge--dim`.trim(),
+            className: withEdgeHL(edge.className, 'edge--dim'),
             style: { ...edge.style, opacity: 0.25 }
           };
         }
@@ -214,21 +206,20 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       if (primarySelection && secondarySelection) {
         // Dual selection edge logic
         const sourceA = belongsToSelection(sourceBlockish, primarySelection);
-        const sourceB = belongsToSelection(targetBlockish, secondarySelection);
-        const targetA = belongsToSelection(sourceBlockish, primarySelection);
+        const sourceB = belongsToSelection(sourceBlockish, secondarySelection);
+        const targetA = belongsToSelection(targetBlockish, primarySelection);
         const targetB = belongsToSelection(targetBlockish, secondarySelection);
         
         const sourceShared = isSharedBetween(sourceBlockish, primarySelection, secondarySelection);
         const targetShared = isSharedBetween(targetBlockish, primarySelection, secondarySelection);
 
         // Gate/header edges: keep visible if either endpoint belongs
-        const keepIfEither = edge.type === 'metroGate' || edge.type === 'gate';
+        const keepIfEither = edge.type === 'metroGate';
         
         if (keepIfEither) {
           const hasConnection = sourceA || sourceB || targetA || targetB || sourceShared || targetShared;
           if (!hasConnection) {
-            className = `${className} edge--dim`.trim();
-            opacity = 0.25;
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
           }
         } else {
           // Regular edges: both endpoints must match same selection
@@ -237,14 +228,13 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
           const bothB = (sourceB || sourceShared) && (targetB || sourceShared);
 
           if (bothShared) {
-            className = `${className} edge--both`.trim();
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--both'), style: { ...edge.style, opacity: 1 } };
           } else if (bothA) {
-            className = `${className} edge--primary`.trim();
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--primary'), style: { ...edge.style, opacity: 1 } };
           } else if (bothB) {
-            className = `${className} edge--comparison`.trim();
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--comparison'), style: { ...edge.style, opacity: 1 } };
           } else {
-            className = `${className} edge--dim`.trim();
-            opacity = 0.25;
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
           }
         }
       } else if (primarySelection) {
@@ -253,18 +243,13 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         const targetA = belongsToSelection(targetBlockish, primarySelection);
         
         if (sourceA && targetA) {
-          className = `${className} edge--primary`.trim();
+          return { ...edge, className: withEdgeHL(edge.className, 'edge--primary'), style: { ...edge.style, opacity: 1 } };
         } else {
-          className = `${className} edge--dim`.trim();
-          opacity = 0.25;
+          return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
         }
       }
 
-      return {
-        ...edge,
-        className,
-        style: { ...edge.style, opacity }
-      };
+      return edge;
     });
   }, [edges, nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isEdgeDimmed, trackToProgram]);
 

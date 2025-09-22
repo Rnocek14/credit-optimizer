@@ -35,17 +35,32 @@ function keyFromId(id: string): `${'program'|'track'}:${string}` | null {
 
 export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeData }) {
   const [isFocused, setIsFocused] = React.useState(false);
-  const { preview, clearPreview, toggleLock, activeKey, lockedKey } = usePathHighlight();
+  const ctx = usePathHighlight();
   const k = keyFromId(id || '');
 
-  const locked = k ? lockedKey === k : false;
-  const isActive = k ? activeKey === k : false;
+  // Detect compare-any via URL param (keeps this component decoupled)
+  const isCompareAny = React.useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('filterMode') === 'compare-any';
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const toSelection = (key: string) => {
+    const [kind, id] = key.split(':');
+    if (kind !== 'program' && kind !== 'track') return null;
+    return { kind, id } as const;
+  };
+
+  const locked = k ? ctx.lockedKey === k : false;
+  const isActive = k ? ctx.activeKey === k : false;
 
   console.log('[HeaderNode] Render state:', {
     id,
     extractedKey: k,
-    activeKey,
-    lockedKey,
+    activeKey: ctx.activeKey,
+    lockedKey: ctx.lockedKey,
     locked,
     isActive,
     label: data.label
@@ -55,7 +70,12 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
     if (!k) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      toggleLock(k);
+      if (isCompareAny) {
+        const sel = toSelection(k);
+        if (sel) ctx.setPrimarySelection(sel);
+      } else {
+        ctx.toggleLock(k);
+      }
     }
   };
 
@@ -68,17 +88,30 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
       onKeyDown={handleKeyDown}
       onMouseEnter={() => {
         console.log('[HeaderNode] Mouse enter, calling preview with key:', k);
-        k && preview(k);
+        k && ctx.preview(k);
       }}
       onMouseLeave={() => {
         console.log('[HeaderNode] Mouse leave, calling clearPreview');
-        clearPreview();
+        ctx.clearPreview();
       }}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
-      onClick={() => {
-        console.log('[HeaderNode] Click, calling toggleLock with key:', k);
-        k && toggleLock(k);
+      onClick={(e) => {
+        if (!k) return;
+
+        if (isCompareAny) {
+          const sel = toSelection(k);
+          if (!sel) return;
+          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            ctx.setSecondarySelection(sel);
+          } else {
+            ctx.setPrimarySelection(sel);
+          }
+          // clear legacy hover/lock so dual-selection is the single source of truth
+          ctx.clearPreview();
+        } else {
+          ctx.toggleLock(k);
+        }
       }}
       style={{
         pointerEvents: 'auto', // Enable keyboard interaction
