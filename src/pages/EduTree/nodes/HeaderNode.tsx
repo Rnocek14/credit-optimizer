@@ -15,7 +15,17 @@ function keyFromId(id: string): `${'program'|'track'}:${string}` | null {
     return key;
   }
   if (id.startsWith('track-header:')) {
-    const key = `track:${id.split(':')[1]}` as `track:${string}`;
+    const trackId = id.split(':')[1];
+    // Special case: IT is actually a program, not a track
+    if (trackId === 'information-technology') {
+      const key = `program:bs_it` as `program:${string}`;
+      console.log('[HeaderNode] Mapped IT track to program key:', key);
+      return key;
+    }
+    // Map track names to track codes
+    const trackCode = trackId === 'software-engineering' ? 'se' : 
+                     trackId === 'data-science' ? 'ds' : trackId;
+    const key = `track:${trackCode}` as `track:${string}`;
     console.log('[HeaderNode] Extracted track key:', key);
     return key;
   }

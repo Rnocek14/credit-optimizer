@@ -110,13 +110,6 @@ export function PathHighlightProvider({
         return false; // IT blocks should be dimmed
       }
       
-      // IT track: include IT program blocks and specific track blocks
-      if (value === 'it') {
-        if (b.track_id === value) return true; // specific track blocks
-        if (b.program_id === 'bs_it' && !b.track_id) return true; // IT program blocks
-        return false; // CS blocks should be dimmed
-      }
-      
       // Fallback for other tracks
       if (!b.track_id) return true;
       return b.track_id === value;
