@@ -21,13 +21,14 @@ function getEdges(): EdgeLike[] {
 function countDimmed(nodes = getNodes(), edges = getEdges()) {
   const nodesDim = nodes.filter(n => !n.hidden && (n.data?.__dim === 1 || (n.style?.opacity ?? 1) < 1)).length;
   const edgesDim = edges.filter(e => (e as any).data?.__dim === 1 || ((e as any).style?.opacity ?? 1) < 1).length;
-  return { nodesDim, edgesDim };
+  return { nodes: nodesDim, edges: edgesDim };
 }
 
 export default function HighlightDiagnostics() {
   const ctx = (() => { try { return usePathHighlight(); } catch { return null; } })();
   const [result, setResult] = React.useState<string>('Idle');
   const [details, setDetails] = React.useState<any>(null);
+  const [debugInfo, setDebugInfo] = React.useState<string>('');
 
   const run = React.useCallback(() => {
     const nodes = getNodes();
@@ -47,8 +48,16 @@ export default function HighlightDiagnostics() {
     // If context not available or no headers, bail early but show what we have.
     if (!ctx || !headerKey) {
       const pass = badHandles.length === 0 && dangling.length === 0 && headers.length > 0;
+      const debugText = [
+        `Context available: ${!!ctx}`,
+        `Headers found: ${headers.map(h => h.id).join(', ')}`,
+        `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
+        `Active key: ${ctx?.activeKey || 'none'}`,
+      ].join('\n');
+      
       setResult(pass ? 'PASS (partial)' : 'FAIL (partial)');
       setDetails({ headers: headers.length, before, badHandles: badHandles.length, dangling: dangling.length, note: 'No context or no headers' });
+      setDebugInfo(debugText);
       return;
     }
 
@@ -74,8 +83,8 @@ export default function HighlightDiagnostics() {
 
           const pass =
             (headers.length > 0) &&
-            (afterHover.nodesDim >= before.nodesDim) &&
-            (afterLeave.nodesDim >= afterHover.nodesDim) &&
+            (afterHover.nodes >= before.nodes) &&
+            (afterLeave.nodes >= afterHover.nodes) &&
             badHandles.length === 0 &&
             dangling.length === 0;
 
@@ -90,6 +99,17 @@ export default function HighlightDiagnostics() {
             dangling: dangling.length,
             gatePositions: gp
           });
+          
+          const debugText = [
+            `Headers found: ${headers.map(h => h.id).join(', ')}`,
+            `Active key: ${ctx?.activeKey || 'none'}`,
+            `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
+            `Locked key: ${ctx?.lockedKey || 'none'}`,
+            `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
+            `Node types: ${[...new Set(nodes.map(n => n.type))].join(', ')}`,
+            `Edge types: ${[...new Set(edges.map(e => e.type))].join(', ')}`,
+          ].join('\n');
+          setDebugInfo(debugText);
         }, 60);
       }, 60);
     }, 60);
@@ -127,11 +147,17 @@ export default function HighlightDiagnostics() {
             <div>Dangling edges: {details.dangling}</div>
             {details.before && (
               <>
-                <div>Dim (before): {details.before.nodesDim} nodes / {details.before.edgesDim} edges</div>
-                <div>Dim (hover): {details.afterHover?.nodesDim} / {details.afterHover?.edgesDim}</div>
-                <div>Dim (lock): {details.afterLock?.nodesDim} / {details.afterLock?.edgesDim}</div>
-                <div>Dim (after leave): {details.afterLeave?.nodesDim} / {details.afterLeave?.edgesDim}</div>
+                <div>Dim (before): {details.before.nodes} nodes / {details.before.edges} edges</div>
+                <div>Dim (hover): {details.afterHover?.nodes} / {details.afterHover?.edges}</div>
+                <div>Dim (lock): {details.afterLock?.nodes} / {details.afterLock?.edges}</div>
+                <div>Dim (after leave): {details.afterLeave?.nodes} / {details.afterLeave?.edges}</div>
               </>
+            )}
+            {debugInfo && (
+              <details style={{ marginTop: 6, fontSize: 10 }}>
+                <summary style={{ cursor: 'pointer', opacity: 0.7 }}>Debug Info</summary>
+                <pre style={{ whiteSpace: 'pre-wrap', marginTop: 4, opacity: 0.8 }}>{debugInfo}</pre>
+              </details>
             )}
           </div>
         )}

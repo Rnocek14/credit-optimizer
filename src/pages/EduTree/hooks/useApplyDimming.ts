@@ -14,6 +14,14 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
   })();
 
   const dimmedNodes = useMemo(() => {
+    console.log('[useApplyDimming] Processing nodes:', {
+      nodeCount: nodes.length,
+      hasHighlight: !!highlight,
+      activeKey: highlight?.activeKey,
+      hoveredKey: highlight?.hoveredKey,
+      lockedKey: highlight?.lockedKey
+    });
+
     if (!highlight) return nodes;
 
     return nodes.map(node => {
@@ -22,15 +30,23 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         return node;
       }
 
-      // Extract blockish data for dimming check
+      // Extract blockish data for dimming check - Updated for V2 data structure
       const blockish = node.data && typeof node.data === 'object' ? {
         id: node.data.block?.id || node.id,
-        program_id: node.data.programId || node.data.block?.program_id || null,
-        track_id: node.data.trackId || node.data.block?.track_id || null,
-        type: node.data.block?.type,
+        program_id: node.data.program_id || node.data.programId || node.data.block?.program_id || null,
+        track_id: node.data.track_id || node.data.trackId || node.data.block?.track_id || null,
+        type: node.data.block?.type || node.data.type,
       } : null;
 
       const dim = highlight.isNodeDimmed(blockish);
+
+      console.log('[useApplyDimming] Node dimming:', {
+        nodeId: node.id,
+        nodeType: node.type,
+        blockish,
+        dim,
+        activeKey: highlight.activeKey
+      });
 
       return {
         ...node,
@@ -38,9 +54,15 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(node.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [nodes, highlight, highlight?.activeKey]);
+  }, [nodes, highlight, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   const dimmedEdges = useMemo(() => {
+    console.log('[useApplyDimming] Processing edges:', {
+      edgeCount: edges.length,
+      hasHighlight: !!highlight,
+      activeKey: highlight?.activeKey
+    });
+
     if (!highlight) return edges;
 
     return edges.map(edge => {
@@ -50,16 +72,16 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
 
       const sourceBlockish = sourceNode?.data ? {
         id: sourceNode.data.block?.id || sourceNode.id,
-        program_id: sourceNode.data.programId || sourceNode.data.block?.program_id || null,
-        track_id: sourceNode.data.trackId || sourceNode.data.block?.track_id || null,
-        type: sourceNode.data.block?.type,
+        program_id: sourceNode.data.program_id || sourceNode.data.programId || sourceNode.data.block?.program_id || null,
+        track_id: sourceNode.data.track_id || sourceNode.data.trackId || sourceNode.data.block?.track_id || null,
+        type: sourceNode.data.block?.type || sourceNode.data.type,
       } : null;
 
       const targetBlockish = targetNode?.data ? {
         id: targetNode.data.block?.id || targetNode.id,
-        program_id: targetNode.data.programId || targetNode.data.block?.program_id || null,
-        track_id: targetNode.data.trackId || targetNode.data.block?.track_id || null,
-        type: targetNode.data.block?.type,
+        program_id: targetNode.data.program_id || targetNode.data.programId || targetNode.data.block?.program_id || null,
+        track_id: targetNode.data.track_id || targetNode.data.trackId || targetNode.data.block?.track_id || null,
+        type: targetNode.data.block?.type || targetNode.data.type,
       } : null;
 
       const dim = highlight.isEdgeDimmed(sourceBlockish, targetBlockish, edge.type);
@@ -70,7 +92,7 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(edge.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [edges, nodes, highlight, highlight?.activeKey]);
+  }, [edges, nodes, highlight, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   return { nodes: dimmedNodes, edges: dimmedEdges };
 }
