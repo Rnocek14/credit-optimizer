@@ -164,12 +164,34 @@ export function edgesToReactFlowEdges(
     return edge.target; // single-rail or fallback
   };
 
+  // Create set of visible node IDs for edge validation
+  const nodeById = new Map(blocks.map(b => [b.id, b]));
+  const isVisible = (id: string) => {
+    // Check if it's a header node (always visible when created)
+    if (id.startsWith('program-header:') || id.startsWith('track-header:')) return true;
+    
+    // Check gate visibility
+    if (id === 'gate-y2-programs' && gatePositions && !gatePositions.showPG) return false;
+    if (id === 'gate-y3-tracks' && gatePositions && !gatePositions.showTG) return false;
+    
+    // Check if node exists in blocks
+    return nodeById.has(id);
+  };
+
   return edges.filter((edge) => {
     // Filter out edges for hidden gates
     if (gatePositions) {
       if (edge.source === 'gate-y2-programs' && !gatePositions.showPG) return false;
       if (edge.source === 'gate-y3-tracks' && !gatePositions.showTG) return false;
     }
+    
+    // Never keep a metroGate edge if either endpoint isn't visible
+    const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
+    if (kind === 'gate' && edge.source.startsWith('gate-')) {
+      const target = remapGateTarget(edge);
+      if (!isVisible(edge.source) || !isVisible(target)) return false;
+    }
+    
     return true;
   }).map((edge) => {
     const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');

@@ -12,6 +12,7 @@ import { decideGatePositions } from './utils/divergence';
 import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
 import { runRegressionChecks } from './utils/regressionChecks';
 import { runSmokeTest } from './utils/smokeTest';
+import { assertNoInvisibleMetroEdges } from './utils/assertNoInvisibleMetroEdges';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -21,8 +22,7 @@ import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
 import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
-import { PathHighlightProvider } from './ctx/PathHighlightContext';
-import { useApplyDimming } from './hooks/useApplyDimming';
+import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import './components/StabilityStyles.css';
 
@@ -204,12 +204,53 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // Apply dimming based on path highlighting
-  const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, flowEdges);
+  // Get highlight helpers (wrapped by provider in V2)
+  const { activeKey, isNodeDimmed, isEdgeDimmed } = usePathHighlight();
   
-  // Use dimmed nodes and edges for rendering
-  const finalNodes = dimmedNodes;
-  const finalEdges = dimmedEdges;
+  // Apply dimming reactively based on highlight state
+  const finalNodes = useMemo(() => {
+    return nodes.map(n => {
+      // Keep headers and gates fully visible
+      if (n.type === 'headerNode' || n.type === 'gateNode' || n.type === 'header') return n;
+
+      const b = n.data?.block
+        ? {
+            id: n.data.block.id,
+            program_id: n.data.block.program_id ?? null,
+            track_id: n.data.block.track_id ?? null,
+            type: n.data.block.type,
+          }
+        : null;
+
+      const dim = isNodeDimmed(b);
+      return {
+        ...n,
+        data: { ...n.data, __dim: dim ? 1 : 0 },
+        style: { ...(n.style || {}), opacity: dim ? 0.25 : 1 },
+      };
+    });
+  }, [nodes, isNodeDimmed, activeKey]);
+
+  const finalEdges = useMemo(() => {
+    return flowEdges.map(e => {
+      const src = nodes.find(n => n.id === e.source);
+      const dst = nodes.find(n => n.id === e.target);
+
+      const a = src?.data?.block
+        ? { id: src.data.block.id, program_id: src.data.block.program_id ?? null, track_id: src.data.block.track_id ?? null, type: src.data.block.type }
+        : null;
+      const b = dst?.data?.block
+        ? { id: dst.data.block.id, program_id: dst.data.block.program_id ?? null, track_id: dst.data.block.track_id ?? null, type: dst.data.block.type }
+        : null;
+
+      const dim = isEdgeDimmed(a, b, e.type);
+      return {
+        ...e,
+        data: { ...e.data, __dim: dim ? 1 : 0 },
+        style: { ...(e.style || {}), opacity: dim ? 0.25 : 1 },
+      };
+    });
+  }, [flowEdges, nodes, isEdgeDimmed, activeKey]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -400,6 +441,11 @@ function EduTreeCanvasV2Content({
         
         // Run ChatGPT's smoke test
         runSmokeTest();
+        
+        // Assert no invisible metro edges (development only)
+        if (!assertNoInvisibleMetroEdges(nodes, flowEdges)) {
+          console.warn('[EduTreeV2] Invisible metro edges detected - check edge filtering logic');
+        }
       } catch (e) {
         console.warn('[EduTreeV2] Validation assertion failed:', e);
       }
