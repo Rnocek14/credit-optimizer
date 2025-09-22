@@ -98,10 +98,11 @@ export default function HighlightDiagnostics() {
   return (
     <div
       style={{
-        position: 'fixed', bottom: 16, right: 16, zIndex: 2000,
-        background: 'rgba(20,25,35,0.92)', color: '#fff',
-        border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: 12,
-        fontSize: 12, lineHeight: 1.4, maxWidth: 360, pointerEvents: 'auto'
+        position: 'fixed', bottom: 16, left: 16, zIndex: 3000,
+        background: 'rgba(20,25,35,0.95)', color: '#fff',
+        border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: 10,
+        fontSize: 11, lineHeight: 1.3, maxWidth: 320, pointerEvents: 'auto',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
       }}
       aria-live="polite"
     >
