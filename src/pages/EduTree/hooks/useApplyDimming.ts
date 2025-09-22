@@ -30,13 +30,14 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         return node;
       }
 
-      // Extract blockish data for dimming check - Updated for V2 data structure
-      const blockish = node.data && typeof node.data === 'object' ? {
-        id: node.data.block?.id || node.id,
-        program_id: node.data.program_id || node.data.programId || node.data.block?.program_id || null,
-        track_id: node.data.track_id || node.data.trackId || node.data.block?.track_id || null,
-        type: node.data.block?.type || node.data.type,
-      } : null;
+      // Extract blockish data for dimming check - Enhanced for V2 data structure
+      const nodeData = node.data && typeof node.data === 'object' ? node.data : {};
+      const blockish = {
+        id: nodeData.block?.id || node.id,
+        program_id: nodeData.block?.program_id || nodeData.program_id || nodeData.programId || null,
+        track_id: nodeData.block?.track_id || nodeData.track_id || nodeData.trackId || null,
+        type: nodeData.block?.type || nodeData.type || node.type,
+      };
 
       const dim = highlight.isNodeDimmed(blockish);
 
@@ -70,21 +71,34 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
 
-      const sourceBlockish = sourceNode?.data ? {
-        id: sourceNode.data.block?.id || sourceNode.id,
-        program_id: sourceNode.data.program_id || sourceNode.data.programId || sourceNode.data.block?.program_id || null,
-        track_id: sourceNode.data.track_id || sourceNode.data.trackId || sourceNode.data.block?.track_id || null,
-        type: sourceNode.data.block?.type || sourceNode.data.type,
-      } : null;
+      const sourceNodeData = sourceNode?.data && typeof sourceNode.data === 'object' ? sourceNode.data : {};
+      const sourceBlockish = {
+        id: sourceNodeData.block?.id || sourceNode?.id,
+        program_id: sourceNodeData.block?.program_id || sourceNodeData.program_id || sourceNodeData.programId || null,
+        track_id: sourceNodeData.block?.track_id || sourceNodeData.track_id || sourceNodeData.trackId || null,
+        type: sourceNodeData.block?.type || sourceNodeData.type || sourceNode?.type,
+      };
 
-      const targetBlockish = targetNode?.data ? {
-        id: targetNode.data.block?.id || targetNode.id,
-        program_id: targetNode.data.program_id || targetNode.data.programId || targetNode.data.block?.program_id || null,
-        track_id: targetNode.data.track_id || targetNode.data.trackId || targetNode.data.block?.track_id || null,
-        type: targetNode.data.block?.type || targetNode.data.type,
-      } : null;
+      const targetNodeData = targetNode?.data && typeof targetNode.data === 'object' ? targetNode.data : {};
+      const targetBlockish = {
+        id: targetNodeData.block?.id || targetNode?.id,
+        program_id: targetNodeData.block?.program_id || targetNodeData.program_id || targetNodeData.programId || null,
+        track_id: targetNodeData.block?.track_id || targetNodeData.track_id || targetNodeData.trackId || null,
+        type: targetNodeData.block?.type || targetNodeData.type || targetNode?.type,
+      };
 
       const dim = highlight.isEdgeDimmed(sourceBlockish, targetBlockish, edge.type);
+
+      console.log('[useApplyDimming] Edge dimming:', {
+        edgeId: edge.id,
+        edgeType: edge.type,
+        sourceId: edge.source,
+        targetId: edge.target,
+        sourceBlockish,
+        targetBlockish,
+        dim,
+        activeKey: highlight.activeKey
+      });
 
       return {
         ...edge,

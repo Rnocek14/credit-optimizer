@@ -57,21 +57,35 @@ export function PathHighlightProvider({
   }, []);
 
   const preview = React.useCallback((key: HighlightKey | null) => {
+    console.log('[PathHighlight] preview called with key:', key, 'lockedKey:', lockedKey);
     // If locked, ignore hover
-    if (lockedKey) return;
+    if (lockedKey) {
+      console.log('[PathHighlight] preview ignored due to lock');
+      return;
+    }
+    console.log('[PathHighlight] setHovered called with:', key);
     setHovered(key);
   }, [lockedKey]);
 
   const clearPreview = React.useCallback(() => {
-    if (lockedKey) return;
+    console.log('[PathHighlight] clearPreview called, lockedKey:', lockedKey);
+    if (lockedKey) {
+      console.log('[PathHighlight] clearPreview ignored due to lock');
+      return;
+    }
+    console.log('[PathHighlight] setHovered(null) called');
     setHovered(null);
   }, [lockedKey]);
 
   const toggleLock = React.useCallback((key: HighlightKey) => {
-    setLocked(prev => (prev === key ? null : key));
+    console.log('[PathHighlight] toggleLock called with key:', key, 'current locked:', lockedKey);
+    const newLocked = lockedKey === key ? null : key;
+    console.log('[PathHighlight] setLocked called with:', newLocked);
+    setLocked(newLocked);
     // Also clear hover to avoid confusion
+    console.log('[PathHighlight] setHovered(null) called from toggleLock');
     setHovered(null);
-  }, []);
+  }, [lockedKey]);
 
   const belongs = React.useCallback((b?: Blockish | null) => {
     if (!activeKey) return true; // nothing dimmed

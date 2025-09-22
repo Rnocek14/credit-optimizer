@@ -8,8 +8,18 @@ export interface HeaderNodeData {
 }
 
 function keyFromId(id: string): `${'program'|'track'}:${string}` | null {
-  if (id.startsWith('program-header:')) return `program:${id.split(':')[1]}`;
-  if (id.startsWith('track-header:')) return `track:${id.split(':')[1]}`;
+  console.log('[HeaderNode] keyFromId called with id:', id);
+  if (id.startsWith('program-header:')) {
+    const key = `program:${id.split(':')[1]}` as `program:${string}`;
+    console.log('[HeaderNode] Extracted program key:', key);
+    return key;
+  }
+  if (id.startsWith('track-header:')) {
+    const key = `track:${id.split(':')[1]}` as `track:${string}`;
+    console.log('[HeaderNode] Extracted track key:', key);
+    return key;
+  }
+  console.log('[HeaderNode] No key extracted for id:', id);
   return null;
 }
 
@@ -19,6 +29,17 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
   const k = keyFromId(id || '');
 
   const locked = k ? lockedKey === k : false;
+  const isActive = k ? activeKey === k : false;
+
+  console.log('[HeaderNode] Render state:', {
+    id,
+    extractedKey: k,
+    activeKey,
+    lockedKey,
+    locked,
+    isActive,
+    label: data.label
+  });
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!k) return;
@@ -35,18 +56,27 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
       aria-pressed={locked}
       aria-label={`Highlight ${data.label ?? 'path'}`}
       onKeyDown={handleKeyDown}
-      onMouseEnter={() => k && preview(k)}
-      onMouseLeave={() => clearPreview()}
+      onMouseEnter={() => {
+        console.log('[HeaderNode] Mouse enter, calling preview with key:', k);
+        k && preview(k);
+      }}
+      onMouseLeave={() => {
+        console.log('[HeaderNode] Mouse leave, calling clearPreview');
+        clearPreview();
+      }}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
-      onClick={() => k && toggleLock(k)}
+      onClick={() => {
+        console.log('[HeaderNode] Click, calling toggleLock with key:', k);
+        k && toggleLock(k);
+      }}
       style={{
         pointerEvents: 'auto', // Enable keyboard interaction
         padding: '4px 10px',
         borderRadius: 999,
-        background: 'rgba(255,255,255,0.08)',
-        border: `1px solid ${isFocused || locked ? 'rgba(180,220,255,0.6)' : 'rgba(255,255,255,0.18)'}`,
-        color: 'rgba(255,255,255,0.9)',
+        background: locked ? 'rgba(180,220,255,0.2)' : isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)',
+        border: `1px solid ${locked ? 'rgba(180,220,255,0.8)' : (isFocused || isActive) ? 'rgba(180,220,255,0.6)' : 'rgba(255,255,255,0.18)'}`,
+        color: locked ? 'rgba(180,220,255,1)' : isActive ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.9)',
         fontSize: 12,
         lineHeight: '16px',
         backdropFilter: 'blur(2px)',
