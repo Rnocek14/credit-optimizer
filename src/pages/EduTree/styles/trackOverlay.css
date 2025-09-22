@@ -27,25 +27,22 @@
 
 .hl--primary { 
   opacity: 1; 
-  outline: 2px solid var(--lp-primary-muted);
-  box-shadow: 0 0 6px hsla(210, 100%, 67%, 0.2);
-  transform: scale(1.02);
+  outline: 3px solid var(--lp-primary-muted);
+  box-shadow: 0 0 12px hsla(210, 100%, 67%, 0.3);
   z-index: 100;
 }
 
 .hl--comparison { 
   opacity: 1; 
-  outline: 2px solid var(--lp-compare-muted);
-  box-shadow: 0 0 6px hsla(340, 100%, 75%, 0.2);
-  transform: scale(1.02);
+  outline: 3px solid var(--lp-compare-muted);
+  box-shadow: 0 0 12px hsla(340, 100%, 75%, 0.3);
   z-index: 100;
 }
 
 .hl--both { 
   opacity: 1; 
-  outline: 2.5px solid var(--lp-shared-muted);
-  box-shadow: 0 0 8px hsla(140, 85%, 70%, 0.25);
-  transform: scale(1.02);
+  outline: 3px solid var(--lp-shared-muted);
+  box-shadow: 0 0 15px hsla(140, 85%, 70%, 0.35);
   z-index: 100;
 }
 
@@ -74,7 +71,8 @@
 .hl--primary:hover,
 .hl--comparison:hover,
 .hl--both:hover {
-  transform: scale(1.04);
+  outline-width: 4px;
+  box-shadow: 0 0 20px hsla(var(--primary), 0.4);
   z-index: 150;
 }
 
