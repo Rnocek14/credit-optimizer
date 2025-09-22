@@ -96,14 +96,33 @@ export function PathHighlightProvider({
     const { kind, value } = parse(activeKey);
     if (!kind || !value) return true;
 
-    // Shared blocks (no program/track) always remain visible
     if (kind === 'program') {
-      if (!b.program_id) return true;
+      if (!b.program_id) return true; // globally shared blocks
       return b.program_id === value;
-    } else {
+    } else if (kind === 'track') {
+      // For track highlighting, add program-awareness
+      if (!b.program_id && !b.track_id) return true; // globally shared (Y1)
+      
+      // CS tracks (se/ds): include CS program blocks and specific track blocks
+      if (value === 'se' || value === 'ds') {
+        if (b.track_id === value) return true; // specific track blocks
+        if (b.program_id === 'bs_cs' && !b.track_id) return true; // CS program shared
+        return false; // IT blocks should be dimmed
+      }
+      
+      // IT track: include IT program blocks and specific track blocks
+      if (value === 'it') {
+        if (b.track_id === value) return true; // specific track blocks
+        if (b.program_id === 'bs_it' && !b.track_id) return true; // IT program blocks
+        return false; // CS blocks should be dimmed
+      }
+      
+      // Fallback for other tracks
       if (!b.track_id) return true;
       return b.track_id === value;
     }
+    
+    return true;
   }, [activeKey, parse]);
 
   const isNodeDimmed = React.useCallback((b?: Blockish | null) => {
