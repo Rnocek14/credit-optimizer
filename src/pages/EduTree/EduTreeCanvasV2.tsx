@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
+import { useApplyDimming } from './hooks/useApplyDimming';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { decideGatePositions } from './utils/divergence';
@@ -204,53 +205,8 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // Get highlight helpers (wrapped by provider in V2)
-  const { activeKey, isNodeDimmed, isEdgeDimmed } = usePathHighlight();
-  
-  // Apply dimming reactively based on highlight state
-  const finalNodes = useMemo(() => {
-    return nodes.map(n => {
-      // Keep headers and gates fully visible
-      if (n.type === 'headerNode' || n.type === 'gateNode' || n.type === 'header') return n;
-
-      const b = n.data?.block
-        ? {
-            id: n.data.block.id,
-            program_id: n.data.block.program_id ?? null,
-            track_id: n.data.block.track_id ?? null,
-            type: n.data.block.type,
-          }
-        : null;
-
-      const dim = isNodeDimmed(b);
-      return {
-        ...n,
-        data: { ...n.data, __dim: dim ? 1 : 0 },
-        style: { ...(n.style || {}), opacity: dim ? 0.25 : 1 },
-      };
-    });
-  }, [nodes, isNodeDimmed, activeKey]);
-
-  const finalEdges = useMemo(() => {
-    return flowEdges.map(e => {
-      const src = nodes.find(n => n.id === e.source);
-      const dst = nodes.find(n => n.id === e.target);
-
-      const a = src?.data?.block
-        ? { id: src.data.block.id, program_id: src.data.block.program_id ?? null, track_id: src.data.block.track_id ?? null, type: src.data.block.type }
-        : null;
-      const b = dst?.data?.block
-        ? { id: dst.data.block.id, program_id: dst.data.block.program_id ?? null, track_id: dst.data.block.track_id ?? null, type: dst.data.block.type }
-        : null;
-
-      const dim = isEdgeDimmed(a, b, e.type);
-      return {
-        ...e,
-        data: { ...e.data, __dim: dim ? 1 : 0 },
-        style: { ...(e.style || {}), opacity: dim ? 0.25 : 1 },
-      };
-    });
-  }, [flowEdges, nodes, isEdgeDimmed, activeKey]);
+  // Apply dimming using the original useApplyDimming hook with proper dependencies
+  const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, flowEdges);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -379,18 +335,16 @@ function EduTreeCanvasV2Content({
           };
         }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
-        // Filter out edges pointing to missing nodes (prevents React Flow warnings)
-        const nodeIdSet = new Set(finalNodes.filter(n => !n.hidden).map(n => n.id));
-        const safeEdges = newEdges.filter(e => nodeIdSet.has(e.source) && nodeIdSet.has(e.target));
+        // No need to filter edges here - filtering happens in manualLayoutRenderer
         
         // Prevent layout churn with shallow equality checks
         setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
-        setEdges(prev => prev.length === safeEdges.length && prev.every((e,i) => e.id === safeEdges[i].id) ? prev : safeEdges);
+        setEdges(prev => prev.length === newEdges.length && prev.every((e,i) => e.id === newEdges[i].id) ? prev : newEdges);
         
         // Store nodes in window for validation utilities  
         if (process.env.NODE_ENV === 'development') {
           (window as any).__flowNodes__ = finalNodes;
-          (window as any).__flowEdges__ = safeEdges;
+          (window as any).__flowEdges__ = newEdges;
           (window as any).gatePositions = gatePositions;
         }
         
@@ -613,8 +567,8 @@ function EduTreeCanvasV2Content({
       )}
 
       <ReactFlow
-        nodes={finalNodes}
-        edges={finalEdges}
+      nodes={dimmedNodes}
+      edges={dimmedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -643,7 +597,7 @@ function EduTreeCanvasV2Content({
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-          <div>V2 Multi-Gate Mode • nodes {finalNodes.length} • edges {finalEdges.length}</div>
+          <div>V2 Multi-Gate Mode • nodes {dimmedNodes.length} • edges {dimmedEdges.length}</div>
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
           <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
         </div>

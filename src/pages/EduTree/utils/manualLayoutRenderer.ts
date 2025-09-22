@@ -181,15 +181,43 @@ export function edgesToReactFlowEdges(
   return edges.filter((edge) => {
     // Filter out edges for hidden gates
     if (gatePositions) {
-      if (edge.source === 'gate-y2-programs' && !gatePositions.showPG) return false;
-      if (edge.source === 'gate-y3-tracks' && !gatePositions.showTG) return false;
+      if (edge.source === 'gate-y2-programs' && !gatePositions.showPG) {
+        console.log('[EdgeFilter] Filtering out edge from hidden program gate:', edge.source);
+        return false;
+      }
+      if (edge.source === 'gate-y3-tracks' && !gatePositions.showTG) {
+        console.log('[EdgeFilter] Filtering out edge from hidden track gate:', edge.source);
+        return false;
+      }
     }
     
     // Never keep a metroGate edge if either endpoint isn't visible
     const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
     if (kind === 'gate' && edge.source.startsWith('gate-')) {
       const target = remapGateTarget(edge);
-      if (!isVisible(edge.source) || !isVisible(target)) return false;
+      if (!isVisible(edge.source) || !isVisible(target)) {
+        console.log('[EdgeFilter] Filtering out invisible metro edge:', {
+          source: edge.source,
+          target,
+          sourceVisible: isVisible(edge.source),
+          targetVisible: isVisible(target)
+        });
+        return false;
+      }
+    }
+    
+    // Filter out any edge where either endpoint doesn't exist
+    const originalTarget = edge.target;
+    const remappedTarget = remapGateTarget(edge);
+    if (!isVisible(edge.source) || !isVisible(remappedTarget)) {
+      console.log('[EdgeFilter] Filtering out edge with missing endpoint:', {
+        source: edge.source,
+        originalTarget,
+        remappedTarget,
+        sourceVisible: isVisible(edge.source),
+        targetVisible: isVisible(remappedTarget)
+      });
+      return false;
     }
     
     return true;
@@ -307,13 +335,15 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they are actually needed and valid - strict null check
+    // Only set handles when they are actually needed and valid - comprehensive null check
     if (typeof sourceHandle === 'string' && 
         sourceHandle !== 'null' && 
         sourceHandle !== '' && 
         sourceHandle !== 'undefined' && 
         sourceHandle !== null &&
-        sourceHandle.length > 0) {
+        sourceHandle !== 'false' &&
+        sourceHandle.length > 0 &&
+        !['null', 'undefined', 'false', ''].includes(sourceHandle)) {
       edgeObject.sourceHandle = sourceHandle;
     }
     if (sourcePosition !== undefined) {
@@ -422,7 +452,17 @@ export function applyManualLayout(
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
     useV2EdgeKinds ? '(with V2 edge kinds)' : '(legacy edges)');
-  console.log('[ManualLayout] Parameters - singleRailStraight:', singleRailStraight, 'filterMode:', filterMode, 'useV2EdgeKinds:', useV2EdgeKinds);
+  console.log('[ManualLayout] Parameters:', {
+    singleRailStraight, 
+    filterMode, 
+    useV2EdgeKinds,
+    gatePositions: gatePositions ? {
+      showPG: gatePositions.showPG,
+      showTG: gatePositions.showTG,
+      pgX: gatePositions.pgX,
+      tgX: gatePositions.tgX
+    } : null
+  });
   
   // Create column anchors for header positioning
   const cols = { y1: 200, pg: 400, y2: 600, tg: 900, y3: 1300, y4: 1700 };
@@ -585,6 +625,13 @@ export function applyManualLayout(
   });
   
   // Apply immediately - no delays or animations
+  console.log('[ManualLayout] Node breakdown:', {
+    blocks: nodes.length,
+    headers: headerNodes.length,
+    total: allNodes.length
+  });
+  console.log('[ManualLayout] Edge validation complete, delivering', sanitizedEdges.length, 'edges to React Flow');
+  
   onApply(allNodes, sanitizedEdges);
   
   // Debug: expose to window for validation tests (development only)

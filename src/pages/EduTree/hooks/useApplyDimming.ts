@@ -38,7 +38,7 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(node.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [nodes, highlight]);
+  }, [nodes, highlight, highlight?.activeKey]);
 
   const dimmedEdges = useMemo(() => {
     if (!highlight) return edges;
@@ -70,7 +70,7 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(edge.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [edges, nodes, highlight]);
+  }, [edges, nodes, highlight, highlight?.activeKey]);
 
   return { nodes: dimmedNodes, edges: dimmedEdges };
 }
