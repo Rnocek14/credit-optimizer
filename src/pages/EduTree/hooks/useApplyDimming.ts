@@ -54,7 +54,11 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         // Parse active key to get track (e.g., "track:se" -> "se")
         const activeTrack = highlight.activeKey.split(':')[1];
         const nodeTrack = blockish.track_id;
-        const isShared = !nodeTrack && !blockish.program_id; // No track/program = shared
+        const nodeProgram = blockish.program_id;
+        
+        // Define shared nodes: globally shared (Y1) OR program-shared (Y2 CS blocks)
+        const isShared = (!nodeTrack && !nodeProgram) || // globally shared (Y1)
+                        (!nodeTrack && nodeProgram === 'bs_cs'); // CS program shared (Y2)
         
         if (dim) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--dim';
@@ -92,8 +96,12 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       // Add visual highlighting classes for edges
       let className = edge.className || '';
       if (highlight.activeKey) {
-        const sourceIsShared = sourceBlockish && !sourceBlockish.track_id && !sourceBlockish.program_id;
-        const targetIsShared = targetBlockish && !targetBlockish.track_id && !targetBlockish.program_id;
+        const sourceIsShared = sourceBlockish && 
+          ((!sourceBlockish.track_id && !sourceBlockish.program_id) || 
+           (!sourceBlockish.track_id && sourceBlockish.program_id === 'bs_cs'));
+        const targetIsShared = targetBlockish && 
+          ((!targetBlockish.track_id && !targetBlockish.program_id) || 
+           (!targetBlockish.track_id && targetBlockish.program_id === 'bs_cs'));
         const isSharedEdge = sourceIsShared || targetIsShared;
         
         if (dim) {
