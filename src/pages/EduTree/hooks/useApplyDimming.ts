@@ -27,13 +27,13 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
   };
 
   const dimmedNodes = useMemo(() => {
-    console.log('[useApplyDimming] Processing nodes:', {
-      nodeCount: nodes.length,
-      hasHighlight: !!highlight,
-      activeKey: highlight?.activeKey,
-      hoveredKey: highlight?.hoveredKey,
-      lockedKey: highlight?.lockedKey
-    });
+    if (import.meta.env.DEV) {
+      console.log('[useApplyDimming] Processing nodes:', {
+        nodeCount: nodes.length,
+        hasHighlight: !!highlight,
+        activeKey: highlight?.activeKey
+      });
+    }
 
     if (!highlight) return nodes;
 
@@ -47,15 +47,6 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       const blockish = extractBlockish(node);
       const dim = blockish ? highlight.isNodeDimmed(blockish) : false;
       const belongs = blockish ? highlight.belongs(blockish) : false;
-
-      console.log('[useApplyDimming] Node dimming:', {
-        nodeId: node.id,
-        nodeType: node.type,
-        blockish,
-        dim,
-        belongs,
-        activeKey: highlight.activeKey
-      });
 
       // Add visual highlighting classes
       let className = node.className || '';
@@ -77,12 +68,6 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
   }, [nodes, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   const dimmedEdges = useMemo(() => {
-    console.log('[useApplyDimming] Processing edges:', {
-      edgeCount: edges.length,
-      hasHighlight: !!highlight,
-      activeKey: highlight?.activeKey
-    });
-
     if (!highlight) return edges;
 
     return edges.map(edge => {
@@ -96,19 +81,6 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       const dim = highlight.isEdgeDimmed(sourceBlockish, targetBlockish, edge.type);
       const sourceBelongs = sourceBlockish ? highlight.belongs(sourceBlockish) : false;
       const targetBelongs = targetBlockish ? highlight.belongs(targetBlockish) : false;
-
-      console.log('[useApplyDimming] Edge dimming:', {
-        edgeId: edge.id,
-        edgeType: edge.type,
-        sourceId: edge.source,
-        targetId: edge.target,
-        sourceBlockish,
-        targetBlockish,
-        dim,
-        sourceBelongs,
-        targetBelongs,
-        activeKey: highlight.activeKey
-      });
 
       // Add visual highlighting classes for edges
       let className = edge.className || '';

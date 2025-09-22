@@ -27,6 +27,8 @@ function countDimmed(nodes = getNodes(), edges = getEdges()) {
 }
 
 export default function HighlightDiagnostics() {
+  if (process.env.NODE_ENV !== 'development') return null;
+  
   // Position the debug menu in a visible location
   const ctx = (() => { try { return usePathHighlight(); } catch { return null; } })();
   const [result, setResult] = React.useState<string>('Idle');
