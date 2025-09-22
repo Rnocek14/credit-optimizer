@@ -178,6 +178,14 @@ export function PathHighlightProvider({
     setSecondary(null);
   }, []);
 
+  // Reset legacy state when switching to compare-any mode
+  React.useEffect(() => {
+    if (filterMode === 'compare-any') {
+      setHovered(null);
+      setLocked(null);
+    }
+  }, [filterMode]);
+
   const value = React.useMemo<API>(() => ({
     hoveredKey, lockedKey, activeKey,
     primarySelection, secondarySelection,

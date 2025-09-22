@@ -38,14 +38,15 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
   const ctx = usePathHighlight();
   const k = keyFromId(id || '');
 
-  // Detect compare-any via URL param (keeps this component decoupled)
-  const isCompareAny = React.useMemo(() => {
-    try {
-      return new URLSearchParams(window.location.search).get('filterMode') === 'compare-any';
-    } catch {
-      return false;
-    }
-  }, []);
+// Detect compare-any via URL param (keeps this component decoupled)
+const isCompareAny = React.useMemo(() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).get('filterMode') === 'compare-any';
+  } catch {
+    return false;
+  }
+}, []);
 
   const toSelection = (key: string) => {
     const [kind, id] = key.split(':');
@@ -72,7 +73,14 @@ export default function HeaderNode({ id, data }: { id: string; data: HeaderNodeD
       e.preventDefault();
       if (isCompareAny) {
         const sel = toSelection(k);
-        if (sel) ctx.setPrimarySelection(sel);
+        if (!sel) return;
+        if (e.shiftKey) {
+          ctx.setSecondarySelection(sel);
+        } else {
+          ctx.setPrimarySelection(sel);
+        }
+        // clear legacy hover/lock so dual-selection is the single source of truth
+        ctx.clearPreview();
       } else {
         ctx.toggleLock(k);
       }

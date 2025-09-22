@@ -214,7 +214,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         const targetShared = isSharedBetween(targetBlockish, primarySelection, secondarySelection);
 
         // Gate/header edges: keep visible if either endpoint belongs
-        const keepIfEither = edge.type === 'metroGate';
+        const keepIfEither = edge.type === 'metroGate' || edge.type === 'gate';
         
         if (keepIfEither) {
           const hasConnection = sourceA || sourceB || targetA || targetB || sourceShared || targetShared;
