@@ -26,12 +26,25 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
     };
   };
 
+  // Build track-to-program mapping dynamically from nodes
+  const trackToProgram = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const node of nodes) {
+      const blockish = extractBlockish(node);
+      if (blockish?.track_id && blockish?.program_id) {
+        map.set(blockish.track_id, blockish.program_id);
+      }
+    }
+    return map;
+  }, [nodes]);
+
   const dimmedNodes = useMemo(() => {
     if (import.meta.env.DEV) {
       console.log('[useApplyDimming] Processing nodes:', {
         nodeCount: nodes.length,
         hasHighlight: !!highlight,
-        activeKey: highlight?.activeKey
+        activeKey: highlight?.activeKey,
+        trackToProgram: Object.fromEntries(trackToProgram)
       });
     }
 
@@ -51,23 +64,30 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       // Add visual highlighting classes
       let className = node.className || '';
       if (highlight.activeKey && blockish) {
-        // Parse active key to get track (e.g., "track:se" -> "se")
-        const activeTrack = highlight.activeKey.split(':')[1];
+        // Parse active key
+        const [kind, val] = highlight.activeKey.split(':');
         const nodeTrack = blockish.track_id;
         const nodeProgram = blockish.program_id;
         
-        // Define shared nodes: only globally shared (Y1) blocks
-        const isShared = !nodeTrack && !nodeProgram; // globally shared (Y1)
+        // Determine active program dynamically
+        const activeTrack = kind === 'track' ? val : null;
+        const activeProgram = activeTrack ? trackToProgram.get(activeTrack) ?? null
+                                          : (kind === 'program' ? val : null);
         
-        // Define program-level shared: CS program blocks shared between SE/DS
-        const isProgramShared = !nodeTrack && nodeProgram === 'bs_cs' && 
-                               (activeTrack === 'se' || activeTrack === 'ds');
+        // Define shared nodes: globally shared (no program, no track)
+        const isGlobalShared = !nodeTrack && !nodeProgram;
+        
+        // Define program-shared: blocks that belong to active program but no specific track
+        const isProgramShared = !nodeTrack && !!activeProgram && nodeProgram === activeProgram;
+        
+        // Combined shared for track highlighting
+        const isSharedForTrack = !!activeTrack && (isGlobalShared || isProgramShared);
         
         if (dim) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--dim';
-        } else if (isShared) {
+        } else if (activeTrack && isSharedForTrack) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--both';
-        } else if (isProgramShared) {
+        } else if (activeProgram && isGlobalShared) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--both';
         } else if (belongs) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--primary';
@@ -81,7 +101,7 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(node.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [nodes, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
+  }, [nodes, trackToProgram, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   const dimmedEdges = useMemo(() => {
     if (!highlight) return edges;
@@ -101,23 +121,27 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       // Add visual highlighting classes for edges
       let className = edge.className || '';
       if (highlight.activeKey) {
-        const activeTrack = highlight.activeKey.split(':')[1];
+        // Parse active key
+        const [kind, val] = highlight.activeKey.split(':');
+        const activeTrack = kind === 'track' ? val : null;
+        const activeProgram = activeTrack ? trackToProgram.get(activeTrack) ?? null
+                                          : (kind === 'program' ? val : null);
         
-        // Check if source is globally shared (Y1)
+        // Check if source is globally shared
         const sourceIsGloballyShared = sourceBlockish && 
           !sourceBlockish.track_id && !sourceBlockish.program_id;
-        // Check if target is globally shared (Y1) 
+        // Check if target is globally shared
         const targetIsGloballyShared = targetBlockish && 
           !targetBlockish.track_id && !targetBlockish.program_id;
         
-        // Check if source is CS program shared
+        // Check if source is program shared (generic)
         const sourceIsProgramShared = sourceBlockish && 
-          !sourceBlockish.track_id && sourceBlockish.program_id === 'bs_cs' && 
-          (activeTrack === 'se' || activeTrack === 'ds');
-        // Check if target is CS program shared
+          !sourceBlockish.track_id && !!activeProgram && 
+          sourceBlockish.program_id === activeProgram;
+        // Check if target is program shared (generic)
         const targetIsProgramShared = targetBlockish && 
-          !targetBlockish.track_id && targetBlockish.program_id === 'bs_cs' && 
-          (activeTrack === 'se' || activeTrack === 'ds');
+          !targetBlockish.track_id && !!activeProgram && 
+          targetBlockish.program_id === activeProgram;
         
         const isSharedEdge = sourceIsGloballyShared || targetIsGloballyShared || 
                            sourceIsProgramShared || targetIsProgramShared;
@@ -138,7 +162,7 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         style: { ...(edge.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [edges, nodes, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
+  }, [edges, nodes, trackToProgram, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   return { nodes: dimmedNodes, edges: dimmedEdges };
 }

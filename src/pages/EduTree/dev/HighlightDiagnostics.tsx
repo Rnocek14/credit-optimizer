@@ -246,6 +246,28 @@ export default function HighlightDiagnostics() {
           </button>
           <button
             disabled={!ctx}
+            onClick={() => ctx?.preview('program:bs_cs')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(128,128,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            CS Program
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.preview('program:bs_it')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(128,64,128,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            IT Program
+          </button>
+          <button
+            disabled={!ctx}
             onClick={() => ctx?.toggleLock('track:se')}
             style={{
               cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
@@ -254,6 +276,28 @@ export default function HighlightDiagnostics() {
             }}
           >
             🔒SE
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.toggleLock('program:bs_cs')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            🔒CS
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.toggleLock('program:bs_it')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            🔒IT
           </button>
           <button
             disabled={!ctx}
