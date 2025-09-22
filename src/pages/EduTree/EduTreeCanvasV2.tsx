@@ -208,6 +208,18 @@ function EduTreeCanvasV2Content({
   // Apply dimming using the original useApplyDimming hook with proper dependencies
   const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, flowEdges);
   
+  // Final safety filter: Remove any edges with missing endpoints
+  const safeEdges = React.useMemo(() => {
+    const visibleIds = new Set(dimmedNodes.filter(n => !n.hidden).map(n => n.id));
+    const filtered = dimmedEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    
+    if (filtered.length !== dimmedEdges.length) {
+      console.log('[EduTreeV2] Filtered out', dimmedEdges.length - filtered.length, 'dangling edges');
+    }
+    
+    return filtered;
+  }, [dimmedNodes, dimmedEdges]);
+  
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
   const presentPrograms = new Set(blocks.map(b => b.program_id).filter(Boolean));
@@ -568,7 +580,7 @@ function EduTreeCanvasV2Content({
 
       <ReactFlow
       nodes={dimmedNodes}
-      edges={dimmedEdges}
+      edges={safeEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -597,7 +609,7 @@ function EduTreeCanvasV2Content({
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-          <div>V2 Multi-Gate Mode • nodes {dimmedNodes.length} • edges {dimmedEdges.length}</div>
+          <div>V2 Multi-Gate Mode • nodes {dimmedNodes.length} • edges {safeEdges.length}</div>
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
           <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
         </div>

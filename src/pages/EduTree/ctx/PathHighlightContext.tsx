@@ -75,7 +75,9 @@ export function PathHighlightProvider({
 
   const belongs = React.useCallback((b?: Blockish | null) => {
     if (!activeKey) return true; // nothing dimmed
-    if (!b) return false;
+    if (!b) return true; // treat nodes without metadata as shared/visible
+
+    console.log('[PathHighlight] belongs check:', { activeKey, blockish: b });
 
     const { kind, value } = parse(activeKey);
     if (!kind || !value) return true;
