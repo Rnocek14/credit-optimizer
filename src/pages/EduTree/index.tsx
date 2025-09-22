@@ -96,8 +96,10 @@ export default function EduTree() {
                 <option value="se">se</option>
                 <option value="ds">ds</option>
                 <option value="compare-programs">compare-programs</option>
+                <option value="compare-any">compare-any</option>
                 <option value="bs_cs">bs_cs</option>
                 <option value="bs_it">bs_it</option>
+                <option value="bsn">bsn</option>
               </select>
             </label>
 
