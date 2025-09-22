@@ -3,6 +3,11 @@ import * as React from 'react';
 type HighlightKind = 'program' | 'track';
 type HighlightKey = `${HighlightKind}:${string}`;
 
+export type Selection = {
+  kind: HighlightKind;
+  id: string;
+};
+
 export type Blockish = {
   id?: string;
   program_id?: string | null;
@@ -17,18 +22,29 @@ export type Edgeish = {
   data?: any;
 };
 
-type FilterMode = 'compare-programs' | 'compare-tracks' | string;
+type FilterMode = 'compare-programs' | 'compare-tracks' | 'compare-any' | string;
 
 type API = {
+  // Legacy single selection (backward compatible)
   hoveredKey: HighlightKey | null;
   lockedKey: HighlightKey | null;
   activeKey: HighlightKey | null;
+  
+  // Dual selection support for compare-any
+  primarySelection: Selection | null;
+  secondarySelection: Selection | null;
+  
   preview: (key: HighlightKey | null) => void;
   clearPreview: () => void;
   toggleLock: (key: HighlightKey) => void;
+  
+  // New methods for dual selection
+  setPrimarySelection: (selection: Selection | null) => void;
+  setSecondarySelection: (selection: Selection | null) => void;
+  clearSecondarySelection: () => void;
 
-  // Membership helpers (stateless, identity-stable):
-  belongs: (b?: Blockish | null) => boolean;
+  // Enhanced membership helpers supporting dual selection:
+  belongs: (b?: Blockish | null, selection?: Selection) => boolean;
   isNodeDimmed: (b?: Blockish | null) => boolean;
   isEdgeDimmed: (a?: Blockish | null, b?: Blockish | null, edgeType?: string) => boolean;
 };
@@ -44,6 +60,10 @@ export function PathHighlightProvider({
 }) {
   const [hoveredKey, setHovered] = React.useState<HighlightKey | null>(null);
   const [lockedKey, setLocked] = React.useState<HighlightKey | null>(null);
+  
+  // Dual selection state for compare-any mode
+  const [primarySelection, setPrimary] = React.useState<Selection | null>(null);
+  const [secondarySelection, setSecondary] = React.useState<Selection | null>(null);
 
   const activeKey = lockedKey ?? hoveredKey;
 
@@ -87,36 +107,39 @@ export function PathHighlightProvider({
     setHovered(null);
   }, [lockedKey]);
 
-  const belongs = React.useCallback((b?: Blockish | null) => {
-    if (!activeKey) return true; // nothing dimmed
+  // Generic membership check supporting both legacy and dual selection modes
+  const belongs = React.useCallback((b?: Blockish | null, selection?: Selection) => {
+    // Use passed selection or fall back to legacy activeKey behavior
+    const targetSelection = selection || (activeKey ? parseSelection(activeKey) : null);
+    
+    if (!targetSelection) return true; // nothing dimmed
     if (!b) return true; // treat nodes without metadata as shared/visible
 
-    console.log('[PathHighlight] belongs check:', { activeKey, blockish: b });
+    console.log('[PathHighlight] belongs check:', { selection: targetSelection, blockish: b });
 
-    const { kind, value } = parse(activeKey);
-    if (!kind || !value) return true;
+    const { kind, id } = targetSelection;
 
     if (kind === 'program') {
       if (!b.program_id) return true; // globally shared blocks
-      return b.program_id === value;
+      return b.program_id === id;
     } else if (kind === 'track') {
-      // For track highlighting, add program-awareness
+      // Generic track membership - no hardcoded CS logic
       if (!b.program_id && !b.track_id) return true; // globally shared (Y1)
       
-      // CS tracks (se/ds): include CS program blocks and specific track blocks
-      if (value === 'se' || value === 'ds') {
-        if (b.track_id === value) return true; // specific track blocks
-        if (b.program_id === 'bs_cs' && !b.track_id) return true; // CS program shared
-        return false; // IT blocks should be dimmed
+      // Track-specific blocks
+      if (b.track_id === id) return true;
+      
+      // Program-shared blocks: determine if this track belongs to the block's program
+      if (b.program_id && !b.track_id) {
+        // This requires program lookup - delegate to useApplyDimming's trackToProgram map
+        return true; // Allow useApplyDimming to handle program-shared logic
       }
       
-      // Fallback for other tracks
-      if (!b.track_id) return true;
-      return b.track_id === value;
+      return false;
     }
     
     return true;
-  }, [activeKey, parse]);
+  }, [activeKey]);
 
   const isNodeDimmed = React.useCallback((b?: Blockish | null) => {
     if (!activeKey) return false;
@@ -132,19 +155,47 @@ export function PathHighlightProvider({
     return keepIfEither ? !(A || B) : !(A && B);
   }, [activeKey, belongs]);
 
+  // Helper to convert legacy key to selection
+  const parseSelection = React.useCallback((key: HighlightKey): Selection | null => {
+    const { kind, value } = parse(key);
+    if (!kind || !value) return null;
+    return { kind, id: value };
+  }, [parse]);
+
+  // Dual selection methods
+  const setPrimarySelection = React.useCallback((selection: Selection | null) => {
+    console.log('[PathHighlight] setPrimarySelection:', selection);
+    setPrimary(selection);
+  }, []);
+
+  const setSecondarySelection = React.useCallback((selection: Selection | null) => {
+    console.log('[PathHighlight] setSecondarySelection:', selection);
+    setSecondary(selection);
+  }, []);
+
+  const clearSecondarySelection = React.useCallback(() => {
+    console.log('[PathHighlight] clearSecondarySelection');
+    setSecondary(null);
+  }, []);
+
   const value = React.useMemo<API>(() => ({
     hoveredKey, lockedKey, activeKey,
+    primarySelection, secondarySelection,
     preview, clearPreview, toggleLock,
+    setPrimarySelection, setSecondarySelection, clearSecondarySelection,
     belongs, isNodeDimmed, isEdgeDimmed
-  }), [hoveredKey, lockedKey, activeKey, preview, clearPreview, toggleLock, belongs, isNodeDimmed, isEdgeDimmed]);
+  }), [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection, preview, clearPreview, toggleLock, setPrimarySelection, setSecondarySelection, clearSecondarySelection, belongs, isNodeDimmed, isEdgeDimmed]);
 
   // Expose state for HUD debugging
   React.useEffect(() => {
     if (import.meta.env?.DEV) {
-      (window as any).__highlight_state__ = { hoveredKey, lockedKey, activeKey };
-      document.body.classList.toggle('edutree-highlight-active', !!activeKey);
+      (window as any).__highlight_state__ = { 
+        hoveredKey, lockedKey, activeKey,
+        primarySelection, secondarySelection
+      };
+      document.body.classList.toggle('edutree-highlight-active', !!(activeKey || primarySelection || secondarySelection));
     }
-  }, [hoveredKey, lockedKey, activeKey]);
+  }, [hoveredKey, lockedKey, activeKey, primarySelection, secondarySelection]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

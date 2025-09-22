@@ -268,36 +268,14 @@ export default function HighlightDiagnostics() {
           </button>
           <button
             disabled={!ctx}
-            onClick={() => ctx?.toggleLock('track:se')}
+            onClick={() => ctx?.preview('program:bsn')}
             style={{
               cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
-              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,128,128,0.1)' : 'rgba(255,255,255,0.05)', 
               color: ctx ? '#fff' : '#888', fontSize: 9
             }}
           >
-            🔒SE
-          </button>
-          <button
-            disabled={!ctx}
-            onClick={() => ctx?.toggleLock('program:bs_cs')}
-            style={{
-              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
-              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
-              color: ctx ? '#fff' : '#888', fontSize: 9
-            }}
-          >
-            🔒CS
-          </button>
-          <button
-            disabled={!ctx}
-            onClick={() => ctx?.toggleLock('program:bs_it')}
-            style={{
-              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
-              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
-              color: ctx ? '#fff' : '#888', fontSize: 9
-            }}
-          >
-            🔒IT
+            BSN
           </button>
           <button
             disabled={!ctx}
@@ -309,6 +287,139 @@ export default function HighlightDiagnostics() {
             }}
           >
             ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Dual Selection Controls */}
+      <div style={{ marginBottom: 8, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4, opacity: 0.7 }}>Compare-Any (Dual Selection)</div>
+        <div style={{ marginBottom: 4, fontSize: 9, opacity: 0.8 }}>
+          Primary: {ctx?.primarySelection ? `${ctx.primarySelection.kind}:${ctx.primarySelection.id}` : 'none'}
+        </div>
+        <div style={{ marginBottom: 4, fontSize: 9, opacity: 0.8 }}>
+          Secondary: {ctx?.secondarySelection ? `${ctx.secondarySelection.kind}:${ctx.secondarySelection.id}` : 'none'}
+        </div>
+        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 4 }}>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.setPrimarySelection({ kind: 'track', id: 'se' })}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              background: ctx?.primarySelection?.kind === 'track' && ctx?.primarySelection?.id === 'se' ? 'rgba(0,255,0,0.2)' : 'rgba(0,255,0,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            P:SE
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.setPrimarySelection({ kind: 'track', id: 'ds' })}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              background: ctx?.primarySelection?.kind === 'track' && ctx?.primarySelection?.id === 'ds' ? 'rgba(0,255,0,0.2)' : 'rgba(0,255,0,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            P:DS
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.setPrimarySelection({ kind: 'program', id: 'bsn' })}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              background: ctx?.primarySelection?.kind === 'program' && ctx?.primarySelection?.id === 'bsn' ? 'rgba(0,255,0,0.2)' : 'rgba(0,255,0,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            P:BSN
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 4 }}>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.setSecondarySelection({ kind: 'track', id: 'ds' })}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              background: ctx?.secondarySelection?.kind === 'track' && ctx?.secondarySelection?.id === 'ds' ? 'rgba(255,128,0,0.2)' : 'rgba(255,128,0,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            S:DS
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.setSecondarySelection({ kind: 'program', id: 'bsn' })}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              background: ctx?.secondarySelection?.kind === 'program' && ctx?.secondarySelection?.id === 'bsn' ? 'rgba(255,128,0,0.2)' : 'rgba(255,128,0,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            S:BSN
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.clearSecondarySelection()}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,0,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            Clear S
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <button
+            disabled={!ctx}
+            onClick={() => {
+              // DS vs Nursing test
+              ctx?.setPrimarySelection({ kind: 'track', id: 'ds' });
+              ctx?.setSecondarySelection({ kind: 'program', id: 'bsn' });
+            }}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(128,255,128,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            DS⇔BSN
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => {
+              // SE vs DS test
+              ctx?.setPrimarySelection({ kind: 'track', id: 'se' });
+              ctx?.setSecondarySelection({ kind: 'track', id: 'ds' });
+            }}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(128,255,128,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            SE⇔DS
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => {
+              // CS vs IT test
+              ctx?.setPrimarySelection({ kind: 'program', id: 'bs_cs' });
+              ctx?.setSecondarySelection({ kind: 'program', id: 'bs_it' });
+            }}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '2px 4px', borderRadius: 3, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(128,255,128,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 8
+            }}
+          >
+            CS⇔IT
           </button>
         </div>
       </div>

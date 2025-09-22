@@ -6,7 +6,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react';
 import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Controls, MiniMap, MarkerType, Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
-import { useApplyDimming } from './hooks/useApplyDimming';
+import { useApplyDimmingV2 } from './hooks/useApplyDimmingV2';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { decideGatePositions } from './utils/divergence';
@@ -24,6 +24,7 @@ import GateBranchEdge from './edges/GateBranchEdge';
 import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
+import { DualSelectionLegend } from './components/DualSelectionLegend';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
@@ -219,7 +220,7 @@ function EduTreeCanvasV2Content({
   }, [nodes, flowEdges]);
 
   // Then apply dimming to the processed arrays (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges } = useApplyDimming(nodes || [], filteredEdges);
+  const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: filteredEdges });
 
   // Store the ACTUAL rendered arrays for diagnostics
   React.useEffect(() => {
@@ -647,6 +648,9 @@ function EduTreeCanvasV2Content({
 
         {/* Dev Controls */}
         <DevToggle />
+
+        {/* Dual Selection Legend */}
+        <DualSelectionLegend />
 
         {/* Path Highlighting Diagnostics (dev only) */}
         {process.env.NODE_ENV === 'development' && (

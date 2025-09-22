@@ -251,6 +251,52 @@ export const GOLDEN_LAYOUT_SEED: {
       credits_needed: 3,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CAPSTONE
+    },
+
+    // Bachelor of Science in Nursing (BSN) Program - Cross-discipline comparison data
+    {
+      id: "y1-bsn-found",
+      program_id: "bsn",
+      title: "Nursing Foundation",
+      rule_type: "ALL",
+      level_year: 1,
+      area: "foundation",
+      credits_needed: 6,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y1,
+      position_y: 700
+    },
+    {
+      id: "y2-bsn-core",
+      program_id: "bsn",
+      title: "Clinical Foundations",
+      rule_type: "ALL",
+      level_year: 2,
+      area: "core",
+      credits_needed: 9,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y2,
+      position_y: 700
+    },
+    {
+      id: "y3-bsn-clinical",
+      program_id: "bsn",
+      title: "Clinical Practice",
+      rule_type: "ALL",
+      level_year: 3,
+      area: "clinical",
+      credits_needed: 12,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
+      position_y: 700
+    },
+    {
+      id: "y4-bsn-capstone",
+      program_id: "bsn",
+      title: "Nursing Capstone",
+      rule_type: "ALL",
+      level_year: 4,
+      area: "capstone",
+      credits_needed: 6,
+      position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
+      position_y: 700
     }
   ],
 
@@ -285,9 +331,15 @@ export const GOLDEN_LAYOUT_SEED: {
     { source: "y3-ds-elec", target: "y4-ds-cap" },
     { source: "y2-it-elec", target: "y4-it-cap" },
     
+    // BSN Program progression
+    { source: "y1-bsn-found", target: "y2-bsn-core" },
+    { source: "y2-bsn-core", target: "y3-bsn-clinical" },
+    { source: "y3-bsn-clinical", target: "y4-bsn-capstone" },
+    
     // Gate-to-Header edges for compare modes (straight arrows)
     { source: "gate-y2-programs", target: "program-header:bs_cs", kind: "gate" },
     { source: "gate-y2-programs", target: "program-header:bs_it", kind: "gate" },
+    { source: "gate-y2-programs", target: "program-header:bsn", kind: "gate" },
     { source: "gate-y3-tracks", target: "track-header:se", kind: "gate" },
     { source: "gate-y3-tracks", target: "track-header:ds", kind: "gate" }
   ],
@@ -323,7 +375,7 @@ export const GOLDEN_LAYOUT_SEED: {
 /**
  * Enhanced filtering logic for programs and tracks
  */
-export type FilterMode = 'compare-programs' | 'compare-tracks' | 'bs_cs' | 'bs_it' | 'se' | 'ds' | null;
+export type FilterMode = 'compare-programs' | 'compare-tracks' | 'compare-any' | 'bs_cs' | 'bs_it' | 'bsn' | 'se' | 'ds' | null;
 
 export function filterBlocksByMode(
   blocks: V2RequirementBlock[], 
@@ -381,6 +433,18 @@ export function filterBlocksByMode(
         block.track_id === 'ds' ||
         (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
       );
+      
+    case 'bsn':
+      // Show Y1 + BSN program blocks
+      return blocks.filter(block => 
+        !block.program_id || // Y1 shared blocks
+        block.program_id === 'bsn' ||
+        (block.is_virtual && block.id === 'gate-y2-programs')
+      );
+      
+    case 'compare-any':
+      // Show all blocks for dual selection comparisons
+      return blocks;
       
     default:
       return blocks;
