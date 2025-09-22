@@ -102,11 +102,36 @@ export default function HighlightDiagnostics() {
       setResult(pass ? 'PASS' : 'FAIL');
       setDetails(details);
       
+      // Analyze membership distribution for requirement nodes
+      const requirementNodes = nodes.filter(n => n.type === 'requirement');
+      const membership = requirementNodes.reduce((acc: any, n: any) => {
+        const d = n.data || {};
+        const pid = d.program_id ?? (d.block?.program_id ?? null);
+        const tid = d.track_id ?? (d.block?.track_id ?? null);
+        acc.programs[pid ?? 'shared'] = (acc.programs[pid ?? 'shared'] || 0) + 1;
+        acc.tracks[tid ?? 'shared'] = (acc.tracks[tid ?? 'shared'] || 0) + 1;
+        return acc;
+      }, { programs: {} as Record<string, number>, tracks: {} as Record<string, number> });
+
+      // Find sample nodes of each type
+      const sampleSE = requirementNodes.find(n => n.data?.track_id === 'se' || n.data?.block?.track_id === 'se');
+      const sampleDS = requirementNodes.find(n => n.data?.track_id === 'ds' || n.data?.block?.track_id === 'ds');
+      const sampleShared = requirementNodes.find(n => !n.data?.track_id && !n.data?.block?.track_id);
+
       const debugText = [
         `Headers found: ${headers.map(h => h.id).join(', ')}`,
         `Active key: ${ctx?.activeKey || 'none'}`,
         `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
         `Locked key: ${ctx?.lockedKey || 'none'}`,
+        `---MEMBERSHIP ANALYSIS---`,
+        `Total requirement nodes: ${requirementNodes.length}`,
+        `Program distribution: ${JSON.stringify(membership.programs)}`,
+        `Track distribution: ${JSON.stringify(membership.tracks)}`,
+        `---SAMPLE NODES---`,
+        `SE node sample: ${sampleSE ? `${sampleSE.id} - track_id: ${sampleSE.data?.track_id || 'null'}` : 'none found'}`,
+        `DS node sample: ${sampleDS ? `${sampleDS.id} - track_id: ${sampleDS.data?.track_id || 'null'}` : 'none found'}`,
+        `Shared node sample: ${sampleShared ? `${sampleShared.id} - track_id: ${sampleShared.data?.track_id || 'null'}` : 'none found'}`,
+        `---DEBUG INFO---`,
         `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
         `Node types: ${[...new Set(nodes.map(n => n.type))].join(', ')}`,
         `Edge types: ${[...new Set(edges.map(e => e.type))].join(', ')}`,
@@ -218,9 +243,32 @@ export default function HighlightDiagnostics() {
                 <div>Dim (after leave): {details.afterLeave?.nodes} / {details.afterLeave?.edges}</div>
               </>
             )}
+            
+            {/* Live membership distribution */}
+            <div style={{ fontSize: 10, opacity: 0.9, marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 4 }}>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>Live Membership:</div>
+              {(() => {
+                const nodes = getNodes();
+                const reqNodes = nodes.filter(n => n.type === 'requirement');
+                const membership = reqNodes.reduce((acc: any, n: any) => {
+                  const d = n.data || {};
+                  const tid = d.track_id ?? (d.block?.track_id ?? null);
+                  acc.tracks[tid ?? 'shared'] = (acc.tracks[tid ?? 'shared'] || 0) + 1;
+                  return acc;
+                }, { tracks: {} as Record<string, number> });
+                
+                return (
+                  <>
+                    <div>Total req nodes: {reqNodes.length}</div>
+                    <div>Track dist: {JSON.stringify(membership.tracks)}</div>
+                  </>
+                );
+              })()}
+            </div>
+
             {debugInfo && (
               <details style={{ marginTop: 6, fontSize: 10 }}>
-                <summary style={{ cursor: 'pointer', opacity: 0.7 }}>Debug Info</summary>
+                <summary style={{ cursor: 'pointer', opacity: 0.7 }}>Full Debug Info</summary>
                 <pre style={{ whiteSpace: 'pre-wrap', marginTop: 4, opacity: 0.8 }}>{debugInfo}</pre>
               </details>
             )}
