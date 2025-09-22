@@ -205,27 +205,20 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // Apply dimming and edge filtering in correct order
-  const { nodes: processedNodes, edges: processedEdges } = React.useMemo(() => {
-    // First, filter edges based on visible nodes (before dimming)
-    const visibleIds = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
-    const filteredEdges = flowEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+  // First, filter edges based on visible nodes (before dimming)
+  const filteredEdges = React.useMemo(() => {
+    const visibleIds = new Set((nodes || []).filter(n => !n.hidden).map(n => n.id));
+    const filtered = (flowEdges || []).filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
     
-    // Then apply dimming to the processed arrays
-    const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, filteredEdges);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[EduTreeV2] Processing:', {
-        originalNodes: nodes.length,
-        originalEdges: flowEdges.length,
-        filteredEdges: filteredEdges.length,
-        dimmedNodes: dimmedNodes.length,
-        dimmedEdges: dimmedEdges.length
-      });
+    if (process.env.NODE_ENV === 'development' && filtered.length !== (flowEdges || []).length) {
+      console.log('[EduTreeV2] Filtered out', (flowEdges || []).length - filtered.length, 'dangling edges');
     }
     
-    return { nodes: dimmedNodes, edges: dimmedEdges };
+    return filtered;
   }, [nodes, flowEdges]);
+
+  // Then apply dimming to the processed arrays (hook called at top level)
+  const { nodes: processedNodes, edges: processedEdges } = useApplyDimming(nodes || [], filteredEdges);
 
   // Store the ACTUAL rendered arrays for diagnostics
   React.useEffect(() => {
