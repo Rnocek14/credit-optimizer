@@ -23,6 +23,7 @@ import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
 import { PathHighlightProvider } from './ctx/PathHighlightContext';
 import { useApplyDimming } from './hooks/useApplyDimming';
+import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import './components/StabilityStyles.css';
 
 type DevOverrides = {
@@ -608,6 +609,11 @@ function EduTreeCanvasV2Content({
 
         {/* Dev Controls */}
         <DevToggle />
+
+        {/* Path Highlighting Diagnostics (dev only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <HighlightDiagnostics />
+        )}
       </div>
     </>
   );
