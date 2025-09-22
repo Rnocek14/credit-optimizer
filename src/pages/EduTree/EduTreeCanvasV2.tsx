@@ -26,6 +26,7 @@ import { DevToggle } from './components/DevToggle';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import { DualSelectionLegend } from './components/DualSelectionLegend';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
+import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 
@@ -663,6 +664,10 @@ function EduTreeCanvasV2Content({
         </div>
 
         {/* Dev Controls */}
+        <div className="absolute top-4 right-4 z-40 space-y-2">
+          <TranscriptUploadDemo />
+        </div>
+        
         <DevToggle />
 
         {/* Dual Selection Legend */}

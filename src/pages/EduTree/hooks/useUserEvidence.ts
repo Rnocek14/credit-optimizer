@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export type EvidenceSummary = {
   // catalog course ids the student has completed / is in-progress / pending transfer
@@ -25,10 +26,16 @@ export function useUserEvidence(userId: string | "me" = "me") {
   const { data } = useQuery({
     queryKey: ["student-evidence", userId],
     queryFn: async () => {
-      const res = await fetch(`/api/evidence/summary?userId=${userId}`);
-      if (!res.ok) throw new Error("Failed to load evidence summary");
-      const json = (await res.json()) as EvidenceSummary;
-      return json;
+      const { data, error } = await supabase.functions.invoke('evidence-summary', {
+        body: { userId }
+      });
+      
+      if (error) {
+        console.error('Evidence API error:', error);
+        throw new Error('Failed to load evidence summary');
+      }
+      
+      return data as EvidenceSummary;
     },
     staleTime: 60_000,
   });

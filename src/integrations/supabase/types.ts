@@ -8432,6 +8432,212 @@ export type Database = {
           },
         ]
       }
+      student_course_map: {
+        Row: {
+          catalog_course_id: string
+          confidence: number | null
+          created_at: string
+          id: string
+          method: string | null
+          raw_id: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          catalog_course_id: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          method?: string | null
+          raw_id?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          catalog_course_id?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          method?: string | null
+          raw_id?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_course_map_raw_id_fkey"
+            columns: ["raw_id"]
+            isOneToOne: false
+            referencedRelation: "student_courses_raw"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_courses_raw: {
+        Row: {
+          created_at: string
+          credits: number | null
+          doc_id: string | null
+          grade: string | null
+          id: string
+          institution: string | null
+          number: string | null
+          raw_line: string | null
+          subject: string | null
+          term: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number | null
+          doc_id?: string | null
+          grade?: string | null
+          id?: string
+          institution?: string | null
+          number?: string | null
+          raw_line?: string | null
+          subject?: string | null
+          term?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number | null
+          doc_id?: string | null
+          grade?: string | null
+          id?: string
+          institution?: string | null
+          number?: string | null
+          raw_line?: string | null
+          subject?: string | null
+          term?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_courses_raw_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "student_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_documents: {
+        Row: {
+          created_at: string
+          id: string
+          parsed_json: Json | null
+          source: string
+          storage_path: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parsed_json?: Json | null
+          source: string
+          storage_path: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parsed_json?: Json | null
+          source?: string
+          storage_path?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      student_experiences: {
+        Row: {
+          created_at: string
+          doc_id: string | null
+          employer: string | null
+          end_date: string | null
+          id: string
+          normalized_tags: string[] | null
+          role: string | null
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          doc_id?: string | null
+          employer?: string | null
+          end_date?: string | null
+          id?: string
+          normalized_tags?: string[] | null
+          role?: string | null
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          doc_id?: string | null
+          employer?: string | null
+          end_date?: string | null
+          id?: string
+          normalized_tags?: string[] | null
+          role?: string | null
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_experiences_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "student_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_skills: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          doc_id: string | null
+          id: string
+          skill: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          doc_id?: string | null
+          id?: string
+          skill: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          doc_id?: string | null
+          id?: string
+          skill?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_skills_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "student_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_group_members: {
         Row: {
           contribution_score: number | null
