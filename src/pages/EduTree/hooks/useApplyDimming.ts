@@ -56,13 +56,18 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         const nodeTrack = blockish.track_id;
         const nodeProgram = blockish.program_id;
         
-        // Define shared nodes: globally shared (Y1) OR program-shared (Y2 CS blocks)
-        const isShared = (!nodeTrack && !nodeProgram) || // globally shared (Y1)
-                        (!nodeTrack && nodeProgram === 'bs_cs'); // CS program shared (Y2)
+        // Define shared nodes: only globally shared (Y1) blocks
+        const isShared = !nodeTrack && !nodeProgram; // globally shared (Y1)
+        
+        // Define program-level shared: CS program blocks shared between SE/DS
+        const isProgramShared = !nodeTrack && nodeProgram === 'bs_cs' && 
+                               (activeTrack === 'se' || activeTrack === 'ds');
         
         if (dim) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--dim';
         } else if (isShared) {
+          className = className.replace(/\bhl--\w+/g, '') + ' hl--both';
+        } else if (isProgramShared) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--both';
         } else if (belongs) {
           className = className.replace(/\bhl--\w+/g, '') + ' hl--primary';
@@ -96,13 +101,26 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       // Add visual highlighting classes for edges
       let className = edge.className || '';
       if (highlight.activeKey) {
-        const sourceIsShared = sourceBlockish && 
-          ((!sourceBlockish.track_id && !sourceBlockish.program_id) || 
-           (!sourceBlockish.track_id && sourceBlockish.program_id === 'bs_cs'));
-        const targetIsShared = targetBlockish && 
-          ((!targetBlockish.track_id && !targetBlockish.program_id) || 
-           (!targetBlockish.track_id && targetBlockish.program_id === 'bs_cs'));
-        const isSharedEdge = sourceIsShared || targetIsShared;
+        const activeTrack = highlight.activeKey.split(':')[1];
+        
+        // Check if source is globally shared (Y1)
+        const sourceIsGloballyShared = sourceBlockish && 
+          !sourceBlockish.track_id && !sourceBlockish.program_id;
+        // Check if target is globally shared (Y1) 
+        const targetIsGloballyShared = targetBlockish && 
+          !targetBlockish.track_id && !targetBlockish.program_id;
+        
+        // Check if source is CS program shared
+        const sourceIsProgramShared = sourceBlockish && 
+          !sourceBlockish.track_id && sourceBlockish.program_id === 'bs_cs' && 
+          (activeTrack === 'se' || activeTrack === 'ds');
+        // Check if target is CS program shared
+        const targetIsProgramShared = targetBlockish && 
+          !targetBlockish.track_id && targetBlockish.program_id === 'bs_cs' && 
+          (activeTrack === 'se' || activeTrack === 'ds');
+        
+        const isSharedEdge = sourceIsGloballyShared || targetIsGloballyShared || 
+                           sourceIsProgramShared || targetIsProgramShared;
         
         if (dim) {
           className = className.replace(/\bedge--\w+/g, '') + ' edge--dim';
