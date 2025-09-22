@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
-import { GraduationCap, Star } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { useNodeResize } from '@/hooks/useNodeResize';
+import { Star, GraduationCap } from 'lucide-react';
+import { EvidenceBadges } from './EvidenceBadges';
 
 interface TerminalNodeData {
   label?: string;
@@ -16,6 +18,8 @@ interface TerminalNodeData {
     area: string;
     courses: any[];
     gate?: any;
+    creditsNeeded?: number;
+    catalogCourseIds?: string[];
   };
 }
 
@@ -25,6 +29,11 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
   const label = block?.title || terminalData.label || 'Terminal Node';
   const nodeRef = useRef<HTMLDivElement>(null);
   const { attachResizeObserver, detachResizeObserver } = useNodeResize(id);
+  
+  // Evidence data
+  const blockId = block?.id ?? id;
+  const creditsNeeded = credits ?? block?.creditsNeeded ?? null;
+  const catalogCourseIds = block?.catalogCourseIds ?? undefined;
 
   useEffect(() => {
     if (nodeRef.current) {
@@ -72,9 +81,19 @@ export const TerminalNode: React.FC<NodeProps> = ({ id, data, selected }) => {
         </div>
       </div>
       
+      {/* Evidence overlay (non-interactive) */}
+      <EvidenceBadges
+        blockId={blockId}
+        creditsNeeded={creditsNeeded}
+        catalogCourseIds={catalogCourseIds}
+      />
+      
       {isEligible && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
       )}
+      
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };

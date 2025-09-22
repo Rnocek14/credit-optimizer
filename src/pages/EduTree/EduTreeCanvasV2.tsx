@@ -35,25 +35,41 @@ type DevOverrides = {
   eduTreeV2Grid?: boolean;
 };
 
+import { EvidenceBadges } from './components/EvidenceBadges';
+
 // Node components for V2
-const RequirementNode = ({ data }: { data: V2NodeData }) => (
-  <div className="px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px]">
-    <div className="font-semibold text-sm text-foreground mb-1">{data.title}</div>
-    <div className="text-xs text-muted-foreground">
-      Year {data.levelYear} • {data.area}
+const RequirementNode = ({ data }: { data: V2NodeData }) => {
+  const blockData = data as any; // Type assertion for now - V2NodeData might not have all fields yet
+  const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
+  const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
+  const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
+
+  return (
+    <div className="px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative">
+      <div className="font-semibold text-sm text-foreground mb-1">{data.title}</div>
+      <div className="text-xs text-muted-foreground">
+        Year {data.levelYear} • {data.area}
+      </div>
+      {data.creditsNeeded && (
+        <div className="text-xs text-muted-foreground mt-1">
+          {data.creditsNeeded} credits
+        </div>
+      )}
+      {data.trackId && (
+        <div className="text-xs font-medium text-primary mt-1">
+          {data.trackId.toUpperCase()}
+        </div>
+      )}
+      
+      {/* Evidence overlay (non-interactive) */}
+      <EvidenceBadges
+        blockId={blockId}
+        creditsNeeded={creditsNeeded}
+        catalogCourseIds={catalogCourseIds}
+      />
     </div>
-    {data.creditsNeeded && (
-      <div className="text-xs text-muted-foreground mt-1">
-        {data.creditsNeeded} credits
-      </div>
-    )}
-    {data.trackId && (
-      <div className="text-xs font-medium text-primary mt-1">
-        {data.trackId.toUpperCase()}
-      </div>
-    )}
-  </div>
-);
+  );
+};
 
 const GateNode = ({ data }: { data: V2NodeData }) => {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');

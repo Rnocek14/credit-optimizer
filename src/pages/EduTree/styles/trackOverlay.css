@@ -90,3 +90,54 @@
   background: rgba(255, 255, 255, 0.1);
   border-color: currentColor;
 }
+
+/* Evidence overlay — neutral palette on purpose to not fight the A/B highlight colors */
+.evi--dock {
+  display: grid;
+  gap: 6px;
+  position: absolute;
+  right: 8px; bottom: 8px; /* tuck into node corner */
+  z-index: 2; /* above card content, below hover glow */
+  pointer-events: none; /* purely informational */
+  font-size: 11px;
+}
+
+.evi--meter {
+  position: relative;
+  width: 92px;
+  height: 6px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+.evi--meter-done {
+  box-shadow: inset 0 0 0 1px rgba(120,255,160,0.5);
+}
+.evi--meter-fill {
+  height: 100%;
+  background: rgba(120,200,255,0.8);
+  transition: width 200ms ease;
+}
+.evi--meter-label {
+  position: absolute;
+  right: 6px; top: -16px;
+  font-size: 10px; color: rgba(255,255,255,0.85);
+}
+
+.evi--pills {
+  display: inline-flex;
+  gap: 6px;
+  pointer-events: none;
+}
+.evi--pill {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.9);
+  backdrop-filter: blur(2px);
+}
+.evi--pill.evi--ok   { border-color: rgba(120,255,160,0.5); }
+.evi--pill.evi--ip   { border-color: rgba(255,220,120,0.5); }
+.evi--pill.evi--xfer { border-color: rgba(140,200,255,0.5); }
