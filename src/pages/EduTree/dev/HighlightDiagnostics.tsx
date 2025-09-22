@@ -43,11 +43,17 @@ export default function HighlightDiagnostics() {
       return;
     }
 
+    setResult('Testing...');
+    
     try {
       const nodes = getNodes();
       const edges = getEdges();
       const headers = nodes.filter(n => n.id?.startsWith?.('program-header:') || n.id?.startsWith?.('track-header:'));
-      const headerKey = headers.length ? keyFromHeaderId(headers[0].id) : null;
+      
+      // Choose a deterministic header (SE preferred)
+      const seHeader = headers.find(h => h.id === 'track-header:se');
+      const dsHeader = headers.find(h => h.id === 'track-header:ds');
+      const headerKey = seHeader ? 'track:se' : dsHeader ? 'track:ds' : null;
 
       const badHandles = edges.filter(e =>
         e.sourceHandle === null || e.sourceHandle === 'null' || e.targetHandle === 'null'
@@ -56,94 +62,124 @@ export default function HighlightDiagnostics() {
       const ids = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
       const dangling = edges.filter(e => !ids.has(e.source) || !ids.has(e.target));
 
-      const before = countDimmed(nodes, edges);
-
-      const details: any = {
-        headers: headers.length,
-        badHandles: badHandles.length,
-        dangling: dangling.length,
-        before
-      };
-
-      // If no headers, partial pass/fail
-      if (!headerKey) {
-        const pass = badHandles.length === 0 && dangling.length === 0 && headers.length > 0;
-        setResult(pass ? 'PASS (partial)' : 'FAIL (partial)');
-        setDetails({ ...details, note: 'No headers found' });
-        setDebugInfo(`No testable headers. Found: ${headers.map(h => h.id).join(', ')}`);
-        return;
+      // --- Normalize state: unlock anything + clear hover ---
+      if (ctx.lockedKey) {
+        ctx.toggleLock(ctx.lockedKey as any);
       }
-
-      // Test sequence with immediate reads (React updates should be synchronous)
-      // Step 1: hover preview
-      ctx.preview(headerKey);
-      const afterHover = countDimmed();
-      details.afterHover = afterHover;
-
-      // Step 2: lock 
-      ctx.toggleLock(headerKey);
-      const afterLock = countDimmed();
-      details.afterLock = afterLock;
-
-      // Step 3: clear hover (lock should persist)
       ctx.clearPreview();
-      const afterLeave = countDimmed();
-      details.afterLeave = afterLeave;
 
-      // Test criteria
-      const hasHeaders = headers.length > 0;
-      const noBadHandles = badHandles.length === 0;
-      const noDanglingEdges = dangling.length === 0;
-      const dimmingWorks = afterHover.nodes > before.nodes || afterHover.edges > before.edges;
-      const lockPersists = afterLeave.nodes >= afterHover.nodes && afterLeave.edges >= afterHover.edges;
+      // Wait for React state to update and DOM to re-render
+      setTimeout(() => {
+        const nodes0 = getNodes();
+        const edges0 = getEdges();
+        const before = countDimmed(nodes0, edges0);
 
-      const pass = hasHeaders && noBadHandles && noDanglingEdges && dimmingWorks && lockPersists;
+        const details: any = {
+          headers: headers.length,
+          badHandles: badHandles.length,
+          dangling: dangling.length,
+          before
+        };
 
-      setResult(pass ? 'PASS' : 'FAIL');
-      setDetails(details);
-      
-      // Analyze membership distribution for requirement nodes
-      const requirementNodes = nodes.filter(n => n.type === 'requirement');
-      const membership = requirementNodes.reduce((acc: any, n: any) => {
-        const d = n.data || {};
-        const pid = d.program_id ?? (d.block?.program_id ?? null);
-        const tid = d.track_id ?? (d.block?.track_id ?? null);
-        acc.programs[pid ?? 'shared'] = (acc.programs[pid ?? 'shared'] || 0) + 1;
-        acc.tracks[tid ?? 'shared'] = (acc.tracks[tid ?? 'shared'] || 0) + 1;
-        return acc;
-      }, { programs: {} as Record<string, number>, tracks: {} as Record<string, number> });
+        // If no headers, partial pass/fail
+        if (!headerKey) {
+          const pass = badHandles.length === 0 && dangling.length === 0 && headers.length > 0;
+          setResult(pass ? 'PASS (partial)' : 'FAIL (partial)');
+          setDetails({ ...details, note: 'No headers found' });
+          setDebugInfo(`No testable headers. Found: ${headers.map(h => h.id).join(', ')}`);
+          return;
+        }
 
-      // Find sample nodes of each type
-      const sampleSE = requirementNodes.find(n => n.data?.track_id === 'se' || n.data?.block?.track_id === 'se');
-      const sampleDS = requirementNodes.find(n => n.data?.track_id === 'ds' || n.data?.block?.track_id === 'ds');
-      const sampleShared = requirementNodes.find(n => !n.data?.track_id && !n.data?.block?.track_id);
+        // Step 1: hover preview
+        ctx.preview(headerKey);
+        setTimeout(() => {
+          const nodesH = getNodes();
+          const edgesH = getEdges();
+          const afterHover = countDimmed(nodesH, edgesH);
+          details.afterHover = afterHover;
 
-      const debugText = [
-        `Headers found: ${headers.map(h => h.id).join(', ')}`,
-        `Active key: ${ctx?.activeKey || 'none'}`,
-        `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
-        `Locked key: ${ctx?.lockedKey || 'none'}`,
-        `---MEMBERSHIP ANALYSIS---`,
-        `Total requirement nodes: ${requirementNodes.length}`,
-        `Program distribution: ${JSON.stringify(membership.programs)}`,
-        `Track distribution: ${JSON.stringify(membership.tracks)}`,
-        `---SAMPLE NODES---`,
-        `SE node sample: ${sampleSE ? `${sampleSE.id} - track_id: ${sampleSE.data?.track_id || 'null'}` : 'none found'}`,
-        `DS node sample: ${sampleDS ? `${sampleDS.id} - track_id: ${sampleDS.data?.track_id || 'null'}` : 'none found'}`,
-        `Shared node sample: ${sampleShared ? `${sampleShared.id} - track_id: ${sampleShared.data?.track_id || 'null'}` : 'none found'}`,
-        `---DEBUG INFO---`,
-        `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
-        `Node types: ${[...new Set(nodes.map(n => n.type))].join(', ')}`,
-        `Edge types: ${[...new Set(edges.map(e => e.type))].join(', ')}`,
-        `Dimming test: before=${before.nodes}/${before.edges}, hover=${afterHover.nodes}/${afterHover.edges}, works=${dimmingWorks}`
-      ].join('\n');
-      setDebugInfo(debugText);
+          // Step 2: lock 
+          ctx.toggleLock(headerKey);
+          setTimeout(() => {
+            const nodesL = getNodes();
+            const edgesL = getEdges();
+            const afterLock = countDimmed(nodesL, edgesL);
+            details.afterLock = afterLock;
+
+            // Step 3: clear hover (lock should persist)
+            ctx.clearPreview();
+            setTimeout(() => {
+              const nodesA = getNodes();
+              const edgesA = getEdges();
+              const afterLeave = countDimmed(nodesA, edgesA);
+              details.afterLeave = afterLeave;
+
+              // Test criteria
+              const hasHeaders = headers.length > 0;
+              const noBadHandles = badHandles.length === 0;
+              const noDanglingEdges = dangling.length === 0;
+              const dimmingWorks = afterHover.nodes > before.nodes || afterHover.edges > before.edges;
+              const lockPersists = afterLeave.nodes >= afterHover.nodes && afterLeave.edges >= afterHover.edges;
+
+              const pass = hasHeaders && noBadHandles && noDanglingEdges && dimmingWorks && lockPersists;
+
+              setResult(pass ? 'PASS' : 'FAIL');
+              setDetails(details);
+              // Analyze membership distribution for requirement nodes
+              const requirementNodes = nodes0.filter(n => n.type === 'requirement');
+              const membership = requirementNodes.reduce((acc: any, n: any) => {
+                const d = n.data || {};
+                const pid = d.program_id ?? (d.block?.program_id ?? null);
+                const tid = d.track_id ?? (d.block?.track_id ?? null);
+                acc.programs[pid ?? 'shared'] = (acc.programs[pid ?? 'shared'] || 0) + 1;
+                acc.tracks[tid ?? 'shared'] = (acc.tracks[tid ?? 'shared'] || 0) + 1;
+                return acc;
+              }, { programs: {} as Record<string, number>, tracks: {} as Record<string, number> });
+
+              // Find sample nodes of each type
+              const sampleSE = requirementNodes.find(n => n.data?.track_id === 'se' || n.data?.block?.track_id === 'se');
+              const sampleDS = requirementNodes.find(n => n.data?.track_id === 'ds' || n.data?.block?.track_id === 'ds');
+              const sampleShared = requirementNodes.find(n => !n.data?.track_id && !n.data?.block?.track_id);
+
+              const debugText = [
+                `Headers found: ${headers.map(h => h.id).join(', ')}`,
+                `Active key: ${ctx?.activeKey || 'none'}`,
+                `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
+                `Locked key: ${ctx?.lockedKey || 'none'}`,
+                `---MEMBERSHIP ANALYSIS---`,
+                `Total requirement nodes: ${requirementNodes.length}`,
+                `Program distribution: ${JSON.stringify(membership.programs)}`,
+                `Track distribution: ${JSON.stringify(membership.tracks)}`,
+                `---SAMPLE NODES---`,
+                `SE node sample: ${sampleSE ? `${sampleSE.id} - track_id: ${sampleSE.data?.track_id || 'null'}` : 'none found'}`,
+                `DS node sample: ${sampleDS ? `${sampleDS.id} - track_id: ${sampleDS.data?.track_id || 'null'}` : 'none found'}`,
+                `Shared node sample: ${sampleShared ? `${sampleShared.id} - track_id: ${sampleShared.data?.track_id || 'null'}` : 'none found'}`,
+                `---DEBUG INFO---`,
+                `Sample node data: ${nodes0[0]?.data ? JSON.stringify(nodes0[0].data, null, 2) : 'none'}`,
+                `Node types: ${[...new Set(nodes0.map(n => n.type))].join(', ')}`,
+                `Edge types: ${[...new Set(edges0.map(e => e.type))].join(', ')}`,
+                `Dimming test: before=${before.nodes}/${before.edges}, hover=${afterHover.nodes}/${afterHover.edges}, works=${dimmingWorks}`
+              ].join('\n');
+              setDebugInfo(debugText);
+              
+            }, 80); // after clear preview
+          }, 80); // after lock
+        }, 80); // after hover
+      }, 80); // after normalize
       
     } catch (error) {
       setResult('ERROR');
       setDetails({ error: String(error) });
       setDebugInfo(String(error));
     }
+  }, [ctx]);
+
+  const resetState = React.useCallback(() => {
+    if (!ctx) return;
+    if (ctx.lockedKey) {
+      ctx.toggleLock(ctx.lockedKey as any);
+    }
+    ctx.clearPreview();
   }, [ctx]);
 
   return (
@@ -167,6 +203,17 @@ export default function HighlightDiagnostics() {
         }}
       >
         Run smoke test
+      </button>
+
+      <button
+        onClick={resetState}
+        style={{
+          cursor: 'pointer', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)',
+          background: 'rgba(255,0,0,0.1)', color: '#fff', marginBottom: 8, width: '100%',
+          fontSize: 10
+        }}
+      >
+        Reset State
       </button>
 
       {/* Context Debug Controls */}
