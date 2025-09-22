@@ -46,22 +46,35 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       // Extract blockish data using helper function
       const blockish = extractBlockish(node);
       const dim = blockish ? highlight.isNodeDimmed(blockish) : false;
+      const belongs = blockish ? highlight.belongs(blockish) : false;
 
       console.log('[useApplyDimming] Node dimming:', {
         nodeId: node.id,
         nodeType: node.type,
         blockish,
         dim,
+        belongs,
         activeKey: highlight.activeKey
       });
 
+      // Add visual highlighting classes
+      let className = node.className || '';
+      if (highlight.activeKey && blockish) {
+        if (dim) {
+          className = className.replace(/\bhl--\w+/g, '') + ' hl--dim';
+        } else if (belongs) {
+          className = className.replace(/\bhl--\w+/g, '') + ' hl--primary';
+        }
+      }
+
       return {
         ...node,
+        className: className.trim(),
         data: { ...node.data, __dim: dim ? 1 : 0 },
         style: { ...(node.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [nodes, highlight, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
+  }, [nodes, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   const dimmedEdges = useMemo(() => {
     console.log('[useApplyDimming] Processing edges:', {
@@ -81,6 +94,8 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
       const targetBlockish = extractBlockish(targetNode);
       
       const dim = highlight.isEdgeDimmed(sourceBlockish, targetBlockish, edge.type);
+      const sourceBelongs = sourceBlockish ? highlight.belongs(sourceBlockish) : false;
+      const targetBelongs = targetBlockish ? highlight.belongs(targetBlockish) : false;
 
       console.log('[useApplyDimming] Edge dimming:', {
         edgeId: edge.id,
@@ -90,16 +105,29 @@ export function useApplyDimming(nodes: any[], edges: any[]) {
         sourceBlockish,
         targetBlockish,
         dim,
+        sourceBelongs,
+        targetBelongs,
         activeKey: highlight.activeKey
       });
 
+      // Add visual highlighting classes for edges
+      let className = edge.className || '';
+      if (highlight.activeKey) {
+        if (dim) {
+          className = className.replace(/\bedge--\w+/g, '') + ' edge--dim';
+        } else if (sourceBelongs || targetBelongs) {
+          className = className.replace(/\bedge--\w+/g, '') + ' edge--primary';
+        }
+      }
+
       return {
         ...edge,
+        className: className.trim(),
         data: { ...edge.data, __dim: dim ? 1 : 0 },
         style: { ...(edge.style || {}), opacity: dim ? 0.25 : 1 },
       };
     });
-  }, [edges, nodes, highlight, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
+  }, [edges, nodes, highlight?.activeKey, highlight?.hoveredKey, highlight?.lockedKey]);
 
   return { nodes: dimmedNodes, edges: dimmedEdges };
 }

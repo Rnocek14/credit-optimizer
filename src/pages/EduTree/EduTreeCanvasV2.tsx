@@ -26,6 +26,7 @@ import { DevToggle } from './components/DevToggle';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import './components/StabilityStyles.css';
+import './styles/trackOverlay.css';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -381,8 +382,8 @@ function EduTreeCanvasV2Content({
       },
       usePlan, // Use deterministic grid anchors when in single-rail grid mode
       singleRailStraight, // Pass single-rail straight flag
-      filterMode || 'compare-tracks', // Pass filter mode for header routing
-      flags.eduTreeV2EdgeKinds, // Pass V2 edge kinds flag
+      effectiveFilterMode || 'compare-tracks', // Pass filter mode for header routing  
+      flags.eduTreeV2EdgeKinds ?? true, // Pass V2 edge kinds flag (default true)
       gatePositions // Pass gate positioning decisions
     );
   }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
@@ -523,6 +524,22 @@ function EduTreeCanvasV2Content({
             <span className="text-white">Grid V2</span>
           </label>
 
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!flags.eduTreeV2EdgeKinds}
+              onChange={e => {
+                // Toggle V2 Edge Kinds via URL param for immediate effect
+                const url = new URL(window.location.href);
+                const newValue = e.target.checked ? 'true' : 'false';
+                url.searchParams.set('eduTreeV2EdgeKinds', newValue);
+                window.location.href = url.toString();
+              }}
+              className="rounded border-gray-600"
+            />
+            <span className="text-white">V2 Edge Kinds</span>
+          </label>
+
           <button
             onClick={() => setDev({})}
             className="px-2 py-1 rounded bg-gray-700 border border-gray-600 hover:bg-gray-600 transition-colors text-white"
@@ -532,7 +549,7 @@ function EduTreeCanvasV2Content({
         </div>
       )}
 
-      <div className="h-full w-full">
+      <div className="h-full w-full edu-tree-canvas">
         {/* Dynamic Lane Headers - hide in single-rail straight mode */}
         {!singleRailStraight && (() => {
           const getLaneHeaders = () => {
@@ -619,7 +636,8 @@ function EduTreeCanvasV2Content({
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
           <div>V2 Multi-Gate Mode • nodes {processedNodes.length} • edges {processedEdges.length}</div>
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
-          <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
+          <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}, EdgeKinds={String(flags.eduTreeV2EdgeKinds)}</div>
+          <div>Headers: {processedNodes.filter(n => n.type === 'header').length} • Gates: {processedNodes.filter(n => n.type === 'gate' && !n.hidden).length}</div>
         </div>
 
         {/* Mode badge */}
@@ -632,7 +650,9 @@ function EduTreeCanvasV2Content({
 
         {/* Path Highlighting Diagnostics (dev only) */}
         {process.env.NODE_ENV === 'development' && (
-          <HighlightDiagnostics />
+          <div style={{ position: 'relative', zIndex: 5000 }}>
+            <HighlightDiagnostics />
+          </div>
         )}
       </div>
     </>

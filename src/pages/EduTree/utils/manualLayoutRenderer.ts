@@ -147,9 +147,20 @@ export function edgesToReactFlowEdges(
     }
   };
 
-  // Check if headers will exist before remapping
-  const willHaveProgramHeaders = filterMode === 'compare-programs' && useV2EdgeKinds && gatePositions?.showPG;
-  const willHaveTrackHeaders = filterMode === 'compare-tracks' && useV2EdgeKinds && gatePositions?.showTG;
+  // Check if headers will exist before remapping  
+  const willHaveProgramHeaders = filterMode === 'compare-programs' && useV2EdgeKinds;
+  const willHaveTrackHeaders = filterMode === 'compare-tracks' && useV2EdgeKinds;
+
+  console.log('[EdgeFilter] Header availability check:', {
+    filterMode,
+    useV2EdgeKinds,
+    willHaveProgramHeaders,
+    willHaveTrackHeaders,
+    gatePositions: gatePositions ? {
+      showPG: gatePositions.showPG,
+      showTG: gatePositions.showTG
+    } : 'none'
+  });
 
   // Reroute gate edges to header nodes in compare modes (only if headers exist)
   const remapGateTarget = (edge: V2Edge): string => {
@@ -378,22 +389,29 @@ function createHeaderNodes(opts: {
 }): Node[] {
   const { filterMode, gatePositions, singleRailStraight, useV2EdgeKinds } = opts;
 
-  if (singleRailStraight || !useV2EdgeKinds) return []; // no lane headers in single-rail or when feature disabled
+  // Always create headers in compare modes when V2 edge kinds are enabled
+  // Remove singleRailStraight restriction for better header visibility
+  if (!useV2EdgeKinds) return []; 
 
   // use standard lane positioning
   const Y_UP = 240;
   const Y_DOWN = 480;
   const X_OFFSET = -60; // offset headers left of gate position
 
-  // Only create headers when corresponding gates are visible
-  if (filterMode === 'compare-programs' && gatePositions?.showPG) {
-    const x = gatePositions.pgX + X_OFFSET;
+  // Create headers when in appropriate compare mode, regardless of gate visibility
+  if (filterMode === 'compare-programs') {
+    // Use default position if gates not available
+    const x = gatePositions?.pgX ? gatePositions.pgX + X_OFFSET : 340; 
     return [
       {
         id: 'program-header:bs_cs',
         type: 'header',
         position: { x, y: Y_UP - 70 },
-        data: { label: 'BS Computer Science' },
+        data: { 
+          label: 'BS Computer Science',
+          program_id: 'bs_cs', // Add metadata for dimming
+          track_id: null
+        },
         draggable: false,
         selectable: false,
         style: { zIndex: 1000 },
@@ -403,7 +421,11 @@ function createHeaderNodes(opts: {
         id: 'program-header:bs_it',
         type: 'header',
         position: { x, y: Y_DOWN + 70 },
-        data: { label: 'BS Information Technology' },
+        data: { 
+          label: 'BS Information Technology',
+          program_id: 'bs_it', // Add metadata for dimming
+          track_id: null
+        },
         draggable: false,
         selectable: false,
         style: { zIndex: 1000 },
@@ -412,14 +434,19 @@ function createHeaderNodes(opts: {
     ];
   }
 
-  if (filterMode === 'compare-tracks' && gatePositions?.showTG) {
-    const x = gatePositions.tgX + X_OFFSET;
+  if (filterMode === 'compare-tracks') {
+    // Use default position if gates not available
+    const x = gatePositions?.tgX ? gatePositions.tgX + X_OFFSET : 840;
     return [
       {
         id: 'track-header:se',
         type: 'header', 
         position: { x, y: Y_UP - 70 },
-        data: { label: 'Software Engineering' },
+        data: { 
+          label: 'Software Engineering',
+          track_id: 'se', // Add metadata for dimming
+          program_id: null
+        },
         draggable: false,
         selectable: false,
         style: { zIndex: 1000 },
@@ -429,7 +456,11 @@ function createHeaderNodes(opts: {
         id: 'track-header:ds',
         type: 'header',
         position: { x, y: Y_DOWN + 70 },
-        data: { label: 'Data Science' },
+        data: { 
+          label: 'Data Science',
+          track_id: 'ds', // Add metadata for dimming
+          program_id: null
+        },
         draggable: false,
         selectable: false,
         style: { zIndex: 1000 },
@@ -438,7 +469,7 @@ function createHeaderNodes(opts: {
     ];
   }
 
-  return []; // No headers if gates not visible
+  return []; // No headers for other modes
 }
 /**
  * Apply manual layout - just set positions and call fitView once
@@ -458,17 +489,21 @@ export function applyManualLayout(
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
     useV2EdgeKinds ? '(with V2 edge kinds)' : '(legacy edges)');
-  console.log('[ManualLayout] Parameters:', {
-    singleRailStraight, 
-    filterMode, 
-    useV2EdgeKinds,
-    gatePositions: gatePositions ? {
-      showPG: gatePositions.showPG,
-      showTG: gatePositions.showTG,
-      pgX: gatePositions.pgX,
-      tgX: gatePositions.tgX
-    } : null
-  });
+      console.log('[ManualLayout] Parameters:', {
+        singleRailStraight, 
+        filterMode, 
+        useV2EdgeKinds,
+        gatePositions: gatePositions ? {
+          showPG: gatePositions.showPG,
+          showTG: gatePositions.showTG,
+          pgX: gatePositions.pgX,
+          tgX: gatePositions.tgX
+        } : null
+      });
+      
+      if (!useV2EdgeKinds && (filterMode === 'compare-tracks' || filterMode === 'compare-programs')) {
+        console.warn('[ManualLayout] WARNING: V2 edge kinds disabled in compare mode - headers won\'t be created!');
+      }
   
   // Create column anchors for header positioning
   const cols = { y1: 200, pg: 400, y2: 600, tg: 900, y3: 1300, y4: 1700 };
