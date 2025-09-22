@@ -126,6 +126,14 @@ export function PathHighlightProvider({
     belongs, isNodeDimmed, isEdgeDimmed
   }), [hoveredKey, lockedKey, activeKey, preview, clearPreview, toggleLock, belongs, isNodeDimmed, isEdgeDimmed]);
 
+  // Expose state for HUD debugging
+  React.useEffect(() => {
+    if (import.meta.env?.DEV) {
+      (window as any).__highlight_state__ = { hoveredKey, lockedKey, activeKey };
+      document.body.classList.toggle('edutree-highlight-active', !!activeKey);
+    }
+  }, [hoveredKey, lockedKey, activeKey]);
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

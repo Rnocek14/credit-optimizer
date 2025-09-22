@@ -11,11 +11,13 @@ function keyFromHeaderId(id: string): `${'program'|'track'}:${string}` | null {
 }
 
 function getNodes(): NodeLike[] {
-  return (window as any).__flowNodes__ ?? [];
+  // Read the actual rendered arrays that ReactFlow is displaying
+  return (window as any).__dimmedNodes__ ?? (window as any).__flowNodes__ ?? [];
 }
 
 function getEdges(): EdgeLike[] {
-  return (window as any).__flowEdges__ ?? [];
+  // Read the actual rendered arrays that ReactFlow is displaying  
+  return (window as any).__safeEdges__ ?? (window as any).__flowEdges__ ?? [];
 }
 
 function countDimmed(nodes = getNodes(), edges = getEdges()) {
@@ -29,6 +31,9 @@ export default function HighlightDiagnostics() {
   const [result, setResult] = React.useState<string>('Idle');
   const [details, setDetails] = React.useState<any>(null);
   const [debugInfo, setDebugInfo] = React.useState<string>('');
+  
+  // Live context state (updates in real-time)
+  const probe = (window as any).__highlight_state__ || null;
 
   const run = React.useCallback(() => {
     const nodes = getNodes();
@@ -138,7 +143,66 @@ export default function HighlightDiagnostics() {
         Run smoke test
       </button>
 
+      {/* Context Debug Controls */}
+      <div style={{ marginBottom: 8, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4, opacity: 0.7 }}>Context Debug</div>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.preview('track:se')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            SE
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.preview('track:ds')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(0,0,255,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            DS
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.toggleLock('track:se')}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,255,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            🔒SE
+          </button>
+          <button
+            disabled={!ctx}
+            onClick={() => ctx?.clearPreview()}
+            style={{
+              cursor: ctx ? 'pointer' : 'not-allowed', padding: '3px 6px', borderRadius: 4, 
+              border: '1px solid rgba(255,255,255,0.2)', background: ctx ? 'rgba(255,0,0,0.1)' : 'rgba(255,255,255,0.05)', 
+              color: ctx ? '#fff' : '#888', fontSize: 9
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
       <div style={{ marginTop: 4 }}>
+        {/* Live Context State */}
+        <div style={{ marginBottom: 6, fontSize: 10, opacity: 0.8 }}>
+          <div>Context: {ctx ? 'CONNECTED' : 'MISSING'}</div>
+          <div>Active: {probe?.activeKey || ctx?.activeKey || 'none'}</div>
+          <div>Hovered: {probe?.hoveredKey || ctx?.hoveredKey || 'none'}</div>
+          <div>Locked: {probe?.lockedKey || ctx?.lockedKey || 'none'}</div>
+        </div>
+        
         <div><strong>Status:</strong> {result}</div>
         {details && (
           <div style={{ marginTop: 6, opacity: 0.9 }}>

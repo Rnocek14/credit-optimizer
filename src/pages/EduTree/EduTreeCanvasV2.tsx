@@ -219,6 +219,14 @@ function EduTreeCanvasV2Content({
     
     return filtered;
   }, [dimmedNodes, dimmedEdges]);
+
+  // Store the ACTUAL rendered arrays for diagnostics
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).__dimmedNodes__ = dimmedNodes;
+      (window as any).__safeEdges__ = safeEdges;
+    }
+  }, [dimmedNodes, safeEdges]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
