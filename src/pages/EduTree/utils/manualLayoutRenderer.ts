@@ -338,7 +338,7 @@ function createHeaderNodes(opts: {
         data: { label: 'BS Computer Science' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000, pointerEvents: 'none' },
+        style: { zIndex: 1000 },
         targetPosition: Position.Left
       },
       {
@@ -348,7 +348,7 @@ function createHeaderNodes(opts: {
         data: { label: 'BS Information Technology' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000, pointerEvents: 'none' },
+        style: { zIndex: 1000 },
         targetPosition: Position.Left
       }
     ];
@@ -364,7 +364,7 @@ function createHeaderNodes(opts: {
         data: { label: 'Software Engineering' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000, pointerEvents: 'none' },
+        style: { zIndex: 1000 },
         targetPosition: Position.Left
       },
       {
@@ -374,7 +374,7 @@ function createHeaderNodes(opts: {
         data: { label: 'Data Science' },
         draggable: false,
         selectable: false,
-        style: { zIndex: 1000, pointerEvents: 'none' },
+        style: { zIndex: 1000 },
         targetPosition: Position.Left
       }
     ];

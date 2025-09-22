@@ -95,7 +95,7 @@ export function getFeatureFlags(): FeatureFlags {
     eduTreeOutcomes: toBool(getFlagValue('eduTreeOutcomes', 'edu-tree-outcomes', 'true')),
     eduTreePlaceholders: toBool(getFlagValue('eduTreePlaceholders', 'edu-tree-placeholders', 'false')),
     eduTreeStaggeredEdgesV2: toBool(getFlagValue('eduTreeStaggeredEdgesV2', 'edu-tree-staggered-edges-v2', 'true')),
-    eduTreeV2EdgeKinds: toBool(getFlagValue('eduTreeV2EdgeKinds', 'edu-tree-v2-edge-kinds', 'false')),
+    eduTreeV2EdgeKinds: toBool(getFlagValue('eduTreeV2EdgeKinds', 'edu-tree-v2-edge-kinds', 'true')),
     // EduTree multipath overlay for track comparison
     eduTreeMultiPathOverlay: (() => {
       const url = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('eduTreeMultiPathOverlay') : null;
