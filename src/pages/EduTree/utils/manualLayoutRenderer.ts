@@ -19,6 +19,9 @@ export interface V2NodeData {
   creditsNeeded?: number;
   trackId?: string | null;
   programId?: string | null;
+  // Add snake_case versions for dimming compatibility
+  track_id?: string | null;
+  program_id?: string | null;
   isVirtual?: boolean;
   junctionType?: 'program' | 'track';
   singleRailStraight?: boolean;
@@ -51,6 +54,9 @@ export function blocksToNodes(blocks: V2RequirementBlock[], singleRailStraight: 
       creditsNeeded: block.credits_needed,
       trackId: block.track_id,
       programId: block.program_id,
+      // Add snake_case versions for dimming compatibility
+      track_id: block.track_id,
+      program_id: block.program_id,
       isVirtual: block.is_virtual,
       junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
       singleRailStraight

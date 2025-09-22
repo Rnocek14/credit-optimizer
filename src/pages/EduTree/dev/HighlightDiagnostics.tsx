@@ -36,88 +36,88 @@ export default function HighlightDiagnostics() {
   const probe = (window as any).__highlight_state__ || null;
 
   const run = React.useCallback(() => {
-    const nodes = getNodes();
-    const edges = getEdges();
-    const headers = nodes.filter(n => n.id?.startsWith?.('program-header:') || n.id?.startsWith?.('track-header:'));
-    const headerKey = headers.length ? keyFromHeaderId(headers[0].id) : null;
-
-    const badHandles = edges.filter(e =>
-      e.sourceHandle === null || e.sourceHandle === 'null' || e.targetHandle === 'null'
-    );
-
-    const ids = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
-    const dangling = edges.filter(e => !ids.has(e.source) || !ids.has(e.target));
-
-    const before = countDimmed(nodes, edges);
-
-    // If context not available or no headers, bail early but show what we have.
-    if (!ctx || !headerKey) {
-      const pass = badHandles.length === 0 && dangling.length === 0 && headers.length > 0;
-      const debugText = [
-        `Context available: ${!!ctx}`,
-        `Headers found: ${headers.map(h => h.id).join(', ')}`,
-        `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
-        `Active key: ${ctx?.activeKey || 'none'}`,
-      ].join('\n');
-      
-      setResult(pass ? 'PASS (partial)' : 'FAIL (partial)');
-      setDetails({ headers: headers.length, before, badHandles: badHandles.length, dangling: dangling.length, note: 'No context or no headers' });
-      setDebugInfo(debugText);
+    if (!ctx) {
+      setResult('FAIL');
+      setDetails({ error: 'No context available' });
       return;
     }
 
-    // Step 1: hover preview
-    ctx.preview(headerKey);
+    try {
+      const nodes = getNodes();
+      const edges = getEdges();
+      const headers = nodes.filter(n => n.id?.startsWith?.('program-header:') || n.id?.startsWith?.('track-header:'));
+      const headerKey = headers.length ? keyFromHeaderId(headers[0].id) : null;
 
-    setTimeout(() => {
+      const badHandles = edges.filter(e =>
+        e.sourceHandle === null || e.sourceHandle === 'null' || e.targetHandle === 'null'
+      );
+
+      const ids = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
+      const dangling = edges.filter(e => !ids.has(e.source) || !ids.has(e.target));
+
+      const before = countDimmed(nodes, edges);
+
+      const details: any = {
+        headers: headers.length,
+        badHandles: badHandles.length,
+        dangling: dangling.length,
+        before
+      };
+
+      // If no headers, partial pass/fail
+      if (!headerKey) {
+        const pass = badHandles.length === 0 && dangling.length === 0 && headers.length > 0;
+        setResult(pass ? 'PASS (partial)' : 'FAIL (partial)');
+        setDetails({ ...details, note: 'No headers found' });
+        setDebugInfo(`No testable headers. Found: ${headers.map(h => h.id).join(', ')}`);
+        return;
+      }
+
+      // Test sequence with immediate reads (React updates should be synchronous)
+      // Step 1: hover preview
+      ctx.preview(headerKey);
       const afterHover = countDimmed();
+      details.afterHover = afterHover;
 
-      // Step 2: lock
+      // Step 2: lock 
       ctx.toggleLock(headerKey);
+      const afterLock = countDimmed();
+      details.afterLock = afterLock;
 
-      setTimeout(() => {
-        const afterLock = countDimmed();
+      // Step 3: clear hover (lock should persist)
+      ctx.clearPreview();
+      const afterLeave = countDimmed();
+      details.afterLeave = afterLeave;
 
-        // Step 3: clear hover (lock should persist)
-        ctx.clearPreview();
+      // Test criteria
+      const hasHeaders = headers.length > 0;
+      const noBadHandles = badHandles.length === 0;
+      const noDanglingEdges = dangling.length === 0;
+      const dimmingWorks = afterHover.nodes > before.nodes || afterHover.edges > before.edges;
+      const lockPersists = afterLeave.nodes >= afterHover.nodes && afterLeave.edges >= afterHover.edges;
 
-        setTimeout(() => {
-          const afterLeave = countDimmed();
+      const pass = hasHeaders && noBadHandles && noDanglingEdges && dimmingWorks && lockPersists;
 
-          const gp = (window as any).gatePositions || null;
-
-          const pass =
-            (headers.length > 0) &&
-            (afterHover.nodes >= before.nodes) &&
-            (afterLeave.nodes >= afterHover.nodes) &&
-            badHandles.length === 0 &&
-            dangling.length === 0;
-
-          setResult(pass ? 'PASS' : 'FAIL');
-          setDetails({
-            headers: headers.length,
-            before,
-            afterHover,
-            afterLock,
-            afterLeave,
-            badHandles: badHandles.length,
-            dangling: dangling.length,
-            gatePositions: gp
-          });
-          
-          const debugText = [
-            `Headers found: ${headers.map(h => h.id).join(', ')}`,
-            `Active key: ${ctx?.activeKey || 'none'}`,
-            `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
-            `Locked key: ${ctx?.lockedKey || 'none'}`,
-            `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
-            `Node types: ${[...new Set(nodes.map(n => n.type))].join(', ')}`,
-            `Edge types: ${[...new Set(edges.map(e => e.type))].join(', ')}`,
-          ].join('\n');
-          setDebugInfo(debugText);
-        }, 60);
-      }, 60);
-    }, 60);
+      setResult(pass ? 'PASS' : 'FAIL');
+      setDetails(details);
+      
+      const debugText = [
+        `Headers found: ${headers.map(h => h.id).join(', ')}`,
+        `Active key: ${ctx?.activeKey || 'none'}`,
+        `Hovered key: ${ctx?.hoveredKey || 'none'}`, 
+        `Locked key: ${ctx?.lockedKey || 'none'}`,
+        `Sample node data: ${nodes[0]?.data ? JSON.stringify(nodes[0].data, null, 2) : 'none'}`,
+        `Node types: ${[...new Set(nodes.map(n => n.type))].join(', ')}`,
+        `Edge types: ${[...new Set(edges.map(e => e.type))].join(', ')}`,
+        `Dimming test: before=${before.nodes}/${before.edges}, hover=${afterHover.nodes}/${afterHover.edges}, works=${dimmingWorks}`
+      ].join('\n');
+      setDebugInfo(debugText);
+      
+    } catch (error) {
+      setResult('ERROR');
+      setDetails({ error: String(error) });
+      setDebugInfo(String(error));
+    }
   }, [ctx]);
 
   return (

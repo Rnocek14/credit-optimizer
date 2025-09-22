@@ -205,28 +205,35 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // Apply dimming using the original useApplyDimming hook with proper dependencies
-  const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, flowEdges);
-  
-  // Final safety filter: Remove any edges with missing endpoints
-  const safeEdges = React.useMemo(() => {
-    const visibleIds = new Set(dimmedNodes.filter(n => !n.hidden).map(n => n.id));
-    const filtered = dimmedEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+  // Apply dimming and edge filtering in correct order
+  const { nodes: processedNodes, edges: processedEdges } = React.useMemo(() => {
+    // First, filter edges based on visible nodes (before dimming)
+    const visibleIds = new Set(nodes.filter(n => !n.hidden).map(n => n.id));
+    const filteredEdges = flowEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
     
-    if (filtered.length !== dimmedEdges.length) {
-      console.log('[EduTreeV2] Filtered out', dimmedEdges.length - filtered.length, 'dangling edges');
+    // Then apply dimming to the processed arrays
+    const { nodes: dimmedNodes, edges: dimmedEdges } = useApplyDimming(nodes, filteredEdges);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[EduTreeV2] Processing:', {
+        originalNodes: nodes.length,
+        originalEdges: flowEdges.length,
+        filteredEdges: filteredEdges.length,
+        dimmedNodes: dimmedNodes.length,
+        dimmedEdges: dimmedEdges.length
+      });
     }
     
-    return filtered;
-  }, [dimmedNodes, dimmedEdges]);
+    return { nodes: dimmedNodes, edges: dimmedEdges };
+  }, [nodes, flowEdges]);
 
   // Store the ACTUAL rendered arrays for diagnostics
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      (window as any).__dimmedNodes__ = dimmedNodes;
-      (window as any).__safeEdges__ = safeEdges;
+      (window as any).__dimmedNodes__ = processedNodes;
+      (window as any).__safeEdges__ = processedEdges;
     }
-  }, [dimmedNodes, safeEdges]);
+  }, [processedNodes, processedEdges]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -587,8 +594,8 @@ function EduTreeCanvasV2Content({
       )}
 
       <ReactFlow
-      nodes={dimmedNodes}
-      edges={safeEdges}
+        nodes={processedNodes}
+        edges={processedEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -617,7 +624,7 @@ function EduTreeCanvasV2Content({
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
-          <div>V2 Multi-Gate Mode • nodes {dimmedNodes.length} • edges {safeEdges.length}</div>
+          <div>V2 Multi-Gate Mode • nodes {processedNodes.length} • edges {processedEdges.length}</div>
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
           <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}</div>
         </div>
