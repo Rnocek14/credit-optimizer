@@ -46,6 +46,8 @@ function perYearForContext(
   const years: Year[] = [1, 2, 3, 4];
   const m = new Map<Year, Set<string>>(years.map(y => [y, new Set()]));
   
+  console.log(`[perYearForContext] Filtering blocks for context:`, ctx, `Total blocks: ${blocks.length}`);
+  
   for (const b of blocks) {
     if (b.is_virtual) continue;
     const y = Math.max(1, Math.min(4, Math.floor(b.level_year || 1))) as Year;
@@ -58,16 +60,21 @@ function perYearForContext(
       if (b.program_id) continue;
     }
 
-    // Track filter
+    // Track filter - FIXED: Include track-specific blocks when doing track comparisons
     if (ctx.trackId) {
+      // If we have a specific track, only include blocks for that track OR blocks with no track (shared)
       if (b.track_id && b.track_id !== ctx.trackId) continue;
     } else {
-      // no track chosen => exclude track-specific
+      // If no specific track requested, include program-level blocks but exclude track-specific ones
+      // UNLESS we're analyzing track divergence (in which case we should include all tracks)
       if (b.track_id) continue;
     }
 
     m.get(y)!.add(b.id);
   }
+  
+  const result = Array.from(m.entries()).map(([year, set]) => [year, set.size]).join(', ');
+  console.log(`[perYearForContext] Result for ${JSON.stringify(ctx)}: ${result}`);
   return m;
 }
 
@@ -101,22 +108,40 @@ export function computeTrackDivergence(
   program: ProgramId,
   tracks: ReadonlyArray<TrackCode>
 ): DivergenceResult {
+  console.log(`[computeTrackDivergence] Analyzing ${program} with tracks:`, tracks);
+  
   if (tracks.length < 2) {
+    console.log(`[computeTrackDivergence] Not enough tracks (${tracks.length}) for divergence`);
     return { divergesAfter: null, forkBetween: null };
   }
 
+  // Filter blocks to include track-specific blocks for this program  
+  const relevantBlocks = blocks.filter(b => 
+    !b.is_virtual && 
+    (b.program_id === program || !b.program_id) // Program blocks or shared
+  );
+  
+  console.log(`[computeTrackDivergence] Relevant blocks for ${program}:`, relevantBlocks.length, 
+    'Track blocks:', relevantBlocks.filter(b => b.track_id).map(b => ({id: b.id, track: b.track_id, year: b.level_year})));
+
   const years: Year[] = [1, 2, 3, 4];
-  const sets = tracks.map(t => perYearForContext(blocks, { programId: program, trackId: t }));
+  const sets = tracks.map(t => perYearForContext(relevantBlocks, { programId: program, trackId: t }));
 
   for (const y of years) {
     const slice = sets.map(s => s.get(y)!);
     const same = slice.every(s => s.size === slice[0].size && [...s].every(v => slice[0].has(v)));
+    console.log(`[computeTrackDivergence] Year ${y} comparison:`, slice.map((s, i) => `${tracks[i]}=${s.size}`).join(', '), 'same?', same);
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
-      if (y === 4) return { divergesAfter: null, forkBetween: null };
+      if (y === 4) {
+        console.log(`[computeTrackDivergence] Divergence at Y4, no gate needed`);
+        return { divergesAfter: null, forkBetween: null };
+      }
+      console.log(`[computeTrackDivergence] Divergence found at Y${y}, fork between Y${y-1} and Y${y}`);
       return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
+  console.log(`[computeTrackDivergence] No divergence found`);
   return { divergesAfter: null, forkBetween: null };
 }
 
@@ -142,25 +167,19 @@ export function decideGatePositions(opts: {
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
   
-  // Debug logging for track gate issues
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[decideGatePositions] Track gate analysis:', {
-      programs,
-      tracksByProgram,
-      blocksWithTracks: blocks.filter(b => b.track_id).map(b => ({ id: b.id, program_id: b.program_id, track_id: b.track_id, level_year: b.level_year }))
-    });
-  }
+  // Always add debug logging (not just development)
+  console.log('[decideGatePositions] Track gate analysis:', {
+    programs,
+    tracksByProgram,
+    blocksWithTracks: blocks.filter(b => b.track_id).map(b => ({ id: b.id, program_id: b.program_id, track_id: b.track_id, level_year: b.level_year }))
+  });
   
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[decideGatePositions] Program ${p} has tracks:`, tracks);
-    }
+    console.log(`[decideGatePositions] Program ${p} has tracks:`, tracks);
     if (tracks.length < 2) continue;
     const tgDiv = computeTrackDivergence(blocks, p, tracks);
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[decideGatePositions] Track divergence for ${p}:`, tgDiv);
-    }
+    console.log(`[decideGatePositions] Track divergence for ${p}:`, tgDiv);
     if (tgDiv.forkBetween) { 
       showTG = true; 
       tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];

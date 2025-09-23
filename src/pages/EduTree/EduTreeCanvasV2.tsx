@@ -487,17 +487,15 @@ function EduTreeCanvasV2Content({
     const map: Record<'bs_cs'|'bs_it', ('se'|'ds')[]> = { bs_cs: [], bs_it: [] };
     for (const [p, arr] of JSON.parse(tracksKey) as ['bs_cs'|'bs_it', ('se'|'ds')[]][]) map[p] = arr;
     
-    // Debug logging for tracksByProgram issues
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[EduTreeV2] tracksByProgram calculation:', {
-        programs,
-        blocksCount: blocks.length,
-        blocksWithTracks: blocks.filter(b => b.track_id).length,
-        tracksKey,
-        map,
-        sampleTrackBlocks: blocks.filter(b => b.track_id).slice(0, 5)
-      });
-    }
+    // Always add debug logging (not just development)
+    console.log('[EduTreeV2] tracksByProgram calculation:', {
+      programs,
+      blocksCount: blocks.length,
+      blocksWithTracks: blocks.filter(b => b.track_id).length,
+      tracksKey,
+      map,
+      sampleTrackBlocks: blocks.filter(b => b.track_id).slice(0, 5)
+    });
     
     // Ensure bs_cs gets its tracks even if not found in current block set
     // This handles cases where program comparison needs track gates
