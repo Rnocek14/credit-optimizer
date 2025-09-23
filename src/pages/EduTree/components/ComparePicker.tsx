@@ -97,39 +97,41 @@ export function ComparePicker({
   // UI
   return (
     <div
-      className={`hud-card bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 flex items-center gap-2 ${className || ""}`}
+      className={`hud-card bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 min-w-[320px] ${className || ""}`}
       onMouseDownCapture={(e) => e.stopPropagation()} // don't steal pan
       aria-label="Compare paths"
     >
-      <PickerChip
-        label={`A • ${labelFor(valueA)}`}
-        color="primary"
-        open={openA}
-        onOpenChange={setOpenA}
-        onClear={() => clear("A")}
-        disabledClear={!valueA}
-      >
-        <Combobox options={options} onSelect={(o) => handlePick("A", o)} />
-      </PickerChip>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1">
+        <PickerChip
+          label={`A • ${labelFor(valueA)}`}
+          color="primary"
+          open={openA}
+          onOpenChange={setOpenA}
+          onClear={() => clear("A")}
+          disabledClear={!valueA}
+        >
+          <Combobox options={options} onSelect={(o) => handlePick("A", o)} />
+        </PickerChip>
 
-      <Button variant="ghost" size="icon" onClick={swap} title="Swap A/B" aria-label="Swap A/B">
-        <ArrowLeftRight className="h-4 w-4" />
-      </Button>
+        <Button variant="ghost" size="icon" onClick={swap} title="Swap A/B" aria-label="Swap A/B" className="shrink-0">
+          <ArrowLeftRight className="h-4 w-4" />
+        </Button>
 
-      <PickerChip
-        label={`B • ${labelFor(valueB)}`}
-        color="comparison"
-        open={openB}
-        onOpenChange={setOpenB}
-        onClear={() => clear("B")}
-        disabledClear={!valueB}
-      >
-        <Combobox options={options} onSelect={(o) => handlePick("B", o)} />
-      </PickerChip>
+        <PickerChip
+          label={`B • ${labelFor(valueB)}`}
+          color="comparison"
+          open={openB}
+          onOpenChange={setOpenB}
+          onClear={() => clear("B")}
+          disabledClear={!valueB}
+        >
+          <Combobox options={options} onSelect={(o) => handlePick("B", o)} />
+        </PickerChip>
+      </div>
 
       {/* Quick presets (optional): show only when both empty */}
       {!valueA && !valueB && options.length > 0 && (
-        <div className="hidden md:flex items-center gap-2 pl-2">
+        <div className="flex items-center gap-2 border-l pl-3">
           {pick("track", "software-engineering") && (
             <Badge 
               className="cursor-pointer hover:bg-primary/20" 
@@ -184,11 +186,11 @@ function PickerChip({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={`justify-between min-w-[200px] ${colorClass}`}>
-          <span className="truncate">{label}</span>
+        <Button variant="outline" className={`justify-between min-w-[180px] max-w-[220px] ${colorClass}`}>
+          <span className="truncate text-left">{label}</span>
           {!disabledClear && (
             <X 
-              className="ml-2 h-3.5 w-3.5 opacity-70 hover:opacity-100" 
+              className="ml-2 h-3.5 w-3.5 opacity-70 hover:opacity-100 shrink-0" 
               onClick={(e) => { e.stopPropagation(); onClear(); }} 
             />
           )}
