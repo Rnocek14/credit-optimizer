@@ -624,9 +624,22 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid sourceHandle value:', { value: h, type: typeof h });
     }
     
-    // Strict validation - only allow valid string values, reject string "null"
-    if (typeof h === 'string' && h !== 'null' && (h === 'out' || h === 'out-se' || h === 'out-ds')) return h as SourceHandle;
-    // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
+    // AGGRESSIVE validation - reject any problematic values
+    if (typeof h !== 'string' || 
+        h === 'null' || 
+        h === 'undefined' || 
+        h === '' ||
+        h.trim() === '' ||
+        h === 'NaN') {
+      return undefined;
+    }
+    
+    // Only allow valid values
+    if (h === 'out' || h === 'out-se' || h === 'out-ds') {
+      return h as SourceHandle;
+    }
+    
+    // Everything else is invalid
     return undefined;
   };
 
@@ -636,59 +649,74 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid targetHandle value:', { value: h, type: typeof h });
     }
     
-    // Strict validation - only allow 'in' for target handles, reject string "null"
-    if (typeof h === 'string' && h !== 'null' && h === 'in') return 'in';
-    // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
+    // AGGRESSIVE validation - reject any problematic values
+    if (typeof h !== 'string' || 
+        h === 'null' || 
+        h === 'undefined' || 
+        h === '' ||
+        h.trim() === '' ||
+        h === 'NaN') {
+      return undefined;
+    }
+    
+    // Only allow 'in' for target handles
+    if (h === 'in') {
+      return 'in';
+    }
+    
+    // Everything else is invalid
     return undefined;
   };
 
-  const sanitizedEdges = reactFlowEdges.map(e => {
-    const sourceHandle = cleanSource(e.sourceHandle);
-    const targetHandle = cleanTarget(e.targetHandle);
-    
-    // Skip edges with invalid handles completely
-    if (sourceHandle === undefined && e.sourceHandle !== undefined) {
-      if (import.meta.env.DEV) {
-        console.warn('[EDGE SKIP] Dropping edge with invalid sourceHandle:', {
-          edgeId: e.id,
-          sourceHandle: e.sourceHandle,
-          source: e.source,
-          target: e.target
-        });
+  const sanitizedEdges = reactFlowEdges
+    .map(e => {
+      const sourceHandle = cleanSource(e.sourceHandle);
+      const targetHandle = cleanTarget(e.targetHandle);
+      
+      // Skip edges with invalid handles completely
+      if (sourceHandle === undefined && e.sourceHandle !== undefined) {
+        if (import.meta.env.DEV) {
+          console.warn('[EDGE SKIP] Dropping edge with invalid sourceHandle:', {
+            edgeId: e.id,
+            sourceHandle: e.sourceHandle,
+            source: e.source,
+            target: e.target
+          });
+        }
+        return null; // Skip this edge entirely
       }
-      return null; // Skip this edge entirely
-    }
-    
-    if (targetHandle === undefined && e.targetHandle !== undefined) {
-      if (import.meta.env.DEV) {
-        console.warn('[EDGE SKIP] Dropping edge with invalid targetHandle:', {
-          edgeId: e.id,
-          targetHandle: e.targetHandle,
-          source: e.source,
-          target: e.target
-        });
+      
+      if (targetHandle === undefined && e.targetHandle !== undefined) {
+        if (import.meta.env.DEV) {
+          console.warn('[EDGE SKIP] Dropping edge with invalid targetHandle:', {
+            edgeId: e.id,
+            targetHandle: e.targetHandle,
+            source: e.source,
+            target: e.target
+          });
+        }
+        return null; // Skip this edge entirely
       }
-      return null; // Skip this edge entirely
-    }
-    
-    // Build sanitized edge, completely omitting keys that are undefined
-    const sanitizedEdge: any = { ...e };
-    
-    // Only set handles if they are valid
-    if (sourceHandle !== undefined) {
-      sanitizedEdge.sourceHandle = sourceHandle;
-    } else {
-      delete sanitizedEdge.sourceHandle;
-    }
-    
-    if (targetHandle !== undefined) {
-      sanitizedEdge.targetHandle = targetHandle;
-    } else {
-      delete sanitizedEdge.targetHandle;
-    }
-    
-    return sanitizedEdge;
-  });
+      
+      // Build sanitized edge, completely omitting keys that are undefined
+      const sanitizedEdge: any = { ...e };
+      
+      // Only set handles if they are valid
+      if (sourceHandle !== undefined) {
+        sanitizedEdge.sourceHandle = sourceHandle;
+      } else {
+        delete sanitizedEdge.sourceHandle;
+      }
+      
+      if (targetHandle !== undefined) {
+        sanitizedEdge.targetHandle = targetHandle;
+      } else {
+        delete sanitizedEdge.targetHandle;
+      }
+      
+      return sanitizedEdge;
+    })
+    .filter(Boolean); // Remove null entries from dropped edges
   
   // Apply immediately - no delays or animations
   console.log('[ManualLayout] Node breakdown:', {

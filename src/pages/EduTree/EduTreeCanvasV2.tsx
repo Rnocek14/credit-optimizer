@@ -225,28 +225,64 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // First, filter edges based on visible nodes (before dimming)
-  const filteredEdges = React.useMemo(() => {
+  // Emergency edge filtering to prevent React Flow pan/zoom issues
+  const safeEdges = React.useMemo(() => {
     const visibleIds = new Set((nodes || []).filter(n => !n.hidden).map(n => n.id));
-    const filtered = (flowEdges || []).filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    
+    // Aggressive edge filtering to remove any problematic edges
+    const filtered = (flowEdges || []).filter(edge => {
+      // Check for valid source and target nodes
+      if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[EduTreeV2] Filtered dangling edge:', edge.id);
+        }
+        return false;
+      }
+      
+      // Check for invalid handle IDs that break React Flow
+      const hasInvalidSource = !edge.sourceHandle || 
+                               edge.sourceHandle === 'null' || 
+                               edge.sourceHandle === 'undefined' ||
+                               edge.sourceHandle.trim() === '';
+      
+      const hasInvalidTarget = !edge.targetHandle || 
+                               edge.targetHandle === 'null' || 
+                               edge.targetHandle === 'undefined' ||
+                               edge.targetHandle.trim() === '';
+      
+      if (hasInvalidSource || hasInvalidTarget) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[EduTreeV2] Filtered edge with invalid handles:', {
+            id: edge.id,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle
+          });
+        }
+        return false;
+      }
+      
+      return true;
+    });
     
     if (process.env.NODE_ENV === 'development' && filtered.length !== (flowEdges || []).length) {
-      console.log('[EduTreeV2] Filtered out', (flowEdges || []).length - filtered.length, 'dangling edges');
+      console.log('[EduTreeV2] Emergency filter removed', (flowEdges || []).length - filtered.length, 'problematic edges');
     }
     
     return filtered;
   }, [nodes, flowEdges]);
 
-  // Then apply dimming to the processed arrays (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: filteredEdges });
+  // Then apply dimming to the safe edges (hook called at top level)
+  const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
 
   // Store the ACTUAL rendered arrays for diagnostics
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       (window as any).__dimmedNodes__ = processedNodes;
       (window as any).__safeEdges__ = processedEdges;
+      (window as any).__originalEdges__ = flowEdges;
+      (window as any).__filteredEdges__ = safeEdges;
     }
-  }, [processedNodes, processedEdges]);
+  }, [processedNodes, processedEdges, flowEdges, safeEdges]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -647,6 +683,10 @@ function EduTreeCanvasV2Content({
         selectNodesOnDrag={false}
         elementsSelectable={true}
         proOptions={{ hideAttribution: true }}
+        onInit={(instance) => {
+          // Store React Flow instance for recovery
+          (window as any).__reactFlowInstance__ = instance;
+        }}
         defaultEdgeOptions={{
           type: 'step',
           markerEnd: {
