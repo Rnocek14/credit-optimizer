@@ -624,8 +624,8 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid sourceHandle value:', { value: h, type: typeof h });
     }
     
-    // Strict validation - only allow valid string values
-    if (typeof h === 'string' && (h === 'out' || h === 'out-se' || h === 'out-ds')) return h as SourceHandle;
+    // Strict validation - only allow valid string values, reject string "null"
+    if (typeof h === 'string' && h !== 'null' && (h === 'out' || h === 'out-se' || h === 'out-ds')) return h as SourceHandle;
     // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
     return undefined;
   };
@@ -636,8 +636,8 @@ export function applyManualLayout(
       console.warn('[SANITIZER] Invalid targetHandle value:', { value: h, type: typeof h });
     }
     
-    // Strict validation - only allow 'in' for target handles
-    if (typeof h === 'string' && h === 'in') return 'in';
+    // Strict validation - only allow 'in' for target handles, reject string "null"
+    if (typeof h === 'string' && h !== 'null' && h === 'in') return 'in';
     // Return undefined for any invalid values (null, 'null', undefined, empty string, etc.)
     return undefined;
   };
