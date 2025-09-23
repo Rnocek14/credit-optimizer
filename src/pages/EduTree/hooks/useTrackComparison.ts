@@ -105,26 +105,29 @@ export function useTrackComparison({
       };
     }
 
+    // Mixed mode: handle track vs program comparisons
+    const mixed = !!(primaryTrackId && comparisonProgramId) || !!(primaryProgramId && comparisonTrackId);
+
     // Get block IDs for primary selection (track or program)
     let primaryBlockIds: string[] = [];
-    if (primaryTrackId) {
+    if (primaryProgramId) {
+      primaryBlockIds = getProgramBlockIds(primaryProgramId);
+    } else if (primaryTrackId) {
       const primaryTrack = TRACK_MAP.get(primaryTrackId);
       if (primaryTrack) {
         primaryBlockIds = primaryTrack.blockIds;
       }
-    } else if (primaryProgramId) {
-      primaryBlockIds = getProgramBlockIds(primaryProgramId);
     }
 
     // Get block IDs for comparison selection (track or program)
     let comparisonBlockIds: string[] = [];
-    if (comparisonTrackId) {
+    if (comparisonProgramId) {
+      comparisonBlockIds = getProgramBlockIds(comparisonProgramId);
+    } else if (comparisonTrackId) {
       const comparisonTrack = TRACK_MAP.get(comparisonTrackId);
       if (comparisonTrack) {
         comparisonBlockIds = comparisonTrack.blockIds;
       }
-    } else if (comparisonProgramId) {
-      comparisonBlockIds = getProgramBlockIds(comparisonProgramId);
     }
 
     if (primaryBlockIds.length === 0) {

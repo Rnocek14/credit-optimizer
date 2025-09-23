@@ -170,52 +170,36 @@ export function decideGatePositions(opts: {
   // GPT SANITY LOG A: Gate input validation  
   console.log('[GATE IN]', { programs, blocks: blocks.length });
 
-  // --- PROGRAM GATE: default to Y1→Y2 whenever 2+ programs are shown
-  let showPG = programs.length >= 2;
-  let pgBetween: [1|2|3|4, 1|2|3|4] = [1, 2];
+  // --- Program gate: always on when comparing programs
+  const showPG = programs.length >= 2;
 
-  if (programs.length >= 2) {
-    const pgDiv = computeProgramDivergence(blocks, programs);
-    if (pgDiv?.forkBetween) pgBetween = pgDiv.forkBetween as any;
-  }
-  const pgX = showPG ? mid(c[`y${pgBetween[0]}`], c[`y${pgBetween[1]}`]) : undefined;
-     
+  // Default gate between Y1 and Y2
+  let pgBetween: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4] = [1, 2];
+
+  // Respect actual divergence if found
   if (showPG) {
-    console.log('[decideGatePositions] Program gate ENABLED:', { 
-      forkBetween: pgBetween, 
-      pgX,
-      colsUsed: { 
-        y1: c.y1, 
-        y2: c.y2, 
-        midCalculation: `(${c.y1} + ${c.y2}) / 2 = ${pgX}` 
-      }
-    });
-  } else {
-    console.log('[decideGatePositions] Program gate DISABLED - no programs to compare');
+    const div = computeProgramDivergence(blocks, programs);
+    if (div?.forkBetween) pgBetween = div.forkBetween as [1 | 2 | 3 | 4, 1 | 2 | 3 | 4];
   }
 
-  // --- TRACK GATE (unchanged)
+  // Guard cols - ensure finite values
+  const yA = c[`y${pgBetween[0] as 1}`];
+  const yB = c[`y${pgBetween[1] as 2}`];
+  const pgX = showPG && Number.isFinite(yA) && Number.isFinite(yB) ? mid(yA, yB) : mid(200, 600); // snapped fallback
+  // --- Track gate (unchanged)
   let showTG = false;
-  let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
+  let tgBetween: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4] | null = null;
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
     if (tracks.length < 2) continue;
-    const tgDiv = computeTrackDivergence(blocks, p, tracks);
-    if (tgDiv?.forkBetween) { showTG = true; tgBetween = tgDiv.forkBetween as any; break; }
+    const div = computeTrackDivergence(blocks, p, tracks);
+    if (div?.forkBetween) { showTG = true; tgBetween = div.forkBetween as [1 | 2 | 3 | 4, 1 | 2 | 3 | 4]; break; }
   }
-  const tgX = showTG && tgBetween ? mid(c[`y${tgBetween[0]}`], c[`y${tgBetween[1]}`]) : undefined;
-    
-  if (showTG && tgBetween) {
-    console.log('[decideGatePositions] Track gate final calculation:', {
-      tgBetween,
-      tgX,
-      colsUsed: {
-        y2: c.y2,
-        y3: c.y3,
-        midCalculation: `(${c.y2} + ${c.y3}) / 2 = ${tgX}`
-      }
-    });
-  }
+
+  const tgX =
+    showTG && tgBetween
+      ? mid(c[`y${tgBetween[0] as 1}`], c[`y${tgBetween[1] as 2}`])
+      : undefined;
 
   // GPT SANITY LOG A: Gate output validation
   console.table([{ showPG, pgX, showTG, tgX }]);
