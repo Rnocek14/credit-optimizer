@@ -2,8 +2,8 @@
  * Enhanced control panel for EduTree with improved UX and accessibility
  */
 
-import React, { useState } from 'react';
-import { Settings, Eye, Filter, Layout, MapPin, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Eye, Filter, Layout, MapPin, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { COPY } from '../constants/copy';
 
 interface EnhancedControlsProps {
   isVisible?: boolean;
@@ -52,32 +53,30 @@ export function EnhancedControls({
   onLayoutDensityChange,
   progressStats
 }: EnhancedControlsProps) {
-  const [isExpanded, setIsExpanded] = useState(() => {
-    try {
-      return localStorage.getItem('edutree-controls-expanded') !== 'false';
-    } catch {
-      return false; // Default collapsed for cleaner UI
-    }
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('edutree:v2:controls-expanded') !== 'false';
   });
 
-  const toggleExpanded = () => {
-    const newExpanded = !isExpanded;
-    setIsExpanded(newExpanded);
-    try {
-      localStorage.setItem('edutree-controls-expanded', String(newExpanded));
-    } catch {
-      // ignore localStorage errors
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('edutree:v2:controls-expanded', String(isExpanded));
     }
+  }, [isExpanded]);
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
   };
 
   if (!isVisible) {
     return (
-      <div className="fixed top-4 right-4 z-50">
+      <div className="enhanced-controls fixed top-4 right-4 z-40">
         <Button
           onClick={() => onVisibilityToggle?.(true)}
           variant="outline"
           size="sm"
           className="bg-background/95 backdrop-blur-sm shadow-lg"
+          aria-label={COPY.showControls}
         >
           <Settings className="w-4 h-4" />
         </Button>
@@ -87,22 +86,25 @@ export function EnhancedControls({
 
   return (
     <TooltipProvider>
-      <Card className="fixed top-4 right-4 z-50 w-80 bg-background/95 backdrop-blur-sm shadow-lg">
+      <Card 
+        className="enhanced-controls fixed top-4 right-4 z-40 w-80 bg-background/95 backdrop-blur-sm shadow-lg"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Settings className="w-4 h-4" />
-              View Controls
+              {COPY.viewControls}
             </CardTitle>
             <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" aria-label="Help">
                     <HelpCircle className="w-3 h-3" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p>Customize how courses and tracks are displayed</p>
+                  <p>{COPY.viewControlsTooltip}</p>
                 </TooltipContent>
               </Tooltip>
               {onVisibilityToggle && (
@@ -111,6 +113,7 @@ export function EnhancedControls({
                   size="sm"
                   onClick={() => onVisibilityToggle(false)}
                   className="h-6 w-6 p-0"
+                  aria-label={COPY.hideControls}
                 >
                   <Eye className="w-3 h-3" />
                 </Button>
@@ -122,13 +125,19 @@ export function EnhancedControls({
           {progressStats && (
             <div className="flex items-center gap-2 pt-2">
               <Badge variant="outline" className="text-xs">
-                {progressStats.completed}/{progressStats.total} Complete
+                {progressStats.completed}/{progressStats.total} {COPY.complete}
               </Badge>
-              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="flex-1 h-2 bg-muted rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuenow={progressStats.completed}
+                aria-valuemax={progressStats.total}
+                aria-valuetext={`${progressStats.completed} of ${progressStats.total} complete`}
+              >
                 <div 
                   className="h-full bg-primary transition-all duration-300"
                   style={{ 
-                    width: `${(progressStats.completed / progressStats.total) * 100}%` 
+                    width: `${progressStats.total > 0 ? (progressStats.completed / progressStats.total) * 100 : 0}%` 
                   }}
                 />
               </div>
@@ -141,19 +150,19 @@ export function EnhancedControls({
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Layout className="w-3 h-3" />
-              View Mode
+              {COPY.viewMode}
             </label>
             <Select 
               value={viewMode} 
               onValueChange={(value: any) => onViewModeChange?.(value)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 text-xs" data-clickable="true">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="overview">Overview</SelectItem>
-                <SelectItem value="detailed">Detailed</SelectItem>
-                <SelectItem value="comparison">Comparison</SelectItem>
+                <SelectItem value="overview">{COPY.overview}</SelectItem>
+                <SelectItem value="detailed">{COPY.detailed}</SelectItem>
+                <SelectItem value="comparison">{COPY.comparison}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -162,19 +171,19 @@ export function EnhancedControls({
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <MapPin className="w-3 h-3" />
-              Layout Density
+              {COPY.layoutDensity}
             </label>
             <Select 
               value={layoutDensity} 
               onValueChange={(value: any) => onLayoutDensityChange?.(value)}
             >
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-8 text-xs" data-clickable="true">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="compact">Compact</SelectItem>
-                <SelectItem value="comfortable">Comfortable</SelectItem>
-                <SelectItem value="spacious">Spacious</SelectItem>
+                <SelectItem value="compact">{COPY.compact}</SelectItem>
+                <SelectItem value="comfortable">{COPY.comfortable}</SelectItem>
+                <SelectItem value="spacious">{COPY.spacious}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -187,14 +196,14 @@ export function EnhancedControls({
                 size="sm" 
                 onClick={toggleExpanded}
                 className="w-full justify-between h-6 text-xs px-0"
+                aria-label={isExpanded ? COPY.collapseAdvanced : COPY.expandAdvanced}
+                aria-expanded={isExpanded}
               >
                 <span className="flex items-center gap-1">
                   <Filter className="w-3 h-3" />
-                  Advanced Options
+                  {COPY.advancedOptions}
                 </span>
-                <div className="text-muted-foreground text-[10px]">
-                  {isExpanded ? '−' : '+'}
-                </div>
+                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </Button>
             </CollapsibleTrigger>
 
@@ -202,30 +211,48 @@ export function EnhancedControls({
               {/* Filter Toggles */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs text-muted-foreground">Show Completed</label>
+                  <label className="text-xs text-muted-foreground">{COPY.showCompleted}</label>
                   <Switch
                     checked={showCompleted}
                     onCheckedChange={onShowCompletedChange}
                     className="scale-75"
+                    role="switch"
+                    aria-label={COPY.showCompleted}
+                    data-clickable="true"
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs text-muted-foreground">Show Prerequisites</label>
+                  <label className="text-xs text-muted-foreground">{COPY.showPrerequisites}</label>
                   <Switch
                     checked={showPrerequisites}
                     onCheckedChange={onShowPrerequisitesChange}
                     className="scale-75"
+                    role="switch"
+                    aria-label={COPY.showPrerequisites}
+                    data-clickable="true"
                   />
                 </div>
               </div>
 
               {/* Quick Actions */}
               <div className="flex gap-1 pt-2 border-t border-border">
-                <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1">
-                  Reset View
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-6 text-[10px] flex-1"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  aria-label={COPY.resetView}
+                >
+                  {COPY.resetView}
                 </Button>
-                <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1">
-                  Center Graph
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-6 text-[10px] flex-1"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  aria-label={COPY.centerGraph}
+                >
+                  {COPY.centerGraph}
                 </Button>
               </div>
             </CollapsibleContent>

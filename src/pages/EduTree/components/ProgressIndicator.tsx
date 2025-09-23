@@ -2,10 +2,11 @@
  * Enhanced progress indicator for course completion and track progress
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { CheckCircle, Circle, Clock, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { COPY } from '../constants/copy';
 
 interface ProgressIndicatorProps {
   completed: number;
@@ -24,9 +25,14 @@ export function ProgressIndicator({
   showDetails = true,
   size = 'md'
 }: ProgressIndicatorProps) {
-  const completedPercentage = total > 0 ? (completed / total) * 100 : 0;
-  const inProgressPercentage = total > 0 ? (inProgress / total) * 100 : 0;
-  const locked = total - completed - inProgress;
+  const { completedPct, inProgressPct, locked } = useMemo(() => {
+    const locked = Math.max(0, total - completed - inProgress);
+    return {
+      locked,
+      completedPct: total > 0 ? (completed / total) * 100 : 0,
+      inProgressPct: total > 0 ? (inProgress / total) * 100 : 0,
+    };
+  }, [completed, inProgress, total]);
 
   const sizeClasses = {
     sm: 'text-xs h-6',
@@ -41,7 +47,7 @@ export function ProgressIndicator({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="progress-indicator space-y-2">
       {/* Header */}
       {trackName && (
         <div className="flex items-center justify-between">
@@ -56,11 +62,18 @@ export function ProgressIndicator({
 
       {/* Progress Bar */}
       <div className="relative">
-        <Progress value={completedPercentage} className="h-3" />
+        <Progress 
+          value={completedPct} 
+          className="h-3"
+          role="progressbar"
+          aria-valuenow={completed}
+          aria-valuemax={total}
+          aria-valuetext={`${completed} of ${total} courses completed`}
+        />
         {inProgress > 0 && (
           <div 
             className="absolute top-0 left-0 h-full bg-yellow-500/50 rounded-full transition-all"
-            style={{ width: `${Math.min(inProgressPercentage, 100 - completedPercentage)}%` }}
+            style={{ width: `${Math.min(inProgressPct, 100 - completedPct)}%` }}
           />
         )}
       </div>
@@ -68,22 +81,24 @@ export function ProgressIndicator({
       {/* Details */}
       {showDetails && (
         <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="flex items-center gap-1 text-green-600">
-            <CheckCircle className={iconSizes[size]} />
-            <span>{completed} Complete</span>
-          </div>
-          
-          {inProgress > 0 && (
-            <div className="flex items-center gap-1 text-yellow-600">
-              <Clock className={iconSizes[size]} />
-              <span>{inProgress} In Progress</span>
+          {completed != null && (
+            <div className="flex items-center gap-1 text-green-600">
+              <CheckCircle className={iconSizes[size]} />
+              <span>{completed} {COPY.complete}</span>
             </div>
           )}
           
-          {locked > 0 && (
+          {inProgress != null && inProgress > 0 && (
+            <div className="flex items-center gap-1 text-yellow-600">
+              <Clock className={iconSizes[size]} />
+              <span>{inProgress} {COPY.inProgress}</span>
+            </div>
+          )}
+          
+          {locked != null && locked > 0 && (
             <div className="flex items-center gap-1 text-muted-foreground">
               <Lock className={iconSizes[size]} />
-              <span>{locked} Locked</span>
+              <span>{locked} {COPY.locked}</span>
             </div>
           )}
         </div>
@@ -91,7 +106,7 @@ export function ProgressIndicator({
 
       {/* Summary Stats */}
       <div className="text-xs text-muted-foreground text-center">
-        {completedPercentage.toFixed(0)}% Complete
+        {completedPct.toFixed(0)}% {COPY.complete}
         {inProgress > 0 && ` • ${inProgress} in progress`}
       </div>
     </div>

@@ -21,6 +21,16 @@
   pointer-events: none !important;
 }
 
+/* Re-enable pointer events on interactive elements inside overlays */
+.comparison-legend button,
+.enhanced-controls button,
+.enhanced-controls [role="switch"],
+.enhanced-controls [role="combobox"],
+.enhanced-controls [data-clickable="true"],
+.progress-indicator button {
+  pointer-events: auto !important;
+}
+
 /* Neutralize edge interaction overlays during debugging */
 .react-flow__edge-interaction {
   pointer-events: none !important;
