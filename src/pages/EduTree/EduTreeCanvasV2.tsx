@@ -85,77 +85,18 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
 };
 
 const GateNode = ({ data }: { data: V2NodeData }) => {
-  const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
-  const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
-  
-  // Show chosen program/track in single-rail mode
-  let subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
-  if (data.singleRailStraight) {
-    if (gateType === 'program') {
-      subtitle = data.programId === 'bs_cs' ? 'BS Computer Science chosen' : 
-                  data.programId === 'bs_it' ? 'BS Information Technology chosen' : 
-                  'Program chosen';
-    } else {
-      subtitle = data.trackId === 'se' ? 'Software Engineering chosen' : 
-                  data.trackId === 'ds' ? 'Data Science chosen' : 
-                  'Track chosen';
-    }
-  }
-  
-  const singleRailStraight = data.singleRailStraight;
-  
-  return (
-    <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
-      <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
-      <div className="font-semibold">{gateTitle}</div>
-      <div className="mt-1 text-xs opacity-70">{subtitle}</div>
+  const label = data.junctionType === 'program' ? 'Choose Program' : 'Choose Track';
+  const subtitle = data.junctionType === 'program' ? 'Program Gate' : 'Track Gate';
 
-      {/* Handles - show appropriate handles based on mode */}
-      {!singleRailStraight && (
-        <>
-          <Handle id="out-se" type="source" position={Position.Top} />
-          <Handle id="out-ds" type="source" position={Position.Bottom} />
-          <Handle 
-            id="out" 
-            type="source" 
-            position={Position.Right}
-            style={{ 
-              top: '50%',
-              transform: 'translateY(-50%)',
-              opacity: 0,
-              width: 1,
-              height: 1
-            }}
-          />
-        </>
-      )}
-      {singleRailStraight && (
-        <Handle 
-          id="out" 
-          type="source" 
-          position={Position.Right}
-          style={{ 
-            top: '50%',
-            transform: 'translateY(-50%)',
-            opacity: 0,
-            width: 1,
-            height: 1
-          }}
-        />
-      )}
-      {/* target handle */}
-      <Handle 
-        id="in" 
-        type="target" 
-        position={Position.Left}
-        style={{ 
-          top: '50%',
-          transform: 'translateY(-50%)',
-          opacity: 0,
-          width: 1,
-          height: 1
-        }}
-      />
+  return (
+    <div className="gate-node">
+      <Handle type="source" position={Position.Right} id="out" className="w-3 h-3" />
+      <Handle type="source" position={Position.Top} id="out-se" className="w-3 h-3" />
+      <Handle type="source" position={Position.Bottom} id="out-ds" className="w-3 h-3" />
+      <div className="text-center">
+        <div className="font-medium text-sm">{subtitle}</div>
+        <div className="text-xs opacity-75">{label}</div>
+      </div>
     </div>
   );
 };
@@ -650,18 +591,43 @@ function EduTreeCanvasV2Content({
         const ensureGateNodes = (nodes: typeof newNodes): typeof newNodes => {
           const out = [...nodes];
           
+          // 8px grid system constants
+          const GRID = 8;
+          const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+          const COL_W = 280;
+          const YEAR_GUTTER = 120;
+          const BASE_X = 200;
+          
+          // Snapped column positions
+          const cols = {
+            y1: snap8(BASE_X),
+            y2: snap8(BASE_X + COL_W + YEAR_GUTTER),
+            y3: snap8(BASE_X + 2 * (COL_W + YEAR_GUTTER)),
+            y4: snap8(BASE_X + 3 * (COL_W + YEAR_GUTTER)),
+            pg: snap8(BASE_X + (COL_W + YEAR_GUTTER) / 2),
+            tg: snap8(BASE_X + (COL_W + YEAR_GUTTER) + (COL_W + YEAR_GUTTER) / 2),
+          };
+          
+          // Y-row calculator with proper grid snapping
+          const yRow = (year: 1 | 2 | 3 | 4) => snap8(120 + (year - 1) * (120 + 96));
+          const midY = (a: number, b: number) => snap8((a + b) / 2);
+          
           // PROGRAM gate between Y1↔Y2
           if (gatePositions.showPG && !out.some(n => n.id === 'gate-y2-programs')) {
             console.log('[GATE DEBUG] Creating missing program gate node');
             out.push({
               id: 'gate-y2-programs',
               type: 'gate',
-              position: { x: gatePositions.pgX ?? 400, y: midY(yRow(1), yRow(2)) },
+              position: { x: cols.pg, y: midY(yRow(1), yRow(2)) },
               data: { 
                 label: 'PROGRAM GATE 1→2',
                 isVirtual: true,
                 junctionType: 'program' as const,
-                singleRailStraight
+                singleRailStraight,
+                title: 'Program Gate',
+                ruleType: 'gate',
+                levelYear: 2,
+                area: 'gate'
               },
               draggable: false,
               selectable: false,
@@ -675,12 +641,16 @@ function EduTreeCanvasV2Content({
             out.push({
               id: 'gate-y3-tracks',
               type: 'gate',
-              position: { x: gatePositions.tgX ?? 900, y: midY(yRow(2), yRow(3)) },
+              position: { x: cols.tg, y: midY(yRow(2), yRow(3)) },
               data: { 
                 label: 'TRACK GATE 2→3',
                 isVirtual: true,
                 junctionType: 'track' as const,
-                singleRailStraight
+                singleRailStraight,
+                title: 'Track Gate',
+                ruleType: 'gate',
+                levelYear: 3,
+                area: 'gate'
               },
               draggable: false,
               selectable: false,
@@ -696,6 +666,12 @@ function EduTreeCanvasV2Content({
           // COMPREHENSIVE DEBUG LOGGING - Phase 3: Gate node processing
           const programGateNode = nodes.find(n => n.id === 'gate-y2-programs');
           const trackGateNode = nodes.find(n => n.id === 'gate-y3-tracks');
+          
+          // Grid snapping system
+          const GRID = 8;
+          const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+          const yRow = (year: 1 | 2 | 3 | 4) => snap8(120 + (year - 1) * (120 + 96));
+          const midY = (a: number, b: number) => snap8((a + b) / 2);
           
           console.log('[GATE DEBUG - PHASE 3] Gate nodes in layout:', {
             programGateExists: !!programGateNode,
@@ -713,30 +689,40 @@ function EduTreeCanvasV2Content({
           return nodes.map(n => {
             if (n.id === 'gate-y2-programs') {
               const shouldShow = gatePositions.showPG && Number.isFinite(gatePositions.pgX);
+              const pgX = snap8(gatePositions.pgX);
+              const pgY = midY(yRow(1), yRow(2));
+              
               console.log('[GATE DEBUG] Program gate processing:', {
                 id: n.id,
                 showPG: gatePositions.showPG,
                 pgX: gatePositions.pgX,
+                snappedPgX: pgX,
+                snappedPgY: pgY,
                 shouldShow,
-                finalPosition: shouldShow ? { x: gatePositions.pgX, y: midY(yRow(1), yRow(2)) } : 'hidden'
+                finalPosition: shouldShow ? { x: pgX, y: pgY } : 'hidden'
               });
               
               if (!shouldShow) return { ...n, hidden: true };
-              return { ...n, position: { x: gatePositions.pgX, y: midY(yRow(1), yRow(2)) }, hidden: false };
+              return { ...n, position: { x: pgX, y: pgY }, hidden: false };
             }
             
             if (n.id === 'gate-y3-tracks') {
               const shouldShow = gatePositions.showTG && Number.isFinite(gatePositions.tgX);
+              const tgX = snap8(gatePositions.tgX);
+              const tgY = midY(yRow(2), yRow(3));
+              
               console.log('[GATE DEBUG] Track gate processing:', {
                 id: n.id,
                 showTG: gatePositions.showTG,
                 tgX: gatePositions.tgX,
+                snappedTgX: tgX,
+                snappedTgY: tgY,
                 shouldShow,
-                finalPosition: shouldShow ? { x: gatePositions.tgX, y: midY(yRow(2), yRow(3)) } : 'hidden'
+                finalPosition: shouldShow ? { x: tgX, y: tgY } : 'hidden'
               });
               
               if (!shouldShow) return { ...n, hidden: true };
-              return { ...n, position: { x: gatePositions.tgX, y: midY(yRow(2), yRow(3)) }, hidden: false };
+              return { ...n, position: { x: tgX, y: tgY }, hidden: false };
             }
             
             return n;
@@ -747,29 +733,38 @@ function EduTreeCanvasV2Content({
         let processedNodes = ensureGateNodes(newNodes);
         processedNodes = withGatePlacement(processedNodes);
         
+        // Apply final 8px grid snapping to all nodes
+        const GRID = 8;
+        const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+        
         const finalNodes = usePlan ? processedNodes.map(n => {
           // Skip header nodes - they don't have phaseAPlan
           if (n.type === 'header') {
             return n;
           }
           if (n.data?.isVirtual) {
-            // Add singleRailStraight flag to gate nodes
+            // Add singleRailStraight flag to gate nodes and snap coordinates
             return { 
               ...n, 
+              position: { x: snap8(n.position.x), y: snap8(n.position.y) },
               data: { ...n.data, singleRailStraight } 
             };
           }
           const p = (n.data as V2NodeData)?.phaseAPlan;
           if (!p) { 
             console.warn('[V2] Missing phaseAPlan for', n.id); 
-            return n; 
+            return { ...n, position: { x: snap8(n.position.x), y: snap8(n.position.y) } }; 
           }
           return { 
             ...n, 
-            position: { x: p.x, y: p.y }, 
+            position: { x: snap8(p.x), y: snap8(p.y) }, 
             data: { ...n.data, hasGridLayout: true, singleRailStraight } 
           };
-        }) : processedNodes.map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
+        }) : processedNodes.map(n => ({ 
+          ...n, 
+          position: { x: snap8(n.position.x), y: snap8(n.position.y) },
+          data: { ...n.data, singleRailStraight } 
+        }));
         
         // No need to filter edges here - filtering happens in manualLayoutRenderer
         

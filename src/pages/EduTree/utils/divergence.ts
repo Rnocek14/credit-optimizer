@@ -156,6 +156,10 @@ export function computeTrackDivergence(
 }
 
 function mid(a: number, b: number): number {
+  // 8px grid system
+  const GRID = 8;
+  const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+  
   console.log('[mid] Calculating midpoint:', {
     a,
     b,
@@ -164,11 +168,11 @@ function mid(a: number, b: number): number {
   
   if (!Number.isFinite(a) || !Number.isFinite(b)) {
     console.error('[mid] CRITICAL: Invalid values passed to mid function:', { a, b });
-    return 500; // Better fallback position
+    return snap8(500); // Better fallback position, snapped to grid
   }
   
-  const result = (a + b) / 2;
-  console.log('[mid] Calculated midpoint result:', result);
+  const result = snap8((a + b) / 2);
+  console.log('[mid] Calculated snapped midpoint result:', result);
   
   return result;
 }
