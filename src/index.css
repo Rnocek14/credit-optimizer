@@ -579,7 +579,15 @@
     --row-gap: 96px;
   }
 
-  /* Unified card sizing for pixel-perfect alignment */
+  /* GPT's Unified Card System - 8px Grid Aligned */
+  :root {
+    --card-w: 280px;
+    --card-pad-y: 12px;
+    --card-pad-x: 14px;
+    --card-radius: 14px;
+    --row-gap: 96px;
+  }
+
   .node-card, .gate-node {
     width: var(--card-w);
     min-width: var(--card-w);
@@ -588,35 +596,63 @@
     border-radius: var(--card-radius);
     box-sizing: border-box;
     line-height: 1.2;
-    /* Eliminate sub-pixel rendering */
     transform: translateZ(0);
     will-change: transform;
   }
 
-  /* Gate node - same dimensions, different styling */
+  /* Gate nodes - same shell, different skin */
   .gate-node {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 72px;
     border: 0;
-    outline: 2px dashed oklch(0.7 0.12 210);
-    background: color-mix(in oklch, white 85%, transparent);
+    outline: 2px dashed hsl(var(--border));
+    background: hsl(var(--background) / 0.85);
     background-clip: padding-box;
+    flex-direction: column;
   }
 
-  /* Consistent highlight outlines */
+  /* Unified outline thickness - no expansion that breaks alignment */
   .hl--primary, .hl--comparison, .hl--shared {
     outline-width: 2px;
     outline-offset: 0;
   }
 
-  /* Compare bar grid layout */
+  /* Title clamping for consistent row appearance */
+  .node-card .title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* GPT's Compare Bar - 3-column grid for perfect centering */
   .compare-bar {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 12px;
+  }
+
+  .compare-bar .pill {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+  }
+
+  .compare-bar .swap {
+    height: 36px;
+    justify-self: center;
+  }
+
+  @media (max-width: 1200px) {
+    .compare-bar {
+      grid-template-columns: 1fr;
+    }
+    .compare-bar .swap {
+      justify-self: center;
+    }
   }
 
   .compare-bar .pill {

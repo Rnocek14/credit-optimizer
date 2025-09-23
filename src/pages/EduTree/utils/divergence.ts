@@ -155,36 +155,17 @@ export function computeTrackDivergence(
   return { divergesAfter: null, forkBetween: null };
 }
 
-function mid(a: number, b: number): number {
-  // 8px grid system
-  const GRID = 8;
-  const snap8 = (n: number) => Math.round(n / GRID) * GRID;
-  
-  console.log('[mid] Calculating midpoint:', {
-    a,
-    b,
-    validInputs: Number.isFinite(a) && Number.isFinite(b)
-  });
-  
-  if (!Number.isFinite(a) || !Number.isFinite(b)) {
-    console.error('[mid] CRITICAL: Invalid values passed to mid function:', { a, b });
-    return snap8(500); // Better fallback position, snapped to grid
-  }
-  
-  const result = snap8((a + b) / 2);
-  console.log('[mid] Calculated snapped midpoint result:', result);
-  
-  return result;
-}
+// Import centralized layout tokens
+import { cols as makeCols, mid, snap8 } from './layoutTokens';
 
-/** Decide which gates to show and where to place them. */
+/** Decide which gates to show and where to place them - GPT's centralized version */
 export function decideGatePositions(opts: {
   blocks: any[];
   programs: ProgramId[];
   tracksByProgram: TracksByProgram;
-  cols: Columns;
 }): GatePositions & { _pgBetween: [Year, Year] | null; _tgBetween: [Year, Year] | null } {
-  const { blocks, programs, tracksByProgram, cols } = opts;
+  const { blocks, programs, tracksByProgram } = opts;
+  const cols = makeCols(); // Use centralized column calculations
   
   // COMPREHENSIVE DEBUG LOGGING - Enhanced input validation
   console.log('[decideGatePositions] COMPREHENSIVE INPUT DEBUG:', {

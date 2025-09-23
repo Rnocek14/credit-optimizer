@@ -30,6 +30,8 @@ import { useTrackComparison } from './hooks/useTrackComparison';
 import { ComparisonLegend } from './components/ComparisonLegend';
 import { DebugHUD } from './components/DebugHUD';
 import { CompareModeHeader } from './components/CompareModeHeader';
+import { GateNode } from './components/nodes/GateNode';
+import { cols as makeCols, yRow, mid, snap8, gateY } from './utils/layoutTokens';
 import { EnhancedControls } from './components/EnhancedControls';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
@@ -185,6 +187,7 @@ function EduTreeCanvasV2Content({
   const primaryProgramId = pathHighlight.primarySelection?.kind === 'program' ? pathHighlight.primarySelection.id as string : undefined;
   const comparisonProgramId = pathHighlight.secondarySelection?.kind === 'program' ? pathHighlight.secondarySelection.id as string : undefined;
   
+  // Call all hooks at top level - GPT's Rules of Hooks fix
   const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -481,40 +484,19 @@ function EduTreeCanvasV2Content({
     return prevRef.current as T;
   }
   
+  // Gate positions using centralized tokens - GPT's single source of truth
   const gatePositions = useMemo(() => {
-    const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
-    
-    // COMPREHENSIVE DEBUG LOGGING - Phase 1: Input validation
     console.log('[GATE DEBUG - PHASE 1] Input data validation:', {
       blocksCount: blocks.length,
       programs,
       tracksByProgram,
-      cols,
       filterMode: effectiveFilterMode,
       primarySelection: pathHighlight.primarySelection,
       secondarySelection: pathHighlight.secondarySelection
     });
     
-    // Log the specific track blocks that should exist for Y3 divergence
-    const y3TrackBlocks = blocks.filter(b => b.level_year === 3 && b.track_id);
-    console.log('[GATE DEBUG] Y3 track blocks found:', y3TrackBlocks.map(b => ({
-      id: b.id,
-      program_id: b.program_id,
-      track_id: b.track_id,
-      level_year: b.level_year
-    })));
+    const next = decideGatePositions({ blocks, programs, tracksByProgram });
     
-    // Check for the gate-y3-tracks node specifically
-    const trackGateNode = blocks.find(b => b.id === 'gate-y3-tracks');
-    console.log('[GATE DEBUG] Track gate node in blocks:', trackGateNode ? {
-      id: trackGateNode.id,
-      position: { x: trackGateNode.position_x, y: trackGateNode.position_y },
-      is_virtual: trackGateNode.is_virtual
-    } : 'NOT FOUND');
-    
-    const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
-    
-    // COMPREHENSIVE DEBUG LOGGING - Phase 2: Output validation
     console.log('[GATE DEBUG - PHASE 2] Gate positions result:', {
       showPG: next.showPG,
       showTG: next.showTG,
@@ -522,16 +504,6 @@ function EduTreeCanvasV2Content({
       tgX: next.tgX,
       hasNaN: Number.isNaN(next.pgX) || Number.isNaN(next.tgX)
     });
-    
-    // CRITICAL: Fix NaN coordinates with fallback positions
-    if (Number.isNaN(next.pgX)) {
-      console.warn('[GATE DEBUG] Program gate X is NaN, using fallback position');
-      next.pgX = cols.pg; // 400
-    }
-    if (Number.isNaN(next.tgX)) {
-      console.warn('[GATE DEBUG] Track gate X is NaN, using fallback position');  
-      next.tgX = cols.tg; // 900
-    }
     
     return stableReturn(gatePositionsRef, next);
   }, [blocksKey, programs.join('|'), tracksKey, effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
@@ -580,37 +552,12 @@ function EduTreeCanvasV2Content({
           edges: newEdges.length 
         });
         
-        // Helper functions for proper Y positioning
-        const yRow = (year: 1|2|3|4) => {
-          const rowHeights = { 1: 240, 2: 360, 3: 480, 4: 640 };
-          return rowHeights[year];
-        };
-        const midY = (a: number, b: number) => (a + b) / 2;
-        
-        // PHASE 3a: Ensure gate nodes exist before positioning them
+        // PHASE 3a: Ensure gate nodes exist before positioning them - GPT's centralized version
         const ensureGateNodes = (nodes: typeof newNodes): typeof newNodes => {
           const out = [...nodes];
+          const cols = makeCols(); // Use centralized layout tokens
           
-          // 8px grid system constants
-          const GRID = 8;
-          const snap8 = (n: number) => Math.round(n / GRID) * GRID;
-          const COL_W = 280;
-          const YEAR_GUTTER = 120;
-          const BASE_X = 200;
-          
-          // Snapped column positions
-          const cols = {
-            y1: snap8(BASE_X),
-            y2: snap8(BASE_X + COL_W + YEAR_GUTTER),
-            y3: snap8(BASE_X + 2 * (COL_W + YEAR_GUTTER)),
-            y4: snap8(BASE_X + 3 * (COL_W + YEAR_GUTTER)),
-            pg: snap8(BASE_X + (COL_W + YEAR_GUTTER) / 2),
-            tg: snap8(BASE_X + (COL_W + YEAR_GUTTER) + (COL_W + YEAR_GUTTER) / 2),
-          };
-          
-          // Y-row calculator with proper grid snapping
-          const yRow = (year: 1 | 2 | 3 | 4) => snap8(120 + (year - 1) * (120 + 96));
-          const midY = (a: number, b: number) => snap8((a + b) / 2);
+          // Gate positions are now calculated using centralized layout tokens
           
           // PROGRAM gate between Y1↔Y2
           if (gatePositions.showPG && !out.some(n => n.id === 'gate-y2-programs')) {
@@ -997,7 +944,7 @@ function EduTreeCanvasV2Content({
         )}
 
         <ReactFlow
-          nodes={finalNodes}
+          nodes={nodes}
           edges={finalEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -1021,7 +968,12 @@ function EduTreeCanvasV2Content({
           }}
         >
           <Background />
-          <Controls />
+          <Controls 
+            showZoom={true}
+            showFitView={true}
+            showInteractive={true}
+            position="top-right"
+          />
         </ReactFlow>
       
         {/* Edge Type Legend - show in compare modes */}
