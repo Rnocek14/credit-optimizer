@@ -25,6 +25,7 @@ import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
 import { ReactFlowErrorBoundary } from '@/components/ReactFlowErrorBoundary';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
+import { useReactFlowEventDebugger } from './hooks/useReactFlowEventDebugger';
 import { DualSelectionLegend } from './components/DualSelectionLegend';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
@@ -225,13 +226,38 @@ function EduTreeCanvasV2Content({
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
   
-  // Emergency edge filtering to prevent React Flow pan/zoom issues
+  // Enhanced React Flow monitoring and recovery system
+  const eventDebugger = useReactFlowEventDebugger({
+    enabled: process.env.NODE_ENV === 'development',
+    recoveryEnabled: true,
+    onCorruptionDetected: (details) => {
+      console.error('[EduTreeV2] React Flow corruption detected:', details);
+      
+      // Force re-render of safe edges if corruption is detected
+      if (details.corruptionCount < 3) {
+        setTimeout(() => {
+          console.log('[EduTreeV2] Triggering edge refresh due to corruption');
+          setEdges(prev => [...prev]);
+        }, 100);
+      }
+    }
+  });
+  
+  // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
   const safeEdges = React.useMemo(() => {
     const visibleIds = new Set((nodes || []).filter(n => !n.hidden).map(n => n.id));
     
-    // Aggressive edge filtering to remove any problematic edges
+    // ULTRA-AGGRESSIVE edge filtering - prevent ALL problematic edges
     const filtered = (flowEdges || []).filter(edge => {
-      // Check for valid source and target nodes
+      // 1. Validate edge exists and has required properties
+      if (!edge || typeof edge.id !== 'string' || !edge.source || !edge.target) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[EduTreeV2] Filtered malformed edge:', edge);
+        }
+        return false;
+      }
+      
+      // 2. Check for valid source and target nodes
       if (!visibleIds.has(edge.source) || !visibleIds.has(edge.target)) {
         if (process.env.NODE_ENV === 'development') {
           console.log('[EduTreeV2] Filtered dangling edge:', edge.id);
@@ -239,24 +265,59 @@ function EduTreeCanvasV2Content({
         return false;
       }
       
-      // Check for invalid handle IDs that break React Flow
-      const hasInvalidSource = !edge.sourceHandle || 
-                               edge.sourceHandle === 'null' || 
-                               edge.sourceHandle === 'undefined' ||
-                               edge.sourceHandle.trim() === '';
+      // 3. COMPREHENSIVE handle validation - covers ALL problematic cases
+      const sourceHandle = edge.sourceHandle;
+      const targetHandle = edge.targetHandle;
       
-      const hasInvalidTarget = !edge.targetHandle || 
-                               edge.targetHandle === 'null' || 
-                               edge.targetHandle === 'undefined' ||
-                               edge.targetHandle.trim() === '';
+      // Check for ANY form of invalid source handle
+      const hasInvalidSource = (
+        sourceHandle !== undefined && (
+          sourceHandle === null ||
+          sourceHandle === 'null' || 
+          sourceHandle === 'undefined' ||
+          sourceHandle === 'false' ||
+          sourceHandle === 'NaN' ||
+          typeof sourceHandle !== 'string' ||
+          sourceHandle.trim() === '' ||
+          sourceHandle.includes('null') ||
+          sourceHandle.includes('undefined')
+        )
+      );
+      
+      // Check for ANY form of invalid target handle  
+      const hasInvalidTarget = (
+        targetHandle !== undefined && (
+          targetHandle === null ||
+          targetHandle === 'null' || 
+          targetHandle === 'undefined' ||
+          targetHandle === 'false' ||
+          targetHandle === 'NaN' ||
+          typeof targetHandle !== 'string' ||
+          targetHandle.trim() === '' ||
+          targetHandle.includes('null') ||
+          targetHandle.includes('undefined')
+        )
+      );
       
       if (hasInvalidSource || hasInvalidTarget) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[EduTreeV2] Filtered edge with invalid handles:', {
+          console.error('[EduTreeV2] CRITICAL: Filtered edge with toxic handles:', {
             id: edge.id,
+            source: edge.source,
+            target: edge.target,
             sourceHandle: edge.sourceHandle,
-            targetHandle: edge.targetHandle
+            targetHandle: edge.targetHandle,
+            sourceHandleType: typeof edge.sourceHandle,
+            targetHandleType: typeof edge.targetHandle
           });
+        }
+        return false;
+      }
+      
+      // 4. Additional React Flow corruption prevention
+      if (edge.source === edge.target) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[EduTreeV2] Filtered self-loop edge:', edge.id);
         }
         return false;
       }
@@ -264,11 +325,45 @@ function EduTreeCanvasV2Content({
       return true;
     });
     
-    if (process.env.NODE_ENV === 'development' && filtered.length !== (flowEdges || []).length) {
-      console.log('[EduTreeV2] Emergency filter removed', (flowEdges || []).length - filtered.length, 'problematic edges');
+    // 5. Final corruption check - ensure no problematic edges survive
+    const finalFiltered = filtered.filter(edge => {
+      const stillProblematic = (
+        edge.sourceHandle === 'null' ||
+        edge.targetHandle === 'null' ||
+        (typeof edge.sourceHandle === 'string' && edge.sourceHandle.trim() === '') ||
+        (typeof edge.targetHandle === 'string' && edge.targetHandle.trim() === '')
+      );
+      
+      if (stillProblematic && process.env.NODE_ENV === 'development') {
+        console.error('[EduTreeV2] EMERGENCY: Final filter caught problematic edge:', edge);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (process.env.NODE_ENV === 'development') {
+      const removedCount = (flowEdges || []).length - finalFiltered.length;
+      if (removedCount > 0) {
+        console.warn('[EduTreeV2] Comprehensive filter removed', removedCount, 'problematic edges');
+        
+        // Log details of what was filtered for debugging
+        const problemEdges = (flowEdges || []).filter(e => !finalFiltered.includes(e));
+        console.group('[EduTreeV2] Filtered edges details:');
+        problemEdges.forEach(edge => {
+          console.warn('Filtered:', {
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle
+          });
+        });
+        console.groupEnd();
+      }
     }
     
-    return filtered;
+    return finalFiltered;
   }, [nodes, flowEdges]);
 
   // Then apply dimming to the safe edges (hook called at top level)

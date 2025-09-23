@@ -617,54 +617,133 @@ export function applyManualLayout(
   // Combine regular nodes with header nodes
   const allNodes = [...nodes, ...headerNodes];
   
-  // Final sanitizer: ensure no bad handles survive regardless of source
+  // ULTRA-DEFENSIVE handle sanitization - prevent ALL forms of corruption
   const cleanSource = (h: unknown): SourceHandle => {
-    // Debug logging for problematic handles (development only)
-    if (import.meta.env.DEV && h !== undefined && typeof h === 'string' && !['out', 'out-se', 'out-ds'].includes(h)) {
-      console.warn('[SANITIZER] Invalid sourceHandle value:', { value: h, type: typeof h });
-    }
+    // COMPREHENSIVE validation - catch EVERY possible problematic case
     
-    // AGGRESSIVE validation - reject any problematic values
-    if (typeof h !== 'string' || 
-        h === 'null' || 
-        h === 'undefined' || 
-        h === '' ||
-        h.trim() === '' ||
-        h === 'NaN') {
+    // 1. Type validation
+    if (typeof h !== 'string') {
+      if (import.meta.env.DEV && h !== undefined) {
+        console.error('[SANITIZER] Non-string sourceHandle:', { value: h, type: typeof h });
+      }
       return undefined;
     }
     
-    // Only allow valid values
-    if (h === 'out' || h === 'out-se' || h === 'out-ds') {
+    // 2. Null-string variations (the main culprit)
+    const nullStrings = ['null', 'undefined', 'NaN', 'false', 'true'];
+    if (nullStrings.includes(h)) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Null-string sourceHandle detected:', h);
+      }
+      return undefined;
+    }
+    
+    // 3. Empty/whitespace validation
+    if (h === '' || h.trim() === '' || h.length === 0) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Empty sourceHandle detected:', { value: h, length: h.length });
+      }
+      return undefined;
+    }
+    
+    // 4. Pattern matching for corruption
+    const corruptionPatterns = [
+      /null/i,
+      /undefined/i,
+      /NaN/i,
+      /^\s*$/,
+      /^[0-9]+$/,  // Pure numbers
+      /[{}[\]()]/,  // Object/array remnants
+    ];
+    
+    const hasCorruption = corruptionPatterns.some(pattern => pattern.test(h));
+    if (hasCorruption) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Corrupted sourceHandle pattern detected:', h);
+      }
+      return undefined;
+    }
+    
+    // 5. Strict whitelist - ONLY allow known good values
+    const validHandles: SourceHandle[] = ['out', 'out-se', 'out-ds'];
+    if (validHandles.includes(h as SourceHandle)) {
       return h as SourceHandle;
     }
     
-    // Everything else is invalid
+    // 6. Everything else is invalid and potentially corrupting
+    if (import.meta.env.DEV) {
+      console.error('[SANITIZER] Unknown sourceHandle value rejected:', { 
+        value: h, 
+        type: typeof h,
+        length: h.length,
+        charCodes: Array.from(h).map(c => c.charCodeAt(0))
+      });
+    }
+    
     return undefined;
   };
 
   const cleanTarget = (h: unknown): string | undefined => {
-    // Debug logging for problematic handles (development only)
-    if (import.meta.env.DEV && h !== undefined && typeof h === 'string' && h !== 'in') {
-      console.warn('[SANITIZER] Invalid targetHandle value:', { value: h, type: typeof h });
-    }
+    // COMPREHENSIVE validation for target handles
     
-    // AGGRESSIVE validation - reject any problematic values
-    if (typeof h !== 'string' || 
-        h === 'null' || 
-        h === 'undefined' || 
-        h === '' ||
-        h.trim() === '' ||
-        h === 'NaN') {
+    // 1. Type validation
+    if (typeof h !== 'string') {
+      if (import.meta.env.DEV && h !== undefined) {
+        console.error('[SANITIZER] Non-string targetHandle:', { value: h, type: typeof h });
+      }
       return undefined;
     }
     
-    // Only allow 'in' for target handles
+    // 2. Null-string variations
+    const nullStrings = ['null', 'undefined', 'NaN', 'false', 'true'];
+    if (nullStrings.includes(h)) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Null-string targetHandle detected:', h);
+      }
+      return undefined;
+    }
+    
+    // 3. Empty/whitespace validation
+    if (h === '' || h.trim() === '' || h.length === 0) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Empty targetHandle detected:', { value: h, length: h.length });
+      }
+      return undefined;
+    }
+    
+    // 4. Pattern matching for corruption
+    const corruptionPatterns = [
+      /null/i,
+      /undefined/i,
+      /NaN/i,
+      /^\s*$/,
+      /^[0-9]+$/,  // Pure numbers
+      /[{}[\]()]/,  // Object/array remnants
+    ];
+    
+    const hasCorruption = corruptionPatterns.some(pattern => pattern.test(h));
+    if (hasCorruption) {
+      if (import.meta.env.DEV) {
+        console.error('[SANITIZER] Corrupted targetHandle pattern detected:', h);
+      }
+      return undefined;
+    }
+    
+    // 5. Strict whitelist - ONLY allow 'in' for targets
     if (h === 'in') {
       return 'in';
     }
     
-    // Everything else is invalid
+    // 6. Everything else is invalid
+    if (import.meta.env.DEV) {
+      console.error('[SANITIZER] Invalid targetHandle value rejected:', { 
+        value: h, 
+        type: typeof h,
+        length: h.length,
+        charCodes: Array.from(h).map(c => c.charCodeAt(0))
+      });
+    }
+    
     return undefined;
   };
 

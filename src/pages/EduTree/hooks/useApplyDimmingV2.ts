@@ -170,24 +170,76 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
   // Compute dimmed edges with dual selection support  
   const dimmedEdges = useMemo(() => {
-    // Pre-filter edges to remove any with invalid handles that could break React Flow
+    // ULTRA-DEFENSIVE edge pre-filtering - prevent React Flow corruption at dimming layer
     const validEdges = edges.filter(e => {
-      const hasValidHandles = !(
-        e.sourceHandle === 'null' || 
-        e.targetHandle === 'null' ||
-        (typeof e.sourceHandle === 'string' && e.sourceHandle.trim() === '') ||
-        (typeof e.targetHandle === 'string' && e.targetHandle.trim() === '')
-      );
-      
-      if (!hasValidHandles && import.meta.env.DEV) {
-        console.warn('[DIMMING] Filtering out edge with invalid handles:', {
-          id: e.id,
-          sourceHandle: e.sourceHandle,
-          targetHandle: e.targetHandle
-        });
+      // 1. Basic edge structure validation
+      if (!e || typeof e.id !== 'string' || !e.source || !e.target) {
+        if (import.meta.env.DEV) {
+          console.error('[DIMMING] Malformed edge filtered:', e);
+        }
+        return false;
       }
       
-      return hasValidHandles;
+      // 2. Comprehensive handle corruption detection
+      const sourceHandle = e.sourceHandle;
+      const targetHandle = e.targetHandle;
+      
+      // Check for TOXIC source handles (all variations)
+      const hasToxicSource = (
+        sourceHandle !== undefined && (
+          sourceHandle === null ||
+          sourceHandle === 'null' ||
+          sourceHandle === 'undefined' ||
+          sourceHandle === 'false' ||
+          sourceHandle === 'NaN' ||
+          typeof sourceHandle !== 'string' ||
+          sourceHandle.trim() === '' ||
+          sourceHandle.length === 0 ||
+          /null|undefined|NaN/i.test(sourceHandle)
+        )
+      );
+      
+      // Check for TOXIC target handles (all variations)
+      const hasToxicTarget = (
+        targetHandle !== undefined && (
+          targetHandle === null ||
+          targetHandle === 'null' ||
+          targetHandle === 'undefined' ||
+          targetHandle === 'false' ||
+          targetHandle === 'NaN' ||
+          typeof targetHandle !== 'string' ||
+          targetHandle.trim() === '' ||
+          targetHandle.length === 0 ||
+          /null|undefined|NaN/i.test(targetHandle)
+        )
+      );
+      
+      if (hasToxicSource || hasToxicTarget) {
+        if (import.meta.env.DEV) {
+          console.error('[DIMMING] TOXIC handles filtered at dimming layer:', {
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: sourceHandle,
+            targetHandle: targetHandle,
+            sourceHandleType: typeof sourceHandle,
+            targetHandleType: typeof targetHandle,
+            hasToxicSource,
+            hasToxicTarget
+          });
+        }
+        return false;
+      }
+      
+      // 3. Self-loop validation
+      if (e.source === e.target) {
+        if (import.meta.env.DEV) {
+          console.warn('[DIMMING] Self-loop edge filtered:', e.id);
+        }
+        return false;
+      }
+      
+      return true;
     });
     
     const { primarySelection, secondarySelection } = highlight;
