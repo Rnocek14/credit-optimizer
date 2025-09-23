@@ -1,92 +1,55 @@
 /**
- * Deterministic Grid - Reserved column anchors for consistent positioning
- * Ensures SE and DS single-track routes use identical column positions
+ * Deterministic Grid - Reserved column anchors for consistent positioning  
+ * Uses centralized layout tokens for perfect symmetry
  */
+
+import { laneXs, LANE_Y_POSITIONS, snapToGrid, packLane } from './layoutTokens';
 
 export type Lane = 'up' | 'down';
 
 /**
- * Dynamic track spreading configuration
- * Creates visual "branching away" effect for tracks starting in Y3
+ * Get reserved column positions based on viewport width
+ * All positioning derives from centralized layout tokens
  */
-const COL_W = 280;        // Node width
-const COL_GAP = 120;      // Standard gap between years
-const TRACK_SPREAD = 240; // Enhanced spread for Y3/Y4 track separation (≈ 2x COL_GAP)
-
-/**
- * Reserved X coordinates for each year/lane combination
- * Y3/Y4 use dynamic spreading to create "branching away" visual narrative
- */
-export const reservedColsByYear: Record<number, Record<string, number>> = {
-  1: { 
-    shared: 200  // Y1 is always shared, single column
-  },
-  2: { 
-    shared: 600,  // Fallback for shared Y2 content
-    up: 600,      // SE/CS lane - upper track
-    down: 600,    // DS/IT lane - lower track
-    gate: 400     // Program gate between Y1 and Y2
-  },
-  3: { 
-    gate: 900,    // Gate position between Y2 and Y3 center
-    // Dynamic branching positions - SE goes left, DS goes right
-    up: 600 + COL_W + COL_GAP - TRACK_SPREAD/2,    // Y3L: SE track branches left
-    down: 600 + COL_W + COL_GAP + TRACK_SPREAD/2   // Y3R: DS track branches right
-  },
-  4: { 
-    // Y4 maintains the same spread as Y3 for consistency
-    up: 600 + COL_W + COL_GAP - TRACK_SPREAD/2,    // Y4L: SE track (left)
-    down: 600 + COL_W + COL_GAP + TRACK_SPREAD/2   // Y4R: DS track (right)
-  }
-};
-
-/**
- * Reserved Y coordinates for up/down lanes by year
- * Enhanced for better visual separation and per-lane packing
- */
-export const reservedRowsByLane: Record<number, Record<Lane | 'center', number>> = {
-  2: {
-    up: 240,     // Upper lane Y2 courses
-    down: 480,   // Lower lane Y2 courses
-    center: 360  // Single-track straight line
-  },
-  3: {
-    up: 200,     // Upper lane Y3 courses (SE - slightly higher)
-    down: 520,   // Lower lane Y3 courses (DS - slightly lower)
-    center: 360  // Single-track straight line
-  },
-  4: {
-    up: 120,     // Upper lane Y4 courses (SE - higher up for better separation)
-    down: 600,   // Lower lane Y4 courses (DS - lower down)
-    center: 360  // Single-track straight line
-  }
-};
-
-/**
- * Per-lane node packing function to eliminate overlaps
- * Keeps X position fixed, only adjusts Y within each lane
- */
-const GRID = 8;
-const snap8 = (n: number) => Math.round(n / GRID) * GRID;
-
-export function packLane(nodes: Array<{ position: { x: number; y: number } }>, topY: number, slotH: number = 120, gap: number = 24): void {
-  if (nodes.length === 0) return;
+export function getReservedColsByYear(viewW: number = 1800): Record<number, Record<string, number>> {
+  const lanes = laneXs(viewW);
   
-  // Sort by current Y position
-  nodes.sort((a, b) => a.position.y - b.position.y);
-  
-  let y = snap8(topY);
-  for (const node of nodes) {
-    // Ensure minimum spacing from previous node
-    y = Math.max(y, snap8(node.position.y));
-    node.position.y = y;
-    y += snap8(slotH + gap);
-  }
+  return {
+    1: { 
+      shared: lanes.y1  // Y1 is always shared, single column
+    },
+    2: { 
+      shared: lanes.y2,    // Fallback for shared Y2 content
+      up: lanes.y2,        // SE/CS lane - upper track
+      down: lanes.y2,      // DS/IT lane - lower track  
+      gate: lanes.gatePG   // Program gate between Y1 and Y2
+    },
+    3: { 
+      gate: lanes.gateTG,  // Gate position at center of track spread
+      up: lanes.y3L,       // SE track - left branch
+      down: lanes.y3R      // DS track - right branch
+    },
+    4: { 
+      up: lanes.y4L,       // SE final year - left branch
+      down: lanes.y4R      // DS final year - right branch
+    }
+  };
 }
 
 /**
+ * Reserved Y coordinates for up/down lanes by year
+ * Uses centralized lane positioning with enhanced separation
+ */
+export const reservedRowsByLane = LANE_Y_POSITIONS;
+
+/**
+ * Re-export packLane from layoutTokens for convenience
+ */
+export { packLane };
+
+/**
  * Apply deterministic grid coordinates to a node's phase A plan
- * Snaps X to reserved columns, preserves Y from manual positioning
+ * Uses centralized layout tokens for consistent positioning
  */
 export function applyDeterministicGrid(
   levelYear: number,
@@ -94,14 +57,15 @@ export function applyDeterministicGrid(
   manualX: number,
   manualY: number,
   useGrid: boolean,
-  singleRailStraight: boolean = false
+  singleRailStraight: boolean = false,
+  viewW: number = 1800
 ): { x: number; y: number } {
   if (!useGrid) {
     return { x: manualX, y: manualY };
   }
 
-  // Get reserved column for this year/lane
-  const yearCols = reservedColsByYear[levelYear];
+  // Get reserved columns using centralized layout tokens
+  const yearCols = getReservedColsByYear(viewW)[levelYear];
   if (!yearCols) {
     console.warn('[DeterministicGrid] No reserved columns for year:', levelYear);
     return { x: manualX, y: manualY };
@@ -129,7 +93,8 @@ export function applyDeterministicGrid(
     gridY = reservedRowsByLane[levelYear][lane];
   }
 
-  return { x: gridX, y: gridY };
+  // Snap to grid for perfect alignment
+  return { x: snapToGrid(gridX), y: snapToGrid(gridY) };
 }
 
 /**
@@ -137,12 +102,14 @@ export function applyDeterministicGrid(
  * Used for testing that SE and DS routes have identical column positions
  */
 export function validateGridConsistency(
-  nodes: Array<{ data: { phaseAPlan?: { lane: Lane | undefined; col: number; x: number; y: number } } }>
+  nodes: Array<{ data: { phaseAPlan?: { lane: Lane | undefined; col: number; x: number; y: number } } }>,
+  viewW: number = 1800
 ): { 
   consistent: boolean; 
   issues: Array<{ year: number; expectedX: number; actualX: number; nodeCount: number }> 
 } {
   const issues: Array<{ year: number; expectedX: number; actualX: number; nodeCount: number }> = [];
+  const reservedCols = getReservedColsByYear(viewW);
   
   // Group nodes by year
   const nodesByYear = new Map<number, typeof nodes>();
@@ -166,7 +133,7 @@ export function validateGridConsistency(
     if (upXs.length > 1) {
       issues.push({ 
         year, 
-        expectedX: reservedColsByYear[year]?.up || 0, 
+        expectedX: reservedCols[year]?.up || 0, 
         actualX: upXs[0], 
         nodeCount: upNodes.length 
       });
@@ -177,7 +144,7 @@ export function validateGridConsistency(
     if (downXs.length > 1) {
       issues.push({ 
         year, 
-        expectedX: reservedColsByYear[year]?.down || 0, 
+        expectedX: reservedCols[year]?.down || 0, 
         actualX: downXs[0], 
         nodeCount: downNodes.length 
       });
@@ -201,7 +168,7 @@ export function exposeGridValidation() {
       return validateGridConsistency(nodes);
     };
     
-    (window as any).__reservedCols = reservedColsByYear;
+    (window as any).__reservedCols = getReservedColsByYear();
     console.log('[DeterministicGrid] Grid validation exposed to window.__validateGridConsistency()');
   }
 }

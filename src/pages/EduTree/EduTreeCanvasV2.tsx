@@ -9,6 +9,7 @@ import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { useApplyDimmingV2 } from './hooks/useApplyDimmingV2';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
+import { laneXs } from './utils/layoutTokens';
 import { decideGatePositions } from './utils/divergence';
 import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
 import { runRegressionChecks } from './utils/regressionChecks';
@@ -452,7 +453,7 @@ function EduTreeCanvasV2Content({
     return Object.freeze(map);
   }, [tracksKey]);
 
-  // 4) Gate positions: use dynamic track spreading and ensure proper gate positioning
+  // 4) Gate positions: use centralized layout tokens for perfect symmetry
   function stableReturn<T>(prevRef: React.MutableRefObject<T|null>, next: T): T {
     const same = prevRef.current && JSON.stringify(prevRef.current) === JSON.stringify(next);
     if (!same) prevRef.current = next;
@@ -460,24 +461,24 @@ function EduTreeCanvasV2Content({
   }
   
   const gatePositions = useMemo(() => {
-    // Use dynamic spreading configuration
-    const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
-    const y3Center = 600 + COL_W + COL_GAP; // Center between Y3L and Y3R
+    // Use centralized layout tokens for consistent positioning
+    const viewW = 1800; // Could be made dynamic based on viewport
+    const lanesCalc = laneXs(viewW);
     const cols = { 
-      y1: 200, 
-      y2: 600, 
-      y3: y3Center,  // Use center of spread for gate positioning
-      y4: y3Center,  // Y4 maintains same center as Y3
-      pg: 400, 
-      tg: 900 
+      y1: lanesCalc.y1, 
+      y2: lanesCalc.y2, 
+      y3: lanesCalc.gateTG,  // Track gate at center of spread
+      y4: lanesCalc.gateTG,  // Y4 uses same center
+      pg: lanesCalc.gatePG,  // Program gate between Y1 and Y2
+      tg: lanesCalc.gateTG   // Track gate position
     };
-    console.log('[CANVAS DEBUG] Computing gate positions with dynamic spreading:', { 
+    console.log('[CANVAS DEBUG] Computing gate positions with centralized tokens:', { 
       blocksCount: blocks.length, 
       programs, 
       tracksByProgram, 
       cols,
       effectiveFilterMode: currentFilterMode,
-      TRACK_SPREAD
+      lanes: lanesCalc
     });
     const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
     console.log('[CANVAS DEBUG] Gate positions computed:', next);
@@ -615,22 +616,26 @@ function EduTreeCanvasV2Content({
     if (process.env.NODE_ENV === 'development') {
       console.log('[EduTreeV2] Updated handle internals for visible gate nodes:', visibleGateIds);
       
+      // Use consistent lane calculation
+      const viewW = 1800;
+      const lanesCalc = laneXs(viewW);
+      
       // Run GPT's validation functions
       try {
         assertNoDanglingHeaders({ edges: flowEdges, nodes });
         assertGateX({ 
           nodes, 
           gatePositions, 
-          cols: { y1: 200, y2: 600, y3: 1100, y4: 1100 }  // Use dynamic y3/y4 center
+          cols: { y1: lanesCalc.y1, y2: lanesCalc.y2, y3: lanesCalc.gateTG, y4: lanesCalc.gateTG }
         });
         assertHandlesOnce(nodes);
         
-        // Run comprehensive regression checks with updated column positions
+        // Run comprehensive regression checks with centralized column positions
         runRegressionChecks({
           edges: flowEdges,
           nodes,
           gatePositions,
-          cols: { y1: 200, y2: 600, y3: 1100, y4: 1100 }  // Use dynamic y3/y4 center
+          cols: { y1: lanesCalc.y1, y2: lanesCalc.y2, y3: lanesCalc.gateTG, y4: lanesCalc.gateTG }
         });
         
         // Run ChatGPT's smoke test
@@ -696,13 +701,11 @@ function EduTreeCanvasV2Content({
     >
       <>
         <div className="h-full w-full edu-tree-canvas">
-        {/* Enhanced Lane Headers with dynamic positioning and track indicators */}
+        {/* Enhanced Lane Headers with centralized positioning */}
         {!singleRailStraight && (() => {
-          // Calculate dynamic positions based on track spreading
-          const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
-          const y3L = 600 + COL_W + COL_GAP - TRACK_SPREAD/2;  // SE lane (left)
-          const y3R = 600 + COL_W + COL_GAP + TRACK_SPREAD/2;  // DS lane (right)
-          const midpoint = (y3L + y3R) / 2;
+          // Calculate positions using centralized layout tokens
+          const viewW = 1800;
+          const lanesCalc = laneXs(viewW);
           
           const getLaneHeaders = () => {
             switch (filterMode) {
@@ -723,15 +726,18 @@ function EduTreeCanvasV2Content({
           };
           
           const headers = getLaneHeaders();
+          const backplateWidth = 360;
+          const backplateOffset = 40;
+          
           return (
             <>
-              {/* Lane backplates for visual grouping */}
+              {/* Lane backplates for visual grouping - symmetric positioning */}
               <div 
                 className="absolute pointer-events-none rounded-xl bg-primary/3 border border-primary/10"
                 style={{ 
                   top: 180, 
-                  left: y3L - 40, 
-                  width: 360, 
+                  left: lanesCalc.y3L - backplateOffset, 
+                  width: backplateWidth, 
                   height: 240 
                 }}
               />
@@ -739,36 +745,36 @@ function EduTreeCanvasV2Content({
                 className="absolute pointer-events-none rounded-xl bg-secondary/3 border border-secondary/10"
                 style={{ 
                   top: 500, 
-                  left: y3R - 40, 
-                  width: 360, 
+                  left: lanesCalc.y3R - backplateOffset, 
+                  width: backplateWidth, 
                   height: 320 
                 }}
               />
               
-              {/* Track gate indicators with direction arrows */}
+              {/* Track gate indicators with perfect centering */}
               <div 
                 className="absolute text-xs opacity-70 z-20 pointer-events-none"
-                style={{ top: 340, left: midpoint - 50 }}
+                style={{ top: 340, left: lanesCalc.gateTG - 50 }}
               >
-                <div className="bg-background/90 px-3 py-1 rounded-full border text-center min-w-[100px]">
+                <div className="bg-background/90 px-3 py-1 rounded-full border text-center min-w-[100px] text-xs">
                   {headers.gateLabel}
                 </div>
               </div>
               
-              {/* Lane headers with dynamic positioning */}
+              {/* Lane headers with symmetric positioning and grid alignment */}
               <div 
                 className="absolute text-xs font-medium opacity-80 z-10 pointer-events-none"
-                style={{ top: 160, left: y3L }}
+                style={{ top: 160, left: lanesCalc.y3L }}
               >
-                <div className="bg-primary/20 text-primary px-3 py-1 rounded-lg border border-primary/20">
+                <div className="bg-primary/20 text-primary px-3 py-1 rounded-lg border border-primary/20 whitespace-nowrap text-xs leading-4">
                   {headers.upper} →
                 </div>
               </div>
               <div 
                 className="absolute text-xs font-medium opacity-80 z-10 pointer-events-none"
-                style={{ bottom: 140, left: y3R }}
+                style={{ bottom: 140, left: lanesCalc.y3R }}
               >
-                <div className="bg-secondary/20 text-secondary px-3 py-1 rounded-lg border border-secondary/20">
+                <div className="bg-secondary/20 text-secondary px-3 py-1 rounded-lg border border-secondary/20 whitespace-nowrap text-xs leading-4">
                   ← {headers.lower}
                 </div>
               </div>
@@ -786,18 +792,18 @@ function EduTreeCanvasV2Content({
         }}
       />
 
-      {/* Enhanced lane dividers - removed old fixed positioning */}
+      {/* Enhanced connection line from gate to track splits using centralized positioning */}
       {!singleRailStraight && (
         <>
-          {/* Subtle connection line from gate to track splits */}
+          {/* Subtle connection line from track gate extending toward branches */}
           <div
             className="absolute pointer-events-none opacity-30"
             style={{ 
               top: 360, 
-              left: 900,
-              width: 200,
+              left: laneXs().gateTG,
+              width: 80,  // Shorter line, more subtle
               height: 2, 
-              background: 'linear-gradient(90deg, transparent, rgba(var(--primary)/0.3), transparent)' 
+              background: 'linear-gradient(90deg, transparent, rgba(var(--primary)/0.2), transparent)' 
             }}
           />
         </>

@@ -5,8 +5,8 @@
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
-import { applyDeterministicGrid, type Lane } from './deterministicGrid';
-import { applyLanePacking, createLanePackingConfig, validateLanePacking } from './lanePackingUtils';
+import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './deterministicGrid';
+import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP } from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 import { type GatePositions } from './divergence';
 
@@ -523,16 +523,16 @@ export function applyManualLayout(
         console.warn('[ManualLayout] WARNING: V2 edge kinds disabled in compare mode - headers won\'t be created!');
       }
   
-  // Create column anchors with dynamic track spreading
-  const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
-  const y3Center = 600 + COL_W + COL_GAP; // Center between Y3L and Y3R
+  // Create column anchors with centralized layout tokens  
+  const viewW = 1800; // Default viewport width, could be made dynamic
+  const lanes = laneXs(viewW);
   const cols = { 
-    y1: 200, 
-    pg: 400, 
-    y2: 600, 
-    tg: 900, 
-    y3: y3Center,  // Use center for header positioning
-    y4: y3Center   // Y4 maintains same center as Y3
+    y1: lanes.y1, 
+    pg: lanes.gatePG, 
+    y2: lanes.y2, 
+    tg: lanes.gateTG, 
+    y3: lanes.gateTG,  // Use track gate position for header centering
+    y4: lanes.gateTG   // Y4 headers also center at track gate
   };
   
   // Create header nodes with dynamic positioning based on gate visibility
@@ -556,14 +556,15 @@ export function applyManualLayout(
     
     const col = block.level_year;
     
-    // Original manual coordinates with dynamic track spreading
-    const manualX = { 1: 200, 2: 600, 3: y3Center, 4: y3Center }[col] || 600;
+    // Original manual coordinates with centralized lane positions
+    const lanes = laneXs(viewW);
+    const manualX = { 1: lanes.y1, 2: lanes.y2, 3: lanes.gateTG, 4: lanes.gateTG }[col] || lanes.y2;
     const manualY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
                     lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
                     360; // shared/gate row
     
-    // Apply deterministic grid if enabled
-    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleRailStraight);
+    // Apply deterministic grid if enabled, pass viewport width
+    const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleRailStraight, viewW);
     
     if (useGridAnchors && process.env.NODE_ENV === 'development') {
       console.log(`[Grid] ${node.id}: lane=${lane}, col=${col}, coords=(${gridCoords.x},${gridCoords.y})`);
@@ -644,19 +645,19 @@ export function applyManualLayout(
   // Combine regular nodes with header nodes
   let allNodes = [...nodes, ...headerNodes];
   
-  // Apply lane packing to eliminate overlaps if using grid anchors and not in single-rail mode
+  // Apply comprehensive lane packing at the very end (after all positioning tweaks)
   if (useGridAnchors && !singleRailStraight) {
-    console.log('[ManualLayout] Applying lane packing to eliminate overlaps');
-    const lanePackingConfig = createLanePackingConfig();
-    allNodes = applyLanePacking(allNodes, lanePackingConfig);
+    console.log('[ManualLayout] Applying final lane packing to eliminate overlaps');
+    applyLanePackingFinal(allNodes, viewW);
     
-    // Validate packing results in development
+    // Minimal validation logging (dev only)
     if (process.env.NODE_ENV === 'development') {
-      const validation = validateLanePacking(allNodes);
-      if (validation.hasOverlaps) {
-        console.warn('[ManualLayout] Lane packing did not eliminate all overlaps:', validation.overlaps);
-      } else {
-        console.log('[ManualLayout] ✓ Lane packing successfully eliminated overlaps');
+      const requirementNodes = allNodes.filter(n => n.type === 'requirement');
+      const packedCount = requirementNodes.filter(n => 
+        n.data?.levelYear === 3 || n.data?.levelYear === 4
+      ).length;
+      if (packedCount > 0) {
+        console.log(`[ManualLayout] ✓ Lane packing applied to ${packedCount} Y3/Y4 nodes`);
       }
     }
   }
