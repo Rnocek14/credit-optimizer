@@ -529,11 +529,21 @@ export function applyManualLayout(
     
     const col = block.level_year;
     
-    // Original manual coordinates as fallback
-    const manualX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
-    const manualY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
-                    lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
-                    360; // shared/gate row
+    // 8px grid snapped coordinates
+    const GRID = 8;
+    const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+    const COL_W = 280;
+    const YEAR_GUTTER = 120;
+    const BASE_X = 200;
+    
+    // Snapped column positions
+    const manualX = snap8({ 1: BASE_X, 2: BASE_X + COL_W + YEAR_GUTTER, 3: BASE_X + 2 * (COL_W + YEAR_GUTTER), 4: BASE_X + 3 * (COL_W + YEAR_GUTTER) }[col] || BASE_X + COL_W + YEAR_GUTTER);
+    
+    // Y-row calculator with proper grid snapping
+    const yRow = (year: number) => snap8(120 + (year - 1) * (120 + 96));
+    const manualY = lane === 'up' ? (col === 3 ? yRow(3) - 60 : col === 4 ? yRow(4) - 120 : yRow(col) - 60) :
+                    lane === 'down' ? (col === 3 ? yRow(3) + 60 : col === 4 ? yRow(4) + 120 : yRow(col) + 60) :
+                    yRow(col); // shared/gate row
     
     // Apply deterministic grid if enabled
     const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleRailStraight);

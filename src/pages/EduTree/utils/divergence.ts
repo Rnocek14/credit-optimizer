@@ -41,10 +41,13 @@ function eqSets<T>(a: Set<T>, b: Set<T>) {
 /** Build per-year block sets for the given context. */
 function perYearForContext(
   blocks: { id: string; level_year: number; is_virtual?: boolean; program_id?: string | null; track_id?: string | null; }[],
-  ctx: { programId?: ProgramId; trackId?: TrackCode }
+  ctx: { programId?: ProgramId; trackId?: TrackCode },
+  isTrackDivergenceAnalysis?: boolean
 ): Map<Year, Set<string>> {
   const years: Year[] = [1, 2, 3, 4];
   const m = new Map<Year, Set<string>>(years.map(y => [y, new Set()]));
+  
+  console.log(`[perYearForContext] Filtering blocks for context:`, ctx, `Total blocks: ${blocks.length}, isTrackDivergenceAnalysis: ${isTrackDivergenceAnalysis}`);
   
   for (const b of blocks) {
     if (b.is_virtual) continue;
@@ -58,16 +61,21 @@ function perYearForContext(
       if (b.program_id) continue;
     }
 
-    // Track filter
+    // Track filter - CRITICAL FIX: Handle track divergence analysis properly
     if (ctx.trackId) {
+      // If we have a specific track, only include blocks for that track OR blocks with no track (shared)
       if (b.track_id && b.track_id !== ctx.trackId) continue;
-    } else {
-      // no track chosen => exclude track-specific
+    } else if (!isTrackDivergenceAnalysis) {
+      // If no specific track requested AND not doing track divergence analysis, exclude track-specific blocks
       if (b.track_id) continue;
     }
+    // If isTrackDivergenceAnalysis=true and no specific track, include ALL blocks (track-specific and shared)
 
     m.get(y)!.add(b.id);
   }
+  
+  const result = Array.from(m.entries()).map(([year, set]) => [year, set.size]).join(', ');
+  console.log(`[perYearForContext] Result for ${JSON.stringify(ctx)}: ${result}`);
   return m;
 }
 
@@ -76,22 +84,31 @@ export function computeProgramDivergence(
   blocks: any[],
   programs: ProgramId[]
 ): DivergenceResult {
+  console.log(`[computeProgramDivergence] Analyzing programs:`, programs);
+  
   if (programs.length < 2) {
+    console.log(`[computeProgramDivergence] Not enough programs (${programs.length}) for divergence`);
     return { divergesAfter: null, forkBetween: null };
   }
 
   const years: Year[] = [1, 2, 3, 4];
-  const sets = programs.map(p => perYearForContext(blocks, { programId: p }));
+  const sets = programs.map(p => perYearForContext(blocks, { programId: p }, false));
 
   for (const y of years) {
     const slice = sets.map(s => s.get(y)!);
     const same = slice.every(s => s.size === slice[0].size && [...s].every(v => slice[0].has(v)));
+    console.log(`[computeProgramDivergence] Year ${y} comparison:`, slice.map((s, i) => `${programs[i]}=${s.size}`).join(', '), 'same?', same);
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
-      if (y === 4) return { divergesAfter: null, forkBetween: null };
+      if (y === 4) {
+        console.log(`[computeProgramDivergence] Divergence at Y4, no gate needed`);
+        return { divergesAfter: null, forkBetween: null };
+      }
+      console.log(`[computeProgramDivergence] Divergence found at Y${y}, fork between Y${y-1} and Y${y}`);
       return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
+  console.log(`[computeProgramDivergence] No divergence found`);
   return { divergesAfter: null, forkBetween: null };
 }
 
@@ -101,66 +118,98 @@ export function computeTrackDivergence(
   program: ProgramId,
   tracks: ReadonlyArray<TrackCode>
 ): DivergenceResult {
+  console.log(`[computeTrackDivergence] Analyzing ${program} with tracks:`, tracks);
+  
   if (tracks.length < 2) {
+    console.log(`[computeTrackDivergence] Not enough tracks (${tracks.length}) for divergence`);
     return { divergesAfter: null, forkBetween: null };
   }
 
+  // Filter blocks to include track-specific blocks for this program  
+  const relevantBlocks = blocks.filter(b => 
+    !b.is_virtual && 
+    (b.program_id === program || !b.program_id) // Program blocks or shared
+  );
+  
+  console.log(`[computeTrackDivergence] Relevant blocks for ${program}:`, relevantBlocks.length, 
+    'Track blocks:', relevantBlocks.filter(b => b.track_id).map(b => ({id: b.id, track: b.track_id, year: b.level_year})));
+
   const years: Year[] = [1, 2, 3, 4];
-  const sets = tracks.map(t => perYearForContext(blocks, { programId: program, trackId: t }));
+  const sets = tracks.map(t => perYearForContext(relevantBlocks, { programId: program, trackId: t }, true));
 
   for (const y of years) {
     const slice = sets.map(s => s.get(y)!);
     const same = slice.every(s => s.size === slice[0].size && [...s].every(v => slice[0].has(v)));
+    console.log(`[computeTrackDivergence] Year ${y} comparison:`, slice.map((s, i) => `${tracks[i]}=${s.size}`).join(', '), 'same?', same);
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
-      if (y === 4) return { divergesAfter: null, forkBetween: null };
+      if (y === 4) {
+        console.log(`[computeTrackDivergence] Divergence at Y4, no gate needed`);
+        return { divergesAfter: null, forkBetween: null };
+      }
+      console.log(`[computeTrackDivergence] Divergence found at Y${y}, fork between Y${y-1} and Y${y}`);
       return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
+  console.log(`[computeTrackDivergence] No divergence found`);
   return { divergesAfter: null, forkBetween: null };
 }
 
-function mid(a: number, b: number) { return (a + b) / 2; }
+// Import centralized layout tokens
+import { cols as makeCols, mid, snap8 } from './layoutTokens';
 
-/** Decide which gates to show and where to place them. */
+/** Decide which gates to show and where to place them - GPT's surgical fix version */
 export function decideGatePositions(opts: {
   blocks: any[];
   programs: ProgramId[];
   tracksByProgram: TracksByProgram;
-  cols: Columns;
 }): GatePositions & { _pgBetween: [Year, Year] | null; _tgBetween: [Year, Year] | null } {
-  const { blocks, programs, tracksByProgram, cols } = opts;
+  const { blocks, programs, tracksByProgram } = opts;
+  const c = makeCols();
 
-  // Program gate - use computed fork position only, no fallbacks
-  const pgDiv = computeProgramDivergence(blocks, programs);
-  const showPG = !!pgDiv.forkBetween;
-  const pgX = showPG && pgDiv.forkBetween
-    ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
-    : undefined; // Use undefined when hidden (no fallbacks)
+  // GPT SANITY LOG A: Gate input validation  
+  console.log('[GATE IN]', { programs, blocks: blocks.length });
 
-  // Track gate - use computed fork position only
+  // --- Program gate: always on when comparing programs
+  const showPG = programs.length >= 2;
+
+  // Default gate between Y1 and Y2
+  let pgBetween: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4] = [1, 2];
+
+  // Respect actual divergence if found
+  if (showPG) {
+    const div = computeProgramDivergence(blocks, programs);
+    if (div?.forkBetween) pgBetween = div.forkBetween as [1 | 2 | 3 | 4, 1 | 2 | 3 | 4];
+  }
+
+  // Guard cols - ensure finite values
+  const yA = c[`y${pgBetween[0] as 1}`];
+  const yB = c[`y${pgBetween[1] as 2}`];
+  const pgX = showPG && Number.isFinite(yA) && Number.isFinite(yB) ? mid(yA, yB) : mid(200, 600); // snapped fallback
+  // --- Track gate (unchanged)
   let showTG = false;
-  let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
+  let tgBetween: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4] | null = null;
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
     if (tracks.length < 2) continue;
-    const tgDiv = computeTrackDivergence(blocks, p, tracks);
-    if (tgDiv.forkBetween) { 
-      showTG = true; 
-      tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];
-      break; 
-    }
+    const div = computeTrackDivergence(blocks, p, tracks);
+    if (div?.forkBetween) { showTG = true; tgBetween = div.forkBetween as [1 | 2 | 3 | 4, 1 | 2 | 3 | 4]; break; }
   }
-  const tgX = showTG && tgBetween
-    ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
-    : undefined; // Use undefined when hidden (no fallbacks)
+
+  const tgX =
+    showTG && tgBetween
+      ? mid(c[`y${tgBetween[0] as 1}`], c[`y${tgBetween[1] as 2}`])
+      : undefined;
+
+  // GPT SANITY LOG A: Gate output validation
+  console.table([{ showPG, pgX, showTG, tgX }]);
 
   return { 
     showPG, 
     pgX, 
     showTG, 
     tgX, 
-    _pgBetween: pgDiv.forkBetween ?? null,
+    _pgBetween: pgBetween,
     _tgBetween: tgBetween 
   };
 }

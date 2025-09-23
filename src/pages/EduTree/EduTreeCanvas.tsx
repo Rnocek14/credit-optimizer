@@ -184,6 +184,7 @@ function EduTreeCanvasInner() {
   } = useTrackComparison({
     nodes: flowNodes,
     edges: flowEdges,
+    blocks,
     primaryTrackId,
     comparisonTrackId,
     overlayEnabled
