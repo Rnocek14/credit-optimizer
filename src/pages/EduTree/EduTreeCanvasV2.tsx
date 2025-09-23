@@ -472,26 +472,16 @@ function EduTreeCanvasV2Content({
   
   // Gate positions using centralized tokens - GPT's single source of truth
   const gatePositions = useMemo(() => {
-    console.log('[GATE DEBUG - PHASE 1] Input data validation:', {
-      blocksCount: blocks.length,
-      programs,
-      tracksByProgram,
-      filterMode: effectiveFilterMode,
-      primarySelection: pathHighlight.primarySelection,
-      secondarySelection: pathHighlight.secondarySelection
-    });
+    // GPT SANITY LOG A: Gate input validation  
+    console.log('[GATE IN]', { programs, blocks: blocks.length });
     
     const next = decideGatePositions({ blocks, programs, tracksByProgram });
     
-    console.log('[GATE DEBUG - PHASE 2] Gate positions result:', {
-      showPG: next.showPG,
-      showTG: next.showTG,
-      pgX: next.pgX,
-      tgX: next.tgX,
-      hasNaN: Number.isNaN(next.pgX) || Number.isNaN(next.tgX)
-    });
+    // GPT SANITY LOG A: Gate output validation
+    console.table([{ showPG: next.showPG, pgX: next.pgX, showTG: next.showTG, tgX: next.tgX }]);
     
-    return stableReturn(gatePositionsRef, next);
+    // TEMP: Kill sticky memo to rule out blocking updates - GPT's surgical fix
+    return next; // Instead of: return stableReturn(gatePositionsRef, next);
   }, [blocksKey, programs.join('|'), tracksKey, effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
   
   // FitView key for determining when to reset fitView flag
@@ -670,12 +660,15 @@ function EduTreeCanvasV2Content({
         const GRID = 8;
         const snap8 = (n: number) => Math.round(n / GRID) * GRID;
         
+        // Never drop gates due to "hidden" filters - GPT's gate whitelist
+        const isGate = (n: any) => n.type === 'gate' || n.id.startsWith('gate-');
+        
         const finalNodes = usePlan ? processedNodes.map(n => {
           // Skip header nodes - they don't have phaseAPlan
           if (n.type === 'header') {
             return n;
           }
-          if (n.data?.isVirtual) {
+          if (n.data?.isVirtual || isGate(n)) {
             // Add singleRailStraight flag to gate nodes and snap coordinates
             return { 
               ...n, 
