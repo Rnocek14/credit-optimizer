@@ -82,8 +82,8 @@ export function useTrackComparison({
 
   // Compute highlight sets
   const highlights = useMemo((): TrackHighlights => {
-    // Make overlay ready when comparing programs OR tracks
-    const overlayReady = overlayEnabled && !!(primaryTrackId || primaryProgramId);
+    // Make overlay ready when comparing programs OR tracks, including mixed mode
+    const overlayReady = overlayEnabled && !!(primaryTrackId || primaryProgramId || comparisonTrackId || comparisonProgramId);
     
     // GPT SANITY LOG B: Compare highlight validation
     console.log('[COMPARE]', {

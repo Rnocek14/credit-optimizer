@@ -182,10 +182,14 @@ export function decideGatePositions(opts: {
     if (div?.forkBetween) pgBetween = div.forkBetween as [1 | 2 | 3 | 4, 1 | 2 | 3 | 4];
   }
 
-  // Guard cols - ensure finite values
-  const yA = c[`y${pgBetween[0] as 1}`];
-  const yB = c[`y${pgBetween[1] as 2}`];
-  const pgX = showPG && Number.isFinite(yA) && Number.isFinite(yB) ? mid(yA, yB) : mid(200, 600); // snapped fallback
+  // Guard cols - ensure finite values and fix NaN issue
+  const yA = c[`y${pgBetween[0]}` as keyof typeof c];
+  const yB = c[`y${pgBetween[1]}` as keyof typeof c];
+  
+  // Ensure we always get finite values
+  const safeYA = Number.isFinite(yA) ? yA : c.y1;
+  const safeYB = Number.isFinite(yB) ? yB : c.y2;
+  const pgX = showPG ? mid(safeYA, safeYB) : undefined;
   // --- Track gate (unchanged)
   let showTG = false;
   let tgBetween: [1 | 2 | 3 | 4, 1 | 2 | 3 | 4] | null = null;
@@ -198,7 +202,10 @@ export function decideGatePositions(opts: {
 
   const tgX =
     showTG && tgBetween
-      ? mid(c[`y${tgBetween[0] as 1}`], c[`y${tgBetween[1] as 2}`])
+      ? mid(
+          Number.isFinite(c[`y${tgBetween[0]}` as keyof typeof c]) ? c[`y${tgBetween[0]}` as keyof typeof c] : c.y2,
+          Number.isFinite(c[`y${tgBetween[1]}` as keyof typeof c]) ? c[`y${tgBetween[1]}` as keyof typeof c] : c.y3
+        )
       : undefined;
 
   // GPT SANITY LOG A: Gate output validation

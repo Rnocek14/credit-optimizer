@@ -612,7 +612,9 @@ function EduTreeCanvasV2Content({
           return nodes.map(n => {
             if (n.id === 'gate-y2-programs') {
               const shouldShow = gatePositions.showPG && Number.isFinite(gatePositions.pgX);
-              const pgX = shouldShow ? snap8(gatePositions.pgX!) : 0; // Guard against undefined
+              // Use safe fallback positions if pgX is NaN or undefined
+              const safePgX = Number.isFinite(gatePositions.pgX) ? gatePositions.pgX! : 400;
+              const pgX = shouldShow ? snap8(safePgX) : snap8(400);
               const pgY = midY(yRow(1), yRow(2));
               
               console.log('[GATE DEBUG] Program gate processing:', {
@@ -631,7 +633,9 @@ function EduTreeCanvasV2Content({
             
             if (n.id === 'gate-y3-tracks') {
               const shouldShow = gatePositions.showTG && Number.isFinite(gatePositions.tgX);
-              const tgX = shouldShow ? snap8(gatePositions.tgX!) : 0; // Guard against undefined
+              // Use safe fallback positions if tgX is NaN or undefined  
+              const safeTgX = Number.isFinite(gatePositions.tgX) ? gatePositions.tgX! : 800;
+              const tgX = shouldShow ? snap8(safeTgX) : snap8(800);
               const tgY = midY(yRow(2), yRow(3));
               
               console.log('[GATE DEBUG] Track gate processing:', {
