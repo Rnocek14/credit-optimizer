@@ -61,7 +61,7 @@ export function ComparisonLegend({
   return (
     <TooltipProvider>
       <section 
-        className="comparison-legend fixed top-20 left-4 z-40 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg max-w-sm pointer-events-auto"
+        className="comparison-legend fixed top-20 left-4 z-40 bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg max-w-sm pointer-events-none"
         aria-label={COPY.trackComparison}
         role="region"
         onMouseDown={(e) => e.stopPropagation()}

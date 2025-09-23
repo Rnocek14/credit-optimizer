@@ -272,8 +272,16 @@ function EduTreeCanvasV2Content({
       return true;
     });
     
-    // 5. Final corruption check - ensure no problematic edges survive
+    // 5. Final corruption check - ensure no problematic edges survive + EMERGENCY FIX for sourceHandle "null"
     const finalFiltered = filtered.filter(edge => {
+      // EMERGENCY FIX: Convert string "null" to undefined
+      if (edge.sourceHandle === 'null') {
+        edge.sourceHandle = undefined;
+      }
+      if (edge.targetHandle === 'null') {
+        edge.targetHandle = undefined;
+      }
+      
       const stillProblematic = (
         edge.sourceHandle === 'null' ||
         edge.targetHandle === 'null' ||

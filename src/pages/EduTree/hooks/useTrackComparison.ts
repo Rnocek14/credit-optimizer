@@ -133,6 +133,22 @@ export function useTrackComparison({
     let comparisonBlockIds: string[] = [];
     if (comparisonProgramId) {
       comparisonBlockIds = getProgramBlockIds(comparisonProgramId);
+      
+      // DEEP DEBUG: Compare colors fix - trace exact mismatch
+      if (process.env.NODE_ENV === 'development') {
+        const blockIdsFromProgram = comparisonBlockIds.slice(0, 5);
+        const nodeIdsFromMapping = blockIdsFromProgram.map(blockId => {
+          const nodeId = nodeIdByBlockId.get(blockId);
+          return { blockId, nodeId, found: !!nodeId };
+        });
+        console.log('[COMPARE COLORS DEBUG] Program to Node ID resolution:', {
+          programId: comparisonProgramId,
+          blockIdsFromProgram,
+          nodeIdsFromMapping,
+          totalProgramBlocks: comparisonBlockIds.length,
+          totalMappingKeys: nodeIdByBlockId.size
+        });
+      }
     } else if (comparisonTrackId) {
       const comparisonTrack = TRACK_MAP.get(comparisonTrackId);
       if (comparisonTrack) {
