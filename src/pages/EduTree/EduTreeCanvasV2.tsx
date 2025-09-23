@@ -23,6 +23,7 @@ import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
 import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
+import { ReactFlowErrorBoundary } from '@/components/ReactFlowErrorBoundary';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import { DualSelectionLegend } from './components/DualSelectionLegend';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
@@ -484,12 +485,17 @@ function EduTreeCanvasV2Content({
           <div className="text-sm">Manual layout seed not loaded</div>
         </div>
       </div>
-    );
+  );
   }
   
   return (
-    <>
-      {/* Dev Controls Toggle */}
+    <ReactFlowErrorBoundary
+      onError={(error) => {
+        console.error('[EduTreeV2] React Flow error:', error);
+      }}
+    >
+      <>
+        {/* Dev Controls Toggle */}
       <button
         onClick={() => setShowDev(v => !v)}
         className="fixed top-3 right-3 z-[10000] rounded-full px-3 py-2 bg-black/70 text-white hover:bg-black/80 transition-colors"
@@ -638,6 +644,9 @@ function EduTreeCanvasV2Content({
         zoomOnPinch={true}
         zoomOnDoubleClick={true}
         preventScrolling={false}
+        selectNodesOnDrag={false}
+        elementsSelectable={true}
+        proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: 'step',
           markerEnd: {
@@ -685,6 +694,7 @@ function EduTreeCanvasV2Content({
           </div>
         )}
       </div>
-    </>
+      </>
+    </ReactFlowErrorBoundary>
   );
 }

@@ -646,15 +646,29 @@ export function applyManualLayout(
     const sourceHandle = cleanSource(e.sourceHandle);
     const targetHandle = cleanTarget(e.targetHandle);
     
-    // Debug logging for problematic edges (development only)
-    if (import.meta.env.DEV && (e.sourceHandle === 'null' || e.sourceHandle === null)) {
-      console.warn('[EDGE DEBUG] Found problematic sourceHandle:', {
-        edgeId: e.id,
-        originalSourceHandle: e.sourceHandle,
-        cleanedSourceHandle: sourceHandle,
-        source: e.source,
-        target: e.target
-      });
+    // Skip edges with invalid handles completely
+    if (sourceHandle === undefined && e.sourceHandle !== undefined) {
+      if (import.meta.env.DEV) {
+        console.warn('[EDGE SKIP] Dropping edge with invalid sourceHandle:', {
+          edgeId: e.id,
+          sourceHandle: e.sourceHandle,
+          source: e.source,
+          target: e.target
+        });
+      }
+      return null; // Skip this edge entirely
+    }
+    
+    if (targetHandle === undefined && e.targetHandle !== undefined) {
+      if (import.meta.env.DEV) {
+        console.warn('[EDGE SKIP] Dropping edge with invalid targetHandle:', {
+          edgeId: e.id,
+          targetHandle: e.targetHandle,
+          source: e.source,
+          target: e.target
+        });
+      }
+      return null; // Skip this edge entirely
     }
     
     // Build sanitized edge, completely omitting keys that are undefined
@@ -683,6 +697,16 @@ export function applyManualLayout(
     total: allNodes.length
   });
   console.log('[ManualLayout] Edge validation complete, delivering', sanitizedEdges.length, 'edges to React Flow');
+  
+  // Final validation - log any remaining problematic edges
+  if (import.meta.env.DEV) {
+    const problematicEdges = sanitizedEdges.filter(e => 
+      e.sourceHandle === 'null' || e.targetHandle === 'null'
+    );
+    if (problematicEdges.length > 0) {
+      console.error('[CRITICAL] Still have problematic edges after sanitization:', problematicEdges);
+    }
+  }
   
   onApply(allNodes, sanitizedEdges);
   

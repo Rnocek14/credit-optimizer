@@ -170,11 +170,31 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
   // Compute dimmed edges with dual selection support  
   const dimmedEdges = useMemo(() => {
+    // Pre-filter edges to remove any with invalid handles that could break React Flow
+    const validEdges = edges.filter(e => {
+      const hasValidHandles = !(
+        e.sourceHandle === 'null' || 
+        e.targetHandle === 'null' ||
+        (typeof e.sourceHandle === 'string' && e.sourceHandle.trim() === '') ||
+        (typeof e.targetHandle === 'string' && e.targetHandle.trim() === '')
+      );
+      
+      if (!hasValidHandles && import.meta.env.DEV) {
+        console.warn('[DIMMING] Filtering out edge with invalid handles:', {
+          id: e.id,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle
+        });
+      }
+      
+      return hasValidHandles;
+    });
+    
     const { primarySelection, secondarySelection } = highlight;
     
     // Legacy single selection fallback
     if (!primarySelection && !secondarySelection) {
-      return edges.map(edge => {
+      return validEdges.map(edge => {
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetNode = nodes.find(n => n.id === edge.target);
         const sourceBlockish = extractBlockish(sourceNode);
@@ -194,7 +214,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     }
 
     // Dual selection mode
-    return edges.map(edge => {
+    return validEdges.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
       const sourceBlockish = extractBlockish(sourceNode);
