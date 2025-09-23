@@ -37,6 +37,7 @@ import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import { HudLayer, HudDock } from './components/HudLayer';
 import { CompactDevPanel } from './components/CompactDevPanel';
 import { ComparePicker, useCompareOptions, parseCompareUrl } from './components/ComparePicker';
+import { TRACK_MAP } from './data/trackDefinitions';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
@@ -371,8 +372,10 @@ function EduTreeCanvasV2Content({
     return finalFiltered;
   }, [nodes, flowEdges]);
 
-  // Then apply dimming to the safe edges (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  // Skip legacy dimming when track comparison is active - let useTrackComparison handle everything
+  const { nodes: processedNodes, edges: processedEdges } = trackComparisonEnabled 
+    ? { nodes: nodes || [], edges: safeEdges }
+    : useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
 
   // Node position validation - prevent NaN/∞ coordinates
   const safeNodes = useMemo(() => {
@@ -860,10 +863,64 @@ function EduTreeCanvasV2Content({
             />
           </HudDock>
 
-          {/* Bottom-Left Stack - Dev Only */}
+          {/* Bottom-Left Stack - Dev Only + Track Comparison */}
           {process.env.NODE_ENV === 'development' && (
             <HudDock corner="BL" index={0}>
               <HighlightDiagnostics />
+            </HudDock>
+          )}
+
+          {/* Track Comparison Legend - compare-any mode only */}
+          {trackComparisonEnabled && (
+            <HudDock corner="BL" index={process.env.NODE_ENV === 'development' ? 1 : 0}>
+              <ComparisonLegend
+                primaryTrack={primaryTrackId ? {
+                  id: primaryTrackId,
+                  name: TRACK_MAP.get(primaryTrackId)?.name || primaryTrackId,
+                  color: 'oklch(0.60 0.15 220)'
+                } : undefined}
+                comparisonTrack={comparisonTrackId ? {
+                  id: comparisonTrackId,
+                  name: TRACK_MAP.get(comparisonTrackId)?.name || comparisonTrackId,
+                  color: 'oklch(0.70 0.15 15)'
+                } : undefined}
+                isVisible={trackComparisonEnabled}
+                showCounts={trackComparisonResults.legendCounts}
+                onPulseNodes={(type) => {
+                  console.log(`Pulse ${type} nodes`);
+                  // TODO: Implement pulse animation
+                }}
+              />
+            </HudDock>
+          )}
+
+          {/* Track Comparison Debug HUD - Development only */}
+          {process.env.NODE_ENV === 'development' && trackComparisonEnabled && (
+            <HudDock corner="BR" index={3}>
+              <DebugHUD
+                highlights={trackComparisonResults.highlights}
+                onSwapTracks={handleSwapTracks}
+                onRunValidation={() => {
+                  console.log('[TrackComparison] Debug validation:', trackComparisonResults.debugInfo);
+                }}
+              />
+            </HudDock>
+          )}
+
+          {/* Compare Mode Header */}
+          {trackComparisonEnabled && primaryTrackId && comparisonTrackId && (
+            <HudDock corner="TL" index={1}>
+              <CompareModeHeader
+                primaryLabel={TRACK_MAP.get(primaryTrackId)?.name || primaryTrackId}
+                comparisonLabel={TRACK_MAP.get(comparisonTrackId)?.name || comparisonTrackId}
+                onSwap={handleSwapTracks}
+                onClose={() => {
+                  pathHighlight.clearSecondarySelection();
+                  const p = new URLSearchParams(window.location.search);
+                  p.delete('b');
+                  history.replaceState(null, "", `?${p.toString()}`);
+                }}
+              />
             </HudDock>
           )}
         </HudLayer>

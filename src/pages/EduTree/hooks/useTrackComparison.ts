@@ -167,23 +167,23 @@ export function useTrackComparison({
     if (!overlayEnabled) return nodes;
 
     return nodes.map(node => {
-      // Keep original classes but ensure clean highlight class management
-      const baseClasses = node.className ? node.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-      let hlClass = 'hl';
+      // Clean class management - use helper function for better reliability
+      const existingClasses = node.className?.split(' ').filter(c => !c.startsWith('hl--')) || [];
+      let hlClass = '';
       
       if (highlights.sharedNodes.has(node.id)) {
-        hlClass += ' hl--both';
+        hlClass = 'hl--both';
       } else if (highlights.primaryNodes.has(node.id)) {
-        hlClass += ' hl--primary';
+        hlClass = 'hl--primary';
       } else if (highlights.comparisonNodes.has(node.id)) {
-        hlClass += ' hl--comparison';
+        hlClass = 'hl--comparison';
       } else {
-        hlClass += ' hl--dim';
+        hlClass = 'hl--dim';
       }
 
       return {
         ...node,
-        className: [...baseClasses, hlClass].join(' ')
+        className: [...existingClasses, hlClass].filter(Boolean).join(' ')
       };
     });
   }, [nodes, highlights, overlayEnabled]);
@@ -192,29 +192,23 @@ export function useTrackComparison({
     if (!overlayEnabled) return edges;
 
     return edges.map(edge => {
-      // Preserve original classes but clean highlight management
-      const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('edge--')) : [];
+      // Clean edge class management
+      const existingClasses = edge.className?.split(' ').filter(c => !c.startsWith('edge--')) || [];
       let hlClass = '';
       
-      if (overlayEnabled) {
-        if (highlights.sharedEdges.has(edge.id)) {
-          hlClass = 'edge--both';
-        } else if (highlights.primaryEdges.has(edge.id)) {
-          hlClass = 'edge--primary';
-        } else if (highlights.comparisonEdges.has(edge.id)) {
-          hlClass = 'edge--comparison';
-        } else {
-          hlClass = 'edge--dim';
-        }
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[EdgeClass] ${edge.id}: base(${baseClasses.join(' ')}) + ${hlClass}`);
+      if (highlights.sharedEdges.has(edge.id)) {
+        hlClass = 'edge--both';
+      } else if (highlights.primaryEdges.has(edge.id)) {
+        hlClass = 'edge--primary';
+      } else if (highlights.comparisonEdges.has(edge.id)) {
+        hlClass = 'edge--comparison';
+      } else {
+        hlClass = 'edge--dim';
       }
 
       return {
         ...edge,
-        className: [...baseClasses, hlClass].filter(Boolean).join(' ')
+        className: [...existingClasses, hlClass].filter(Boolean).join(' ')
       };
     });
   }, [edges, highlights, overlayEnabled]);

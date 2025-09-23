@@ -118,8 +118,8 @@ export function ComparisonLegend({
                   <div 
                     className="w-4 h-4 border-2 rounded-sm flex-shrink-0"
                     style={{ 
-                      background: 'color-mix(in oklab, oklch(0.60 0.15 142) 14%, transparent)',
-                      borderColor: 'oklch(0.60 0.15 142)'
+                      background: 'oklch(0.95 0.03 220)',
+                      borderColor: 'oklch(0.60 0.15 220)'
                     }}
                   />
                   <div className="flex flex-col">
@@ -147,8 +147,8 @@ export function ComparisonLegend({
                   <div 
                     className="w-4 h-4 border-2 border-dashed rounded-sm flex-shrink-0"
                     style={{ 
-                      background: 'color-mix(in oklab, oklch(0.70 0.18 320) 14%, transparent)',
-                      borderColor: 'oklch(0.70 0.18 320)'
+                      background: 'oklch(0.95 0.03 15)',
+                      borderColor: 'oklch(0.70 0.15 15)'
                     }}
                   />
                   <div className="flex flex-col">
@@ -178,10 +178,11 @@ export function ComparisonLegend({
                     style={{ 
                       background: `repeating-linear-gradient(
                         45deg,
-                        color-mix(in oklab, oklch(0.60 0.15 142) 15%, transparent) 0 2px,
-                        color-mix(in oklab, oklch(0.70 0.18 320) 15%, transparent) 2px 4px
+                        oklch(0.95 0.03 220) 0 4px,
+                        oklch(0.95 0.03 15) 4px 8px
                       )`,
-                      borderColor: 'oklch(0.25 0.05 220)'
+                      borderColor: 'oklch(0.70 0.12 142)',
+                      borderWidth: '2px'
                     }}
                   />
                   <div className="flex flex-col">
@@ -192,7 +193,7 @@ export function ComparisonLegend({
                   </div>
                 </div>
                 {showCounts && showCounts.shared != null && (
-                  <span className="text-xs px-2 py-1 bg-purple-500/10 text-purple-600 rounded-full font-mono">
+                  <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 rounded-full font-mono">
                     {showCounts.shared}
                   </span>
                 )}
@@ -207,7 +208,7 @@ export function ComparisonLegend({
                     className="w-4 h-4 border rounded-sm flex-shrink-0 opacity-50"
                     style={{ 
                       backgroundColor: 'transparent',
-                      borderColor: 'oklch(0.50 0.02 220 / 0.4)'
+                      borderColor: 'oklch(0.60 0.00 0 / 0.4)'
                     }}
                   />
                   <div className="flex flex-col">
