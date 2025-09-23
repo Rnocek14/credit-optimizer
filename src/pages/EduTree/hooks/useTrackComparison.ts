@@ -64,15 +64,16 @@ export function useTrackComparison({
   const getProgramBlockIds = useMemo(() => {
     return (programId: string): string[] => {
       const result = blocks
-        .filter(b => !b.program_id || b.program_id === programId)
+        .filter(b => b.program_id === programId) // Fix: Only exact matches, not shared blocks
         .map(b => String(b.id));
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('[getProgramBlockIds]', {
+        console.log('[getProgramBlockIds] FIXED', {
           programId,
           totalBlocks: blocks.length,
           filteredBlocks: result.length,
-          sampleBlockIds: result.slice(0, 3)
+          sampleBlockIds: result.slice(0, 3),
+          sampleProgramIds: blocks.slice(0, 5).map(b => ({ id: b.id, program_id: b.program_id }))
         });
       }
       

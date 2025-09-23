@@ -921,7 +921,7 @@ function EduTreeCanvasV2Content({
 
         {/* GPT's Visual Proof Chip - Track Gate Debug */}
         {gatePositions.showTG && (
-          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow">
+          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow pointer-events-none">
             Track Gate: Y2 → Y3 (Should be visible)
           </div>
         )}
@@ -991,13 +991,13 @@ function EduTreeCanvasV2Content({
         
         {/* GPT's visual proof chips */}
         {gatePositions.showTG && (
-          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow">
+          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow pointer-events-none">
             Track Gate: Y{gatePositions.showTG ? '2→3' : 'hidden'} @ X={gatePositions.tgX}
           </div>
         )}
         
         {gatePositions.showPG && (
-          <div className="fixed top-8 left-2 z-[60] px-2 py-1 rounded bg-blue-600 text-white text-xs shadow">
+          <div className="fixed top-8 left-2 z-[60] px-2 py-1 rounded bg-blue-600 text-white text-xs shadow pointer-events-none">
             Program Gate: Y{gatePositions.showPG ? '1→2' : 'hidden'} @ X={gatePositions.pgX}
           </div>
         )}

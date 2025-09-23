@@ -53,9 +53,9 @@ function perYearForContext(
     if (b.is_virtual) continue;
     const y = Math.max(1, Math.min(4, Math.floor(b.level_year || 1))) as Year;
 
-    // Program filter
+    // Program filter - FIX: Be more precise about program filtering
     if (ctx.programId) {
-      if (b.program_id && b.program_id !== ctx.programId) continue;
+      if (b.program_id !== ctx.programId) continue; // Only exact matches
     } else {
       // no program chosen => only shared (no program_id)
       if (b.program_id) continue;
