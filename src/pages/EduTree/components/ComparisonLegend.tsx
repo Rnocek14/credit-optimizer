@@ -26,9 +26,7 @@ interface ComparisonLegendProps {
     primary: number;
     comparison: number;
     shared: number;
-    dim: number;
   };
-  onPulseNodes?: (type: 'primary' | 'comparison' | 'shared') => void;
 }
 
 export function ComparisonLegend({
@@ -36,8 +34,7 @@ export function ComparisonLegend({
   comparisonTrack,
   isVisible = true,
   onToggleVisibility,
-  showCounts,
-  onPulseNodes
+  showCounts
 }: ComparisonLegendProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -110,16 +107,13 @@ export function ComparisonLegend({
           <div className="p-3 space-y-3">
             {/* Primary Track */}
             {primaryTrack && (
-              <div 
-                className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded p-1 -m-1"
-                onClick={() => onPulseNodes?.('primary')}
-              >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div 
                     className="w-4 h-4 border-2 rounded-sm flex-shrink-0"
                     style={{ 
-                      background: 'oklch(0.95 0.03 220)',
-                      borderColor: 'oklch(0.60 0.15 220)'
+                      backgroundColor: `var(--lp-primary-light)`,
+                      borderColor: `var(--lp-primary)`
                     }}
                   />
                   <div className="flex flex-col">
@@ -130,7 +124,7 @@ export function ComparisonLegend({
                   </div>
                 </div>
                 {showCounts && showCounts.primary != null && (
-                  <span className="text-xs px-2 py-1 bg-blue-500/10 text-blue-600 rounded-full font-mono">
+                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                     {showCounts.primary}
                   </span>
                 )}
@@ -139,16 +133,13 @@ export function ComparisonLegend({
 
             {/* Comparison Track */}
             {comparisonTrack && (
-              <div 
-                className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded p-1 -m-1"
-                onClick={() => onPulseNodes?.('comparison')}
-              >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div 
                     className="w-4 h-4 border-2 border-dashed rounded-sm flex-shrink-0"
                     style={{ 
-                      background: 'oklch(0.95 0.03 15)',
-                      borderColor: 'oklch(0.70 0.15 15)'
+                      backgroundColor: `var(--lp-compare-light)`,
+                      borderColor: `var(--lp-compare)`
                     }}
                   />
                   <div className="flex flex-col">
@@ -159,7 +150,7 @@ export function ComparisonLegend({
                   </div>
                 </div>
                 {showCounts && showCounts.comparison != null && (
-                  <span className="text-xs px-2 py-1 bg-pink-500/10 text-pink-600 rounded-full font-mono">
+                  <span className="text-xs px-2 py-1 bg-rose-500/10 text-rose-600 rounded-full">
                     {showCounts.comparison}
                   </span>
                 )}
@@ -168,21 +159,13 @@ export function ComparisonLegend({
 
             {/* Shared Requirements */}
             {primaryTrack && comparisonTrack && (
-              <div 
-                className="flex items-center justify-between cursor-pointer hover:bg-accent/50 rounded p-1 -m-1"
-                onClick={() => onPulseNodes?.('shared')}
-              >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div 
-                    className="w-4 h-4 border-2 rounded-sm flex-shrink-0"
+                    className="w-4 h-4 border-4 rounded-sm flex-shrink-0"
                     style={{ 
-                      background: `repeating-linear-gradient(
-                        45deg,
-                        oklch(0.95 0.03 220) 0 4px,
-                        oklch(0.95 0.03 15) 4px 8px
-                      )`,
-                      borderColor: 'oklch(0.70 0.12 142)',
-                      borderWidth: '2px'
+                      backgroundColor: `var(--lp-shared-light)`,
+                      borderColor: `var(--lp-shared)`
                     }}
                   />
                   <div className="flex flex-col">
@@ -193,34 +176,10 @@ export function ComparisonLegend({
                   </div>
                 </div>
                 {showCounts && showCounts.shared != null && (
-                  <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 rounded-full font-mono">
+                  <span className="text-xs px-2 py-1 bg-green-500/10 text-green-600 rounded-full">
                     {showCounts.shared}
                   </span>
                 )}
-              </div>
-            )}
-
-            {/* Dimmed Items */}
-            {showCounts && showCounts.dim != null && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-4 h-4 border rounded-sm flex-shrink-0 opacity-50"
-                    style={{ 
-                      backgroundColor: 'transparent',
-                      borderColor: 'oklch(0.60 0.00 0 / 0.4)'
-                    }}
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Other Courses
-                    </span>
-                    <span className="text-xs text-muted-foreground">Not in selection</span>
-                  </div>
-                </div>
-                <span className="text-xs px-2 py-1 bg-gray-500/10 text-gray-600 rounded-full font-mono">
-                  {showCounts.dim}
-                </span>
               </div>
             )}
 
