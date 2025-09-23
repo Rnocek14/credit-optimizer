@@ -775,7 +775,6 @@ function EduTreeCanvasV2Content({
             (window as any).__reactFlowInstance__ = instance;
           }}
         >
-        >
           <Background />
           <Controls />
         </ReactFlow>
