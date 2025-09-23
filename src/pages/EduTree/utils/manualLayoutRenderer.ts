@@ -646,6 +646,17 @@ export function applyManualLayout(
     const sourceHandle = cleanSource(e.sourceHandle);
     const targetHandle = cleanTarget(e.targetHandle);
     
+    // Debug logging for problematic edges (development only)
+    if (import.meta.env.DEV && (e.sourceHandle === 'null' || e.sourceHandle === null)) {
+      console.warn('[EDGE DEBUG] Found problematic sourceHandle:', {
+        edgeId: e.id,
+        originalSourceHandle: e.sourceHandle,
+        cleanedSourceHandle: sourceHandle,
+        source: e.source,
+        target: e.target
+      });
+    }
+    
     // Build sanitized edge, completely omitting keys that are undefined
     const sanitizedEdge: any = { ...e };
     

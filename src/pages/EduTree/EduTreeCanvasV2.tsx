@@ -633,6 +633,11 @@ function EduTreeCanvasV2Content({
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        panOnDrag={true}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={true}
+        preventScrolling={false}
         defaultEdgeOptions={{
           type: 'step',
           markerEnd: {
