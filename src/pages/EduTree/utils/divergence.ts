@@ -108,6 +108,12 @@ export function computeProgramDivergence(
         console.log('[DIVERGENCE DEBUG] Divergence at Y4, no gate needed');
         return { divergesAfter: null, forkBetween: null };
       }
+      // Special case: divergence at Y1 - position gate before Y1
+      if (y === 1) {
+        const result = { divergesAfter: null, forkBetween: [1, 1] as [Year, Year] };
+        console.log('[DIVERGENCE DEBUG] Found Y1 divergence (boundary case), returning:', result);
+        return result;
+      }
       const result = { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] as [Year, Year] };
       console.log('[DIVERGENCE DEBUG] Found divergence, returning:', result);
       return result;
@@ -166,7 +172,9 @@ export function decideGatePositions(opts: {
   
   const showPG = !!pgDiv.forkBetween;
   const pgX = showPG && pgDiv.forkBetween
-    ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
+    ? pgDiv.forkBetween[0] === pgDiv.forkBetween[1] && pgDiv.forkBetween[0] === 1
+      ? cols.y1 - 100  // Position before Y1 for boundary case
+      : mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
     : undefined; // Use undefined when hidden (no fallbacks)
     
   console.log('[GATE DEBUG] Program gate decision:', { showPG, pgX, forkBetween: pgDiv.forkBetween });
