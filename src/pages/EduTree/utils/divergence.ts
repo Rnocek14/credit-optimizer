@@ -141,10 +141,26 @@ export function decideGatePositions(opts: {
   // Track gate - use computed fork position only
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
+  
+  // Debug logging for track gate issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[decideGatePositions] Track gate analysis:', {
+      programs,
+      tracksByProgram,
+      blocksWithTracks: blocks.filter(b => b.track_id).map(b => ({ id: b.id, program_id: b.program_id, track_id: b.track_id, level_year: b.level_year }))
+    });
+  }
+  
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[decideGatePositions] Program ${p} has tracks:`, tracks);
+    }
     if (tracks.length < 2) continue;
     const tgDiv = computeTrackDivergence(blocks, p, tracks);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[decideGatePositions] Track divergence for ${p}:`, tgDiv);
+    }
     if (tgDiv.forkBetween) { 
       showTG = true; 
       tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];

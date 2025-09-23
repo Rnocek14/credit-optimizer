@@ -486,8 +486,28 @@ function EduTreeCanvasV2Content({
   const tracksByProgram = useMemo(() => {
     const map: Record<'bs_cs'|'bs_it', ('se'|'ds')[]> = { bs_cs: [], bs_it: [] };
     for (const [p, arr] of JSON.parse(tracksKey) as ['bs_cs'|'bs_it', ('se'|'ds')[]][]) map[p] = arr;
+    
+    // Debug logging for tracksByProgram issues
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[EduTreeV2] tracksByProgram calculation:', {
+        programs,
+        blocksCount: blocks.length,
+        blocksWithTracks: blocks.filter(b => b.track_id).length,
+        tracksKey,
+        map,
+        sampleTrackBlocks: blocks.filter(b => b.track_id).slice(0, 5)
+      });
+    }
+    
+    // Ensure bs_cs gets its tracks even if not found in current block set
+    // This handles cases where program comparison needs track gates
+    if (map.bs_cs.length === 0 && programs.includes('bs_cs')) {
+      console.log('[EduTreeV2] Force-adding tracks for bs_cs (SE/DS tracks should exist)');
+      map.bs_cs = ['se', 'ds'];
+    }
+    
     return Object.freeze(map);
-  }, [tracksKey]);
+  }, [tracksKey, programs.join('|')]);
 
   // 4) Gate positions: only emit a new object when content actually changes
   function stableReturn<T>(prevRef: React.MutableRefObject<T|null>, next: T): T {
