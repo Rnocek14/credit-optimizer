@@ -535,13 +535,13 @@ function EduTreeCanvasV2Content({
           
           // Gate positions are now calculated using centralized layout tokens
           
-          // PROGRAM gate between Y1↔Y2
+          // PROGRAM gate between Y1↔Y2 - FIX: Use dynamic gate positions
           if (gatePositions.showPG && !out.some(n => n.id === 'gate-y2-programs')) {
-            console.log('[GATE DEBUG] Creating missing program gate node');
+            console.log('[GATE DEBUG] Creating missing program gate node at x:', gatePositions.pgX);
             out.push({
               id: 'gate-y2-programs',
               type: 'gate',
-              position: { x: cols.pg, y: mid(yRow(1), yRow(2)) },
+              position: { x: gatePositions.pgX, y: mid(yRow(1), yRow(2)) },
               data: { 
                 label: 'PROGRAM GATE 1→2',
                 isVirtual: true,
@@ -558,13 +558,13 @@ function EduTreeCanvasV2Content({
             });
           }
           
-          // TRACK gate between Y2↔Y3 ← this is the one we're missing
+          // TRACK gate between Y2↔Y3 - FIX: Use dynamic gate positions  
           if (gatePositions.showTG && !out.some(n => n.id === 'gate-y3-tracks')) {
-            console.log('[GATE DEBUG] Creating missing track gate node');
+            console.log('[GATE DEBUG] Creating missing track gate node at x:', gatePositions.tgX);
             out.push({
               id: 'gate-y3-tracks',
               type: 'gate',
-              position: { x: cols.tg, y: mid(yRow(2), yRow(3)) },
+              position: { x: gatePositions.tgX, y: mid(yRow(2), yRow(3)) },
               data: { 
                 label: 'TRACK GATE 2→3',
                 isVirtual: true,

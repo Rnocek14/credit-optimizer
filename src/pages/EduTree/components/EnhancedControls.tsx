@@ -87,7 +87,7 @@ export function EnhancedControls({
   return (
     <TooltipProvider>
       <Card 
-        className="enhanced-controls fixed top-4 right-4 z-40 w-80 bg-background/95 backdrop-blur-sm shadow-lg"
+        className="enhanced-controls fixed top-4 right-4 z-40 w-80 bg-background/95 backdrop-blur-sm shadow-lg pointer-events-auto"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <CardHeader className="pb-2">

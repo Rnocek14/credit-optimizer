@@ -37,7 +37,7 @@ export function useTrackComparison({
   overlayEnabled
 }: UseTrackComparisonProps) {
   
-  // Node ID by Block ID mapping - resilient matching for data
+  // Node ID by Block ID mapping - DEEP DEBUG for comparison colors
   const nodeIdByBlockId = useMemo(() => {
     const map = new Map<string, string>();
     nodes.forEach(node => {
@@ -55,7 +55,16 @@ export function useTrackComparison({
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('[NodeMapping] nodes=', nodes.length, 'keys=', map.size);
+      console.log('[NodeMapping] DEEP DEBUG:', {
+        totalNodes: nodes.length,
+        mappedKeys: map.size,
+        sampleNodes: nodes.slice(0, 3).map(n => ({
+          nodeId: n.id,
+          blockId: (n.data as any)?.block?.id || (n.data as any)?.blockId || (n.data as any)?.id,
+          allData: Object.keys(n.data || {})
+        })),
+        sampleMappings: Array.from(map.entries()).slice(0, 5)
+      });
     }
     return map;
   }, [nodes]);
@@ -73,7 +82,7 @@ export function useTrackComparison({
           totalBlocks: blocks.length,
           filteredBlocks: result.length,
           sampleBlockIds: result.slice(0, 3),
-          sampleProgramIds: blocks.slice(0, 5).map(b => ({ id: b.id, program_id: b.program_id }))
+          sampleProgramIds: blocks.slice(0, 5).map(b => ({ id: String(b.id || 'unknown'), program_id: b.program_id }))
         });
       }
       

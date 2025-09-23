@@ -34,7 +34,7 @@ export function OutcomePanel({ summary, selectedLens, isVisible }: OutcomePanelP
   const LensIcon = lensIcons[selectedLens];
   
   return (
-    <Card className="fixed bottom-4 right-4 w-80 shadow-lg border-2 z-10">
+    <Card className="fixed bottom-4 right-4 w-80 shadow-lg border-2 z-10 pointer-events-auto">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
