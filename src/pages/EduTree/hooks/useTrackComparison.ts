@@ -84,6 +84,16 @@ export function useTrackComparison({
   const highlights = useMemo((): TrackHighlights => {
     // Make overlay ready when comparing programs OR tracks
     const overlayReady = overlayEnabled && !!(primaryTrackId || primaryProgramId);
+    
+    // GPT SANITY LOG B: Compare highlight validation
+    console.log('[COMPARE]', {
+      nodeMap: nodeIdByBlockId.size,
+      pA: primaryProgramId, pB: comparisonProgramId,
+      pBlocksA: getProgramBlockIds?.(primaryProgramId || '')?.length || 0,
+      pBlocksB: getProgramBlockIds?.(comparisonProgramId || '')?.length || 0,
+      ready: overlayReady
+    });
+    
     if (!overlayReady) {
       return {
         primaryNodes: new Set(),

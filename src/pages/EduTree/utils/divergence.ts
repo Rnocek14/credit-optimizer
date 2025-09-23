@@ -158,131 +158,69 @@ export function computeTrackDivergence(
 // Import centralized layout tokens
 import { cols as makeCols, mid, snap8 } from './layoutTokens';
 
-/** Decide which gates to show and where to place them - GPT's centralized version */
+/** Decide which gates to show and where to place them - GPT's surgical fix version */
 export function decideGatePositions(opts: {
   blocks: any[];
   programs: ProgramId[];
   tracksByProgram: TracksByProgram;
 }): GatePositions & { _pgBetween: [Year, Year] | null; _tgBetween: [Year, Year] | null } {
   const { blocks, programs, tracksByProgram } = opts;
-  const cols = makeCols(); // Use centralized column calculations
-  
-  // COMPREHENSIVE DEBUG LOGGING - Enhanced input validation
-  console.log('[decideGatePositions] COMPREHENSIVE INPUT DEBUG:', {
-    blocksCount: blocks.length,
-    programs,
-    tracksByProgram,
-    cols,
-    blocksByYear: {
-      Y1: blocks.filter(b => b.level_year === 1).length,
-      Y2: blocks.filter(b => b.level_year === 2).length,
-      Y3: blocks.filter(b => b.level_year === 3).length,
-      Y4: blocks.filter(b => b.level_year === 4).length
-    },
-    trackBlocksDetailed: blocks.filter(b => b.track_id).map(b => ({
-      id: b.id,
-      level_year: b.level_year,
-      program_id: b.program_id,
-      track_id: b.track_id
-    })),
-    gateNodesPresent: {
-      programGate: !!blocks.find(b => b.id === 'gate-y2-programs'),
-      trackGate: !!blocks.find(b => b.id === 'gate-y3-tracks')
-    }
-  });
+  const c = makeCols();
 
-  // Program divergence - requires multiple programs
-  console.log('[decideGatePositions] PROGRAM DIVERGENCE ANALYSIS:', {
-    programsCount: programs.length,
-    programs,
-    willAnalyzeProgramDivergence: programs.length >= 2
-  });
-  
-  // --- Program gate: default to [1,2] for any program-vs-program compare
+  // GPT SANITY LOG A: Gate input validation  
+  console.log('[GATE IN]', { programs, blocks: blocks.length });
+
+  // --- PROGRAM GATE: default to Y1→Y2 whenever 2+ programs are shown
   let showPG = programs.length >= 2;
   let pgBetween: [1|2|3|4, 1|2|3|4] = [1, 2];
 
   if (programs.length >= 2) {
     const pgDiv = computeProgramDivergence(blocks, programs);
-    console.log('[decideGatePositions] Program divergence result:', pgDiv);
     if (pgDiv?.forkBetween) pgBetween = pgDiv.forkBetween as any;
   }
-  const pgX = showPG ? mid(cols[`y${pgBetween[0]}`], cols[`y${pgBetween[1]}`]) : undefined;
-    
-    if (showPG) {
-      console.log('[decideGatePositions] Program gate ENABLED:', { 
-        forkBetween: pgBetween, 
-        pgX,
-        colsUsed: { 
-          y1: cols.y1, 
-          y2: cols.y2, 
-          midCalculation: `(${cols.y1} + ${cols.y2}) / 2 = ${pgX}` 
-        }
-      });
-    } else {
-      console.log('[decideGatePositions] Program gate DISABLED - no programs to compare');
-    }
+  const pgX = showPG ? mid(c[`y${pgBetween[0]}`], c[`y${pgBetween[1]}`]) : undefined;
+     
+  if (showPG) {
+    console.log('[decideGatePositions] Program gate ENABLED:', { 
+      forkBetween: pgBetween, 
+      pgX,
+      colsUsed: { 
+        y1: c.y1, 
+        y2: c.y2, 
+        midCalculation: `(${c.y1} + ${c.y2}) / 2 = ${pgX}` 
+      }
+    });
+  } else {
+    console.log('[decideGatePositions] Program gate DISABLED - no programs to compare');
+  }
 
-  // Track divergence - requires a single program with multiple tracks
-  console.log('[decideGatePositions] TRACK DIVERGENCE ANALYSIS START:', {
-    programsToAnalyze: programs,
-    tracksByProgram
-  });
-  
+  // --- TRACK GATE (unchanged)
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
-  
   for (const p of programs) {
     const tracks = tracksByProgram[p] ?? [];
-    console.log('[decideGatePositions] Analyzing tracks for program:', p, {
-      tracks,
-      tracksCount: tracks.length,
-      willAnalyzeTrackDivergence: tracks.length >= 2
-    });
-    
-    if (tracks.length >= 2) {
-      console.log('[decideGatePositions] Calling computeTrackDivergence with params:', {
-        program: p,
-        tracks,
-        blocksCount: blocks.length
-      });
-      
-      const tgDiv = computeTrackDivergence(blocks, p, tracks);
-      console.log('[decideGatePositions] Track divergence result for', p, ':', tgDiv);
-      
-      if (tgDiv.forkBetween) { 
-        showTG = true; 
-        tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];
-        console.log('[decideGatePositions] Track gate ENABLED for', p, ':', { 
-          tracks, 
-          forkBetween: tgDiv.forkBetween
-        });
-        break; 
-      } else {
-        console.log('[decideGatePositions] Track gate DISABLED for', p, '- no divergence found');
-      }
-    } else {
-      console.log('[decideGatePositions] Track gate SKIPPED for', p, '- insufficient tracks');
-    }
+    if (tracks.length < 2) continue;
+    const tgDiv = computeTrackDivergence(blocks, p, tracks);
+    if (tgDiv?.forkBetween) { showTG = true; tgBetween = tgDiv.forkBetween as any; break; }
   }
-  
-  const tgX = showTG && tgBetween
-    ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
-    : undefined; // Use undefined when hidden (no fallbacks)
+  const tgX = showTG && tgBetween ? mid(c[`y${tgBetween[0]}`], c[`y${tgBetween[1]}`]) : undefined;
     
   if (showTG && tgBetween) {
     console.log('[decideGatePositions] Track gate final calculation:', {
       tgBetween,
       tgX,
       colsUsed: {
-        y2: cols.y2,
-        y3: cols.y3,
-        midCalculation: `(${cols.y2} + ${cols.y3}) / 2 = ${tgX}`
+        y2: c.y2,
+        y3: c.y3,
+        midCalculation: `(${c.y2} + ${c.y3}) / 2 = ${tgX}`
       }
     });
   }
 
-  const result = { 
+  // GPT SANITY LOG A: Gate output validation
+  console.table([{ showPG, pgX, showTG, tgX }]);
+
+  return { 
     showPG, 
     pgX, 
     showTG, 
@@ -290,25 +228,6 @@ export function decideGatePositions(opts: {
     _pgBetween: pgBetween,
     _tgBetween: tgBetween 
   };
-  
-  console.log('[decideGatePositions] FINAL RESULT:', {
-    ...result,
-    validCoordinates: {
-      pgX: Number.isFinite(pgX),
-      tgX: Number.isFinite(tgX)
-    },
-    summary: `PG: ${showPG ? `enabled @ ${pgX}` : 'disabled'}, TG: ${showTG ? `enabled @ ${tgX}` : 'disabled'}`
-  });
-  
-  // CRITICAL: Validate coordinates before returning
-  if (showPG && !Number.isFinite(pgX)) {
-    console.error('[decideGatePositions] CRITICAL: Program gate enabled but pgX is invalid:', pgX);
-  }
-  if (showTG && !Number.isFinite(tgX)) {
-    console.error('[decideGatePositions] CRITICAL: Track gate enabled but tgX is invalid:', tgX);
-  }
-  
-  return result;
 }
 
 // Dev utilities for console testing
