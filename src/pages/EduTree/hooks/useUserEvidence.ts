@@ -13,6 +13,9 @@ export type EvidenceSummary = {
     string,
     { earnedCredits: number; neededCredits?: number | null; complete: boolean }
   >;
+  
+  // timestamp when evidence was calculated
+  asOf?: string;
 };
 
 type EvidenceSets = {
@@ -21,13 +24,12 @@ type EvidenceSets = {
   transferPending: Set<string>;
 };
 
-// You can change this to use the active userId from your auth context.
-export function useUserEvidence(userId: string | "me" = "me") {
+export function useUserEvidence() {
   const { data } = useQuery({
-    queryKey: ["student-evidence", userId],
+    queryKey: ['student-evidence'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('evidence-summary', {
-        body: { userId }
+        body: {}
       });
       
       if (error) {

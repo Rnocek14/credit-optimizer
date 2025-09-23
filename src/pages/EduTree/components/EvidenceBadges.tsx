@@ -2,7 +2,6 @@ import * as React from "react";
 import { useUserEvidence } from "../hooks/useUserEvidence";
 
 type Props = {
-  userId?: string | "me";
   blockId: string;
   // If your API doesn't return byBlock yet, you can pass these as hints:
   creditsNeeded?: number | null;
@@ -10,12 +9,11 @@ type Props = {
 };
 
 export const EvidenceBadges: React.FC<Props> = ({
-  userId = "me",
   blockId,
   creditsNeeded,
   catalogCourseIds,
 }) => {
-  const { raw, getCourseStatus } = useUserEvidence(userId);
+  const { raw, getCourseStatus } = useUserEvidence();
 
   // Prefer server-side coverage if available; otherwise do a quick client calc.
   const coverage = React.useMemo(() => {

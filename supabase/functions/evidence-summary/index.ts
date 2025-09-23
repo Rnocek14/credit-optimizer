@@ -1,16 +1,12 @@
 import { corsHeaders, json, badRequest, serverError } from '../_shared/responseHelpers.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.56.0';
 
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
-
 interface EvidenceSummary {
   completed: string[];
   inProgress: string[];
   transferPending: string[];
   byBlock?: Record<string, { earnedCredits: number; neededCredits?: number | null; complete: boolean }>;
+  asOf: string;
 }
 
 Deno.serve(async (req) => {
@@ -19,41 +15,26 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+  }
+
   try {
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('userId');
-    
-    // For now, return demo data for "me" or demo users
-    if (userId === 'me' || !userId) {
-      const demoSummary: EvidenceSummary = {
-        completed: ['MATH-241', 'ENG-101', 'CS-101'],
-        inProgress: ['STAT-201', 'CS-201'],
-        transferPending: ['BIO-110'],
-        byBlock: {
-          'y1-core': { earnedCredits: 6, neededCredits: 9, complete: false },
-          'y2-cs-core': { earnedCredits: 3, neededCredits: 6, complete: false },
-          'y2-se-track': { earnedCredits: 0, neededCredits: 12, complete: false },
-          'y3-ds-track': { earnedCredits: 3, neededCredits: 15, complete: false },
-          'y4-capstone': { earnedCredits: 0, neededCredits: 6, complete: false }
+    // Create Supabase client with request auth
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: { 
+          headers: { Authorization: req.headers.get('Authorization') ?? '' }
         }
-      };
-      
-      return json(200, demoSummary);
-    }
-
-    // Get the current user's auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return badRequest('Authorization header required');
-    }
-
-    // Set the auth header for the Supabase client
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
+      }
     );
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return badRequest('Invalid authentication');
+      return badRequest('Authentication required');
     }
 
     // Query student evidence data
@@ -82,42 +63,75 @@ Deno.serve(async (req) => {
     const inProgress: string[] = [];
     const transferPending: string[] = [];
 
+    // Get current term for in-progress detection
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    const currentTerm = currentMonth >= 8 ? `${currentYear}FA` : 
+                       currentMonth >= 1 ? `${currentYear}SP` : 
+                       `${currentYear-1}FA`;
+
     mappedCourses?.forEach((mapping: any) => {
       const rawCourse = mapping.student_courses_raw;
       const courseId = mapping.catalog_course_id;
       
       if (!rawCourse || !courseId) return;
       
-      // Determine status based on grade and term
-      const grade = rawCourse.grade?.toUpperCase();
+      // Normalize grade status
+      const grade = rawCourse.grade?.toUpperCase().trim();
       const term = rawCourse.term;
       
-      if (grade && ['A', 'B', 'C', 'A-', 'B-', 'C-', 'A+', 'B+', 'C+', 'PASS', 'P'].includes(grade)) {
+      // Check for completed courses (passing grades)
+      if (grade && ['A', 'B', 'C', 'A-', 'B-', 'C-', 'A+', 'B+', 'C+', 'PASS', 'P', 'S'].includes(grade)) {
         completed.push(courseId);
-      } else if (term && term.includes('2024') && !grade) {
+      } 
+      // Check for failed/withdrawn courses (don't count these)
+      else if (grade && ['F', 'W', 'I', 'NP', 'U', 'NC'].includes(grade)) {
+        // Don't count failed/withdrawn courses
+        return;
+      }
+      // Check for in-progress courses (current term with no grade)
+      else if (term && term >= currentTerm && !grade) {
         inProgress.push(courseId);
-      } else if (mapping.confidence < 0.8) {
+      } 
+      // Low confidence mappings need review
+      else if (mapping.confidence < 0.8) {
         transferPending.push(courseId);
       }
     });
 
-    // Build block coverage (simplified for now)
+    // Calculate actual credits earned from completed courses
+    const totalCreditsEarned = mappedCourses
+      ?.filter((mapping: any) => completed.includes(mapping.catalog_course_id))
+      .reduce((sum: number, mapping: any) => {
+        return sum + (mapping.student_courses_raw?.credits || 3); // Default to 3 if not specified
+      }, 0) || 0;
+
+    // Build block coverage with actual credit calculations
     const byBlock: Record<string, any> = {};
     
-    // Sample block coverage calculation
-    if (completed.length > 0) {
+    // For now, create a simple mapping - in production this should join with block_members table
+    if (completed.length > 0 || totalCreditsEarned > 0) {
       byBlock['y1-core'] = {
-        earnedCredits: completed.length * 3, // Assume 3 credits per course
+        earnedCredits: Math.min(totalCreditsEarned, 9),
         neededCredits: 9,
-        complete: completed.length >= 3
+        complete: totalCreditsEarned >= 9
       };
+      
+      if (totalCreditsEarned > 9) {
+        byBlock['y2-cs-core'] = {
+          earnedCredits: Math.min(totalCreditsEarned - 9, 6),
+          neededCredits: 6,
+          complete: totalCreditsEarned >= 15
+        };
+      }
     }
 
     const summary: EvidenceSummary = {
       completed,
       inProgress,
       transferPending,
-      byBlock
+      byBlock,
+      asOf: new Date().toISOString()
     };
 
     return json(200, summary);

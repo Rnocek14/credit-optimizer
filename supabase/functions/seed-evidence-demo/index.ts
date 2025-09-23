@@ -24,6 +24,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Security check: Only allow in development or for service role
+    const isDev = Deno.env.get('ENVIRONMENT') === 'development' || 
+                  Deno.env.get('SUPABASE_DB_URL')?.includes('localhost');
+    
+    const authHeader = req.headers.get('Authorization');
+    const isServiceRole = authHeader?.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+    
+    if (!isDev && !isServiceRole) {
+      return badRequest('Demo seeding only available in development environment');
+    }
     console.log('Seeding demo evidence data...');
 
     // Sample transcript data for each demo user
