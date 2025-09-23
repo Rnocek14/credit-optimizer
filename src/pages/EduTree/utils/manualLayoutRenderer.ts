@@ -315,6 +315,17 @@ export function edgesToReactFlowEdges(
       });
     }
 
+    // CRITICAL: Ensure no "null" strings ever reach React Flow
+    let cleanSourceHandle = sourceHandle;
+    let cleanTargetHandle = targetHandle;
+    
+    if (sourceHandle === 'null' || (sourceHandle as any) === 'null') {
+      cleanSourceHandle = undefined;
+    }
+    if ((targetHandle as any) === 'null') {
+      cleanTargetHandle = undefined;
+    }
+
     // Use deterministic ID for metro edges to prevent remount churn
     const edgeId = edgeType === 'metroGate' ? `metro:${edge.source}->${target}` : `${edge.source}-${target}`;
     
@@ -352,26 +363,29 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they are actually needed and valid - comprehensive null check
-    if (typeof sourceHandle === 'string' && 
-        sourceHandle !== 'null' && 
-        sourceHandle !== '' && 
-        sourceHandle !== 'undefined' && 
-        sourceHandle !== null &&
-        sourceHandle !== 'false' &&
-        sourceHandle.length > 0 &&
-        !['null', 'undefined', 'false', ''].includes(sourceHandle)) {
-      edgeObject.sourceHandle = sourceHandle;
+    // Only set handles when they are actually needed and valid - comprehensive null check + CRITICAL NULL STRING FIX
+    if (typeof cleanSourceHandle === 'string' && 
+        cleanSourceHandle !== 'null' && 
+        cleanSourceHandle !== '' && 
+        cleanSourceHandle !== 'undefined' && 
+        cleanSourceHandle !== null &&
+        cleanSourceHandle !== 'false' &&
+        cleanSourceHandle.length > 0 &&
+        !['null', 'undefined', 'false', ''].includes(cleanSourceHandle)) {
+      edgeObject.sourceHandle = cleanSourceHandle;
+    } else if (sourceHandle === 'null') {
+      // CRITICAL: Never set sourceHandle to "null" string - leave undefined instead
+      console.warn('[CRITICAL] Prevented sourceHandle "null" string corruption for edge:', `${edge.source}-${target}`);
     }
     if (sourcePosition !== undefined) {
       edgeObject.sourcePosition = sourcePosition;
     }
     
     // Guard for metro edge target handles - only set when header target is confirmed
-    if (edgeType === 'metroGate' && isHeaderTarget && targetHandle === 'in') {
-      edgeObject.targetHandle = targetHandle;
-    } else if (targetHandle !== undefined && edgeType !== 'metroGate') {
-      edgeObject.targetHandle = targetHandle;
+    if (edgeType === 'metroGate' && isHeaderTarget && cleanTargetHandle === 'in') {
+      edgeObject.targetHandle = cleanTargetHandle;
+    } else if (cleanTargetHandle !== undefined && edgeType !== 'metroGate') {
+      edgeObject.targetHandle = cleanTargetHandle;
     }
 
     return edgeObject;

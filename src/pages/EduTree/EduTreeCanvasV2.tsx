@@ -221,14 +221,22 @@ function EduTreeCanvasV2Content({
         return false;
       }
       
-      // 3. REFINED handle validation with gate edge whitelist
-      const sourceHandle = edge.sourceHandle;
-      const targetHandle = edge.targetHandle;
-      
-      // Whitelist gate edges - they often omit handles on purpose
-      const isGateEdge = (e: any) =>
-        e.data?.kind === 'gate' || /gate/i.test(e.id) || /gate/i.test(e.type ?? '') ||
-        e.source?.startsWith('gate-') || e.target?.startsWith('gate-');
+    // 3. REFINED handle validation with gate edge whitelist
+    const sourceHandle = edge.sourceHandle;
+    const targetHandle = edge.targetHandle;
+    
+    // CRITICAL FIX: Convert string "null" to undefined immediately
+    if (edge.sourceHandle === 'null') {
+      edge.sourceHandle = undefined;
+    }
+    if (edge.targetHandle === 'null') {
+      edge.targetHandle = undefined;
+    }
+    
+    // Whitelist gate edges - they often omit handles on purpose
+    const isGateEdge = (e: any) =>
+      e.data?.kind === 'gate' || /gate/i.test(e.id) || /gate/i.test(e.type ?? '') ||
+      e.source?.startsWith('gate-') || e.target?.startsWith('gate-');
       
       if (isGateEdge(edge)) {
         // Gate edges bypass handle validation
