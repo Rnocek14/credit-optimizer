@@ -796,9 +796,9 @@ function EduTreeCanvasV2Content({
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           fitView={false}
-          minZoom={0.1}
-          maxZoom={3}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+          minZoom={0.3}
+          maxZoom={2}
+          defaultViewport={{ x: 0, y: 0, zoom: 1.0 }}
           panOnDrag
           panOnScroll
           zoomOnScroll
@@ -844,12 +844,12 @@ function EduTreeCanvasV2Content({
           primaryTrack={presentTracks.size >= 1 ? {
             id: Array.from(presentTracks)[0],
             name: Array.from(presentTracks)[0]?.toUpperCase() || 'Primary',
-            color: 'hsl(var(--lp-primary))'
+            color: 'hsl(var(--track-primary))'
           } : undefined}
           comparisonTrack={presentTracks.size >= 2 ? {
             id: Array.from(presentTracks)[1],
             name: Array.from(presentTracks)[1]?.toUpperCase() || 'Comparison',
-            color: 'hsl(var(--lp-compare))'
+            color: 'hsl(var(--track-comparison))'
           } : undefined}
           isVisible={true}
           showCounts={{

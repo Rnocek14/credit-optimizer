@@ -13,6 +13,9 @@
 .evidence-badges,
 .dev-hud,
 .dual-selection-legend,
+.comparison-legend,
+.enhanced-controls,
+.progress-indicator,
 .rf-overlay,
 [data-testid="transcript-upload-demo"] {
   pointer-events: none !important;
