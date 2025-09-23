@@ -544,7 +544,7 @@ export function applyManualLayout(
   });
   
   // Create nodes with phase A planning data
-  const nodes = blocksToNodes(blocks, singleRailStraight).map(node => {
+  const processedNodes = blocksToNodes(blocks, singleRailStraight).map(node => {
     const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual) return node;
     
@@ -577,6 +577,44 @@ export function applyManualLayout(
         phaseAPlan: { lane, col, x: gridCoords.x, y: gridCoords.y }
       }
     };
+  });
+  
+  // PHASE 1: Hard Guard Filter - Belt-and-suspenders for program comparison
+  const isProgramCompare = filterMode === 'compare-programs';
+  const isGate = (n: any) => n.type === 'gate' || String(n.id).startsWith('gate-');
+  
+  console.log('[ManualLayout] Before hard guard filter:', {
+    nodeCount: processedNodes.length,
+    isProgramCompare,
+    filterMode
+  });
+  
+  // Debug logging - show blocks before filtering
+  if (isProgramCompare) {
+    console.table(processedNodes.map(n => {
+      const block = blocks.find(b => b.id === n.id);
+      return {
+        id: n.id,
+        type: n.type,
+        year: block?.level_year,
+        program_id: block?.program_id,
+        track_id: block?.track_id,
+        isGate: isGate(n)
+      };
+    }));
+  }
+  
+  const nodes = processedNodes.filter(n => {
+    if (!isProgramCompare) return true;
+    const block = blocks.find(b => b.id === n.id);
+    const tid = block?.track_id;
+    return isGate(n) || !tid; // allow only non-track nodes + gates
+  });
+  
+  console.log('[ManualLayout] After hard guard filter:', {
+    originalCount: processedNodes.length,
+    filteredCount: nodes.length,
+    removed: processedNodes.length - nodes.length
   });
   
   // Apply vertical stacking for single-rail straight mode to prevent overlaps

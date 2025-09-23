@@ -21,6 +21,17 @@ interface UseApplyDimmingV2Result {
 export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
   const highlight = usePathHighlight();
 
+  // PHASE 2: Bound Highlight Sets to Live Nodes
+  const liveNodeIds = useMemo(() => new Set(nodes.map(n => n.id)), [nodes]);
+  
+  console.log('[ApplyDimmingV2] Live node IDs:', Array.from(liveNodeIds));
+  console.log('[ApplyDimmingV2] Highlight state:', {
+    primarySelection: highlight.primarySelection,
+    secondarySelection: highlight.secondarySelection,
+    hoveredKey: highlight.hoveredKey,
+    lockedKey: highlight.lockedKey
+  });
+
   // Build trackToProgram map from current nodes
   const trackToProgram = useMemo(() => {
     const map = new Map<string, string>();
@@ -54,6 +65,12 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     if (!selection || !blockish) return false;
 
     const { kind, id } = selection;
+    
+    // PHASE 2: Only process nodes that are actually live
+    if (!liveNodeIds.has(blockish.id || '')) {
+      console.log('[ApplyDimmingV2] Filtering out non-live node:', blockish.id);
+      return false;
+    }
 
     if (kind === 'program') {
       return blockish.program_id === id;
@@ -112,6 +129,17 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
   // Compute dimmed nodes with dual selection support
   const dimmedNodes = useMemo(() => {
     const { primarySelection, secondarySelection } = highlight;
+    
+    // PHASE 5: Add Debug Logging for node creation
+    console.log('[ApplyDimmingV2] Processing nodes:', {
+      nodeCount: nodes.length,
+      primarySelection,
+      secondarySelection,
+      nodeTypes: nodes.reduce((acc, n) => {
+        acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    });
     
     // Legacy single selection fallback
     if (!primarySelection && !secondarySelection) {

@@ -545,7 +545,11 @@ function EduTreeCanvasV2Content({
             return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
           }
           if (n.id === 'gate-y3-tracks') {
-            if (!gatePositions.showTG || gatePositions.tgX == null) return { ...n, hidden: true };
+            // PHASE 4: Explicitly hide track gate in program comparison
+            const isProgramComparison = effectiveFilterMode === 'compare-programs';
+            if (isProgramComparison || !gatePositions.showTG || gatePositions.tgX == null) {
+              return { ...n, hidden: true };
+            }
             return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
           }
           return n;

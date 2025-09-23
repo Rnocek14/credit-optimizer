@@ -48,11 +48,23 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       return { blocks: [], edges: [] };
     }
     
-    console.log('[EduTreeV2Data] Using golden layout seed with filter mode:', effectiveFilterMode, isAutoMode ? '(auto-detected)' : '');
+    console.log('[EduTreeV2Data] PHASE 5 DEBUG - Using golden layout seed with filter mode:', effectiveFilterMode, isAutoMode ? '(auto-detected)' : '');
+    console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     
     // Apply enhanced filtering
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode);
     const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, filteredBlocks);
+    
+    // PHASE 5: Add table logging right before node creation to verify no Y3 track blocks survive
+    console.log('[EduTreeV2Data] PHASE 5 DEBUG - Blocks after filtering:');
+    console.table(filteredBlocks.map(b => ({
+      id: b.id,
+      title: b.title?.slice(0, 30) + '...',
+      year: b.level_year,
+      program_id: b.program_id,
+      track_id: b.track_id,
+      type: b.rule_type
+    })));
     
     console.log('[EduTreeV2Data] Filtered to', {
       blocks: filteredBlocks.length,

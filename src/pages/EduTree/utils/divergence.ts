@@ -170,11 +170,12 @@ export function decideGatePositions(opts: {
     cols
   });
 
-  // Program gate - use computed fork position only, no fallbacks
+  // PHASE 4: Gate Logic Fixes - Program comparison should show only program gates
   const pgDiv = computeProgramDivergence(blocks, programs);
   console.log('[GATE DEBUG] Program divergence result:', pgDiv);
   
-  const showPG = !!pgDiv.forkBetween;
+  // For program comparison with 2+ programs, show program gate
+  const showPG = programs.length >= 2 && !!pgDiv.forkBetween;
   const pgBetween = pgDiv.forkBetween ?? [1, 2];
   const left = pgBetween[0] as 1|2|3|4;
   const right = pgBetween[1] as 1|2|3|4;
@@ -189,22 +190,37 @@ export function decideGatePositions(opts: {
     
   console.log('[GATE DEBUG] Program gate decision:', { showPG, pgX, forkBetween: pgDiv.forkBetween });
 
-  // Track gate - use computed fork position only
+  // Track gate - NEVER show in program comparison mode
+  // Check if we're in program comparison by looking at programs count and track counts
+  const isLikelyProgramComparison = programs.length >= 2 && 
+    Object.values(tracksByProgram).some(tracks => tracks.length === 0);
+    
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
-  for (const p of programs) {
-    const tracks = tracksByProgram[p] ?? [];
-    if (tracks.length < 2) continue;
-    const tgDiv = computeTrackDivergence(blocks, p, tracks);
-    if (tgDiv.forkBetween) { 
-      showTG = true; 
-      tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];
-      break; 
+  
+  if (!isLikelyProgramComparison) {
+    for (const p of programs) {
+      const tracks = tracksByProgram[p] ?? [];
+      if (tracks.length < 2) continue;
+      const tgDiv = computeTrackDivergence(blocks, p, tracks);
+      if (tgDiv.forkBetween) { 
+        showTG = true; 
+        tgBetween = tgDiv.forkBetween as [1|2|3|4, 1|2|3|4];
+        break; 
+      }
     }
   }
+  
   const tgX = showTG && tgBetween
     ? mid(cols[`y${tgBetween[0]}`], cols[`y${tgBetween[1]}`])
     : undefined; // Use undefined when hidden (no fallbacks)
+    
+  console.log('[GATE DEBUG] Track gate decision:', { 
+    showTG, 
+    tgX, 
+    isLikelyProgramComparison,
+    tracksByProgram 
+  });
 
   const result = { 
     showPG, 
