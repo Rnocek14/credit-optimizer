@@ -87,7 +87,7 @@ export function EnhancedControls({
   return (
     <TooltipProvider>
       <Card 
-        className="enhanced-controls fixed top-4 right-4 z-40 w-80 bg-background/95 backdrop-blur-sm shadow-lg pointer-events-none"
+        className="enhanced-controls fixed top-4 right-4 z-40 w-80 bg-background/95 backdrop-blur-sm shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <CardHeader className="pb-2">
@@ -145,7 +145,7 @@ export function EnhancedControls({
           )}
         </CardHeader>
 
-        <CardContent className="space-y-4 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
+        <CardContent className="space-y-4">
           {/* View Mode Selection */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">

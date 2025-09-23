@@ -315,17 +315,6 @@ export function edgesToReactFlowEdges(
       });
     }
 
-    // CRITICAL: Ensure no "null" strings ever reach React Flow
-    let cleanSourceHandle = sourceHandle;
-    let cleanTargetHandle = targetHandle;
-    
-    if (sourceHandle === 'null' || (sourceHandle as any) === 'null') {
-      cleanSourceHandle = undefined;
-    }
-    if ((targetHandle as any) === 'null') {
-      cleanTargetHandle = undefined;
-    }
-
     // Use deterministic ID for metro edges to prevent remount churn
     const edgeId = edgeType === 'metroGate' ? `metro:${edge.source}->${target}` : `${edge.source}-${target}`;
     
@@ -363,29 +352,26 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they are actually needed and valid - comprehensive null check + CRITICAL NULL STRING FIX
-    if (typeof cleanSourceHandle === 'string' && 
-        cleanSourceHandle !== 'null' && 
-        cleanSourceHandle !== '' && 
-        cleanSourceHandle !== 'undefined' && 
-        cleanSourceHandle !== null &&
-        cleanSourceHandle !== 'false' &&
-        cleanSourceHandle.length > 0 &&
-        !['null', 'undefined', 'false', ''].includes(cleanSourceHandle)) {
-      edgeObject.sourceHandle = cleanSourceHandle;
-    } else if (sourceHandle === 'null') {
-      // CRITICAL: Never set sourceHandle to "null" string - leave undefined instead
-      console.warn('[CRITICAL] Prevented sourceHandle "null" string corruption for edge:', `${edge.source}-${target}`);
+    // Only set handles when they are actually needed and valid - comprehensive null check
+    if (typeof sourceHandle === 'string' && 
+        sourceHandle !== 'null' && 
+        sourceHandle !== '' && 
+        sourceHandle !== 'undefined' && 
+        sourceHandle !== null &&
+        sourceHandle !== 'false' &&
+        sourceHandle.length > 0 &&
+        !['null', 'undefined', 'false', ''].includes(sourceHandle)) {
+      edgeObject.sourceHandle = sourceHandle;
     }
     if (sourcePosition !== undefined) {
       edgeObject.sourcePosition = sourcePosition;
     }
     
     // Guard for metro edge target handles - only set when header target is confirmed
-    if (edgeType === 'metroGate' && isHeaderTarget && cleanTargetHandle === 'in') {
-      edgeObject.targetHandle = cleanTargetHandle;
-    } else if (cleanTargetHandle !== undefined && edgeType !== 'metroGate') {
-      edgeObject.targetHandle = cleanTargetHandle;
+    if (edgeType === 'metroGate' && isHeaderTarget && targetHandle === 'in') {
+      edgeObject.targetHandle = targetHandle;
+    } else if (targetHandle !== undefined && edgeType !== 'metroGate') {
+      edgeObject.targetHandle = targetHandle;
     }
 
     return edgeObject;
@@ -543,21 +529,11 @@ export function applyManualLayout(
     
     const col = block.level_year;
     
-    // 8px grid snapped coordinates
-    const GRID = 8;
-    const snap8 = (n: number) => Math.round(n / GRID) * GRID;
-    const COL_W = 280;
-    const YEAR_GUTTER = 120;
-    const BASE_X = 200;
-    
-    // Snapped column positions
-    const manualX = snap8({ 1: BASE_X, 2: BASE_X + COL_W + YEAR_GUTTER, 3: BASE_X + 2 * (COL_W + YEAR_GUTTER), 4: BASE_X + 3 * (COL_W + YEAR_GUTTER) }[col] || BASE_X + COL_W + YEAR_GUTTER);
-    
-    // Y-row calculator with proper grid snapping
-    const yRow = (year: number) => snap8(120 + (year - 1) * (120 + 96));
-    const manualY = lane === 'up' ? (col === 3 ? yRow(3) - 60 : col === 4 ? yRow(4) - 120 : yRow(col) - 60) :
-                    lane === 'down' ? (col === 3 ? yRow(3) + 60 : col === 4 ? yRow(4) + 120 : yRow(col) + 60) :
-                    yRow(col); // shared/gate row
+    // Original manual coordinates as fallback
+    const manualX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
+    const manualY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
+                    lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
+                    360; // shared/gate row
     
     // Apply deterministic grid if enabled
     const gridCoords = applyDeterministicGrid(col, lane, manualX, manualY, useGridAnchors, singleRailStraight);
