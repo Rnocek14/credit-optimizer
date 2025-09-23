@@ -1,0 +1,36 @@
+/* React Flow Surgical Event System Fix */
+
+/* Must receive input - Force enable pointer events for React Flow layers */
+.react-flow,
+.react-flow__renderer,
+.react-flow__pane,
+.react-flow__viewport {
+  pointer-events: auto !important;
+  touch-action: none !important;
+}
+
+/* Must NOT block input - Disable pointer events on overlays */
+.evidence-badges,
+.dev-hud,
+.dual-selection-legend,
+.rf-overlay,
+[data-testid="transcript-upload-demo"] {
+  pointer-events: none !important;
+}
+
+/* Neutralize edge interaction overlays during debugging */
+.react-flow__edge-interaction {
+  pointer-events: none !important;
+}
+
+/* Ensure absolutely positioned overlays don't block canvas */
+.react-flow [style*="position: absolute"] {
+  pointer-events: none !important;
+}
+
+/* Exception for actual React Flow controls */
+.react-flow__controls,
+.react-flow__minimap,
+.react-flow__attribution {
+  pointer-events: auto !important;
+}

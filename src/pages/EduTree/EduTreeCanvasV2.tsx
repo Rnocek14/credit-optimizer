@@ -31,6 +31,7 @@ import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
+import './styles/reactFlowFix.css';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -242,6 +243,7 @@ function EduTreeCanvasV2Content({
       }
     }
   });
+
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
   const safeEdges = React.useMemo(() => {
@@ -265,41 +267,22 @@ function EduTreeCanvasV2Content({
         return false;
       }
       
-      // 3. COMPREHENSIVE handle validation - covers ALL problematic cases
+      // 3. REFINED handle validation - surgical precision to avoid over-filtering
       const sourceHandle = edge.sourceHandle;
       const targetHandle = edge.targetHandle;
       
-      // Check for ANY form of invalid source handle
-      const hasInvalidSource = (
-        sourceHandle !== undefined && (
-          sourceHandle === null ||
-          sourceHandle === 'null' || 
-          sourceHandle === 'undefined' ||
-          sourceHandle === 'false' ||
-          sourceHandle === 'NaN' ||
-          typeof sourceHandle !== 'string' ||
-          sourceHandle.trim() === '' ||
-          sourceHandle.includes('null') ||
-          sourceHandle.includes('undefined')
-        )
-      );
+      // Better handle validation - only flag truly problematic values
+      const badHandle = (h: unknown) =>
+        h == null ||
+        h === 'null' || h === 'undefined' || h === 'NaN' ||
+        (typeof h === 'string' && h.trim() === '');
       
-      // Check for ANY form of invalid target handle  
-      const hasInvalidTarget = (
-        targetHandle !== undefined && (
-          targetHandle === null ||
-          targetHandle === 'null' || 
-          targetHandle === 'undefined' ||
-          targetHandle === 'false' ||
-          targetHandle === 'NaN' ||
-          typeof targetHandle !== 'string' ||
-          targetHandle.trim() === '' ||
-          targetHandle.includes('null') ||
-          targetHandle.includes('undefined')
-        )
-      );
+      // Only enforce handle checks on edges that actually require handles
+      const needsHandles = (e: any) => e.type !== 'default' || e.sourceHandle !== undefined || e.targetHandle !== undefined;
       
-      if (hasInvalidSource || hasInvalidTarget) {
+      const hasProblematicHandles = needsHandles(edge) && (badHandle(sourceHandle) || badHandle(targetHandle));
+      
+      if (hasProblematicHandles) {
         if (process.env.NODE_ENV === 'development') {
           console.error('[EduTreeV2] CRITICAL: Filtered edge with toxic handles:', {
             id: edge.id,
@@ -369,6 +352,49 @@ function EduTreeCanvasV2Content({
   // Then apply dimming to the safe edges (hook called at top level)
   const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
 
+  // Node position validation - prevent NaN/∞ coordinates
+  const safeNodes = useMemo(() => {
+    const isFiniteNum = (v: any) => Number.isFinite(v);
+    const okNode = (n: any) => n?.position && isFiniteNum(n.position.x) && isFiniteNum(n.position.y);
+    
+    const validNodes = (processedNodes || []).filter(okNode);
+    const invalidNodes = (processedNodes || []).filter(n => !okNode(n));
+    
+    if (process.env.NODE_ENV === 'development' && invalidNodes.length > 0) {
+      console.error('[EduTreeV2] Invalid node positions filtered:', 
+        invalidNodes.map(n => ({ id: n.id, pos: n.position }))
+      );
+    }
+    
+    return validNodes;
+  }, [processedNodes]);
+
+  // Runtime debugging tools for development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Make debugging tools available on window
+      (window as any).getNodes = () => safeNodes;
+      (window as any).getEdges = () => processedEdges;
+      (window as any).checkReactFlowPane = () => {
+        const pane = document.querySelector('.react-flow__pane');
+        if (pane) {
+          const style = window.getComputedStyle(pane);
+          console.log('React Flow Pane Debug:', {
+            element: pane,
+            pointerEvents: style.pointerEvents,
+            touchAction: style.touchAction,
+            position: style.position,
+            zIndex: style.zIndex
+          });
+        }
+        return pane;
+      };
+      (window as any).checkInvalidNodes = () => {
+        return safeNodes.filter(n => !Number.isFinite(n.position?.x) || !Number.isFinite(n.position?.y));
+      };
+    }
+  }, [safeNodes, processedEdges]);
+
   // Store the ACTUAL rendered arrays for diagnostics
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -428,6 +454,7 @@ function EduTreeCanvasV2Content({
   // FitView key for determining when to reset fitView flag
   const fitViewKey = `${effectiveFilterMode}|${programs.join('|')}|${tracksKey}|${gatePositions.showPG?1:0}|${gatePositions.showTG?1:0}`;
   
+
   // Apply manual layout when data changes
   useEffect(() => {
     if (!isV2Mode || blocks.length === 0) {
@@ -758,43 +785,34 @@ function EduTreeCanvasV2Content({
         </>
       )}
 
-      <ReactFlow
-        nodes={processedNodes}
-        edges={processedEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        minZoom={0.1}
-        maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        panOnDrag={true}
-        zoomOnScroll={true}
-        zoomOnPinch={true}
-        zoomOnDoubleClick={true}
-        preventScrolling={false}
-        selectNodesOnDrag={false}
-        elementsSelectable={true}
-        proOptions={{ hideAttribution: true }}
-        onInit={(instance) => {
-          // Store React Flow instance for recovery
-          (window as any).__reactFlowInstance__ = instance;
-        }}
-        defaultEdgeOptions={{
-          type: 'step',
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-          },
-        }}
-      >
-        <MiniMap />
-        <Controls />
-        <Background />
-      </ReactFlow>
+        <ReactFlow
+          nodes={safeNodes}
+          edges={processedEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView={false}
+          minZoom={0.1}
+          maxZoom={3}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+          panOnDrag
+          panOnScroll
+          zoomOnScroll
+          zoomOnPinch
+          selectionOnDrag={false}
+          edgesFocusable={false}
+          elementsSelectable={false}
+          proOptions={{ hideAttribution: true }}
+          onInit={(instance) => {
+            // Store React Flow instance for recovery
+            (window as any).__reactFlowInstance__ = instance;
+          }}
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
       
         {/* Edge Type Legend - show in compare modes */}
         <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />
