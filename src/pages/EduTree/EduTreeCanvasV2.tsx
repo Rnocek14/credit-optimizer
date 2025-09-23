@@ -782,7 +782,7 @@ function EduTreeCanvasV2Content({
           </HudDock>
 
           {/* Top-Left Stack - Professional Compare Picker */}
-          <HudDock corner="TL" index={0}>
+          <HudDock corner="TL" index={0} className="w-auto max-w-[90vw]">
             <ComparePicker
               options={compareOptions}
               valueA={pathHighlight.primarySelection}
@@ -795,6 +795,7 @@ function EduTreeCanvasV2Content({
                 history.replaceState(null, "", `?${p.toString()}`);
                 setDev(d => ({ ...d, filterMode: 'compare-any' }));
               }}
+              className="w-full"
             />
           </HudDock>
 
