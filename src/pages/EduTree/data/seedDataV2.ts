@@ -336,12 +336,7 @@ export const GOLDEN_LAYOUT_SEED: {
     { source: "y2-bsn-core", target: "y3-bsn-clinical" },
     { source: "y3-bsn-clinical", target: "y4-bsn-capstone" },
     
-    // Gate-to-Header edges for compare modes (straight arrows)
-    { source: "gate-y2-programs", target: "program-header:bs_cs", kind: "gate" },
-    { source: "gate-y2-programs", target: "program-header:bs_it", kind: "gate" },
-    { source: "gate-y2-programs", target: "program-header:bsn", kind: "gate" },
-    { source: "gate-y3-tracks", target: "track-header:se", kind: "gate" },
-    { source: "gate-y3-tracks", target: "track-header:ds", kind: "gate" }
+    // Removed hard-wired gate-to-header edges - dropdown is source of truth
   ],
 
   junctions: [

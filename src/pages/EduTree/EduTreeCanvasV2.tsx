@@ -85,26 +85,15 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
   
-  // Show chosen program/track in single-rail mode
-  let subtitle = gateType === 'program' ? 'Choose Program' : 'Choose Track';
-  if (data.singleRailStraight) {
-    if (gateType === 'program') {
-      subtitle = data.programId === 'bs_cs' ? 'BS Computer Science chosen' : 
-                  data.programId === 'bs_it' ? 'BS Information Technology chosen' : 
-                  'Program chosen';
-    } else {
-      subtitle = data.trackId === 'se' ? 'Software Engineering chosen' : 
-                  data.trackId === 'ds' ? 'Data Science chosen' : 
-                  'Track chosen';
-    }
-  }
+  // Neutral subtitle for all gates - dropdown is source of truth
+  let subtitle = gateType === 'program' ? 'Select program using dropdown' : 'Select track using dropdown';
   
   const singleRailStraight = data.singleRailStraight;
   
   return (
     <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
       <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
-      <div className="font-semibold">{gateTitle}</div>
+      <div className="font-semibold">YEAR {data.levelYear} — {gateTitle}</div>
       <div className="mt-1 text-xs opacity-70">{subtitle}</div>
 
       {/* Handles - show appropriate handles based on mode */}

@@ -14,10 +14,10 @@ export function LaneHeaders({ filterMode }: LaneHeadersProps) {
     switch (filterMode) {
       case 'compare-programs':
         return {
-          title: 'Programs',
-          upperLane: 'BS Computer Science',
-          lowerLane: 'BS Information Technology',
-          showHeaders: true
+          title: 'Program Comparison',
+          upperLane: '',
+          lowerLane: '',
+          showHeaders: false
         };
       case 'compare-tracks':
         return {

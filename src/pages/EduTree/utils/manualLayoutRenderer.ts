@@ -416,40 +416,9 @@ function createHeaderNodes(opts: {
   const Y_DOWN = 480;
   const X_OFFSET = -60; // offset headers left of gate position
 
-  // Create headers when in appropriate compare mode, regardless of gate visibility
+  // Remove hardcoded program headers - dropdown is source of truth
   if (filterMode === 'compare-programs') {
-    // Use default position if gates not available
-    const x = gatePositions?.pgX ? gatePositions.pgX + X_OFFSET : 340; 
-    return [
-      {
-        id: 'program-header:bs_cs',
-        type: 'header',
-        position: { x, y: Y_UP - 70 },
-        data: { 
-          label: 'BS Computer Science',
-          program_id: 'bs_cs', // Add metadata for dimming
-          track_id: null
-        },
-        draggable: false,
-        selectable: false,
-        style: { zIndex: 1000 },
-        targetPosition: Position.Left
-      },
-      {
-        id: 'program-header:bs_it',
-        type: 'header',
-        position: { x, y: Y_DOWN + 70 },
-        data: { 
-          label: 'BS Information Technology',
-          program_id: 'bs_it', // Add metadata for dimming
-          track_id: null
-        },
-        draggable: false,
-        selectable: false,
-        style: { zIndex: 1000 },
-        targetPosition: Position.Left
-      }
-    ];
+    return []; // No program header nodes
   }
 
   if (filterMode === 'compare-tracks') {
