@@ -26,7 +26,9 @@ import { DevToggle } from './components/DevToggle';
 import { ReactFlowErrorBoundary } from '@/components/ReactFlowErrorBoundary';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import { useReactFlowEventDebugger } from './hooks/useReactFlowEventDebugger';
-import { DualSelectionLegend } from './components/DualSelectionLegend';
+import { ComparisonLegend } from './components/ComparisonLegend';
+import { EnhancedControls } from './components/EnhancedControls';
+import { ProgressIndicator } from './components/ProgressIndicator';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import './components/StabilityStyles.css';
@@ -837,8 +839,52 @@ function EduTreeCanvasV2Content({
         
         <DevToggle />
 
-        {/* Dual Selection Legend */}
-        <DualSelectionLegend />
+        {/* Enhanced UI Components */}
+        <ComparisonLegend 
+          primaryTrack={presentTracks.size >= 1 ? {
+            id: Array.from(presentTracks)[0],
+            name: Array.from(presentTracks)[0]?.toUpperCase() || 'Primary',
+            color: 'hsl(var(--lp-primary))'
+          } : undefined}
+          comparisonTrack={presentTracks.size >= 2 ? {
+            id: Array.from(presentTracks)[1],
+            name: Array.from(presentTracks)[1]?.toUpperCase() || 'Comparison',
+            color: 'hsl(var(--lp-compare))'
+          } : undefined}
+          isVisible={true}
+          showCounts={{
+            primary: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[0]).length,
+            comparison: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[1]).length,
+            shared: processedNodes.filter(n => !n.data?.trackId).length
+          }}
+        />
+        
+        <EnhancedControls 
+          isVisible={true}
+          viewMode={effectiveFilterMode === 'compare-tracks' ? 'comparison' : effectiveFilterMode === 'compare-programs' ? 'comparison' : 'overview'}
+          onViewModeChange={(mode) => {
+            const filterMode = mode === 'comparison' ? 'compare-tracks' : mode === 'overview' ? null : 'compare-tracks';
+            setDev(d => ({ ...d, filterMode }));
+          }}
+          showCompleted={true}
+          showPrerequisites={true}
+          layoutDensity="comfortable"
+          onLayoutDensityChange={() => {}}
+          progressStats={{
+            completed: processedNodes.filter(n => n.data?.completed).length,
+            inProgress: processedNodes.filter(n => n.data?.inProgress).length,
+            total: processedNodes.length
+          }}
+        />
+        
+        <ProgressIndicator
+          completed={processedNodes.filter(n => n.data?.completed).length}
+          inProgress={processedNodes.filter(n => n.data?.inProgress).length}
+          total={processedNodes.length}
+          trackName={presentTracks.size === 1 ? Array.from(presentTracks)[0]?.toUpperCase() : "Multiple Tracks"}
+          showDetails={true}
+          size="md"
+        />
 
         {/* Path Highlighting Diagnostics (dev only) */}
         {process.env.NODE_ENV === 'development' && (

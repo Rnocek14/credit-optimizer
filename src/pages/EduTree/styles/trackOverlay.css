@@ -3,20 +3,20 @@
 /* Enhanced Track Comparison Color System - WCAG AA Compliant */
 :root {
   /* Primary semantic colors using design system tokens */
-  --track-primary: oklch(var(--lp-primary));
-  --track-primary-bg: oklch(var(--lp-primary-light));
-  --track-primary-border: oklch(var(--lp-primary) / 0.3);
+  --track-primary: hsl(142 76% 36%);
+  --track-primary-bg: hsl(142 76% 95%);
+  --track-primary-border: hsl(142 76% 36% / 0.3);
   
-  --track-comparison: oklch(var(--lp-compare));
-  --track-comparison-bg: oklch(var(--lp-compare-light));
-  --track-comparison-border: oklch(var(--lp-compare) / 0.3);
+  --track-comparison: hsl(25 95% 53%);
+  --track-comparison-bg: hsl(25 95% 95%);
+  --track-comparison-border: hsl(25 95% 53% / 0.3);
   
-  --track-shared: oklch(var(--lp-shared));
-  --track-shared-bg: oklch(var(--lp-shared-light));
-  --track-shared-border: oklch(var(--lp-shared) / 0.3);
+  --track-shared: hsl(280 100% 70%);
+  --track-shared-bg: hsl(280 100% 95%);
+  --track-shared-border: hsl(280 100% 70% / 0.3);
   
-  --track-dim: oklch(var(--lp-dimmed));
-  --track-dim-bg: oklch(var(--lp-dimmed-light));
+  --track-dim: hsl(220 10% 40%);
+  --track-dim-bg: hsl(220 10% 90%);
   
   /* Enhanced visual feedback with better contrast ratios */
   --highlight-intensity: 0.8;
@@ -47,8 +47,8 @@
   border-radius: 8px;
   box-shadow: 
     0 0 0 1px var(--track-primary-bg),
-    0 2px 8px oklch(var(--lp-primary) / 0.2),
-    inset 0 0 0 1px oklch(var(--lp-primary) / 0.1);
+    0 2px 8px hsl(142 76% 36% / 0.2),
+    inset 0 0 0 1px hsl(142 76% 36% / 0.1);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
 }
@@ -60,8 +60,8 @@
   border-radius: 8px;
   box-shadow: 
     0 0 0 1px var(--track-comparison-bg),
-    0 2px 8px oklch(var(--lp-compare) / 0.2),
-    inset 0 0 0 1px oklch(var(--lp-compare) / 0.1);
+    0 2px 8px hsl(25 95% 53% / 0.2),
+    inset 0 0 0 1px hsl(25 95% 53% / 0.1);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
 }
@@ -73,8 +73,8 @@
   border-radius: 8px;
   box-shadow: 
     0 0 0 1px var(--track-shared-bg),
-    0 4px 12px oklch(var(--lp-shared) / 0.3),
-    inset 0 0 0 1px oklch(var(--lp-shared) / 0.15);
+    0 4px 12px hsl(280 100% 70% / 0.3),
+    inset 0 0 0 1px hsl(280 100% 70% / 0.15);
   transform: translateY(-2px) scale(1.02);
   transition: all var(--motion-normal) var(--ease-standard);
 }
@@ -83,7 +83,7 @@
 .edu-tree-canvas .react-flow__edge.edge--primary .react-flow__edge-path {
   stroke: var(--track-primary);
   stroke-width: 3px;
-  filter: drop-shadow(0 1px 2px oklch(var(--lp-primary) / 0.4));
+  filter: drop-shadow(0 1px 2px hsl(142 76% 36% / 0.4));
   transition: all var(--motion-fast) var(--ease-standard);
 }
 
@@ -91,14 +91,14 @@
   stroke: var(--track-comparison);
   stroke-width: 3px;
   stroke-dasharray: 8 4;
-  filter: drop-shadow(0 1px 2px oklch(var(--lp-compare) / 0.4));
+  filter: drop-shadow(0 1px 2px hsl(25 95% 53% / 0.4));
   transition: all var(--motion-fast) var(--ease-standard);
 }
 
 .edu-tree-canvas .react-flow__edge.edge--both .react-flow__edge-path {
   stroke: var(--track-shared);
   stroke-width: 5px;
-  filter: drop-shadow(0 2px 4px oklch(var(--lp-shared) / 0.5));
+  filter: drop-shadow(0 2px 4px hsl(280 100% 70% / 0.5));
   transition: all var(--motion-fast) var(--ease-standard);
 }
 
@@ -114,8 +114,8 @@
   transform: translateY(-2px) scale(1.02);
   box-shadow: 
     0 0 0 1px var(--track-primary-bg),
-    0 4px 16px oklch(var(--lp-primary) / 0.3),
-    inset 0 0 0 1px oklch(var(--lp-primary) / 0.15);
+    0 4px 16px hsl(142 76% 36% / 0.3),
+    inset 0 0 0 1px hsl(142 76% 36% / 0.15);
   cursor: pointer;
 }
 
@@ -123,8 +123,8 @@
   transform: translateY(-2px) scale(1.02);
   box-shadow: 
     0 0 0 1px var(--track-comparison-bg),
-    0 4px 16px oklch(var(--lp-compare) / 0.3),
-    inset 0 0 0 1px oklch(var(--lp-compare) / 0.15);
+    0 4px 16px hsl(25 95% 53% / 0.3),
+    inset 0 0 0 1px hsl(25 95% 53% / 0.15);
   cursor: pointer;
 }
 
@@ -132,8 +132,8 @@
   transform: translateY(-3px) scale(1.03);
   box-shadow: 
     0 0 0 1px var(--track-shared-bg),
-    0 6px 20px oklch(var(--lp-shared) / 0.4),
-    inset 0 0 0 1px oklch(var(--lp-shared) / 0.2);
+    0 6px 20px hsl(280 100% 70% / 0.4),
+    inset 0 0 0 1px hsl(280 100% 70% / 0.2);
   cursor: pointer;
 }
 
@@ -147,8 +147,8 @@
 .hl--primary:focus-visible,
 .hl--comparison:focus-visible,
 .hl--both:focus-visible {
-  outline: var(--focus-ring-width) solid oklch(var(--ring));
-  outline-offset: var(--focus-ring-offset);
+  outline: var(--focus-ring-width) solid hsl(220 100% 50%);
+  outline-offset: 2px;
 }
 
 /* Enhanced header node styling */
