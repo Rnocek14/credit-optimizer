@@ -375,6 +375,7 @@ function EduTreeCanvasV2Content({
   const trackComparisonResults = useTrackComparison({
     nodes: safeNodes,
     edges: processedEdges,
+    blocks,
     primaryTrackId,
     comparisonTrackId,
     primaryProgramId,
@@ -950,6 +951,24 @@ function EduTreeCanvasV2Content({
           onInit={(instance) => {
             // Store React Flow instance for recovery
             (window as any).__reactFlowInstance__ = instance;
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[V2-ZOOM] ReactFlow initialized with zoom controls');
+            }
+          }}
+          onMoveStart={() => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[V2-ZOOM] moveStart - zoom working');
+            }
+          }}
+          onMove={(_, viewport) => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[V2-ZOOM] move', { zoom: viewport.zoom, x: viewport.x, y: viewport.y });
+            }
+          }}
+          onMoveEnd={() => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[V2-ZOOM] moveEnd - interaction complete');
+            }
           }}
         >
           <Background />
@@ -988,7 +1007,7 @@ function EduTreeCanvasV2Content({
 
 
         {/* Unified HUD System - No More Overlaps */}
-        <HudLayer>
+        <HudLayer className="pointer-events-none">
           {/* Top-Right Stack */}
           <HudDock corner="TR" index={0}>
             <CompactDevPanel 

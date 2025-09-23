@@ -18,6 +18,7 @@ export interface TrackHighlights {
 export interface UseTrackComparisonProps {
   nodes: Node[];
   edges: Edge[];
+  blocks: any[];
   primaryTrackId?: TrackId;
   comparisonTrackId?: TrackId;
   primaryProgramId?: string;
@@ -28,6 +29,7 @@ export interface UseTrackComparisonProps {
 export function useTrackComparison({
   nodes,
   edges,
+  blocks,
   primaryTrackId,
   comparisonTrackId,
   primaryProgramId,
@@ -61,13 +63,22 @@ export function useTrackComparison({
   // Helper function to get program block IDs from visible blocks
   const getProgramBlockIds = useMemo(() => {
     return (programId: string): string[] => {
-      // Use blocks from seed data (TODO: replace with blocks prop when available)
-      const blockData = GOLDEN_LAYOUT_SEED.blocks;
-      return blockData
+      const result = blocks
         .filter(b => !b.program_id || b.program_id === programId)
         .map(b => String(b.id));
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getProgramBlockIds]', {
+          programId,
+          totalBlocks: blocks.length,
+          filteredBlocks: result.length,
+          sampleBlockIds: result.slice(0, 3)
+        });
+      }
+      
+      return result;
     };
-  }, []);
+  }, [blocks]);
 
   // Compute highlight sets
   const highlights = useMemo((): TrackHighlights => {
