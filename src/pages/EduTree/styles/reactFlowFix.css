@@ -1,4 +1,14 @@
-/* React Flow Surgical Event System Fix */
+/* React Flow Surgical Event System Fix with HUD Z-Index Tokens */
+
+/* Z-Index tokens for consistent layering */
+:root {
+  --z-canvas: 0;
+  --z-node: 2;
+  --z-hud: 30;
+  --z-popover: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}
 
 /* Must receive input - Force enable pointer events for React Flow layers */
 .react-flow,
@@ -9,7 +19,23 @@
   touch-action: none !important;
 }
 
-/* Must NOT block input - Disable pointer events on overlays */
+/* HUD Layer System - Default to non-blocking */
+.hud-layer {
+  pointer-events: none !important;
+  z-index: var(--z-hud);
+}
+
+.hud-card,
+.hud-popover {
+  pointer-events: auto !important;
+  z-index: var(--z-hud);
+}
+
+.hud-popover {
+  z-index: var(--z-popover);
+}
+
+/* Legacy overlay compatibility - keep non-blocking */
 .evidence-badges,
 .dev-hud,
 .dual-selection-legend,
@@ -27,7 +53,11 @@
 .enhanced-controls [role="switch"],
 .enhanced-controls [role="combobox"],
 .enhanced-controls [data-clickable="true"],
-.progress-indicator button {
+.progress-indicator button,
+.hud-card button,
+.hud-card [role="switch"],
+.hud-card [role="combobox"],
+.hud-card [data-clickable="true"] {
   pointer-events: auto !important;
 }
 

@@ -31,6 +31,8 @@ import { EnhancedControls } from './components/EnhancedControls';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
+import { HudLayer, HudDock } from './components/HudLayer';
+import { CompactDevPanel } from './components/CompactDevPanel';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
@@ -655,85 +657,7 @@ function EduTreeCanvasV2Content({
       }}
     >
       <>
-        {/* Dev Controls Toggle */}
-      <button
-        onClick={() => setShowDev(v => !v)}
-        className="fixed top-3 right-3 z-[10000] rounded-full px-3 py-2 bg-black/70 text-white hover:bg-black/80 transition-colors"
-        title="Toggle Dev Controls"
-      >
-        ⚙️
-      </button>
-
-      {/* Dev Controls Panel */}
-      {showDev && (
-        <div className="fixed top-3 left-3 z-[9999] pointer-events-auto bg-gray-900 text-white border border-gray-700 px-3 py-2 rounded-lg flex items-center gap-3 text-sm shadow-lg">
-          <label className="flex items-center gap-2">
-            <span className="text-white">Filter</span>
-            <select
-              value={effectiveFilterMode ?? 'compare-tracks'}
-              onChange={e => setDev(d => ({ ...d, filterMode: e.target.value as FilterMode }))}
-              className="bg-gray-800 border border-gray-600 px-2 py-1 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              style={{ color: 'white' }}
-            >
-              <option value="compare-tracks" style={{ background: '#1f2937', color: 'white' }}>compare-tracks</option>
-              <option value="se" style={{ background: '#1f2937', color: 'white' }}>se</option>
-              <option value="ds" style={{ background: '#1f2937', color: 'white' }}>ds</option>
-              <option value="compare-programs" style={{ background: '#1f2937', color: 'white' }}>compare-programs</option>
-              <option value="bs_cs" style={{ background: '#1f2937', color: 'white' }}>bs_cs</option>
-              <option value="bs_it" style={{ background: '#1f2937', color: 'white' }}>bs_it</option>
-            </select>
-          </label>
-
-          <label className="flex items-center gap-2">
-            <span className="text-white">Layout</span>
-            <select
-              value={effectiveFlags.eduTreeLayoutMode}
-              onChange={e => setDev(d => ({ ...d, eduTreeLayoutMode: e.target.value as any }))}
-              className="bg-gray-800 border border-gray-600 px-2 py-1 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              style={{ color: 'white' }}
-            >
-              <option value="legacy" style={{ background: '#1f2937', color: 'white' }}>legacy</option>
-              <option value="manual_v1" style={{ background: '#1f2937', color: 'white' }}>manual_v1</option>
-              <option value="grid_v2" style={{ background: '#1f2937', color: 'white' }}>grid_v2</option>
-            </select>
-          </label>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!!effectiveFlags.eduTreeV2Grid}
-              onChange={e => setDev(d => ({ ...d, eduTreeV2Grid: e.target.checked }))}
-              className="rounded border-gray-600"
-            />
-            <span className="text-white">Grid V2</span>
-          </label>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!!flags.eduTreeV2EdgeKinds}
-              onChange={e => {
-                // Toggle V2 Edge Kinds via URL param for immediate effect
-                const url = new URL(window.location.href);
-                const newValue = e.target.checked ? 'true' : 'false';
-                url.searchParams.set('eduTreeV2EdgeKinds', newValue);
-                window.location.href = url.toString();
-              }}
-              className="rounded border-gray-600"
-            />
-            <span className="text-white">V2 Edge Kinds</span>
-          </label>
-
-          <button
-            onClick={() => setDev({})}
-            className="px-2 py-1 rounded bg-gray-700 border border-gray-600 hover:bg-gray-600 transition-colors text-white"
-          >
-            Reset
-          </button>
-        </div>
-      )}
-
-      <div className="h-full w-full edu-tree-canvas">
+        <div className="h-full w-full edu-tree-canvas">
         {/* Dynamic Lane Headers - hide in single-rail straight mode */}
         {!singleRailStraight && (() => {
           const getLaneHeaders = () => {
@@ -826,71 +750,87 @@ function EduTreeCanvasV2Content({
           <div>Headers: {processedNodes.filter(n => n.type === 'header').length} • Gates: {processedNodes.filter(n => n.type === 'gate' && !n.hidden).length}</div>
         </div>
 
-        {/* Mode badge */}
-        <div className="fixed bottom-3 right-3 z-[1000] text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
-          Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
-        </div>
 
-        {/* Dev Controls */}
-        <div className="absolute top-4 right-4 z-40 space-y-2">
-          <TranscriptUploadDemo />
-        </div>
-        
-        <DevToggle />
+        {/* Unified HUD System - No More Overlaps */}
+        <HudLayer>
+          {/* Top-Right Stack */}
+          <HudDock corner="TR" index={0}>
+            <CompactDevPanel 
+              dev={dev} 
+              setDev={setDev} 
+              effectiveFlags={effectiveFlags}
+            />
+          </HudDock>
 
-        {/* Enhanced UI Components */}
-        <ComparisonLegend 
-          primaryTrack={presentTracks.size >= 1 ? {
-            id: Array.from(presentTracks)[0],
-            name: Array.from(presentTracks)[0]?.toUpperCase() || 'Primary',
-            color: 'hsl(var(--track-primary))'
-          } : undefined}
-          comparisonTrack={presentTracks.size >= 2 ? {
-            id: Array.from(presentTracks)[1],
-            name: Array.from(presentTracks)[1]?.toUpperCase() || 'Comparison',
-            color: 'hsl(var(--track-comparison))'
-          } : undefined}
-          isVisible={true}
-          showCounts={{
-            primary: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[0]).length,
-            comparison: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[1]).length,
-            shared: processedNodes.filter(n => !n.data?.trackId).length
-          }}
-        />
-        
-        <EnhancedControls 
-          isVisible={true}
-          viewMode={effectiveFilterMode === 'compare-tracks' ? 'comparison' : effectiveFilterMode === 'compare-programs' ? 'comparison' : 'overview'}
-          onViewModeChange={(mode) => {
-            const filterMode = mode === 'comparison' ? 'compare-tracks' : mode === 'overview' ? null : 'compare-tracks';
-            setDev(d => ({ ...d, filterMode }));
-          }}
-          showCompleted={true}
-          showPrerequisites={true}
-          layoutDensity="comfortable"
-          onLayoutDensityChange={() => {}}
-          progressStats={{
-            completed: processedNodes.filter(n => n.data?.completed).length,
-            inProgress: processedNodes.filter(n => n.data?.inProgress).length,
-            total: processedNodes.length
-          }}
-        />
-        
-        <ProgressIndicator
-          completed={processedNodes.filter(n => n.data?.completed).length}
-          inProgress={processedNodes.filter(n => n.data?.inProgress).length}
-          total={processedNodes.length}
-          trackName={presentTracks.size === 1 ? Array.from(presentTracks)[0]?.toUpperCase() : "Multiple Tracks"}
-          showDetails={true}
-          size="md"
-        />
+          {/* Bottom-Right Stack */}
+          <HudDock corner="BR" index={0}>
+            <TranscriptUploadDemo />
+          </HudDock>
 
-        {/* Path Highlighting Diagnostics (dev only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{ position: 'relative', zIndex: 5000 }}>
-            <HighlightDiagnostics />
-          </div>
-        )}
+          <HudDock corner="BR" index={1} className="text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
+            Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
+          </HudDock>
+
+          {/* Top-Left Stack */}
+          <HudDock corner="TL" index={0}>
+            <ComparisonLegend 
+              primaryTrack={presentTracks.size >= 1 ? {
+                id: Array.from(presentTracks)[0],
+                name: Array.from(presentTracks)[0]?.toUpperCase() || 'Primary',
+                color: 'hsl(var(--track-primary))'
+              } : undefined}
+              comparisonTrack={presentTracks.size >= 2 ? {
+                id: Array.from(presentTracks)[1],
+                name: Array.from(presentTracks)[1]?.toUpperCase() || 'Comparison',
+                color: 'hsl(var(--track-comparison))'
+              } : undefined}
+              isVisible={true}
+              showCounts={{
+                primary: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[0]).length,
+                comparison: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[1]).length,
+                shared: processedNodes.filter(n => !n.data?.trackId).length
+              }}
+            />
+          </HudDock>
+
+          <HudDock corner="TL" index={1}>
+            <EnhancedControls 
+              isVisible={true}
+              viewMode={effectiveFilterMode === 'compare-tracks' ? 'comparison' : effectiveFilterMode === 'compare-programs' ? 'comparison' : 'overview'}
+              onViewModeChange={(mode) => {
+                const filterMode = mode === 'comparison' ? 'compare-tracks' : mode === 'overview' ? null : 'compare-tracks';
+                setDev(d => ({ ...d, filterMode }));
+              }}
+              showCompleted={true}
+              showPrerequisites={true}
+              layoutDensity="comfortable"
+              onLayoutDensityChange={() => {}}
+              progressStats={{
+                completed: processedNodes.filter(n => n.data?.completed).length,
+                inProgress: processedNodes.filter(n => n.data?.inProgress).length,
+                total: processedNodes.length
+              }}
+            />
+          </HudDock>
+
+          <HudDock corner="TL" index={2}>
+            <ProgressIndicator
+              completed={processedNodes.filter(n => n.data?.completed).length}
+              inProgress={processedNodes.filter(n => n.data?.inProgress).length}
+              total={processedNodes.length}
+              trackName={presentTracks.size === 1 ? Array.from(presentTracks)[0]?.toUpperCase() : "Multiple Tracks"}
+              showDetails={true}
+              size="md"
+            />
+          </HudDock>
+
+          {/* Bottom-Left Stack - Dev Only */}
+          {process.env.NODE_ENV === 'development' && (
+            <HudDock corner="BL" index={0}>
+              <HighlightDiagnostics />
+            </HudDock>
+          )}
+        </HudLayer>
       </div>
       </>
     </ReactFlowErrorBoundary>
