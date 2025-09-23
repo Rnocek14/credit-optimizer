@@ -494,18 +494,34 @@ function EduTreeCanvasV2Content({
       blocksWithTracks: blocks.filter(b => b.track_id).length,
       tracksKey,
       map,
-      sampleTrackBlocks: blocks.filter(b => b.track_id).slice(0, 5)
+      sampleTrackBlocks: blocks.filter(b => b.track_id).slice(0, 5),
+      allBlocksWithProgramAndTrack: blocks.filter(b => b.program_id && b.track_id).map(b => ({
+        id: b.id, 
+        program_id: b.program_id, 
+        track_id: b.track_id, 
+        level_year: b.level_year
+      }))
     });
     
-    // Ensure bs_cs gets its tracks even if not found in current block set
-    // This handles cases where program comparison needs track gates
-    if (map.bs_cs.length === 0 && programs.includes('bs_cs')) {
-      console.log('[EduTreeV2] Force-adding tracks for bs_cs (SE/DS tracks should exist)');
-      map.bs_cs = ['se', 'ds'];
+    // CRITICAL: Always ensure bs_cs gets its tracks when needed for program comparisons
+    // This needs to happen BEFORE divergence analysis, not after
+    if (programs.includes('bs_cs')) {
+      // Check if we actually have track-specific blocks in the full seed data
+      const actualCSTracks = new Set(blocks.filter(b => b.program_id === 'bs_cs' && b.track_id).map(b => b.track_id));
+      console.log('[EduTreeV2] Actual CS tracks found in blocks:', [...actualCSTracks]);
+      
+      if (actualCSTracks.size > 0) {
+        map.bs_cs = [...actualCSTracks] as ('se'|'ds')[];
+        console.log('[EduTreeV2] Set bs_cs tracks from actual blocks:', map.bs_cs);
+      } else if (map.bs_cs.length === 0) {
+        console.log('[EduTreeV2] Force-adding tracks for bs_cs (SE/DS tracks should exist)');
+        map.bs_cs = ['se', 'ds'];
+      }
     }
     
+    console.log('[EduTreeV2] Final tracksByProgram:', map);
     return Object.freeze(map);
-  }, [tracksKey, programs.join('|')]);
+  }, [tracksKey, programs.join('|'), blocks]);
 
   // 4) Gate positions: only emit a new object when content actually changes
   function stableReturn<T>(prevRef: React.MutableRefObject<T|null>, next: T): T {
