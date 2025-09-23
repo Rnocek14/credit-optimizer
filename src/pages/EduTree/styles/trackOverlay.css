@@ -1,13 +1,27 @@
 /* Track Comparison Overlay Styles - Simplified approach based on POC */
 
-/* Color palette for overlay */
+/* Enhanced Track Comparison Color System - WCAG AA Compliant */
 :root {
-  --lp-primary:  hsl(210, 100%, 67%);
-  --lp-compare:  hsl(340, 100%, 75%);
-  --lp-shared:   hsl(140, 85%, 70%);
-  --lp-primary-muted:  hsl(210, 60%, 55%);
-  --lp-compare-muted:  hsl(340, 60%, 65%);
-  --lp-shared-muted:   hsl(140, 50%, 60%);
+  /* Primary semantic colors using design system tokens */
+  --track-primary: oklch(var(--lp-primary));
+  --track-primary-bg: oklch(var(--lp-primary-light));
+  --track-primary-border: oklch(var(--lp-primary) / 0.3);
+  
+  --track-comparison: oklch(var(--lp-compare));
+  --track-comparison-bg: oklch(var(--lp-compare-light));
+  --track-comparison-border: oklch(var(--lp-compare) / 0.3);
+  
+  --track-shared: oklch(var(--lp-shared));
+  --track-shared-bg: oklch(var(--lp-shared-light));
+  --track-shared-border: oklch(var(--lp-shared) / 0.3);
+  
+  --track-dim: oklch(var(--lp-dimmed));
+  --track-dim-bg: oklch(var(--lp-dimmed-light));
+  
+  /* Enhanced visual feedback with better contrast ratios */
+  --highlight-intensity: 0.8;
+  --hover-intensity: 0.12;
+  --focus-ring-width: 2px;
 }
 
 /* Track comparison controls positioning */
@@ -19,76 +33,131 @@
   pointer-events: auto;
 }
 
-/* Node highlight states */
-.hl--dim { 
+/* Enhanced highlight classes with better visual hierarchy and accessibility */
+.hl--dim {
   opacity: 0.4;
-  filter: grayscale(30%);
+  filter: grayscale(0.2) blur(0.5px);
+  transition: all var(--motion-normal) var(--ease-standard);
 }
 
-.hl--primary { 
-  opacity: 1; 
-  outline: 3px solid var(--lp-primary-muted);
-  box-shadow: 0 0 12px hsla(210, 100%, 67%, 0.3);
-  z-index: 100;
+.hl--primary {
+  opacity: 1;
+  background-color: var(--track-primary-bg);
+  border: 2px solid var(--track-primary-border);
+  border-radius: 8px;
+  box-shadow: 
+    0 0 0 1px var(--track-primary-bg),
+    0 2px 8px oklch(var(--lp-primary) / 0.2),
+    inset 0 0 0 1px oklch(var(--lp-primary) / 0.1);
+  transform: translateY(-1px);
+  transition: all var(--motion-normal) var(--ease-standard);
 }
 
-.hl--comparison { 
-  opacity: 1; 
-  outline: 3px solid var(--lp-compare-muted);
-  box-shadow: 0 0 12px hsla(340, 100%, 75%, 0.3);
-  z-index: 100;
+.hl--comparison {
+  opacity: 1;
+  background-color: var(--track-comparison-bg);
+  border: 2px dashed var(--track-comparison-border);
+  border-radius: 8px;
+  box-shadow: 
+    0 0 0 1px var(--track-comparison-bg),
+    0 2px 8px oklch(var(--lp-compare) / 0.2),
+    inset 0 0 0 1px oklch(var(--lp-compare) / 0.1);
+  transform: translateY(-1px);
+  transition: all var(--motion-normal) var(--ease-standard);
 }
 
-.hl--both { 
-  opacity: 1; 
-  outline: 3px solid var(--lp-shared-muted);
-  box-shadow: 0 0 15px hsla(140, 85%, 70%, 0.35);
-  z-index: 100;
+.hl--both {
+  opacity: 1;
+  background-color: var(--track-shared-bg);
+  border: 3px solid var(--track-shared-border);
+  border-radius: 8px;
+  box-shadow: 
+    0 0 0 1px var(--track-shared-bg),
+    0 4px 12px oklch(var(--lp-shared) / 0.3),
+    inset 0 0 0 1px oklch(var(--lp-shared) / 0.15);
+  transform: translateY(-2px) scale(1.02);
+  transition: all var(--motion-normal) var(--ease-standard);
 }
 
-/* Edge styles - Simple and direct like the POC */
+/* Enhanced edge styling with better visual hierarchy and smooth animations */
 .edu-tree-canvas .react-flow__edge.edge--primary .react-flow__edge-path {
-  stroke: var(--lp-primary-muted);
-  stroke-width: 2px;
+  stroke: var(--track-primary);
+  stroke-width: 3px;
+  filter: drop-shadow(0 1px 2px oklch(var(--lp-primary) / 0.4));
+  transition: all var(--motion-fast) var(--ease-standard);
 }
 
 .edu-tree-canvas .react-flow__edge.edge--comparison .react-flow__edge-path {
-  stroke: var(--lp-compare-muted);
-  stroke-width: 2px;
-  stroke-dasharray: 6 4;
+  stroke: var(--track-comparison);
+  stroke-width: 3px;
+  stroke-dasharray: 8 4;
+  filter: drop-shadow(0 1px 2px oklch(var(--lp-compare) / 0.4));
+  transition: all var(--motion-fast) var(--ease-standard);
 }
 
 .edu-tree-canvas .react-flow__edge.edge--both .react-flow__edge-path {
-  stroke: var(--lp-shared-muted);
-  stroke-width: 4px;
+  stroke: var(--track-shared);
+  stroke-width: 5px;
+  filter: drop-shadow(0 2px 4px oklch(var(--lp-shared) / 0.5));
+  transition: all var(--motion-fast) var(--ease-standard);
 }
 
 .edu-tree-canvas .react-flow__edge.edge--dim .react-flow__edge-path {
-  opacity: 0.25;
+  opacity: 0.3;
+  filter: grayscale(0.3);
+  stroke-width: 1.5px;
+  transition: all var(--motion-fast) var(--ease-standard);
 }
 
-/* Hover effects */
-.hl--primary:hover,
-.hl--comparison:hover,
+/* Enhanced interactive states with better feedback and accessibility */
+.hl--primary:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 0 0 1px var(--track-primary-bg),
+    0 4px 16px oklch(var(--lp-primary) / 0.3),
+    inset 0 0 0 1px oklch(var(--lp-primary) / 0.15);
+  cursor: pointer;
+}
+
+.hl--comparison:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 0 0 1px var(--track-comparison-bg),
+    0 4px 16px oklch(var(--lp-compare) / 0.3),
+    inset 0 0 0 1px oklch(var(--lp-compare) / 0.15);
+  cursor: pointer;
+}
+
 .hl--both:hover {
-  outline-width: 4px;
-  box-shadow: 0 0 20px hsla(var(--primary), 0.4);
-  z-index: 150;
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 
+    0 0 0 1px var(--track-shared-bg),
+    0 6px 20px oklch(var(--lp-shared) / 0.4),
+    inset 0 0 0 1px oklch(var(--lp-shared) / 0.2);
+  cursor: pointer;
 }
 
-/* Focus states for accessibility */
-.hl--primary:focus,
-.hl--comparison:focus,
-.hl--both:focus {
-  outline-offset: 2px;
+.hl--dim:hover {
+  opacity: 0.7;
+  filter: grayscale(0.1) blur(0px);
+  cursor: help;
 }
 
-/* Header node highlighting */
+/* Focus states for keyboard navigation */
+.hl--primary:focus-visible,
+.hl--comparison:focus-visible,
+.hl--both:focus-visible {
+  outline: var(--focus-ring-width) solid oklch(var(--ring));
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Enhanced header node styling */
 .header-node.hl--primary,
 .header-node.hl--comparison,
 .header-node.hl--both {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: currentColor;
+  border-radius: 12px;
+  padding: 8px;
+  backdrop-filter: blur(8px);
 }
 
 /* Evidence overlay — neutral palette on purpose to not fight the A/B highlight colors */

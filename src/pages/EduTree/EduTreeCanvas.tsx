@@ -57,6 +57,9 @@ import { transformEducationData } from './utils/transformEducationData';
 import { EduTreeError } from '../../components/EduTreeError';
 import { safe } from './safe';
 import './styles/trackOverlay.css';
+import { ComparisonLegend } from './components/ComparisonLegend';
+import { EnhancedControls } from './components/EnhancedControls';
+import { ProgressIndicator } from './components/ProgressIndicator';
 
 const DEV = import.meta.env.DEV;
 const RESIZE_DEBOUNCE_MS = 120;

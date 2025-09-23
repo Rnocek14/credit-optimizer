@@ -362,12 +362,40 @@
     --purple-muted: 262 30% 96%;
     --purple-muted-foreground: 262 20% 45%;
     
-    /* Visual V2 - Life Path Graph Hierarchy - Fixed: Use OKLCH directly */
-    --node-glow-on-path: 0 0 8px oklch(var(--primary) / 0.4);
-    --node-glow-related: 0 0 4px oklch(var(--secondary) / 0.3);
-    --edge-on-path: oklch(var(--primary));
+    /* Enhanced EduTree Track Comparison System - Better color semantics and accessibility */
+    /* Track highlight colors with WCAG AA compliance */
+    --lp-primary: oklch(0.60 0.18 280);        /* Purple - primary track */
+    --lp-primary-light: oklch(0.96 0.02 280);  /* Light purple background */
+    --lp-primary-foreground: oklch(0.95 0.02 280);
+    
+    --lp-compare: oklch(0.75 0.12 15);         /* Rose/pink - comparison track */
+    --lp-compare-light: oklch(0.97 0.02 15);   /* Light rose background */
+    --lp-compare-foreground: oklch(0.99 0.00 0);
+    
+    --lp-shared: oklch(0.70 0.15 142);         /* Green - shared courses */
+    --lp-shared-light: oklch(0.96 0.02 142);   /* Light green background */
+    --lp-shared-foreground: oklch(0.99 0.00 0);
+    
+    --lp-dimmed: oklch(0.60 0.00 0);           /* Neutral gray - dimmed content */
+    --lp-dimmed-light: oklch(0.94 0.00 0);     /* Light gray background */
+    
+    /* Visual V2 - Enhanced visual hierarchy */
+    --node-glow-on-path: 0 0 12px oklch(var(--lp-primary) / 0.6);
+    --node-glow-shared: 0 0 8px oklch(var(--lp-shared) / 0.4);
+    --node-glow-comparison: 0 0 8px oklch(var(--lp-compare) / 0.4);
+    
+    /* Enhanced edge styling with better contrast */
+    --edge-on-path: oklch(var(--lp-primary));
+    --edge-comparison: oklch(var(--lp-compare));
+    --edge-shared: oklch(var(--lp-shared));
     --edge-related: oklch(var(--muted-foreground) / 0.6);
     --edge-off-path: oklch(var(--muted-foreground) / 0.25);
+    
+    /* Course completion status colors */
+    --status-complete: oklch(var(--lp-shared));     /* Green for completed */
+    --status-in-progress: oklch(0.75 0.12 60);      /* Yellow for in-progress */
+    --status-prerequisite: oklch(0.70 0.10 220);    /* Blue for prerequisite */
+    --status-locked: oklch(var(--lp-dimmed));       /* Gray for locked */
 
     /* Spacing Scale */
     --space-1: 0.25rem;
