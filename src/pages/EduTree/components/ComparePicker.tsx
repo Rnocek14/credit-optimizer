@@ -1,0 +1,260 @@
+import * as React from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
+import { ArrowLeftRight, X, Search, Shuffle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty } from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TRACK_DEFINITIONS } from "../data/trackDefinitions";
+import type { Selection } from "../ctx/PathHighlightContext";
+
+// ---- types ----
+type Kind = "program" | "track";
+export type CompareOption = {
+  kind: Kind;
+  id: string;         // e.g., "bs_cs", "bs_it", "bsn", "se", "ds"
+  label: string;      // shown in UI
+  group: "Programs" | "Tracks";
+  meta?: string;      // optional subtitle (credits, school, etc.)
+};
+
+type ComparePickerProps = {
+  options: CompareOption[];                // provide programs + tracks
+  valueA: Selection | null;               // current primary
+  valueB: Selection | null;               // current comparison
+  setA: (sel: Selection | null) => void;
+  setB: (sel: Selection | null) => void;
+  onEnsureCompareAny?: () => void;        // set filterMode=compare-any
+  className?: string;
+};
+
+export function ComparePicker({
+  options,
+  valueA,
+  valueB,
+  setA,
+  setB,
+  onEnsureCompareAny,
+  className
+}: ComparePickerProps) {
+  const [openA, setOpenA] = useState(false);
+  const [openB, setOpenB] = useState(false);
+
+  // Build a map for quick lookup of labels for the chips
+  const key = (k: Kind, id: string) => `${k}:${id}`;
+  const optMap = useMemo(() => {
+    const m = new Map(options.map(o => [key(o.kind, o.id), o]));
+    return m;
+  }, [options]);
+
+  // Helpers
+  const labelFor = (sel: Selection | null) =>
+    sel ? (optMap.get(key(sel.kind, sel.id))?.label ?? `${sel.kind}:${sel.id}`) : "Select…";
+
+  const setUrl = useCallback((a: Selection | null, b: Selection | null) => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (a || b) p.set("filterMode", "compare-any");
+    a ? p.set("a", `${a.kind}:${a.id}`) : p.delete("a");
+    b ? p.set("b", `${b.kind}:${b.id}`) : p.delete("b");
+    history.replaceState(null, "", `?${p.toString()}`);
+  }, []);
+
+  useEffect(() => setUrl(valueA, valueB), [valueA, valueB, setUrl]);
+
+  const handlePick = (slot: "A" | "B", opt: CompareOption) => {
+    onEnsureCompareAny?.();
+    const sel: Selection = { kind: opt.kind, id: opt.id };
+    if (slot === "A") setA(sel); else setB(sel);
+    slot === "A" ? setOpenA(false) : setOpenB(false);
+  };
+
+  const swap = () => {
+    onEnsureCompareAny?.();
+    const a = valueA ? { ...valueA } : null;
+    const b = valueB ? { ...valueB } : null;
+    setA(b);
+    setB(a);
+  };
+
+  const clear = (slot: "A" | "B") => (slot === "A" ? setA(null) : setB(null));
+
+  // Quick preset helper
+  const pick = (kind: Kind, id: string) => options.find(o => o.kind === kind && o.id === id) ?? options[0];
+
+  // UI
+  return (
+    <div
+      className={`hud-card bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 flex items-center gap-2 ${className || ""}`}
+      onMouseDownCapture={(e) => e.stopPropagation()} // don't steal pan
+      aria-label="Compare paths"
+    >
+      <PickerChip
+        label={`A • ${labelFor(valueA)}`}
+        color="primary"
+        open={openA}
+        onOpenChange={setOpenA}
+        onClear={() => clear("A")}
+        disabledClear={!valueA}
+      >
+        <Combobox options={options} onSelect={(o) => handlePick("A", o)} />
+      </PickerChip>
+
+      <Button variant="ghost" size="icon" onClick={swap} title="Swap A/B" aria-label="Swap A/B">
+        <ArrowLeftRight className="h-4 w-4" />
+      </Button>
+
+      <PickerChip
+        label={`B • ${labelFor(valueB)}`}
+        color="comparison"
+        open={openB}
+        onOpenChange={setOpenB}
+        onClear={() => clear("B")}
+        disabledClear={!valueB}
+      >
+        <Combobox options={options} onSelect={(o) => handlePick("B", o)} />
+      </PickerChip>
+
+      {/* Quick presets (optional): show only when both empty */}
+      {!valueA && !valueB && (
+        <div className="hidden md:flex items-center gap-2 pl-2">
+          <Badge 
+            className="cursor-pointer hover:bg-primary/20" 
+            onClick={() => handlePick("A", pick("track", "software-engineering"))}
+          >
+            SE
+          </Badge>
+          <Badge 
+            className="cursor-pointer hover:bg-primary/20" 
+            onClick={() => handlePick("B", pick("track", "data-science"))}
+          >
+            DS
+          </Badge>
+          <Button variant="ghost" size="icon" title="Surprise me">
+            <Shuffle className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- internal pieces ----------
+
+function PickerChip({
+  label,
+  color,
+  open,
+  onOpenChange,
+  onClear,
+  disabledClear,
+  children
+}: {
+  label: string;
+  color: "primary" | "comparison";
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onClear: () => void;
+  disabledClear?: boolean;
+  children: React.ReactNode;
+}) {
+  const colorClass = color === "primary" ? "border-primary/50 hover:border-primary" : "border-secondary/50 hover:border-secondary";
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className={`justify-between min-w-[200px] ${colorClass}`}>
+          <span className="truncate">{label}</span>
+          {!disabledClear && (
+            <X 
+              className="ml-2 h-3.5 w-3.5 opacity-70 hover:opacity-100" 
+              onClick={(e) => { e.stopPropagation(); onClear(); }} 
+            />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="hud-popover p-0 w-[320px]" align="start">
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function Combobox({
+  options,
+  onSelect
+}: {
+  options: CompareOption[];
+  onSelect: (o: CompareOption) => void;
+}) {
+  const programs = options.filter(o => o.group === "Programs");
+  const tracks = options.filter(o => o.group === "Tracks");
+  
+  return (
+    <Command shouldFilter={true}>
+      <CommandInput placeholder="Search programs or tracks…" />
+      <CommandEmpty>No matches</CommandEmpty>
+
+      <CommandGroup heading="Programs">
+        {programs.map(o => (
+          <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
+            <span className="font-medium">{o.label}</span>
+            {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
+          </CommandItem>
+        ))}
+      </CommandGroup>
+
+      <CommandGroup heading="Tracks">
+        {tracks.map(o => (
+          <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
+            <span className="font-medium">{o.label}</span>
+            {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    </Command>
+  );
+}
+
+// Build options from existing data
+export function useCompareOptions(): CompareOption[] {
+  return useMemo(() => {
+    const programs: CompareOption[] = [
+      { kind: "program", id: "bs_cs", label: "BS • Computer Science", group: "Programs", meta: "4 years" },
+      { kind: "program", id: "bs_it", label: "BS • Information Technology", group: "Programs", meta: "4 years" },
+      { kind: "program", id: "bsn", label: "BS • Nursing", group: "Programs", meta: "4 years" },
+    ];
+    
+    const tracks: CompareOption[] = TRACK_DEFINITIONS.map(track => ({
+      kind: "track" as const,
+      id: track.id,
+      label: track.name,
+      group: "Tracks" as const,
+      meta: track.description,
+    }));
+    
+    return [...programs, ...tracks];
+  }, []);
+}
+
+// Parse URL parameters for initial state
+export function parseCompareUrl(): { primarySelection: Selection | null; secondarySelection: Selection | null } {
+  if (typeof window === "undefined") {
+    return { primarySelection: null, secondarySelection: null };
+  }
+  
+  const params = new URLSearchParams(window.location.search);
+  const a = params.get("a");
+  const b = params.get("b");
+  
+  const parseParam = (param: string | null): Selection | null => {
+    if (!param) return null;
+    const [kind, id] = param.split(":");
+    if (!kind || !id || (kind !== "program" && kind !== "track")) return null;
+    return { kind: kind as "program" | "track", id };
+  };
+  
+  return {
+    primarySelection: parseParam(a),
+    secondarySelection: parseParam(b),
+  };
+}

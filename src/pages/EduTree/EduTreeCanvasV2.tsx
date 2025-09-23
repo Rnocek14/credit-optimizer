@@ -33,6 +33,7 @@ import HighlightDiagnostics from './dev/HighlightDiagnostics';
 import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import { HudLayer, HudDock } from './components/HudLayer';
 import { CompactDevPanel } from './components/CompactDevPanel';
+import { ComparePicker, useCompareOptions, parseCompareUrl } from './components/ComparePicker';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
@@ -209,10 +210,19 @@ function EduTreeCanvasV2Content({
   overrideFlags 
 }: EduTreeCanvasV2Props) {
   const flags = useFeatureFlags();
+  const pathHighlight = usePathHighlight();
+  const compareOptions = useCompareOptions();
   
   // Dev panel state (always available in dev)
   const [showDev, setShowDev] = useState(true);
   const [dev, setDev] = useState<DevOverrides>({});
+
+  // Initialize selections from URL on mount
+  useEffect(() => {
+    const { primarySelection, secondarySelection } = parseCompareUrl();
+    if (primarySelection) pathHighlight.setPrimarySelection(primarySelection);
+    if (secondarySelection) pathHighlight.setSecondarySelection(secondarySelection);
+  }, []);
   
   // Use dev overrides first, then props overrides, then feature flags
   const effectiveFlags = {
@@ -771,24 +781,19 @@ function EduTreeCanvasV2Content({
             Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
           </HudDock>
 
-          {/* Top-Left Stack */}
+          {/* Top-Left Stack - Professional Compare Picker */}
           <HudDock corner="TL" index={0}>
-            <ComparisonLegend 
-              primaryTrack={presentTracks.size >= 1 ? {
-                id: Array.from(presentTracks)[0],
-                name: Array.from(presentTracks)[0]?.toUpperCase() || 'Primary',
-                color: 'hsl(var(--track-primary))'
-              } : undefined}
-              comparisonTrack={presentTracks.size >= 2 ? {
-                id: Array.from(presentTracks)[1],
-                name: Array.from(presentTracks)[1]?.toUpperCase() || 'Comparison',
-                color: 'hsl(var(--track-comparison))'
-              } : undefined}
-              isVisible={true}
-              showCounts={{
-                primary: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[0]).length,
-                comparison: processedNodes.filter(n => n.data?.trackId === Array.from(presentTracks)[1]).length,
-                shared: processedNodes.filter(n => !n.data?.trackId).length
+            <ComparePicker
+              options={compareOptions}
+              valueA={pathHighlight.primarySelection}
+              valueB={pathHighlight.secondarySelection}
+              setA={pathHighlight.setPrimarySelection}
+              setB={pathHighlight.setSecondarySelection}
+              onEnsureCompareAny={() => {
+                const p = new URLSearchParams(window.location.search);
+                p.set("filterMode", "compare-any");
+                history.replaceState(null, "", `?${p.toString()}`);
+                setDev(d => ({ ...d, filterMode: 'compare-any' }));
               }}
             />
           </HudDock>
