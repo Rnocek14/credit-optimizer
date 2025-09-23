@@ -22,10 +22,10 @@ interface HudDockProps {
 }
 
 const CORNER_STYLES = {
-  TL: (index: number) => ({ top: 16 + index * 8, left: 16 }),
-  TR: (index: number) => ({ top: 16 + index * 8, right: 16 }),
-  BL: (index: number) => ({ bottom: 16 + index * 8, left: 16 }),
-  BR: (index: number) => ({ bottom: 16 + index * 8, right: 16 }),
+  TL: (index: number) => ({ top: 16 + index * 100, left: 16 }),
+  TR: (index: number) => ({ top: 16 + index * 100, right: 16 }),
+  BL: (index: number) => ({ bottom: 16 + index * 100, left: 16 }),
+  BR: (index: number) => ({ bottom: 16 + index * 100, right: 16 }),
 } as const;
 
 export function HudDock({ 

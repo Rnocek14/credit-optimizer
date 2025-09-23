@@ -799,7 +799,7 @@ function EduTreeCanvasV2Content({
             />
           </HudDock>
 
-          <HudDock corner="TL" index={1}>
+          <HudDock corner="TR" index={1}>
             <EnhancedControls 
               isVisible={true}
               viewMode={effectiveFilterMode === 'compare-tracks' ? 'comparison' : effectiveFilterMode === 'compare-programs' ? 'comparison' : 'overview'}
@@ -819,7 +819,7 @@ function EduTreeCanvasV2Content({
             />
           </HudDock>
 
-          <HudDock corner="TL" index={2}>
+          <HudDock corner="BR" index={2}>
             <ProgressIndicator
               completed={processedNodes.filter(n => n.data?.completed).length}
               inProgress={processedNodes.filter(n => n.data?.inProgress).length}
