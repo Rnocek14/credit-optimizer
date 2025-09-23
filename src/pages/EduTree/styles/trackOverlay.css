@@ -51,6 +51,12 @@
     inset 0 0 0 1px oklch(0.60 0.15 142 / 0.1);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
+  /* Ensure text is readable on light backgrounds */
+  color: oklch(0.20 0.10 142) !important;
+}
+
+.hl--primary * {
+  color: oklch(0.20 0.10 142) !important;
 }
 
 .hl--comparison {
@@ -64,6 +70,12 @@
     inset 0 0 0 1px oklch(0.70 0.18 25 / 0.1);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
+  /* Ensure text is readable on light backgrounds */
+  color: oklch(0.25 0.12 25) !important;
+}
+
+.hl--comparison * {
+  color: oklch(0.25 0.12 25) !important;
 }
 
 .hl--both {
@@ -77,6 +89,12 @@
     inset 0 0 0 1px oklch(0.70 0.20 280 / 0.15);
   transform: translateY(-2px) scale(1.02);
   transition: all var(--motion-normal) var(--ease-standard);
+  /* Ensure text is readable on light backgrounds */
+  color: oklch(0.25 0.15 280) !important;
+}
+
+.hl--both * {
+  color: oklch(0.25 0.15 280) !important;
 }
 
 /* Enhanced edge styling with better visual hierarchy and smooth animations */
