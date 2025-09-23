@@ -21,9 +21,11 @@ interface CompactDevPanelProps {
     eduTreeV2Grid?: boolean;
     eduTreeLayoutMode?: string;
   };
+  effectiveFilterMode?: FilterMode;
+  isAutoMode?: boolean;
 }
 
-export function CompactDevPanel({ dev, setDev, effectiveFlags }: CompactDevPanelProps) {
+export function CompactDevPanel({ dev, setDev, effectiveFlags, effectiveFilterMode, isAutoMode }: CompactDevPanelProps) {
   const flags = useFeatureFlags();
   const [isExpanded, setIsExpanded] = React.useState(() => {
     if (typeof window === 'undefined') return false;
@@ -80,6 +82,19 @@ export function CompactDevPanel({ dev, setDev, effectiveFlags }: CompactDevPanel
                 <option value="se">SE Only</option>
                 <option value="ds">DS Only</option>
               </select>
+              
+              {/* Auto-mode indicator */}
+              {isAutoMode && (
+                <div className="mt-1 text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded border">
+                  🤖 Auto: Program comparison
+                </div>
+              )}
+              
+              {effectiveFilterMode && effectiveFilterMode !== (dev.filterMode || 'compare-tracks') && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Effective: {effectiveFilterMode}
+                </div>
+              )}
             </div>
 
             {/* Layout Mode */}

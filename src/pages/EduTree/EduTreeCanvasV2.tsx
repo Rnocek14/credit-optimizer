@@ -232,9 +232,9 @@ function EduTreeCanvasV2Content({
   };
   
   // Use dev override filter mode when provided, then props, then default
-  const effectiveFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
+  const passedFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
-  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
+  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode } = useEduTreeV2Data(passedFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -857,6 +857,8 @@ function EduTreeCanvasV2Content({
               dev={dev} 
               setDev={setDev} 
               effectiveFlags={effectiveFlags}
+              effectiveFilterMode={effectiveFilterMode}
+              isAutoMode={isAutoMode}
             />
           </HudDock>
 
@@ -867,6 +869,7 @@ function EduTreeCanvasV2Content({
 
           <HudDock corner="BR" index={1} className="text-xs opacity-80 bg-black/40 px-2 py-1 rounded">
             Mode: {effectiveFlags.eduTreeLayoutMode} • Tracks: {([...new Set(blocks.map(b => b.track_id).filter(Boolean))]).join(',') || 'shared'} • Programs: {([...new Set(blocks.map(b => b.program_id).filter(Boolean))]).join(',') || 'shared'}
+            {isAutoMode && <span className="ml-2 text-blue-300">🤖 Auto</span>}
           </HudDock>
 
           {/* Top-Left Stack - Professional Compare Picker */}
