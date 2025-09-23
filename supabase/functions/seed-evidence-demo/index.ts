@@ -24,15 +24,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Security check: Only allow in development or for service role
-    const isDev = Deno.env.get('ENVIRONMENT') === 'development' || 
-                  Deno.env.get('SUPABASE_DB_URL')?.includes('localhost');
+    // Security check: Use dedicated admin secret
+    const isDev = Deno.env.get('ENVIRONMENT') === 'development';
+    const adminSecret = req.headers.get('x-admin-seed-secret');
+    const expectedSecret = Deno.env.get('ADMIN_SEED_SECRET');
     
-    const authHeader = req.headers.get('Authorization');
-    const isServiceRole = authHeader?.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
-    
-    if (!isDev && !isServiceRole) {
-      return badRequest('Demo seeding only available in development environment');
+    if (!isDev && adminSecret !== expectedSecret) {
+      return new Response('Forbidden', { status: 403, headers: corsHeaders });
     }
     console.log('Seeding demo evidence data...');
 
