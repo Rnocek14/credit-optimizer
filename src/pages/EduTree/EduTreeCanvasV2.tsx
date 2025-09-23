@@ -372,22 +372,22 @@ function EduTreeCanvasV2Content({
     return finalFiltered;
   }, [nodes, flowEdges]);
 
-  // Skip legacy dimming when track comparison is active - let useTrackComparison handle everything
-  const { nodes: processedNodes, edges: processedEdges } = trackComparisonEnabled 
-    ? { nodes: nodes || [], edges: safeEdges }
-    : useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  // Always use track comparison as single source of truth - no conditional logic
+  const processedResult = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  const { nodes: processedNodes, edges: processedEdges } = processedResult || { nodes: [], edges: [] };
 
   // Node position validation - prevent NaN/∞ coordinates
   const safeNodes = useMemo(() => {
     const isFiniteNum = (v: any) => Number.isFinite(v);
     const okNode = (n: any) => n?.position && isFiniteNum(n.position.x) && isFiniteNum(n.position.y);
     
-    const validNodes = (processedNodes || []).filter(okNode);
-    const invalidNodes = (processedNodes || []).filter(n => !okNode(n));
+    const nodeArray = Array.isArray(processedNodes) ? processedNodes : [];
+    const validNodes = nodeArray.filter(okNode);
+    const invalidNodes = nodeArray.filter(n => !okNode(n));
     
-    if (process.env.NODE_ENV === 'development' && invalidNodes.length > 0) {
+    if (process.env.NODE_ENV === 'development' && invalidNodes?.length > 0) {
       console.error('[EduTreeV2] Invalid node positions filtered:', 
-        invalidNodes.map(n => ({ id: n.id, pos: n.position }))
+        invalidNodes.map(n => ({ id: n?.id || 'unknown', pos: n?.position || 'missing' }))
       );
     }
     

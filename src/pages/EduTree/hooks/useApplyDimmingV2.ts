@@ -20,18 +20,22 @@ interface UseApplyDimmingV2Result {
 
 export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
   const highlight = usePathHighlight();
+  
+  // Bulletproof input validation
+  const safeNodes = Array.isArray(nodes) ? nodes : [];
+  const safeEdges = Array.isArray(edges) ? edges : [];
 
   // Build trackToProgram map from current nodes
   const trackToProgram = useMemo(() => {
     const map = new Map<string, string>();
-    nodes.forEach(node => {
+    safeNodes.forEach(node => {
       const blockish = extractBlockish(node);
       if (blockish?.track_id && blockish?.program_id) {
         map.set(blockish.track_id, blockish.program_id);
       }
     });
     return map;
-  }, [nodes]);
+  }, [safeNodes]);
 
   // Helper to extract blockish data from different node structures
   function extractBlockish(node: any): Blockish | null {
@@ -115,7 +119,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     
     // Legacy single selection fallback
     if (!primarySelection && !secondarySelection) {
-      return nodes.map(node => {
+      return safeNodes.map(node => {
         const blockish = extractBlockish(node);
         const dimmed = highlight.isNodeDimmed(blockish);
         
@@ -131,7 +135,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     }
 
     // Dual selection mode
-    return nodes.map(node => {
+    return safeNodes.map(node => {
       // Skip dimming for header and gate nodes
       if (node.type === 'header' || node.type === 'gate') {
         return node;
@@ -166,12 +170,12 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
       return node;
     });
-  }, [nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram]);
+  }, [safeNodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram]);
 
   // Compute dimmed edges with dual selection support  
   const dimmedEdges = useMemo(() => {
     // ULTRA-DEFENSIVE edge pre-filtering - prevent React Flow corruption at dimming layer
-    const validEdges = edges.filter(e => {
+    const validEdges = safeEdges.filter(e => {
       // 1. Basic edge structure validation
       if (!e || typeof e.id !== 'string' || !e.source || !e.target) {
         if (import.meta.env.DEV) {
@@ -247,8 +251,8 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     // Legacy single selection fallback
     if (!primarySelection && !secondarySelection) {
       return validEdges.map(edge => {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        const targetNode = nodes.find(n => n.id === edge.target);
+        const sourceNode = safeNodes.find(n => n.id === edge.source);
+        const targetNode = safeNodes.find(n => n.id === edge.target);
         const sourceBlockish = extractBlockish(sourceNode);
         const targetBlockish = extractBlockish(targetNode);
         
@@ -267,8 +271,8 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
     // Dual selection mode
     return validEdges.map(edge => {
-      const sourceNode = nodes.find(n => n.id === edge.source);
-      const targetNode = nodes.find(n => n.id === edge.target);
+      const sourceNode = safeNodes.find(n => n.id === edge.source);
+      const targetNode = safeNodes.find(n => n.id === edge.target);
       const sourceBlockish = extractBlockish(sourceNode);
       const targetBlockish = extractBlockish(targetNode);
 
@@ -323,10 +327,10 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
       return edge;
     });
-  }, [edges, nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isEdgeDimmed, trackToProgram]);
+  }, [safeEdges, safeNodes, highlight.primarySelection, highlight.secondarySelection, highlight.isEdgeDimmed, trackToProgram]);
 
   return {
-    nodes: dimmedNodes,
-    edges: dimmedEdges
+    nodes: Array.isArray(dimmedNodes) ? dimmedNodes : [],
+    edges: Array.isArray(dimmedEdges) ? dimmedEdges : []
   };
 }
