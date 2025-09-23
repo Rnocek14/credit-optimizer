@@ -29,7 +29,7 @@ type ComparePickerProps = {
 };
 
 export function ComparePicker({
-  options,
+  options = [],
   valueA,
   valueB,
   setA,
@@ -39,6 +39,15 @@ export function ComparePicker({
 }: ComparePickerProps) {
   const [openA, setOpenA] = useState(false);
   const [openB, setOpenB] = useState(false);
+
+  // Early return if options not ready
+  if (!options || !Array.isArray(options)) {
+    return (
+      <div className={`hud-card bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 ${className || ""}`}>
+        <div className="text-sm text-muted-foreground">Loading comparison options...</div>
+      </div>
+    );
+  }
 
   // Build a map for quick lookup of labels for the chips
   const key = (k: Kind, id: string) => `${k}:${id}`;
@@ -80,7 +89,10 @@ export function ComparePicker({
   const clear = (slot: "A" | "B") => (slot === "A" ? setA(null) : setB(null));
 
   // Quick preset helper
-  const pick = (kind: Kind, id: string) => options.find(o => o.kind === kind && o.id === id) ?? options[0];
+  const pick = (kind: Kind, id: string) => {
+    if (!options || options.length === 0) return null;
+    return options.find(o => o.kind === kind && o.id === id) ?? options[0];
+  };
 
   // UI
   return (
@@ -116,20 +128,30 @@ export function ComparePicker({
       </PickerChip>
 
       {/* Quick presets (optional): show only when both empty */}
-      {!valueA && !valueB && (
+      {!valueA && !valueB && options.length > 0 && (
         <div className="hidden md:flex items-center gap-2 pl-2">
-          <Badge 
-            className="cursor-pointer hover:bg-primary/20" 
-            onClick={() => handlePick("A", pick("track", "software-engineering"))}
-          >
-            SE
-          </Badge>
-          <Badge 
-            className="cursor-pointer hover:bg-primary/20" 
-            onClick={() => handlePick("B", pick("track", "data-science"))}
-          >
-            DS
-          </Badge>
+          {pick("track", "software-engineering") && (
+            <Badge 
+              className="cursor-pointer hover:bg-primary/20" 
+              onClick={() => {
+                const seTrack = pick("track", "software-engineering");
+                if (seTrack) handlePick("A", seTrack);
+              }}
+            >
+              SE
+            </Badge>
+          )}
+          {pick("track", "data-science") && (
+            <Badge 
+              className="cursor-pointer hover:bg-primary/20" 
+              onClick={() => {
+                const dsTrack = pick("track", "data-science");
+                if (dsTrack) handlePick("B", dsTrack);
+              }}
+            >
+              DS
+            </Badge>
+          )}
           <Button variant="ghost" size="icon" title="Surprise me">
             <Shuffle className="h-4 w-4" />
           </Button>
@@ -186,6 +208,16 @@ function Combobox({
   options: CompareOption[];
   onSelect: (o: CompareOption) => void;
 }) {
+  // Defensive check for options
+  if (!options || !Array.isArray(options)) {
+    return (
+      <Command shouldFilter={true}>
+        <CommandInput placeholder="Loading..." />
+        <CommandEmpty>No options available</CommandEmpty>
+      </Command>
+    );
+  }
+
   const programs = options.filter(o => o.group === "Programs");
   const tracks = options.filter(o => o.group === "Tracks");
   
