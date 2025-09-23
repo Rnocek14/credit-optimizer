@@ -35,23 +35,21 @@
 
 /* Enhanced highlight classes with better visual hierarchy and accessibility */
 .hl--dim {
-  opacity: 0.4;
-  filter: grayscale(0.2) blur(0.5px);
+  opacity: 0.45;
+  filter: grayscale(0.3);
   transition: all var(--motion-normal) var(--ease-standard);
 }
 
 .hl--primary {
   opacity: 1;
-  background-color: var(--track-primary-bg);
-  border: 2px solid var(--track-primary-border);
+  background: color-mix(in oklab, oklch(0.60 0.15 142) 14%, transparent);
+  border: 2px solid oklch(0.60 0.15 142);
   border-radius: 8px;
   box-shadow: 
-    0 0 0 1px var(--track-primary-bg),
-    0 2px 8px oklch(0.60 0.15 142 / 0.2),
-    inset 0 0 0 1px oklch(0.60 0.15 142 / 0.1);
+    0 0 0 1px color-mix(in oklab, oklch(0.60 0.15 142) 20%, transparent),
+    0 2px 8px oklch(0.60 0.15 142 / 0.2);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
   color: oklch(0.20 0.10 142) !important;
 }
 
@@ -61,40 +59,41 @@
 
 .hl--comparison {
   opacity: 1;
-  background-color: var(--track-comparison-bg);
-  border: 2px dashed var(--track-comparison-border);
+  background: color-mix(in oklab, oklch(0.70 0.18 320) 14%, transparent);
+  border: 2px dashed oklch(0.70 0.18 320);
   border-radius: 8px;
   box-shadow: 
-    0 0 0 1px var(--track-comparison-bg),
-    0 2px 8px oklch(0.70 0.18 25 / 0.2),
-    inset 0 0 0 1px oklch(0.70 0.18 25 / 0.1);
+    0 0 0 1px color-mix(in oklab, oklch(0.70 0.18 320) 20%, transparent),
+    0 2px 8px oklch(0.70 0.18 320 / 0.2);
   transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.25 0.12 25) !important;
+  color: oklch(0.25 0.12 320) !important;
 }
 
 .hl--comparison * {
-  color: oklch(0.25 0.12 25) !important;
+  color: oklch(0.25 0.12 320) !important;
 }
 
 .hl--both {
   opacity: 1;
-  background-color: var(--track-shared-bg);
-  border: 3px solid var(--track-shared-border);
+  /* Diagonal stripe pattern for shared nodes */
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in oklab, oklch(0.60 0.15 142) 15%, transparent) 0 6px,
+    color-mix(in oklab, oklch(0.70 0.18 320) 15%, transparent) 6px 12px
+  );
+  border: 3px solid oklch(0.25 0.05 220);
   border-radius: 8px;
   box-shadow: 
-    0 0 0 1px var(--track-shared-bg),
-    0 4px 12px oklch(0.70 0.20 280 / 0.3),
-    inset 0 0 0 1px oklch(0.70 0.20 280 / 0.15);
+    0 0 0 1px oklch(0.25 0.05 220 / 0.3),
+    0 4px 12px oklch(0.25 0.05 220 / 0.2);
   transform: translateY(-2px) scale(1.02);
   transition: all var(--motion-normal) var(--ease-standard);
-  /* Ensure text is readable on light backgrounds */
-  color: oklch(0.25 0.15 280) !important;
+  color: oklch(0.15 0.10 220) !important;
 }
 
 .hl--both * {
-  color: oklch(0.25 0.15 280) !important;
+  color: oklch(0.15 0.10 220) !important;
 }
 
 /* Enhanced edge styling with better visual hierarchy and smooth animations */
@@ -178,15 +177,17 @@
   backdrop-filter: blur(8px);
 }
 
-/* Evidence overlay — neutral palette on purpose to not fight the A/B highlight colors */
+/* Evidence overlay — neutral palette, corner-only positioning to avoid conflicts with comparison colors */
 .evi--dock {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   position: absolute;
-  right: 8px; bottom: 8px; /* tuck into node corner */
+  right: 6px; bottom: 6px; /* tuck into node corner */
   z-index: 2; /* above card content, below hover glow */
   pointer-events: none; /* purely informational */
-  font-size: 11px;
+  font-size: 10px;
+  /* Ensure evidence uses neutral colors only */
+  filter: saturate(0.3);
 }
 
 .evi--meter {

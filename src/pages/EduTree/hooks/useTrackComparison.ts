@@ -219,7 +219,7 @@ export function useTrackComparison({
     });
   }, [edges, highlights, overlayEnabled]);
 
-  // Debug info
+  // Debug info and legend counts for UI components
   const debugInfo = useMemo(() => ({
     overlayReady: overlayEnabled && !!primaryTrackId,
     resolvedBlocks: nodeIdByBlockId.size,
@@ -229,10 +229,27 @@ export function useTrackComparison({
     sharedCount: highlights.sharedNodes.size
   }), [overlayEnabled, primaryTrackId, nodeIdByBlockId.size, highlights]);
 
+  // Calculate legend counts including dimmed nodes
+  const legendCounts = useMemo(() => {
+    if (!overlayEnabled || !highlights) return undefined;
+    
+    const totalNodes = nodes.length;
+    const highlightedCount = highlights.primaryNodes.size + highlights.comparisonNodes.size + highlights.sharedNodes.size;
+    const dimCount = Math.max(0, totalNodes - highlightedCount);
+    
+    return {
+      primary: highlights.primaryNodes.size,
+      comparison: highlights.comparisonNodes.size,
+      shared: highlights.sharedNodes.size,
+      dim: dimCount
+    };
+  }, [overlayEnabled, highlights, nodes.length]);
+
   return {
     highlightedNodes,
     highlightedEdges,
     highlights,
-    debugInfo
+    debugInfo,
+    legendCounts
   };
 }

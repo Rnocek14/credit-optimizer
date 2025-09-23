@@ -26,7 +26,10 @@ import { DevToggle } from './components/DevToggle';
 import { ReactFlowErrorBoundary } from '@/components/ReactFlowErrorBoundary';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
 import { useReactFlowEventDebugger } from './hooks/useReactFlowEventDebugger';
+import { useTrackComparison } from './hooks/useTrackComparison';
 import { ComparisonLegend } from './components/ComparisonLegend';
+import { DebugHUD } from './components/DebugHUD';
+import { CompareModeHeader } from './components/CompareModeHeader';
 import { EnhancedControls } from './components/EnhancedControls';
 import { ProgressIndicator } from './components/ProgressIndicator';
 import HighlightDiagnostics from './dev/HighlightDiagnostics';
@@ -233,6 +236,11 @@ function EduTreeCanvasV2Content({
   // Use dev override filter mode when provided, then props, then default
   const effectiveFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
+  // Track comparison logic for compare-any mode
+  const trackComparisonEnabled = effectiveFilterMode === 'compare-any';
+  const primaryTrackId = pathHighlight.primarySelection?.kind === 'track' ? pathHighlight.primarySelection.id as any : undefined;
+  const comparisonTrackId = pathHighlight.secondarySelection?.kind === 'track' ? pathHighlight.secondarySelection.id as any : undefined;
+  
   const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -418,6 +426,28 @@ function EduTreeCanvasV2Content({
       (window as any).__filteredEdges__ = safeEdges;
     }
   }, [processedNodes, processedEdges, flowEdges, safeEdges]);
+
+  // Track comparison integration for compare-any mode
+  const trackComparisonResults = useTrackComparison({
+    nodes: safeNodes,
+    edges: processedEdges,
+    primaryTrackId,
+    comparisonTrackId,
+    overlayEnabled: trackComparisonEnabled
+  });
+
+  // Use highlighted nodes/edges when track comparison is active
+  const finalNodes = trackComparisonEnabled ? trackComparisonResults.highlightedNodes : safeNodes;
+  const finalEdges = trackComparisonEnabled ? trackComparisonResults.highlightedEdges : processedEdges;
+
+  // Swap tracks handler
+  const handleSwapTracks = useCallback(() => {
+    if (pathHighlight.primarySelection && pathHighlight.secondarySelection) {
+      const temp = pathHighlight.primarySelection;
+      pathHighlight.setPrimarySelection(pathHighlight.secondarySelection);
+      pathHighlight.setSecondarySelection(temp);
+    }
+  }, [pathHighlight]);
   
   // Calculate single-rail mode flags - handles both program and track level
   const presentTracks = new Set(blocks.map(b => b.track_id).filter(Boolean));
@@ -722,8 +752,8 @@ function EduTreeCanvasV2Content({
       )}
 
         <ReactFlow
-          nodes={safeNodes}
-          edges={processedEdges}
+          nodes={finalNodes}
+          edges={finalEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -744,6 +774,7 @@ function EduTreeCanvasV2Content({
             // Store React Flow instance for recovery
             (window as any).__reactFlowInstance__ = instance;
           }}
+        >
         >
           <Background />
           <Controls />
