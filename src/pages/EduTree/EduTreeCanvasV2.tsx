@@ -241,6 +241,8 @@ function EduTreeCanvasV2Content({
   const trackComparisonEnabled = effectiveFilterMode === 'compare-any';
   const primaryTrackId = pathHighlight.primarySelection?.kind === 'track' ? pathHighlight.primarySelection.id as any : undefined;
   const comparisonTrackId = pathHighlight.secondarySelection?.kind === 'track' ? pathHighlight.secondarySelection.id as any : undefined;
+  const primaryProgramId = pathHighlight.primarySelection?.kind === 'program' ? pathHighlight.primarySelection.id as string : undefined;
+  const comparisonProgramId = pathHighlight.secondarySelection?.kind === 'program' ? pathHighlight.secondarySelection.id as string : undefined;
   
   const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode } = useEduTreeV2Data(effectiveFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -436,6 +438,8 @@ function EduTreeCanvasV2Content({
     edges: processedEdges,
     primaryTrackId,
     comparisonTrackId,
+    primaryProgramId,
+    comparisonProgramId,
     overlayEnabled: trackComparisonEnabled
   });
 

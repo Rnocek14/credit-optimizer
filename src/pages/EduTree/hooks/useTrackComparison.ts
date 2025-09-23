@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { TRACK_MAP, type TrackId } from '../data/trackDefinitions';
+import { GOLDEN_LAYOUT_SEED } from '../data/seedDataV2';
 
 // Edge ID normalization helper
 export const eid = (source: string, target: string) => `e-${String(source)}-${String(target)}`;
@@ -19,6 +20,8 @@ export interface UseTrackComparisonProps {
   edges: Edge[];
   primaryTrackId?: TrackId;
   comparisonTrackId?: TrackId;
+  primaryProgramId?: string;
+  comparisonProgramId?: string;
   overlayEnabled: boolean;
 }
 
@@ -27,33 +30,47 @@ export function useTrackComparison({
   edges,
   primaryTrackId,
   comparisonTrackId,
+  primaryProgramId,
+  comparisonProgramId,
   overlayEnabled
 }: UseTrackComparisonProps) {
   
-  // Build node ID lookup map from rendered nodes (by slug)
+  // Build node ID lookup map from rendered nodes (by node.id which equals block.id)
   const nodeIdByBlockId = useMemo(() => {
     const map = new Map<string, string>();
     nodes.forEach(node => {
-      // Extract block slug from node data
+      // Node ID directly corresponds to block ID in our V2 system
+      map.set(node.id, node.id);
+      
+      // Also handle legacy slug mapping for track definitions that use slugs
       const blockData = node.data as any;
       const blockSlug = blockData?.block?.slug || blockData?.slug || blockData?.blockSlug;
-      if (blockSlug) {
+      if (blockSlug && blockSlug !== node.id) {
         map.set(blockSlug, node.id);
       }
     });
     
     if (process.env.NODE_ENV === 'development') {
       console.log('[NodeMapping] Total nodes:', nodes.length);
-      console.log('[NodeMapping] Mapped by slug:', map.size);
-      console.log('[NodeMapping] Sample mappings:', Array.from(map.entries()).slice(0, 3));
+      console.log('[NodeMapping] Mapped by block ID/slug:', map.size);
+      console.log('[NodeMapping] Sample mappings:', Array.from(map.entries()).slice(0, 5));
     }
     
     return map;
   }, [nodes]);
 
+  // Helper function to get block IDs for a program
+  const getProgramBlockIds = useMemo(() => {
+    return (programId: string): string[] => {
+      return GOLDEN_LAYOUT_SEED.blocks
+        .filter(block => !block.program_id || block.program_id === programId)
+        .map(block => block.id);
+    };
+  }, []);
+
   // Compute highlight sets
   const highlights = useMemo((): TrackHighlights => {
-    if (!overlayEnabled || !primaryTrackId) {
+    if (!overlayEnabled || (!primaryTrackId && !primaryProgramId)) {
       return {
         primaryNodes: new Set(),
         primaryEdges: new Set(),
@@ -64,11 +81,30 @@ export function useTrackComparison({
       };
     }
 
-    const primaryTrack = TRACK_MAP.get(primaryTrackId);
-    const comparisonTrack = comparisonTrackId ? TRACK_MAP.get(comparisonTrackId) : undefined;
+    // Get block IDs for primary selection (track or program)
+    let primaryBlockIds: string[] = [];
+    if (primaryTrackId) {
+      const primaryTrack = TRACK_MAP.get(primaryTrackId);
+      if (primaryTrack) {
+        primaryBlockIds = primaryTrack.blockIds;
+      }
+    } else if (primaryProgramId) {
+      primaryBlockIds = getProgramBlockIds(primaryProgramId);
+    }
 
-    if (!primaryTrack) {
-      console.warn(`[TrackComparison] Primary track not found: ${primaryTrackId}`);
+    // Get block IDs for comparison selection (track or program)
+    let comparisonBlockIds: string[] = [];
+    if (comparisonTrackId) {
+      const comparisonTrack = TRACK_MAP.get(comparisonTrackId);
+      if (comparisonTrack) {
+        comparisonBlockIds = comparisonTrack.blockIds;
+      }
+    } else if (comparisonProgramId) {
+      comparisonBlockIds = getProgramBlockIds(comparisonProgramId);
+    }
+
+    if (primaryBlockIds.length === 0) {
+      console.warn(`[TrackComparison] No blocks found for primary selection:`, { primaryTrackId, primaryProgramId });
       return {
         primaryNodes: new Set(),
         primaryEdges: new Set(),
@@ -79,44 +115,46 @@ export function useTrackComparison({
       };
     }
 
-    // Resolve block slugs to actual node IDs
+    // Resolve block IDs to actual node IDs
     const primaryNodeIds = new Set<string>();
     const primaryMissing: string[] = [];
     
-    primaryTrack.blockIds.forEach(blockSlug => {
-      const nodeId = nodeIdByBlockId.get(blockSlug);
+    primaryBlockIds.forEach(blockId => {
+      const nodeId = nodeIdByBlockId.get(blockId);
       if (nodeId) {
         primaryNodeIds.add(nodeId);
       } else {
-        primaryMissing.push(blockSlug);
+        primaryMissing.push(blockId);
       }
     });
 
     let comparisonNodeIds = new Set<string>();
     let comparisonMissing: string[] = [];
     
-    if (comparisonTrack) {
-      comparisonTrack.blockIds.forEach(blockSlug => {
-        const nodeId = nodeIdByBlockId.get(blockSlug);
+    if (comparisonBlockIds.length > 0) {
+      comparisonBlockIds.forEach(blockId => {
+        const nodeId = nodeIdByBlockId.get(blockId);
         if (nodeId) {
           comparisonNodeIds.add(nodeId);
         } else {
-          comparisonMissing.push(blockSlug);
+          comparisonMissing.push(blockId);
         }
       });
     }
 
     // Log resolution results
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Resolve ${primaryTrackId}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
-      if (comparisonTrack) {
-        console.log(`[Resolve ${comparisonTrackId}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);
+      const primaryLabel = primaryTrackId || primaryProgramId || 'unknown';
+      const comparisonLabel = comparisonTrackId || comparisonProgramId || 'none';
+      console.log(`[Resolve ${primaryLabel}] resolved: ${primaryNodeIds.size}, missing: ${primaryMissing.length > 0 ? primaryMissing.join(', ') : 'none'}`);
+      if (comparisonBlockIds.length > 0) {
+        console.log(`[Resolve ${comparisonLabel}] resolved: ${comparisonNodeIds.size}, missing: ${comparisonMissing.length > 0 ? comparisonMissing.join(', ') : 'none'}`);
       }
     }
 
     // Compute shared nodes
     const sharedNodeIds = new Set<string>();
-    if (comparisonTrack) {
+    if (comparisonNodeIds.size > 0) {
       primaryNodeIds.forEach(id => {
         if (comparisonNodeIds.has(id)) {
           sharedNodeIds.add(id);
@@ -160,7 +198,7 @@ export function useTrackComparison({
       sharedEdges: sharedEdgeIds
     };
 
-  }, [overlayEnabled, primaryTrackId, comparisonTrackId, nodeIdByBlockId, edges]);
+  }, [overlayEnabled, primaryTrackId, comparisonTrackId, primaryProgramId, comparisonProgramId, nodeIdByBlockId, edges, getProgramBlockIds]);
 
   // Apply highlight classes to nodes and edges
   const highlightedNodes = useMemo(() => {
@@ -215,13 +253,13 @@ export function useTrackComparison({
 
   // Debug info and legend counts for UI components
   const debugInfo = useMemo(() => ({
-    overlayReady: overlayEnabled && !!primaryTrackId,
+    overlayReady: overlayEnabled && !!(primaryTrackId || primaryProgramId),
     resolvedBlocks: nodeIdByBlockId.size,
     anyMatches: highlights.primaryNodes.size > 0,
     primaryCount: highlights.primaryNodes.size,
     comparisonCount: highlights.comparisonNodes.size,
     sharedCount: highlights.sharedNodes.size
-  }), [overlayEnabled, primaryTrackId, nodeIdByBlockId.size, highlights]);
+  }), [overlayEnabled, primaryTrackId, primaryProgramId, nodeIdByBlockId.size, highlights]);
 
   // Calculate legend counts including dimmed nodes
   const legendCounts = useMemo(() => {
