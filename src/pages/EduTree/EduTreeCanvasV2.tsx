@@ -86,22 +86,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   );
 };
 
-const GateNode = ({ data }: { data: V2NodeData }) => {
-  const label = data.junctionType === 'program' ? 'Choose Program' : 'Choose Track';
-  const subtitle = data.junctionType === 'program' ? 'Program Gate' : 'Track Gate';
-
-  return (
-    <div className="gate-node">
-      <Handle type="source" position={Position.Right} id="out" className="w-3 h-3" />
-      <Handle type="source" position={Position.Top} id="out-se" className="w-3 h-3" />
-      <Handle type="source" position={Position.Bottom} id="out-ds" className="w-3 h-3" />
-      <div className="text-center">
-        <div className="font-medium text-sm">{subtitle}</div>
-        <div className="text-xs opacity-75">{label}</div>
-      </div>
-    </div>
-  );
-};
+// Local GateNode removed - using imported component
 
 const nodeTypes = {
   requirement: RequirementNode,
@@ -565,7 +550,7 @@ function EduTreeCanvasV2Content({
             out.push({
               id: 'gate-y2-programs',
               type: 'gate',
-              position: { x: cols.pg, y: midY(yRow(1), yRow(2)) },
+              position: { x: cols.pg, y: mid(yRow(1), yRow(2)) },
               data: { 
                 label: 'PROGRAM GATE 1→2',
                 isVirtual: true,
@@ -588,7 +573,7 @@ function EduTreeCanvasV2Content({
             out.push({
               id: 'gate-y3-tracks',
               type: 'gate',
-              position: { x: cols.tg, y: midY(yRow(2), yRow(3)) },
+              position: { x: cols.tg, y: mid(yRow(2), yRow(3)) },
               data: { 
                 label: 'TRACK GATE 2→3',
                 isVirtual: true,
@@ -618,7 +603,7 @@ function EduTreeCanvasV2Content({
           const GRID = 8;
           const snap8 = (n: number) => Math.round(n / GRID) * GRID;
           const yRow = (year: 1 | 2 | 3 | 4) => snap8(120 + (year - 1) * (120 + 96));
-          const midY = (a: number, b: number) => snap8((a + b) / 2);
+          const midY = (a: number, b: number) => mid(a, b); // Use centralized mid function
           
           console.log('[GATE DEBUG - PHASE 3] Gate nodes in layout:', {
             programGateExists: !!programGateNode,

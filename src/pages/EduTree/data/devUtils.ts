@@ -84,8 +84,7 @@ export function testDivergenceAnalysis() {
   const gatePositions = decideGatePositions({
     blocks: GOLDEN_LAYOUT_SEED.blocks,
     programs,
-    tracksByProgram,
-    cols
+    tracksByProgram
   });
   
   console.log('Gate positions:', gatePositions);
