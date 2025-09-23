@@ -2,7 +2,7 @@ import * as React from "react";
 import { useMemo, useCallback, useEffect, useState } from "react";
 import { ArrowLeftRight, X, Search, Shuffle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TRACK_DEFINITIONS } from "../data/trackDefinitions";
@@ -213,7 +213,9 @@ function Combobox({
     return (
       <Command shouldFilter={true}>
         <CommandInput placeholder="Loading..." />
-        <CommandEmpty>No options available</CommandEmpty>
+        <CommandList>
+          <CommandEmpty>No options available</CommandEmpty>
+        </CommandList>
       </Command>
     );
   }
@@ -224,25 +226,27 @@ function Combobox({
   return (
     <Command shouldFilter={true}>
       <CommandInput placeholder="Search programs or tracks…" />
-      <CommandEmpty>No matches</CommandEmpty>
+      <CommandList>
+        <CommandEmpty>No matches</CommandEmpty>
 
-      <CommandGroup heading="Programs">
-        {programs.map(o => (
-          <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
-            <span className="font-medium">{o.label}</span>
-            {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
-          </CommandItem>
-        ))}
-      </CommandGroup>
+        <CommandGroup heading="Programs">
+          {programs.map(o => (
+            <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
+              <span className="font-medium">{o.label}</span>
+              {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
+            </CommandItem>
+          ))}
+        </CommandGroup>
 
-      <CommandGroup heading="Tracks">
-        {tracks.map(o => (
-          <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
-            <span className="font-medium">{o.label}</span>
-            {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
-          </CommandItem>
-        ))}
-      </CommandGroup>
+        <CommandGroup heading="Tracks">
+          {tracks.map(o => (
+            <CommandItem key={`${o.kind}:${o.id}`} value={`${o.label} ${o.meta || ""}`} onSelect={() => onSelect(o)}>
+              <span className="font-medium">{o.label}</span>
+              {o.meta && <span className="ml-2 text-muted-foreground text-xs">{o.meta}</span>}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
     </Command>
   );
 }
