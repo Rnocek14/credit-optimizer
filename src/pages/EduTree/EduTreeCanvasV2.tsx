@@ -292,9 +292,19 @@ function EduTreeCanvasV2Content({
         return false;
       }
       
-      // 3. REFINED handle validation - surgical precision to avoid over-filtering
+      // 3. REFINED handle validation with gate edge whitelist
       const sourceHandle = edge.sourceHandle;
       const targetHandle = edge.targetHandle;
+      
+      // Whitelist gate edges - they often omit handles on purpose
+      const isGateEdge = (e: any) =>
+        e.data?.kind === 'gate' || /gate/i.test(e.id) || /gate/i.test(e.type ?? '') ||
+        e.source?.startsWith('gate-') || e.target?.startsWith('gate-');
+      
+      if (isGateEdge(edge)) {
+        // Gate edges bypass handle validation
+        return true;
+      }
       
       // Better handle validation - only flag truly problematic values
       const badHandle = (h: unknown) =>
@@ -629,6 +639,58 @@ function EduTreeCanvasV2Content({
           edges: newEdges.length 
         });
         
+        // Helper functions for proper Y positioning
+        const yRow = (year: 1|2|3|4) => {
+          const rowHeights = { 1: 240, 2: 360, 3: 480, 4: 640 };
+          return rowHeights[year];
+        };
+        const midY = (a: number, b: number) => (a + b) / 2;
+        
+        // PHASE 3a: Ensure gate nodes exist before positioning them
+        const ensureGateNodes = (nodes: typeof newNodes): typeof newNodes => {
+          const out = [...nodes];
+          
+          // PROGRAM gate between Y1↔Y2
+          if (gatePositions.showPG && !out.some(n => n.id === 'gate-y2-programs')) {
+            console.log('[GATE DEBUG] Creating missing program gate node');
+            out.push({
+              id: 'gate-y2-programs',
+              type: 'gate',
+              position: { x: gatePositions.pgX ?? 400, y: midY(yRow(1), yRow(2)) },
+              data: { 
+                label: 'PROGRAM GATE 1→2',
+                isVirtual: true,
+                junctionType: 'program' as const,
+                singleRailStraight
+              },
+              draggable: false,
+              selectable: false,
+              hidden: false
+            });
+          }
+          
+          // TRACK gate between Y2↔Y3 ← this is the one we're missing
+          if (gatePositions.showTG && !out.some(n => n.id === 'gate-y3-tracks')) {
+            console.log('[GATE DEBUG] Creating missing track gate node');
+            out.push({
+              id: 'gate-y3-tracks',
+              type: 'gate',
+              position: { x: gatePositions.tgX ?? 900, y: midY(yRow(2), yRow(3)) },
+              data: { 
+                label: 'TRACK GATE 2→3',
+                isVirtual: true,
+                junctionType: 'track' as const,
+                singleRailStraight
+              },
+              draggable: false,
+              selectable: false,
+              hidden: false
+            });
+          }
+          
+          return out;
+        };
+
         // Apply gate positioning decisions with proper guards and dimming
         const withGatePlacement = (nodes: typeof newNodes) => {
           // COMPREHENSIVE DEBUG LOGGING - Phase 3: Gate node processing
@@ -656,11 +718,11 @@ function EduTreeCanvasV2Content({
                 showPG: gatePositions.showPG,
                 pgX: gatePositions.pgX,
                 shouldShow,
-                finalPosition: shouldShow ? { x: gatePositions.pgX, y: 360 } : 'hidden'
+                finalPosition: shouldShow ? { x: gatePositions.pgX, y: midY(yRow(1), yRow(2)) } : 'hidden'
               });
               
               if (!shouldShow) return { ...n, hidden: true };
-              return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
+              return { ...n, position: { x: gatePositions.pgX, y: midY(yRow(1), yRow(2)) }, hidden: false };
             }
             
             if (n.id === 'gate-y3-tracks') {
@@ -670,19 +732,22 @@ function EduTreeCanvasV2Content({
                 showTG: gatePositions.showTG,
                 tgX: gatePositions.tgX,
                 shouldShow,
-                finalPosition: shouldShow ? { x: gatePositions.tgX, y: 360 } : 'hidden'
+                finalPosition: shouldShow ? { x: gatePositions.tgX, y: midY(yRow(2), yRow(3)) } : 'hidden'
               });
               
               if (!shouldShow) return { ...n, hidden: true };
-              return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
+              return { ...n, position: { x: gatePositions.tgX, y: midY(yRow(2), yRow(3)) }, hidden: false };
             }
             
             return n;
           });
         };
         
-        // Apply grid layout if conditions met
-        const finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
+        // Apply grid layout if conditions met - FIRST ensure gates exist, THEN position them
+        let processedNodes = ensureGateNodes(newNodes);
+        processedNodes = withGatePlacement(processedNodes);
+        
+        const finalNodes = usePlan ? processedNodes.map(n => {
           // Skip header nodes - they don't have phaseAPlan
           if (n.type === 'header') {
             return n;
@@ -704,7 +769,7 @@ function EduTreeCanvasV2Content({
             position: { x: p.x, y: p.y }, 
             data: { ...n.data, hasGridLayout: true, singleRailStraight } 
           };
-        }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
+        }) : processedNodes.map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
         // No need to filter edges here - filtering happens in manualLayoutRenderer
         
@@ -928,6 +993,13 @@ function EduTreeCanvasV2Content({
           <div className="absolute top-[400px] left-[1250px] w-[500px] h-[300px] bg-secondary/5 rounded-lg pointer-events-none" />
         </>
       )}
+
+        {/* GPT's Visual Proof Chip - Track Gate Debug */}
+        {gatePositions.showTG && (
+          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow">
+            Track Gate: Y2 → Y3 (Should be visible)
+          </div>
+        )}
 
         <ReactFlow
           nodes={finalNodes}
