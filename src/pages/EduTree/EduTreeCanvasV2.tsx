@@ -9,7 +9,7 @@ import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { useApplyDimmingV2 } from './hooks/useApplyDimmingV2';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
 import { exposeGridValidation } from './utils/deterministicGrid';
-import { decideGatePositions } from './utils/divergence';
+import { decideGatePositions, computeProgramDivergence, computeTrackDivergence } from './utils/divergence';
 import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertHandlesOnce } from './data/validation';
 import { runRegressionChecks } from './utils/regressionChecks';
 import { runSmokeTest } from './utils/smokeTest';
@@ -532,9 +532,58 @@ function EduTreeCanvasV2Content({
   
   const gatePositions = useMemo(() => {
     const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
+    
+    // COMPREHENSIVE DEBUG LOGGING - Phase 1: Input validation
+    console.log('[GATE DEBUG - PHASE 1] Input data validation:', {
+      blocksCount: blocks.length,
+      programs,
+      tracksByProgram,
+      cols,
+      filterMode: effectiveFilterMode,
+      primarySelection: pathHighlight.primarySelection,
+      secondarySelection: pathHighlight.secondarySelection
+    });
+    
+    // Log the specific track blocks that should exist for Y3 divergence
+    const y3TrackBlocks = blocks.filter(b => b.level_year === 3 && b.track_id);
+    console.log('[GATE DEBUG] Y3 track blocks found:', y3TrackBlocks.map(b => ({
+      id: b.id,
+      program_id: b.program_id,
+      track_id: b.track_id,
+      level_year: b.level_year
+    })));
+    
+    // Check for the gate-y3-tracks node specifically
+    const trackGateNode = blocks.find(b => b.id === 'gate-y3-tracks');
+    console.log('[GATE DEBUG] Track gate node in blocks:', trackGateNode ? {
+      id: trackGateNode.id,
+      position: { x: trackGateNode.position_x, y: trackGateNode.position_y },
+      is_virtual: trackGateNode.is_virtual
+    } : 'NOT FOUND');
+    
     const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
+    
+    // COMPREHENSIVE DEBUG LOGGING - Phase 2: Output validation
+    console.log('[GATE DEBUG - PHASE 2] Gate positions result:', {
+      showPG: next.showPG,
+      showTG: next.showTG,
+      pgX: next.pgX,
+      tgX: next.tgX,
+      hasNaN: Number.isNaN(next.pgX) || Number.isNaN(next.tgX)
+    });
+    
+    // CRITICAL: Fix NaN coordinates with fallback positions
+    if (Number.isNaN(next.pgX)) {
+      console.warn('[GATE DEBUG] Program gate X is NaN, using fallback position');
+      next.pgX = cols.pg; // 400
+    }
+    if (Number.isNaN(next.tgX)) {
+      console.warn('[GATE DEBUG] Track gate X is NaN, using fallback position');  
+      next.tgX = cols.tg; // 900
+    }
+    
     return stableReturn(gatePositionsRef, next);
-  }, [blocksKey, programs.join('|'), tracksKey]);
+  }, [blocksKey, programs.join('|'), tracksKey, effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
   
   // FitView key for determining when to reset fitView flag
   const fitViewKey = `${effectiveFilterMode}|${programs.join('|')}|${tracksKey}|${gatePositions.showPG?1:0}|${gatePositions.showTG?1:0}`;
@@ -581,17 +630,56 @@ function EduTreeCanvasV2Content({
         });
         
         // Apply gate positioning decisions with proper guards and dimming
-        const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
-          if (n.id === 'gate-y2-programs') {
-            if (!gatePositions.showPG || gatePositions.pgX == null) return { ...n, hidden: true };
-            return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
-          }
-          if (n.id === 'gate-y3-tracks') {
-            if (!gatePositions.showTG || gatePositions.tgX == null) return { ...n, hidden: true };
-            return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
-          }
-          return n;
-        });
+        const withGatePlacement = (nodes: typeof newNodes) => {
+          // COMPREHENSIVE DEBUG LOGGING - Phase 3: Gate node processing
+          const programGateNode = nodes.find(n => n.id === 'gate-y2-programs');
+          const trackGateNode = nodes.find(n => n.id === 'gate-y3-tracks');
+          
+          console.log('[GATE DEBUG - PHASE 3] Gate nodes in layout:', {
+            programGateExists: !!programGateNode,
+            trackGateExists: !!trackGateNode,
+            programGateData: programGateNode ? { id: programGateNode.id, position: programGateNode.position, hidden: programGateNode.hidden } : null,
+            trackGateData: trackGateNode ? { id: trackGateNode.id, position: trackGateNode.position, hidden: trackGateNode.hidden } : null,
+            gatePositions: {
+              showPG: gatePositions.showPG,
+              showTG: gatePositions.showTG,
+              pgX: gatePositions.pgX,
+              tgX: gatePositions.tgX
+            }
+          });
+          
+          return nodes.map(n => {
+            if (n.id === 'gate-y2-programs') {
+              const shouldShow = gatePositions.showPG && Number.isFinite(gatePositions.pgX);
+              console.log('[GATE DEBUG] Program gate processing:', {
+                id: n.id,
+                showPG: gatePositions.showPG,
+                pgX: gatePositions.pgX,
+                shouldShow,
+                finalPosition: shouldShow ? { x: gatePositions.pgX, y: 360 } : 'hidden'
+              });
+              
+              if (!shouldShow) return { ...n, hidden: true };
+              return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
+            }
+            
+            if (n.id === 'gate-y3-tracks') {
+              const shouldShow = gatePositions.showTG && Number.isFinite(gatePositions.tgX);
+              console.log('[GATE DEBUG] Track gate processing:', {
+                id: n.id,
+                showTG: gatePositions.showTG,
+                tgX: gatePositions.tgX,
+                shouldShow,
+                finalPosition: shouldShow ? { x: gatePositions.tgX, y: 360 } : 'hidden'
+              });
+              
+              if (!shouldShow) return { ...n, hidden: true };
+              return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
+            }
+            
+            return n;
+          });
+        };
         
         // Apply grid layout if conditions met
         const finalNodes = usePlan ? withGatePlacement(newNodes).map(n => {
@@ -619,6 +707,31 @@ function EduTreeCanvasV2Content({
         }) : withGatePlacement(newNodes).map(n => ({ ...n, data: { ...n.data, singleRailStraight } }));
         
         // No need to filter edges here - filtering happens in manualLayoutRenderer
+        
+        // COMPREHENSIVE DEBUG LOGGING - Phase 4: Final nodes validation
+        const finalProgramGate = finalNodes.find(n => n.id === 'gate-y2-programs');
+        const finalTrackGate = finalNodes.find(n => n.id === 'gate-y3-tracks');
+        
+        console.log('[GATE DEBUG - PHASE 4] Final gate nodes state:', {
+          programGate: finalProgramGate ? {
+            id: finalProgramGate.id,
+            position: finalProgramGate.position,
+            hidden: finalProgramGate.hidden,
+            type: finalProgramGate.type
+          } : 'NOT IN FINAL NODES',
+          trackGate: finalTrackGate ? {
+            id: finalTrackGate.id, 
+            position: finalTrackGate.position,
+            hidden: finalTrackGate.hidden,
+            type: finalTrackGate.type
+          } : 'NOT IN FINAL NODES',
+          totalFinalNodes: finalNodes.length,
+          gateNodes: finalNodes.filter(n => n.type === 'gate').map(n => ({
+            id: n.id,
+            hidden: n.hidden,
+            position: n.position
+          }))
+        });
         
         // Prevent layout churn with shallow equality checks
         setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
@@ -650,6 +763,30 @@ function EduTreeCanvasV2Content({
     );
   }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
   
+  // GPT'S RECOMMENDED DEBUG EFFECTS - Add comprehensive gate validation
+  useEffect(() => {
+    const pA = pathHighlight.primarySelection?.kind === 'program'
+      ? pathHighlight.primarySelection.id : undefined;
+
+    const tracksA = tracksByProgram?.[pA as 'bs_cs'|'bs_it'] ?? [];
+
+    const prog = computeProgramDivergence(blocks, ['bs_cs','bs_it']);
+    const track = pA && tracksA.length >= 2
+      ? computeTrackDivergence(blocks, pA, tracksA)
+      : { divergesAfter: null, forkBetween: null };
+
+    console.log('[GATE DEBUG] programGate:', prog, 'trackGate:', track, {
+      pA, tracksA, blocksLen: blocks?.length
+    });
+    
+    // GPT's DOM presence check
+    const domCheck = ['y3-se-core','y3-se-elec','y3-ds-core','y3-ds-elec'].map(id => ({
+      id, exists: !!document.querySelector(`[data-node-id="${id}"]`)
+    }));
+    console.log('[GATE DEBUG] DOM presence check:', domCheck);
+    
+  }, [blocks, pathHighlight.primarySelection, tracksByProgram]);
+
   // Update handle internals using useLayoutEffect to prevent micro "pop"
   useLayoutEffect(() => {
     const visibleGateIds = nodes.filter(n => n.type === 'gate' && !n.hidden).map(n => n.id);
@@ -829,7 +966,21 @@ function EduTreeCanvasV2Content({
           <div>Filter: {currentFilterMode || 'compare-tracks'}</div>
           <div>Flags: V2Grid={String(effectiveFlags.eduTreeV2Grid)}, Mode={effectiveFlags.eduTreeLayoutMode}, EdgeKinds={String(flags.eduTreeV2EdgeKinds)}</div>
           <div>Headers: {processedNodes.filter(n => n.type === 'header').length} • Gates: {processedNodes.filter(n => n.type === 'gate' && !n.hidden).length}</div>
+          <div>Gate Status: PG={gatePositions.showPG ? `${gatePositions.pgX}` : 'hidden'} • TG={gatePositions.showTG ? `${gatePositions.tgX}` : 'hidden'}</div>
         </div>
+        
+        {/* GPT's visual proof chips */}
+        {gatePositions.showTG && (
+          <div className="fixed top-2 left-2 z-[60] px-2 py-1 rounded bg-pink-600 text-white text-xs shadow">
+            Track Gate: Y{gatePositions.showTG ? '2→3' : 'hidden'} @ X={gatePositions.tgX}
+          </div>
+        )}
+        
+        {gatePositions.showPG && (
+          <div className="fixed top-8 left-2 z-[60] px-2 py-1 rounded bg-blue-600 text-white text-xs shadow">
+            Program Gate: Y{gatePositions.showPG ? '1→2' : 'hidden'} @ X={gatePositions.pgX}
+          </div>
+        )}
 
 
         {/* Unified HUD System - No More Overlaps */}
