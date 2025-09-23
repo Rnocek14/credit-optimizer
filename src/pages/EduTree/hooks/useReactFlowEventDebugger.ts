@@ -30,12 +30,11 @@ export function useReactFlowEventDebugger({
       const reactFlowElement = document.querySelector('.react-flow');
       if (!reactFlowElement) return false;
       
-      // Check if basic mouse events are registered
+      // Check if React Flow element can receive events
       const reactFlowElementTyped = reactFlowElement as HTMLElement;
-      const hasMouseEvents = (
-        reactFlowElementTyped.onmousedown !== null ||
-        reactFlowElementTyped.onmousemove !== null ||
-        reactFlowElementTyped.onwheel !== null
+      const canReceiveEvents = (
+        getComputedStyle(reactFlowElementTyped).pointerEvents !== 'none' &&
+        reactFlowElementTyped.style.pointerEvents !== 'none'
       );
       
       // Check if React Flow instance has required methods
@@ -49,19 +48,20 @@ export function useReactFlowEventDebugger({
       // Check for console errors related to React Flow
       const hasRecentErrors = performance.now() - lastHealthCheck.current < 5000;
       
-      const isHealthy = hasMouseEvents && instanceHealthy && !hasRecentErrors;
+      const isHealthy = canReceiveEvents && instanceHealthy && !hasRecentErrors;
       
       if (!isHealthy && enabled) {
         console.warn('[EventDebugger] React Flow event system health check failed:', {
-          hasMouseEvents,
+          canReceiveEvents,
           instanceHealthy,
           hasRecentErrors,
-          elementExists: !!reactFlowElement
+          elementExists: !!reactFlowElement,
+          pointerEvents: getComputedStyle(reactFlowElementTyped).pointerEvents
         });
         
         corruptionCount.current += 1;
         onCorruptionDetected?.({
-          hasMouseEvents,
+          canReceiveEvents,
           instanceHealthy,
           hasRecentErrors,
           corruptionCount: corruptionCount.current
@@ -94,15 +94,18 @@ export function useReactFlowEventDebugger({
       // Step 2: Force React Flow to re-register event listeners
       const reactFlowElement = document.querySelector('.react-flow') as HTMLElement;
       if (reactFlowElement) {
-        // Trigger a re-mount by temporarily hiding/showing
-        const originalDisplay = reactFlowElement.style.display;
-        reactFlowElement.style.display = 'none';
+        // Ensure pointer events are enabled
+        reactFlowElement.style.pointerEvents = 'auto';
+        
+        // Force React Flow to reinitialize by triggering a layout change
+        const originalTransform = reactFlowElement.style.transform;
+        reactFlowElement.style.transform = 'scale(0.99999)';
         
         // Force reflow
         reactFlowElement.offsetHeight;
         
-        // Restore display
-        reactFlowElement.style.display = originalDisplay;
+        // Restore transform
+        reactFlowElement.style.transform = originalTransform;
       }
       
       // Step 3: Reset React Flow instance state

@@ -105,8 +105,8 @@ export function ComparisonLegend({
                   <div 
                     className="w-4 h-4 border-2 rounded-sm flex-shrink-0"
                     style={{ 
-                      backgroundColor: `oklch(var(--lp-primary-light))`,
-                      borderColor: `oklch(var(--lp-primary))`
+                      backgroundColor: `var(--lp-primary-light)`,
+                      borderColor: `var(--lp-primary)`
                     }}
                   />
                   <div className="flex flex-col">
@@ -131,8 +131,8 @@ export function ComparisonLegend({
                   <div 
                     className="w-4 h-4 border-2 border-dashed rounded-sm flex-shrink-0"
                     style={{ 
-                      backgroundColor: `oklch(var(--lp-compare-light))`,
-                      borderColor: `oklch(var(--lp-compare))`
+                      backgroundColor: `var(--lp-compare-light)`,
+                      borderColor: `var(--lp-compare)`
                     }}
                   />
                   <div className="flex flex-col">
@@ -157,8 +157,8 @@ export function ComparisonLegend({
                   <div 
                     className="w-4 h-4 border-4 rounded-sm flex-shrink-0"
                     style={{ 
-                      backgroundColor: `oklch(var(--lp-shared-light))`,
-                      borderColor: `oklch(var(--lp-shared))`
+                      backgroundColor: `var(--lp-shared-light)`,
+                      borderColor: `var(--lp-shared)`
                     }}
                   />
                   <div className="flex flex-col">
