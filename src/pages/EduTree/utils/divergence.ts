@@ -198,27 +198,30 @@ export function decideGatePositions(opts: {
     willAnalyzeProgramDivergence: programs.length >= 2
   });
   
-  const pgDiv = computeProgramDivergence(blocks, programs);
-  console.log('[decideGatePositions] Program divergence result:', pgDiv);
-  
-  const showPG = !!pgDiv.forkBetween;
-  const pgX = showPG && pgDiv.forkBetween
-    ? mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
-    : undefined; // Use undefined when hidden (no fallbacks)
-    
-  if (showPG) {
-    console.log('[decideGatePositions] Program gate ENABLED:', { 
-      forkBetween: pgDiv.forkBetween, 
-      pgX,
-      colsUsed: { 
-        y1: cols.y1, 
-        y2: cols.y2, 
-        midCalculation: `(${cols.y1} + ${cols.y2}) / 2 = ${pgX}` 
-      }
-    });
-  } else {
-    console.log('[decideGatePositions] Program gate DISABLED - no divergence found');
+  // --- Program gate: default to [1,2] for any program-vs-program compare
+  let showPG = programs.length >= 2;
+  let pgBetween: [1|2|3|4, 1|2|3|4] = [1, 2];
+
+  if (programs.length >= 2) {
+    const pgDiv = computeProgramDivergence(blocks, programs);
+    console.log('[decideGatePositions] Program divergence result:', pgDiv);
+    if (pgDiv?.forkBetween) pgBetween = pgDiv.forkBetween as any;
   }
+  const pgX = showPG ? mid(cols[`y${pgBetween[0]}`], cols[`y${pgBetween[1]}`]) : undefined;
+    
+    if (showPG) {
+      console.log('[decideGatePositions] Program gate ENABLED:', { 
+        forkBetween: pgBetween, 
+        pgX,
+        colsUsed: { 
+          y1: cols.y1, 
+          y2: cols.y2, 
+          midCalculation: `(${cols.y1} + ${cols.y2}) / 2 = ${pgX}` 
+        }
+      });
+    } else {
+      console.log('[decideGatePositions] Program gate DISABLED - no programs to compare');
+    }
 
   // Track divergence - requires a single program with multiple tracks
   console.log('[decideGatePositions] TRACK DIVERGENCE ANALYSIS START:', {
@@ -284,7 +287,7 @@ export function decideGatePositions(opts: {
     pgX, 
     showTG, 
     tgX, 
-    _pgBetween: pgDiv.forkBetween ?? null,
+    _pgBetween: pgBetween,
     _tgBetween: tgBetween 
   };
   

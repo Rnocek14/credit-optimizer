@@ -35,42 +35,45 @@ export function useTrackComparison({
   overlayEnabled
 }: UseTrackComparisonProps) {
   
-  // Build node ID lookup map from rendered nodes (by node.id which equals block.id)
+  // Node ID by Block ID mapping - resilient matching for data
   const nodeIdByBlockId = useMemo(() => {
     const map = new Map<string, string>();
     nodes.forEach(node => {
-      // Node ID directly corresponds to block ID in our V2 system
-      map.set(node.id, node.id);
-      
-      // Also handle legacy slug mapping for track definitions that use slugs
-      const blockData = node.data as any;
-      const blockSlug = blockData?.block?.slug || blockData?.slug || blockData?.blockSlug;
-      if (blockSlug && blockSlug !== node.id) {
-        map.set(blockSlug, node.id);
+      const d: any = node.data ?? {};
+      // Try many keys in order
+      const candidates = [
+        d.block?.id, d.blockId, d.id,
+        d.block?.slug, d.slug, d.blockSlug,
+        node.id, // last resort: allow direct node.id matching
+      ].filter(Boolean);
+
+      for (const k of candidates) {
+        map.set(String(k), node.id);
       }
     });
-    
+
     if (process.env.NODE_ENV === 'development') {
-      console.log('[NodeMapping] Total nodes:', nodes.length);
-      console.log('[NodeMapping] Mapped by block ID/slug:', map.size);
-      console.log('[NodeMapping] Sample mappings:', Array.from(map.entries()).slice(0, 5));
+      console.log('[NodeMapping] nodes=', nodes.length, 'keys=', map.size);
     }
-    
     return map;
   }, [nodes]);
 
-  // Helper function to get block IDs for a program
+  // Helper function to get program block IDs from visible blocks
   const getProgramBlockIds = useMemo(() => {
     return (programId: string): string[] => {
-      return GOLDEN_LAYOUT_SEED.blocks
-        .filter(block => !block.program_id || block.program_id === programId)
-        .map(block => block.id);
+      // Use blocks from seed data (TODO: replace with blocks prop when available)
+      const blockData = GOLDEN_LAYOUT_SEED.blocks;
+      return blockData
+        .filter(b => !b.program_id || b.program_id === programId)
+        .map(b => String(b.id));
     };
   }, []);
 
   // Compute highlight sets
   const highlights = useMemo((): TrackHighlights => {
-    if (!overlayEnabled || (!primaryTrackId && !primaryProgramId)) {
+    // Make overlay ready when comparing programs OR tracks
+    const overlayReady = overlayEnabled && !!(primaryTrackId || primaryProgramId);
+    if (!overlayReady) {
       return {
         primaryNodes: new Set(),
         primaryEdges: new Set(),
