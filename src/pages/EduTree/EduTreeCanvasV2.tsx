@@ -452,7 +452,7 @@ function EduTreeCanvasV2Content({
     return Object.freeze(map);
   }, [tracksKey]);
 
-  // 4) Gate positions: only emit a new object when content actually changes
+  // 4) Gate positions: use dynamic track spreading and ensure proper gate positioning
   function stableReturn<T>(prevRef: React.MutableRefObject<T|null>, next: T): T {
     const same = prevRef.current && JSON.stringify(prevRef.current) === JSON.stringify(next);
     if (!same) prevRef.current = next;
@@ -460,13 +460,24 @@ function EduTreeCanvasV2Content({
   }
   
   const gatePositions = useMemo(() => {
-    const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
-    console.log('[CANVAS DEBUG] Computing gate positions with:', { 
+    // Use dynamic spreading configuration
+    const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
+    const y3Center = 600 + COL_W + COL_GAP; // Center between Y3L and Y3R
+    const cols = { 
+      y1: 200, 
+      y2: 600, 
+      y3: y3Center,  // Use center of spread for gate positioning
+      y4: y3Center,  // Y4 maintains same center as Y3
+      pg: 400, 
+      tg: 900 
+    };
+    console.log('[CANVAS DEBUG] Computing gate positions with dynamic spreading:', { 
       blocksCount: blocks.length, 
       programs, 
       tracksByProgram, 
       cols,
-      effectiveFilterMode: currentFilterMode 
+      effectiveFilterMode: currentFilterMode,
+      TRACK_SPREAD
     });
     const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
     console.log('[CANVAS DEBUG] Gate positions computed:', next);
@@ -610,16 +621,16 @@ function EduTreeCanvasV2Content({
         assertGateX({ 
           nodes, 
           gatePositions, 
-          cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 } 
+          cols: { y1: 200, y2: 600, y3: 1100, y4: 1100 }  // Use dynamic y3/y4 center
         });
         assertHandlesOnce(nodes);
         
-        // Run comprehensive regression checks
+        // Run comprehensive regression checks with updated column positions
         runRegressionChecks({
           edges: flowEdges,
           nodes,
           gatePositions,
-          cols: { y1: 200, y2: 600, y3: 1300, y4: 1700 }
+          cols: { y1: 200, y2: 600, y3: 1100, y4: 1100 }  // Use dynamic y3/y4 center
         });
         
         // Run ChatGPT's smoke test
@@ -685,20 +696,28 @@ function EduTreeCanvasV2Content({
     >
       <>
         <div className="h-full w-full edu-tree-canvas">
-        {/* Dynamic Lane Headers - hide in single-rail straight mode */}
+        {/* Enhanced Lane Headers with dynamic positioning and track indicators */}
         {!singleRailStraight && (() => {
+          // Calculate dynamic positions based on track spreading
+          const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
+          const y3L = 600 + COL_W + COL_GAP - TRACK_SPREAD/2;  // SE lane (left)
+          const y3R = 600 + COL_W + COL_GAP + TRACK_SPREAD/2;  // DS lane (right)
+          const midpoint = (y3L + y3R) / 2;
+          
           const getLaneHeaders = () => {
             switch (filterMode) {
               case 'compare-programs':
                 return {
                   upper: '▲ BS Computer Science',
-                  lower: '▼ BS Information Technology'
+                  lower: '▼ BS Information Technology',
+                  gateLabel: 'Program Choice'
                 };
               case 'compare-tracks':
               default:
                 return {
-                  upper: '▲ Software Engineering Lane',
-                  lower: '▼ Data Science Lane'
+                  upper: '▲ Software Engineering',
+                  lower: '▼ Data Science', 
+                  gateLabel: 'Track Choice'
                 };
             }
           };
@@ -706,14 +725,51 @@ function EduTreeCanvasV2Content({
           const headers = getLaneHeaders();
           return (
             <>
-              <div className="absolute top-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-                <div className="bg-background/80 px-2 py-1 rounded border">
-                  {headers.upper}
+              {/* Lane backplates for visual grouping */}
+              <div 
+                className="absolute pointer-events-none rounded-xl bg-primary/3 border border-primary/10"
+                style={{ 
+                  top: 180, 
+                  left: y3L - 40, 
+                  width: 360, 
+                  height: 240 
+                }}
+              />
+              <div 
+                className="absolute pointer-events-none rounded-xl bg-secondary/3 border border-secondary/10"
+                style={{ 
+                  top: 500, 
+                  left: y3R - 40, 
+                  width: 360, 
+                  height: 320 
+                }}
+              />
+              
+              {/* Track gate indicators with direction arrows */}
+              <div 
+                className="absolute text-xs opacity-70 z-20 pointer-events-none"
+                style={{ top: 340, left: midpoint - 50 }}
+              >
+                <div className="bg-background/90 px-3 py-1 rounded-full border text-center min-w-[100px]">
+                  {headers.gateLabel}
                 </div>
               </div>
-              <div className="absolute bottom-4 left-[1300px] text-xs opacity-70 z-10 pointer-events-none">
-                <div className="bg-background/80 px-2 py-1 rounded border">
-                  {headers.lower}
+              
+              {/* Lane headers with dynamic positioning */}
+              <div 
+                className="absolute text-xs font-medium opacity-80 z-10 pointer-events-none"
+                style={{ top: 160, left: y3L }}
+              >
+                <div className="bg-primary/20 text-primary px-3 py-1 rounded-lg border border-primary/20">
+                  {headers.upper} →
+                </div>
+              </div>
+              <div 
+                className="absolute text-xs font-medium opacity-80 z-10 pointer-events-none"
+                style={{ bottom: 140, left: y3R }}
+              >
+                <div className="bg-secondary/20 text-secondary px-3 py-1 rounded-lg border border-secondary/20">
+                  ← {headers.lower}
                 </div>
               </div>
             </>
@@ -730,11 +786,20 @@ function EduTreeCanvasV2Content({
         }}
       />
 
-      {/* Faint horizontal lane dividers - hide in single-rail straight mode */}
+      {/* Enhanced lane dividers - removed old fixed positioning */}
       {!singleRailStraight && (
         <>
-          <div className="absolute top-0 left-[1250px] w-[500px] h-[200px] bg-primary/5 rounded-lg pointer-events-none" />
-          <div className="absolute top-[400px] left-[1250px] w-[500px] h-[300px] bg-secondary/5 rounded-lg pointer-events-none" />
+          {/* Subtle connection line from gate to track splits */}
+          <div
+            className="absolute pointer-events-none opacity-30"
+            style={{ 
+              top: 360, 
+              left: 900,
+              width: 200,
+              height: 2, 
+              background: 'linear-gradient(90deg, transparent, rgba(var(--primary)/0.3), transparent)' 
+            }}
+          />
         </>
       )}
 

@@ -6,8 +6,16 @@
 export type Lane = 'up' | 'down';
 
 /**
+ * Dynamic track spreading configuration
+ * Creates visual "branching away" effect for tracks starting in Y3
+ */
+const COL_W = 280;        // Node width
+const COL_GAP = 120;      // Standard gap between years
+const TRACK_SPREAD = 240; // Enhanced spread for Y3/Y4 track separation (≈ 2x COL_GAP)
+
+/**
  * Reserved X coordinates for each year/lane combination
- * These ensure consistent column positioning across different single-track views
+ * Y3/Y4 use dynamic spreading to create "branching away" visual narrative
  */
 export const reservedColsByYear: Record<number, Record<string, number>> = {
   1: { 
@@ -20,19 +28,21 @@ export const reservedColsByYear: Record<number, Record<string, number>> = {
     gate: 400     // Program gate between Y1 and Y2
   },
   3: { 
-    gate: 900,    // Gate position between Y2 and Y3
-    up: 1300,     // SE track - upper lane
-    down: 1300    // DS track - lower lane
+    gate: 900,    // Gate position between Y2 and Y3 center
+    // Dynamic branching positions - SE goes left, DS goes right
+    up: 600 + COL_W + COL_GAP - TRACK_SPREAD/2,    // Y3L: SE track branches left
+    down: 600 + COL_W + COL_GAP + TRACK_SPREAD/2   // Y3R: DS track branches right
   },
   4: { 
-    up: 1700,     // SE final year - upper lane
-    down: 1700    // DS final year - lower lane
+    // Y4 maintains the same spread as Y3 for consistency
+    up: 600 + COL_W + COL_GAP - TRACK_SPREAD/2,    // Y4L: SE track (left)
+    down: 600 + COL_W + COL_GAP + TRACK_SPREAD/2   // Y4R: DS track (right)
   }
 };
 
 /**
  * Reserved Y coordinates for up/down lanes by year
- * Preserves vertical relationships from manual seed
+ * Enhanced for better visual separation and per-lane packing
  */
 export const reservedRowsByLane: Record<number, Record<Lane | 'center', number>> = {
   2: {
@@ -41,16 +51,38 @@ export const reservedRowsByLane: Record<number, Record<Lane | 'center', number>>
     center: 360  // Single-track straight line
   },
   3: {
-    up: 240,     // Upper lane Y3 courses
-    down: 480,   // Lower lane Y3 courses
+    up: 200,     // Upper lane Y3 courses (SE - slightly higher)
+    down: 520,   // Lower lane Y3 courses (DS - slightly lower)
     center: 360  // Single-track straight line
   },
   4: {
-    up: 80,      // Upper lane Y4 courses (higher up)
-    down: 640,   // Lower lane Y4 courses (lower down)
+    up: 120,     // Upper lane Y4 courses (SE - higher up for better separation)
+    down: 600,   // Lower lane Y4 courses (DS - lower down)
     center: 360  // Single-track straight line
   }
 };
+
+/**
+ * Per-lane node packing function to eliminate overlaps
+ * Keeps X position fixed, only adjusts Y within each lane
+ */
+const GRID = 8;
+const snap8 = (n: number) => Math.round(n / GRID) * GRID;
+
+export function packLane(nodes: Array<{ position: { x: number; y: number } }>, topY: number, slotH: number = 120, gap: number = 24): void {
+  if (nodes.length === 0) return;
+  
+  // Sort by current Y position
+  nodes.sort((a, b) => a.position.y - b.position.y);
+  
+  let y = snap8(topY);
+  for (const node of nodes) {
+    // Ensure minimum spacing from previous node
+    y = Math.max(y, snap8(node.position.y));
+    node.position.y = y;
+    y += snap8(slotH + gap);
+  }
+}
 
 /**
  * Apply deterministic grid coordinates to a node's phase A plan

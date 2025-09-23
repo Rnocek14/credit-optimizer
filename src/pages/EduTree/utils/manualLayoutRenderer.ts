@@ -6,6 +6,7 @@
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
 import { applyDeterministicGrid, type Lane } from './deterministicGrid';
+import { applyLanePacking, createLanePackingConfig, validateLanePacking } from './lanePackingUtils';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 import { type GatePositions } from './divergence';
 
@@ -522,8 +523,17 @@ export function applyManualLayout(
         console.warn('[ManualLayout] WARNING: V2 edge kinds disabled in compare mode - headers won\'t be created!');
       }
   
-  // Create column anchors for header positioning
-  const cols = { y1: 200, pg: 400, y2: 600, tg: 900, y3: 1300, y4: 1700 };
+  // Create column anchors with dynamic track spreading
+  const COL_W = 280, COL_GAP = 120, TRACK_SPREAD = 240;
+  const y3Center = 600 + COL_W + COL_GAP; // Center between Y3L and Y3R
+  const cols = { 
+    y1: 200, 
+    pg: 400, 
+    y2: 600, 
+    tg: 900, 
+    y3: y3Center,  // Use center for header positioning
+    y4: y3Center   // Y4 maintains same center as Y3
+  };
   
   // Create header nodes with dynamic positioning based on gate visibility
   const headerNodes = createHeaderNodes({
@@ -546,8 +556,8 @@ export function applyManualLayout(
     
     const col = block.level_year;
     
-    // Original manual coordinates as fallback
-    const manualX = { 1: 200, 2: 600, 3: 1300, 4: 1700 }[col] || 600;
+    // Original manual coordinates with dynamic track spreading
+    const manualX = { 1: 200, 2: 600, 3: y3Center, 4: y3Center }[col] || 600;
     const manualY = lane === 'up' ? (col === 3 ? 240 : col === 4 ? 80 : 240) :
                     lane === 'down' ? (col === 3 ? 480 : col === 4 ? 640 : 480) :
                     360; // shared/gate row
@@ -632,7 +642,24 @@ export function applyManualLayout(
   });
   
   // Combine regular nodes with header nodes
-  const allNodes = [...nodes, ...headerNodes];
+  let allNodes = [...nodes, ...headerNodes];
+  
+  // Apply lane packing to eliminate overlaps if using grid anchors and not in single-rail mode
+  if (useGridAnchors && !singleRailStraight) {
+    console.log('[ManualLayout] Applying lane packing to eliminate overlaps');
+    const lanePackingConfig = createLanePackingConfig();
+    allNodes = applyLanePacking(allNodes, lanePackingConfig);
+    
+    // Validate packing results in development
+    if (process.env.NODE_ENV === 'development') {
+      const validation = validateLanePacking(allNodes);
+      if (validation.hasOverlaps) {
+        console.warn('[ManualLayout] Lane packing did not eliminate all overlaps:', validation.overlaps);
+      } else {
+        console.log('[ManualLayout] ✓ Lane packing successfully eliminated overlaps');
+      }
+    }
+  }
   
   // ULTRA-DEFENSIVE handle sanitization - prevent ALL forms of corruption
   const cleanSource = (h: unknown): SourceHandle => {

@@ -14,36 +14,29 @@ const GateBranchEdge = ({
   data,
 }: EdgeProps) => {
   
-  // Calculate symmetric manual control points for perfect mirroring
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
+  // GPT's recommended one-bend routing: horizontal segment then vertical
+  // Creates clean, readable paths even with larger track spreading
+  const horizontalSegment = 32; // Short horizontal segment from gate
+  const bendX = sourceX + horizontalSegment;
   
-  // Shared horizontal control point - both branches bend at same X
-  const controlX = sourceX + (dx * 0.6);
-  
-  // Create symmetric vertical offsets
-  const isUpBranch = dy < 0;
-  const verticalOffset = Math.abs(dy) * 0.3; // Gentle vertical curve
-  
-  // Manual Bezier curve with symmetric control points
-  const cp1X = controlX;
-  const cp1Y = sourceY + (isUpBranch ? -verticalOffset : verticalOffset) * 0.3;
-  const cp2X = controlX;  
-  const cp2Y = targetY + (isUpBranch ? verticalOffset : -verticalOffset) * 0.3;
-  
-  // Create SVG path with manual control points for perfect symmetry
-  const edgePath = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+  // Create one-bend path: horizontal from source, then vertical to target
+  const edgePath = `M ${sourceX},${sourceY} L ${bendX},${sourceY} L ${bendX},${targetY} L ${targetX},${targetY}`;
+
+  // Determine branch direction for styling
+  const isUpBranch = targetY < sourceY;
+  const branchColor = isUpBranch ? 'rgba(var(--primary), 0.85)' : 'rgba(var(--secondary), 0.85)';
 
   return (
     <BaseEdge
       id={id}
       path={edgePath}
       style={{
-        strokeWidth: 4,
-        stroke: 'rgba(255,255,255,0.85)',
+        strokeWidth: 3,
+        stroke: branchColor,
         strokeLinecap: 'round',
-        // Subtle drop shadow for visual separation from grid
-        filter: 'drop-shadow(0 0 1px rgba(255,255,255,0.35))',
+        strokeLinejoin: 'round', // Smooth corners at bends
+        // Enhanced shadow for the one-bend style
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
         ...style,
       }}
       markerEnd={markerEnd}
