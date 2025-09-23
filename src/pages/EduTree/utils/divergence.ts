@@ -108,10 +108,10 @@ export function computeProgramDivergence(
         console.log('[DIVERGENCE DEBUG] Divergence at Y4, no gate needed');
         return { divergesAfter: null, forkBetween: null };
       }
-      // Special case: divergence at Y1 - position gate before Y1
+      // Special case: divergence at Y1 - position gate between Y1 and Y2
       if (y === 1) {
-        const result = { divergesAfter: null, forkBetween: [1, 1] as [Year, Year] };
-        console.log('[DIVERGENCE DEBUG] Found Y1 divergence (boundary case), returning:', result);
+        const result = { divergesAfter: 1 as Year, forkBetween: [1, 2] as [Year, Year] };
+        console.log('[DIVERGENCE DEBUG] Found Y1 divergence, returning:', result);
         return result;
       }
       const result = { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] as [Year, Year] };
@@ -142,6 +142,10 @@ export function computeTrackDivergence(
     if (!same) {
       // If divergence only at Y4, return null (no gate needed)
       if (y === 4) return { divergesAfter: null, forkBetween: null };
+      // Special case: divergence at Y1 - position gate between Y1 and Y2
+      if (y === 1) {
+        return { divergesAfter: 1 as Year, forkBetween: [1, 2] as [Year, Year] };
+      }
       return { divergesAfter: (y - 1) as Year, forkBetween: [(y - 1) as Year, y as Year] };
     }
   }
@@ -171,11 +175,17 @@ export function decideGatePositions(opts: {
   console.log('[GATE DEBUG] Program divergence result:', pgDiv);
   
   const showPG = !!pgDiv.forkBetween;
-  const pgX = showPG && pgDiv.forkBetween
-    ? pgDiv.forkBetween[0] === pgDiv.forkBetween[1] && pgDiv.forkBetween[0] === 1
-      ? cols.y1 - 100  // Position before Y1 for boundary case
-      : mid(cols[`y${pgDiv.forkBetween[0] as 1|2|3|4}`], cols[`y${pgDiv.forkBetween[1] as 1|2|3|4}`])
-    : undefined; // Use undefined when hidden (no fallbacks)
+  const pgBetween = pgDiv.forkBetween ?? [1, 2];
+  const left = pgBetween[0] as 1|2|3|4;
+  const right = pgBetween[1] as 1|2|3|4;
+  
+  const yL = cols[`y${left}`];
+  const yR = cols[`y${right}`];
+  const pgX = showPG && Number.isFinite(yL) && Number.isFinite(yR)
+    ? mid(yL, yR)
+    : showPG 
+      ? mid(cols.y1, cols.y2) // safety fallback
+      : undefined;
     
   console.log('[GATE DEBUG] Program gate decision:', { showPG, pgX, forkBetween: pgDiv.forkBetween });
 
