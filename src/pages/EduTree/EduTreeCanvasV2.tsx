@@ -461,7 +461,15 @@ function EduTreeCanvasV2Content({
   
   const gatePositions = useMemo(() => {
     const cols = { y1: 200, y2: 600, y3: 1300, y4: 1700, pg: 400, tg: 900 };
+    console.log('[CANVAS DEBUG] Computing gate positions with:', { 
+      blocksCount: blocks.length, 
+      programs, 
+      tracksByProgram, 
+      cols,
+      effectiveFilterMode: currentFilterMode 
+    });
     const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
+    console.log('[CANVAS DEBUG] Gate positions computed:', next);
     return stableReturn(gatePositionsRef, next);
   }, [blocksKey, programs.join('|'), tracksKey]);
   
@@ -506,7 +514,16 @@ function EduTreeCanvasV2Content({
       (newNodes, newEdges) => {
         console.log('[EduTreeV2] Setting nodes and edges:', { 
           nodes: newNodes.length, 
-          edges: newEdges.length 
+          edges: newEdges.length,
+          nodeTypes: newNodes.reduce((acc, n) => {
+            acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+          gateNodes: newNodes.filter(n => n.id.includes('gate')).map(n => ({ 
+            id: n.id, 
+            hidden: n.hidden, 
+            position: n.position 
+          }))
         });
         
         // Apply gate positioning decisions with proper guards and dimming

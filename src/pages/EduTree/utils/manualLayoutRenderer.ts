@@ -187,9 +187,17 @@ export function edgesToReactFlowEdges(
     // Check if it's a header node (always visible when created)
     if (id.startsWith('program-header:') || id.startsWith('track-header:')) return true;
     
-    // Check gate visibility
-    if (id === 'gate-y2-programs' && gatePositions && !gatePositions.showPG) return false;
-    if (id === 'gate-y3-tracks' && gatePositions && !gatePositions.showTG) return false;
+    // Check gate visibility with detailed logging
+    if (id === 'gate-y2-programs') {
+      const visible = gatePositions ? gatePositions.showPG : false;
+      console.log('[NodeVisibility] Program gate visibility check:', { id, visible, gatePositions });
+      return visible;
+    }
+    if (id === 'gate-y3-tracks') {
+      const visible = gatePositions ? gatePositions.showTG : false;
+      console.log('[NodeVisibility] Track gate visibility check:', { id, visible, gatePositions });
+      return visible;
+    }
     
     // Check if node exists in blocks
     return nodeById.has(id);
@@ -207,6 +215,15 @@ export function edgesToReactFlowEdges(
         return false;
       }
     }
+    
+    console.log('[EdgeFilter] Edge check:', {
+      edgeId: edge.source + '->' + edge.target,
+      isGateEdge: edge.source.startsWith('gate-'),
+      gatePositions: gatePositions ? {
+        showPG: gatePositions.showPG,
+        showTG: gatePositions.showTG
+      } : 'none'
+    });
     
     // Never keep a metroGate edge if either endpoint isn't visible
     const kind: EdgeKind = edge.kind ?? (edge.source.startsWith('gate-') ? 'gate' : 'prereq');
