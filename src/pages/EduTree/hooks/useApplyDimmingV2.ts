@@ -8,6 +8,7 @@ import { Node, Edge } from '@xyflow/react';
 import { usePathHighlight, type Selection, type Blockish } from '../ctx/PathHighlightContext';
 import { withNodeHL, withEdgeHL } from '../utils/highlightClasses';
 import { deriveRenderMode, type RenderMode } from '../utils/renderMode';
+import { useSuffixCompare } from './useSuffixCompare';
 
 interface UseApplyDimmingV2Props {
   nodes: Node[];
@@ -22,6 +23,7 @@ interface UseApplyDimmingV2Result {
 
 export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
   const highlight = usePathHighlight();
+  const { reachableSet } = useSuffixCompare({ edges });
   
   // Derive render mode from selections
   const mode = deriveRenderMode(highlight.primarySelection, highlight.secondarySelection);
@@ -132,7 +134,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     return false;
   }
 
-  // Compute dimmed nodes with Auto-Mode support
+  // Compute dimmed nodes with Auto-Mode and Suffix support
   const dimmedNodes = useMemo(() => {
     const { primarySelection, secondarySelection } = highlight;
     
@@ -141,19 +143,45 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         mode,
         nodeCount: nodes.length,
         primarySelection,
-        secondarySelection
+        secondarySelection,
+        suffixEnabled: !!reachableSet,
+        suffixSize: reachableSet?.size
       });
     }
     
-    // SINGLE MODE: Return nodes unchanged (no overlay classes applied)
+    // SINGLE MODE: Apply suffix constraint if enabled, otherwise return unchanged
     if (mode === 'single') {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[ApplyDimmingV2] Single mode - no overlay classes applied');
+        console.log('[ApplyDimmingV2] Single mode - applying suffix constraints if enabled');
       }
+      
+      // If suffix is enabled, apply highlighting within the reachable set
+      if (reachableSet && primarySelection) {
+        return nodes.map(node => {
+          // Skip dimming for header and gate nodes
+          if (node.type === 'header' || node.type === 'gate') {
+            return node;
+          }
+          
+          const blockish = extractBlockish(node);
+          const inSuffix = reachableSet.has(node.id);
+          
+          if (inSuffix) {
+            const belongsA = belongsToSelection(blockish, primarySelection);
+            if (belongsA) {
+              return { ...node, className: withNodeHL(node.className, 'hl--primary'), style: { ...node.style, opacity: 1 } };
+            }
+          }
+          
+          // All other nodes (outside suffix or don't belong to A) are dimmed
+          return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
+        });
+      }
+      
       return nodes;
     }
 
-    // DUAL MODE: Apply overlay highlight classes
+    // DUAL MODE: Apply overlay highlight classes with suffix support
     return nodes.map(node => {
       // Skip dimming for header and gate nodes
       if (node.type === 'header' || node.type === 'gate') {
@@ -161,9 +189,15 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       }
 
       const blockish = extractBlockish(node);
+      const inSuffix = reachableSet ? reachableSet.has(node.id) : true;
+
+      // If suffix is enabled and node is not in reachable set, dim it
+      if (reachableSet && !inSuffix) {
+        return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
+      }
 
       if (primarySelection && secondarySelection) {
-        // Dual selection: compute A-only, B-only, shared, dim
+        // Dual selection: compute A-only, B-only, shared, dim (within suffix if enabled)
         const belongsA = belongsToSelection(blockish, primarySelection);
         const belongsB = belongsToSelection(blockish, secondarySelection);
         const isShared = isSharedBetween(blockish, primarySelection, secondarySelection);
@@ -267,20 +301,52 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     
     const { primarySelection, secondarySelection } = highlight;
     
-    // SINGLE MODE: Return edges unchanged (no overlay classes applied)
+    // SINGLE MODE: Apply suffix constraint if enabled, otherwise return unchanged
     if (mode === 'single') {
+      if (reachableSet && primarySelection) {
+        return validEdges.map(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          
+          const sourceInSuffix = reachableSet.has(edge.source);
+          const targetInSuffix = reachableSet.has(edge.target);
+          
+          // Both endpoints must be in suffix to be highlighted
+          if (sourceInSuffix && targetInSuffix) {
+            const sourceBlockish = extractBlockish(sourceNode);
+            const targetBlockish = extractBlockish(targetNode);
+            const sourceA = belongsToSelection(sourceBlockish, primarySelection);
+            const targetA = belongsToSelection(targetBlockish, primarySelection);
+            
+            if (sourceA && targetA) {
+              return { ...edge, className: withEdgeHL(edge.className, 'edge--primary'), style: { ...edge.style, opacity: 1 } };
+            }
+          }
+          
+          return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
+        });
+      }
+      
       return validEdges;
     }
 
-    // DUAL MODE: Apply overlay highlight classes
+    // DUAL MODE: Apply overlay highlight classes with suffix support
     return validEdges.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
       const sourceBlockish = extractBlockish(sourceNode);
       const targetBlockish = extractBlockish(targetNode);
 
+      const sourceInSuffix = reachableSet ? reachableSet.has(edge.source) : true;
+      const targetInSuffix = reachableSet ? reachableSet.has(edge.target) : true;
+
+      // If suffix is enabled, both endpoints must be in suffix to be considered
+      if (reachableSet && (!sourceInSuffix || !targetInSuffix)) {
+        return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
+      }
+
       if (primarySelection && secondarySelection) {
-        // Dual selection edge logic
+        // Dual selection edge logic (within suffix if enabled)
         const sourceA = belongsToSelection(sourceBlockish, primarySelection);
         const sourceB = belongsToSelection(sourceBlockish, secondarySelection);
         const targetA = belongsToSelection(targetBlockish, primarySelection);
@@ -314,7 +380,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
           }
         }
       } else if (primarySelection) {
-        // Primary selection only
+        // Primary selection only (within suffix if enabled)
         const sourceA = belongsToSelection(sourceBlockish, primarySelection);
         const targetA = belongsToSelection(targetBlockish, primarySelection);
         

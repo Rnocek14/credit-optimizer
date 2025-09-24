@@ -37,6 +37,9 @@ import { TranscriptUploadDemo } from './components/TranscriptUploadDemo';
 import { HudLayer, HudDock } from './components/HudLayer';
 import { CompactDevPanel } from './components/CompactDevPanel';
 import { ComparePicker, useCompareOptions, parseCompareUrl } from './components/ComparePicker';
+import { CheckpointControls } from './components/CheckpointControls';
+import { SuffixMetrics } from './components/SuffixMetrics';
+import { useSuffixCompare } from './hooks/useSuffixCompare';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
@@ -96,6 +99,12 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
     <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
       <div className="font-semibold">YEAR {data.levelYear} — {gateTitle}</div>
       <div className="mt-1 text-xs opacity-70">{subtitle}</div>
+      
+      {/* Checkpoint Controls */}
+      <CheckpointControls 
+        checkpointId={String(data.id) || `${gateType}-gate-y${data.levelYear}`}
+        gateType={gateType}
+      />
 
       {/* Handles - show appropriate handles based on mode */}
       {!singleRailStraight && (
@@ -353,6 +362,9 @@ function EduTreeCanvasV2Content({
     
     return finalFiltered;
   }, [nodes, flowEdges]);
+
+  // Initialize suffix compare with safe edges
+  const suffixCompare = useSuffixCompare({ edges: safeEdges });
 
   // Then apply dimming to the safe edges (hook called at top level)
   const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
@@ -993,6 +1005,14 @@ function EduTreeCanvasV2Content({
             </HudDock>
           )}
         </HudLayer>
+        
+        {/* Suffix Metrics Overlay */}
+        <SuffixMetrics
+          nodes={safeNodes}
+          edges={processedEdges}
+          reachableSet={suffixCompare.reachableSet}
+          mode={mode}
+        />
       </div>
       </>
     </ReactFlowErrorBoundary>
