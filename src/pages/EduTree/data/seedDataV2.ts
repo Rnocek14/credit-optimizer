@@ -414,6 +414,20 @@ export function filterBlocksByMode(
       if (selectedPrograms.size > 0) {
         console.log('[FilterBlocks] Program comparison detected in compare-programs:', Array.from(selectedPrograms));
         
+        // Debug: Show what programs are present after filtering
+        const programCounts = filteredBlocks.reduce((acc, b) => {
+          const pid = b.program_id ?? 'shared';
+          acc[pid] = (acc[pid] ?? 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.log('[FilterBlocks] programs present after filtering:', programCounts);
+        
+        // Debug: Check for existing ghost nodes
+        const existingGhosts = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+        if (existingGhosts.length) {
+          console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
+        }
+        
         // Only inject ghosts for programs that have blocks AND need ghost nodes
         const programsWithBlocks = getActivePrograms(filteredBlocks);
         const programsNeedingGhosts = programsWithBlocks.filter(pid => {
@@ -504,6 +518,20 @@ export function filterBlocksByMode(
       // Apply same program comparison logic as compare-programs mode
       if (selectedPrograms.size > 0) {
         console.log('[FilterBlocks] Program comparison detected in compare-any mode:', Array.from(selectedPrograms));
+        
+        // Debug: Show what programs are present after filtering
+        const programCounts = filteredBlocks.reduce((acc, b) => {
+          const pid = b.program_id ?? 'shared';
+          acc[pid] = (acc[pid] ?? 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        console.log('[FilterBlocks] programs present after filtering:', programCounts);
+        
+        // Debug: Check for existing ghost nodes
+        const existingGhosts = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+        if (existingGhosts.length) {
+          console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
+        }
         
         // Only inject ghosts for programs that have blocks AND need ghost nodes
         const programsWithBlocks = getActivePrograms(filteredBlocks);

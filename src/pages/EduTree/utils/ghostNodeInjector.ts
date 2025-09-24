@@ -16,9 +16,18 @@ export function injectGhostNodes(
   activePrograms: string[]
 ): V2RequirementBlock[] {
   const ghostNodes: V2RequirementBlock[] = [];
+  const allowedPrograms = new Set(activePrograms);
+  
+  console.log('[GhostInject] Called with programs:', activePrograms);
   
   // Check each active program for skipped years
   for (const programId of activePrograms) {
+    // Safety guard: only process explicitly allowed programs
+    if (!allowedPrograms.has(programId)) {
+      console.warn('[GhostInject] Skipping non-allowed program:', programId);
+      continue;
+    }
+    
     const program = getProgramById(programId);
     if (!program || program.skips.length === 0) continue;
     

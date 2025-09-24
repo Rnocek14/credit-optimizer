@@ -892,6 +892,7 @@ function EduTreeCanvasV2Content({
       )}
 
         <ReactFlow
+          key={`react-flow-${effectiveFilterMode}-${programs.sort().join('-')}`}
           nodes={safeNodes}
           edges={processedEdges}
           onNodesChange={onNodesChange}
