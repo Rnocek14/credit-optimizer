@@ -474,6 +474,21 @@ export function filterBlocksByMode(
     case 'compare-any':
       // Show all blocks for dual selection comparisons
       filteredBlocks = blocks;
+      
+      // Check if we're comparing programs (not just tracks) and apply lane normalization
+      const programSelections = opts?.programs?.filter(p => p.startsWith('program:')) || [];
+      const extractedPrograms = new Set(programSelections.map(p => p.replace('program:', '')));
+      
+      // Apply lane normalization when comparing programs (same logic as compare-programs)
+      if (extractedPrograms.size > 0) {
+        console.log('[FilterBlocks] Detected program comparison in compare-any mode:', Array.from(extractedPrograms));
+        try {
+          filteredBlocks = normalizeProgramCompareLanes(filteredBlocks, extractedPrograms);
+        } catch (error) {
+          console.error('[Lane Normalizer] Error in compare-any mode:', error);
+          // Fallback: return filtered blocks without normalization
+        }
+      }
       break;
       
     default:
