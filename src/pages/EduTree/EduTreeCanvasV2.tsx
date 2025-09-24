@@ -602,9 +602,11 @@ function EduTreeCanvasV2Content({
       singleRailStraight, // Pass single-rail straight flag
       effectiveFilterMode || 'compare-tracks', // Pass filter mode for header routing  
       flags.eduTreeV2EdgeKinds ?? true, // Pass V2 edge kinds flag (default true)
-      gatePositions // Pass gate positioning decisions
+      gatePositions, // Pass gate positioning decisions
+      pathHighlight.primarySelection, // Pass primary selection for header creation
+      pathHighlight.secondarySelection // Pass secondary selection for header creation
     );
-  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
+  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
   
   // Update handle internals using useLayoutEffect to prevent micro "pop"
   useLayoutEffect(() => {
