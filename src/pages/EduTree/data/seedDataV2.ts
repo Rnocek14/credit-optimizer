@@ -379,6 +379,10 @@ export function filterBlocksByMode(
   // Read selected programs if provided (fallback to discovering in-filter)
   const selectedPrograms = new Set(opts?.programs ?? []);
   
+  // Helper function to check if a program is selected
+  const inSelected = (pid?: string) =>
+    !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
+  
   // First apply existing filtering logic
   let filteredBlocks: V2RequirementBlock[];
   
@@ -388,14 +392,14 @@ export function filterBlocksByMode(
       filteredBlocks = blocks.filter(block => {
         const isY1Shared = !block.program_id;
         
-        // program-only nodes (Y2 cores/electives, IT capstone, etc.)
-        const isProgramLevel = !!block.program_id && !block.track_id;
+        // ONLY include program-level blocks for selected programs
+        const isProgramLevel = !!block.program_id && !block.track_id && inSelected(block.program_id);
         
-        // include track nodes for selected programs that have tracks (e.g., CS SE/DS in Y3-Y4)
+        // ONLY include track nodes for selected programs that actually have tracks
         const isTrackLevelOfSelectedProgram =
           !!block.program_id &&
           !!block.track_id &&
-          (selectedPrograms.size === 0 || selectedPrograms.has(block.program_id)) &&
+          selectedPrograms.has(block.program_id) &&
           hasTracks(block.program_id);
         
         // keep both Program + Track gates visible
@@ -481,6 +485,13 @@ export function filterBlocksByMode(
       // Show all blocks for dual selection comparisons
       filteredBlocks = blocks;
       
+      // Filter to only selected programs if specified
+      if (selectedPrograms.size > 0) {
+        filteredBlocks = filteredBlocks.filter(
+          b => !b.program_id || selectedPrograms.has(b.program_id) || b.is_virtual
+        );
+      }
+      
       // Apply same program comparison logic as compare-programs mode
       if (selectedPrograms.size > 0) {
         console.log('[FilterBlocks] Program comparison detected in compare-any mode:', Array.from(selectedPrograms));
@@ -506,7 +517,17 @@ export function filterBlocksByMode(
   // For other modes, inject ghost nodes for any active programs that need them
   if (!['compare-programs', 'compare-any'].includes(filterMode) || selectedPrograms.size === 0) {
     const activePrograms = getActivePrograms(filteredBlocks);
-    return injectGhostNodes(filteredBlocks, activePrograms);
+    filteredBlocks = injectGhostNodes(filteredBlocks, activePrograms);
+  }
+  
+  // Add sanity check for development
+  if (process.env.NODE_ENV === 'development' && selectedPrograms.size > 0) {
+    const stray = filteredBlocks.filter(
+      b => b.program_id && !selectedPrograms.has(b.program_id)
+    );
+    if (stray.length) {
+      console.warn('[FilterBlocks] Stray program blocks:', stray.map(s => s.id));
+    }
   }
   
   return filteredBlocks;
