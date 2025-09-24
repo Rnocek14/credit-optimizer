@@ -398,97 +398,17 @@ export function edgesToReactFlowEdges(
 
 /**
  * Create header nodes for lane identification in compare modes
+ * DISABLED: Canvas remains header-free, labels shown only in ComparePicker widget
  */
 function createHeaderNodes(opts: {
   filterMode: string;
   gatePositions?: GatePositions;
   singleRailStraight: boolean;
   useV2EdgeKinds: boolean;
-  primarySelection?: { kind: string; id: string } | null;
-  secondarySelection?: { kind: string; id: string } | null;
 }): Node[] {
-  const { filterMode, gatePositions, singleRailStraight, useV2EdgeKinds, primarySelection, secondarySelection } = opts;
-
-  // Only create headers when V2 edge kinds are enabled AND we have actual dual selections
-  if (!useV2EdgeKinds) return []; 
-
-  // Check if we have actual dual selections for comparison
-  const isActualComparison = primarySelection && 
-                             secondarySelection && 
-                             (primarySelection.kind !== secondarySelection.kind || 
-                              primarySelection.id !== secondarySelection.id);
-
-  // Only create headers during actual comparison, not single selections
-  if (!isActualComparison) {
-    return [];
-  }
-
-  // use standard lane positioning
-  const Y_UP = 240;
-  const Y_DOWN = 480;
-  const X_OFFSET = -60; // offset headers left of gate position
-
-  // Remove hardcoded program headers - dropdown is source of truth
-  if (filterMode === 'compare-programs') {
-    return []; // No program header nodes
-  }
-
-  if (filterMode === 'compare-tracks' || filterMode === 'compare-any') {
-    // Use default position if gates not available
-    const x = gatePositions?.tgX ? gatePositions.tgX + X_OFFSET : 840;
-    
-    // Helper to get display name from selection
-    const getDisplayName = (selection: { kind: string; id: string }) => {
-      if (selection.kind === 'track') {
-        switch (selection.id) {
-          case 'se': return 'Software Engineering';
-          case 'ds': return 'Data Science';
-          default: return selection.id.toUpperCase();
-        }
-      } else if (selection.kind === 'program') {
-        switch (selection.id) {
-          case 'bs_cs': return 'BS Computer Science';
-          case 'bs_it': return 'BS Information Technology';
-          default: return selection.id.toUpperCase();
-        }
-      }
-      return selection.id;
-    };
-
-    // Create headers based on actual selections
-    return [
-      {
-        id: `${primarySelection.kind}-header:${primarySelection.id}`,
-        type: 'header', 
-        position: { x, y: Y_UP - 70 },
-        data: { 
-          label: getDisplayName(primarySelection),
-          track_id: primarySelection.kind === 'track' ? primarySelection.id : null,
-          program_id: primarySelection.kind === 'program' ? primarySelection.id : null
-        },
-        draggable: false,
-        selectable: false,
-        style: { zIndex: 1000 },
-        targetPosition: Position.Left
-      },
-      {
-        id: `${secondarySelection.kind}-header:${secondarySelection.id}`,
-        type: 'header',
-        position: { x, y: Y_DOWN + 70 },
-        data: { 
-          label: getDisplayName(secondarySelection),
-          track_id: secondarySelection.kind === 'track' ? secondarySelection.id : null,
-          program_id: secondarySelection.kind === 'program' ? secondarySelection.id : null
-        },
-        draggable: false,
-        selectable: false,
-        style: { zIndex: 1000 },
-        targetPosition: Position.Left
-      }
-    ];
-  }
-
-  return []; // No headers for other modes
+  // Always return empty array - no header nodes rendered on canvas
+  // All track/program labeling handled by off-canvas ComparePicker widget
+  return [];
 }
 /**
  * Apply manual layout - just set positions and call fitView once
@@ -503,9 +423,7 @@ export function applyManualLayout(
   singleRailStraight: boolean = false,
   filterMode: string = '',
   useV2EdgeKinds: boolean = false,
-  gatePositions?: GatePositions,
-  primarySelection?: { kind: string; id: string } | null,
-  secondarySelection?: { kind: string; id: string } | null
+  gatePositions?: GatePositions
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
@@ -543,9 +461,7 @@ export function applyManualLayout(
     filterMode,
     gatePositions,
     singleRailStraight,
-    useV2EdgeKinds,
-    primarySelection,
-    secondarySelection
+    useV2EdgeKinds
   });
   
   // Create nodes with phase A planning data
@@ -909,6 +825,10 @@ export function applyManualLayout(
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     (window as any).__flowNodes__ = allNodes;
     (window as any).__flowEdges__ = sanitizedEdges;
+    
+    // Console assertion: verify no header nodes are rendered on canvas
+    const hasHeaders = allNodes.some(n => n.type === 'header' || n.id.includes('-header:'));
+    console.assert(!hasHeaders, '[REGRESSION] Header nodes should not be rendered on canvas - all labeling should be in ComparePicker widget');
   }
   
   // Fit view once after positions are set
