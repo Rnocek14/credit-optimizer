@@ -50,6 +50,8 @@ type DevOverrides = {
   eduTreeV2Grid?: boolean;
 };
 
+import { EmptyYearNode } from './components/EmptyYearNode';
+import { injectGhostNodes, getActivePrograms, addGhostNodeEdges, createGhostNodeData } from './utils/ghostNodeInjector';
 import { EvidenceBadges } from './components/EvidenceBadges';
 
 // Node components for V2
@@ -159,7 +161,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
 const nodeTypes = {
   requirement: RequirementNode,
   gate: GateNode,
-  header: HeaderNode
+  header: HeaderNode,
+  emptyYear: EmptyYearNode
 };
 
 const edgeTypes = {

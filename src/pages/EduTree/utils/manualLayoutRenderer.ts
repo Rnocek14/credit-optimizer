@@ -9,6 +9,7 @@ import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './dete
 import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP } from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';
 import { type GatePositions } from './divergence';
+import { createGhostNodeData } from './ghostNodeInjector';
 
 type SourceHandle = 'out' | 'out-se' | 'out-ds' | undefined;
 
@@ -26,6 +27,12 @@ export interface V2NodeData {
   isVirtual?: boolean;
   junctionType?: 'program' | 'track';
   singleRailStraight?: boolean;
+  // Ghost node specific data
+  isEmptyYear?: boolean;
+  year?: number;
+  reason?: 'accelerated' | 'no-track' | 'direct-progression';
+  nextYear?: number;
+  programName?: string;
   phaseAPlan?: {
     lane: 'up' | 'down' | undefined;
     col: number;
@@ -40,34 +47,59 @@ export interface V2NodeData {
  * No layout computation - just applies stored coordinates
  */
 export function blocksToNodes(blocks: V2RequirementBlock[], singleRailStraight: boolean = false): Node<V2NodeData>[] {
-  return blocks.map(block => ({
-    id: block.id,
-    type: block.is_virtual ? 'gate' : 'requirement',
-    position: {
-      x: block.position_x,
-      y: block.position_y
-    },
-    data: {
-      title: block.title,
-      ruleType: block.rule_type,
-      levelYear: block.level_year,
-      area: block.area,
-      creditsNeeded: block.credits_needed,
-      trackId: block.track_id,
-      programId: block.program_id,
-      // Add snake_case versions for dimming compatibility
-      track_id: block.track_id,
-      program_id: block.program_id,
-      isVirtual: block.is_virtual,
-      junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
-      singleRailStraight
-    },
-    // Add default handles for edge connections
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-    draggable: false, // Prevent user from moving manually positioned nodes
-    selectable: true
-  }));
+  return blocks.map(block => {
+    const baseNode = {
+      id: block.id,
+      position: {
+        x: block.position_x,
+        y: block.position_y
+      },
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      draggable: false,
+      selectable: true
+    };
+
+    if (block.is_empty_year) {
+      const ghostData = createGhostNodeData(
+        block.program_id || '',
+        block.level_year,
+        block.level_year + 1
+      );
+      
+      return {
+        ...baseNode,
+        type: 'emptyYear',
+        data: {
+          title: block.title,
+          ruleType: block.rule_type,
+          levelYear: block.level_year,
+          area: block.area,
+          isEmptyYear: true,
+          ...ghostData
+        } as V2NodeData
+      };
+    }
+
+    return {
+      ...baseNode,
+      type: block.is_virtual ? 'gate' : 'requirement',
+      data: {
+        title: block.title,
+        ruleType: block.rule_type,
+        levelYear: block.level_year,
+        area: block.area,
+        creditsNeeded: block.credits_needed,
+        trackId: block.track_id,
+        programId: block.program_id,
+        track_id: block.track_id,
+        program_id: block.program_id,
+        isVirtual: block.is_virtual,
+        junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
+        singleRailStraight
+      } as V2NodeData
+    };
+  });
 }
 
 /**
@@ -467,7 +499,7 @@ export function applyManualLayout(
   // Create nodes with phase A planning data
   const processedNodes = blocksToNodes(blocks, singleRailStraight).map(node => {
     const block = blocks.find(b => b.id === node.id);
-    if (!block || block.is_virtual) return node;
+    if (!block || block.is_virtual || block.is_empty_year) return node;
     
     // Compute phase A plan for future grid mode
     const lane: 'up' | 'down' | undefined = 

@@ -3,6 +3,8 @@
  * Manual positioning for perfect branching demonstration
  */
 
+import { PROGRAM_DEFINITIONS, getProgramById, doesProgramSkipYear } from './programMetadata';
+
 export interface V2RequirementBlock {
   id: string;
   program_id?: string;
@@ -15,6 +17,7 @@ export interface V2RequirementBlock {
   position_x: number;
   position_y: number;
   is_virtual?: boolean;
+  is_empty_year?: boolean; // New flag for ghost nodes
 }
 
 export interface Junction {
@@ -439,11 +442,18 @@ export function filterBlocksByMode(
       
     case 'compare-any':
       // Show all blocks for dual selection comparisons
-      return blocks;
+      filteredBlocks = blocks;
+      break;
       
     default:
-      return blocks;
+      filteredBlocks = blocks;
   }
+  
+  // Then inject ghost nodes for any active programs that need them
+  const activePrograms = getActivePrograms(filteredBlocks);
+  const blocksWithGhosts = injectGhostNodes(filteredBlocks, activePrograms);
+  
+  return blocksWithGhosts;
 }
 
 // Legacy function for backward compatibility

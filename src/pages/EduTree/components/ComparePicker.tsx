@@ -6,6 +6,7 @@ import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty, Command
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TRACK_DEFINITIONS } from "../data/trackDefinitions";
+import { PROGRAM_DEFINITIONS, formatProgramLabel } from '../data/programMetadata';
 import type { Selection } from "../ctx/PathHighlightContext";
 
 // ---- types ----

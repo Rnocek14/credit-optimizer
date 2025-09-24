@@ -2,6 +2,7 @@
 export { BlockGroup } from './BlockGroup';
 export { TerminalNode } from './TerminalNode';
 export { CourseNode } from './CourseNode';
+export { EmptyYearNode } from './EmptyYearNode';
 export { PlaceholderGroup } from './PlaceholderGroup';
 export { SeedDataButton } from './SeedDataButton';
 export { OutcomePanel } from './OutcomePanel';
