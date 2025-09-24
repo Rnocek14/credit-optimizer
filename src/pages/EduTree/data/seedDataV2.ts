@@ -375,23 +375,45 @@ export const GOLDEN_LAYOUT_SEED: {
  */
 export type FilterMode = 'compare-programs' | 'compare-tracks' | 'compare-any' | 'bs_cs' | 'bs_it' | 'bsn' | 'se' | 'ds' | null;
 
+// Helper to check if a program has tracks
+const hasTracks = (programId?: string) => programId === 'bs_cs';
+
 export function filterBlocksByMode(
   blocks: V2RequirementBlock[], 
-  filterMode: FilterMode
+  filterMode: FilterMode,
+  opts?: { programs?: string[] }
 ): V2RequirementBlock[] {
   if (!filterMode) return blocks;
+  
+  // Read selected programs if provided (fallback to discovering in-filter)
+  const selectedPrograms = new Set(opts?.programs ?? []);
   
   // First apply existing filtering logic
   let filteredBlocks: V2RequirementBlock[];
   
   switch (filterMode) {
     case 'compare-programs':
-      // Show Y1 shared + Y2 program-only + program gate (exclude track-level content)
-      filteredBlocks = blocks.filter(block => 
-        !block.program_id || // Y1 shared blocks
-        (block.program_id && !block.track_id) || // Y2 program-only blocks (CS Core/Electives, IT Core/Electives)
-        (block.is_virtual && block.id === 'gate-y2-programs') // Program gate only
-      );
+      // Show Y1 shared + Y2 program-only + track content for programs with tracks + both gates
+      filteredBlocks = blocks.filter(block => {
+        const isY1Shared = !block.program_id;
+        
+        // program-only nodes (Y2 cores/electives, IT capstone, etc.)
+        const isProgramLevel = !!block.program_id && !block.track_id;
+        
+        // include track nodes for selected programs that have tracks (e.g., CS SE/DS in Y3-Y4)
+        const isTrackLevelOfSelectedProgram =
+          !!block.program_id &&
+          !!block.track_id &&
+          (selectedPrograms.size === 0 || selectedPrograms.has(block.program_id)) &&
+          hasTracks(block.program_id);
+        
+        // keep both Program + Track gates visible
+        const isGate =
+          block.is_virtual &&
+          (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks');
+        
+        return isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
+      });
       break;
       
     case 'compare-tracks':

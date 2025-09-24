@@ -51,8 +51,15 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Using golden layout seed with filter mode:', effectiveFilterMode, isAutoMode ? '(auto-detected)' : '');
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     
+    // Extract selected programs for filter
+    const { primarySelection, secondarySelection } = parseCompareUrl();
+    const programs = [
+      primarySelection?.kind === 'program' ? primarySelection.id : null,
+      secondarySelection?.kind === 'program' ? secondarySelection.id : null
+    ].filter(Boolean) as string[];
+    
     // Apply enhanced filtering
-    const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode);
+    const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs });
     const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, filteredBlocks);
     
     // PHASE 5: Add table logging right before node creation to verify no Y3 track blocks survive
