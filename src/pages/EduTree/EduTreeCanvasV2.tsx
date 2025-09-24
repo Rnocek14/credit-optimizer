@@ -92,7 +92,6 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   
   return (
     <div className="rounded-xl border border-dashed border-primary/60 bg-background/70 backdrop-blur px-4 py-3 shadow-sm min-w-[220px] text-sm relative">
-      <div className="text-xs uppercase tracking-wide opacity-70">Year {data.levelYear}</div>
       <div className="font-semibold">YEAR {data.levelYear} — {gateTitle}</div>
       <div className="mt-1 text-xs opacity-70">{subtitle}</div>
 
@@ -534,9 +533,15 @@ function EduTreeCanvasV2Content({
             return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
           }
           if (n.id === 'gate-y3-tracks') {
-            // PHASE 4: Explicitly hide track gate in program comparison
-            const isProgramComparison = effectiveFilterMode === 'compare-programs';
-            if (isProgramComparison || !gatePositions.showTG || gatePositions.tgX == null) {
+            // Show Y3 Track Gate when appropriate:
+            // - Hide only when comparing programs with different track structures (CS vs IT)
+            // - Show when comparing tracks within same program (SE vs DS)
+            // - Show in single program contexts
+            const isComparingProgramsWithDifferentTrackStructure = 
+              effectiveFilterMode === 'compare-programs' && 
+              programs.some(p => p === 'bs_it'); // IT has no tracks, CS has tracks
+              
+            if (isComparingProgramsWithDifferentTrackStructure || !gatePositions.showTG || gatePositions.tgX == null) {
               return { ...n, hidden: true };
             }
             return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };

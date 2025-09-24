@@ -190,15 +190,19 @@ export function decideGatePositions(opts: {
     
   console.log('[GATE DEBUG] Program gate decision:', { showPG, pgX, forkBetween: pgDiv.forkBetween });
 
-  // Track gate - NEVER show in program comparison mode
-  // Check if we're in program comparison by looking at programs count and track counts
-  const isLikelyProgramComparison = programs.length >= 2 && 
-    Object.values(tracksByProgram).some(tracks => tracks.length === 0);
+  // Track gate - Show when appropriate:
+  // - Show in single program contexts (any CS track)
+  // - Show when comparing tracks within same program (SE vs DS)  
+  // - Hide only when comparing programs with different track structures (CS vs IT)
+  const isComparingProgramsWithDifferentTrackStructure = 
+    programs.length >= 2 && 
+    programs.includes('bs_it' as ProgramId) && 
+    programs.includes('bs_cs' as ProgramId);
     
   let showTG = false;
   let tgBetween: [1|2|3|4, 1|2|3|4] | null = null;
   
-  if (!isLikelyProgramComparison) {
+  if (!isComparingProgramsWithDifferentTrackStructure) {
     for (const p of programs) {
       const tracks = tracksByProgram[p] ?? [];
       if (tracks.length < 2) continue;
@@ -218,7 +222,7 @@ export function decideGatePositions(opts: {
   console.log('[GATE DEBUG] Track gate decision:', { 
     showTG, 
     tgX, 
-    isLikelyProgramComparison,
+    isComparingProgramsWithDifferentTrackStructure,
     tracksByProgram 
   });
 
