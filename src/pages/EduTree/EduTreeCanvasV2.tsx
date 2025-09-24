@@ -699,28 +699,64 @@ function EduTreeCanvasV2Content({
     >
       <>
         <div className="h-full w-full edu-tree-canvas">
-        {/* Enhanced Lane Headers with centralized positioning */}
+        {/* Enhanced Lane Headers - only show during actual comparison */}
         {!singleRailStraight && (() => {
+          // Check if we're in actual comparison mode (both selections exist and are different)
+          const primarySelection = pathHighlight.primarySelection;
+          const secondarySelection = pathHighlight.secondarySelection;
+          
+          const isActualComparison = primarySelection && 
+                                     secondarySelection && 
+                                     primarySelection !== secondarySelection;
+          
+          // Don't show lane headers for single track selection
+          if (!isActualComparison) {
+            return null;
+          }
+          
           // Calculate positions using centralized layout tokens
           const viewW = 1800;
           const lanesCalc = laneXs(viewW);
           
-          const getLaneHeaders = () => {
-            switch (filterMode) {
-              case 'compare-programs':
-                return {
-                  upper: '▲ BS Computer Science',
-                  lower: '▼ BS Information Technology',
-                  gateLabel: 'Program Choice'
-                };
-              case 'compare-tracks':
-              default:
-                return {
-                  upper: '▲ Software Engineering',
-                  lower: '▼ Data Science', 
-                  gateLabel: 'Track Choice'
-                };
+          // Helper to extract display name from selection
+          const getDisplayName = (selection: any) => {
+            const selectionStr = typeof selection === 'string' ? selection : String(selection);
+            if (selectionStr.startsWith('program:')) {
+              const program = selectionStr.replace('program:', '');
+              switch (program) {
+                case 'bs_cs': return 'BS Computer Science';
+                case 'bs_it': return 'BS Information Technology';
+                default: return program.toUpperCase();
+              }
+            } else if (selectionStr.startsWith('track:')) {
+              const track = selectionStr.replace('track:', '');
+              switch (track) {
+                case 'se': return 'Software Engineering';
+                case 'ds': return 'Data Science';
+                default: return track.toUpperCase();
+              }
             }
+            return selectionStr;
+          };
+          
+          const getLaneHeaders = () => {
+            const primaryName = getDisplayName(primarySelection);
+            const secondaryName = getDisplayName(secondarySelection);
+            
+            // Determine gate label based on what we're comparing
+            let gateLabel = 'Choice';
+            const primaryStr = typeof primarySelection === 'string' ? primarySelection : String(primarySelection);
+            if (primaryStr.startsWith('program:')) {
+              gateLabel = 'Program Choice';
+            } else if (primaryStr.startsWith('track:')) {
+              gateLabel = 'Track Choice';
+            }
+            
+            return {
+              upper: `▲ ${primaryName}`,
+              lower: `▼ ${secondaryName}`,
+              gateLabel
+            };
           };
           
           const headers = getLaneHeaders();
