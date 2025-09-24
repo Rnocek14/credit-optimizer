@@ -4,6 +4,7 @@
  */
 
 import { PROGRAM_DEFINITIONS, getProgramById, doesProgramSkipYear } from './programMetadata';
+import { normalizeProgramCompareLanes } from "../utils/laneNormalize";
 
 export interface V2RequirementBlock {
   id: string;
@@ -50,7 +51,7 @@ export const LAYOUT_CONSTANTS = {
   },
   LANE_ROWS: {
     GATE_Y: 360,
-    UP_CORE: 240, UP_ELECTIVES: 120, UP_CAPSTONE: 80,
+    UP_CORE: 240, UP_ELECTIVES: 120, UP_TRACK_A: 100, UP_TRACK_B: 140, UP_CAPSTONE: 80,
     DOWN_CORE: 480, DOWN_ELECTIVES: 600, DOWN_CAPSTONE: 640
   }
 };
@@ -414,6 +415,9 @@ export function filterBlocksByMode(
         
         return isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
       });
+      
+      // Normalize lanes: CS (upper with SE/DS split), IT (lower)
+      filteredBlocks = normalizeProgramCompareLanes(filteredBlocks, selectedPrograms);
       break;
       
     case 'compare-tracks':

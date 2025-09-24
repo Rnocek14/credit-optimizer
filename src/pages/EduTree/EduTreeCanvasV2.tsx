@@ -611,6 +611,18 @@ function EduTreeCanvasV2Content({
         } else {
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
+        
+        // Validate lane placement for compare-programs mode
+        if (process.env.NODE_ENV === 'development' && effectiveFilterMode === 'compare-programs') {
+          import('./utils/validateLanes').then(({ validateProgramCompareLanes }) => {
+            const laneValidation = validateProgramCompareLanes(finalNodes);
+            if (laneValidation.issues > 0) {
+              console.warn('[LANE VALIDATOR] ✗ Issues found:', laneValidation.details);
+            } else {
+              console.log('[LANE VALIDATOR] ✓ Lanes clean');
+            }
+          });
+        }
       },
       () => {
         // fitView is now handled by separate useEffect
