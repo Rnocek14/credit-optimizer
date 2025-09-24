@@ -169,7 +169,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "track_core",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CORE
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A
     },
     {
       id: "y3-se-elec",
@@ -181,7 +181,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_ELECTIVES
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_A
     },
 
     // Year 3 - CS Tracks: Data Science (Upper Track B Lane)
