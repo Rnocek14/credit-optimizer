@@ -36,15 +36,23 @@ export function assertGateX(params: {
   const gateNodes = nodes.filter(n => n.type === 'gate');
   
   gateNodes.forEach(gate => {
-    const expectedPos = gatePositions[gate.id];
-    if (!expectedPos) {
+    let expectedX: number | undefined;
+    
+    // Map gate IDs to their expected positions from gatePositions object
+    if (gate.id === 'gate-y2-programs') {
+      expectedX = gatePositions.showPG ? gatePositions.pgX : undefined;
+    } else if (gate.id === 'gate-y3-tracks') {
+      expectedX = gatePositions.showTG ? gatePositions.tgX : undefined;
+    }
+    
+    if (expectedX === undefined) {
       issues.push(`Gate ${gate.id} missing from gatePositions`);
       return;
     }
     
     const actualX = gate.position?.x;
-    if (actualX !== undefined && Math.abs(actualX - expectedPos.x) > 5) {
-      issues.push(`Gate ${gate.id} X mismatch: expected ${expectedPos.x}, got ${actualX}`);
+    if (actualX !== undefined && Math.abs(actualX - expectedX) > 5) {
+      issues.push(`Gate ${gate.id} X mismatch: expected ${expectedX}, got ${actualX}`);
     }
   });
 
