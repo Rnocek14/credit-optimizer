@@ -18,6 +18,20 @@ export function validateProgramCompareLanes(nodes: Node[]): {
 } {
   const details: string[] = [];
 
+  // PHASE 3: Enhanced validation - also check for data integrity
+  const trackNodes = nodes.filter(n => {
+    const d = (n.data || {}) as V2NodeData;
+    return d.track_id && ['se', 'ds'].includes(d.track_id);
+  });
+
+  // Data integrity check: track nodes must have program_id
+  for (const n of trackNodes) {
+    const d = (n.data || {}) as V2NodeData;
+    if (!d.program_id) {
+      details.push(`Track node missing program_id: ${n.id} (track=${d.track_id})`);
+    }
+  }
+
   for (const n of nodes) {
     const d = (n.data || {}) as V2NodeData;
     // ignore gates & Y1 shared
@@ -44,6 +58,13 @@ export function validateProgramCompareLanes(nodes: Node[]): {
         );
       }
     }
+  }
+
+  // PHASE 3: Log validation results for all comparison modes
+  if (details.length > 0) {
+    console.warn('[LaneValidation] Lane violations detected:', details);
+  } else {
+    console.log('[LaneValidation] All lane assignments valid ✓');
   }
 
   return { issues: details.length, details };

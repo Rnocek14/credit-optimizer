@@ -184,7 +184,7 @@ export const GOLDEN_LAYOUT_SEED: {
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_ELECTIVES
     },
 
-    // Year 3 - CS Tracks: Data Science (Lower Lane)
+    // Year 3 - CS Tracks: Data Science (Upper Track B Lane)
     {
       id: "y3-ds-core",
       program_id: "bs_cs",
@@ -195,7 +195,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "track_core",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CORE
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B
     },
     {
       id: "y3-ds-elec",
@@ -207,7 +207,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "elective_pool",
       credits_needed: 6,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y3,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_ELECTIVES
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_TRACK_B
     },
 
     // Year 4 - Capstones
@@ -233,7 +233,7 @@ export const GOLDEN_LAYOUT_SEED: {
       area: "capstone",
       credits_needed: 3,
       position_x: LAYOUT_CONSTANTS.YEAR_COLUMNS.Y4,
-      position_y: LAYOUT_CONSTANTS.LANE_ROWS.DOWN_CAPSTONE
+      position_y: LAYOUT_CONSTANTS.LANE_ROWS.UP_CAPSTONE
     },
     {
       id: "y4-it-cap",
@@ -355,7 +355,7 @@ export const GOLDEN_LAYOUT_SEED: {
       position_y: LAYOUT_CONSTANTS.LANE_ROWS.GATE_Y,
       outputs: [
         { id: "se", lane: "up" },
-        { id: "ds", lane: "down" }
+        { id: "ds", lane: "up" }
       ]
     }
   ]

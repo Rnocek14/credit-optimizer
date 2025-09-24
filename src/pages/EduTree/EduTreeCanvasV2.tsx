@@ -616,8 +616,8 @@ function EduTreeCanvasV2Content({
           console.log('[EduTreeV2] ✓ No node overlaps - acceptance criteria met');
         }
         
-        // Validate lane placement for compare-programs mode
-        if (process.env.NODE_ENV === 'development' && effectiveFilterMode === 'compare-programs') {
+        // Validate lane placement for comparison modes  
+        if (process.env.NODE_ENV === 'development' && (effectiveFilterMode === 'compare-programs' || effectiveFilterMode === 'compare-any')) {
           import('./utils/validateLanes').then(({ validateProgramCompareLanes }) => {
             const laneValidation = validateProgramCompareLanes(finalNodes);
             if (laneValidation.issues > 0) {

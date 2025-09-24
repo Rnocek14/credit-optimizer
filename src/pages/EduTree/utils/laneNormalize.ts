@@ -13,7 +13,7 @@ export function normalizeProgramCompareLanes(
   blocks: V2RequirementBlock[],
   selectedPrograms: Set<string>
 ): V2RequirementBlock[] {
-  // Only normalize when we're comparing programs that include CS or IT
+  // Only normalize when we're comparing programs that include CS or IT  
   const csActive = selectedPrograms.has("bs_cs");
   const itActive = selectedPrograms.has("bs_it");
 
@@ -22,6 +22,12 @@ export function normalizeProgramCompareLanes(
   return blocks.map((b) => {
     // Never move gates
     if (b.is_virtual) return b;
+
+    // PHASE 2: Defensive inference - if track_id exists but program_id missing, infer CS
+    if (b.track_id && ['se', 'ds'].includes(b.track_id) && !b.program_id) {
+      console.warn(`[LaneNormalize] Inferring program_id='bs_cs' for track node: ${b.id}`);
+      b = { ...b, program_id: 'bs_cs' };
+    }
 
     // CS program (upper lanes)
     if (b.program_id === "bs_cs") {
@@ -50,5 +56,17 @@ export function normalizeProgramCompareLanes(
 
     // Year 1 shared (no program_id) stays where it is
     return b;
+  }).map((b) => {
+    // PHASE 2: Hard guard - CS track nodes must never be in DOWN rows
+    if (b.program_id === 'bs_cs' && b.track_id && DOWN_ROWS.has(b.position_y)) {
+      console.error(`[LaneNormalize] CRITICAL: CS track node in DOWN lane: ${b.id} @y=${b.position_y}. Force-correcting.`);
+      const correctedY = b.track_id === 'se' ? ROW.UP_TRACK_A : ROW.UP_TRACK_B;
+      return { ...b, position_y: correctedY };
+    }
+    return b;
   });
 }
+
+// Add helper sets for validation
+const UP_ROWS = new Set([ROW.UP_CORE, ROW.UP_ELECTIVES, ROW.UP_TRACK_A, ROW.UP_TRACK_B, ROW.UP_CAPSTONE]);
+const DOWN_ROWS = new Set([ROW.DOWN_CORE, ROW.DOWN_ELECTIVES, ROW.DOWN_CAPSTONE]);
