@@ -413,7 +413,16 @@ export function filterBlocksByMode(
       // Inject ghost nodes before lane normalization for program comparisons
       if (selectedPrograms.size > 0) {
         console.log('[FilterBlocks] Program comparison detected in compare-programs:', Array.from(selectedPrograms));
-        filteredBlocks = injectGhostNodes(filteredBlocks, Array.from(selectedPrograms));
+        
+        // Only inject ghosts for programs that have blocks AND need ghost nodes
+        const programsWithBlocks = getActivePrograms(filteredBlocks);
+        const programsNeedingGhosts = programsWithBlocks.filter(pid => {
+          const program = getProgramById(pid);
+          return !!program && (program.skips?.length ?? 0) > 0;
+        });
+        
+        console.log('[GhostInject]', { programsWithBlocks, programsNeedingGhosts });
+        filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
       }
       
       // Normalize lanes: CS (upper with SE/DS split), IT (lower)
@@ -496,8 +505,15 @@ export function filterBlocksByMode(
       if (selectedPrograms.size > 0) {
         console.log('[FilterBlocks] Program comparison detected in compare-any mode:', Array.from(selectedPrograms));
         
-        // Inject ghost nodes before lane normalization
-        filteredBlocks = injectGhostNodes(filteredBlocks, Array.from(selectedPrograms));
+        // Only inject ghosts for programs that have blocks AND need ghost nodes
+        const programsWithBlocks = getActivePrograms(filteredBlocks);
+        const programsNeedingGhosts = programsWithBlocks.filter(pid => {
+          const program = getProgramById(pid);
+          return !!program && (program.skips?.length ?? 0) > 0;
+        });
+        
+        console.log('[GhostInject]', { programsWithBlocks, programsNeedingGhosts });
+        filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
         
         // Apply lane normalization: CS upper band, IT lower band
         try {
