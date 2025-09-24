@@ -720,7 +720,18 @@ function EduTreeCanvasV2Content({
           
           // Helper to extract display name from selection
           const getDisplayName = (selection: any) => {
-            const selectionStr = typeof selection === 'string' ? selection : String(selection);
+            if (!selection) return '';
+            
+            // Handle object format: {kind: "program", id: "bs_cs"}
+            let selectionStr = '';
+            if (typeof selection === 'object' && selection.kind && selection.id) {
+              selectionStr = `${selection.kind}:${selection.id}`;
+            } else if (typeof selection === 'string') {
+              selectionStr = selection;
+            } else {
+              return '';
+            }
+            
             if (selectionStr.startsWith('program:')) {
               const program = selectionStr.replace('program:', '');
               switch (program) {
@@ -745,11 +756,20 @@ function EduTreeCanvasV2Content({
             
             // Determine gate label based on what we're comparing
             let gateLabel = 'Choice';
-            const primaryStr = typeof primarySelection === 'string' ? primarySelection : String(primarySelection);
-            if (primaryStr.startsWith('program:')) {
-              gateLabel = 'Program Choice';
-            } else if (primaryStr.startsWith('track:')) {
-              gateLabel = 'Track Choice';
+            
+            if (primarySelection) {
+              let primaryStr = '';
+              if (typeof primarySelection === 'object' && primarySelection.kind && primarySelection.id) {
+                primaryStr = `${primarySelection.kind}:${primarySelection.id}`;
+              } else if (typeof primarySelection === 'string') {
+                primaryStr = primarySelection;
+              }
+              
+              if (primaryStr.startsWith('program:')) {
+                gateLabel = 'Program Choice';
+              } else if (primaryStr.startsWith('track:')) {
+                gateLabel = 'Track Choice';
+              }
             }
             
             return {
