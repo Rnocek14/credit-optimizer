@@ -1,12 +1,13 @@
 /**
  * Enhanced dimming hook supporting dual selection (compare-any) architecture
- * Replaces useApplyDimming with cross-discipline comparison support
+ * Now includes Auto-Mode support: single vs dual rendering modes
  */
 
 import { useMemo } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { usePathHighlight, type Selection, type Blockish } from '../ctx/PathHighlightContext';
 import { withNodeHL, withEdgeHL } from '../utils/highlightClasses';
+import { deriveRenderMode, type RenderMode } from '../utils/renderMode';
 
 interface UseApplyDimmingV2Props {
   nodes: Node[];
@@ -16,21 +17,26 @@ interface UseApplyDimmingV2Props {
 interface UseApplyDimmingV2Result {
   nodes: Node[];
   edges: Edge[];
+  mode: RenderMode;
 }
 
 export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
   const highlight = usePathHighlight();
+  
+  // Derive render mode from selections
+  const mode = deriveRenderMode(highlight.primarySelection, highlight.secondarySelection);
 
   // PHASE 2: Bound Highlight Sets to Live Nodes
   const liveNodeIds = useMemo(() => new Set(nodes.map(n => n.id)), [nodes]);
   
-  console.log('[ApplyDimmingV2] Live node IDs:', Array.from(liveNodeIds));
-  console.log('[ApplyDimmingV2] Highlight state:', {
-    primarySelection: highlight.primarySelection,
-    secondarySelection: highlight.secondarySelection,
-    hoveredKey: highlight.hoveredKey,
-    lockedKey: highlight.lockedKey
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[ApplyDimmingV2] Mode and state:', {
+      mode,
+      primarySelection: highlight.primarySelection,
+      secondarySelection: highlight.secondarySelection,
+      liveNodeCount: liveNodeIds.size
+    });
+  }
 
   // Build trackToProgram map from current nodes
   const trackToProgram = useMemo(() => {
@@ -126,39 +132,28 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     return false;
   }
 
-  // Compute dimmed nodes with dual selection support
+  // Compute dimmed nodes with Auto-Mode support
   const dimmedNodes = useMemo(() => {
     const { primarySelection, secondarySelection } = highlight;
     
-    // PHASE 5: Add Debug Logging for node creation
-    console.log('[ApplyDimmingV2] Processing nodes:', {
-      nodeCount: nodes.length,
-      primarySelection,
-      secondarySelection,
-      nodeTypes: nodes.reduce((acc, n) => {
-        acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    });
-    
-    // Legacy single selection fallback
-    if (!primarySelection && !secondarySelection) {
-      return nodes.map(node => {
-        const blockish = extractBlockish(node);
-        const dimmed = highlight.isNodeDimmed(blockish);
-        
-        if (dimmed) {
-          return {
-            ...node,
-            className: withNodeHL(node.className, 'hl--dim'),
-            style: { ...node.style, opacity: 0.4 }
-          };
-        }
-        return node;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ApplyDimmingV2] Processing nodes:', {
+        mode,
+        nodeCount: nodes.length,
+        primarySelection,
+        secondarySelection
       });
     }
+    
+    // SINGLE MODE: Return nodes unchanged (no overlay classes applied)
+    if (mode === 'single') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ApplyDimmingV2] Single mode - no overlay classes applied');
+      }
+      return nodes;
+    }
 
-    // Dual selection mode
+    // DUAL MODE: Apply overlay highlight classes
     return nodes.map(node => {
       // Skip dimming for header and gate nodes
       if (node.type === 'header' || node.type === 'gate') {
@@ -196,7 +191,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     });
   }, [nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram]);
 
-  // Compute dimmed edges with dual selection support  
+  // Compute dimmed edges with Auto-Mode support
   const dimmedEdges = useMemo(() => {
     // ULTRA-DEFENSIVE edge pre-filtering - prevent React Flow corruption at dimming layer
     const validEdges = edges.filter(e => {
@@ -272,36 +267,17 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     
     const { primarySelection, secondarySelection } = highlight;
     
-    // Legacy single selection fallback
-    if (!primarySelection && !secondarySelection) {
-      return validEdges.map(edge => {
-        const sourceNode = nodes.find(n => n.id === edge.source);
-        const targetNode = nodes.find(n => n.id === edge.target);
-        const sourceBlockish = extractBlockish(sourceNode);
-        const targetBlockish = extractBlockish(targetNode);
-        
-        const dimmed = highlight.isEdgeDimmed(sourceBlockish, targetBlockish, edge.type);
-        
-        if (dimmed) {
-          return {
-            ...edge,
-            className: withEdgeHL(edge.className, 'edge--dim'),
-            style: { ...edge.style, opacity: 0.25 }
-          };
-        }
-        return edge;
-      });
+    // SINGLE MODE: Return edges unchanged (no overlay classes applied)
+    if (mode === 'single') {
+      return validEdges;
     }
 
-    // Dual selection mode
+    // DUAL MODE: Apply overlay highlight classes
     return validEdges.map(edge => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
       const sourceBlockish = extractBlockish(sourceNode);
       const targetBlockish = extractBlockish(targetNode);
-
-      let className = edge.className || '';
-      let opacity = 1;
 
       if (primarySelection && secondarySelection) {
         // Dual selection edge logic
@@ -351,10 +327,21 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
       return edge;
     });
-  }, [edges, nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isEdgeDimmed, trackToProgram]);
+  }, [edges, nodes, highlight.primarySelection, highlight.secondarySelection, mode, trackToProgram]);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[ApplyDimmingV2] Overlay sets:', {
+      mode,
+      primaryNodes: dimmedNodes.filter(n => n.className?.includes('hl--primary')).length,
+      comparisonNodes: dimmedNodes.filter(n => n.className?.includes('hl--comparison')).length,
+      bothNodes: dimmedNodes.filter(n => n.className?.includes('hl--both')).length,
+      dimNodes: dimmedNodes.filter(n => n.className?.includes('hl--dim')).length,
+    });
+  }
 
   return {
     nodes: dimmedNodes,
-    edges: dimmedEdges
+    edges: dimmedEdges,
+    mode
   };
 }

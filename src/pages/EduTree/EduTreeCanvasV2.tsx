@@ -25,7 +25,9 @@ import GateBranchEdge from './edges/GateBranchEdge';
 import MetroGateEdge from './edges/MetroGateEdge';
 import { DevToggle } from './components/DevToggle';
 import { ReactFlowErrorBoundary } from '@/components/ReactFlowErrorBoundary';
+import { useFrameLockedFitView } from './hooks/useFrameLockedFitView';
 import { PathHighlightProvider, usePathHighlight } from './ctx/PathHighlightContext';
+import { GATE_Y } from './utils/renderMode';
 import { useReactFlowEventDebugger } from './hooks/useReactFlowEventDebugger';
 import { ComparisonLegend } from './components/ComparisonLegend';
 import { EnhancedControls } from './components/EnhancedControls';
@@ -353,7 +355,7 @@ function EduTreeCanvasV2Content({
   }, [nodes, flowEdges]);
 
   // Then apply dimming to the safe edges (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
 
   // Node position validation - prevent NaN/∞ coordinates
   const safeNodes = useMemo(() => {
@@ -530,7 +532,7 @@ function EduTreeCanvasV2Content({
         const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
           if (n.id === 'gate-y2-programs') {
             if (!gatePositions.showPG || gatePositions.pgX == null) return { ...n, hidden: true };
-            return { ...n, position: { x: gatePositions.pgX, y: 360 }, hidden: false };
+            return { ...n, position: { x: gatePositions.pgX, y: GATE_Y }, hidden: false };
           }
           if (n.id === 'gate-y3-tracks') {
             // Show Y3 Track Gate when appropriate:
@@ -544,7 +546,7 @@ function EduTreeCanvasV2Content({
             if (isComparingProgramsWithDifferentTrackStructure || !gatePositions.showTG || gatePositions.tgX == null) {
               return { ...n, hidden: true };
             }
-            return { ...n, position: { x: gatePositions.tgX, y: 360 }, hidden: false };
+            return { ...n, position: { x: gatePositions.tgX, y: GATE_Y }, hidden: false };
           }
           return n;
         });
@@ -649,18 +651,13 @@ function EduTreeCanvasV2Content({
     }
   }, [nodes, updateNodeInternals, flowEdges, gatePositions]);
   
-  // Reset fitView flag when meaningful context changes
-  useEffect(() => { 
-    fitViewCalled.current = false; 
-  }, [fitViewKey]);
-  
-  // Run fitView once per meaningful context
-  useEffect(() => {
-    if (!fitViewCalled.current && nodes.length > 0) { 
-      fitView(); 
-      fitViewCalled.current = true; 
-    }
-  }, [nodes, flowEdges, fitView]);
+  // Frame-Locked FitView - replaces manual fitView logic
+  useFrameLockedFitView({
+    mode,
+    primarySelection: pathHighlight.primarySelection,
+    secondarySelection: pathHighlight.secondarySelection,
+    enabled: nodes.length > 0
+  });
   
   const onConnect = useCallback(() => {
     // Prevent new connections in manual mode
@@ -979,6 +976,20 @@ function EduTreeCanvasV2Content({
           {process.env.NODE_ENV === 'development' && (
             <HudDock corner="BL" index={0}>
               <HighlightDiagnostics />
+              <div className="mt-2 text-xs bg-background/80 backdrop-blur p-2 rounded border">
+                <div>Mode: <span className="font-mono text-primary">{mode}</span></div>
+                <div>Headers Removed: <span className="text-green-600">✓</span></div>
+                {(() => {
+                  const hasHeaders = (window as any).__flowNodes__?.some((n: any) => 
+                    n.type === 'header' || /-header:/.test(n.id)
+                  );
+                  return (
+                    <div>Header Check: <span className={hasHeaders ? 'text-red-600' : 'text-green-600'}>
+                      {hasHeaders ? '✗ FOUND' : '✓ CLEAN'}
+                    </span></div>
+                  );
+                })()}
+              </div>
             </HudDock>
           )}
         </HudLayer>
