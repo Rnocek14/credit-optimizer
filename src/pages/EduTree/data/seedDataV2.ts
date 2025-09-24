@@ -381,64 +381,74 @@ export function filterBlocksByMode(
 ): V2RequirementBlock[] {
   if (!filterMode) return blocks;
   
+  // First apply existing filtering logic
+  let filteredBlocks: V2RequirementBlock[];
+  
   switch (filterMode) {
     case 'compare-programs':
       // Show Y1 shared + Y2 program-only + program gate (exclude track-level content)
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         (block.program_id && !block.track_id) || // Y2 program-only blocks (CS Core/Electives, IT Core/Electives)
         (block.is_virtual && block.id === 'gate-y2-programs') // Program gate only
       );
+      break;
       
     case 'compare-tracks':
       // Show CS program + both tracks + track gate (hide program gate)
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         block.program_id === 'bs_cs' ||
         (block.is_virtual && block.id === 'gate-y3-tracks')
       );
+      break;
       
     case 'bs_cs':
       // Show Y1 + CS program + track gate + both CS tracks
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         block.program_id === 'bs_cs' ||
         (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
       );
+      break;
       
     case 'bs_it':
       // Show Y1 + IT program only
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         block.program_id === 'bs_it' ||
         (block.is_virtual && block.id === 'gate-y2-programs')
       );
+      break;
       
     case 'se':
       // Show Y1 + CS program + SE track
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         (block.program_id === 'bs_cs' && !block.track_id) || // CS program blocks
         block.track_id === 'se' ||
         (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
       );
+      break;
       
     case 'ds':
       // Show Y1 + CS program + DS track
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         (block.program_id === 'bs_cs' && !block.track_id) || // CS program blocks
         block.track_id === 'ds' ||
         (block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks'))
       );
+      break;
       
     case 'bsn':
       // Show Y1 + BSN program blocks
-      return blocks.filter(block => 
+      filteredBlocks = blocks.filter(block => 
         !block.program_id || // Y1 shared blocks
         block.program_id === 'bsn' ||
         (block.is_virtual && block.id === 'gate-y2-programs')
       );
+      break;
       
     case 'compare-any':
       // Show all blocks for dual selection comparisons
@@ -451,9 +461,7 @@ export function filterBlocksByMode(
   
   // Then inject ghost nodes for any active programs that need them
   const activePrograms = getActivePrograms(filteredBlocks);
-  const blocksWithGhosts = injectGhostNodes(filteredBlocks, activePrograms);
-  
-  return blocksWithGhosts;
+  return injectGhostNodes(filteredBlocks, activePrograms);
 }
 
 // Legacy function for backward compatibility
@@ -463,6 +471,93 @@ export function filterBlocksByTrack(
 ): V2RequirementBlock[] {
   if (trackFilter === 'compare') return filterBlocksByMode(blocks, 'compare-tracks');
   return filterBlocksByMode(blocks, trackFilter);
+}
+
+/**
+ * Get active programs from filtered blocks
+ */
+export function getActivePrograms(blocks: V2RequirementBlock[]): string[] {
+  const programs = new Set<string>();
+  
+  for (const block of blocks) {
+    if (block.program_id) {
+      programs.add(block.program_id);
+    }
+  }
+  
+  return Array.from(programs);
+}
+
+/**
+ * Inject ghost nodes for skipped years in programs
+ */
+export function injectGhostNodes(
+  blocks: V2RequirementBlock[],
+  activePrograms: string[]
+): V2RequirementBlock[] {
+  const ghostNodes: V2RequirementBlock[] = [];
+  
+  // Check each active program for skipped years
+  for (const programId of activePrograms) {
+    const program = getProgramById(programId);
+    if (!program || program.skips.length === 0) continue;
+    
+    console.log(`[GhostNodes] Checking program ${programId} for skipped years:`, program.skips);
+    
+    for (const skippedYear of program.skips) {
+      const ghostId = `empty-year-${programId}-y${skippedYear}`;
+      
+      // Check if ghost node already exists
+      if (blocks.some(b => b.id === ghostId)) continue;
+      
+      // Determine position based on program and year
+      const position = getGhostNodePosition(programId, skippedYear);
+      
+      const ghostNode: V2RequirementBlock = {
+        id: ghostId,
+        program_id: programId,
+        title: `No Year ${skippedYear} Coursework`,
+        rule_type: 'ALL',
+        level_year: skippedYear,
+        area: 'ghost',
+        position_x: position.x,
+        position_y: position.y,
+        is_empty_year: true,
+        credits_needed: 0
+      };
+      
+      console.log(`[GhostNodes] Created ghost node:`, ghostNode);
+      ghostNodes.push(ghostNode);
+    }
+  }
+  
+  return [...blocks, ...ghostNodes];
+}
+
+/**
+ * Get position for ghost node based on program and year
+ */
+function getGhostNodePosition(programId: string, year: number): { x: number; y: number } {
+  const yearColumns = LAYOUT_CONSTANTS.YEAR_COLUMNS;
+  const laneRows = LAYOUT_CONSTANTS.LANE_ROWS;
+  
+  // X position based on year
+  const x = yearColumns[`Y${year}` as keyof typeof yearColumns] || yearColumns.Y3;
+  
+  // Y position based on program (lane assignment)
+  let y: number;
+  if (programId === 'bs_it') {
+    // IT uses lower lane
+    y = laneRows.DOWN_CORE;
+  } else if (programId === 'bs_cs') {
+    // CS uses upper lane
+    y = laneRows.UP_CORE;
+  } else {
+    // Default to gate row
+    y = laneRows.GATE_Y;
+  }
+  
+  return { x, y };
 }
 
 /**
