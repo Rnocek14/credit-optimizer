@@ -406,6 +406,12 @@ export function filterBlocksByMode(
         return isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
       });
       
+      // Inject ghost nodes before lane normalization for program comparisons
+      if (selectedPrograms.size > 0) {
+        console.log('[FilterBlocks] Program comparison detected in compare-programs:', Array.from(selectedPrograms));
+        filteredBlocks = injectGhostNodes(filteredBlocks, Array.from(selectedPrograms));
+      }
+      
       // Normalize lanes: CS (upper with SE/DS split), IT (lower)
       try {
         filteredBlocks = normalizeProgramCompareLanes(filteredBlocks, selectedPrograms);
@@ -475,15 +481,16 @@ export function filterBlocksByMode(
       // Show all blocks for dual selection comparisons
       filteredBlocks = blocks;
       
-      // Check if we're comparing programs (not just tracks) and apply lane normalization
-      const programSelections = opts?.programs?.filter(p => p.startsWith('program:')) || [];
-      const extractedPrograms = new Set(programSelections.map(p => p.replace('program:', '')));
-      
-      // Apply lane normalization when comparing programs (same logic as compare-programs)
-      if (extractedPrograms.size > 0) {
-        console.log('[FilterBlocks] Detected program comparison in compare-any mode:', Array.from(extractedPrograms));
+      // Apply same program comparison logic as compare-programs mode
+      if (selectedPrograms.size > 0) {
+        console.log('[FilterBlocks] Program comparison detected in compare-any mode:', Array.from(selectedPrograms));
+        
+        // Inject ghost nodes before lane normalization
+        filteredBlocks = injectGhostNodes(filteredBlocks, Array.from(selectedPrograms));
+        
+        // Apply lane normalization: CS upper band, IT lower band
         try {
-          filteredBlocks = normalizeProgramCompareLanes(filteredBlocks, extractedPrograms);
+          filteredBlocks = normalizeProgramCompareLanes(filteredBlocks, selectedPrograms);
         } catch (error) {
           console.error('[Lane Normalizer] Error in compare-any mode:', error);
           // Fallback: return filtered blocks without normalization
@@ -495,9 +502,14 @@ export function filterBlocksByMode(
       filteredBlocks = blocks;
   }
   
-  // Then inject ghost nodes for any active programs that need them
-  const activePrograms = getActivePrograms(filteredBlocks);
-  return injectGhostNodes(filteredBlocks, activePrograms);
+  // Ghost nodes are now injected during program comparisons above
+  // For other modes, inject ghost nodes for any active programs that need them
+  if (!['compare-programs', 'compare-any'].includes(filterMode) || selectedPrograms.size === 0) {
+    const activePrograms = getActivePrograms(filteredBlocks);
+    return injectGhostNodes(filteredBlocks, activePrograms);
+  }
+  
+  return filteredBlocks;
 }
 
 // Legacy function for backward compatibility
