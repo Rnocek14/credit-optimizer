@@ -3,7 +3,8 @@
  */
 
 import React from 'react';
-import { type FilterMode, LAYOUT_CONSTANTS } from '../data/seedDataV2';
+import { type FilterMode } from '../data/seedDataV2';
+import { LAYOUT_CONSTANTS } from '../utils/layoutConstants';
 
 interface LaneHeadersProps {
   filterMode: FilterMode;

@@ -3,7 +3,8 @@
  * Handles cases like IT skipping Year 3 (Y1→Y2→Y4)
  */
 
-import { V2RequirementBlock, LAYOUT_CONSTANTS } from '../data/seedDataV2';
+import { V2RequirementBlock } from '../data/seedDataV2';
+import { LAYOUT_CONSTANTS } from './layoutConstants';
 import { doesProgramSkipYear, getProgramById } from '../data/programMetadata';
 import type { EmptyYearNodeData } from '../components/EmptyYearNode';
 

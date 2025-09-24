@@ -1,5 +1,5 @@
 import { V2RequirementBlock } from "../data/seedDataV2";
-import { LAYOUT_CONSTANTS } from "../data/seedDataV2";
+import { LAYOUT_CONSTANTS } from "./layoutConstants";
 
 const ROW = LAYOUT_CONSTANTS.LANE_ROWS;
 
