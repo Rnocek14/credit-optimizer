@@ -43,6 +43,7 @@ import { useSuffixCompare } from './hooks/useSuffixCompare';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
+import '../../styles/eduTreeHud.css';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -53,6 +54,9 @@ type DevOverrides = {
 import { EmptyYearNode } from './components/EmptyYearNode';
 import { injectGhostNodes, getActivePrograms, addGhostNodeEdges, createGhostNodeData } from './utils/ghostNodeInjector';
 import { EvidenceBadges } from './components/EvidenceBadges';
+import { PhaseHeaders } from './components/HUD/PhaseHeaders';
+import { LaneCaptions } from './components/HUD/LaneCaptions';
+import { ComparisonLegend as HudComparisonLegend } from './components/HUD/ComparisonLegend';
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
@@ -92,8 +96,8 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   const gateType = data.junctionType || (data.title?.includes('Program') ? 'program' : 'track');
   const gateTitle = gateType === 'program' ? 'Program Gate' : 'Track Gate';
   
-  // Neutral subtitle for all gates - dropdown is source of truth
-  let subtitle = gateType === 'program' ? 'Select program using dropdown' : 'Select track using dropdown';
+  // Context-aware subtitle for gates
+  let subtitle = gateType === 'program' ? 'Select program using dropdown' : 'Specialization Choice (CS)';
   
   const singleRailStraight = data.singleRailStraight;
   
@@ -915,6 +919,22 @@ function EduTreeCanvasV2Content({
           <Controls />
         </ReactFlow>
       
+        {/* HUD Overlays for Program Comparison */}
+        <PhaseHeaders visible={effectiveFilterMode?.startsWith("compare")} />
+        <LaneCaptions 
+          filterMode={effectiveFilterMode} 
+          showCS={programs.includes('bs_cs')} 
+          showIT={programs.includes('bs_it')} 
+        />
+        {/* HUD Overlays for Program Comparison */}
+        <PhaseHeaders visible={effectiveFilterMode?.startsWith("compare")} />
+        <LaneCaptions 
+          filterMode={effectiveFilterMode} 
+          showCS={programs.includes('bs_cs')} 
+          showIT={programs.includes('bs_it')} 
+        />
+        <HudComparisonLegend filterMode={effectiveFilterMode} />
+        
         {/* Edge Type Legend - show in compare modes */}
         <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />
 

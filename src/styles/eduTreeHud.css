@@ -1,0 +1,144 @@
+/* Phase headers overlay */
+.hud__phase-headers {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud__phase-headers__item {
+  position: absolute;
+  top: 0;
+  padding: 4px 12px;
+  font: 600 13px/1.3 system-ui, sans-serif;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--background) / 0.9);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px hsl(var(--shadow) / 0.1);
+}
+
+/* Lane captions (left gutter) */
+.hud__lane-captions {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 220px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud__lane-captions__item {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  font: 500 12px/1.3 system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background) / 0.85);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 4px hsl(var(--shadow) / 0.1);
+}
+
+.hud__lane-captions__item--blue {
+  border-color: hsl(var(--primary) / 0.3);
+  background: hsl(var(--primary) / 0.05);
+}
+
+.hud__lane-captions__item--green {
+  border-color: hsl(142 76% 36% / 0.3);
+  background: hsl(142 76% 36% / 0.05);
+}
+
+/* Comparison legend */
+.hud__comparison-legend {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 12px;
+  background: hsl(var(--background) / 0.9);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px hsl(var(--shadow) / 0.15);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud__legend-title {
+  font: 600 12px/1.3 system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  margin-bottom: 8px;
+}
+
+.hud__legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hud__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 11px/1.3 system-ui, sans-serif;
+  color: hsl(var(--muted-foreground));
+}
+
+.hud__legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid;
+}
+
+.hud__legend-dot--primary {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.hud__legend-dot--comparison {
+  background: hsl(142 76% 36%);
+  border-color: hsl(142 76% 36%);
+}
+
+.hud__legend-dot--both {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--accent-foreground));
+}
+
+.hud__legend-dot--ghost {
+  background: transparent;
+  border: 1px dashed hsl(var(--muted-foreground));
+}
+
+/* Ghost node styling */
+.react-flow__node[data-is-empty-year="true"],
+.node--ghost {
+  border: 2px dashed hsl(var(--muted-foreground) / 0.4) !important;
+  background: hsl(var(--muted) / 0.3) !important;
+  opacity: 0.8;
+}
+
+.react-flow__node[data-is-empty-year="true"] .node-content::after {
+  content: "Accelerated: skips specialization";
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font: 500 10px/1.2 system-ui, sans-serif;
+  color: hsl(var(--muted-foreground));
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Advisory/ghost edges */
+.react-flow__edge[data-advisory="true"] .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+}
