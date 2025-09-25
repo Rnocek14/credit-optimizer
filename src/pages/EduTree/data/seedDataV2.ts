@@ -564,17 +564,40 @@ export function filterBlocksByMode(
     filteredBlocks = injectGhostNodes(filteredBlocks, activePrograms);
   }
   
-  // Add sanity check for development
-  if (process.env.NODE_ENV === 'development' && selectedPrograms.size > 0) {
-    const stray = filteredBlocks.filter(
-      b => b.program_id && !selectedPrograms.has(b.program_id)
-    );
-    if (stray.length) {
-      console.warn('[FilterBlocks] Stray program blocks:', stray.map(s => s.id));
-    }
+  // Final safety prune: ensure only selected programs and valid ghosts survive
+  if (selectedPrograms.size > 0) {
+    filteredBlocks = pruneBlocksForSelection(filteredBlocks, selectedPrograms);
   }
   
   return filteredBlocks;
+}
+
+/**
+ * Final prune to ensure only selected programs and valid ghosts survive
+ */
+function pruneBlocksForSelection(
+  blocks: V2RequirementBlock[],
+  selectedPrograms: Set<string>
+): V2RequirementBlock[] {
+  const keep = (b: V2RequirementBlock) => {
+    // Keep Y1 shared + gates
+    if (!b.program_id || b.is_virtual) return true;
+
+    // Keep only selected programs
+    if (!selectedPrograms.has(b.program_id)) return false;
+
+    // Keep ghosts only if the program actually skips years
+    if (b.id.startsWith('empty-year-')) {
+      const meta = getProgramById(b.program_id);
+      return !!meta && (meta.skips?.length ?? 0) > 0;
+    }
+    return true;
+  };
+
+  const pruned = blocks.filter(keep);
+  // Optional: tag dropped ids for debug HUD
+  (pruned as any)._droppedIds = blocks.filter(b => !keep(b)).map(b => b.id);
+  return pruned;
 }
 
 // Legacy function for backward compatibility

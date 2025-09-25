@@ -38,6 +38,7 @@ import { HudLayer, HudDock } from './components/HudLayer';
 import { CompactDevPanel } from './components/CompactDevPanel';
 import { ComparePicker, useCompareOptions, parseCompareUrl } from './components/ComparePicker';
 import { CheckpointControls } from './components/CheckpointControls';
+import { DebugHUD } from '../../components/DebugHUD';
 import { SuffixMetrics } from './components/SuffixMetrics';
 import { useSuffixCompare } from './hooks/useSuffixCompare';
 import './components/StabilityStyles.css';
@@ -938,6 +939,9 @@ function EduTreeCanvasV2Content({
         
         {/* Edge Type Legend - show in compare modes */}
         <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />
+
+        {/* Debug HUD (enable via ?debug=1) */}
+        <DebugHUD blocks={blocks} />
 
         {/* Debug info in bottom corner */}
         <div className="absolute bottom-4 left-4 bg-background/90 border rounded p-2 text-xs text-muted-foreground">
