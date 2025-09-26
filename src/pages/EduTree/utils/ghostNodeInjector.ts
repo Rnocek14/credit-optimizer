@@ -1,6 +1,6 @@
 /**
- * Ghost Node Injection - Add empty year nodes for skipped academic years
- * Handles cases like IT skipping Year 3 (Y1→Y2→Y4)
+ * Ghost Node Injection - Add empty year nodes for skipped academic phases
+ * Handles cases like IT skipping Specialization (Phase 1→Phase 2→Phase 4)
  */
 
 import { V2RequirementBlock } from '../data/seedDataV2';
@@ -45,7 +45,9 @@ export function injectGhostNodes(
       const ghostNode: V2RequirementBlock = {
         id: ghostId,
         program_id: programId,
-        title: `No Year ${skippedYear} Coursework`,
+        title: programId === 'bs_it' && skippedYear === 3 
+          ? 'Skips Specialization Phase'
+          : `No Phase ${skippedYear} Coursework`,
         rule_type: 'ALL',
         level_year: skippedYear,
         area: 'ghost',

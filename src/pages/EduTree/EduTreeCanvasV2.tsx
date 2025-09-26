@@ -972,7 +972,10 @@ function EduTreeCanvasV2Content({
           showCS={programs.includes('bs_cs')} 
           showIT={programs.includes('bs_it')} 
         />
-        <HudComparisonLegend filterMode={effectiveFilterMode} />
+        <HudComparisonLegend 
+          filterMode={effectiveFilterMode} 
+          hasGhostNodes={blocks.some(b => b.id?.startsWith('empty-year-') || b.is_empty_year)}
+        />
         
         {/* Edge Type Legend - show in compare modes */}
         <EdgeLegend show={filterMode === 'compare-tracks' || filterMode === 'compare-programs'} />

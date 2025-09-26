@@ -3,9 +3,10 @@ import { type FilterMode } from "../../data/seedDataV2";
 
 interface ComparisonLegendProps {
   filterMode: FilterMode;
+  hasGhostNodes?: boolean;
 }
 
-export function ComparisonLegend({ filterMode }: ComparisonLegendProps) {
+export function ComparisonLegend({ filterMode, hasGhostNodes = false }: ComparisonLegendProps) {
   // Only show legend during comparison modes
   if (!filterMode?.startsWith("compare")) return null;
 
@@ -25,10 +26,13 @@ export function ComparisonLegend({ filterMode }: ComparisonLegendProps) {
           <div className="hud__legend-dot hud__legend-dot--both"></div>
           <span>Shared</span>
         </div>
-        <div className="hud__legend-item">
-          <div className="hud__legend-dot hud__legend-dot--ghost"></div>
-          <span>Accelerated</span>
-        </div>
+        {/* Only show ghost/accelerated legend if ghosts exist */}
+        {hasGhostNodes && (
+          <div className="hud__legend-item">
+            <div className="hud__legend-dot hud__legend-dot--ghost"></div>
+            <span>Accelerated</span>
+          </div>
+        )}
       </div>
     </div>
   );
