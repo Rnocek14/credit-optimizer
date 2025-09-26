@@ -68,7 +68,8 @@ export function blocksToNodes(
       console.log('[GuardB] Render-time ghost filter:', {
         selectedPrograms,
         ghostsDropped,
-        droppedIds: blocks.filter(b => !safeBlocks.includes(b)).map(b => b.id)
+        before: blocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id })),
+        after: safeBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
       });
     }
   }

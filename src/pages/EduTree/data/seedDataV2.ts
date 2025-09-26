@@ -578,13 +578,22 @@ export function filterBlocksByMode(
     });
     
     console.log('[GhostInject] single-program mode:', { 
+      filterMode,
       targetPrograms, 
       programsNeedingGhosts,
-      filterMode 
+      selectedPrograms: Array.from(selectedPrograms),
+      activePrograms: getActivePrograms(filteredBlocks)
     });
     
     if (programsNeedingGhosts.length > 0) {
+      console.log('[GhostInject] Injecting ghosts for programs:', programsNeedingGhosts);
       filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
+      
+      // Log ghosts after injection
+      const ghostsAfterInject = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+      console.log('[GhostInject] Ghosts present after injection:', ghostsAfterInject.map(g => ({ id: g.id, program_id: g.program_id })));
+    } else {
+      console.log('[GhostInject] No programs need ghosts, skipping injection');
     }
   }
   

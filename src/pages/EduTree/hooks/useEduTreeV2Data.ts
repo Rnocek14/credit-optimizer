@@ -84,6 +84,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       }
     }
     
+    console.log('[EduTreeV2Data] Programs selected for filtering:', programs, 'from filterMode:', effectiveFilterMode);
+    
     // Apply enhanced filtering
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs });
     
@@ -98,9 +100,10 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     console.log('[GuardA] Ghost filter applied:', {
       selected: Array.from(selected),
+      effectiveFilterMode,
       ghostsFiltered: filteredBlocks.length - blocksFinal.length,
-      before: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => g.id),
-      after: blocksFinal.filter(b => b.id?.startsWith('empty-year-')).map(g => g.id)
+      before: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id })),
+      after: blocksFinal.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
     });
     
     const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, blocksFinal);
