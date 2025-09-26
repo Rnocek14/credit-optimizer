@@ -460,8 +460,7 @@ function EduTreeCanvasV2Content({
       filteredBlocks: filtered.length,
       originalGhosts: originalGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
       filteredGhosts: filteredGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
-      filterMode: effectiveFilterMode,
-      selectedPrograms: programs
+      filterMode: effectiveFilterMode
     });
     
     return filtered;
