@@ -12,7 +12,7 @@ export function DebugHUD({ blocks }: { blocks: any[] }) {
     return acc;
   }, {} as Record<string, number>);
 
-  const ghosts = blocks.filter(b => b.id?.startsWith('empty-year-')).map(b => b.id);
+  const ghosts = blocks.filter(b => b.is_empty_year === true).map(b => b.id);
   const dropped = (blocks as any)._droppedIds ?? [];
 
   return (

@@ -668,8 +668,7 @@ export function filterBlocksByMode(
       filterMode,
       targetPrograms, 
       programsNeedingGhosts,
-      selectedPrograms: Array.from(selectedPrograms),
-      activePrograms: getActivePrograms(filteredBlocks)
+      selectedPrograms: Array.from(selectedPrograms)
     });
     
     if (programsNeedingGhosts.length > 0) {
