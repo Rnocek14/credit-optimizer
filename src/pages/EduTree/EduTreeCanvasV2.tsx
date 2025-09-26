@@ -222,6 +222,13 @@ function EduTreeCanvasV2Content({
   const pathHighlight = usePathHighlight();
   const compareOptions = useCompareOptions();
   
+  console.log('[EduTreeCanvasV2] compareOptions debug:', {
+    options: !!compareOptions,
+    isArray: Array.isArray(compareOptions),
+    length: compareOptions?.length,
+    sample: compareOptions?.slice(0, 2)
+  });
+  
   // Dev panel state (always available in dev)
   const [showDev, setShowDev] = useState(true);
   const [dev, setDev] = useState<DevOverrides>({});

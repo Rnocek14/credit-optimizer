@@ -49,11 +49,14 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   const selectedPrograms = useMemo(() => {
     const { primarySelection, secondarySelection } = parseCompareUrl();
     
-    console.log('[EduTreeV2Data] URL parsing debug:', {
+    console.log('[EduTreeV2Data] DETAILED URL parsing debug:', {
       url: typeof window !== 'undefined' ? window.location.search : 'SSR',
+      href: typeof window !== 'undefined' ? window.location.href : 'SSR',
       primarySelection,
       secondarySelection,
-      effectiveFilterMode
+      effectiveFilterMode,
+      primarySelectionValid: primarySelection?.kind === 'program',
+      secondarySelectionValid: secondarySelection?.kind === 'program'
     });
     
     if (effectiveFilterMode?.includes('compare')) {
@@ -61,25 +64,38 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         primarySelection?.kind === 'program' ? primarySelection.id : null,
         secondarySelection?.kind === 'program' ? secondarySelection.id : null
       ].filter(Boolean) as string[];
-      console.log('[EduTreeV2Data] Computed selectedPrograms for compare mode:', programs);
+      console.log('[EduTreeV2Data] COMPARE MODE - Computed selectedPrograms:', {
+        programs,
+        primarySelection,
+        secondarySelection,
+        filterMode: effectiveFilterMode
+      });
       return programs;
     } else {
       // For single-program modes, map filter mode to program ID
-      switch (effectiveFilterMode) {
-        case 'bs_it':
-          return ['bs_it'];
-        case 'se':
-          return ['bs_cs'];
-        case 'ds':
-          return ['bs_cs'];
-        case 'bsn':
-          return ['bsn'];
-        default:
-          // If no specific program mode, try to extract from URL anyway
-          return [
-            primarySelection?.kind === 'program' ? primarySelection.id : null
-          ].filter(Boolean) as string[];
-      }
+      const singleProgramResult = (() => {
+        switch (effectiveFilterMode) {
+          case 'bs_it':
+            return ['bs_it'];
+          case 'se':
+            return ['bs_cs'];
+          case 'ds':
+            return ['bs_cs'];
+          case 'bsn':
+            return ['bsn'];
+          default:
+            // If no specific program mode, try to extract from URL anyway
+            return [
+              primarySelection?.kind === 'program' ? primarySelection.id : null
+            ].filter(Boolean) as string[];
+        }
+      })();
+      console.log('[EduTreeV2Data] SINGLE PROGRAM MODE - selectedPrograms:', {
+        result: singleProgramResult,
+        effectiveFilterMode,
+        primarySelection
+      });
+      return singleProgramResult;
     }
   }, [effectiveFilterMode, typeof window !== 'undefined' ? window.location.search : '']);
 

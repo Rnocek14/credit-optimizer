@@ -42,7 +42,15 @@ export function ComparePicker({
   const [openB, setOpenB] = useState(false);
 
   // Early return if options not ready
-  if (!options || !Array.isArray(options)) {
+  console.log('[ComparePicker] Options check:', { 
+    options: !!options, 
+    isArray: Array.isArray(options), 
+    length: options?.length,
+    firstOption: options?.[0]
+  });
+  
+  if (!options || !Array.isArray(options) || options.length === 0) {
+    console.log('[ComparePicker] Showing loading state because options not ready');
     return (
       <div className={`hud-card bg-background/95 backdrop-blur-sm rounded-xl shadow-lg border p-3 ${className || ""}`}>
         <div className="text-sm text-muted-foreground">Loading comparison options...</div>
@@ -272,13 +280,16 @@ function Combobox({
 // Build options from existing data
 export function useCompareOptions(): CompareOption[] {
   return useMemo(() => {
+    console.log('[useCompareOptions] Building options...');
+    console.log('[useCompareOptions] TRACK_DEFINITIONS available:', !!TRACK_DEFINITIONS, TRACK_DEFINITIONS?.length);
+    
     const programs: CompareOption[] = [
       { kind: "program", id: "bs_cs", label: "BS • Computer Science", group: "Programs", meta: "4 years" },
       { kind: "program", id: "bs_it", label: "BS • Information Technology", group: "Programs", meta: "4 years" },
       { kind: "program", id: "bsn", label: "BS • Nursing", group: "Programs", meta: "4 years" },
     ];
     
-    const tracks: CompareOption[] = TRACK_DEFINITIONS.map(track => ({
+    const tracks: CompareOption[] = (TRACK_DEFINITIONS || []).map(track => ({
       kind: "track" as const,
       id: track.id,
       label: track.name,
@@ -286,13 +297,18 @@ export function useCompareOptions(): CompareOption[] {
       meta: track.description,
     }));
     
-    return [...programs, ...tracks];
+    const result = [...programs, ...tracks];
+    console.log('[useCompareOptions] Built options:', result.length, 'total options');
+    console.log('[useCompareOptions] Programs:', programs.length, 'Tracks:', tracks.length);
+    
+    return result;
   }, []);
 }
 
 // Parse URL parameters for initial state
 export function parseCompareUrl(): { primarySelection: Selection | null; secondarySelection: Selection | null } {
   if (typeof window === "undefined") {
+    console.log('[parseCompareUrl] SSR - returning null selections');
     return { primarySelection: null, secondarySelection: null };
   }
   
@@ -300,16 +316,34 @@ export function parseCompareUrl(): { primarySelection: Selection | null; seconda
   const a = params.get("a");
   const b = params.get("b");
   
+  console.log('[parseCompareUrl] RAW URL DEBUG:', {
+    fullUrl: window.location.href,
+    search: window.location.search,
+    paramA: a,
+    paramB: b,
+    decodedA: a ? decodeURIComponent(a) : null,
+    decodedB: b ? decodeURIComponent(b) : null
+  });
+  
   const parseParam = (param: string | null): Selection | null => {
     console.log('[parseCompareUrl] Parsing param:', param);
     if (!param) return null;
-    const [kind, rawId] = param.split(":");
+    
+    // First decode the URL parameter
+    const decoded = decodeURIComponent(param);
+    console.log('[parseCompareUrl] Decoded param:', decoded);
+    
+    const [kind, rawId] = decoded.split(":");
+    console.log('[parseCompareUrl] Split result:', { kind, rawId });
+    
     if (!kind || !rawId || (kind !== "program" && kind !== "track")) {
       console.log('[parseCompareUrl] Invalid param format:', { kind, rawId });
       return null;
     }
     // Clean up the ID by removing trailing dots or other unwanted characters
     const id = rawId.replace(/[^\w-]/g, '');
+    console.log('[parseCompareUrl] Cleaned ID:', { rawId, cleanedId: id });
+    
     if (!id) {
       console.log('[parseCompareUrl] ID became empty after cleanup:', { rawId, id });
       return null;
@@ -318,8 +352,11 @@ export function parseCompareUrl(): { primarySelection: Selection | null; seconda
     return { kind: kind as "program" | "track", id };
   };
   
-  return {
+  const result = {
     primarySelection: parseParam(a),
     secondarySelection: parseParam(b),
   };
+  
+  console.log('[parseCompareUrl] FINAL RESULT:', result);
+  return result;
 }
