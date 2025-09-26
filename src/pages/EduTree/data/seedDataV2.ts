@@ -564,10 +564,28 @@ export function filterBlocksByMode(
   }
   
   // Ghost nodes are now injected during program comparisons above
-  // For other modes, inject ghost nodes for any active programs that need them
+  // For other modes, inject ghost nodes for selected programs or active programs that need them
   if (!['compare-programs', 'compare-any'].includes(filterMode) || selectedPrograms.size === 0) {
-    const activePrograms = getActivePrograms(filteredBlocks);
-    filteredBlocks = injectGhostNodes(filteredBlocks, activePrograms);
+    // Use selected programs if provided, otherwise fall back to active programs
+    const targetPrograms = selectedPrograms.size > 0 
+      ? Array.from(selectedPrograms)
+      : getActivePrograms(filteredBlocks);
+    
+    // Only inject ghosts for programs that actually need them (have skips)
+    const programsNeedingGhosts = targetPrograms.filter(pid => {
+      const program = getProgramById(pid);
+      return !!program && (program.skips?.length ?? 0) > 0;
+    });
+    
+    console.log('[GhostInject] single-program mode:', { 
+      targetPrograms, 
+      programsNeedingGhosts,
+      filterMode 
+    });
+    
+    if (programsNeedingGhosts.length > 0) {
+      filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
+    }
   }
   
   // Final safety prune: ensure only selected programs and valid ghosts survive

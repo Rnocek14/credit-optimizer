@@ -53,10 +53,36 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     // Extract selected programs for filter
     const { primarySelection, secondarySelection } = parseCompareUrl();
-    const programs = [
-      primarySelection?.kind === 'program' ? primarySelection.id : null,
-      secondarySelection?.kind === 'program' ? secondarySelection.id : null
-    ].filter(Boolean) as string[];
+    
+    // For compare modes, extract both programs
+    let programs: string[] = [];
+    if (effectiveFilterMode?.includes('compare')) {
+      programs = [
+        primarySelection?.kind === 'program' ? primarySelection.id : null,
+        secondarySelection?.kind === 'program' ? secondarySelection.id : null
+      ].filter(Boolean) as string[];
+    } else {
+      // For single-program modes, map filter mode to program ID
+      switch (effectiveFilterMode) {
+        case 'bs_it':
+          programs = ['bs_it'];
+          break;
+        case 'se':
+          programs = ['bs_cs'];
+          break;
+        case 'ds':
+          programs = ['bs_cs'];
+          break;
+        case 'bsn':
+          programs = ['bsn'];
+          break;
+        default:
+          // If no specific program mode, try to extract from URL anyway
+          programs = [
+            primarySelection?.kind === 'program' ? primarySelection.id : null
+          ].filter(Boolean) as string[];
+      }
+    }
     
     // Apply enhanced filtering
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs });
