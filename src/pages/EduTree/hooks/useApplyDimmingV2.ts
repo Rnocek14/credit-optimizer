@@ -158,12 +158,18 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       // If suffix is enabled, apply highlighting within the reachable set
       if (reachableSet && primarySelection) {
         return nodes.map(node => {
-          // Skip dimming for header and gate nodes
-          if (node.type === 'header' || node.type === 'gate') {
-            return node;
-          }
-          
-          const blockish = extractBlockish(node);
+      // Skip dimming for header and gate nodes
+      if (node.type === 'header' || node.type === 'gate') {
+        return node;
+      }
+      
+      // Check for ghost/accelerated nodes (empty year nodes)
+      const isGhostNode = node.type === 'emptyYear' || node.id.startsWith('empty-year-');
+      if (isGhostNode) {
+        return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
+      }
+      
+      const blockish = extractBlockish(node);
           const inSuffix = reachableSet.has(node.id);
           
           if (inSuffix) {
@@ -186,6 +192,12 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       // Skip dimming for header and gate nodes
       if (node.type === 'header' || node.type === 'gate') {
         return node;
+      }
+
+      // Check for ghost/accelerated nodes (empty year nodes)
+      const isGhostNode = node.type === 'emptyYear' || node.id.startsWith('empty-year-');
+      if (isGhostNode) {
+        return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
       }
 
       const blockish = extractBlockish(node);
@@ -402,6 +414,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       comparisonNodes: dimmedNodes.filter(n => n.className?.includes('hl--comparison')).length,
       bothNodes: dimmedNodes.filter(n => n.className?.includes('hl--both')).length,
       dimNodes: dimmedNodes.filter(n => n.className?.includes('hl--dim')).length,
+      ghostNodes: dimmedNodes.filter(n => n.className?.includes('hl--ghost')).length,
     });
   }
 

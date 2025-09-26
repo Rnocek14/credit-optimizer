@@ -1,11 +1,11 @@
 // Which highlight classes we manage
-const HL_NODE = ['hl--primary', 'hl--comparison', 'hl--both', 'hl--dim'] as const;
+const HL_NODE = ['hl--primary', 'hl--comparison', 'hl--both', 'hl--dim', 'hl--ghost'] as const;
 const HL_EDGE = ['edge--primary', 'edge--comparison', 'edge--both', 'edge--dim'] as const;
 const HL_ALL  = [...HL_NODE, ...HL_EDGE] as const;
 
 // One fast regex to strip **only** our highlight tokens
 const HL_PATTERN = new RegExp(
-  String.raw`\b(?:hl--(?:primary|comparison|both|dim)|edge--(?:primary|comparison|both|dim))\b`,
+  String.raw`\b(?:hl--(?:primary|comparison|both|dim|ghost)|edge--(?:primary|comparison|both|dim))\b`,
   'g'
 );
 
