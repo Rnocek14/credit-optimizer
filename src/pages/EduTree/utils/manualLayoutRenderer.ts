@@ -5,7 +5,6 @@
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
-import { getProgramById } from '../data/programMetadata';
 import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './deterministicGrid';
 import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP } from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';
@@ -497,21 +496,9 @@ export function applyManualLayout(
     useV2EdgeKinds
   });
   
-  // Last-mile safety filter: remove any stray ghost nodes before rendering
-  const safeBlocks = blocks.filter(b => {
-    const isGhost = b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year;
-    if (isGhost) {
-      if (!b.program_id) return false; // programless ghost → drop
-      // Only allow ghosts for programs that actually skip years
-      const meta = getProgramById(b.program_id);
-      return !!meta && (meta.skips?.length ?? 0) > 0;
-    }
-    return true;
-  });
-
-  // Create nodes with phase A planning data
-  const processedNodes = blocksToNodes(safeBlocks, singleRailStraight).map(node => {
-    const block = safeBlocks.find(b => b.id === node.id);
+  // Create nodes with phase A planning data (blocks are pre-filtered)
+  const processedNodes = blocksToNodes(blocks, singleRailStraight).map(node => {
+    const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual || block.is_empty_year) return node;
     
     // Compute phase A plan for future grid mode

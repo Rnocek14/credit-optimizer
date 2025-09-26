@@ -8,6 +8,7 @@ import { ReactFlow, useNodesState, useEdgesState, useReactFlow, Background, Cont
 import { useEduTreeV2Data } from './hooks/useEduTreeV2Data';
 import { useApplyDimmingV2 } from './hooks/useApplyDimmingV2';
 import { applyManualLayout, validateNoOverlaps, type V2NodeData } from './utils/manualLayoutRenderer';
+import { getProgramById } from './data/programMetadata';
 import { exposeGridValidation } from './utils/deterministicGrid';
 import { laneXs } from './utils/layoutTokens';
 import { decideGatePositions } from './utils/divergence';
@@ -438,13 +439,27 @@ function EduTreeCanvasV2Content({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
+  // Filter blocks before layout rendering (moved from manualLayoutRenderer for graphSig)
+  const filteredBlocks = useMemo(() => {
+    return blocks.filter(b => {
+      const isGhost = b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year;
+      if (isGhost) {
+        if (!b.program_id) return false; // programless ghost → drop
+        // Only allow ghosts for programs that actually skip years
+        const meta = getProgramById(b.program_id);
+        return !!meta && (meta.skips?.length ?? 0) > 0;
+      }
+      return true;
+    });
+  }, [blocks]);
+  
   // 1) Graph signature for React Flow key (forces remount on content changes)
   const graphSig = useMemo(() => {
-    return blocks
+    return filteredBlocks
       .map(b => `${b.id}|${b.program_id ?? ''}|${b.level_year}|${b.position_x}|${b.position_y}`)
       .sort()
       .join('~');
-  }, [blocks]);
+  }, [filteredBlocks]);
 
   // 2) Stable key for blocks content (order-insensitive, content-based)  
   const blocksKey = useMemo(
@@ -539,7 +554,7 @@ function EduTreeCanvasV2Content({
     });
     
     applyManualLayout(
-      blocks,
+      filteredBlocks,
       edges,
       (newNodes, newEdges) => {
         console.log('[EduTreeV2] Setting nodes and edges:', { 
