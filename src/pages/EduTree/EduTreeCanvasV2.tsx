@@ -62,6 +62,7 @@ import { ComparisonLegend as HudComparisonLegend } from './components/HUD/Compar
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
+  const pathHighlight = usePathHighlight();
   const blockData = data as any; // Type assertion for now - V2NodeData might not have all fields yet
   const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
@@ -71,12 +72,28 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
   const programId = data.programId || blockData?.program_id || blockData?.block?.program_id;
   
+  // Determine active track from filter context for coloring all CS nodes
+  const getActiveTrack = () => {
+    const activeKey = pathHighlight?.activeKey;
+    if (activeKey?.startsWith('track:')) {
+      return activeKey.split(':')[1]; // 'se' or 'ds'
+    }
+    return null;
+  };
+  
   // Build dynamic classes for track styling
   const trackClasses = [];
   if (programId === 'bs_cs') {
     trackClasses.push('node', 'cs');
-    if (trackId === 'se') trackClasses.push('track--se');
-    if (trackId === 'ds') trackClasses.push('track--ds');
+    
+    // Apply track styling if node has explicit track_id OR if viewing single track
+    const explicitTrack = trackId;
+    const activeTrack = getActiveTrack();
+    
+    if (explicitTrack === 'se') trackClasses.push('track--se');
+    else if (explicitTrack === 'ds') trackClasses.push('track--ds');
+    else if (activeTrack === 'se') trackClasses.push('track--se'); // Apply to shared CS nodes
+    else if (activeTrack === 'ds') trackClasses.push('track--ds'); // Apply to shared CS nodes
   }
   
   const nodeClassNames = [
