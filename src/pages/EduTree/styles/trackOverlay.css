@@ -24,13 +24,13 @@
   --focus-ring-width: 2px;
   
   /* Track-specific color tokens for CS specializations */
-  --cs-se-bg: oklch(0.96 0.015 200);  /* Subtle cool blue tint */
-  --cs-se-fg: oklch(0.35 0.15 200);   /* Readable text on light background */
-  --cs-se-border: oklch(0.65 0.15 200 / 0.4);
+  --cs-se-bg: oklch(0.95 0.04 200);   /* More visible cool blue tint */
+  --cs-se-fg: oklch(0.30 0.18 200);   /* Readable text on light background */
+  --cs-se-border: oklch(0.60 0.18 200 / 0.6);
   
-  --cs-ds-bg: oklch(0.96 0.015 160);  /* Subtle teal/green tint */
-  --cs-ds-fg: oklch(0.35 0.15 160);   /* Readable text on light background */
-  --cs-ds-border: oklch(0.65 0.15 160 / 0.4);
+  --cs-ds-bg: oklch(0.95 0.04 160);   /* More visible teal/green tint */
+  --cs-ds-fg: oklch(0.30 0.18 160);   /* Readable text on light background */
+  --cs-ds-border: oklch(0.60 0.18 160 / 0.6);
 }
 
 /* Track comparison controls positioning */
