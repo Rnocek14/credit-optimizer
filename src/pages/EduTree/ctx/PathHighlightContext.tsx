@@ -80,7 +80,15 @@ export function PathHighlightProvider({
   const [lockedKey, setLocked] = React.useState<HighlightKey | null>(null);
   
   // Initialize dual selection state from URL
-  const urlSelections = React.useMemo(() => parseUrlSelections(), []);
+  const urlSelections = React.useMemo(() => {
+    const selections = parseUrlSelections();
+    console.log('[PathHighlightProvider] URL parsing:', {
+      url: window.location.search,
+      parsed: selections,
+      timestamp: new Date().toISOString()
+    });
+    return selections;
+  }, []);
   const [primarySelection, setPrimary] = React.useState<Selection | null>(urlSelections.primary);
   const [secondarySelection, setSecondary] = React.useState<Selection | null>(urlSelections.secondary);
 

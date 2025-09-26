@@ -25,6 +25,39 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
   
+  // CRITICAL: Add early return if context is not ready in comparison modes
+  const contextReady = useMemo(() => {
+    // For comparison modes, we need at least one selection to be available
+    if (filterMode === 'compare-any' || filterMode === 'compare-programs') {
+      const hasSelections = !!(pathHighlight.primarySelection || pathHighlight.secondarySelection);
+      console.log('[EduTreeV2Data] Context readiness check:', {
+        filterMode,
+        hasSelections,
+        primarySelection: pathHighlight.primarySelection,
+        secondarySelection: pathHighlight.secondarySelection,
+        ready: hasSelections
+      });
+      return hasSelections;
+    }
+    // For non-comparison modes, we're always ready
+    return true;
+  }, [filterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
+  
+  // Early return with empty data if context is not ready
+  if (!contextReady) {
+    console.log('[EduTreeV2Data] Context not ready, returning empty data');
+    return {
+      blocks: [],
+      edges: [],
+      isLoading: true,
+      isV2Mode,
+      filterMode,
+      effectiveFilterMode: filterMode,
+      isAutoMode: false,
+      selectedPrograms: []
+    };
+  }
+  
   // Auto-detect program vs program comparison using context selections
   const { effectiveFilterMode, isAutoMode } = useMemo(() => {
     if (!filterMode || filterMode !== 'compare-any') {
@@ -59,8 +92,11 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       primarySelection,
       secondarySelection,
       effectiveFilterMode,
+      isAutoMode,
+      contextReady: !!(primarySelection || secondarySelection),
       primarySelectionValid: primarySelection?.kind === 'program',
-      secondarySelectionValid: secondarySelection?.kind === 'program'
+      secondarySelectionValid: secondarySelection?.kind === 'program',
+      timestamp: new Date().toISOString()
     });
     
     if (effectiveFilterMode?.includes('compare')) {
@@ -112,21 +148,25 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     console.log('[EduTreeV2Data] Selected programs:', selectedPrograms);
     
-    // DEBUG: Count IT nodes in original seed data
+    // DEBUG: Count both CS and IT nodes in original seed data
     const originalItNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_it');
-    console.log('[DEBUG] IT nodes in original seed data:', {
-      count: originalItNodes.length,
-      nodes: originalItNodes.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year }))
+    const originalCsNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_cs');
+    console.log('[DEBUG] Original seed data node counts:', {
+      IT: { count: originalItNodes.length, sample: originalItNodes.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))},
+      CS: { count: originalCsNodes.length, sample: originalCsNodes.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))}
     });
     
     // Apply enhanced filtering with selectedPrograms
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs: selectedPrograms });
     
-    // DEBUG: Count IT nodes after mode filtering
+    // DEBUG: Count both CS and IT nodes after mode filtering
     const itNodesAfterFilter = filteredBlocks.filter(b => b.program_id === 'bs_it');
-    console.log('[DEBUG] IT nodes after filterBlocksByMode:', {
-      count: itNodesAfterFilter.length,
-      nodes: itNodesAfterFilter.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year }))
+    const csNodesAfterFilter = filteredBlocks.filter(b => b.program_id === 'bs_cs');
+    console.log('[DEBUG] Nodes after filterBlocksByMode:', {
+      IT: { count: itNodesAfterFilter.length, sample: itNodesAfterFilter.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))},
+      CS: { count: csNodesAfterFilter.length, sample: csNodesAfterFilter.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))},
+      selectedPrograms,
+      effectiveFilterMode
     });
     
     // GUARD A — Final whitelist: Remove any ghost for non-selected programs
@@ -142,6 +182,12 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       if (!isGhost) return true;                         // allow normal nodes
       if (!b.program_id) return false;                   // never allow programless ghosts
       
+      // CRITICAL: For CS single-program modes, ALWAYS allow CS blocks and ghosts
+      if (isGhost && b.program_id === 'bs_cs' && selectedPrograms.includes('bs_cs')) {
+        console.log('[GuardA] EXPLICITLY allowing CS ghost in single-program mode:', b.id);
+        return true;
+      }
+      
       // CRITICAL: For single-program IT mode, ALWAYS allow IT ghost
       if (isGhost && b.program_id === 'bs_it' && selectedPrograms.includes('bs_it')) {
         console.log('[GuardA] EXPLICITLY allowing IT ghost in single-program mode:', b.id);
@@ -151,11 +197,13 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       return selected.has(b.program_id);                 // ONLY allow ghosts for selected programs
     });
     
-    // DEBUG: Count IT nodes after ghost filtering
+    // DEBUG: Count both CS and IT nodes after ghost filtering (final)
     const itNodesFinal = blocksFinal.filter(b => b.program_id === 'bs_it');
-    console.log('[DEBUG] IT nodes after ghost filtering (final):', {
-      count: itNodesFinal.length,
-      nodes: itNodesFinal.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year, position_y: n.position_y }))
+    const csNodesFinal = blocksFinal.filter(b => b.program_id === 'bs_cs');
+    console.log('[DEBUG] Final node counts after all filtering:', {
+      IT: { count: itNodesFinal.length, sample: itNodesFinal.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, position_y: n.position_y }))},
+      CS: { count: csNodesFinal.length, sample: csNodesFinal.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, position_y: n.position_y }))},
+      totalBlocks: blocksFinal.length
     });
     
     console.log('[GuardA] Ghost filter applied:', {
@@ -195,7 +243,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   return {
     blocks,
     edges,
-    isLoading: false, // No async loading in manual mode
+    isLoading: false, // Only false when we have actual data
     isV2Mode,
     filterMode,
     effectiveFilterMode,
