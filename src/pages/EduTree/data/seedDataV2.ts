@@ -575,8 +575,8 @@ export function filterBlocksByMode(
     filteredBlocks = pruneBlocksForSelection(filteredBlocks, selectedPrograms);
   }
   
-  // GUARD C — Development invariant: Throw if any non-selected ghost survives
-  if (process.env.NODE_ENV !== 'production') {
+  // GUARD C — Development invariant: Throw if any non-selected ghost survives (only when programs are selected)
+  if (process.env.NODE_ENV !== 'production' && selectedPrograms.size > 0) {
     const violators = filteredBlocks.filter(b =>
       (b.id?.startsWith('empty-year-') || (b as any).is_empty_year) &&
       b.program_id && !selectedPrograms.has(b.program_id)
