@@ -72,28 +72,39 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
   const programId = data.programId || blockData?.program_id || blockData?.block?.program_id;
   
-  // Determine active track from filter context for coloring all CS nodes
-  const getActiveTrack = () => {
-    const activeKey = pathHighlight?.activeKey;
-    if (activeKey?.startsWith('track:')) {
-      return activeKey.split(':')[1]; // 'se' or 'ds'
+  // Check if we're viewing CS program (either single CS or comparing CS vs CS)
+  const isViewingCS = () => {
+    const { primarySelection, secondarySelection } = pathHighlight || {};
+    // Single CS program selected
+    if (primarySelection?.kind === 'program' && primarySelection?.id === 'bs_cs' && !secondarySelection) {
+      return true;
     }
-    return null;
+    // Comparing CS vs CS (same program)
+    if (primarySelection?.kind === 'program' && primarySelection?.id === 'bs_cs' && 
+        secondarySelection?.kind === 'program' && secondarySelection?.id === 'bs_cs') {
+      return true;
+    }
+    // Single track view
+    if (primarySelection?.kind === 'track' && ['se', 'ds'].includes(primarySelection?.id)) {
+      return true;
+    }
+    return false;
   };
   
   // Build dynamic classes for track styling
   const trackClasses = [];
-  if (programId === 'bs_cs') {
+  if (programId === 'bs_cs' && isViewingCS()) {
     trackClasses.push('node', 'cs');
     
-    // Apply track styling if node has explicit track_id OR if viewing single track
-    const explicitTrack = trackId;
-    const activeTrack = getActiveTrack();
-    
-    if (explicitTrack === 'se') trackClasses.push('track--se');
-    else if (explicitTrack === 'ds') trackClasses.push('track--ds');
-    else if (activeTrack === 'se') trackClasses.push('track--se'); // Apply to shared CS nodes
-    else if (activeTrack === 'ds') trackClasses.push('track--ds'); // Apply to shared CS nodes
+    // Apply track-specific styling when available, otherwise base CS styling
+    if (trackId === 'se') {
+      trackClasses.push('track--se');
+    } else if (trackId === 'ds') {
+      trackClasses.push('track--ds');
+    } else {
+      // For shared CS courses (Y1-Y2), apply subtle base CS styling
+      trackClasses.push('track--cs-base');
+    }
   }
   
   const nodeClassNames = [
