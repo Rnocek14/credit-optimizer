@@ -108,15 +108,15 @@
 
 /* Track-specific subtle tints for CS specializations */
 .node.cs.track--se {
-  background-color: var(--cs-se-bg);
-  color: var(--cs-se-fg);
-  border-left: 3px solid var(--cs-se-border);
+  background-color: var(--cs-se-bg) !important;
+  color: var(--cs-se-fg) !important;
+  border-color: var(--cs-se-border) !important;
 }
 
 .node.cs.track--ds {
-  background-color: var(--cs-ds-bg);
-  color: var(--cs-ds-fg);
-  border-left: 3px solid var(--cs-ds-border);
+  background-color: var(--cs-ds-bg) !important;
+  color: var(--cs-ds-fg) !important;
+  border-color: var(--cs-ds-border) !important;
 }
 
 /* Ensure track tints remain visible when dimmed */
