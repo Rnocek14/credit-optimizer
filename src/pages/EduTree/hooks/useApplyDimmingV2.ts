@@ -36,13 +36,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       mode,
       primarySelection: highlight.primarySelection,
       secondarySelection: highlight.secondarySelection,
-      liveNodeCount: liveNodeIds.size,
-      allNodeIds: Array.from(liveNodeIds).slice(0, 5), // First 5 for debugging
-      ghostNodesPresent: nodes.filter(n => 
-        n.type === 'emptyYear' || 
-        n.id.startsWith('empty-year-') || 
-        n.data?.is_empty_year
-      ).map(n => ({ id: n.id, type: n.type, data: n.data }))
+      liveNodeCount: liveNodeIds.size
     });
   }
 
@@ -161,30 +155,24 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         console.log('[ApplyDimmingV2] Single mode - applying suffix constraints if enabled');
       }
       
-      // If suffix is enabled, apply highlighting within the reachable set
-      if (reachableSet && primarySelection) {
-        return nodes.map(node => {
-      // Skip dimming for header and gate nodes
-      if (node.type === 'header' || node.type === 'gate') {
-        return node;
-      }
-      
-      // Check for ghost/accelerated nodes (empty year nodes)
-      const isGhostNode = node.type === 'emptyYear' || 
-                         node.id.startsWith('empty-year-') || 
-                         node.data?.is_empty_year;
-      if (isGhostNode) {
-        console.log('[GHOST DEBUG] Found ghost node in SINGLE mode:', {
-          id: node.id,
-          type: node.type,
-          startsWithEmptyYear: node.id.startsWith('empty-year-'),
-          hasIsEmptyYear: node.data?.is_empty_year,
-          currentClassName: node.className
-        });
-        return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
-      }
-      
-      const blockish = extractBlockish(node);
+      // Apply ghost node coloring for all single mode scenarios (regardless of suffix)
+      return nodes.map(node => {
+        // Skip dimming for header and gate nodes
+        if (node.type === 'header' || node.type === 'gate') {
+          return node;
+        }
+        
+        // Check for ghost/accelerated nodes (empty year nodes) - ALWAYS apply in single mode
+        const isGhostNode = node.type === 'emptyYear' || 
+                           node.id.startsWith('empty-year-') || 
+                           node.data?.is_empty_year;
+        if (isGhostNode) {
+          return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
+        }
+        
+        // If suffix is enabled, apply highlighting within the reachable set
+        if (reachableSet && primarySelection) {
+          const blockish = extractBlockish(node);
           const inSuffix = reachableSet.has(node.id);
           
           if (inSuffix) {
@@ -196,10 +184,11 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
           
           // All other nodes (outside suffix or don't belong to A) are dimmed
           return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
-        });
-      }
-      
-      return nodes;
+        }
+        
+        // If no suffix or primary selection, return node unchanged (except for ghost styling already applied)
+        return node;
+      });
     }
 
     // DUAL MODE: Apply overlay highlight classes with suffix support
@@ -214,13 +203,6 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
                          node.id.startsWith('empty-year-') || 
                          node.data?.is_empty_year;
       if (isGhostNode) {
-        console.log('[GHOST DEBUG] Found ghost node in DUAL mode:', {
-          id: node.id,
-          type: node.type,
-          startsWithEmptyYear: node.id.startsWith('empty-year-'),
-          hasIsEmptyYear: node.data?.is_empty_year,
-          currentClassName: node.className
-        });
         return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
       }
 
