@@ -302,8 +302,11 @@ export function parseCompareUrl(): { primarySelection: Selection | null; seconda
   
   const parseParam = (param: string | null): Selection | null => {
     if (!param) return null;
-    const [kind, id] = param.split(":");
-    if (!kind || !id || (kind !== "program" && kind !== "track")) return null;
+    const [kind, rawId] = param.split(":");
+    if (!kind || !rawId || (kind !== "program" && kind !== "track")) return null;
+    // Clean up the ID by removing trailing dots or other unwanted characters
+    const id = rawId.replace(/[^\w-]/g, '');
+    if (!id) return null;
     return { kind: kind as "program" | "track", id };
   };
   
