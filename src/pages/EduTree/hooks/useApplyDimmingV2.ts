@@ -186,7 +186,16 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
           return { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
         }
         
-        // If no suffix or primary selection, return node unchanged (except for ghost styling already applied)
+        // Basic single mode highlighting (no suffix compare)
+        if (primarySelection) {
+          const blockish = extractBlockish(node);
+          const belongsA = belongsToSelection(blockish, primarySelection);
+          return belongsA 
+            ? { ...node, className: withNodeHL(node.className, 'hl--primary'), style: { ...node.style, opacity: 1 } }
+            : { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
+        }
+        
+        // If no primary selection, return node unchanged (except for ghost styling already applied)
         return node;
       });
     }
@@ -342,6 +351,25 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
           }
           
           return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
+        });
+      }
+      
+      // Basic single mode highlighting (no suffix compare)
+      if (primarySelection) {
+        return validEdges.map(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          const sourceBlockish = extractBlockish(sourceNode);
+          const targetBlockish = extractBlockish(targetNode);
+          
+          const sourceA = belongsToSelection(sourceBlockish, primarySelection);
+          const targetA = belongsToSelection(targetBlockish, primarySelection);
+          
+          if (sourceA && targetA) {
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--primary'), style: { ...edge.style, opacity: 1 } };
+          } else {
+            return { ...edge, className: withEdgeHL(edge.className, 'edge--dim'), style: { ...edge.style, opacity: 0.25 } };
+          }
         });
       }
       
