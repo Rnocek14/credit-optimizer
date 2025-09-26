@@ -268,10 +268,16 @@ function EduTreeCanvasV2Content({
   });
 
    
-  // Track race condition for logging but don't early return
-  const shouldSuspendRender = effectiveFilterMode?.startsWith('compare') && (!selectedPrograms || selectedPrograms.length === 0);
+  // Handle race condition more intelligently - only show loading if we detect a transition state
+  // where the URL has selections but the parsing hasn't caught up yet
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasUrlSelections = urlParams.has('a') || urlParams.has('b');
+  const shouldSuspendRender = effectiveFilterMode?.startsWith('compare') && 
+                              hasUrlSelections && 
+                              (!selectedPrograms || selectedPrograms.length === 0);
+  
   if (shouldSuspendRender) {
-    console.log('[EduTreeV2] Compare mode without selection - will show loading state');
+    console.log('[EduTreeV2] Compare mode with URL params but no parsed selection - showing loading');
   }
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
