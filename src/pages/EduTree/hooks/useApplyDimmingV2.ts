@@ -36,7 +36,13 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       mode,
       primarySelection: highlight.primarySelection,
       secondarySelection: highlight.secondarySelection,
-      liveNodeCount: liveNodeIds.size
+      liveNodeCount: liveNodeIds.size,
+      allNodeIds: Array.from(liveNodeIds).slice(0, 5), // First 5 for debugging
+      ghostNodesPresent: nodes.filter(n => 
+        n.type === 'emptyYear' || 
+        n.id.startsWith('empty-year-') || 
+        n.data?.is_empty_year
+      ).map(n => ({ id: n.id, type: n.type, data: n.data }))
     });
   }
 
@@ -168,6 +174,13 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
                          node.id.startsWith('empty-year-') || 
                          node.data?.is_empty_year;
       if (isGhostNode) {
+        console.log('[GHOST DEBUG] Found ghost node in SINGLE mode:', {
+          id: node.id,
+          type: node.type,
+          startsWithEmptyYear: node.id.startsWith('empty-year-'),
+          hasIsEmptyYear: node.data?.is_empty_year,
+          currentClassName: node.className
+        });
         return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
       }
       
@@ -201,6 +214,13 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
                          node.id.startsWith('empty-year-') || 
                          node.data?.is_empty_year;
       if (isGhostNode) {
+        console.log('[GHOST DEBUG] Found ghost node in DUAL mode:', {
+          id: node.id,
+          type: node.type,
+          startsWithEmptyYear: node.id.startsWith('empty-year-'),
+          hasIsEmptyYear: node.data?.is_empty_year,
+          currentClassName: node.className
+        });
         return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
       }
 
