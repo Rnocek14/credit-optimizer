@@ -267,11 +267,11 @@ function EduTreeCanvasV2Content({
     }
   });
 
-  
-  // Handle refresh race condition: don't render compare modes until selection is ready
-  if (effectiveFilterMode?.startsWith('compare') && (!selectedPrograms || selectedPrograms.length === 0)) {
-    console.log('[EduTreeV2] Suspending render: compare mode without selection');
-    return null; // Brief suspension prevents guards from acting on empty selection
+   
+  // Track race condition for logging but don't early return
+  const shouldSuspendRender = effectiveFilterMode?.startsWith('compare') && (!selectedPrograms || selectedPrograms.length === 0);
+  if (shouldSuspendRender) {
+    console.log('[EduTreeV2] Compare mode without selection - will show loading state');
   }
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
@@ -761,6 +761,18 @@ function EduTreeCanvasV2Content({
         </div>
       </div>
   );
+  }
+  
+  // Handle race condition - show loading state instead of early return
+  if (shouldSuspendRender) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="text-center">
+          <div className="text-lg font-medium mb-2">Loading Comparison...</div>
+          <div className="text-sm">Initializing program selection</div>
+        </div>
+      </div>
+    );
   }
   
   return (
