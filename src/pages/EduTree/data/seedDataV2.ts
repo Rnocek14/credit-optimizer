@@ -379,6 +379,12 @@ export function filterBlocksByMode(
   // Read selected programs if provided (fallback to discovering in-filter)
   const selectedPrograms = new Set(opts?.programs ?? []);
   
+  console.log('[FilterBlocks] Called with:', { 
+    filterMode, 
+    programs: opts?.programs, 
+    selectedPrograms: Array.from(selectedPrograms) 
+  });
+  
   // Helper function to check if a program is selected
   const inSelected = (pid?: string) =>
     !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
@@ -565,7 +571,7 @@ export function filterBlocksByMode(
   
   // Ghost nodes are now injected during program comparisons above
   // For other modes, inject ghost nodes for selected programs or active programs that need them
-  if (!['compare-programs', 'compare-any'].includes(filterMode) || selectedPrograms.size === 0) {
+  if (!['compare-programs', 'compare-any'].includes(filterMode)) {
     // Use selected programs if provided, otherwise fall back to active programs
     const targetPrograms = selectedPrograms.size > 0 
       ? Array.from(selectedPrograms)
@@ -577,7 +583,7 @@ export function filterBlocksByMode(
       return !!program && (program.skips?.length ?? 0) > 0;
     });
     
-    console.log('[GhostInject] single-program mode:', { 
+    console.log('[GhostInject] non-compare mode:', { 
       filterMode,
       targetPrograms, 
       programsNeedingGhosts,
