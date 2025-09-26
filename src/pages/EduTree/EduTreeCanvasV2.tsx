@@ -441,7 +441,7 @@ function EduTreeCanvasV2Content({
   
   // Filter blocks before layout rendering (moved from manualLayoutRenderer for graphSig)
   const filteredBlocks = useMemo(() => {
-    return blocks.filter(b => {
+    const filtered = blocks.filter(b => {
       const isGhost = b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year;
       if (isGhost) {
         if (!b.program_id) return false; // programless ghost → drop
@@ -451,6 +451,20 @@ function EduTreeCanvasV2Content({
       }
       return true;
     });
+    
+    // Debug logging
+    const originalGhosts = blocks.filter(b => b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year);
+    const filteredGhosts = filtered.filter(b => b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year);
+    console.log('[DEBUG] Ghost filtering:', {
+      originalBlocks: blocks.length,
+      filteredBlocks: filtered.length,
+      originalGhosts: originalGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
+      filteredGhosts: filteredGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
+      filterMode: effectiveFilterMode,
+      selectedPrograms: programs
+    });
+    
+    return filtered;
   }, [blocks]);
   
   // 1) Graph signature for React Flow key (forces remount on content changes)

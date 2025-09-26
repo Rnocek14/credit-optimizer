@@ -501,6 +501,15 @@ export function applyManualLayout(
     const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual || block.is_empty_year) return node;
     
+    // Debug: Log ghost nodes that make it to rendering
+    if (block.id?.startsWith('empty-year-') || !!(block as any).is_empty_year) {
+      console.log('[DEBUG] Ghost node in rendering:', {
+        id: block.id,
+        program_id: block.program_id,
+        is_empty_year: (block as any).is_empty_year
+      });
+    }
+    
     // Compute phase A plan for future grid mode
     const lane: 'up' | 'down' | undefined = 
       block.track_id === 'se' || block.program_id === 'bs_cs' ? 'up' :
