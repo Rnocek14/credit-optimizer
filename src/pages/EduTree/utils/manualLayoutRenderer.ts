@@ -56,6 +56,8 @@ export function blocksToNodes(
   let safeBlocks = blocks;
   if (selectedPrograms && selectedPrograms.length > 0) {
     const selected = new Set(selectedPrograms);
+    const beforeGhosts = blocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    
     safeBlocks = blocks.filter(b => {
       const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
       if (!isGhost) return true;
@@ -63,15 +65,12 @@ export function blocksToNodes(
       return selected.has(b.program_id); // render only ghosts for selected programs
     });
     
-    const ghostsDropped = blocks.length - safeBlocks.length;
-    if (ghostsDropped > 0) {
-      console.log('[GuardB] Render-time ghost filter:', {
-        selectedPrograms,
-        ghostsDropped,
-        before: blocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id })),
-        after: safeBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
-      });
-    }
+    const afterGhosts = safeBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    console.log('[GuardB] Ghost filtering applied:', {
+      selectedPrograms,
+      before: beforeGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
+      after: afterGhosts.map(g => ({ id: g.id, program_id: g.program_id }))
+    });
   }
   
   return safeBlocks.map(block => {

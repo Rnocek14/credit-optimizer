@@ -389,8 +389,17 @@ export function filterBlocksByMode(
   });
   
   // Helper function to check if a program is selected
-  const inSelected = (pid?: string) =>
-    !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
+  const inSelected = (pid?: string) => {
+    const result = !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
+    console.log(`[FilterBlocks] inSelected(${pid}):`, {
+      pid,
+      selectedProgramsSize: selectedPrograms.size,
+      selectedPrograms: Array.from(selectedPrograms),
+      has: pid ? selectedPrograms.has(pid) : 'N/A',
+      result
+    });
+    return result;
+  };
   
   // First apply existing filtering logic
   let filteredBlocks: V2RequirementBlock[];
@@ -425,13 +434,36 @@ export function filterBlocksByMode(
         return isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
       });
       
-      console.log('[FilterBlocks] compare-programs filtering results:', {
-        originalCount: blocks.length,
-        filteredCount: filteredBlocks.length,
-        y1SharedCount: filteredBlocks.filter(b => !b.program_id).length,
-        csCount: filteredBlocks.filter(b => b.program_id === 'bs_cs').length,
-        itCount: filteredBlocks.filter(b => b.program_id === 'bs_it').length,
-        gateCount: filteredBlocks.filter(b => b.is_virtual).length
+      // DEBUG: Trace IT blocks specifically to find the issue
+      const itBlocksOriginal = blocks.filter(b => b.program_id === 'bs_it');
+      const itBlocksFiltered = filteredBlocks.filter(b => b.program_id === 'bs_it');
+      
+      console.log('[FilterBlocks] IT BLOCK TRACING:', {
+        originalITBlocks: itBlocksOriginal.length,
+        filteredITBlocks: itBlocksFiltered.length,
+        selectedPrograms: Array.from(selectedPrograms),
+        selectedHasIT: selectedPrograms.has('bs_it'),
+        inSelectedResult: inSelected('bs_it')
+      });
+      
+      // Trace each IT block through the filter conditions
+      itBlocksOriginal.forEach(block => {
+        const isY1Shared = !block.program_id;
+        const isProgramLevel = !!block.program_id && !block.track_id && inSelected(block.program_id);
+        const isTrackLevelOfSelectedProgram = !!block.program_id && !!block.track_id && selectedPrograms.has(block.program_id) && hasTracks(block.program_id);
+        const isGate = block.is_virtual && (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks');
+        const shouldPass = isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
+        
+        console.log(`[FilterBlocks] IT Block ${block.id}:`, {
+          program_id: block.program_id,
+          track_id: block.track_id,
+          isY1Shared,
+          isProgramLevel,
+          isTrackLevelOfSelectedProgram,
+          isGate,
+          shouldPass,
+          inSelectedResult: inSelected(block.program_id)
+        });
       });
       
       console.log('[FilterBlocks] compare-programs filtering results:', {
@@ -654,9 +686,18 @@ export function filterBlocksByMode(
     }
   }
   
-  // Final safety prune: ensure only selected programs and valid ghosts survive
+  // GUARD A — Final safety prune: ensure only selected programs and valid ghosts survive
+  const preGuardAGhosts = filteredBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
   if (selectedPrograms.size > 0) {
+    console.log('[GuardA] Before prune:', {
+      selectedPrograms: Array.from(selectedPrograms),
+      beforeGhosts: preGuardAGhosts.map(g => ({ id: g.id, program_id: g.program_id }))
+    });
     filteredBlocks = pruneBlocksForSelection(filteredBlocks, selectedPrograms);
+    const postGuardAGhosts = filteredBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    console.log('[GuardA] After prune:', {
+      afterGhosts: postGuardAGhosts.map(g => ({ id: g.id, program_id: g.program_id }))
+    });
   }
   
   // GUARD C — Development invariant: Throw if any non-selected ghost survives (only when programs are selected)
