@@ -91,9 +91,12 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     return false;
   };
   
+  // Check if this is a Year 1 shared course (no program_id)
+  const isY1SharedCourse = !programId || programId === null || programId === undefined;
+  
   // Build dynamic classes for track styling
   const trackClasses = [];
-  if (programId === 'bs_cs' && isViewingCS()) {
+  if ((programId === 'bs_cs' || isY1SharedCourse) && isViewingCS()) {
     trackClasses.push('node', 'cs');
     
     // Apply track-specific styling when available, otherwise base CS styling
