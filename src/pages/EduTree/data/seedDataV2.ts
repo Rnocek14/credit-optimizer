@@ -428,14 +428,17 @@ export function filterBlocksByMode(
           console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
         }
         
-        // Only inject ghosts for programs that have blocks AND need ghost nodes
-        const programsWithBlocks = getActivePrograms(filteredBlocks);
-        const programsNeedingGhosts = programsWithBlocks.filter(pid => {
+        // Only inject ghosts for SELECTED programs that need ghost nodes
+        const selectedProgramsList = Array.from(selectedPrograms);
+        const programsNeedingGhosts = selectedProgramsList.filter(pid => {
           const program = getProgramById(pid);
           return !!program && (program.skips?.length ?? 0) > 0;
         });
         
-        console.log('[GhostInject]', { programsWithBlocks, programsNeedingGhosts });
+        console.log('[GhostInject] compare-programs mode:', { 
+          selectedPrograms: selectedProgramsList, 
+          programsNeedingGhosts 
+        });
         filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
       }
       
@@ -533,14 +536,17 @@ export function filterBlocksByMode(
           console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
         }
         
-        // Only inject ghosts for programs that have blocks AND need ghost nodes
-        const programsWithBlocks = getActivePrograms(filteredBlocks);
-        const programsNeedingGhosts = programsWithBlocks.filter(pid => {
+        // Only inject ghosts for SELECTED programs that need ghost nodes
+        const selectedProgramsList = Array.from(selectedPrograms);
+        const programsNeedingGhosts = selectedProgramsList.filter(pid => {
           const program = getProgramById(pid);
           return !!program && (program.skips?.length ?? 0) > 0;
         });
         
-        console.log('[GhostInject]', { programsWithBlocks, programsNeedingGhosts });
+        console.log('[GhostInject] compare-any mode:', { 
+          selectedPrograms: selectedProgramsList, 
+          programsNeedingGhosts 
+        });
         filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
         
         // Apply lane normalization: CS upper band, IT lower band
