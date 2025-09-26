@@ -4,7 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 // Core node types from research
-export type NodeType = 'job' | 'skill' | 'step' | 'course' | 'project' | 'certification';
+export type NodeType = 'job' | 'skill' | 'step' | 'course' | 'project' | 'certification' | 'default';
 
 // Core edge types from research
 export type EdgeType = 'requires' | 'unlocks' | 'teaches' | 'demonstrates' | 'validates' | 

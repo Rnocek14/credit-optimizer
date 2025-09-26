@@ -340,9 +340,9 @@ export function parseCompareUrl(): { primarySelection: Selection | null; seconda
       console.log('[parseCompareUrl] Invalid param format:', { kind, rawId });
       return null;
     }
-    // Clean up the ID by removing trailing dots or other unwanted characters
-    const id = rawId.replace(/[^\w-]/g, '');
-    console.log('[parseCompareUrl] Cleaned ID:', { rawId, cleanedId: id });
+    // Keep ID as-is since program/track IDs are already valid (bs_cs, bs_it, etc.)
+    const id = rawId;
+    console.log('[parseCompareUrl] Using ID as-is:', { rawId, id });
     
     if (!id) {
       console.log('[parseCompareUrl] ID became empty after cleanup:', { rawId, id });
