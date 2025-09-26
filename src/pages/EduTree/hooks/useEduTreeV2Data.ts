@@ -53,6 +53,12 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     // Extract selected programs for filter
     const { primarySelection, secondarySelection } = parseCompareUrl();
+    console.log('[EduTreeV2Data] URL PARSE DEBUG:', {
+      url: window.location.search,
+      primarySelection,
+      secondarySelection,
+      effectiveFilterMode
+    });
     
     // For compare modes, extract both programs
     let programs: string[] = [];
