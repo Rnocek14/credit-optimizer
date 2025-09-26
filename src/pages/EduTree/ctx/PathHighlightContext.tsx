@@ -51,6 +51,24 @@ type API = {
 
 const Ctx = React.createContext<API | null>(null);
 
+// Helper to parse URL for initial state
+const parseUrlSelections = (): { primary: Selection | null; secondary: Selection | null } => {
+  const params = new URLSearchParams(window.location.search);
+  const parseSelection = (param: string | null): Selection | null => {
+    if (!param) return null;
+    const match = param.match(/^(program|track):(.+)$/);
+    if (match) {
+      return { kind: match[1] as 'program' | 'track', id: match[2] };
+    }
+    return null;
+  };
+
+  return {
+    primary: parseSelection(params.get('a')),
+    secondary: parseSelection(params.get('b'))
+  };
+};
+
 export function PathHighlightProvider({
   children,
   filterMode,
@@ -61,9 +79,10 @@ export function PathHighlightProvider({
   const [hoveredKey, setHovered] = React.useState<HighlightKey | null>(null);
   const [lockedKey, setLocked] = React.useState<HighlightKey | null>(null);
   
-  // Dual selection state for compare-any mode
-  const [primarySelection, setPrimary] = React.useState<Selection | null>(null);
-  const [secondarySelection, setSecondary] = React.useState<Selection | null>(null);
+  // Initialize dual selection state from URL
+  const urlSelections = React.useMemo(() => parseUrlSelections(), []);
+  const [primarySelection, setPrimary] = React.useState<Selection | null>(urlSelections.primary);
+  const [secondarySelection, setSecondary] = React.useState<Selection | null>(urlSelections.secondary);
 
   const activeKey = lockedKey ?? hoveredKey;
 
@@ -185,6 +204,29 @@ export function PathHighlightProvider({
       setLocked(null);
     }
   }, [filterMode]);
+
+  // Watch for URL changes (browser back/forward navigation)
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const newSelections = parseUrlSelections();
+      console.log('[PathHighlight] URL changed, updating selections:', newSelections);
+      setPrimary(newSelections.primary);
+      setSecondary(newSelections.secondary);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Debug initial state
+  React.useEffect(() => {
+    console.log('[PathHighlight] Provider initialized with:', {
+      filterMode,
+      primarySelection: urlSelections.primary,
+      secondarySelection: urlSelections.secondary,
+      url: window.location.search
+    });
+  }, []);
 
   const value = React.useMemo<API>(() => ({
     hoveredKey, lockedKey, activeKey,

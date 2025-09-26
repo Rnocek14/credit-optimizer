@@ -233,12 +233,8 @@ function EduTreeCanvasV2Content({
   const [showDev, setShowDev] = useState(true);
   const [dev, setDev] = useState<DevOverrides>({});
 
-  // Initialize selections from URL on mount
-  useEffect(() => {
-    const { primarySelection, secondarySelection } = parseCompareUrl();
-    if (primarySelection) pathHighlight.setPrimarySelection(primarySelection);
-    if (secondarySelection) pathHighlight.setSecondarySelection(secondarySelection);
-  }, []);
+  // URL parsing is now handled by PathHighlightProvider initialization
+  // No need for redundant parsing here that creates race conditions
   
   // Use dev overrides first, then props overrides, then feature flags
   const effectiveFlags = {
