@@ -301,12 +301,20 @@ export function parseCompareUrl(): { primarySelection: Selection | null; seconda
   const b = params.get("b");
   
   const parseParam = (param: string | null): Selection | null => {
+    console.log('[parseCompareUrl] Parsing param:', param);
     if (!param) return null;
     const [kind, rawId] = param.split(":");
-    if (!kind || !rawId || (kind !== "program" && kind !== "track")) return null;
+    if (!kind || !rawId || (kind !== "program" && kind !== "track")) {
+      console.log('[parseCompareUrl] Invalid param format:', { kind, rawId });
+      return null;
+    }
     // Clean up the ID by removing trailing dots or other unwanted characters
     const id = rawId.replace(/[^\w-]/g, '');
-    if (!id) return null;
+    if (!id) {
+      console.log('[parseCompareUrl] ID became empty after cleanup:', { rawId, id });
+      return null;
+    }
+    console.log('[parseCompareUrl] Successfully parsed:', { kind, id });
     return { kind: kind as "program" | "track", id };
   };
   

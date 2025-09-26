@@ -45,6 +45,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   }, [filterMode]);
   
   // Extract selected programs once and reuse throughout
+  // FIXED: Added URL search params as dependency to properly react to URL changes
   const selectedPrograms = useMemo(() => {
     const { primarySelection, secondarySelection } = parseCompareUrl();
     
@@ -80,7 +81,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           ].filter(Boolean) as string[];
       }
     }
-  }, [effectiveFilterMode]);
+  }, [effectiveFilterMode, typeof window !== 'undefined' ? window.location.search : '']);
 
   const { blocks, edges } = useMemo(() => {
     if (!isV2Mode) {

@@ -268,26 +268,8 @@ function EduTreeCanvasV2Content({
   });
 
    
-  // Handle race condition more intelligently - only show loading if we detect a transition state
-  // where the URL has selections but the parsing hasn't caught up yet
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasUrlSelections = urlParams.has('a') || urlParams.has('b');
-  const shouldSuspendRender = effectiveFilterMode?.startsWith('compare') && 
-                              hasUrlSelections && 
-                              (!selectedPrograms || selectedPrograms.length === 0);
-  
-  console.log('[EduTreeV2Canvas] Loading check debug:', {
-    effectiveFilterMode,
-    hasUrlSelections,
-    selectedPrograms,
-    shouldSuspendRender,
-    urlA: urlParams.get('a'),
-    urlB: urlParams.get('b')
-  });
-  
-  if (shouldSuspendRender) {
-    console.log('[EduTreeV2] Compare mode with URL params but no parsed selection - showing loading');
-  }
+  // REMOVED: The race condition loading logic that was causing infinite "Loading Comparison"
+  // The dependency fix in useEduTreeV2Data ensures URL changes trigger re-computation
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
   const safeEdges = React.useMemo(() => {
@@ -778,17 +760,7 @@ function EduTreeCanvasV2Content({
   );
   }
   
-  // Handle race condition - show loading state instead of early return
-  if (shouldSuspendRender) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center">
-          <div className="text-lg font-medium mb-2">Loading Comparison...</div>
-          <div className="text-sm">Initializing program selection</div>
-        </div>
-      </div>
-    );
-  }
+  // REMOVED: Loading comparison logic - fixed at the hook level
   
   return (
     <ReactFlowErrorBoundary
