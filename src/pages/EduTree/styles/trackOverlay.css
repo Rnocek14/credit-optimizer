@@ -35,6 +35,16 @@
   --cs-ds-bg: oklch(0.95 0.04 160);   /* More visible teal/green tint */
   --cs-ds-fg: oklch(0.30 0.18 160);   /* Readable text on light background */
   --cs-ds-border: oklch(0.60 0.18 160 / 0.6);
+
+  /* IT program color tokens */
+  --it-base-bg: oklch(0.96 0.03 30);      /* Warm orange tint for IT */
+  --it-base-fg: oklch(0.25 0.15 30);      /* Readable text */
+  --it-base-border: oklch(0.65 0.15 30 / 0.5);
+
+  /* BSN program color tokens */  
+  --bsn-base-bg: oklch(0.96 0.03 320);    /* Soft pink/magenta tint for nursing */
+  --bsn-base-fg: oklch(0.25 0.15 320);    /* Readable text */
+  --bsn-base-border: oklch(0.65 0.15 320 / 0.5);
 }
 
 /* Track comparison controls positioning */
@@ -110,7 +120,7 @@
   color: oklch(0.25 0.15 280) !important;
 }
 
-/* Track-specific subtle tints for CS specializations */
+/* Track-specific subtle tints for all programs */
 .node.cs.track--cs-base {
   background-color: var(--cs-base-bg) !important;
   color: var(--cs-base-fg) !important;
@@ -129,10 +139,24 @@
   border-color: var(--cs-ds-border) !important;
 }
 
+.node.it.track--it-base {
+  background-color: var(--it-base-bg) !important;
+  color: var(--it-base-fg) !important;
+  border-color: var(--it-base-border) !important;
+}
+
+.node.bsn.track--bsn-base {
+  background-color: var(--bsn-base-bg) !important;
+  color: var(--bsn-base-fg) !important;
+  border-color: var(--bsn-base-border) !important;
+}
+
 /* Ensure track tints remain visible when dimmed */
 .is-dimmed.node.cs.track--cs-base,
 .is-dimmed.node.cs.track--se,
-.is-dimmed.node.cs.track--ds {
+.is-dimmed.node.cs.track--ds,
+.is-dimmed.node.it.track--it-base,
+.is-dimmed.node.bsn.track--bsn-base {
   filter: saturate(0.8) brightness(0.95);
   opacity: 0.7;
 }

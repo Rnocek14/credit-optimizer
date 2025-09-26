@@ -72,41 +72,58 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
   const programId = data.programId || blockData?.program_id || blockData?.block?.program_id;
   
-  // Check if we're viewing CS program (either single CS or comparing CS vs CS)
-  const isViewingCS = () => {
+  // Check if we're viewing a single program (same program for both selections)
+  const getSingleProgram = () => {
     const { primarySelection, secondarySelection } = pathHighlight || {};
-    // Single CS program selected
-    if (primarySelection?.kind === 'program' && primarySelection?.id === 'bs_cs' && !secondarySelection) {
-      return true;
+    
+    // Single program selected
+    if (primarySelection?.kind === 'program' && !secondarySelection) {
+      return primarySelection.id;
     }
-    // Comparing CS vs CS (same program)
-    if (primarySelection?.kind === 'program' && primarySelection?.id === 'bs_cs' && 
-        secondarySelection?.kind === 'program' && secondarySelection?.id === 'bs_cs') {
-      return true;
+    // Comparing same program against itself
+    if (primarySelection?.kind === 'program' && 
+        secondarySelection?.kind === 'program' && 
+        primarySelection.id === secondarySelection.id) {
+      return primarySelection.id;
     }
-    // Single track view
-    if (primarySelection?.kind === 'track' && ['se', 'ds'].includes(primarySelection?.id)) {
-      return true;
+    // Single track view - derive program from track
+    if (primarySelection?.kind === 'track') {
+      if (['se', 'ds'].includes(primarySelection.id)) return 'bs_cs';
+      // Add other track-to-program mappings as needed
     }
-    return false;
+    return null;
   };
   
   // Check if this is a Year 1 shared course (no program_id)
   const isY1SharedCourse = !programId || programId === null || programId === undefined;
+  const viewingProgram = getSingleProgram();
   
-  // Build dynamic classes for track styling
+  // Build dynamic classes for program/track styling
   const trackClasses = [];
-  if ((programId === 'bs_cs' || isY1SharedCourse) && isViewingCS()) {
-    trackClasses.push('node', 'cs');
+  if (viewingProgram && (programId === viewingProgram || isY1SharedCourse)) {
+    // Map program IDs to CSS class names
+    const programClass = {
+      'bs_cs': 'cs',
+      'bs_it': 'it', 
+      'bsn': 'bsn'
+    }[viewingProgram];
     
-    // Apply track-specific styling when available, otherwise base CS styling
-    if (trackId === 'se') {
-      trackClasses.push('track--se');
-    } else if (trackId === 'ds') {
-      trackClasses.push('track--ds');
-    } else {
-      // For shared CS courses (Y1-Y2), apply subtle base CS styling
-      trackClasses.push('track--cs-base');
+    if (programClass) {
+      trackClasses.push('node', programClass);
+      
+      // Apply track-specific styling for CS, otherwise use base program styling
+      if (viewingProgram === 'bs_cs') {
+        if (trackId === 'se') {
+          trackClasses.push('track--se');
+        } else if (trackId === 'ds') {
+          trackClasses.push('track--ds');
+        } else {
+          trackClasses.push('track--cs-base');
+        }
+      } else {
+        // For other programs, use base program styling
+        trackClasses.push(`track--${programClass}-base`);
+      }
     }
   }
   
