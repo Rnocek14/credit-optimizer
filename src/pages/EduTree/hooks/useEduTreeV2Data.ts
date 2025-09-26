@@ -6,7 +6,7 @@
 import { useMemo } from 'react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
-import { parseCompareUrl } from '../components/ComparePicker';
+import { usePathHighlight } from '../ctx/PathHighlightContext';
 
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
@@ -21,20 +21,27 @@ export interface UseEduTreeV2DataResult {
 
 export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2DataResult {
   const flags = useFeatureFlags();
+  const pathHighlight = usePathHighlight();
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
   
-  // Auto-detect program vs program comparison
+  // Auto-detect program vs program comparison using context selections
   const { effectiveFilterMode, isAutoMode } = useMemo(() => {
     if (!filterMode || filterMode !== 'compare-any') {
       return { effectiveFilterMode: filterMode, isAutoMode: false };
     }
     
-    // Parse URL selections to detect if both are programs
-    const { primarySelection, secondarySelection } = parseCompareUrl();
+    // Use context selections instead of parsing URL directly
+    const { primarySelection, secondarySelection } = pathHighlight;
     const bothPrograms = 
       primarySelection?.kind === 'program' && 
       secondarySelection?.kind === 'program';
+    
+    console.log('[EduTreeV2Data] Context-based auto-detection:', {
+      primarySelection,
+      secondarySelection,
+      bothPrograms
+    });
     
     if (bothPrograms) {
       console.log('[EduTreeV2Data] Auto-detected program comparison, using compare-programs mode');
@@ -42,16 +49,13 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     }
     
     return { effectiveFilterMode: filterMode, isAutoMode: false };
-  }, [filterMode]);
+  }, [filterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
   
-  // Extract selected programs once and reuse throughout
-  // FIXED: Added URL search params as dependency to properly react to URL changes
+  // Extract selected programs using context selections instead of URL parsing
   const selectedPrograms = useMemo(() => {
-    const { primarySelection, secondarySelection } = parseCompareUrl();
+    const { primarySelection, secondarySelection } = pathHighlight;
     
-    console.log('[EduTreeV2Data] DETAILED URL parsing debug:', {
-      url: typeof window !== 'undefined' ? window.location.search : 'SSR',
-      href: typeof window !== 'undefined' ? window.location.href : 'SSR',
+    console.log('[EduTreeV2Data] Context-based selection processing:', {
       primarySelection,
       secondarySelection,
       effectiveFilterMode,
@@ -72,7 +76,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       });
       return programs;
     } else {
-      // For single-program modes, map filter mode to program ID
+      // For single-program modes, map filter mode to program ID or use context selection
       const singleProgramResult = (() => {
         switch (effectiveFilterMode) {
           case 'bs_it':
@@ -84,7 +88,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           case 'bsn':
             return ['bsn'];
           default:
-            // If no specific program mode, try to extract from URL anyway
+            // If no specific program mode, use context selection
             return [
               primarySelection?.kind === 'program' ? primarySelection.id : null
             ].filter(Boolean) as string[];
@@ -97,7 +101,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       });
       return singleProgramResult;
     }
-  }, [effectiveFilterMode, typeof window !== 'undefined' ? window.location.search : '']);
+  }, [effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
 
   const { blocks, edges } = useMemo(() => {
     if (!isV2Mode) {
