@@ -625,7 +625,13 @@ export function applyManualLayout(
       return true;
     }
     
-    return isGate(n) || !tid; // allow only non-track nodes + gates (original logic for CS)
+    // CRITICAL FIX: CS track nodes should be allowed when bs_cs is selected
+    if (tid && pid === 'bs_cs' && selectedPrograms.includes('bs_cs')) {
+      console.log('[DEBUG] Allowing CS track node through hard guard filter:', { id: n.id, program_id: pid, track_id: tid });
+      return true;
+    }
+    
+    return isGate(n) || !tid; // allow only non-track nodes + gates (original logic)
   });
   
   // DEBUG: Check IT nodes after hard guard filter
