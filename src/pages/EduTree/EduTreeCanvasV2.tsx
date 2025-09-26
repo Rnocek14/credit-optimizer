@@ -524,15 +524,17 @@ function EduTreeCanvasV2Content({
     });
     
     // Debug logging
-    const originalGhosts = blocks.filter(b => b.is_empty_year === true);
-    const filteredGhosts = filtered.filter(b => b.is_empty_year === true);
-    console.log('[DEBUG] Ghost filtering:', {
-      originalBlocks: blocks.length,
-      filteredBlocks: filtered.length,
-      originalGhosts: originalGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
-      filteredGhosts: filteredGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
-      filterMode: effectiveFilterMode
-    });
+    if (new URLSearchParams(window.location?.search || '').get('debug') === '1') {
+      const originalGhosts = blocks.filter(b => b.is_empty_year === true);
+      const filteredGhosts = filtered.filter(b => b.is_empty_year === true);
+      console.log('[DEBUG] Ghost filtering:', {
+        originalBlocks: blocks.length,
+        filteredBlocks: filtered.length,
+        originalGhosts: originalGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
+        filteredGhosts: filteredGhosts.map(g => ({ id: g.id, program_id: g.program_id })),
+        filterMode: effectiveFilterMode
+      });
+    }
     
     return filtered;
   }, [blocks]);
@@ -589,16 +591,20 @@ function EduTreeCanvasV2Content({
       pg: lanesCalc.gatePG,  // Program gate between Y1 and Y2
       tg: lanesCalc.gateTG   // Track gate position
     };
-    console.log('[CANVAS DEBUG] Computing gate positions with centralized tokens:', { 
-      blocksCount: blocks.length, 
-      programs, 
-      tracksByProgram, 
-      cols,
-      effectiveFilterMode: currentFilterMode,
-      lanes: lanesCalc
-    });
+    if (new URLSearchParams(window.location?.search || '').get('debug') === '1') {
+      console.log('[CANVAS DEBUG] Computing gate positions with centralized tokens:', { 
+        blocksCount: blocks.length, 
+        programs, 
+        tracksByProgram, 
+        cols,
+        effectiveFilterMode: currentFilterMode,
+        lanes: lanesCalc
+      });
+    }
     const next = decideGatePositions({ blocks, programs, tracksByProgram, cols });
-    console.log('[CANVAS DEBUG] Gate positions computed:', next);
+    if (new URLSearchParams(window.location?.search || '').get('debug') === '1') {
+      console.log('[CANVAS DEBUG] Gate positions computed:', next);
+    }
     return stableReturn(gatePositionsRef, next);
   }, [blocksKey, programs.join('|'), tracksKey]);
   
@@ -646,37 +652,41 @@ function EduTreeCanvasV2Content({
           return n.data?.program_id === 'bs_it' || n.data?.programId === 'bs_it';
         });
         
-        console.log('[DEBUG] IT nodes in final rendering:', {
-          count: itNodes.length,
-          nodes: itNodes.map(n => ({
-            id: n.id,
-            type: n.type,
-            hidden: n.hidden,
-            position: n.position,
-            program_id: n.data?.program_id || n.data?.programId,
-            level_year: n.data?.levelYear
-          }))
-        });
+        if (new URLSearchParams(window.location?.search || '').get('debug') === '1') {
+          console.log('[DEBUG] IT nodes in final rendering:', {
+            count: itNodes.length,
+            nodes: itNodes.map(n => ({
+              id: n.id,
+              type: n.type,
+              hidden: n.hidden,
+              position: n.position,
+              program_id: n.data?.program_id || n.data?.programId,
+              level_year: n.data?.levelYear
+            }))
+          });
+        }
         
-        console.log('[EduTreeV2] Setting nodes and edges:', { 
-          nodes: newNodes.length, 
-          edges: newEdges.length,
-          itNodesCount: itNodes.length,
-          nodeTypes: newNodes.reduce((acc, n) => {
-            acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>),
-          gateNodes: newNodes.filter(n => n.id.includes('gate')).map(n => ({ 
-            id: n.id, 
-            hidden: n.hidden, 
-            position: n.position 
-          })),
-          nodesByProgram: {
-            bs_cs: newNodes.filter(n => n.data?.program_id === 'bs_cs' || n.data?.programId === 'bs_cs').length,
-            bs_it: itNodes.length,
-            other: newNodes.filter(n => !n.data?.program_id && !n.data?.programId).length
-          }
-        });
+        if (new URLSearchParams(window.location?.search || '').get('debug') === '1') {
+          console.log('[EduTreeV2] Setting nodes and edges:', { 
+            nodes: newNodes.length, 
+            edges: newEdges.length,
+            itNodesCount: itNodes.length,
+            nodeTypes: newNodes.reduce((acc, n) => {
+              acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>),
+            gateNodes: newNodes.filter(n => n.id.includes('gate')).map(n => ({ 
+              id: n.id, 
+              hidden: n.hidden, 
+              position: n.position 
+            })),
+            nodesByProgram: {
+              bs_cs: newNodes.filter(n => n.data?.program_id === 'bs_cs' || n.data?.programId === 'bs_cs').length,
+              bs_it: itNodes.length,
+              other: newNodes.filter(n => !n.data?.program_id && !n.data?.programId).length
+            }
+          });
+        }
         
         // Apply gate positioning decisions with proper guards and dimming
         const withGatePlacement = (nodes: typeof newNodes) => nodes.map(n => {
