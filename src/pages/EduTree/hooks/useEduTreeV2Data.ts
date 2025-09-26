@@ -108,8 +108,22 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     console.log('[EduTreeV2Data] Selected programs:', selectedPrograms);
     
+    // DEBUG: Count IT nodes in original seed data
+    const originalItNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_it');
+    console.log('[DEBUG] IT nodes in original seed data:', {
+      count: originalItNodes.length,
+      nodes: originalItNodes.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year }))
+    });
+    
     // Apply enhanced filtering with selectedPrograms
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs: selectedPrograms });
+    
+    // DEBUG: Count IT nodes after mode filtering
+    const itNodesAfterFilter = filteredBlocks.filter(b => b.program_id === 'bs_it');
+    console.log('[DEBUG] IT nodes after filterBlocksByMode:', {
+      count: itNodesAfterFilter.length,
+      nodes: itNodesAfterFilter.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year }))
+    });
     
     // GUARD A — Final whitelist: Remove any ghost for non-selected programs
     const selected = new Set(selectedPrograms);
@@ -131,6 +145,13 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       }
       
       return selected.has(b.program_id);                 // ONLY allow ghosts for selected programs
+    });
+    
+    // DEBUG: Count IT nodes after ghost filtering
+    const itNodesFinal = blocksFinal.filter(b => b.program_id === 'bs_it');
+    console.log('[DEBUG] IT nodes after ghost filtering (final):', {
+      count: itNodesFinal.length,
+      nodes: itNodesFinal.map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id, level_year: n.level_year, position_y: n.position_y }))
     });
     
     console.log('[GuardA] Ghost filter applied:', {

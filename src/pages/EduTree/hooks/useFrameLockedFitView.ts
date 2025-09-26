@@ -31,30 +31,58 @@ export function useFrameLockedFitView({
   useEffect(() => {
     if (!enabled || !reactFlow) return;
 
-    // Small delay to ensure nodes are rendered
-    const timeoutId = setTimeout(() => {
-      try {
-        reactFlow.fitView({
-          nodes: FRAME_NODE_IDS.map(id => ({ id })),
-          padding: 0.15,
-          includeHiddenNodes: true,
-          duration: 300
-        });
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[FrameLockedFitView] Applied fitView:', {
-            mode,
-            primarySelection: primarySelection?.id,
-            secondarySelection: secondarySelection?.id,
-            frameNodes: FRAME_NODE_IDS
-          });
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[FrameLockedFitView] FitView failed:', error);
-        }
-      }
-    }, 100);
+        // Small delay to ensure nodes are rendered
+        const timeoutId = setTimeout(() => {
+          try {
+            // DEBUG: Check if IT nodes exist and get their positions for viewport planning
+            const allNodes = reactFlow.getNodes();
+            const itNodes = allNodes.filter(n => 
+              n.data?.program_id === 'bs_it' || n.data?.programId === 'bs_it'
+            );
+            
+            if (itNodes.length > 0) {
+              console.log('[FrameLockedFitView] IT nodes detected, adjusting viewport:', {
+                count: itNodes.length,
+                positions: itNodes.map(n => ({ id: n.id, y: n.position?.y })),
+                yRange: {
+                  min: Math.min(...itNodes.map(n => n.position?.y || 0)),
+                  max: Math.max(...itNodes.map(n => n.position?.y || 0))
+                }
+              });
+              
+              // Include IT nodes in fitView to ensure they're visible
+              const frameNodes = [...FRAME_NODE_IDS.map(id => ({ id })), ...itNodes.map(n => ({ id: n.id }))];
+              reactFlow.fitView({
+                nodes: frameNodes,
+                padding: 0.15,
+                includeHiddenNodes: true,
+                duration: 300
+              });
+            } else {
+              // Standard frame-locked fitView
+              reactFlow.fitView({
+                nodes: FRAME_NODE_IDS.map(id => ({ id })),
+                padding: 0.15,
+                includeHiddenNodes: true,
+                duration: 300
+              });
+            }
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[FrameLockedFitView] Applied fitView:', {
+                mode,
+                primarySelection: primarySelection?.id,
+                secondarySelection: secondarySelection?.id,
+                frameNodes: FRAME_NODE_IDS,
+                itNodesIncluded: itNodes.length
+              });
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[FrameLockedFitView] FitView failed:', error);
+            }
+          }
+        }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [reactFlow, mode, primarySelection?.id, secondarySelection?.id, enabled]);

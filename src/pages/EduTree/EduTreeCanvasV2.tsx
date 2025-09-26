@@ -580,9 +580,27 @@ function EduTreeCanvasV2Content({
       filteredBlocks,
       edges,
       (newNodes, newEdges) => {
+        // DEBUG: Check IT nodes in final rendering
+        const itNodes = newNodes.filter(n => {
+          return n.data?.program_id === 'bs_it' || n.data?.programId === 'bs_it';
+        });
+        
+        console.log('[DEBUG] IT nodes in final rendering:', {
+          count: itNodes.length,
+          nodes: itNodes.map(n => ({
+            id: n.id,
+            type: n.type,
+            hidden: n.hidden,
+            position: n.position,
+            program_id: n.data?.program_id || n.data?.programId,
+            level_year: n.data?.levelYear
+          }))
+        });
+        
         console.log('[EduTreeV2] Setting nodes and edges:', { 
           nodes: newNodes.length, 
           edges: newEdges.length,
+          itNodesCount: itNodes.length,
           nodeTypes: newNodes.reduce((acc, n) => {
             acc[n.type || 'unknown'] = (acc[n.type || 'unknown'] || 0) + 1;
             return acc;
@@ -591,7 +609,12 @@ function EduTreeCanvasV2Content({
             id: n.id, 
             hidden: n.hidden, 
             position: n.position 
-          }))
+          })),
+          nodesByProgram: {
+            bs_cs: newNodes.filter(n => n.data?.program_id === 'bs_cs' || n.data?.programId === 'bs_cs').length,
+            bs_it: itNodes.length,
+            other: newNodes.filter(n => !n.data?.program_id && !n.data?.programId).length
+          }
         });
         
         // Apply gate positioning decisions with proper guards and dimming

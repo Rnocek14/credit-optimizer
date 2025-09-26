@@ -579,6 +579,26 @@ export function applyManualLayout(
     filterMode
   });
   
+  // DEBUG: Check IT nodes before hard guard filter
+  const itNodesPre = processedNodes.filter(n => {
+    const block = blocks.find(b => b.id === n.id);
+    return block?.program_id === 'bs_it';
+  });
+  console.log('[DEBUG] IT nodes before hard guard filter:', {
+    count: itNodesPre.length,
+    nodes: itNodesPre.map(n => {
+      const block = blocks.find(b => b.id === n.id);
+      return {
+        id: n.id,
+        type: n.type,
+        program_id: block?.program_id,
+        track_id: block?.track_id,
+        level_year: block?.level_year,
+        position_y: n.position?.y
+      };
+    })
+  });
+  
   // Debug logging - show blocks before filtering
   if (isProgramCompare) {
     console.table(processedNodes.map(n => {
@@ -598,13 +618,42 @@ export function applyManualLayout(
     if (!isProgramCompare) return true;
     const block = blocks.find(b => b.id === n.id);
     const tid = block?.track_id;
-    return isGate(n) || !tid; // allow only non-track nodes + gates
+    const pid = block?.program_id;
+    
+    // CRITICAL FIX: IT nodes (bs_it) should ALWAYS be allowed, even if they somehow have track_id
+    if (pid === 'bs_it') {
+      console.log('[DEBUG] Allowing IT node through hard guard filter:', { id: n.id, program_id: pid, track_id: tid });
+      return true;
+    }
+    
+    return isGate(n) || !tid; // allow only non-track nodes + gates (original logic for CS)
+  });
+  
+  // DEBUG: Check IT nodes after hard guard filter
+  const itNodesPost = nodes.filter(n => {
+    const block = blocks.find(b => b.id === n.id);
+    return block?.program_id === 'bs_it';
+  });
+  console.log('[DEBUG] IT nodes after hard guard filter:', {
+    count: itNodesPost.length,
+    nodes: itNodesPost.map(n => {
+      const block = blocks.find(b => b.id === n.id);
+      return {
+        id: n.id,
+        type: n.type,
+        program_id: block?.program_id,
+        track_id: block?.track_id,
+        level_year: block?.level_year,
+        position_y: n.position?.y
+      };
+    })
   });
   
   console.log('[ManualLayout] After hard guard filter:', {
     originalCount: processedNodes.length,
     filteredCount: nodes.length,
-    removed: processedNodes.length - nodes.length
+    removed: processedNodes.length - nodes.length,
+    itNodesRemoved: itNodesPre.length - itNodesPost.length
   });
   
   // Apply vertical stacking for single-rail straight mode to prevent overlaps
@@ -876,6 +925,31 @@ export function applyManualLayout(
     headers: headerNodes.length,
     total: allNodes.length
   });
+  
+  // DEBUG: Analyze node positions by lane for viewport planning
+  const nodesByLane = {
+    up: allNodes.filter(n => n.position?.y && n.position.y < 360),
+    middle: allNodes.filter(n => n.position?.y && n.position.y >= 360 && n.position.y < 400),
+    down: allNodes.filter(n => n.position?.y && n.position.y >= 400)
+  };
+  
+  const itNodesInDown = nodesByLane.down.filter(n => {
+    const block = blocks.find(b => b.id === n.id);
+    return block?.program_id === 'bs_it';
+  });
+  
+  console.log('[ManualLayout] Node distribution by lane:', {
+    up: nodesByLane.up.length,
+    middle: nodesByLane.middle.length, 
+    down: nodesByLane.down.length,
+    itNodesInDown: itNodesInDown.length,
+    itNodePositions: itNodesInDown.map(n => ({ id: n.id, y: n.position?.y })),
+    totalYRange: {
+      min: Math.min(...allNodes.filter(n => n.position?.y).map(n => n.position!.y)),
+      max: Math.max(...allNodes.filter(n => n.position?.y).map(n => n.position!.y))
+    }
+  });
+  
   console.log('[ManualLayout] Edge validation complete, delivering', sanitizedEdges.length, 'edges to React Flow');
   
   // Final validation - log any remaining problematic edges
