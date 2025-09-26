@@ -446,6 +446,18 @@ export function filterBlocksByMode(
           programsNeedingGhosts 
         });
         filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
+        
+        // Invariant check: ensure IT ghost exists if IT is selected
+        if (process.env.NODE_ENV !== 'production') {
+          if (selectedPrograms.has('bs_it')) {
+            const hasITGhost = filteredBlocks.some(b => b.id === 'empty-year-bs_it-y3');
+            if (!hasITGhost) {
+              console.error('[Invariant] Expected IT ghost in compare-programs mode but none was found.');
+            } else {
+              console.log('[Invariant] ✓ IT ghost correctly injected in compare-programs mode');
+            }
+          }
+        }
       }
       
       // Normalize lanes: CS (upper with SE/DS split), IT (lower)
@@ -554,6 +566,18 @@ export function filterBlocksByMode(
           programsNeedingGhosts 
         });
         filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
+        
+        // Invariant check: ensure IT ghost exists if IT is selected
+        if (process.env.NODE_ENV !== 'production') {
+          if (selectedPrograms.has('bs_it')) {
+            const hasITGhost = filteredBlocks.some(b => b.id === 'empty-year-bs_it-y3');
+            if (!hasITGhost) {
+              console.error('[Invariant] Expected IT ghost in compare-any mode but none was found.');
+            } else {
+              console.log('[Invariant] ✓ IT ghost correctly injected in compare-any mode');
+            }
+          }
+        }
         
         // Apply lane normalization: CS upper band, IT lower band
         try {

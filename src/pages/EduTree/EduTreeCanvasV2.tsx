@@ -242,7 +242,7 @@ function EduTreeCanvasV2Content({
   // Use dev override filter mode when provided, then props, then default
   const passedFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
-  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode } = useEduTreeV2Data(passedFilterMode);
+  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode, selectedPrograms } = useEduTreeV2Data(passedFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -267,6 +267,12 @@ function EduTreeCanvasV2Content({
     }
   });
 
+  
+  // Handle refresh race condition: don't render compare modes until selection is ready
+  if (effectiveFilterMode?.startsWith('compare') && (!selectedPrograms || selectedPrograms.length === 0)) {
+    console.log('[EduTreeV2] Suspending render: compare mode without selection');
+    return null; // Brief suspension prevents guards from acting on empty selection
+  }
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
   const safeEdges = React.useMemo(() => {
@@ -673,9 +679,9 @@ function EduTreeCanvasV2Content({
       effectiveFilterMode || 'compare-tracks', // Pass filter mode for header routing  
       flags.eduTreeV2EdgeKinds ?? true, // Pass V2 edge kinds flag (default true)
       gatePositions, // Pass gate positioning decisions
-      programs // Pass selected programs for Guard B
+      selectedPrograms // Pass selected programs for Guard B
     );
-  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
+  }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms]);
   
   // Update handle internals using useLayoutEffect to prevent micro "pop"
   useLayoutEffect(() => {
