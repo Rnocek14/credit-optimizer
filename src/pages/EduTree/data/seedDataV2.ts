@@ -575,6 +575,18 @@ export function filterBlocksByMode(
     filteredBlocks = pruneBlocksForSelection(filteredBlocks, selectedPrograms);
   }
   
+  // GUARD C — Development invariant: Throw if any non-selected ghost survives
+  if (process.env.NODE_ENV !== 'production') {
+    const violators = filteredBlocks.filter(b =>
+      (b.id?.startsWith('empty-year-') || (b as any).is_empty_year) &&
+      b.program_id && !selectedPrograms.has(b.program_id)
+    );
+    if (violators.length) {
+      console.error('[GuardC] INVARIANT VIOLATION - Non-selected ghosts present:', violators);
+      throw new Error(`[Invariant] Non-selected ghost(s) present: ${violators.map(v => v.id).join(', ')}`);
+    }
+  }
+  
   return filteredBlocks;
 }
 

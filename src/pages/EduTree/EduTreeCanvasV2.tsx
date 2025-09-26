@@ -672,7 +672,8 @@ function EduTreeCanvasV2Content({
       singleRailStraight, // Pass single-rail straight flag
       effectiveFilterMode || 'compare-tracks', // Pass filter mode for header routing  
       flags.eduTreeV2EdgeKinds ?? true, // Pass V2 edge kinds flag (default true)
-      gatePositions // Pass gate positioning decisions
+      gatePositions, // Pass gate positioning decisions
+      programs // Pass selected programs for Guard B
     );
   }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions]);
   

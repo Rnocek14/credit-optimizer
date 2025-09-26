@@ -60,11 +60,28 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     // Apply enhanced filtering
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs });
-    const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, filteredBlocks);
+    
+    // GUARD A — Final whitelist: Remove any ghost for non-selected programs
+    const selected = new Set(programs);
+    const blocksFinal = filteredBlocks.filter(b => {
+      const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
+      if (!isGhost) return true;                         // allow normal nodes
+      if (!b.program_id) return false;                   // never allow programless ghosts
+      return selected.has(b.program_id);                 // ONLY allow ghosts for selected programs
+    });
+    
+    console.log('[GuardA] Ghost filter applied:', {
+      selected: Array.from(selected),
+      ghostsFiltered: filteredBlocks.length - blocksFinal.length,
+      before: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => g.id),
+      after: blocksFinal.filter(b => b.id?.startsWith('empty-year-')).map(g => g.id)
+    });
+    
+    const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, blocksFinal);
     
     // PHASE 5: Add table logging right before node creation to verify no Y3 track blocks survive
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Blocks after filtering:');
-    console.table(filteredBlocks.map(b => ({
+    console.table(blocksFinal.map(b => ({
       id: b.id,
       title: b.title?.slice(0, 30) + '...',
       year: b.level_year,
@@ -74,14 +91,14 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     })));
     
     console.log('[EduTreeV2Data] Filtered to', {
-      blocks: filteredBlocks.length,
+      blocks: blocksFinal.length,
       edges: filteredEdges.length,
       effectiveFilterMode,
       isAutoMode
     });
     
     return {
-      blocks: filteredBlocks,
+      blocks: blocksFinal,
       edges: filteredEdges
     };
   }, [isV2Mode, effectiveFilterMode, isAutoMode]);

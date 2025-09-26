@@ -46,8 +46,34 @@ export interface V2NodeData {
  * Convert V2 blocks to ReactFlow nodes with direct position mapping
  * No layout computation - just applies stored coordinates
  */
-export function blocksToNodes(blocks: V2RequirementBlock[], singleRailStraight: boolean = false): Node<V2NodeData>[] {
-  return blocks.map(block => {
+export function blocksToNodes(
+  blocks: V2RequirementBlock[], 
+  singleRailStraight: boolean = false,
+  selectedPrograms?: string[]
+): Node<V2NodeData>[] {
+  
+  // GUARD B — Render-time kill switch: Drop any remaining ghosts for non-selected programs
+  let safeBlocks = blocks;
+  if (selectedPrograms && selectedPrograms.length > 0) {
+    const selected = new Set(selectedPrograms);
+    safeBlocks = blocks.filter(b => {
+      const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
+      if (!isGhost) return true;
+      if (!b.program_id) return false;
+      return selected.has(b.program_id); // render only ghosts for selected programs
+    });
+    
+    const ghostsDropped = blocks.length - safeBlocks.length;
+    if (ghostsDropped > 0) {
+      console.log('[GuardB] Render-time ghost filter:', {
+        selectedPrograms,
+        ghostsDropped,
+        droppedIds: blocks.filter(b => !safeBlocks.includes(b)).map(b => b.id)
+      });
+    }
+  }
+  
+  return safeBlocks.map(block => {
     const baseNode = {
       id: block.id,
       position: {
@@ -455,7 +481,8 @@ export function applyManualLayout(
   singleRailStraight: boolean = false,
   filterMode: string = '',
   useV2EdgeKinds: boolean = false,
-  gatePositions?: GatePositions
+  gatePositions?: GatePositions,
+  selectedPrograms?: string[]
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
@@ -497,7 +524,7 @@ export function applyManualLayout(
   });
   
   // Create nodes with phase A planning data (blocks are pre-filtered)
-  const processedNodes = blocksToNodes(blocks, singleRailStraight).map(node => {
+  const processedNodes = blocksToNodes(blocks, singleRailStraight, selectedPrograms).map(node => {
     const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual || block.is_empty_year) return node;
     
