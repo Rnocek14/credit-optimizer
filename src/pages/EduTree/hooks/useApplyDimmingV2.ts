@@ -36,7 +36,11 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       mode,
       primarySelection: highlight.primarySelection,
       secondarySelection: highlight.secondarySelection,
-      liveNodeCount: liveNodeIds.size
+      liveNodeCount: liveNodeIds.size,
+      // Debug: Check if selections are same
+      selectionsAreSame: highlight.primarySelection && highlight.secondarySelection ? 
+        (highlight.primarySelection.kind === highlight.secondarySelection.kind && 
+         highlight.primarySelection.id === highlight.secondarySelection.id) : 'N/A'
     });
   }
 
@@ -152,7 +156,11 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
     // SINGLE MODE: Apply suffix constraint if enabled, otherwise return unchanged
     if (mode === 'single') {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[ApplyDimmingV2] Single mode - applying suffix constraints if enabled');
+        console.log('[ApplyDimmingV2] Single mode - applying suffix constraints if enabled', {
+          primarySelection,
+          suffixEnabled: !!reachableSet,
+          suffixSize: reachableSet?.size
+        });
       }
       
       // Apply ghost node coloring for all single mode scenarios (regardless of suffix)
@@ -167,6 +175,16 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
                            node.id.startsWith('empty-year-') || 
                            node.data?.is_empty_year;
         if (isGhostNode) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[ApplyDimmingV2] SINGLE MODE: Ghost node found and styled:', {
+              id: node.id,
+              type: node.type,
+              hasIsEmptyYear: !!node.data?.is_empty_year,
+              startsWithEmpty: node.id.startsWith('empty-year-'),
+              beforeClass: node.className,
+              afterClass: withNodeHL(node.className, 'hl--ghost')
+            });
+          }
           return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
         }
         
@@ -188,8 +206,24 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         
         // Basic single mode highlighting (no suffix compare)
         if (primarySelection) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[ApplyDimmingV2] SINGLE MODE: Basic highlighting for node:', {
+              id: node.id,
+              type: node.type,
+              primarySelection,
+              beforeClass: node.className
+            });
+          }
           const blockish = extractBlockish(node);
           const belongsA = belongsToSelection(blockish, primarySelection);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[ApplyDimmingV2] SINGLE MODE: Node belongs check:', {
+              id: node.id,
+              blockish,
+              belongsA,
+              resultClass: belongsA ? 'hl--primary' : 'hl--dim'
+            });
+          }
           return belongsA 
             ? { ...node, className: withNodeHL(node.className, 'hl--primary'), style: { ...node.style, opacity: 1 } }
             : { ...node, className: withNodeHL(node.className, 'hl--dim'), style: { ...node.style, opacity: 0.25 } };
