@@ -108,8 +108,21 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         programs,
         primarySelection,
         secondarySelection,
-        filterMode: effectiveFilterMode
+        filterMode: effectiveFilterMode,
+        primaryId: primarySelection?.id,
+        secondaryId: secondarySelection?.id,
+        primaryKind: primarySelection?.kind,
+        secondaryKind: secondarySelection?.kind,
+        shouldHaveCS: programs.includes('bs_cs'),
+        shouldHaveIT: programs.includes('bs_it')
       });
+      
+      // CRITICAL: If we don't have any programs, something is very wrong
+      if (programs.length === 0) {
+        console.error('[EduTreeV2Data] CRITICAL: No programs found in compare mode! Context may not be ready.');
+        console.log('[EduTreeV2Data] Full context state:', pathHighlight);
+      }
+      
       return programs;
     } else {
       // For single-program modes, map filter mode to program ID or use context selection
@@ -157,6 +170,13 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     });
     
     // Apply enhanced filtering with selectedPrograms
+    console.log('[EduTreeV2Data] About to filter with:', {
+      effectiveFilterMode,
+      selectedPrograms,
+      programsLength: selectedPrograms.length,
+      originalBlocksCount: GOLDEN_LAYOUT_SEED.blocks.length
+    });
+    
     const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs: selectedPrograms });
     
     // DEBUG: Count both CS and IT nodes after mode filtering

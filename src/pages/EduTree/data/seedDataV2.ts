@@ -382,7 +382,10 @@ export function filterBlocksByMode(
   console.log('[FilterBlocks] Called with:', { 
     filterMode, 
     programs: opts?.programs, 
-    selectedPrograms: Array.from(selectedPrograms) 
+    selectedPrograms: Array.from(selectedPrograms),
+    selectedProgramsSize: selectedPrograms.size,
+    blockCount: blocks.length,
+    timestamp: new Date().toISOString()
   });
   
   // Helper function to check if a program is selected
@@ -395,6 +398,12 @@ export function filterBlocksByMode(
   switch (filterMode) {
     case 'compare-programs':
       // Show Y1 shared + Y2 program-only + track content for programs with tracks + both gates
+      console.log('[FilterBlocks] compare-programs mode - filtering criteria:', {
+        selectedPrograms: Array.from(selectedPrograms),
+        selectedProgramsSize: selectedPrograms.size,
+        willShowAllIfEmpty: selectedPrograms.size === 0
+      });
+      
       filteredBlocks = blocks.filter(block => {
         const isY1Shared = !block.program_id;
         
@@ -414,6 +423,24 @@ export function filterBlocksByMode(
           (block.id === 'gate-y2-programs' || block.id === 'gate-y3-tracks');
         
         return isY1Shared || isProgramLevel || isTrackLevelOfSelectedProgram || isGate;
+      });
+      
+      console.log('[FilterBlocks] compare-programs filtering results:', {
+        originalCount: blocks.length,
+        filteredCount: filteredBlocks.length,
+        y1SharedCount: filteredBlocks.filter(b => !b.program_id).length,
+        csCount: filteredBlocks.filter(b => b.program_id === 'bs_cs').length,
+        itCount: filteredBlocks.filter(b => b.program_id === 'bs_it').length,
+        gateCount: filteredBlocks.filter(b => b.is_virtual).length
+      });
+      
+      console.log('[FilterBlocks] compare-programs filtering results:', {
+        originalCount: blocks.length,
+        filteredCount: filteredBlocks.length,
+        y1SharedCount: filteredBlocks.filter(b => !b.program_id).length,
+        csCount: filteredBlocks.filter(b => b.program_id === 'bs_cs').length,
+        itCount: filteredBlocks.filter(b => b.program_id === 'bs_it').length,
+        gateCount: filteredBlocks.filter(b => b.is_virtual).length
       });
       
       // Inject ghost nodes before lane normalization for program comparisons
