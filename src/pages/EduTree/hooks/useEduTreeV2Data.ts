@@ -48,11 +48,20 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   const selectedPrograms = useMemo(() => {
     const { primarySelection, secondarySelection } = parseCompareUrl();
     
+    console.log('[EduTreeV2Data] URL parsing debug:', {
+      url: typeof window !== 'undefined' ? window.location.search : 'SSR',
+      primarySelection,
+      secondarySelection,
+      effectiveFilterMode
+    });
+    
     if (effectiveFilterMode?.includes('compare')) {
-      return [
+      const programs = [
         primarySelection?.kind === 'program' ? primarySelection.id : null,
         secondarySelection?.kind === 'program' ? secondarySelection.id : null
       ].filter(Boolean) as string[];
+      console.log('[EduTreeV2Data] Computed selectedPrograms for compare mode:', programs);
+      return programs;
     } else {
       // For single-program modes, map filter mode to program ID
       switch (effectiveFilterMode) {

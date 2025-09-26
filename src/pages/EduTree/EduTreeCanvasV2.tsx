@@ -276,6 +276,15 @@ function EduTreeCanvasV2Content({
                               hasUrlSelections && 
                               (!selectedPrograms || selectedPrograms.length === 0);
   
+  console.log('[EduTreeV2Canvas] Loading check debug:', {
+    effectiveFilterMode,
+    hasUrlSelections,
+    selectedPrograms,
+    shouldSuspendRender,
+    urlA: urlParams.get('a'),
+    urlB: urlParams.get('b')
+  });
+  
   if (shouldSuspendRender) {
     console.log('[EduTreeV2] Compare mode with URL params but no parsed selection - showing loading');
   }
