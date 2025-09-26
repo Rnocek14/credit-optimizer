@@ -56,16 +56,16 @@ export function blocksToNodes(
   let safeBlocks = blocks;
   if (selectedPrograms && selectedPrograms.length > 0) {
     const selected = new Set(selectedPrograms);
-    const beforeGhosts = blocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    const beforeGhosts = blocks.filter(b => b.is_empty_year === true);
     
     safeBlocks = blocks.filter(b => {
-      const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
+      const isGhost = b.is_empty_year === true;
       if (!isGhost) return true;
       if (!b.program_id) return false;
       return selected.has(b.program_id); // render only ghosts for selected programs
     });
     
-    const afterGhosts = safeBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    const afterGhosts = safeBlocks.filter(b => b.is_empty_year === true);
     console.log('[GuardB] Ghost filtering applied:', {
       selectedPrograms,
       before: beforeGhosts.map(g => ({ id: g.id, program_id: g.program_id })),

@@ -25,38 +25,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
   
-  // CRITICAL: Add early return if context is not ready in comparison modes
-  const contextReady = useMemo(() => {
-    // For comparison modes, we need at least one selection to be available
-    if (filterMode === 'compare-any' || filterMode === 'compare-programs') {
-      const hasSelections = !!(pathHighlight.primarySelection || pathHighlight.secondarySelection);
-      console.log('[EduTreeV2Data] Context readiness check:', {
-        filterMode,
-        hasSelections,
-        primarySelection: pathHighlight.primarySelection,
-        secondarySelection: pathHighlight.secondarySelection,
-        ready: hasSelections
-      });
-      return hasSelections;
-    }
-    // For non-comparison modes, we're always ready
-    return true;
-  }, [filterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
-  
-  // Early return with empty data if context is not ready
-  if (!contextReady) {
-    console.log('[EduTreeV2Data] Context not ready, returning empty data');
-    return {
-      blocks: [],
-      edges: [],
-      isLoading: true,
-      isV2Mode,
-      filterMode,
-      effectiveFilterMode: filterMode,
-      isAutoMode: false,
-      selectedPrograms: []
-    };
-  }
+  // REMOVED: Early return logic that was causing loading loops
+  // Let downstream components handle graceful rendering when context is warming
   
   // Auto-detect program vs program comparison using context selections
   const { effectiveFilterMode, isAutoMode } = useMemo(() => {
@@ -198,7 +168,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     });
     
     const blocksFinal = filteredBlocks.filter(b => {
-      const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
+      const isGhost = b.is_empty_year === true;
       if (!isGhost) return true;                         // allow normal nodes
       if (!b.program_id) return false;                   // never allow programless ghosts
       

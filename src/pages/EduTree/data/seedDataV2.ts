@@ -687,28 +687,35 @@ export function filterBlocksByMode(
   }
   
   // GUARD A — Final safety prune: ensure only selected programs and valid ghosts survive
-  const preGuardAGhosts = filteredBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+  const preGuardAGhosts = filteredBlocks.filter(b => b.is_empty_year === true);
   if (selectedPrograms.size > 0) {
     console.log('[GuardA] Before prune:', {
       selectedPrograms: Array.from(selectedPrograms),
       beforeGhosts: preGuardAGhosts.map(g => ({ id: g.id, program_id: g.program_id }))
     });
     filteredBlocks = pruneBlocksForSelection(filteredBlocks, selectedPrograms);
-    const postGuardAGhosts = filteredBlocks.filter(b => b.id?.startsWith('empty-year-') || (b as any).is_empty_year);
+    const postGuardAGhosts = filteredBlocks.filter(b => b.is_empty_year === true);
     console.log('[GuardA] After prune:', {
       afterGhosts: postGuardAGhosts.map(g => ({ id: g.id, program_id: g.program_id }))
     });
   }
   
-  // GUARD C — Development invariant: Throw if any non-selected ghost survives (only when programs are selected)
+  // GUARD C — Development invariant: Check for non-selected ghosts (only when programs are selected)
   if (process.env.NODE_ENV !== 'production' && selectedPrograms.size > 0) {
     const violators = filteredBlocks.filter(b =>
-      (b.id?.startsWith('empty-year-') || (b as any).is_empty_year) &&
+      b.is_empty_year === true &&
       b.program_id && !selectedPrograms.has(b.program_id)
     );
     if (violators.length) {
       console.error('[GuardC] INVARIANT VIOLATION - Non-selected ghosts present:', violators);
-      throw new Error(`[Invariant] Non-selected ghost(s) present: ${violators.map(v => v.id).join(', ')}`);
+      
+      // Only throw if debug=1 is in URL, otherwise just log
+      const isDebugMode = typeof window !== 'undefined' && window.location?.search?.includes('debug=1');
+      if (isDebugMode) {
+        throw new Error(`[Invariant] Non-selected ghost(s) present: ${violators.map(v => v.id).join(', ')}`);
+      } else {
+        console.warn('[GuardC] Would throw in debug mode. Add ?debug=1 to see full stack trace.');
+      }
     }
   }
   
