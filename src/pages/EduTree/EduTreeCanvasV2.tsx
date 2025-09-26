@@ -438,7 +438,15 @@ function EduTreeCanvasV2Content({
   const singleRailStraight = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   const usePlan = effectiveFlags.eduTreeV2Grid && effectiveFlags.eduTreeLayoutMode === 'grid_v2' && (singleTrack || singleProgram);
   
-  // 1) Stable key for blocks content (order-insensitive, content-based)
+  // 1) Graph signature for React Flow key (forces remount on content changes)
+  const graphSig = useMemo(() => {
+    return blocks
+      .map(b => `${b.id}|${b.program_id ?? ''}|${b.level_year}|${b.position_x}|${b.position_y}`)
+      .sort()
+      .join('~');
+  }, [blocks]);
+
+  // 2) Stable key for blocks content (order-insensitive, content-based)  
   const blocksKey = useMemo(
     () => JSON.stringify([...blocks].sort((a,b)=>a.id.localeCompare(b.id)).map(b => ({
       id: b.id, y: b.level_year, p: b.program_id ?? null, t: b.track_id ?? null, v: !!b.is_virtual
@@ -598,9 +606,9 @@ function EduTreeCanvasV2Content({
         
         // No need to filter edges here - filtering happens in manualLayoutRenderer
         
-        // Prevent layout churn with shallow equality checks
-        setNodes(prev => shallowEqualNodes(prev, finalNodes) ? prev : finalNodes);
-        setEdges(prev => prev.length === newEdges.length && prev.every((e,i) => e.id === newEdges[i].id) ? prev : newEdges);
+        // Direct assignment to prevent stale ghost nodes from persisting
+        setNodes(finalNodes);
+        setEdges(newEdges);
         
         // Store nodes in window for validation utilities  
         if (process.env.NODE_ENV === 'development') {
@@ -893,7 +901,7 @@ function EduTreeCanvasV2Content({
       )}
 
         <ReactFlow
-          key={`react-flow-${effectiveFilterMode}-${programs.sort().join('-')}`}
+          key={graphSig}
           nodes={safeNodes}
           edges={processedEdges}
           onNodesChange={onNodesChange}
