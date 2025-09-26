@@ -164,7 +164,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     console.log('[GuardA] Pre-filter ghost check:', {
       selectedPrograms,
       selected: Array.from(selected),
-      ghosts: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
+      ghosts: filteredBlocks.filter(b => b.is_empty_year === true).map(g => ({ id: g.id, program_id: g.program_id }))
     });
     
     const blocksFinal = filteredBlocks.filter(b => {
@@ -200,8 +200,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       selected: Array.from(selected),
       effectiveFilterMode,
       ghostsFiltered: filteredBlocks.length - blocksFinal.length,
-      before: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id })),
-      after: blocksFinal.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
+      before: filteredBlocks.filter(b => b.is_empty_year === true).map(g => ({ id: g.id, program_id: g.program_id })),
+      after: blocksFinal.filter(b => b.is_empty_year === true).map(g => ({ id: g.id, program_id: g.program_id }))
     });
     
     const filteredEdges = filterEdgesByBlocks(GOLDEN_LAYOUT_SEED.edges, blocksFinal);

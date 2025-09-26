@@ -513,7 +513,7 @@ function EduTreeCanvasV2Content({
   // Filter blocks before layout rendering (moved from manualLayoutRenderer for graphSig)
   const filteredBlocks = useMemo(() => {
     const filtered = blocks.filter(b => {
-      const isGhost = b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year;
+      const isGhost = b.is_empty_year === true;
       if (isGhost) {
         if (!b.program_id) return false; // programless ghost → drop
         // Only allow ghosts for programs that actually skip years
@@ -524,8 +524,8 @@ function EduTreeCanvasV2Content({
     });
     
     // Debug logging
-    const originalGhosts = blocks.filter(b => b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year);
-    const filteredGhosts = filtered.filter(b => b.id?.startsWith('empty-year-') || !!(b as any).is_empty_year);
+    const originalGhosts = blocks.filter(b => b.is_empty_year === true);
+    const filteredGhosts = filtered.filter(b => b.is_empty_year === true);
     console.log('[DEBUG] Ghost filtering:', {
       originalBlocks: blocks.length,
       filteredBlocks: filtered.length,
@@ -1070,7 +1070,7 @@ function EduTreeCanvasV2Content({
         />
         <HudComparisonLegend 
           filterMode={effectiveFilterMode} 
-          hasGhostNodes={blocks.some(b => b.id?.startsWith('empty-year-') || b.is_empty_year)}
+          hasGhostNodes={blocks.some(b => b.is_empty_year === true)}
         />
         
         {/* Edge Type Legend - show in compare modes */}

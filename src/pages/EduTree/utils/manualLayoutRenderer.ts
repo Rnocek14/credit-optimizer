@@ -529,7 +529,7 @@ export function applyManualLayout(
     if (!block || block.is_virtual || block.is_empty_year) return node;
     
     // Debug: Log ghost nodes that make it to rendering
-    if (block.id?.startsWith('empty-year-') || !!(block as any).is_empty_year) {
+    if (block.is_empty_year === true) {
       console.log('[DEBUG] Ghost node in rendering:', {
         id: block.id,
         program_id: block.program_id,

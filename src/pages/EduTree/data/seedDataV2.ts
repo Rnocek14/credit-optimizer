@@ -488,7 +488,7 @@ export function filterBlocksByMode(
         console.log('[FilterBlocks] programs present after filtering:', programCounts);
         
         // Debug: Check for existing ghost nodes
-        const existingGhosts = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+        const existingGhosts = filteredBlocks.filter(b => b.is_empty_year === true);
         if (existingGhosts.length) {
           console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
         }
@@ -608,7 +608,7 @@ export function filterBlocksByMode(
         console.log('[FilterBlocks] programs present after filtering:', programCounts);
         
         // Debug: Check for existing ghost nodes
-        const existingGhosts = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+        const existingGhosts = filteredBlocks.filter(b => b.is_empty_year === true);
         if (existingGhosts.length) {
           console.warn('[FilterBlocks] ghost nodes present pre-injection:', existingGhosts.map(g => g.id));
         }
@@ -655,10 +655,8 @@ export function filterBlocksByMode(
   // Ghost nodes are now injected during program comparisons above
   // For other modes, inject ghost nodes for selected programs or active programs that need them
   if (!['compare-programs', 'compare-any'].includes(filterMode)) {
-    // Use selected programs if provided, otherwise fall back to active programs
-    const targetPrograms = selectedPrograms.size > 0 
-      ? Array.from(selectedPrograms)
-      : getActivePrograms(filteredBlocks);
+    // Use selected programs directly - no fallback to active programs for consistency
+    const targetPrograms = Array.from(selectedPrograms);
     
     // Only inject ghosts for programs that actually need them (have skips)
     const programsNeedingGhosts = targetPrograms.filter(pid => {
@@ -679,7 +677,7 @@ export function filterBlocksByMode(
       filteredBlocks = injectGhostNodes(filteredBlocks, programsNeedingGhosts);
       
       // Log ghosts after injection
-      const ghostsAfterInject = filteredBlocks.filter(b => b.id.startsWith('empty-year-'));
+      const ghostsAfterInject = filteredBlocks.filter(b => b.is_empty_year === true);
       console.log('[GhostInject] Ghosts present after injection:', ghostsAfterInject.map(g => ({ id: g.id, program_id: g.program_id })));
     } else {
       console.log('[GhostInject] No programs need ghosts, skipping injection');
@@ -710,7 +708,7 @@ export function filterBlocksByMode(
       console.error('[GuardC] INVARIANT VIOLATION - Non-selected ghosts present:', violators);
       
       // Only throw if debug=1 is in URL, otherwise just log
-      const isDebugMode = typeof window !== 'undefined' && window.location?.search?.includes('debug=1');
+      const isDebugMode = typeof window !== 'undefined' && new URLSearchParams(window.location?.search || '').get('debug') === '1';
       if (isDebugMode) {
         throw new Error(`[Invariant] Non-selected ghost(s) present: ${violators.map(v => v.id).join(', ')}`);
       } else {
@@ -737,7 +735,7 @@ function pruneBlocksForSelection(
     if (!selectedPrograms.has(b.program_id)) return false;
 
     // Keep ghosts only if the program actually skips years
-    if (b.id.startsWith('empty-year-')) {
+    if (b.is_empty_year === true) {
       const meta = getProgramById(b.program_id);
       return !!meta && (meta.skips?.length ?? 0) > 0;
     }

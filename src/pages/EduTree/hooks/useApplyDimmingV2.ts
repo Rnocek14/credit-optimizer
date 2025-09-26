@@ -174,9 +174,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
         }
         
         // Check for ghost/accelerated nodes (empty year nodes) - ALWAYS apply in single mode
-        const isGhostNode = node.type === 'emptyYear' || 
-                           node.id.startsWith('empty-year-') || 
-                           node.data?.is_empty_year;
+        const isGhostNode = node.data?.is_empty_year === true;
         if (isGhostNode) {
           return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
         }
@@ -219,9 +217,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
       }
 
       // Check for ghost/accelerated nodes (empty year nodes)
-      const isGhostNode = node.type === 'emptyYear' || 
-                         node.id.startsWith('empty-year-') || 
-                         node.data?.is_empty_year;
+      const isGhostNode = node.data?.is_empty_year === true;
       if (isGhostNode) {
         return { ...node, className: withNodeHL(node.className, 'hl--ghost'), style: { ...node.style, opacity: 1 } };
       }
