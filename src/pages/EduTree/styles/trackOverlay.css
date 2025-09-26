@@ -22,6 +22,15 @@
   --highlight-intensity: 0.8;
   --hover-intensity: 0.12;
   --focus-ring-width: 2px;
+  
+  /* Track-specific color tokens for CS specializations */
+  --cs-se-bg: oklch(0.96 0.015 200);  /* Subtle cool blue tint */
+  --cs-se-fg: oklch(0.35 0.15 200);   /* Readable text on light background */
+  --cs-se-border: oklch(0.65 0.15 200 / 0.4);
+  
+  --cs-ds-bg: oklch(0.96 0.015 160);  /* Subtle teal/green tint */
+  --cs-ds-fg: oklch(0.35 0.15 160);   /* Readable text on light background */
+  --cs-ds-border: oklch(0.65 0.15 160 / 0.4);
 }
 
 /* Track comparison controls positioning */
@@ -95,6 +104,31 @@
 
 .hl--both * {
   color: oklch(0.25 0.15 280) !important;
+}
+
+/* Track-specific subtle tints for CS specializations */
+.node.cs.track--se {
+  background-color: var(--cs-se-bg);
+  color: var(--cs-se-fg);
+  border-left: 3px solid var(--cs-se-border);
+}
+
+.node.cs.track--ds {
+  background-color: var(--cs-ds-bg);
+  color: var(--cs-ds-fg);
+  border-left: 3px solid var(--cs-ds-border);
+}
+
+/* Ensure track tints remain visible when dimmed */
+.is-dimmed.node.cs.track--se,
+.is-dimmed.node.cs.track--ds {
+  filter: saturate(0.8) brightness(0.95);
+  opacity: 0.7;
+}
+
+/* Reduce overlay opacity in single-track mode */
+.overlay.dim--active.single-track {
+  opacity: 0.12;
 }
 
 /* Enhanced edge styling with better visual hierarchy and smooth animations */

@@ -66,9 +66,26 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
+  
+  // Extract track and program info for styling
+  const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
+  const programId = data.programId || blockData?.program_id || blockData?.block?.program_id;
+  
+  // Build dynamic classes for track styling
+  const trackClasses = [];
+  if (programId === 'bs_cs') {
+    trackClasses.push('node', 'cs');
+    if (trackId === 'se') trackClasses.push('track--se');
+    if (trackId === 'ds') trackClasses.push('track--ds');
+  }
+  
+  const nodeClassNames = [
+    'px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative',
+    ...trackClasses
+  ].join(' ');
 
   return (
-    <div className="px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative">
+    <div className={nodeClassNames}>
       <div className="font-semibold text-sm text-foreground mb-1">{data.title}</div>
       <div className="text-xs text-muted-foreground">
         Year {data.levelYear} • {data.area}
