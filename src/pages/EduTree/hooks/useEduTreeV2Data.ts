@@ -91,10 +91,23 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     // GUARD A — Final whitelist: Remove any ghost for non-selected programs
     const selected = new Set(programs);
+    console.log('[GuardA] Pre-filter ghost check:', {
+      programs,
+      selected: Array.from(selected),
+      ghosts: filteredBlocks.filter(b => b.id?.startsWith('empty-year-')).map(g => ({ id: g.id, program_id: g.program_id }))
+    });
+    
     const blocksFinal = filteredBlocks.filter(b => {
       const isGhost = b.id?.startsWith('empty-year-') || (b as any).is_empty_year;
       if (!isGhost) return true;                         // allow normal nodes
       if (!b.program_id) return false;                   // never allow programless ghosts
+      
+      // CRITICAL: For single-program IT mode, ALWAYS allow IT ghost
+      if (isGhost && b.program_id === 'bs_it' && programs.includes('bs_it')) {
+        console.log('[GuardA] EXPLICITLY allowing IT ghost in single-program mode:', b.id);
+        return true;
+      }
+      
       return selected.has(b.program_id);                 // ONLY allow ghosts for selected programs
     });
     
