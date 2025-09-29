@@ -236,23 +236,44 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     };
   }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms]);
   
-  // Helper to identify requirement blocks (resilient to schema variations)
-  const isRequirement = (b: any) =>
-    b.rule_type === 'requirement' ||
-    b.type === 'requirement' ||
-    b.node_type === 'requirement';
-
-  // Extract requirement IDs for batch fetching (only requirement blocks, not headers)
+  // Extract requirement IDs for batch fetching (exclude ghosts/empty years)
   const requirementIds = useMemo(() => {
+    // DEBUG: Log block structure to understand what we're working with
+    if (blocks.length > 0) {
+      console.log('[MP] 📊 Sample blocks:', blocks.slice(0, 5).map(b => ({
+        id: b.id,
+        rule_type: b.rule_type,
+        level_year: b.level_year,
+        is_empty_year: b.is_empty_year,
+        is_virtual: b.is_virtual,
+      })));
+    }
+    
+    // All V2RequirementBlock instances are requirements by definition
+    // Filter out ghosts, empty years, and gates/headers based on ID pattern
     const ids = blocks
-      .filter(b => isRequirement(b) && b.id && !b.is_empty_year)
+      .filter(b => {
+        if (!b?.id) return false;
+        if (b.is_empty_year === true) return false;
+        if (b.is_virtual === true) return false;
+        if (String(b.id).startsWith('gate-')) return false;
+        if (String(b.id).startsWith('header-')) return false;
+        if (String(b.id).includes('ghost')) return false;
+        
+        // Accept year-prefixed requirement IDs (y1-math, y2-cs-core, etc.)
+        return /^y\d-/.test(String(b.id));
+      })
       .map(b => b.id);
     
     // DEBUG: Expose for console probing
     if (typeof window !== 'undefined') {
       (window as any).__mpRequirementIds = ids;
     }
-    console.log('[MP] 📦 requirementIds (final visible blocks):', ids);
+    console.log('[MP] 📦 requirementIds (final visible blocks):', ids, {
+      totalBlocks: blocks.length,
+      filtered: ids.length,
+      sampleIds: ids.slice(0, 5)
+    });
     
     return ids;
   }, [blocks]);
