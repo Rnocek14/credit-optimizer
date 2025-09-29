@@ -80,8 +80,9 @@ serve(async (req) => {
 
     // Enhanced body parsing with multiple safety checks
     let body: any;
+    let rawBody: string = '';
     try {
-      const rawBody = await req.text();
+      rawBody = await req.text();
       console.log(`[${requestId}] Raw request body: "${rawBody}" (length: ${rawBody?.length || 0})`);
       
       // Multiple checks for empty body conditions

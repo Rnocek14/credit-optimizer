@@ -67,14 +67,15 @@ serve(async (req) => {
       isDevUser = auth.isDevUser;
       console.log(`[${requestId}] User authenticated: ${user.id} (dev: ${isDevUser})`);
     } catch (e) {
-      console.error(`[${requestId}] Authentication failed:`, e.message);
+      console.error(`[${requestId}] Authentication failed:`, e instanceof Error ? e.message : 'Unknown error');
       return unauthorized('Authentication required');
     }
 
     // Enhanced body parsing with multiple safety checks
     let body: any;
+    let rawBody: string = '';
     try {
-      const rawBody = await req.text();
+      rawBody = await req.text();
       console.log(`[${requestId}] Raw request body: "${rawBody}" (length: ${rawBody?.length || 0})`);
       
       // Multiple checks for empty body conditions
@@ -103,7 +104,7 @@ serve(async (req) => {
       }
       
     } catch (parseError) { 
-      console.error(`[${requestId}] JSON parsing failed:`, parseError.message, `Raw: "${rawBody}"`);
+      console.error(`[${requestId}] JSON parsing failed:`, parseError instanceof Error ? parseError.message : 'Unknown error', `Raw length: ${rawBody?.length || 0}`);
       return badRequest('Invalid JSON body');
     }
 
@@ -127,7 +128,8 @@ serve(async (req) => {
     const { data: track, error: trackError } = await supabase
       .from('career_tracks')
       .select('*')
-      .eq('id', trackId);
+      .eq('id', trackId)
+      .single();
 
     if (trackError) {
       console.error('Database error fetching track:', trackError);
@@ -291,10 +293,10 @@ serve(async (req) => {
   } catch (error) {
     const errorId = crypto.randomUUID();
     console.error(`[${errorId}] Error in career-risk-analyzer:`, {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'UnknownError'
     });
-    return serverError({ message: error.message, errorId });
+    return serverError({ message: error instanceof Error ? error.message : 'Unknown error occurred', errorId });
   }
 });

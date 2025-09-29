@@ -46,10 +46,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in certificate-generation:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
@@ -175,7 +175,7 @@ async function listUserCertificates(supabase: any, userId: string) {
     .eq('user_id', userId)
     .order('issued_at', { ascending: false });
 
-  const formattedCertificates = certificates?.map(cert => ({
+  const formattedCertificates = certificates?.map((cert: any) => ({
     id: cert.id,
     type: cert.certificate_type,
     title: cert.achievement_title,
@@ -193,7 +193,7 @@ async function listUserCertificates(supabase: any, userId: string) {
     JSON.stringify({
       certificates: formattedCertificates,
       totalCount: formattedCertificates.length,
-      verified: formattedCertificates.filter(c => c.isVerified).length
+      verified: formattedCertificates.filter((c: any) => c.isVerified).length
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
