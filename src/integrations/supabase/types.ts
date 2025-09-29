@@ -1112,6 +1112,32 @@ export type Database = {
           },
         ]
       }
+      block_requirement_map: {
+        Row: {
+          block_id: string
+          program_id: string
+          requirement_id: string
+        }
+        Insert: {
+          block_id: string
+          program_id: string
+          requirement_id: string
+        }
+        Update: {
+          block_id?: string
+          program_id?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "block_requirement_map_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       career_goals: {
         Row: {
           active: boolean | null
@@ -5471,6 +5497,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "requirement_options_view"
+            referencedColumns: ["provider_id"]
+          },
+          {
+            foreignKeyName: "marketplace_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view_by_block"
             referencedColumns: ["provider_id"]
           },
         ]
@@ -10575,6 +10608,13 @@ export type Database = {
             referencedColumns: ["provider_id"]
           },
           {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view_by_block"
+            referencedColumns: ["provider_id"]
+          },
+          {
             foreignKeyName: "user_plan_courses_requirement_id_fkey"
             columns: ["requirement_id"]
             isOneToOne: false
@@ -11395,8 +11435,46 @@ export type Database = {
           },
         ]
       }
+      requirement_option_counts_by_block: {
+        Row: {
+          block_id: string | null
+          has_ace_credit: boolean | null
+          has_clep: boolean | null
+          options_count: number | null
+        }
+        Relationships: []
+      }
       requirement_options_view: {
         Row: {
+          cost_usd: number | null
+          course_id: string | null
+          credits: number | null
+          cri_score: number | null
+          duration_weeks: number | null
+          level: number | null
+          modality: Database["public"]["Enums"]["modality_type"] | null
+          option_kind: Database["public"]["Enums"]["option_kind"] | null
+          provider_id: string | null
+          provider_name: string | null
+          provider_type: Database["public"]["Enums"]["provider_type"] | null
+          requirement_id: string | null
+          skill_tags: string[] | null
+          title: string | null
+          transfer_fit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_options_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirement_options_view_by_block: {
+        Row: {
+          block_id: string | null
           cost_usd: number | null
           course_id: string | null
           credits: number | null
