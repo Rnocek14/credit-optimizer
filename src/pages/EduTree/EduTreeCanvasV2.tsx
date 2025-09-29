@@ -59,6 +59,8 @@ import { EvidenceBadges } from './components/EvidenceBadges';
 import { PhaseHeaders } from './components/HUD/PhaseHeaders';
 import { LaneCaptions } from './components/HUD/LaneCaptions';
 import { ComparisonLegend as HudComparisonLegend } from './components/HUD/ComparisonLegend';
+import { CourseSelectionModal } from './components/CourseSelectionModal';
+import { useUserPlan } from '@/hooks/useUserPlan';
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
@@ -70,6 +72,10 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   
   // Phase 2: Course marketplace data
   const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
+  const [modalOpen, setModalOpen] = useState(false);
+  
+  // Feature flag for marketplace
+  const SHOW_MP = import.meta.env.VITE_LP_DEGREE_MARKETPLACE === '1';
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
@@ -152,12 +158,15 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </div>
       )}
       
-      {/* Phase 2: Course marketplace chips */}
-      {optionsCount && optionsCount > 0 && (
+      {/* Phase 2: Course marketplace chips - gated behind feature flag */}
+      {SHOW_MP && optionsCount && optionsCount > 0 && (
         <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
-          <span className="px-2 py-0.5 rounded-full bg-surface border border-border/50">
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-2 py-0.5 rounded-full bg-surface border border-border/50 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
+          >
             Options: {optionsCount}
-          </span>
+          </button>
           {hasAceCredit && (
             <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50">
               ACE
@@ -172,11 +181,19 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* Selected course display */}
-      {selectedCourse && (
+      {SHOW_MP && selectedCourse && (
         <div className="mt-2 text-[10px] px-2 py-1 bg-primary/10 border border-primary/30 rounded">
-          <div className="flex items-center gap-1">
-            <span className="text-primary">✓</span>
-            <span className="font-medium">{selectedCourse.title}</span>
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1">
+              <span className="text-primary">✓</span>
+              <span className="font-medium">{selectedCourse.title}</span>
+            </div>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="text-blue-600 hover:text-blue-700 underline text-[9px]"
+            >
+              Change
+            </button>
           </div>
           <div className="text-muted-foreground">{selectedCourse.provider} • ${selectedCourse.cost}</div>
         </div>
@@ -188,6 +205,17 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         creditsNeeded={creditsNeeded}
         catalogCourseIds={catalogCourseIds}
       />
+      
+      {/* Course selection modal */}
+      {SHOW_MP && modalOpen && (
+        <CourseSelectionModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          requirementId={blockId}
+          requirementTitle={data.title || 'Requirement'}
+          planId={data.planId as string | undefined}
+        />
+      )}
     </div>
   );
 };

@@ -7,6 +7,9 @@ import { useMemo } from 'react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
 import { usePathHighlight } from '../ctx/PathHighlightContext';
+import { useBatchRequirementOptions } from '@/hooks/useBatchRequirementOptions';
+import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
+import { useUserPlan } from '@/hooks/useUserPlan';
 
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
@@ -24,6 +27,9 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   const pathHighlight = usePathHighlight();
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
+  
+  // Get user plan for selected course enrichment
+  const { data: userPlan } = useUserPlan();
   
   // REMOVED: Early return logic that was causing loading loops
   // Let downstream components handle graceful rendering when context is warming
@@ -230,10 +236,40 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     };
   }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms]);
   
+  // Extract requirement IDs for batch fetching (all blocks with IDs)
+  const requirementIds = useMemo(
+    () => blocks.filter(b => b.id && !b.is_empty_year).map(b => b.id),
+    [blocks]
+  );
+  
+  // Batch fetch marketplace data and selected courses
+  const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
+  const { data: selectedCoursesData } = useUserPlanSelections(userPlan?.id);
+  
+  // Enrich blocks with marketplace and selection data
+  const enrichedBlocks = useMemo(() => {
+    return blocks.map(block => {
+      // Only enrich if we have marketplace data for this block
+      const marketplaceInfo = marketplaceData?.get(block.id);
+      const selectedCourse = selectedCoursesData?.get(block.id);
+      
+      if (!marketplaceInfo && !selectedCourse && !userPlan?.id) return block;
+      
+      return {
+        ...block,
+        optionsCount: marketplaceInfo?.optionsCount,
+        hasAceCredit: marketplaceInfo?.hasAceCredit,
+        hasClep: marketplaceInfo?.hasClep,
+        selectedCourse,
+        planId: userPlan?.id
+      };
+    });
+  }, [blocks, marketplaceData, selectedCoursesData, userPlan?.id]);
+  
   return {
-    blocks,
+    blocks: enrichedBlocks,
     edges,
-    isLoading: false, // Only false when we have actual data
+    isLoading: false,
     isV2Mode,
     filterMode,
     effectiveFilterMode,

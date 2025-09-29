@@ -23,7 +23,9 @@ export function CourseSelectionModal({
   planId,
 }: CourseSelectionModalProps) {
   const [filters, setFilters] = useState<CourseSearchFilters>({});
-  const { data: courses, isLoading } = useRequirementOptions(requirementId, filters);
+  const { data: courses, isLoading } = useRequirementOptions(requirementId, filters, { 
+    enabled: open && !!requirementId 
+  });
   const addCourseMutation = useAddCourseToPlan();
 
   const handleAddToPlan = (courseId: string, providerId: string) => {

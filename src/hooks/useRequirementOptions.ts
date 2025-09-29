@@ -56,24 +56,25 @@ export interface CourseSearchFilters {
 
 export function useRequirementOptions(
   requirementId: string,
-  filters?: CourseSearchFilters
+  filters?: CourseSearchFilters,
+  options?: { enabled?: boolean }
 ) {
   return useQuery({
-    queryKey: ['requirement-options', requirementId, filters],
+    queryKey: ['requirement-options', requirementId, JSON.stringify(filters)],
     queryFn: async (): Promise<CourseOption[]> => {
       let query = supabase
         .from('requirement_options_view')
         .select('*')
         .eq('requirement_id', requirementId);
 
-      // Apply filters
-      if (filters?.providerTypes?.length) {
+      // Apply filters with guards
+      if (filters?.providerTypes?.length && filters.providerTypes.length > 0) {
         query = query.in('provider_type', filters.providerTypes as any);
       }
       if (filters?.maxCost) {
         query = query.lte('cost_usd', filters.maxCost);
       }
-      if (filters?.modality?.length) {
+      if (filters?.modality?.length && filters.modality.length > 0) {
         query = query.in('modality', filters.modality as any);
       }
       if (filters?.minCriScore) {
@@ -85,6 +86,6 @@ export function useRequirementOptions(
       if (error) throw error;
       return data as CourseOption[];
     },
-    enabled: !!requirementId,
+    enabled: options?.enabled ?? !!requirementId,
   });
 }
