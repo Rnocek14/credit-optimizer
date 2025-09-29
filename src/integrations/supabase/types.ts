@@ -5466,6 +5466,13 @@ export type Database = {
             referencedRelation: "providers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "marketplace_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view"
+            referencedColumns: ["provider_id"]
+          },
         ]
       }
       maya_context_tracking: {
@@ -10561,6 +10568,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "requirement_options_view"
+            referencedColumns: ["provider_id"]
+          },
+          {
             foreignKeyName: "user_plan_courses_requirement_id_fkey"
             columns: ["requirement_id"]
             isOneToOne: false
@@ -11364,6 +11378,51 @@ export type Database = {
       }
     }
     Views: {
+      requirement_option_counts: {
+        Row: {
+          has_ace_credit: boolean | null
+          has_clep: boolean | null
+          options_count: number | null
+          requirement_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_options_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirement_options_view: {
+        Row: {
+          cost_usd: number | null
+          course_id: string | null
+          credits: number | null
+          cri_score: number | null
+          duration_weeks: number | null
+          level: number | null
+          modality: Database["public"]["Enums"]["modality_type"] | null
+          option_kind: Database["public"]["Enums"]["option_kind"] | null
+          provider_id: string | null
+          provider_name: string | null
+          provider_type: Database["public"]["Enums"]["provider_type"] | null
+          requirement_id: string | null
+          skill_tags: string[] | null
+          title: string | null
+          transfer_fit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_options_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       track_cri_history_v: {
         Row: {
           cri_average: number | null

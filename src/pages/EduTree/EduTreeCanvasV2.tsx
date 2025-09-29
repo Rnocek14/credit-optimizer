@@ -63,10 +63,13 @@ import { ComparisonLegend as HudComparisonLegend } from './components/HUD/Compar
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const pathHighlight = usePathHighlight();
-  const blockData = data as any; // Type assertion for now - V2NodeData might not have all fields yet
+  const blockData = data as any;
   const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
+  
+  // Phase 2: Course marketplace data
+  const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
@@ -146,6 +149,36 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       {data.trackId && (
         <div className="text-xs font-medium text-primary mt-1">
           {data.trackId.toUpperCase()}
+        </div>
+      )}
+      
+      {/* Phase 2: Course marketplace chips */}
+      {optionsCount && optionsCount > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
+          <span className="px-2 py-0.5 rounded-full bg-surface border border-border/50">
+            Options: {optionsCount}
+          </span>
+          {hasAceCredit && (
+            <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50">
+              ACE
+            </span>
+          )}
+          {hasClep && (
+            <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50">
+              CLEP
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Selected course display */}
+      {selectedCourse && (
+        <div className="mt-2 text-[10px] px-2 py-1 bg-primary/10 border border-primary/30 rounded">
+          <div className="flex items-center gap-1">
+            <span className="text-primary">✓</span>
+            <span className="font-medium">{selectedCourse.title}</span>
+          </div>
+          <div className="text-muted-foreground">{selectedCourse.provider} • ${selectedCourse.cost}</div>
         </div>
       )}
       

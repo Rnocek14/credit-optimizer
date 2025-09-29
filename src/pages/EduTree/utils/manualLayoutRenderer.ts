@@ -39,6 +39,20 @@ export interface V2NodeData {
     x: number;
     y: number;
   };
+  // Phase 2: Marketplace integration fields
+  optionsCount?: number;
+  hasAceCredit?: boolean;
+  hasClep?: boolean;
+  selectedCourse?: {
+    id: string;
+    provider: string;
+    title: string;
+    cost: number;
+  };
+  planProgress?: {
+    creditsEarned: number;
+    creditsNeeded: number;
+  };
   [key: string]: unknown; // Index signature for ReactFlow compatibility
 }
 
