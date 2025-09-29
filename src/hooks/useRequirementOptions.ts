@@ -63,9 +63,9 @@ export function useRequirementOptions(
     queryKey: ['requirement-options', requirementId, JSON.stringify(filters)],
     queryFn: async (): Promise<CourseOption[]> => {
       let query = supabase
-        .from('requirement_options_view')
+        .from('requirement_options_view_by_block')
         .select('*')
-        .eq('requirement_id', requirementId);
+        .eq('block_id', requirementId);
 
       // Apply filters with guards
       if (filters?.providerTypes?.length && filters.providerTypes.length > 0) {
