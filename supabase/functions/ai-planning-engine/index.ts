@@ -58,7 +58,8 @@ serve(async (req) => {
       } catch (error) {
         // Check if error contains suggestions
         try {
-          const errorData = JSON.parse(error.message);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorData = JSON.parse(errorMessage);
           if (errorData.suggestions) {
             return new Response(JSON.stringify({ 
               success: false, 
@@ -90,7 +91,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in ai-planning-engine:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -445,10 +447,10 @@ async function findAlternativeLearningMethods(supabase: any, currentNode: PathNo
   const { data: alternatives } = await supabase
     .from('career_graph_nodes')
     .select('*')
-    .in('id', alternativeEdges.map(e => e.from_id))
+    .in('id', alternativeEdges.map((e: any) => e.from_id))
     .eq('active', true);
     
-  return (alternatives || []).map(alt => ({
+  return (alternatives || []).map((alt: any) => ({
     id: alt.id,
     title: alt.title,
     type: alt.node_type,
@@ -531,11 +533,11 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
 
     // Convert skill titles to IDs
     const completedSkillIds: string[] = [];
-    console.log('🔍 Available skill titles (first 20):', skillNodes?.slice(0, 20).map(s => s.title));
+    console.log('🔍 Available skill titles (first 20):', skillNodes?.slice(0, 20).map((s: any) => s.title));
     
     for (const skillTitle of completedSkills) {
       // Try exact match first
-      const skill = skillNodes?.find(s => s.title === skillTitle);
+      const skill = skillNodes?.find((s: any) => s.title === skillTitle);
       if (skill) {
         completedSkillIds.push(skill.id);
         console.log(`✅ Converting skill "${skillTitle}" to ID: ${skill.id}`);

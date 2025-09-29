@@ -38,14 +38,14 @@ serve(async (req) => {
     }
 
     // Arrange nodes in path order
-    const orderedNodes = nodeIds.map(id => nodes?.find(n => n.id === id)).filter(Boolean);
+    const orderedNodes = nodeIds.map((id: string) => nodes?.find((n: any) => n.id === id)).filter(Boolean);
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    const pathDescription = orderedNodes.map((node, i) => 
+    const pathDescription = orderedNodes.map((node: any, i: number) => 
       `${i + 1}. ${node.node_type.toUpperCase()}: ${node.title} - ${node.description || 'No description'}`
     ).join('\n');
 
@@ -152,10 +152,11 @@ Provide validation results as JSON:
 
   } catch (error) {
     console.error('❌ Path validation error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: errorMessage,
         validation: null
       }),
       { 

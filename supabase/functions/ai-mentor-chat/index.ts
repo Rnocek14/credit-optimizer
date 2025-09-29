@@ -119,7 +119,7 @@ serve(async (req) => {
     let autonomousWorkflow = null;
     let milestonePlan = null;
     
-    if (finalUserId !== 'demo-user' && workflowRequest.shouldCreate) {
+    if (finalUserId !== 'demo-user' && workflowRequest.shouldCreate && workflowRequest.template) {
       console.log('🤖 Creating autonomous workflow:', workflowRequest.template);
       autonomousWorkflow = await createAutonomousWorkflow(
         supabase, 
@@ -340,15 +340,15 @@ async function generateSystemPrompt(context: any, supabase: any, userId: string)
   }
 
   const recentActivitySummary = recentActions.length > 0 
-    ? `Recent activity includes: ${recentActions.slice(0, 3).map(a => a.reason).join(', ')}.` 
+    ? `Recent activity includes: ${recentActions.slice(0, 3).map((a: any) => a.reason).join(', ')}.` 
     : 'No recent activity recorded.';
 
   const badgesSummary = recentBadges.length > 0
-    ? `Recently earned badges: ${recentBadges.map(b => b.badges.name).join(', ')}.`
+    ? `Recently earned badges: ${recentBadges.map((b: any) => b.badges.name).join(', ')}.`
     : 'No badges earned yet.';
 
   const milestoneSummary = milestonePlans.length > 0
-    ? `Active milestone plans: ${milestonePlans.filter(p => p.status === 'active').map(p => `"${p.title}" (${p.completion_percentage}% complete)`).join(', ')}.`
+    ? `Active milestone plans: ${milestonePlans.filter((p: any) => p.status === 'active').map((p: any) => `"${p.title}" (${p.completion_percentage}% complete)`).join(', ')}.`
     : 'No active milestone plans.';
 
   // Phase 5: Enhanced market intelligence summary
@@ -651,8 +651,9 @@ async function getMilestonePlans(supabase: any, userId: string) {
     );
   } catch (error) {
     console.error('Error fetching milestone plans:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500,
         headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
@@ -737,8 +738,9 @@ async function updateMilestoneStep(supabase: any, planId: string, stepIndex: num
     );
   } catch (error) {
     console.error('Error updating milestone step:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500,
         headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
@@ -774,7 +776,7 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
     
     // Phase 3: Autonomous workflow detection
     const shouldExecuteWorkflow = detectAutonomousWorkflow(message, activeTab);
-    if (shouldExecuteWorkflow.execute) {
+    if (shouldExecuteWorkflow.execute && shouldExecuteWorkflow.workflow) {
       console.log('🤖 Executing autonomous workflow:', shouldExecuteWorkflow.workflow);
       const workflowResult = await executeAutonomousWorkflow(
         supabase, 
@@ -879,8 +881,9 @@ async function handleMarketIntelligenceChat(supabase: any, message: string, cont
 
   } catch (error) {
     console.error('Error in market intelligence chat:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1383,10 +1386,11 @@ async function fetchCrossSystemData(supabase: any, userId: string) {
     };
   } catch (error) {
     console.error('Error fetching cross-system data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return {
       universalIntelligence: {
         crossSystemDataAvailable: false,
-        error: error.message,
+        error: errorMessage,
         lastSyncAt: new Date().toISOString()
       }
     };
@@ -1459,7 +1463,7 @@ async function fetchUserAlertData(supabase: any, userId: string) {
   return {
     activeAlerts: alertConfigs?.length || 0,
     unreadAlerts: recentAlerts?.length || 0,
-    alertTypes: alertConfigs?.map(config => config.alert_type) || [],
+    alertTypes: alertConfigs?.map((config: any) => config.alert_type) || [],
     lastAlertAt: recentAlerts?.[0]?.triggered_at || null
   };
 }
@@ -1473,7 +1477,7 @@ async function fetchPersonalizedRecommendations(supabase: any, userId: string) {
     .order('priority', { ascending: false })
     .limit(5);
 
-  return recommendations?.map(rec => ({
+  return recommendations?.map((rec: any) => ({
     title: rec.title,
     type: rec.recommendation_type,
     priority: rec.priority,
@@ -1533,8 +1537,8 @@ async function performSkillGapAnalysis(supabase: any, userId: string, context: a
       .limit(1);
 
     const targetSkills = requiredSkills?.[0]?.semantic_tags || [];
-    const missingSkills = targetSkills.filter(skill => 
-      !currentSkills.some(current => 
+    const missingSkills = targetSkills.filter((skill: string) => 
+      !currentSkills.some((current: string) => 
         current.toLowerCase().includes(skill.toLowerCase())
       )
     );
@@ -1547,8 +1551,8 @@ async function performSkillGapAnalysis(supabase: any, userId: string, context: a
       alignmentScore,
       criticalGaps: missingSkills.slice(0, 3),
       recommendations: missingSkills.slice(0, 5),
-      strengths: currentSkills.filter(skill => 
-        targetSkills.some(target => 
+      strengths: currentSkills.filter((skill: string) => 
+        targetSkills.some((target: string) => 
           target.toLowerCase().includes(skill.toLowerCase())
         )
       )
@@ -1646,7 +1650,7 @@ CAREER READINESS ANALYSIS:
 
   const recommendationsContext = personalizedRecommendations?.length ? `
 ACTIVE RECOMMENDATIONS:
-${personalizedRecommendations.slice(0, 3).map(rec => 
+${personalizedRecommendations.slice(0, 3).map((rec: any) => 
   `- ${rec.title} (${rec.priority} priority, ${rec.impactScore}/100 impact)`
 ).join('\n')}` : '';
 
@@ -1762,7 +1766,7 @@ UNIVERSAL CAREER INTELLIGENCE CONTEXT:
 - Career Readiness: ${careerReadiness.overallScore || 0}/100
 
 ACTIVE PERSONALIZED RECOMMENDATIONS:
-${personalizedRecommendations.slice(0, 3).map(rec => 
+${personalizedRecommendations.slice(0, 3).map((rec: any) => 
   `- ${rec.title} (${rec.priority} priority)`
 ).join('\n') || '- No active recommendations'}
 
