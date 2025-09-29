@@ -40,7 +40,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Coursera API Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -217,15 +217,15 @@ function determineCost(course: any): number {
 }
 
 function extractSkillTags(course: any): string[] {
-  const tags = [];
+  const tags: string[] = [];
   
   if (course.name) {
     // Extract potential skills from course name
     const nameWords = course.name.toLowerCase().split(/\s+/);
     const skillKeywords = ['python', 'javascript', 'machine learning', 'data science', 'react', 'node', 'sql', 'analytics'];
     
-    nameWords.forEach(word => {
-      skillKeywords.forEach(skill => {
+    nameWords.forEach((word: string) => {
+      skillKeywords.forEach((skill: string) => {
         if (skill.includes(word) || word.includes(skill)) {
           if (!tags.includes(skill)) {
             tags.push(skill);

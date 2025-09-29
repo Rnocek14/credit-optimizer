@@ -183,14 +183,14 @@ serve(async (req) => {
     await supabase.from('fn_runs').insert({
       function_name: 'course-cri-calculator',
       success: false,
-      error_message: error.message,
+      error_message: error instanceof Error ? error.message : 'Unknown error occurred',
       latency_ms: latencyMs,
       created_at: new Date().toISOString()
     });
 
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
