@@ -54,7 +54,11 @@ serve(async (req) => {
         return await checkUserAlerts(supabaseClient, userId);
       
       case 'evaluate_alert':
-        return await evaluateAlert(supabaseClient, alertConfigId);
+        const evalResult = await evaluateAlert(supabaseClient, alertConfigId);
+        return new Response(
+          JSON.stringify(evalResult),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       
       case 'generate_insights':
         return await generateInsights(supabaseClient, userId);
@@ -66,7 +70,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in alert-engine:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -105,7 +109,7 @@ async function processAlerts(supabase: any) {
       console.error(`Error processing alert ${config.id}:`, error);
       results.push({
         configId: config.id,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
   }
@@ -377,7 +381,7 @@ async function calculateAccuracyTrend(supabase: any, userId: string): Promise<nu
   
   if (!metrics || metrics.length === 0) return 0;
   
-  return metrics.reduce((sum, m) => sum + (m.accuracy_rate || 0), 0) / metrics.length;
+  return metrics.reduce((sum: number, m: any) => sum + (m.accuracy_rate || 0), 0) / metrics.length;
 }
 
 function generateRecommendations(alertHistory: any[], configs: any[]): string[] {

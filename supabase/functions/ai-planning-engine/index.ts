@@ -543,7 +543,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         console.log(`✅ Converting skill "${skillTitle}" to ID: ${skill.id}`);
       } else {
         // Try case-insensitive match
-        const skillCaseInsensitive = skillNodes?.find(s => 
+        const skillCaseInsensitive = skillNodes?.find((s: any) => 
           s.title.toLowerCase() === skillTitle.toLowerCase()
         );
         if (skillCaseInsensitive) {
@@ -551,7 +551,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
           console.log(`✅ Converting skill "${skillTitle}" to ID (case-insensitive): ${skillCaseInsensitive.id}`);
         } else {
           // Try partial match
-          const skillPartial = skillNodes?.find(s => 
+          const skillPartial = skillNodes?.find((s: any) => 
             s.title.toLowerCase().includes(skillTitle.toLowerCase()) ||
             skillTitle.toLowerCase().includes(s.title.toLowerCase())
           );
@@ -560,12 +560,12 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
             console.log(`✅ Converting skill "${skillTitle}" to ID (partial match): "${skillPartial.title}" -> ${skillPartial.id}`);
           } else {
             console.log(`❌ Skill "${skillTitle}" not found in database`);
-            console.log('🔍 Similar skills:', skillNodes?.filter(s => 
+            console.log('🔍 Similar skills:', skillNodes?.filter((s: any) => 
               s.title.toLowerCase().includes('ux') || 
               s.title.toLowerCase().includes('design') ||
               s.title.toLowerCase().includes('figma') ||
               s.title.toLowerCase().includes('ui')
-            ).slice(0, 10).map(s => s.title));
+            ).slice(0, 10).map((s: any) => s.title));
           }
         }
       }
@@ -596,7 +596,7 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
           console.error('Error fetching course nodes:', courseNodeError);
         } else {
           for (const courseTitle of completedCourses) {
-            const course = courseNodes?.find(c => c.title === courseTitle);
+            const course = courseNodes?.find((c: any) => c.title === courseTitle);
             if (course) {
               completedCourseIds.push(course.id);
               console.log(`Converting course "${courseTitle}" to ID: ${course.id}`);
@@ -664,12 +664,12 @@ async function analyzeUnlocks(supabase: any, completedSkills: string[] = [], com
         }
       }
 
-      const requiredSkillIds = requiredSkillEdges?.map(edge => edge.from_id) || [];
+      const requiredSkillIds = requiredSkillEdges?.map((edge: any) => edge.from_id) || [];
       if (jobCount <= 5) {
         console.log(`🎯 Required skill IDs for ${job.title}:`, JSON.stringify(requiredSkillIds, null, 2));
       }
       
-      const completedRequiredSkills = requiredSkillIds.filter(skillId => {
+      const completedRequiredSkills = requiredSkillIds.filter((skillId: any) => {
         const isCompleted = completedSkillIds.includes(skillId);
         if (jobCount <= 5) { // Only log first 5 jobs for readability
           console.log(`  ${isCompleted ? '✅' : '❌'} Skill ${skillId}: ${isCompleted ? 'COMPLETED' : 'not completed'}`);

@@ -35,7 +35,7 @@ function detectProvider(url: string): { provider: Provider; external_id: string 
   
   if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
     const videoId = urlObj.searchParams.get('v') || urlObj.pathname.split('/').pop();
-    return { provider: 'youtube', external_id: videoId };
+    return { provider: 'youtube', external_id: videoId || null };
   }
   
   if (hostname.includes('udemy.com')) {
@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
     console.error('[alt-resolve] Error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message || 'Internal server error',
+      error: error instanceof Error ? error.message : 'Internal server error',
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
