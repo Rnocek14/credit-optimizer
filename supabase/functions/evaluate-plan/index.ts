@@ -73,10 +73,12 @@ serve(async (req) => {
     const credits_by_category: Record<string, number> = {};
 
     for (const pc of planCourses || []) {
-      const credits = pc.course?.credits || 0;
-      const cost = pc.course?.cost_usd || 0;
-      const level = pc.course?.level || 100;
-      const category = pc.requirement?.category || 'other';
+      const courseData = Array.isArray(pc.course) ? pc.course[0] : pc.course;
+      const requirementData = Array.isArray(pc.requirement) ? pc.requirement[0] : pc.requirement;
+      const credits = courseData?.credits || 0;
+      const cost = courseData?.cost_usd || 0;
+      const level = courseData?.level || 100;
+      const category = requirementData?.category || 'other';
 
       credits_total += credits;
       estimated_cost += cost;
@@ -134,7 +136,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error evaluating plan:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

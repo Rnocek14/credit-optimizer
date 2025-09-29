@@ -52,7 +52,7 @@ serve(async (req) => {
     console.error('❌ Demand forecasting error:', error);
     return new Response(JSON.stringify({ 
       error: 'Demand forecasting failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error occurred'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

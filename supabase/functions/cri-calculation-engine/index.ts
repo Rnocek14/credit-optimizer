@@ -45,7 +45,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in cri-calculation-engine:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -289,7 +289,7 @@ async function getCRIBreakdown(supabase: any, userId: string, trackId?: string) 
 function calculateSkillsScore(skills: any[]): number {
   if (!skills || skills.length === 0) return 0;
   
-  const proficiencyScores = {
+  const proficiencyScores: { [key: string]: number } = {
     'beginner': 25,
     'intermediate': 50,
     'advanced': 80,
@@ -297,7 +297,7 @@ function calculateSkillsScore(skills: any[]): number {
   };
   
   const avgProficiency = skills.reduce((sum, skill) => {
-    return sum + (proficiencyScores[skill.proficiency_level] || 25);
+    return sum + (proficiencyScores[skill.proficiency_level as string] || 25);
   }, 0) / skills.length;
   
   // Bonus for skill count (up to 20 skills)
@@ -431,7 +431,7 @@ function generateRecommendations(criScore: number, insights: string[]) {
 
 function generateDetailedRecommendations(criData: any) {
   // More detailed recommendations based on component breakdown
-  const recommendations = [];
+  const recommendations: any[] = [];
   const components = criData.component_scores;
   
   Object.entries(components).forEach(([component, score]) => {

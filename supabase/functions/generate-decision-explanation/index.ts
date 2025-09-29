@@ -99,7 +99,7 @@ Keep the explanation concise but insightful. Focus on building user trust and un
   } catch (error) {
     console.error('Error in generate-decision-explanation:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false 
     }), {
       status: 500,

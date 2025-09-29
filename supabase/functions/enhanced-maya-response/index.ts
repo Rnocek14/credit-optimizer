@@ -104,7 +104,7 @@ serve(async (req) => {
     console.error('Error in enhanced-maya-response:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error occurred',
       response: "I'm experiencing some technical difficulties right now, but I'm here to help with your career development. Could you try rephrasing your question?",
       timestamp: new Date().toISOString(),
     }), {
@@ -117,7 +117,7 @@ serve(async (req) => {
 // Helper function to validate and normalize user IDs
 function validateUserId(userId: string): string {
   // Known demo users
-  const demoUsers = {
+  const demoUsers: { [key: string]: string } = {
     'aisha': '2b458624-d498-4cca-a63d-9341cc20e363',
     'mateo': '3c459625-e499-5ddb-b64d-a442dd21f474', 
     'jade': '4d56a736-f5aa-6eec-c75e-b553ee32e585'
@@ -145,7 +145,7 @@ function analyzeRequestComplexity(request: string, context: any): any {
     requires_skill_analysis: false,
     requires_workflow_creation: false,
     requires_alerts: false,
-    gamification_factors: []
+    gamification_factors: [] as string[]
   };
 
   // Detect request type and requirements
@@ -181,7 +181,7 @@ function analyzeRequestComplexity(request: string, context: any): any {
 
 // Gather comprehensive real-time intelligence including gamification data
 async function gatherRealTimeIntelligence(supabase: any, userId: string, context: any, analysis: any): Promise<any> {
-  const intelligence = {
+  const intelligence: any = {
     userProfile: {},
     marketTrends: {},
     skillGaps: {},
@@ -273,18 +273,18 @@ async function fetchGamificationMetrics(supabase: any, userId: string): Promise<
     if (error) throw error;
 
     // Calculate aggregate metrics
-    const dailyXP = data.filter(m => m.metric_type === 'daily_xp').reduce((sum, m) => sum + Number(m.metric_value), 0);
-    const streakBonus = data.filter(m => m.metric_type === 'streak_bonus').reduce((sum, m) => sum + Number(m.metric_value), 0);
-    const mayaCollaboration = data.filter(m => m.metric_type === 'maya_collaboration');
+    const dailyXP = data.filter((m: any) => m.metric_type === 'daily_xp').reduce((sum: number, m: any) => sum + Number(m.metric_value), 0);
+    const streakBonus = data.filter((m: any) => m.metric_type === 'streak_bonus').reduce((sum: number, m: any) => sum + Number(m.metric_value), 0);
+    const mayaCollaboration = data.filter((m: any) => m.metric_type === 'maya_collaboration');
     const avgMayaScore = mayaCollaboration.length > 0 
-      ? mayaCollaboration.reduce((sum, m) => sum + Number(m.metric_value), 0) / mayaCollaboration.length 
+      ? mayaCollaboration.reduce((sum: number, m: any) => sum + Number(m.metric_value), 0) / mayaCollaboration.length
       : 0;
 
     return {
       daily_xp: dailyXP,
       streak_bonus: streakBonus,
       maya_collaboration_score: avgMayaScore,
-      engagement_trend: data.filter(m => m.metric_type === 'engagement_trend').slice(-1)[0]?.metric_value || 0.5,
+      engagement_trend: data.filter((m: any) => m.metric_type === 'engagement_trend').slice(-1)[0]?.metric_value || 0.5,
       total_metrics_count: data.length
     };
   } catch (error) {
@@ -326,7 +326,7 @@ async function fetchCelebrationHistory(supabase: any, userId: string): Promise<a
     if (error) throw error;
 
     const recent_count = data?.length || 0;
-    const unread_count = data?.filter(c => !c.displayed_at)?.length || 0;
+    const unread_count = data?.filter((c: any) => !c.displayed_at)?.length || 0;
 
     return { recent_count, unread_count, latest_celebrations: data?.slice(0, 3) || [] };
   } catch (error) {
@@ -412,7 +412,7 @@ async function fetchUserAlertStatus(supabase: any, userId: string): Promise<any>
 
     return {
       active_alerts: data?.length || 0,
-      unread_alerts: data?.filter(a => !a.acknowledged_at)?.length || 0,
+      unread_alerts: data?.filter((a: any) => !a.acknowledged_at)?.length || 0,
       latest_alerts: data?.slice(0, 3) || []
     };
   } catch (error) {
@@ -458,7 +458,7 @@ COMPLEXITY: ${analysis.complexity_score}/1.0`;
   const enhancedUserRequest = `${request}
 
 Additional Context:
-- Current career goals: ${realTimeData.userProfile?.careerGoals?.map(g => g.title).join(', ') || 'Not specified'}
+- Current career goals: ${realTimeData.userProfile?.careerGoals?.map((g: any) => g.title).join(', ') || 'Not specified'}
 - Market context: ${realTimeData.marketTrends?.growth_trend || 'stable'} demand
 - Recent learning activity: ${realTimeData.streakData?.current_streak || 0} consecutive days
 - Skill gaps identified: ${realTimeData.skillGaps?.identified_gaps?.join(', ') || 'Assessment pending'}`;
@@ -499,7 +499,7 @@ async function executeAutonomousActions(supabase: any, userId: string, analysis:
 
   } catch (error) {
     console.error('Error executing autonomous actions:', error);
-    actions.push({ type: 'error', message: error.message });
+    actions.push({ type: 'error', message: error instanceof Error ? error.message : 'Unknown error occurred' });
   }
 
   return actions;
@@ -546,11 +546,11 @@ async function createConversationSession(supabase: any, userId: string, analysis
 
 // Generate decision reasoning for transparency
 function generateDecisionReasoning(realTimeData: any, analysis: any, context: any): any {
-  const reasoning = {
+  const reasoning: any = {
     confidence_score: 0.8,
-    primary_factors: [],
-    gamification_influence: {},
-    decision_drivers: [],
+    primary_factors: [] as string[],
+    gamification_influence: {} as any,
+    decision_drivers: [] as string[],
     transparency_note: "This decision was made considering your learning patterns, market data, and current progress."
   };
 

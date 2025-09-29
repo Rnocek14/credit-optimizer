@@ -149,7 +149,7 @@ Requirements:
     }
 
     // 4. Create career steps
-    const stepsToCreate = roadmapData.career_steps.map((step, index) => ({
+    const stepsToCreate = roadmapData.career_steps.map((step: any, index: number) => ({
       ...step,
       career_path_id: careerPath.id,
       step_order: index + 1,
@@ -166,9 +166,9 @@ Requirements:
     }
 
     // 5. Map skills to steps
-    const stepSkillMappings = [];
+    const stepSkillMappings: any[] = [];
     
-    roadmapData.step_skills.forEach(mapping => {
+    roadmapData.step_skills.forEach((mapping: any) => {
       const step = createdSteps[mapping.step_index];
       const skillId = skillIdMap.get(mapping.skill_name);
       
@@ -196,7 +196,7 @@ Requirements:
     for (let i = 0; i < roadmapData.career_steps.length; i++) {
       const stepData = roadmapData.career_steps[i];
       if (stepData.prerequisites && stepData.prerequisites.length > 0) {
-        const prerequisiteIds = stepData.prerequisites.map(prereqIndex => 
+        const prerequisiteIds = stepData.prerequisites.map((prereqIndex: any) => 
           createdSteps[prereqIndex]?.id
         ).filter(Boolean);
 
@@ -230,8 +230,8 @@ Requirements:
   } catch (error) {
     console.error('Error in create-skill-tree function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.stack
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      details: error instanceof Error ? error.stack : undefined
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
