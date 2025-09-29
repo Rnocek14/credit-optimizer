@@ -13,6 +13,7 @@ import { useSuffixCompare } from './useSuffixCompare';
 interface UseApplyDimmingV2Props {
   nodes: Node[];
   edges: Edge[];
+  useClassSystem?: boolean;
 }
 
 interface UseApplyDimmingV2Result {
@@ -21,12 +22,20 @@ interface UseApplyDimmingV2Result {
   mode: RenderMode;
 }
 
-export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
+export function useApplyDimmingV2({ nodes, edges, useClassSystem = false }: UseApplyDimmingV2Props): UseApplyDimmingV2Result {
   const highlight = usePathHighlight();
   const { reachableSet } = useSuffixCompare({ edges });
   
   // Derive render mode from selections
   const mode = deriveRenderMode(highlight.primarySelection, highlight.secondarySelection);
+
+  // Early return for class-based system (Phase 1 - minimal integration)
+  if (useClassSystem) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ApplyDimmingV2] Using class-based system, returning nodes/edges unchanged');
+    }
+    return { nodes, edges, mode };
+  }
 
   // PHASE 2: Bound Highlight Sets to Live Nodes
   const liveNodeIds = useMemo(() => new Set(nodes.map(n => n.id)), [nodes]);

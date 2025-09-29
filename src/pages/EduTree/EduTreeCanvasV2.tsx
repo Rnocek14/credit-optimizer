@@ -20,6 +20,8 @@ import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
 import { EdgeLegend } from './components/EdgeLegend';
+import { classifyNode, classifyEdge, buildVisualCtx } from './utils/nodeClassifier';
+import './styles/nodeClasses.css';
 import HeaderNode from './nodes/HeaderNode';
 import GateEdge from './edges/GateEdge';
 import GateBranchEdge from './edges/GateBranchEdge';
@@ -98,39 +100,56 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const isY1SharedCourse = !programId || programId === null || programId === undefined;
   const viewingProgram = getSingleProgram();
   
-  // Build dynamic classes for program/track styling
-  const trackClasses = [];
-  if (viewingProgram && (programId === viewingProgram || isY1SharedCourse)) {
-    // Map program IDs to CSS class names
-    const programClass = {
-      'bs_cs': 'cs',
-      'bs_it': 'it', 
-      'bsn': 'bsn'
-    }[viewingProgram];
+  // Use class-based system if enabled (Phase 1 implementation)
+  const flags = useFeatureFlags();
+  let nodeClassNames = 'px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative';
+  
+  if (flags.LP_CLASS_SYSTEM && pathHighlight) {
+    // Build visual context from current state
+    const visualCtx = buildVisualCtx(pathHighlight, [{ id: blockId, data, type: 'requirement' }]);
     
-    if (programClass) {
-      trackClasses.push('node', programClass);
+    // Apply semantic classes using the classifier
+    const semanticClasses = classifyNode(blockId, visualCtx);
+    nodeClassNames += ' ' + semanticClasses.join(' ');
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ClassSystem] Applied classes to', blockId, ':', semanticClasses);
+    }
+  } else {
+    // Fallback to old track styling system
+    const trackClasses = [];
+    if (viewingProgram && (programId === viewingProgram || isY1SharedCourse)) {
+      // Map program IDs to CSS class names
+      const programClass = {
+        'bs_cs': 'cs',
+        'bs_it': 'it', 
+        'bsn': 'bsn'
+      }[viewingProgram];
       
-      // Apply track-specific styling for CS, otherwise use base program styling
-      if (viewingProgram === 'bs_cs') {
-        if (trackId === 'se') {
-          trackClasses.push('track--se');
-        } else if (trackId === 'ds') {
-          trackClasses.push('track--ds');
+      if (programClass) {
+        trackClasses.push('node', programClass);
+        
+        // Apply track-specific styling for CS, otherwise use base program styling
+        if (viewingProgram === 'bs_cs') {
+          if (trackId === 'se') {
+            trackClasses.push('track--se');
+          } else if (trackId === 'ds') {
+            trackClasses.push('track--ds');
+          } else {
+            trackClasses.push('track--cs-base');
+          }
         } else {
-          trackClasses.push('track--cs-base');
+          // For other programs, use base program styling
+          trackClasses.push(`track--${programClass}-base`);
         }
-      } else {
-        // For other programs, use base program styling
-        trackClasses.push(`track--${programClass}-base`);
       }
     }
+    
+    nodeClassNames = [
+      'px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative',
+      ...trackClasses
+    ].join(' ');
   }
-  
-  const nodeClassNames = [
-    'px-4 py-3 bg-background border-2 border-border rounded-lg shadow-sm min-w-[180px] relative',
-    ...trackClasses
-  ].join(' ');
 
   return (
     <div className={nodeClassNames}>
@@ -446,8 +465,12 @@ function EduTreeCanvasV2Content({
   // Initialize suffix compare with safe edges
   const suffixCompare = useSuffixCompare({ edges: safeEdges });
 
-  // Then apply dimming to the safe edges (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  // Apply dimming (with feature flag support)
+  const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ 
+    nodes: nodes || [], 
+    edges: safeEdges,
+    useClassSystem: flags.LP_CLASS_SYSTEM ?? false
+  });
 
   // Node position validation - prevent NaN/∞ coordinates
   const safeNodes = useMemo(() => {

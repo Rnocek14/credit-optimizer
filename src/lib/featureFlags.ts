@@ -29,6 +29,7 @@ interface FeatureFlags {
   // Clean Slate V2 Flags
   eduTreeV2Grid: boolean; // Master flag for V2 system
   eduTreeLayoutMode: 'legacy' | 'manual_v1' | 'grid_v2'; // Layout system mode
+  LP_CLASS_SYSTEM: boolean; // Class-based visual system
 }
 
 /**
@@ -141,6 +142,13 @@ export function getFeatureFlags(): FeatureFlags {
       console.log("[Flags][V2Mode]", { urlVal, final: mode });
     }
     return mode;
+  })(),
+
+  // Class-based visual system - enabled by default for development
+  LP_CLASS_SYSTEM: (() => {
+    const urlVal = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('LP_CLASS_SYSTEM') : null;
+    const resolved = toBool(getFlagValue('LP_CLASS_SYSTEM', 'lp-class-system', 'true'));
+    return urlVal !== null ? toBool(urlVal) : resolved;
   })(),
   };
   
