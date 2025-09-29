@@ -33,7 +33,9 @@ if (typeof window !== 'undefined' && import.meta.env.DEV) {
         console.log('✅ Marketplace seeded successfully');
       })
       .catch((error) => {
-        console.error('❌ Failed to seed marketplace:', error);
+        console.error('❌ seed-marketplace failed:', error?.message ?? error);
+        // Log additional details for debugging
+        if (error?.context) console.error('Error context:', error.context);
       });
   }
 }

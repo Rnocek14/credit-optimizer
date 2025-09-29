@@ -74,9 +74,12 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
   const [modalOpen, setModalOpen] = useState(false);
   
-  // Feature flag for marketplace
-  const SHOW_MP = import.meta.env.VITE_LP_DEGREE_MARKETPLACE === '1';
-  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'Env value:', import.meta.env.VITE_LP_DEGREE_MARKETPLACE);
+  // Feature flag for marketplace (supports URL override for demos)
+  const urlFlag = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('mp') === '1'
+    : false;
+  const SHOW_MP = urlFlag || import.meta.env.VITE_LP_DEGREE_MARKETPLACE === '1';
+  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'URL flag:', urlFlag, 'Env value:', import.meta.env.VITE_LP_DEGREE_MARKETPLACE);
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
@@ -160,7 +163,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* Phase 2: Course marketplace chips - gated behind feature flag */}
-      {SHOW_MP && optionsCount && optionsCount > 0 && (
+      {SHOW_MP && Number.isFinite(optionsCount) && optionsCount > 0 && (
         <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
           <button
             onClick={() => setModalOpen(true)}

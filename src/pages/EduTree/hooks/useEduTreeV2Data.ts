@@ -236,10 +236,16 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     };
   }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms]);
   
+  // Helper to identify requirement blocks (resilient to schema variations)
+  const isRequirement = (b: any) =>
+    b.rule_type === 'requirement' ||
+    b.type === 'requirement' ||
+    b.node_type === 'requirement';
+
   // Extract requirement IDs for batch fetching (only requirement blocks, not headers)
   const requirementIds = useMemo(
     () => blocks
-      .filter(b => b.rule_type && b.id && !b.is_empty_year)
+      .filter(b => isRequirement(b) && b.id && !b.is_empty_year)
       .map(b => b.id),
     [blocks]
   );
