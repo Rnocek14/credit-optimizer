@@ -300,7 +300,7 @@ Ensure recommendations are:
   } catch (error) {
     console.error('Error in personalized-market-insights function:', error);
     return new Response(JSON.stringify({
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false
     }), {
       status: 500,

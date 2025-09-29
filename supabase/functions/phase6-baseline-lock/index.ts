@@ -34,7 +34,7 @@ serve(async (req) => {
     } catch (parseError) {
       console.error('❌ Failed to parse request body:', parseError);
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body', details: parseError.message }),
+        JSON.stringify({ error: 'Invalid JSON in request body', details: parseError instanceof Error ? parseError.message : 'Unknown error' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -214,7 +214,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error occurred' 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

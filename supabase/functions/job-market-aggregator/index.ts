@@ -48,7 +48,7 @@ serve(async (req) => {
     console.error('❌ Job market aggregation error:', error);
     return new Response(JSON.stringify({ 
       error: 'Job market aggregation failed',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error occurred' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -79,7 +79,7 @@ async function aggregateJobMarketData(careerPath: string, location: string, sour
       aggregatedResults.push({
         source,
         success: false,
-        error: `Failed to fetch data from ${source}: ${error.message}`
+        error: `Failed to fetch data from ${source}: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
       });
     }
   }

@@ -67,8 +67,8 @@ serve(async (req) => {
       ? userFeedbackDecisions.reduce((sum, d) => sum + (d.user_feedback_rating || 0), 0) / userFeedbackDecisions.length
       : 0
 
-    const autonomousSteps = workflow.workflow_steps?.filter(s => s.is_autonomous).length || 0
-    const manualSteps = workflow.workflow_steps?.filter(s => !s.is_autonomous).length || 0
+    const autonomousSteps = workflow.workflow_steps?.filter((s: any) => s.is_autonomous).length || 0
+    const manualSteps = workflow.workflow_steps?.filter((s: any) => !s.is_autonomous).length || 0
 
     // Check qualification criteria
     const qualificationCriteria = {
@@ -214,7 +214,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

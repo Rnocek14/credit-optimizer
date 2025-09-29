@@ -169,7 +169,7 @@ Focus on:
   } catch (error) {
     console.error('Error generating skill recommendations:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       recommendations: []
     }), {
       status: 500,

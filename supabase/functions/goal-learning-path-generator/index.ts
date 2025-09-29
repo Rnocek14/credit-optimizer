@@ -187,7 +187,7 @@ serve(async (req) => {
         path_nodes: generatedPath.pathNodes,
         estimated_completion_weeks: generatedPath.pathMetrics.totalWeeks,
         cost_estimate: generatedPath.pathMetrics.totalCost,
-        difficulty_level: Math.ceil(generatedPath.pathMetrics.difficultyProgression.reduce((a, b) => a + b, 0) / generatedPath.pathMetrics.difficultyProgression.length),
+        difficulty_level: Math.ceil(generatedPath.pathMetrics.difficultyProgression.reduce((a: number, b: number) => a + b, 0) / generatedPath.pathMetrics.difficultyProgression.length),
         success_rate: generatedPath.pathMetrics.successRate,
         personalization_score: generatedPath.pathMetrics.personalizationScore,
         market_alignment_score: generatedPath.pathMetrics.marketAlignmentScore,
@@ -237,7 +237,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Learning path generation error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false 
     }), {
       status: 500,

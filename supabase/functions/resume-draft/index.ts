@@ -134,7 +134,7 @@ serve(async (req) => {
         projects: data.projects || []
       };
 
-      const bullets = [];
+      const bullets: any[] = [];
       
       // Generate bullets from experience
       if (data.experience) {

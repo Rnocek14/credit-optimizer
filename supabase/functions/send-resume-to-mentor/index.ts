@@ -46,7 +46,7 @@ serve(async (req) => {
     }
 
     // Create proof items summary
-    const proofItems = [];
+    const proofItems: any[] = [];
     steps.forEach((step, index) => {
       const trackIndex = Math.floor(index / 3);
       const track = tracks[trackIndex];
@@ -72,7 +72,7 @@ serve(async (req) => {
       }
 
       if (step.external_links?.length > 0) {
-        step.external_links.forEach((link) => {
+        step.external_links.forEach((link: any) => {
           proofItems.push({
             type: 'External Link',
             title: step.title,
@@ -149,7 +149,7 @@ serve(async (req) => {
           <div style="flex: 1;">
             <h4>📈 Key Strengths</h4>
             <ul>
-              ${aiReview.strengths.map(strength => `<li>${strength}</li>`).join('')}
+              ${aiReview.strengths.map((strength: string) => `<li>${strength}</li>`).join('')}
             </ul>
           </div>
           <div style="flex: 1;">

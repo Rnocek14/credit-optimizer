@@ -122,8 +122,8 @@ serve(async (req) => {
         const contextSummary = {
           profile: profile,
           goals: goals || [],
-          recentActivity: recentActivity.length,
-          lastActivity: recentActivity[0]?.created_at
+          recentActivity: recentActivity?.length || 0,
+          lastActivity: recentActivity?.[0]?.created_at
         };
 
         // Build course recommendation bundle for career/skill_gap/learning insights
@@ -163,6 +163,7 @@ serve(async (req) => {
         console.log(`Generating insights for user ${profile.user_id} with context:`, contextSummary);
         
         let ideas: string[] = [];
+        let parsedIdeas: Array<{content: string, category: string}> = [];
         let insightsGenerated = 0;
         let tokensIn = 0;
         let tokensOut = 0;
@@ -200,11 +201,10 @@ serve(async (req) => {
           tokensOutTotal += tokensOut;
           
           // Try to parse as JSON array of objects first, fallback to strings
-          let parsedIdeas: Array<{content: string, category: string}> = [];
           try {
             const parsed = JSON.parse(rawOutput.trim());
             if (Array.isArray(parsed)) {
-              parsedIdeas = parsed.map(item => 
+              parsedIdeas = parsed.map((item: any) =>
                 typeof item === 'object' && item.content 
                   ? { content: item.content, category: item.category || 'career' }
                   : { content: String(item), category: 'career' }
@@ -216,9 +216,9 @@ serve(async (req) => {
             parsedIdeas = stringIdeas.map(content => ({ content, category: 'career' }));
           }
           
-          ideas = parsedIdeas.map(idea => idea.content);
+          ideas = parsedIdeas.map((idea: {content: string, category: string}) => idea.content);
           parsedCountTotal += ideas.length;
-          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, parsedIdeas.map(i => i.content.slice(0, 60)));
+          console.log(`OpenAI generated ${ideas.length} ideas for user ${profile.user_id}:`, parsedIdeas.map((i: {content: string, category: string}) => i.content.slice(0, 60)));
         } catch (aiError) {
           console.error(`OpenAI call failed for user ${profile.user_id}:`, aiError);
           

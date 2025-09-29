@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   return withCircuitBreaker(async () => {
-    const { prompt, context = {}, persist = true } = await safeJson(req);
+    const { prompt, context = {}, persist = true } = await safeJson<{prompt: string, context?: any, persist?: boolean}>(req);
     const { user, supabase } = await requireUser(req);
 
     await rateLimit(user.id, "maya_chat", 60, 20); // 20/min per user
@@ -57,14 +57,14 @@ Guidelines:
 Return your response as a helpful career guidance message.`;
 
     const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: prompt }
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: prompt }
     ];
 
     const completion = await oai.chat.completions.create({
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-4o-mini",
       messages,
-      max_completion_tokens: 500,
+      max_tokens: 500,
     });
 
     const response = completion.choices?.[0]?.message?.content ?? "Sorry, I couldn't generate a response.";

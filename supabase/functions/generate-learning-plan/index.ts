@@ -97,7 +97,7 @@ serve(async (req) => {
     if (context?.experience_level === 'beginner') {
       const foundationSkills = skillNodes?.filter(skill => 
         skill.difficulty_level <= 2 && 
-        skillGaps.some(gap => skill.title.toLowerCase().includes(gap.toLowerCase()))
+        skillGaps.some((gap: string) => skill.title.toLowerCase().includes(gap.toLowerCase()))
       ) || [];
 
       foundationSkills.slice(0, 3).forEach((skill, index) => {
@@ -120,13 +120,13 @@ serve(async (req) => {
     // Phase 2: Core Skills Development
     const coreSkills = skillNodes?.filter(skill => 
       skill.difficulty_level <= 3 && 
-      skillGaps.some(gap => skill.title.toLowerCase().includes(gap.toLowerCase()))
+      skillGaps.some((gap: string) => skill.title.toLowerCase().includes(gap.toLowerCase()))
     ) || [];
 
     coreSkills.slice(0, 4).forEach((skill, index) => {
       const relevantCourses = courseNodes?.filter(course => 
         course.title.toLowerCase().includes(skill.title.toLowerCase()) ||
-        course.semantic_tags?.some(tag => 
+        course.semantic_tags?.some((tag: string) => 
           skill.semantic_tags?.includes(tag)
         )
       ).slice(0, 3) || [];
@@ -153,9 +153,9 @@ serve(async (req) => {
 
     // Phase 3: Practical Application & Certification
     const relevantCerts = certNodes?.filter(cert => 
-      skillGaps.some(gap => 
+      skillGaps.some((gap: string) => 
         cert.title.toLowerCase().includes(gap.toLowerCase()) ||
-        cert.semantic_tags?.some(tag => gap.toLowerCase().includes(tag.toLowerCase()))
+        cert.semantic_tags?.some((tag: string) => gap.toLowerCase().includes(tag.toLowerCase()))
       )
     ) || [];
 
@@ -264,7 +264,7 @@ serve(async (req) => {
     console.error('Error in generate-learning-plan:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       learning_plan: null
     }), {
       status: 500,

@@ -181,7 +181,7 @@ Return ONLY valid JSON in this exact format:
     console.error('❌ Error in recommend-pivot-paths:', error)
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
         pivots: []
       }),
       { 

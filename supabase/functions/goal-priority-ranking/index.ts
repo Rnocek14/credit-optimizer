@@ -155,7 +155,7 @@ serve(async (req) => {
     console.error('Error in goal-priority-ranking:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       ranked_goals: []
     }), {
       status: 500,

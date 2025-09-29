@@ -151,7 +151,7 @@ Consider:
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
         matches: []
       }),
       { 
@@ -196,8 +196,8 @@ function extractSemanticTags(node: any, matches: any[]): string[] {
   // Extract keywords from title
   const titleWords = node.title.toLowerCase()
     .split(/[^a-z0-9]/g)
-    .filter(word => word.length > 3);
-  titleWords.forEach(word => tags.add(word));
+    .filter((word: string) => word.length > 3);
+  titleWords.forEach((word: string) => tags.add(word));
   
   // Add relationship types from matches
   matches.forEach(match => {

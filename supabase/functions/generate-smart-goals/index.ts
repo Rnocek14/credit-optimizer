@@ -248,7 +248,7 @@ serve(async (req) => {
     console.error('Error generating smart goals:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
         fallback_goals: [
           {
             id: crypto.randomUUID(),

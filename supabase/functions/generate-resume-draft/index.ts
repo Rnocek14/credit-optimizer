@@ -223,7 +223,7 @@ Create a professional resume draft that positions this learner for their target 
   } catch (error) {
     console.error('Error in generate-resume-draft function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred' 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

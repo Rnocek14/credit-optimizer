@@ -189,7 +189,7 @@ Respond with a JSON object containing these exact fields:
   } catch (error) {
     console.error('Error in generate-predictive-analysis:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false 
     }), {
       status: 500,

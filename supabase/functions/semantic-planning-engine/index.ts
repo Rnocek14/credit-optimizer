@@ -115,7 +115,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in semantic-planning-engine:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -393,7 +393,7 @@ async function findPathSubstitutions(supabase: any, path: any, userContext: any)
       const nodeSubstitutions = await findNodeSubstitutions(supabase, node.id, userContext);
       substitutions.push(...nodeSubstitutions);
     } catch (error) {
-      console.warn(`Failed to find substitutions for node ${node.id}:`, error.message);
+      console.warn(`Failed to find substitutions for node ${node.id}:`, error instanceof Error ? error.message : 'Unknown error');
     }
   }
 

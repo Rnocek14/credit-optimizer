@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
     console.error('Error in pattern recognition engine:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -428,18 +428,18 @@ async function calculateMarketCorrelations(supabase: any, careerPath: string, lo
   if (!otherCareers) return [];
 
   const correlations: any[] = [];
-  const uniqueCareers = [...new Set(otherCareers.map(d => d.career_path))];
+  const uniqueCareers = [...new Set(otherCareers.map((d: any) => d.career_path))];
 
   for (const otherCareer of uniqueCareers) {
     const otherCareerData = otherCareers
-      .filter(d => d.career_path === otherCareer)
+      .filter((d: any) => d.career_path === otherCareer)
       .slice(-30); // Last 30 data points
 
     if (otherCareerData.length < 10) continue;
 
     const correlation = calculateCorrelation(
-      currentData.map(d => d.demand_score || 0),
-      otherCareerData.map(d => d.demand_score || 0)
+      currentData.map((d: any) => d.demand_score || 0),
+      otherCareerData.map((d: any) => d.demand_score || 0)
     );
 
     if (Math.abs(correlation) > 0.3) { // Only store significant correlations
