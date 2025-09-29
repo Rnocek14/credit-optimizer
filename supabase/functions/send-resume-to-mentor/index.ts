@@ -155,14 +155,14 @@ serve(async (req) => {
           <div style="flex: 1;">
             <h4>🎯 Growth Areas</h4>
             <ul>
-              ${aiReview.gaps.map(gap => `<li>${gap}</li>`).join('')}
+              ${aiReview.gaps.map((gap: string) => `<li>${gap}</li>`).join('')}
             </ul>
           </div>
         </div>
         
         <h4>🏷️ Professional Status</h4>
         <div>
-          ${aiReview.taglines.map(tagline => `<span class="badge">${tagline}</span>`).join(' ')}
+          ${aiReview.taglines.map((tagline: string) => `<span class="badge">${tagline}</span>`).join(' ')}
         </div>
       </div>
       ` : ''}
@@ -241,7 +241,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in send-resume-to-mentor function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

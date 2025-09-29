@@ -114,7 +114,7 @@ serve(async (req) => {
     console.log(`Created ${insertedGroups.length} study groups`);
 
     // Add members to groups
-    const groupMembers = [];
+    const groupMembers: any[] = [];
     insertedGroups.forEach(group => {
       // Add creator as leader
       groupMembers.push({
@@ -207,7 +207,7 @@ serve(async (req) => {
     console.log(`Created ${insertedChallenges.length} learning challenges`);
 
     // Add challenge participants
-    const challengeParticipants = [];
+    const challengeParticipants: any[] = [];
     insertedChallenges.forEach(challenge => {
       demoUsers.forEach(userId => {
         challengeParticipants.push({
@@ -279,7 +279,7 @@ serve(async (req) => {
     console.log(`Created ${peerFeedback.length} peer feedback entries`);
 
     // Generate social learning analytics
-    const analytics = [];
+    const analytics: any[] = [];
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
@@ -351,8 +351,8 @@ serve(async (req) => {
     console.error('Error in social learning seeder:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error instanceof Error ? error.toString() : String(error)
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
