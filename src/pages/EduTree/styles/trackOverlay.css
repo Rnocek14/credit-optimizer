@@ -70,18 +70,16 @@
 .hl--primary {
   opacity: 1;
   background-color: var(--track-primary-bg);
-  border: 3px solid var(--track-primary-border);
+  border: 2px solid var(--track-primary-border);
   border-radius: 8px;
   box-shadow: 
-    0 0 0 2px var(--track-primary-bg),
-    0 4px 16px oklch(0.60 0.15 142 / 0.3),
-    inset 0 0 0 2px oklch(0.60 0.15 142 / 0.15);
-  transform: translateY(-2px) scale(1.01);
+    0 0 0 1px var(--track-primary-bg),
+    0 2px 8px oklch(0.60 0.15 142 / 0.2),
+    inset 0 0 0 1px oklch(0.60 0.15 142 / 0.1);
+  transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
   /* Ensure text is readable on light backgrounds */
   color: oklch(0.20 0.10 142) !important;
-  position: relative;
-  z-index: 10;
 }
 
 .hl--primary * {
@@ -91,18 +89,16 @@
 .hl--comparison {
   opacity: 1;
   background-color: var(--track-comparison-bg);
-  border: 3px dashed var(--track-comparison-border);
+  border: 2px dashed var(--track-comparison-border);
   border-radius: 8px;
   box-shadow: 
-    0 0 0 2px var(--track-comparison-bg),
-    0 4px 16px oklch(0.70 0.18 25 / 0.3),
-    inset 0 0 0 2px oklch(0.70 0.18 25 / 0.15);
-  transform: translateY(-2px) scale(1.01);
+    0 0 0 1px var(--track-comparison-bg),
+    0 2px 8px oklch(0.70 0.18 25 / 0.2),
+    inset 0 0 0 1px oklch(0.70 0.18 25 / 0.1);
+  transform: translateY(-1px);
   transition: all var(--motion-normal) var(--ease-standard);
   /* Ensure text is readable on light backgrounds */
   color: oklch(0.25 0.12 25) !important;
-  position: relative;
-  z-index: 10;
 }
 
 .hl--comparison * {
@@ -112,19 +108,16 @@
 .hl--both {
   opacity: 1;
   background-color: var(--track-shared-bg);
-  border: 4px double var(--track-shared-border);
-  border-radius: 10px;
+  border: 3px solid var(--track-shared-border);
+  border-radius: 8px;
   box-shadow: 
-    0 0 0 3px var(--track-shared-bg),
-    0 6px 24px oklch(0.70 0.20 280 / 0.4),
-    inset 0 0 0 2px oklch(0.70 0.20 280 / 0.2),
-    0 0 0 6px oklch(0.70 0.20 280 / 0.1);
-  transform: translateY(-3px) scale(1.03);
+    0 0 0 1px var(--track-shared-bg),
+    0 4px 12px oklch(0.70 0.20 280 / 0.3),
+    inset 0 0 0 1px oklch(0.70 0.20 280 / 0.15);
+  transform: translateY(-2px) scale(1.02);
   transition: all var(--motion-normal) var(--ease-standard);
   /* Ensure text is readable on light backgrounds */
   color: oklch(0.25 0.15 280) !important;
-  position: relative;
-  z-index: 15;
 }
 
 .hl--both * {
@@ -338,122 +331,3 @@
 .evi--pill.evi--ok   { border-color: rgba(120,255,160,0.5); }
 .evi--pill.evi--ip   { border-color: rgba(255,220,120,0.5); }
 .evi--pill.evi--xfer { border-color: rgba(140,200,255,0.5); }
-
-/* Program-specific enhanced styling */
-.node--program-cs {
-  position: relative;
-}
-
-.node--program-cs::before {
-  content: "CS";
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--track-primary);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  z-index: 20;
-  box-shadow: 0 2px 4px oklch(0.60 0.15 142 / 0.3);
-}
-
-.node--program-it {
-  position: relative;
-}
-
-.node--program-it::before {
-  content: "IT";
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--track-comparison);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  z-index: 20;
-  box-shadow: 0 2px 4px oklch(0.70 0.18 25 / 0.3);
-}
-
-.node--program-bsn {
-  position: relative;
-}
-
-.node--program-bsn::before {
-  content: "BSN";
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--bsn-base-border);
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  z-index: 20;
-  box-shadow: 0 2px 4px oklch(0.65 0.15 320 / 0.3);
-}
-
-.node--track-se {
-  border-left: 4px solid var(--cs-se-border) !important;
-}
-
-.node--track-ds {
-  border-left: 4px solid var(--cs-ds-border) !important;
-}
-
-/* Enhanced edge styling for better distinction */
-.edu-tree-canvas .react-flow__edge.edge--primary .react-flow__edge-path {
-  stroke: var(--track-primary);
-  stroke-width: 4px;
-  filter: drop-shadow(0 2px 4px oklch(0.60 0.15 142 / 0.5));
-  transition: all var(--motion-fast) var(--ease-standard);
-}
-
-.edu-tree-canvas .react-flow__edge.edge--comparison .react-flow__edge-path {
-  stroke: var(--track-comparison);
-  stroke-width: 4px;
-  stroke-dasharray: 12 6;
-  filter: drop-shadow(0 2px 4px oklch(0.70 0.18 25 / 0.5));
-  transition: all var(--motion-fast) var(--ease-standard);
-}
-
-.edu-tree-canvas .react-flow__edge.edge--both .react-flow__edge-path {
-  stroke: var(--track-shared);
-  stroke-width: 6px;
-  stroke-dasharray: 8 4 2 4;
-  filter: drop-shadow(0 3px 6px oklch(0.70 0.20 280 / 0.6));
-  transition: all var(--motion-fast) var(--ease-standard);
-}
-
-/* Enhanced hover effects for better interactivity */
-.hl--primary:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 
-    0 0 0 2px var(--track-primary-bg),
-    0 8px 32px oklch(0.60 0.15 142 / 0.4),
-    inset 0 0 0 2px oklch(0.60 0.15 142 / 0.2);
-  cursor: pointer;
-}
-
-.hl--comparison:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 
-    0 0 0 2px var(--track-comparison-bg),
-    0 8px 32px oklch(0.70 0.18 25 / 0.4),
-    inset 0 0 0 2px oklch(0.70 0.18 25 / 0.2);
-  cursor: pointer;
-}
-
-.hl--both:hover {
-  transform: translateY(-4px) scale(1.04);
-  box-shadow: 
-    0 0 0 3px var(--track-shared-bg),
-    0 12px 48px oklch(0.70 0.20 280 / 0.5),
-    inset 0 0 0 2px oklch(0.70 0.20 280 / 0.25),
-    0 0 0 8px oklch(0.70 0.20 280 / 0.15);
-  cursor: pointer;
-}
