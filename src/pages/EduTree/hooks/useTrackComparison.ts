@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import { TRACK_MAP, type TrackId } from '../data/trackDefinitions';
+import { withNodeHL, withEdgeHL, withProgramClass, withMultipleClasses } from '../utils/highlightClasses';
+import { generateDebugInfo, logHighlightDebugInfo } from '../utils/debugHighlights';
 
 // Edge ID normalization helper
 export const eid = (source: string, target: string) => `e-${String(source)}-${String(target)}`;
@@ -167,67 +169,95 @@ export function useTrackComparison({
     if (!overlayEnabled) return nodes;
 
     return nodes.map(node => {
-      // Keep original classes but ensure clean highlight class management
-      const baseClasses = node.className ? node.className.split(' ').filter(c => !c.startsWith('hl')) : [];
-      let hlClass = 'hl';
+      let finalClasses = node.className || '';
       
+      // Apply highlight classification
       if (highlights.sharedNodes.has(node.id)) {
-        hlClass += ' hl--both';
+        finalClasses = withNodeHL(finalClasses, 'hl--both');
       } else if (highlights.primaryNodes.has(node.id)) {
-        hlClass += ' hl--primary';
+        finalClasses = withNodeHL(finalClasses, 'hl--primary');
       } else if (highlights.comparisonNodes.has(node.id)) {
-        hlClass += ' hl--comparison';
+        finalClasses = withNodeHL(finalClasses, 'hl--comparison');
       } else {
-        hlClass += ' hl--dim';
+        finalClasses = withNodeHL(finalClasses, 'hl--dim');
+      }
+
+      // Add program-specific classes based on track IDs
+      const nodeData = node.data as any;
+      const blockData = nodeData?.block || nodeData;
+      
+      if (primaryTrackId?.includes('cs') && highlights.primaryNodes.has(node.id)) {
+        finalClasses = withProgramClass(finalClasses, 'node--program-cs');
+        if (primaryTrackId.includes('se')) {
+          finalClasses = withProgramClass(finalClasses, 'node--track-se');
+        } else if (primaryTrackId.includes('ds')) {
+          finalClasses = withProgramClass(finalClasses, 'node--track-ds');
+        }
+      }
+      
+      if (comparisonTrackId?.includes('it') && highlights.comparisonNodes.has(node.id)) {
+        finalClasses = withProgramClass(finalClasses, 'node--program-it');
+      }
+      
+      if (comparisonTrackId?.includes('bsn') && highlights.comparisonNodes.has(node.id)) {
+        finalClasses = withProgramClass(finalClasses, 'node--program-bsn');
       }
 
       return {
         ...node,
-        className: [...baseClasses, hlClass].join(' ')
+        className: finalClasses
       };
     });
-  }, [nodes, highlights, overlayEnabled]);
+  }, [nodes, highlights, overlayEnabled, primaryTrackId, comparisonTrackId]);
 
   const highlightedEdges = useMemo(() => {
     if (!overlayEnabled) return edges;
 
     return edges.map(edge => {
-      // Preserve original classes but clean highlight management
-      const baseClasses = edge.className ? edge.className.split(' ').filter(c => !c.startsWith('edge--')) : [];
-      let hlClass = '';
+      let finalClasses = edge.className || '';
       
-      if (overlayEnabled) {
-        if (highlights.sharedEdges.has(edge.id)) {
-          hlClass = 'edge--both';
-        } else if (highlights.primaryEdges.has(edge.id)) {
-          hlClass = 'edge--primary';
-        } else if (highlights.comparisonEdges.has(edge.id)) {
-          hlClass = 'edge--comparison';
-        } else {
-          hlClass = 'edge--dim';
-        }
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[EdgeClass] ${edge.id}: base(${baseClasses.join(' ')}) + ${hlClass}`);
+      if (highlights.sharedEdges.has(edge.id)) {
+        finalClasses = withEdgeHL(finalClasses, 'edge--both');
+      } else if (highlights.primaryEdges.has(edge.id)) {
+        finalClasses = withEdgeHL(finalClasses, 'edge--primary');
+      } else if (highlights.comparisonEdges.has(edge.id)) {
+        finalClasses = withEdgeHL(finalClasses, 'edge--comparison');
+      } else {
+        finalClasses = withEdgeHL(finalClasses, 'edge--dim');
       }
 
       return {
         ...edge,
-        className: [...baseClasses, hlClass].filter(Boolean).join(' ')
+        className: finalClasses
       };
     });
   }, [edges, highlights, overlayEnabled]);
 
-  // Debug info
-  const debugInfo = useMemo(() => ({
-    overlayReady: overlayEnabled && !!primaryTrackId,
-    resolvedBlocks: nodeIdByBlockId.size,
-    anyMatches: highlights.primaryNodes.size > 0,
-    primaryCount: highlights.primaryNodes.size,
-    comparisonCount: highlights.comparisonNodes.size,
-    sharedCount: highlights.sharedNodes.size
-  }), [overlayEnabled, primaryTrackId, nodeIdByBlockId.size, highlights]);
+  // Enhanced debug info with logging
+  const debugInfo = useMemo(() => {
+    const info = generateDebugInfo(
+      highlights,
+      primaryTrackId,
+      comparisonTrackId,
+      nodes.length,
+      edges.length
+    );
+    
+    // Log debug info in development
+    if (process.env.NODE_ENV === 'development' && overlayEnabled) {
+      logHighlightDebugInfo(info);
+    }
+    
+    return {
+      overlayReady: overlayEnabled && !!primaryTrackId,
+      resolvedBlocks: nodeIdByBlockId.size,
+      anyMatches: highlights.primaryNodes.size > 0,
+      primaryCount: highlights.primaryNodes.size,
+      comparisonCount: highlights.comparisonNodes.size,
+      sharedCount: highlights.sharedNodes.size,
+      ...info
+    };
+  }, [overlayEnabled, primaryTrackId, comparisonTrackId, nodeIdByBlockId.size, highlights, nodes.length, edges.length]);
 
   return {
     highlightedNodes,
