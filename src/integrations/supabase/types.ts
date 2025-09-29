@@ -3010,6 +3010,51 @@ export type Database = {
         }
         Relationships: []
       }
+      course_prereqs: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          id: string
+          min_grade: string | null
+          prereq_course_id: string | null
+          prereq_skill_id: string | null
+          required: boolean | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          id?: string
+          min_grade?: string | null
+          prereq_course_id?: string | null
+          prereq_skill_id?: string | null
+          required?: boolean | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          min_grade?: string | null
+          prereq_course_id?: string | null
+          prereq_skill_id?: string | null
+          required?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_prereqs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_prereqs_prereq_course_id_fkey"
+            columns: ["prereq_course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_progress: {
         Row: {
           completed_at: string | null
@@ -3793,6 +3838,69 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+        }
+        Relationships: []
+      }
+      equivalence_group_members: {
+        Row: {
+          confidence: number | null
+          course_id: string
+          created_at: string | null
+          group_id: string
+          id: string
+          source: string
+        }
+        Insert: {
+          confidence?: number | null
+          course_id: string
+          created_at?: string | null
+          group_id: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          confidence?: number | null
+          course_id?: string
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equivalence_group_members_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equivalence_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "equivalence_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      equivalence_groups: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -5285,6 +5393,80 @@ export type Database = {
           time_period?: string | null
         }
         Relationships: []
+      }
+      marketplace_courses: {
+        Row: {
+          active: boolean | null
+          code: string
+          completion_rate: number | null
+          cost_usd: number | null
+          created_at: string | null
+          credits: number
+          cri_score: number | null
+          description: string | null
+          duration_weeks: number | null
+          id: string
+          instructor_rating: number | null
+          level: number | null
+          modality: Database["public"]["Enums"]["modality_type"] | null
+          provider_id: string
+          skill_tags: string[] | null
+          start_dates: Json | null
+          syllabus_text: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          code: string
+          completion_rate?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          credits?: number
+          cri_score?: number | null
+          description?: string | null
+          duration_weeks?: number | null
+          id?: string
+          instructor_rating?: number | null
+          level?: number | null
+          modality?: Database["public"]["Enums"]["modality_type"] | null
+          provider_id: string
+          skill_tags?: string[] | null
+          start_dates?: Json | null
+          syllabus_text?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string
+          completion_rate?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          credits?: number
+          cri_score?: number | null
+          description?: string | null
+          duration_weeks?: number | null
+          id?: string
+          instructor_rating?: number | null
+          level?: number | null
+          modality?: Database["public"]["Enums"]["modality_type"] | null
+          provider_id?: string
+          skill_tags?: string[] | null
+          start_dates?: Json | null
+          syllabus_text?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       maya_context_tracking: {
         Row: {
@@ -7077,6 +7259,51 @@ export type Database = {
         }
         Relationships: []
       }
+      program_requirements: {
+        Row: {
+          category: string
+          created_at: string | null
+          credits_required: number
+          description: string | null
+          id: string
+          max_select: number | null
+          min_select: number | null
+          name: string
+          program_id: string
+          requirement_block_id: string | null
+          track_id: string | null
+          year: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          credits_required?: number
+          description?: string | null
+          id?: string
+          max_select?: number | null
+          min_select?: number | null
+          name: string
+          program_id: string
+          requirement_block_id?: string | null
+          track_id?: string | null
+          year?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          credits_required?: number
+          description?: string | null
+          id?: string
+          max_select?: number | null
+          min_select?: number | null
+          name?: string
+          program_id?: string
+          requirement_block_id?: string | null
+          track_id?: string | null
+          year?: number | null
+        }
+        Relationships: []
+      }
       project_skills: {
         Row: {
           created_at: string | null
@@ -7318,6 +7545,45 @@ export type Database = {
           },
         ]
       }
+      providers: {
+        Row: {
+          accreditation: string | null
+          active: boolean | null
+          country: string | null
+          created_at: string | null
+          id: string
+          name: string
+          policies: Json | null
+          type: Database["public"]["Enums"]["provider_type"]
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          accreditation?: string | null
+          active?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          policies?: Json | null
+          type: Database["public"]["Enums"]["provider_type"]
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          accreditation?: string | null
+          active?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          policies?: Json | null
+          type?: Database["public"]["Enums"]["provider_type"]
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       recommended_courses: {
         Row: {
           active: boolean | null
@@ -7487,6 +7753,50 @@ export type Database = {
             columns: ["parent_block_id"]
             isOneToOne: false
             referencedRelation: "requirement_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirement_options: {
+        Row: {
+          created_at: string | null
+          credits_awarded: number | null
+          id: string
+          min_grade: string | null
+          notes: string | null
+          option_kind: Database["public"]["Enums"]["option_kind"]
+          option_ref_id: string
+          requirement_id: string
+          transfer_eligible: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits_awarded?: number | null
+          id?: string
+          min_grade?: string | null
+          notes?: string | null
+          option_kind: Database["public"]["Enums"]["option_kind"]
+          option_ref_id: string
+          requirement_id: string
+          transfer_eligible?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          credits_awarded?: number | null
+          id?: string
+          min_grade?: string | null
+          notes?: string | null
+          option_kind?: Database["public"]["Enums"]["option_kind"]
+          option_ref_id?: string
+          requirement_id?: string
+          transfer_eligible?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_options_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
             referencedColumns: ["id"]
           },
         ]
@@ -9356,6 +9666,39 @@ export type Database = {
           },
         ]
       }
+      transfer_rules: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          description: string | null
+          details: Json | null
+          id: string
+          rule_kind: Database["public"]["Enums"]["rule_kind"]
+          to_program_id: string
+          value: number
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          details?: Json | null
+          id?: string
+          rule_kind: Database["public"]["Enums"]["rule_kind"]
+          to_program_id: string
+          value: number
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          details?: Json | null
+          id?: string
+          rule_kind?: Database["public"]["Enums"]["rule_kind"]
+          to_program_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       trust_badge_shares: {
         Row: {
           created_at: string
@@ -10137,6 +10480,129 @@ export type Database = {
           last_accessed_at?: string | null
           share_token?: string | null
           title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plan_courses: {
+        Row: {
+          cost_paid: number | null
+          course_id: string
+          created_at: string | null
+          credits_earned: number | null
+          grade: string | null
+          id: string
+          notes: string | null
+          plan_id: string
+          planned_term: string | null
+          provider_id: string
+          requirement_id: string | null
+          status: Database["public"]["Enums"]["plan_status"] | null
+          transfer_source: Database["public"]["Enums"]["transfer_source"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          cost_paid?: number | null
+          course_id: string
+          created_at?: string | null
+          credits_earned?: number | null
+          grade?: string | null
+          id?: string
+          notes?: string | null
+          plan_id: string
+          planned_term?: string | null
+          provider_id: string
+          requirement_id?: string | null
+          status?: Database["public"]["Enums"]["plan_status"] | null
+          transfer_source?:
+            | Database["public"]["Enums"]["transfer_source"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          cost_paid?: number | null
+          course_id?: string
+          created_at?: string | null
+          credits_earned?: number | null
+          grade?: string | null
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          planned_term?: string | null
+          provider_id?: string
+          requirement_id?: string | null
+          status?: Database["public"]["Enums"]["plan_status"] | null
+          transfer_source?:
+            | Database["public"]["Enums"]["transfer_source"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_plan_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "user_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_plan_courses_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "program_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_plans: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          name: string
+          program_id: string
+          target_graduation: string | null
+          track_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          name: string
+          program_id: string
+          target_graduation?: string | null
+          track_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          name?: string
+          program_id?: string
+          target_graduation?: string | null
+          track_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -11302,6 +11768,17 @@ export type Database = {
         | "masterclass"
         | "other"
       app_role: "user" | "admin" | "mentor"
+      modality_type: "online" | "in_person" | "hybrid"
+      option_kind: "course" | "exam" | "cert"
+      plan_status: "planned" | "enrolled" | "complete" | "dropped"
+      provider_type: "university" | "mooc" | "bootcamp" | "testing_center"
+      rule_kind:
+        | "residency_min"
+        | "transfer_max"
+        | "upper_division_min"
+        | "provider_blacklist"
+        | "time_limit"
+      transfer_source: "ACE" | "NCCRS" | "CLEP" | "XFER" | "HOME" | "DSST"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -11438,6 +11915,18 @@ export const Constants = {
         "other",
       ],
       app_role: ["user", "admin", "mentor"],
+      modality_type: ["online", "in_person", "hybrid"],
+      option_kind: ["course", "exam", "cert"],
+      plan_status: ["planned", "enrolled", "complete", "dropped"],
+      provider_type: ["university", "mooc", "bootcamp", "testing_center"],
+      rule_kind: [
+        "residency_min",
+        "transfer_max",
+        "upper_division_min",
+        "provider_blacklist",
+        "time_limit",
+      ],
+      transfer_source: ["ACE", "NCCRS", "CLEP", "XFER", "HOME", "DSST"],
     },
   },
 } as const
