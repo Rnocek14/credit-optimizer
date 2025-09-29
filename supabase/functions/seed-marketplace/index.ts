@@ -496,7 +496,41 @@ serve(async (req) => {
 
     console.log(`Inserted ${options.length} requirement options`);
 
-    // 6. Add Transfer Rules
+    // 6. Create block-to-requirement mappings
+    const blockMappings = [
+      // Year 1 blocks (CS)
+      { block_id: 'y1-math', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-College Mathematics') },
+      { block_id: 'y1-eng', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-English Composition') },
+      { block_id: 'y1-prog', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-Introduction to Programming') },
+      
+      // Year 1 blocks (IT)
+      { block_id: 'y1-math', program_id: 'bs_it', requirement_id: reqMap.get('bs_it-College Mathematics') },
+      { block_id: 'y1-eng', program_id: 'bs_it', requirement_id: reqMap.get('bs_it-English Composition') },
+      { block_id: 'y1-prog', program_id: 'bs_it', requirement_id: reqMap.get('bs_it-Introduction to Programming') },
+      
+      // Year 2 blocks (CS)
+      { block_id: 'y2-calc', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-Calculus I') },
+      
+      // Additional common block IDs from the canvas
+      { block_id: 'y1-genedA', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-College Mathematics') },
+      { block_id: 'y1-genedB', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-English Composition') },
+      { block_id: 'y2-cs-core', program_id: 'bs_cs', requirement_id: reqMap.get('bs_cs-Introduction to Programming') },
+      { block_id: 'y2-it-core', program_id: 'bs_it', requirement_id: reqMap.get('bs_it-Introduction to Programming') },
+    ].filter(m => m.requirement_id); // Only keep valid mappings
+
+    const { data: mappings, error: mappingsError } = await supabaseClient
+      .from('block_requirement_map')
+      .upsert(blockMappings, { onConflict: 'block_id,program_id' })
+      .select();
+
+    if (mappingsError) {
+      console.error('Error inserting block mappings:', mappingsError);
+      throw mappingsError;
+    }
+
+    console.log(`Inserted ${mappings.length} block→requirement mappings`);
+
+    // 7. Add Transfer Rules
     const transferRules = [
       {
         to_program_id: 'bs_cs',
@@ -545,6 +579,7 @@ serve(async (req) => {
         equivalence_groups: groups.length,
         program_requirements: requirements.length,
         requirement_options: options.length,
+        block_mappings: mappings.length,
         transfer_rules: rules.length
       }
     };
