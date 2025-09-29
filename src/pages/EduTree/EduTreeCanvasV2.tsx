@@ -76,6 +76,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   
   // Feature flag for marketplace
   const SHOW_MP = import.meta.env.VITE_LP_DEGREE_MARKETPLACE === '1';
+  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'Env value:', import.meta.env.VITE_LP_DEGREE_MARKETPLACE);
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;

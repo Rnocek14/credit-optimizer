@@ -236,9 +236,11 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     };
   }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms]);
   
-  // Extract requirement IDs for batch fetching (all blocks with IDs)
+  // Extract requirement IDs for batch fetching (only requirement blocks, not headers)
   const requirementIds = useMemo(
-    () => blocks.filter(b => b.id && !b.is_empty_year).map(b => b.id),
+    () => blocks
+      .filter(b => b.rule_type && b.id && !b.is_empty_year)
+      .map(b => b.id),
     [blocks]
   );
   
