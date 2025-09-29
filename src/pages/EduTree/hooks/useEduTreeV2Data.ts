@@ -243,12 +243,19 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     b.node_type === 'requirement';
 
   // Extract requirement IDs for batch fetching (only requirement blocks, not headers)
-  const requirementIds = useMemo(
-    () => blocks
+  const requirementIds = useMemo(() => {
+    const ids = blocks
       .filter(b => isRequirement(b) && b.id && !b.is_empty_year)
-      .map(b => b.id),
-    [blocks]
-  );
+      .map(b => b.id);
+    
+    // DEBUG: Expose for console probing
+    if (typeof window !== 'undefined') {
+      (window as any).__mpRequirementIds = ids;
+    }
+    console.log('[MP] 📦 requirementIds (final visible blocks):', ids);
+    
+    return ids;
+  }, [blocks]);
   
   // Batch fetch marketplace data and selected courses
   const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
