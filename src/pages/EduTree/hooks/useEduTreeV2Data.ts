@@ -277,25 +277,44 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   }, [selectedPrograms, effectiveFilterMode]);
   
   // Get visible block IDs from merged blocks (after filtering)
+  // Map slugs to UUIDs since DB tables use UUIDs for foreign keys
   const visibleBlockIds = useMemo(() => {
     if (!isV2Mode || !liveBlocksData) return [];
+    
     const mergedBlocks = mergeBlocksWithLiveData(GOLDEN_LAYOUT_SEED.blocks, liveBlocksData as DBBlock[] | undefined);
     const filteredBlocks = filterBlocksByMode(mergedBlocks, effectiveFilterMode, { programs: selectedPrograms });
-    const ids = filteredBlocks.map(b => String(b.id)).filter(Boolean);
+    
+    // Build slug -> UUID map from live database data
+    const slugToUUID = new Map<string, string>();
+    (liveBlocksData as DBBlock[] || []).forEach((dbBlock: DBBlock) => {
+      if (dbBlock.slug && dbBlock.id) {
+        slugToUUID.set(String(dbBlock.slug).toLowerCase(), String(dbBlock.id));
+      }
+    });
+    
+    // Convert block IDs (slugs from seed) to UUIDs
+    const uuids = filteredBlocks
+      .map(b => {
+        const slug = String(b.id).toLowerCase();
+        return slugToUUID.get(slug) || null;
+      })
+      .filter(Boolean) as string[];
     
     if (process.env.NODE_ENV === 'development') {
       console.log('[EduTreeV2Data][visibleBlockIds]', {
         isV2Mode,
         totalMerged: mergedBlocks.length,
         afterFilter: filteredBlocks.length,
-        idsCount: ids.length,
-        sampleIds: ids.slice(0, 3),
+        slugsCount: filteredBlocks.length,
+        uuidsCount: uuids.length,
+        sampleSlugs: filteredBlocks.slice(0, 3).map(b => b.id),
+        sampleUUIDs: uuids.slice(0, 3),
         effectiveFilterMode,
         selectedPrograms
       });
     }
     
-    return ids;
+    return uuids;
   }, [isV2Mode, liveBlocksData, effectiveFilterMode, selectedPrograms]);
   
   // Fetch course options and transfer rules for visible blocks

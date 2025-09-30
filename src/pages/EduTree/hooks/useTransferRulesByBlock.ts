@@ -51,7 +51,7 @@ export function useTransferRulesByBlock(
       // Fetch transfer rules for all provided block IDs
       const { data: rulesData, error: rulesError } = await supabase
         .from('transfer_rules')
-        .select('id, block_id, course_id, transfer_state, score, notes, updated_at')
+        .select('id, block_id, course_id, transfer_state, score, notes, created_at')
         .in('block_id', blockIds);
 
       if (rulesError) throw rulesError;
@@ -68,7 +68,7 @@ export function useTransferRulesByBlock(
           transferState: (rule.transfer_state || 'unknown') as TransferState,
           score: Number(rule.score) || 0.5,
           notes: rule.notes || undefined,
-          updatedAt: rule.updated_at || new Date().toISOString(),
+          updatedAt: rule.created_at || new Date().toISOString(),
         };
 
         // Group by block
