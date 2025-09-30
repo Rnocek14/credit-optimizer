@@ -740,6 +740,7 @@ function EduTreeCanvasV2Content({
   const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: displayEdges });
 
   // Node position validation - prevent NaN/∞ coordinates
+  // CRITICAL: Force new node object refs to ensure React Flow detects changes
   const safeNodes = useMemo(() => {
     const isFiniteNum = (v: any) => Number.isFinite(v);
     const okNode = (n: any) => n?.position && isFiniteNum(n.position.x) && isFiniteNum(n.position.y);
@@ -753,7 +754,39 @@ function EduTreeCanvasV2Content({
       );
     }
     
-    return validNodes;
+    // SURGICAL FIX: Create new node and data objects to ensure React Flow detects changes
+    // This forces re-render when __v changes even if other fields are identical
+    const nodesWithFreshRefs = validNodes.map(n => ({
+      ...n,
+      data: { ...n.data } // Force new data object ref
+    }));
+    
+    // [NODES] Final handoff instrumentation (sample 1x per second)
+    if (process.env.NODE_ENV === 'development') {
+      const now = Date.now();
+      const lastLog = (window as any).__lastNodeHandoffLog ?? 0;
+      if (now - lastLog > 1000) {
+        (window as any).__lastNodeHandoffLog = now;
+        const prevNodes = (window as any).__prevSafeNodes;
+        const identityChanged = !prevNodes || !Object.is(prevNodes, nodesWithFreshRefs);
+        
+        console.log('[NODES] final handoff:', {
+          v: nodesWithFreshRefs[0]?.data?.__v,
+          nodes: nodesWithFreshRefs.length,
+          identityChanged,
+          sample: nodesWithFreshRefs.slice(0, 3).map(n => ({
+            id: n.id,
+            title: n.data?.title,
+            credits: n.data?.creditsNeeded,
+            __v: n.data?.__v
+          }))
+        });
+        
+        (window as any).__prevSafeNodes = nodesWithFreshRefs;
+      }
+    }
+    
+    return nodesWithFreshRefs;
   }, [processedNodes]);
 
   // Runtime debugging tools for development
@@ -943,10 +976,12 @@ function EduTreeCanvasV2Content({
       .join('~');
   }, [filteredBlocks]);
 
-  // 2) Stable key for blocks content (order-insensitive, content-based)  
+  // 2) Stable key for blocks content (order-insensitive, content-based)
+  // CRITICAL: Include __v to trigger re-layout when live data changes
   const blocksKey = useMemo(
     () => JSON.stringify([...blocks].sort((a,b)=>a.id.localeCompare(b.id)).map(b => ({
-      id: b.id, y: b.level_year, p: b.program_id ?? null, t: b.track_id ?? null, v: !!b.is_virtual
+      id: b.id, y: b.level_year, p: b.program_id ?? null, t: b.track_id ?? null, v: !!b.is_virtual, 
+      __v: (b as any).__v // CRITICAL: Include data version to detect live data changes
     }))),
     [blocks]
   );

@@ -149,10 +149,15 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
   const dimmedNodes = useMemo(() => {
     const { primarySelection, secondarySelection } = highlight;
     
+    // Extract data version from first node for logging
+    const dataVersion = nodes[0]?.data?.__v;
+    
     if (process.env.NODE_ENV === 'development') {
+      console.count('[COURSE→NODE] recompute');
       console.log('[ApplyDimmingV2] Processing nodes:', {
         mode,
         nodeCount: nodes.length,
+        dataVersion,
         primarySelection,
         secondarySelection,
         suffixEnabled: !!reachableSet,
@@ -257,7 +262,7 @@ export function useApplyDimmingV2({ nodes, edges }: UseApplyDimmingV2Props): Use
 
       return node;
     });
-  }, [nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram]);
+  }, [nodes, highlight.primarySelection, highlight.secondarySelection, highlight.isNodeDimmed, trackToProgram, reachableSet]);
 
   // Compute dimmed edges with Auto-Mode support
   const dimmedEdges = useMemo(() => {

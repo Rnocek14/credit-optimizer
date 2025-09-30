@@ -32,6 +32,14 @@ export interface DBCourse {
 }
 
 /**
+ * Normalize ID for consistent key matching
+ * Removes non-alphanumeric chars except hyphens/underscores and lowercases
+ */
+function normalizeId(id: string): string {
+  return (id ?? '').toLowerCase().replace(/[^a-z0-9:_-]/g, '');
+}
+
+/**
  * Resolve block ID - handles mismatches between DB slugs and seed IDs
  * Seed IDs: y1-found, y2-cs-core, etc.
  * DB slugs: foundations, core-i, etc. (may have year prefix)
@@ -60,11 +68,14 @@ export function mergeBlocksWithLiveData(
     return seedBlocks;
   }
 
-  // Create lookup map: resolved ID -> live block data
+  // Create lookup map: resolved ID -> live block data (with normalized keys)
   const liveMap = new Map<string, DBBlock>();
+  const liveKeyMapping = new Map<string, string>(); // Track which live key matched which seed key
+  
   for (const live of liveBlocks) {
     const resolvedId = resolveBlockId(live);
-    liveMap.set(resolvedId, live);
+    const normalizedKey = normalizeId(resolvedId);
+    liveMap.set(normalizedKey, live);
   }
 
   console.log('[DataMerge] Merging blocks:', {
@@ -75,10 +86,13 @@ export function mergeBlocksWithLiveData(
 
   // Merge: for each seed block, override with live data if available
   const merged = seedBlocks.map(seedBlock => {
-    const liveBlock = liveMap.get(seedBlock.id.toLowerCase());
+    const seedKeyNormalized = normalizeId(seedBlock.id);
+    const liveBlock = liveMap.get(seedKeyNormalized);
     
     if (liveBlock) {
       // Found live data - merge display fields
+      liveKeyMapping.set(seedBlock.id, seedKeyNormalized);
+      
       const mergedBlock: V2RequirementBlock = {
         ...seedBlock, // Keep positioning and metadata
         title: liveBlock.title, // Override display fields from DB
@@ -91,15 +105,28 @@ export function mergeBlocksWithLiveData(
       return mergedBlock;
     }
     
-    // No live data - use seed as-is
+    // No live data - use seed as-is (sample 2% for debugging)
+    if (Math.random() < 0.02 && process.env.NODE_ENV === 'development') {
+      console.log('[DataMerge] No live match for seed:', {
+        seedId: seedBlock.id,
+        normalized: seedKeyNormalized,
+        availableLiveKeys: Array.from(liveMap.keys()).slice(0, 5)
+      });
+    }
+    
     return seedBlock;
   });
 
-  const mergedCount = merged.filter((_, i) => liveMap.has(seedBlocks[i].id.toLowerCase())).length;
+  const mergedCount = merged.filter((_, i) => {
+    const seedKeyNormalized = normalizeId(seedBlocks[i].id);
+    return liveMap.has(seedKeyNormalized);
+  }).length;
+  
   console.log('[DataMerge] Merge complete:', {
     total: merged.length,
     mergedWithLive: mergedCount,
-    seedOnly: merged.length - mergedCount
+    seedOnly: merged.length - mergedCount,
+    mappings: Array.from(liveKeyMapping.entries()).slice(0, 5)
   });
 
   return merged;
