@@ -47,6 +47,7 @@ function getMpInfoForBlock(marketplaceData: Map<string, MPInfo> | undefined, blo
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
   edges: V2Edge[];
+  dataVersion: string; // Stable hash for change detection
   isLoading: boolean;
   isV2Mode: boolean;
   filterMode: FilterMode;
@@ -620,6 +621,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   return {
     blocks: enrichedBlocks,
     edges,
+    dataVersion, // Export for React Flow key
     isLoading: false,
     isV2Mode,
     filterMode,

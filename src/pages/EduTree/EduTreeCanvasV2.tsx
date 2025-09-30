@@ -87,6 +87,19 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     (blockData && typeof blockData === 'object' && '_rfNodeId' in blockData ? blockData._rfNodeId : undefined) ??
     'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
+  
+  // [INSTRUMENTATION] Log when this node renders with what fields it receives
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) { // Sample 5%
+      console.log('[RequirementNode render]', {
+        id: blockId,
+        title: data?.title,
+        credits: data?.creditsNeeded ?? creditsNeeded,
+        v: data?.__v,
+        keys: Object.keys(data || {}).slice(0, 10)
+      });
+    }
+  }, [blockId, data?.title, data?.creditsNeeded, data?.__v]);
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
   // Phase 2: Course marketplace data - BULLETPROOF LAST-MILE RESOLVER
@@ -259,6 +272,15 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
 
   return (
     <div className={nodeClassNames}>
+      {/* Dev badge showing dataVersion (temporary diagnostic) */}
+      {process.env.NODE_ENV === 'development' && data?.__v && (
+        <div 
+          style={{ position:'absolute', top:2, right:6, fontSize:10, opacity:.6 }}
+          title={`Data version: ${data.__v}`}
+        >
+          v:{String(data.__v).slice(-4)}
+        </div>
+      )}
       <div className="font-semibold text-sm text-foreground mb-1">{data.title}</div>
       <div className="text-xs text-muted-foreground">
         Year {data.levelYear} • {data.area}
@@ -509,7 +531,7 @@ function EduTreeCanvasV2Content({
   // Use dev override filter mode when provided, then props, then default
   const passedFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
-  const { blocks, edges, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode, selectedPrograms } = useEduTreeV2Data(passedFilterMode);
+  const { blocks, edges, dataVersion, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode, selectedPrograms } = useEduTreeV2Data(passedFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -1471,7 +1493,7 @@ function EduTreeCanvasV2Content({
       )}
 
         <ReactFlow
-          key={graphSig}
+          key={dataVersion || graphSig}
           nodes={safeNodes}
           edges={processedEdges}
           onNodesChange={onNodesChange}
