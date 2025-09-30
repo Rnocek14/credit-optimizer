@@ -14,6 +14,9 @@ import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
 import { mergeBlocksWithLiveData, calculateDataVersion, type DBBlock, type DBCourse } from '../utils/dataMerge';
+import { useRequirementOptionsBatch } from './useRequirementOptionsBatch';
+import { useTransferRulesByBlock } from './useTransferRulesByBlock';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 
 // Data freshness diagnostic
 let __dataRecomputeCount = 0;
@@ -48,6 +51,9 @@ export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
   edges: V2Edge[];
   dataVersion: string; // Stable hash for change detection
+  optionsByBlock: Map<string, any[]>; // Course options per block
+  rulesByBlock: Map<string, import('./useTransferRulesByBlock').TransferRule[]>; // Transfer rules per block
+  userPlanSelections: any[] | undefined; // User's course selections
   isLoading: boolean;
   isV2Mode: boolean;
   filterMode: FilterMode;
@@ -260,16 +266,88 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     }
   }, [effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
 
-  // Phase 4b: Calculate data version for change detection
+  // Phase 4a: Wire course-aware hooks (options + transfer rules)
+  const { data: userPlanSelectionsData } = useUserPlanSelections(userPlan?.id);
+  
+  // Build scope for query cache keys
+  const scope = useMemo(() => {
+    const programId = selectedPrograms[0] || 'unknown';
+    const trackId = effectiveFilterMode === 'se' ? 'se' : effectiveFilterMode === 'ds' ? 'ds' : 'base';
+    return `${programId}|${trackId}|${effectiveFilterMode}`;
+  }, [selectedPrograms, effectiveFilterMode]);
+  
+  // Get visible block IDs from merged blocks (after filtering)
+  const visibleBlockIds = useMemo(() => {
+    if (!isV2Mode || !liveBlocksData) return [];
+    const mergedBlocks = mergeBlocksWithLiveData(GOLDEN_LAYOUT_SEED.blocks, liveBlocksData as DBBlock[] | undefined);
+    const filteredBlocks = filterBlocksByMode(mergedBlocks, effectiveFilterMode, { programs: selectedPrograms });
+    return filteredBlocks.map(b => String(b.id)).filter(Boolean);
+  }, [isV2Mode, liveBlocksData, effectiveFilterMode, selectedPrograms]);
+  
+  // Fetch course options and transfer rules for visible blocks
+  const { optionsByBlock, isLoading: optionsLoading } = useRequirementOptionsBatch(
+    visibleBlockIds,
+    scope,
+    isV2Mode && visibleBlockIds.length > 0
+  );
+  
+  const transferRulesResult = useTransferRulesByBlock(
+    visibleBlockIds,
+    scope,
+    isV2Mode && visibleBlockIds.length > 0
+  );
+  const transferRulesByBlock = transferRulesResult.rulesByBlock;
+  
+  // Phase 4c: Real-time subscriptions for course-aware data (after scope/blockIds are defined)
+  useEffect(() => {
+    if (!isV2Mode || visibleBlockIds.length === 0) return;
+    
+    const tables = ['requirement_options', 'transfer_rules', 'course_equivalencies', 'user_plan_courses'];
+    const channels = tables.map(tableName => {
+      const channel = supabase
+        .channel(`realtime:${tableName}:${scope}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: tableName },
+          (payload) => {
+            console.log(`[Realtime] ${tableName} changed:`, payload);
+            // Invalidate relevant queries
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.requirementOptionsBatch(visibleBlockIds, scope) });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.transferRulesBatch(visibleBlockIds, scope) });
+            if (userPlan?.id) {
+              queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_SELECTIONS(userPlan.id) });
+            }
+          }
+        )
+        .subscribe();
+      
+      return channel;
+    });
+    
+    return () => {
+      channels.forEach(ch => supabase.removeChannel(ch));
+    };
+  }, [scope, visibleBlockIds.join('|'), userPlan?.id, queryClient, isV2Mode]);
+  
+  // Calculate selections timestamp for versioning
+  const selectionsUpdatedAt = useMemo(() => {
+    if (!userPlanSelectionsData || !Array.isArray(userPlanSelectionsData) || userPlanSelectionsData.length === 0) return 0;
+    return Math.max(...userPlanSelectionsData.map((s: any) => {
+      const timestamp = s.updated_at || s.created_at;
+      return timestamp ? Date.parse(timestamp) : 0;
+    }));
+  }, [userPlanSelectionsData]);
+
+  // Phase 4b: Calculate data version for change detection (with real maps)
   const dataVersion = useMemo(() => {
     return calculateDataVersion(
       liveBlocksData as DBBlock[] | undefined,
       liveCoursesData as DBCourse[] | undefined,
-      undefined, // optionsByBlock - will wire after hooks are added
-      undefined, // transferRulesByBlock - will wire after hooks are added
-      Date.now() // Use current timestamp as proxy for selections changes
+      optionsByBlock,
+      transferRulesByBlock,
+      selectionsUpdatedAt
     );
-  }, [liveBlocksData, liveCoursesData]);
+  }, [liveBlocksData, liveCoursesData, optionsByBlock, transferRulesByBlock, selectionsUpdatedAt]);
 
   const { blocks, edges } = useMemo(() => {
     if (!isV2Mode) {
@@ -624,11 +702,14 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     blocks: enrichedBlocks,
     edges,
     dataVersion, // Export for React Flow key
+    optionsByBlock, // Course options per block
+    rulesByBlock: transferRulesByBlock, // Transfer rules per block
+    userPlanSelections: (userPlanSelectionsData || []) as any[], // User's course selections
     isLoading: false,
     isV2Mode,
     filterMode,
     effectiveFilterMode,
     isAutoMode,
     selectedPrograms
-  };
+  } as UseEduTreeV2DataResult;
 }
