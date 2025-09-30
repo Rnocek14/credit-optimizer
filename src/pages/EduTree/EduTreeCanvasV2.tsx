@@ -336,13 +336,13 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   );
 };
 
-// Memoize nodeTypes to prevent React Flow from remounting nodes
-const nodeTypes = useMemo(() => ({
+// Node types are stable at module level - no memo needed
+const nodeTypes = {
   requirement: RequirementNode,
   gate: GateNode,
   header: HeaderNode,
   emptyYear: EmptyYearNode
-}), []);
+};
 
 const edgeTypes = {
   gate: GateEdge,
