@@ -140,6 +140,12 @@ export function blocksToNodes(
       ...baseNode,
       type: block.is_virtual ? 'gate' : 'requirement',
       data: {
+        id: block.id,
+        block: {
+          id: block.id,
+          creditsNeeded: block.credits_needed ?? null,
+          catalogCourseIds: (block as any).catalogCourseIds
+        },
         title: block.title,
         ruleType: block.rule_type,
         levelYear: block.level_year,
@@ -151,7 +157,12 @@ export function blocksToNodes(
         program_id: block.program_id,
         isVirtual: block.is_virtual,
         junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
-        singleRailStraight
+        singleRailStraight,
+        // Marketplace fields from enriched blocks
+        optionsCount: Number((block as any).optionsCount ?? 0),
+        hasAceCredit: !!(block as any).hasAceCredit,
+        hasClep: !!(block as any).hasClep,
+        selectedCourse: (block as any).selectedCourse
       } as V2NodeData
     };
   });

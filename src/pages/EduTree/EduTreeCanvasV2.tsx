@@ -906,8 +906,20 @@ function EduTreeCanvasV2Content({
         // Store nodes in window for validation utilities  
         if (process.env.NODE_ENV === 'development') {
           (window as any).__flowNodes__ = finalNodes;
+          (window as any).__rfNodes = finalNodes; // Alias for easier console access
           (window as any).__flowEdges__ = newEdges;
           (window as any).gatePositions = gatePositions;
+          
+          // DIAGNOSTIC: Log first 3 nodes with marketplace data
+          console.log('[EduTreeV2] Sample nodes with marketplace data:', 
+            finalNodes.slice(0, 3).map(n => ({
+              id: n.id,
+              dataId: n.data?.id,
+              blockId: n.data?.block?.id,
+              optionsCount: n.data?.optionsCount,
+              hasAceCredit: n.data?.hasAceCredit
+            }))
+          );
         }
         
         // Validate no overlaps (acceptance criteria)
