@@ -4,9 +4,14 @@ import EduTreeCanvasV2 from "./EduTreeCanvasV2";
 import { type FilterMode } from "./data/seedDataV2";
 
 export default function EduTreeV2Page() {
-  // Enable the feature for this tab/session (optional convenience)
+  // Enable features for this tab/session
   useEffect(() => {
     localStorage.setItem("eduTree", "true");
+    localStorage.setItem("mp", "1"); // Enable marketplace feature
+    console.log('[EduTreeV2Page] Feature flags enabled:', {
+      eduTree: localStorage.getItem("eduTree"),
+      mp: localStorage.getItem("mp")
+    });
   }, []);
 
   const params = useMemo(() => new URLSearchParams(window.location.search), []);

@@ -137,7 +137,11 @@ export function blocksToNodes(
     }
 
     // Helper to convert to number without masking undefined
-    const asNum = (v: any) => (v === null || v === undefined || v === '') ? undefined : Number(v);
+    const asNum = (v: any) => {
+      if (v === null || v === undefined || v === '') return undefined;
+      const num = Number(v);
+      return Number.isNaN(num) ? undefined : num;
+    };
     
     // Build marketplace signature for reliable re-render detection
     const oc = asNum((block as any).optionsCount);
@@ -145,6 +149,19 @@ export function blocksToNodes(
     const clep = (block as any).hasClep ? 1 : 0;
     const sel = (block as any).selectedCourse?.id ?? '∅';
     const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
+    
+    // DIAGNOSTIC: Log marketplace data mapping for first 5 blocks
+    if (process.env.NODE_ENV === 'development' && safeBlocks.indexOf(block) < 5) {
+      console.log('[blocksToNodes] Marketplace data mapping:', {
+        blockId: block.id,
+        rawOptionsCount: (block as any).optionsCount,
+        rawType: typeof (block as any).optionsCount,
+        convertedOc: oc,
+        hasAceCredit: (block as any).hasAceCredit,
+        hasClep: (block as any).hasClep,
+        mpSig
+      });
+    }
     
     return {
       ...baseNode,

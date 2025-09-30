@@ -309,10 +309,68 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
   const { data: selectedCoursesData } = useUserPlanSelections(userPlan?.id);
   
-  // Expose marketplace data map for dev console debugging
+  // Expose marketplace data map and audit function for dev console debugging
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       (window as any).__lastMpMap = marketplaceData;
+      
+      // Audit function to check complete data pipeline
+      (window as any).__auditMpPipeline = () => {
+        console.log('=== MARKETPLACE DATA PIPELINE AUDIT ===');
+        
+        // 1. Check if marketplace data was fetched
+        console.log('1. Marketplace data fetched:', {
+          hasData: !!marketplaceData,
+          size: marketplaceData?.size,
+          sampleKeys: Array.from(marketplaceData?.keys() || []).slice(0, 5),
+          sampleValues: Array.from(marketplaceData?.entries() || []).slice(0, 3).map(([k, v]) => ({ key: k, value: v }))
+        });
+        
+        // 2. Check enriched blocks
+        const enriched = (window as any).__enriched;
+        console.log('2. Enriched blocks:', {
+          hasEnriched: !!enriched,
+          count: enriched?.length,
+          withOptionsCount: enriched?.filter((b: any) => Number.isFinite(b.optionsCount)).length,
+          sample: enriched?.slice(0, 5).map((b: any) => ({
+            id: b.id,
+            optionsCount: b.optionsCount,
+            hasAceCredit: b.hasAceCredit,
+            hasClep: b.hasClep
+          }))
+        });
+        
+        // 3. Check React Flow nodes
+        const rfNodes = (window as any).__rfNodes || (window as any).__flowNodes__;
+        console.log('3. React Flow nodes:', {
+          hasNodes: !!rfNodes,
+          count: rfNodes?.length,
+          withOptionsCount: rfNodes?.filter((n: any) => Number.isFinite(n.data?.optionsCount)).length,
+          sample: rfNodes?.filter((n: any) => n.type === 'requirement').slice(0, 5).map((n: any) => ({
+            id: n.id,
+            optionsCount: n.data?.optionsCount,
+            mpSig: n.data?.mpSig,
+            hasAceCredit: n.data?.hasAceCredit
+          }))
+        });
+        
+        // 4. Check DOM pills
+        const pills = document.querySelectorAll('button[title*="View catalog course options"]');
+        console.log('4. DOM pills rendered:', {
+          count: pills.length,
+          textContent: Array.from(pills).slice(0, 5).map(p => p.textContent?.trim())
+        });
+        
+        console.log('=== END AUDIT ===');
+        console.log('\nSUMMARY:', {
+          marketplaceDataFetched: !!marketplaceData && marketplaceData.size > 0,
+          blocksEnriched: enriched?.filter((b: any) => Number.isFinite(b.optionsCount)).length > 0,
+          nodesHaveData: rfNodes?.filter((n: any) => Number.isFinite(n.data?.optionsCount)).length > 0,
+          pillsRendered: pills.length > 0
+        });
+        
+        return { marketplaceData, enriched, rfNodes, pillsCount: pills.length };
+      };
     }
   }, [marketplaceData]);
 
@@ -366,7 +424,11 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     }
     
     // Helper to convert to number without masking undefined
-    const asNum = (v: any) => (v === null || v === undefined || v === '') ? undefined : Number(v);
+    const asNum = (v: any) => {
+      if (v === null || v === undefined || v === '') return undefined;
+      const num = Number(v);
+      return Number.isNaN(num) ? undefined : num;
+    };
     
     const result = blocks.map(block => {
       const isGate = String(block.id).startsWith('gate-');
@@ -377,10 +439,25 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
 
       if (!mpInfo && !selectedCourse && !userPlan?.id) return block;
 
+      const oc = asNum(mpInfo?.optionsCount);
+      
+      // DIAGNOSTIC: Log first 3 enriched blocks
+      if (process.env.NODE_ENV === 'development' && blocks.indexOf(block) < 3) {
+        console.log('[useEduTreeV2Data] Enriching block:', {
+          blockId: block.id,
+          isGate,
+          mpInfo,
+          rawOptionsCount: mpInfo?.optionsCount,
+          convertedOc: oc,
+          hasAceCredit: mpInfo?.hasAceCredit,
+          hasClep: mpInfo?.hasClep
+        });
+      }
+
       return {
         ...block,
         // DON'T coerce to 0 - preserve undefined for "no join"
-        optionsCount: asNum(mpInfo?.optionsCount),
+        optionsCount: oc,
         hasAceCredit: mpInfo?.hasAceCredit ?? undefined,
         hasClep: mpInfo?.hasClep ?? undefined,
         selectedCourse,

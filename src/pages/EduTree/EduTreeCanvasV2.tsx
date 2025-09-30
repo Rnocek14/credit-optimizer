@@ -86,18 +86,36 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
   const [modalOpen, setModalOpen] = useState(false);
   
-  // Reactive marketplace feature flag
+  // Reactive marketplace feature flag - enable by default for testing
   const SHOW_MP = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const LOCAL_MP = window.localStorage?.getItem('mp') === '1';
     const URL_MP = new URLSearchParams(window.location.search).get('mp') === '1';
-    return ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP;
+    const enabled = ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP || true; // Force enabled for testing
+    console.log('[REQNODE] Marketplace flag check:', { ENV: ENV.DEGREE_MARKETPLACE, LOCAL_MP, URL_MP, enabled });
+    return enabled;
   }, []);
   
-  // DIAGNOSTIC: Log marketplace state in dev only
+  // DIAGNOSTIC: Log marketplace state for ALL nodes in dev
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
-    console.log('[REQNODE]', blockId, { 
+    console.log('[REQNODE] Marketplace data received:', blockId, {
+      SHOW_MP,
+      optionsCount,
+      optionsCountType: typeof optionsCount,
+      optionsCountFinite: Number.isFinite(optionsCount),
+      hasAceCredit,
+      hasClep,
+      selectedCourse: selectedCourse?.title,
+      rawData: { optionsCount, hasAceCredit, hasClep },
+      allData: data
+    });
+  }, [blockId, SHOW_MP, optionsCount, hasAceCredit, hasClep, selectedCourse, data]);
+
+  // OLD diagnostic - keep for backward compatibility
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[REQNODE]', blockId, {
       SHOW_MP, 
       optionsCount, 
       isFinite: Number.isFinite(optionsCount),
