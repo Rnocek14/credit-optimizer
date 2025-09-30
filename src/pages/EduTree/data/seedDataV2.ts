@@ -394,19 +394,7 @@ export function filterBlocksByMode(
   }
   
   // Helper function to check if a program is selected
-  const inSelected = (pid?: string) => {
-    const result = !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
-    if (devSample) {
-      console.log(`[FilterBlocks] inSelected(${pid}):`, {
-        pid,
-        selectedProgramsSize: selectedPrograms.size,
-        selectedPrograms: Array.from(selectedPrograms),
-        has: pid ? selectedPrograms.has(pid) : 'N/A',
-        result
-      });
-    }
-    return result;
-  };
+  const inSelected = (pid?: string) => !pid || selectedPrograms.size === 0 || selectedPrograms.has(pid);
   
   // First apply existing filtering logic
   let filteredBlocks: V2RequirementBlock[];

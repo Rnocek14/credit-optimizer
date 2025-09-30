@@ -187,7 +187,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const n = Number(countToShow);
   const showPill = allowPills && Number.isFinite(n) && n > 0;
   
-  if (import.meta.env.DEV) {
+  // Sample pill logging to 2% to reduce noise
+  if (import.meta.env.DEV && Math.random() < 0.02) {
     console.log('[PILL] show=%o count=%o allow=%o resolved=%o sticky=%o', 
       showPill, countToShow, allowPills, resolvedCount, lastGoodCountRef.current);
   }
@@ -609,10 +610,19 @@ function EduTreeCanvasV2Content({
   
   // COMPREHENSIVE Edge sanitization to prevent React Flow event system corruption
   const safeEdges = React.useMemo(() => {
-    const visibleIds = new Set((nodes || []).filter(n => !n.hidden).map(n => n.id));
+    // Use the EXACT same node array that will be passed to React Flow for validation
+    const finalNodes = nodes || [];
+    
+    // Clean edges using the same node set to prevent race conditions
+    return cleanupEdgesBeforeValidation(flowEdges || [], finalNodes);
+  }, [flowEdges, nodes]);
+
+  // Additional edge filtering for UI-specific concerns
+  const displayEdges = React.useMemo(() => {
+    const visibleIds = new Set(safeEdges.map(e => e.source).concat(safeEdges.map(e => e.target)));
     
     // ULTRA-AGGRESSIVE edge filtering - prevent ALL problematic edges
-    const filtered = (flowEdges || []).filter(edge => {
+    const filtered = safeEdges.filter(edge => {
       // 1. Validate edge exists and has required properties
       if (!edge || typeof edge.id !== 'string' || !edge.source || !edge.target) {
         if (process.env.NODE_ENV === 'development') {
@@ -711,11 +721,11 @@ function EduTreeCanvasV2Content({
     return finalFiltered;
   }, [nodes, flowEdges]);
 
-  // Initialize suffix compare with safe edges
-  const suffixCompare = useSuffixCompare({ edges: safeEdges });
+  // Initialize suffix compare with filtered edges
+  const suffixCompare = useSuffixCompare({ edges: displayEdges });
 
-  // Then apply dimming to the safe edges (hook called at top level)
-  const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: safeEdges });
+  // Then apply dimming to the filtered edges (hook called at top level)
+  const { nodes: processedNodes, edges: processedEdges, mode } = useApplyDimmingV2({ nodes: nodes || [], edges: displayEdges });
 
   // Node position validation - prevent NaN/∞ coordinates
   const safeNodes = useMemo(() => {

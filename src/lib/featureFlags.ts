@@ -107,6 +107,10 @@ export function getFeatureFlags(): FeatureFlags {
           final: url !== null ? toBool(url) : resolved
         });
       }
+      // Sample verbose logging to 2%
+      if (Math.random() < 0.02) {
+        console.log('[Flags] eduTreeMultiPathOverlay', { url, resolved, final: url !== null ? toBool(url) : resolved });
+      }
       return url !== null ? toBool(url) : resolved;
     })(),
   
@@ -120,7 +124,8 @@ export function getFeatureFlags(): FeatureFlags {
 
     const resolved = toBool(getFlagValue("eduTreeV2Grid", "edu-tree-v2-grid", "false"));
 
-    if (typeof window !== "undefined") {
+    // Sample verbose logging to 2%
+    if (typeof window !== "undefined" && Math.random() < 0.02) {
       console.log("[Flags][V2Grid]", { urlVal, resolved, final: urlVal !== null ? toBool(urlVal) : resolved });
     }
     return urlVal !== null ? toBool(urlVal) : resolved;
@@ -137,7 +142,8 @@ export function getFeatureFlags(): FeatureFlags {
     const valid: Array<"legacy" | "manual_v1" | "grid_v2"> = ["legacy", "manual_v1", "grid_v2"];
     const mode = (valid as readonly string[]).includes(raw) ? (raw as "legacy" | "manual_v1" | "grid_v2") : "legacy";
 
-    if (typeof window !== "undefined") {
+    // Sample verbose logging to 2%
+    if (typeof window !== "undefined" && Math.random() < 0.02) {
       console.log("[Flags][V2Mode]", { urlVal, final: mode });
     }
     return mode;

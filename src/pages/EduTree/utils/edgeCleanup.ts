@@ -55,11 +55,19 @@ export function cleanupEdgesBeforeValidation(edges: any[], nodes: any[]) {
 }
 
 function fixHandle(handle: any): string | null {
-  // Fix 'null' string becoming actual null
-  if (handle === 'null' || handle === null || handle === undefined) {
+  // Comprehensive handle normalization - catch all toxic variations
+  if (
+    handle === 'null' || 
+    handle === 'undefined' || 
+    handle === 'NaN' ||
+    handle === null || 
+    handle === undefined ||
+    handle === '' ||
+    (typeof handle === 'string' && handle.trim() === '')
+  ) {
     return null;
   }
   
   // Ensure it's a string
-  return String(handle);
+  return typeof handle === 'string' ? handle : String(handle);
 }
