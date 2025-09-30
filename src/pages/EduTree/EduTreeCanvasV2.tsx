@@ -88,53 +88,72 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
-  // Phase 2: Course marketplace data - NUCLEAR LAST-MILE RESOLVER
-  // 1) Whatever came in through data
+  // Phase 2: Course marketplace data - BULLETPROOF LAST-MILE RESOLVER
+  // 1) Pull any value already on the node
   const rawIn =
     (data as any)?.optionsCount ??
     (data?.block as any)?.optionsCount ??
     (data as any)?.block?.data?.optionsCount;
 
-  // 2) Coerce if it's a string
   const ocFromData =
-    rawIn == null ? undefined
-    : typeof rawIn === 'number' ? rawIn
-    : Number(rawIn);
+    rawIn == null ? undefined : (typeof rawIn === 'number' ? rawIn : Number(rawIn));
 
-  // 3) "Last-mile" resolver from global map if ocFromData is not usable
+  // 2) Safe helpers
+  const safeNumber = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const toBlockId = (d: any): string => {
+    try {
+      const candidates = [
+        d?.block?.id,
+        d?.blockId,
+        d?.id,
+        (d?.block && typeof d.block === 'string' ? d.block : undefined),
+      ].filter((x) => typeof x === 'string' && x.length) as string[];
+      return candidates[0] ?? '';
+    } catch {
+      return '';
+    }
+  };
+
+  // 3) Last-mile resolver (never throws)
   const optionsCount = useMemo(() => {
-    if (Number.isFinite(ocFromData)) return ocFromData as number;
-    
-    const mp = (window as any).__lastMpMap as Map<string, any> | undefined;
-    const blockId = String((data?.block as any)?.id ?? (data as any)?.id ?? '');
-    
-    if (!mp || !blockId) return undefined;
-    
-    // Try multiple variants
-    const variants = [
-      blockId,
-      blockId.toLowerCase(),
-      blockId.replace(/[^a-z0-9]/gi, ''),
-      blockId.toLowerCase().replace(/[^a-z0-9]/g, ''),
-    ];
-    
-    for (const key of variants) {
-      const hit = mp.get(key);
-      if (hit?.optionsCount != null) {
-        const n = Number(hit.optionsCount);
-        if (!Number.isNaN(n)) {
-          console.log('[REQNODE] Last-mile resolver found count:', {
-            blockId,
-            matchedKey: key,
-            optionsCount: n
-          });
+    try {
+      if (Number.isFinite(ocFromData)) return ocFromData as number;
+
+      const mp: any = (window as any).__lastMpMap;
+      const isMap = mp && typeof mp.get === 'function';
+      if (!isMap) return undefined;
+
+      const id = toBlockId(data);
+      if (!id) return undefined;
+
+      const variants = [
+        id,
+        id.toLowerCase(),
+        id.replace(/[^a-z0-9]/gi, ''),
+        id.toLowerCase().replace(/[^a-z0-9]/g, ''),
+      ];
+
+      for (const key of variants) {
+        const hit = mp.get(key);
+        const n = hit?.optionsCount != null ? safeNumber(hit.optionsCount) : undefined;
+        if (n !== undefined) {
+          if (import.meta.env.DEV) {
+            console.log('[REQNODE] Last-mile resolver found count:', { blockId: id, matchedKey: key, optionsCount: n });
+          }
           return n;
         }
       }
+      return undefined;
+    } catch (err) {
+      // Never let this crash the node
+      console.warn('[REQNODE] Resolver failed safely:', err);
+      return undefined;
     }
-    
-    return undefined;
-  }, [ocFromData, (data?.block as any)?.id, (data as any)?.id]);
+    // only primitive deps; avoid object deps that change each render
+  }, [ocFromData, (data as any)?.id, (data as any)?.blockId, (data as any)?.block?.id]);
   const hasAceCredit = data.hasAceCredit ?? (blockData as any)?.hasAceCredit;
   const hasClep = data.hasClep ?? (blockData as any)?.hasClep;
   const selectedCourse = data.selectedCourse ?? (blockData as any)?.selectedCourse;
