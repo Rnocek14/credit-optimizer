@@ -185,15 +185,17 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </div>
       )}
       
-      {/* TEMP DIAGNOSTIC: Dev-only chip to debug marketplace data flow */}
-      {process.env.NODE_ENV === 'development' && SHOW_MP && (
-        <div
+      {/* DEV DIAGNOSTIC: Only show when real pill wouldn't render */}
+      {process.env.NODE_ENV === 'development' 
+        && SHOW_MP 
+        && (!Number.isFinite(optionsCount) || Number(optionsCount) <= 0) && (
+        <span
           onClick={() => setModalOpen(true)}
           className="mt-2 px-2 py-0.5 rounded-full border border-border/50 text-muted-foreground cursor-pointer text-[10px]"
           title="Dev diagnostic: shows raw count even if zero"
         >
           Options: {String(optionsCount ?? '∅')}
-        </div>
+        </span>
       )}
       
       {/* Phase 2: Course marketplace chips - only show when meaningful */}

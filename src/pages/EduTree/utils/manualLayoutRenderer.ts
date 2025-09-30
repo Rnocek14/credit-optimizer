@@ -139,6 +139,13 @@ export function blocksToNodes(
     // Helper to convert to number without masking undefined
     const asNum = (v: any) => (v === null || v === undefined || v === '') ? undefined : Number(v);
     
+    // Build marketplace signature for reliable re-render detection
+    const oc = asNum((block as any).optionsCount);
+    const ace = (block as any).hasAceCredit ? 1 : 0;
+    const clep = (block as any).hasClep ? 1 : 0;
+    const sel = (block as any).selectedCourse?.id ?? '∅';
+    const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
+    
     return {
       ...baseNode,
       type: block.is_virtual ? 'gate' : 'requirement',
@@ -162,10 +169,12 @@ export function blocksToNodes(
         junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
         singleRailStraight,
         // Marketplace fields from enriched blocks - DON'T mask undefined
-        optionsCount: asNum((block as any).optionsCount),
+        optionsCount: oc,
         hasAceCredit: (block as any).hasAceCredit ?? undefined,
         hasClep: (block as any).hasClep ?? undefined,
         selectedCourse: (block as any).selectedCourse,
+        // Marketplace signature for re-render detection
+        mpSig,
         // Fallback ID for debugging
         _rfNodeId: block.id
       } as V2NodeData
