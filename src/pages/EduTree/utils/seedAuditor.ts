@@ -114,14 +114,31 @@ export function printAuditReport(result: Result) {
     console.table(result.stats.programCoverage);
     return;
   }
+  
   console.group('%c[SeedAudit] ❌ Issues', 'color:#c00;font-weight:700');
   console.log('Stats:', result.stats);
   result.issues.forEach(i => console.warn(' -', i));
   console.groupEnd();
   
-  // CI mode: fail on issues (via ENV)
-  if (ENV.AUDIT_SEEDS) {
-    console.error('[SeedAudit] Failing CI due to seed issues');
+  // Separate marketplace failures from structural issues
+  const hasMarketplaceIssues = result.stats.missingMarketplaceRows.length > 0;
+  const hasStructuralIssues = result.issues.some(i => !i.startsWith('No marketplace rows'));
+  
+  // CI mode: fail on structural issues (blocks, gates, year coverage)
+  if (ENV.AUDIT_SEEDS && hasStructuralIssues) {
+    console.error('[SeedAudit] 🚨 Failing CI due to seed structure issues');
     throw new Error(`Seed audit failed with ${result.issues.length} issue(s)`);
+  }
+  
+  // Marketplace mode: fail specifically on missing course data
+  if (ENV.AUDIT_MP && hasMarketplaceIssues) {
+    console.error(
+      `[SeedAudit] 🚨 Failing due to missing marketplace data for ${result.stats.missingMarketplaceRows.length} blocks\n` +
+      `Missing: ${result.stats.missingMarketplaceRows.join(', ')}\n` +
+      `Fix: Seed requirement_option_counts_by_block table or run: SELECT refresh_requirement_option_counts();`
+    );
+    throw new Error(
+      `Marketplace audit failed: ${result.stats.missingMarketplaceRows.length} blocks have no course options`
+    );
   }
 }
