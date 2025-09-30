@@ -63,6 +63,7 @@ import { LaneCaptions } from './components/HUD/LaneCaptions';
 import { ComparisonLegend as HudComparisonLegend } from './components/HUD/ComparisonLegend';
 import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
+import { ENV } from '@/config/env';
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
@@ -80,8 +81,8 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const urlFlag = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('mp') === '1'
     : false;
-  const SHOW_MP = urlFlag || import.meta.env.VITE_LP_DEGREE_MARKETPLACE === '1';
-  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'URL flag:', urlFlag, 'Env value:', import.meta.env.VITE_LP_DEGREE_MARKETPLACE);
+  const SHOW_MP = urlFlag || ENV.DEGREE_MARKETPLACE;
+  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'URL flag:', urlFlag, 'Env value:', ENV.DEGREE_MARKETPLACE);
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;

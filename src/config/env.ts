@@ -27,6 +27,7 @@ export const ENV = {
   PROD: asBool(read('PROD') ?? read('NODE_ENV') === 'production', false),
   AUDIT_SEEDS: asBool(read('AUDIT_SEEDS'), false),
   AUDIT_MP: asBool(read('AUDIT_MP'), true),            // default true
+  DEGREE_MARKETPLACE: asBool(read('VITE_LP_DEGREE_MARKETPLACE'), false),
   MARKETPLACE_VERSION: read('VITE_MARKETPLACE_VERSION') ?? '2025-09-29',
   EVIDENCE_VERSION: read('VITE_EVIDENCE_VERSION') ?? '2025-09-29',
   IN_CHUNK: Number(read('VITE_IN_CHUNK') ?? 500),
