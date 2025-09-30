@@ -64,6 +64,7 @@ import { ComparisonLegend as HudComparisonLegend } from './components/HUD/Compar
 import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
+import { NodeOptionsPill } from './components/NodeOptionsPill';
 
 // Marketplace feature flag moved inside component for reactivity
 
@@ -198,25 +199,27 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </span>
       )}
       
-      {/* Phase 2: Course marketplace chips - only show when meaningful */}
-      {SHOW_MP && Number.isFinite(optionsCount) && optionsCount > 0 && (
+      {/* Phase 2: Course marketplace chips - clean single source of truth */}
+      {SHOW_MP && (
         <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
-          <button
+          <NodeOptionsPill 
+            count={optionsCount}
             onClick={() => setModalOpen(true)}
-            className="px-2 py-0.5 rounded-full bg-surface border border-border/50 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
-            title="View catalog course options that satisfy this requirement"
-          >
-            Options: {optionsCount}
-          </button>
-          {hasAceCredit && (
-            <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
-              ACE
-            </span>
-          )}
-          {hasClep && (
-            <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
-              CLEP
-            </span>
+            show={true}
+          />
+          {Number.isFinite(optionsCount) && Number(optionsCount) > 0 && (
+            <>
+              {hasAceCredit && (
+                <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
+                  ACE
+                </span>
+              )}
+              {hasClep && (
+                <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
+                  CLEP
+                </span>
+              )}
+            </>
           )}
         </div>
       )}
