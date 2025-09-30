@@ -367,15 +367,9 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
 
       if (!mpInfo && !selectedCourse && !userPlan?.id) return block;
 
-      // Ensure optionsCount is a number
-      const optionsCountNum =
-        mpInfo && typeof mpInfo.optionsCount !== 'number'
-          ? Number(mpInfo.optionsCount)
-          : (mpInfo?.optionsCount ?? 0);
-
       return {
         ...block,
-        optionsCount: optionsCountNum,
+        optionsCount: Number(mpInfo?.optionsCount ?? 0),
         hasAceCredit: !!mpInfo?.hasAceCredit,
         hasClep: !!mpInfo?.hasClep,
         selectedCourse,

@@ -69,6 +69,7 @@ import { ENV } from '@/config/env';
 
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
+  const flags = useFeatureFlags();
   const pathHighlight = usePathHighlight();
   const blockData = data as any;
   const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
@@ -187,7 +188,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
             onClick={() => setModalOpen(true)}
             className="px-2 py-0.5 rounded-full bg-surface border border-border/50 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
           >
-            Options: {String(optionsCount ?? '∅')}
+            Options: {Number.isFinite(optionsCount) ? optionsCount : '∅'}
           </button>
           {hasAceCredit && (
             <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50">
