@@ -65,6 +65,17 @@ import { CourseSelectionModal } from './components/CourseSelectionModal';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { ENV } from '@/config/env';
 
+// Marketplace feature flag (module-level, computed once)
+const LOCAL_MP = typeof window !== 'undefined' && window.localStorage?.getItem('mp') === '1';
+const URL_MP = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('mp') === '1';
+const SHOW_MP = ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP;
+
+console.log('[EduTreeV2] Marketplace enabled:', SHOW_MP, {
+  env: ENV.DEGREE_MARKETPLACE,
+  localStorage: LOCAL_MP,
+  url: URL_MP
+});
+
 // Node components for V2
 const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const pathHighlight = usePathHighlight();
@@ -77,12 +88,7 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const { optionsCount, hasAceCredit, hasClep, selectedCourse } = data;
   const [modalOpen, setModalOpen] = useState(false);
   
-  // Feature flag for marketplace (supports URL override for demos)
-  const urlFlag = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('mp') === '1'
-    : false;
-  const SHOW_MP = urlFlag || ENV.DEGREE_MARKETPLACE;
-  console.log('[RequirementNode] Marketplace enabled:', SHOW_MP, 'URL flag:', urlFlag, 'Env value:', ENV.DEGREE_MARKETPLACE);
+  // SHOW_MP is computed at module level (see top of file)
   
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;

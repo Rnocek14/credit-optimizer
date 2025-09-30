@@ -137,6 +137,23 @@ export function CompactDevPanel({ dev, setDev, effectiveFlags, effectiveFilterMo
                 />
                 V2 Edge Kinds
               </label>
+
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={typeof window !== 'undefined' && window.localStorage?.getItem('mp') === '1'}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      localStorage.setItem('mp', '1');
+                    } else {
+                      localStorage.removeItem('mp');
+                    }
+                    location.reload();
+                  }}
+                  className="rounded"
+                />
+                Enable Marketplace
+              </label>
             </div>
 
             {/* Reset Button */}
