@@ -719,7 +719,7 @@ function EduTreeCanvasV2Content({
     }
     
     return finalFiltered;
-  }, [nodes, flowEdges]);
+  }, [safeEdges]); // Depends on safeEdges, not raw inputs
 
   // Initialize suffix compare with filtered edges
   const suffixCompare = useSuffixCompare({ edges: displayEdges });
