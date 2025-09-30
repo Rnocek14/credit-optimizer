@@ -815,6 +815,18 @@ export function applyManualLayout(
   // Combine regular nodes with header nodes
   let allNodes = [...nodes, ...headerNodes];
   
+  // DIAGNOSTIC: Expose pre-layout and post-layout nodes for debugging
+  if (process.env.NODE_ENV === 'development') {
+    (window as any).__preLayoutNodes = nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      optionsCount: n.data?.optionsCount,
+      mpSig: n.data?.mpSig,
+      dataKeys: Object.keys(n.data || {})
+    }));
+    (window as any).__postLayoutNodes = allNodes; // Will be updated after lane packing
+  }
+  
   // Apply comprehensive lane packing at the very end (after all positioning tweaks)
   if (useGridAnchors && !singleRailStraight) {
     console.log('[ManualLayout] Applying final lane packing to eliminate overlaps');
@@ -1053,6 +1065,21 @@ export function applyManualLayout(
     if (problematicEdges.length > 0) {
       console.error('[CRITICAL] Still have problematic edges after sanitization:', problematicEdges);
     }
+  }
+  
+  // DIAGNOSTIC: Final exposure of post-layout nodes for debugging
+  if (process.env.NODE_ENV === 'development') {
+    (window as any).__postLayoutNodes = allNodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      optionsCount: n.data?.optionsCount,
+      mpSig: n.data?.mpSig,
+      dataKeys: Object.keys(n.data || {})
+    }));
+    console.log('[ManualLayout] Diagnostic: Data preservation check', {
+      samplePreLayout: (window as any).__preLayoutNodes?.slice(0, 3),
+      samplePostLayout: (window as any).__postLayoutNodes?.slice(0, 3)
+    });
   }
   
   onApply(allNodes, sanitizedEdges);

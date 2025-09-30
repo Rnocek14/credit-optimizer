@@ -88,8 +88,40 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
-  // Phase 2: Course marketplace data - WITH FALLBACKS AND COERCION
-  const rawOc = data.optionsCount ?? (blockData as any)?.optionsCount;
+  // Phase 2: Course marketplace data - WITH FALLBACKS, COERCION, AND GLOBAL MAP LOOKUP
+  let rawOc = data.optionsCount ?? (blockData as any)?.optionsCount ?? (data?.block as any)?.optionsCount;
+  
+  // HOTFIX B: If still undefined, try global map lookup as fallback
+  if (rawOc == null) {
+    try {
+      const mp = (window as any).__lastMpMap as Map<string, any> | undefined;
+      const keyGen = (window as any).marketplaceKeysFromNodeId || ((id: string) => [id]);
+      const blockId = String((data as any)?.block?.id ?? (data as any)?.id ?? (blockData as any)?.id ?? '');
+      
+      if (mp && blockId) {
+        const candidates = keyGen(blockId).map((s: string) => s.toLowerCase());
+        for (const k of candidates) {
+          // Try direct hit
+          let v = mp.get(k);
+          // Try lenient hit (strip non-alphanumeric)
+          if (!v) v = mp.get(k.replace(/[^a-z0-9]/g, ''));
+          
+          if (v?.optionsCount != null) {
+            rawOc = v.optionsCount;
+            console.log('[REQNODE] Global map fallback successful:', {
+              blockId,
+              matchedKey: k,
+              optionsCount: rawOc
+            });
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[REQNODE] Global map fallback failed:', err);
+    }
+  }
+  
   const optionsCount = rawOc == null ? undefined :
     typeof rawOc === 'number' ? rawOc :
     Number(rawOc); // Coerce string "5" -> 5, invalid -> NaN
