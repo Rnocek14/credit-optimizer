@@ -408,11 +408,16 @@ function EduTreeCanvasV2Content({
   // Micro-throttle gate handle updates to avoid same-frame duplicates
   const scheduleGateUpdate = useMemo(() => {
     let raf = 0;
-    return (fn: () => void) => {
+    const schedule = (fn: () => void) => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(fn);
     };
+    schedule.cancel = () => cancelAnimationFrame(raf);
+    return schedule;
   }, []);
+
+  // Cleanup RAF on unmount
+  useEffect(() => () => scheduleGateUpdate.cancel?.(), [scheduleGateUpdate]);
 
   useEffect(() => {
     if (gateConfigRef.current === gateConfigKey) {

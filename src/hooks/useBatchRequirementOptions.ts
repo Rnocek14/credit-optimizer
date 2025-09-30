@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
 import { warnOnce } from '@/utils/warnOnce';
+import { MARKETPLACE_VERSION as VERSION, IN_CHUNK } from '@/config/versions';
 
 // Module-scope cache for key generation with versioning
-const VERSION = 'mp-keys-v1';
 const __mpCache = new Map<string, string[]>();
 
 // Clear cache on version changes (e.g., during hot reload)
@@ -35,7 +35,6 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
 }
 
 // Chunk array for large IN() queries (Postgres limit ~32k params)
-const IN_CHUNK = 500;
 function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
   return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => 
     arr.slice(i * size, (i + 1) * size)
@@ -44,7 +43,7 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
 
 export function useBatchRequirementOptions(requirementIds: string[]) {
   return useQuery({
-    queryKey: ['req-opt-batch', VERSION, [...requirementIds].sort()],
+    queryKey: ['req-opt-batch', VERSION, [...requirementIds].map(String).sort()],
     enabled: Array.isArray(requirementIds) && requirementIds.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => {

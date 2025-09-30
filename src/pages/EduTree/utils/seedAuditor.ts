@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
-
-const IN_CHUNK = 500;
+import { IN_CHUNK } from '@/config/versions';
 
 type Block = {
   id: string;
@@ -74,33 +73,35 @@ export async function auditSeeds(blocks: Block[], selectedPrograms: string[]): P
     issues.push('No program-specific Y2 requirements found to contribute to gate-y3-tracks');
   }
 
-  // Marketplace presence
-  const candidates = Array.from(reqIds).flatMap(marketplaceKeysFromNodeId);
-  const unique = Array.from(new Set(candidates.map(k => String(k).toLowerCase())));
-  const present = new Set<string>();
-  for (let i = 0; i < unique.length; i += IN_CHUNK) {
-    const part = unique.slice(i, i + IN_CHUNK);
-    try {
-      const { data, error } = await supabase
-        .from('requirement_option_counts_by_block')
-        .select('block_id')
-        .in('block_id', part);
-      if (error) {
-        issues.push(`DB query error: ${error.message}`);
-        continue;
+  // Marketplace presence (skip if AUDIT_MP=false)
+  if (process.env.AUDIT_MP !== 'false') {
+    const candidates = Array.from(reqIds).flatMap(marketplaceKeysFromNodeId);
+    const unique = Array.from(new Set(candidates.map(k => String(k).toLowerCase())));
+    const present = new Set<string>();
+    for (let i = 0; i < unique.length; i += IN_CHUNK) {
+      const part = unique.slice(i, i + IN_CHUNK);
+      try {
+        const { data, error } = await supabase
+          .from('requirement_option_counts_by_block')
+          .select('block_id')
+          .in('block_id', part);
+        if (error) {
+          issues.push(`DB query error: ${error.message}`);
+          continue;
+        }
+        data?.forEach(r => present.add(String(r.block_id).toLowerCase()));
+      } catch (e) {
+        // Handle Supabase connection issues silently in dev
+        console.warn('[SeedAudit] DB connection issue:', e);
       }
-      data?.forEach(r => present.add(String(r.block_id).toLowerCase()));
-    } catch (e) {
-      // Handle Supabase connection issues silently in dev
-      console.warn('[SeedAudit] DB connection issue:', e);
     }
-  }
-  for (const id of reqIds) {
-    const hasMatch = marketplaceKeysFromNodeId(id).some(k => present.has(k.toLowerCase()));
-    if (!hasMatch) stats.missingMarketplaceRows.push(id);
-  }
-  if (stats.missingMarketplaceRows.length) {
-    issues.push(`No marketplace rows for: ${stats.missingMarketplaceRows.join(', ')}`);
+    for (const id of reqIds) {
+      const hasMatch = marketplaceKeysFromNodeId(id).some(k => present.has(k.toLowerCase()));
+      if (!hasMatch) stats.missingMarketplaceRows.push(id);
+    }
+    if (stats.missingMarketplaceRows.length) {
+      issues.push(`No marketplace rows for: ${stats.missingMarketplaceRows.join(', ')}`);
+    }
   }
 
   return { passed: issues.length === 0, issues, stats };

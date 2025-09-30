@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { warnOnce } from "@/utils/warnOnce";
-
-const EVIDENCE_VERSION = 'evidence-v1';
+import { EVIDENCE_VERSION } from "@/config/versions";
 
 export type EvidenceSummary = {
   // catalog course ids the student has completed / is in-progress / pending transfer
