@@ -3,6 +3,25 @@
  * Removes edges to hidden/missing nodes and repairs malformed handles
  */
 
+// Export fixHandle for use at edge creation time
+export function fixHandle(handle: any): string | null {
+  // Comprehensive handle normalization - catch all toxic variations
+  if (
+    handle === 'null' || 
+    handle === 'undefined' || 
+    handle === 'NaN' ||
+    handle === null || 
+    handle === undefined ||
+    handle === '' ||
+    (typeof handle === 'string' && handle.trim() === '')
+  ) {
+    return null;
+  }
+  
+  // Ensure it's a string
+  return typeof handle === 'string' ? handle : String(handle);
+}
+
 export function cleanupEdgesBeforeValidation(edges: any[], nodes: any[]) {
   const visibleIds = new Set(
     nodes.filter(n => n.visible !== false && !n.hidden).map(n => n.id)
@@ -30,7 +49,7 @@ export function cleanupEdgesBeforeValidation(edges: any[], nodes: any[]) {
       return true;
     })
     .map(e => {
-      // Repair malformed handles
+      // Repair malformed handles using exported fixHandle
       const sourceHandle = fixHandle(e.sourceHandle);
       const targetHandle = fixHandle(e.targetHandle);
       
@@ -54,20 +73,7 @@ export function cleanupEdgesBeforeValidation(edges: any[], nodes: any[]) {
     });
 }
 
-function fixHandle(handle: any): string | null {
-  // Comprehensive handle normalization - catch all toxic variations
-  if (
-    handle === 'null' || 
-    handle === 'undefined' || 
-    handle === 'NaN' ||
-    handle === null || 
-    handle === undefined ||
-    handle === '' ||
-    (typeof handle === 'string' && handle.trim() === '')
-  ) {
-    return null;
-  }
-  
-  // Ensure it's a string
-  return typeof handle === 'string' ? handle : String(handle);
+// Kept for backward compatibility but no longer needed as separate function
+function fixHandleInternal(handle: any): string | null {
+  return fixHandle(handle);
 }

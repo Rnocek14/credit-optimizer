@@ -28,6 +28,8 @@ import { createGhostNodeData } from './ghostNodeInjector';
 
 type SourceHandle = 'out' | 'out-se' | 'out-ds' | undefined;
 
+import { fixHandle } from './edgeCleanup';
+
 export interface V2NodeData {
   title: string;
   ruleType: string;
@@ -516,26 +518,22 @@ export function edgesToReactFlowEdges(
       } : undefined
     };
 
-    // Only set handles when they are actually needed and valid - comprehensive null check
-    if (typeof sourceHandle === 'string' && 
-        sourceHandle !== 'null' && 
-        sourceHandle !== '' && 
-        sourceHandle !== 'undefined' && 
-        sourceHandle !== null &&
-        sourceHandle !== 'false' &&
-        sourceHandle.length > 0 &&
-        !['null', 'undefined', 'false', ''].includes(sourceHandle)) {
-      edgeObject.sourceHandle = sourceHandle;
+    // Only set handles when they are actually needed and valid - use fixHandle for defense-in-depth
+    const normalizedSourceHandle = fixHandle(sourceHandle);
+    const normalizedTargetHandle = fixHandle(targetHandle);
+    
+    if (normalizedSourceHandle !== null) {
+      edgeObject.sourceHandle = normalizedSourceHandle;
     }
     if (sourcePosition !== undefined) {
       edgeObject.sourcePosition = sourcePosition;
     }
     
     // Guard for metro edge target handles - only set when header target is confirmed
-    if (edgeType === 'metroGate' && isHeaderTarget && targetHandle === 'in') {
-      edgeObject.targetHandle = targetHandle;
-    } else if (targetHandle !== undefined && edgeType !== 'metroGate') {
-      edgeObject.targetHandle = targetHandle;
+    if (edgeType === 'metroGate' && isHeaderTarget && normalizedTargetHandle === 'in') {
+      edgeObject.targetHandle = normalizedTargetHandle;
+    } else if (normalizedTargetHandle !== null && edgeType !== 'metroGate') {
+      edgeObject.targetHandle = normalizedTargetHandle;
     }
 
     return edgeObject;

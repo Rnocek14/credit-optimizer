@@ -720,6 +720,18 @@ function EduTreeCanvasV2Content({
     
     return finalFiltered;
   }, [safeEdges]); // Depends on safeEdges, not raw inputs
+  
+  // Dev-only assertion: verify no dangling edges post-cleanup
+  if (import.meta.env.DEV) {
+    React.useEffect(() => {
+      const allValid = displayEdges.every(e => e.source && e.target);
+      if (!allValid) {
+        console.error('[ASSERT] Dangling edges detected post-cleanup:', 
+          displayEdges.filter(e => !e.source || !e.target)
+        );
+      }
+    }, [displayEdges]);
+  }
 
   // Initialize suffix compare with filtered edges
   const suffixCompare = useSuffixCompare({ edges: displayEdges });
