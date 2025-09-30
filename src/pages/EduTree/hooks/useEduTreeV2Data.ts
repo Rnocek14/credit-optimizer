@@ -281,7 +281,21 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     if (!isV2Mode || !liveBlocksData) return [];
     const mergedBlocks = mergeBlocksWithLiveData(GOLDEN_LAYOUT_SEED.blocks, liveBlocksData as DBBlock[] | undefined);
     const filteredBlocks = filterBlocksByMode(mergedBlocks, effectiveFilterMode, { programs: selectedPrograms });
-    return filteredBlocks.map(b => String(b.id)).filter(Boolean);
+    const ids = filteredBlocks.map(b => String(b.id)).filter(Boolean);
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[EduTreeV2Data][visibleBlockIds]', {
+        isV2Mode,
+        totalMerged: mergedBlocks.length,
+        afterFilter: filteredBlocks.length,
+        idsCount: ids.length,
+        sampleIds: ids.slice(0, 3),
+        effectiveFilterMode,
+        selectedPrograms
+      });
+    }
+    
+    return ids;
   }, [isV2Mode, liveBlocksData, effectiveFilterMode, selectedPrograms]);
   
   // Fetch course options and transfer rules for visible blocks
