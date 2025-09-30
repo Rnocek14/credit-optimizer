@@ -57,6 +57,12 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
     if (yearMatch) {
       candidates.push(`y${yearMatch[1]}-${dbSlug}`); // y1-foundations
     }
+    
+    // Track seed IDs using reverse map (dev auditing)
+    if (typeof window !== 'undefined' && !ENV.PROD) {
+      (window as any).__mpSlugBackfills ??= new Set();
+      (window as any).__mpSlugBackfills.add(base);
+    }
   }
 
   // de-dupe while preserving order
@@ -75,6 +81,14 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
 // Dev banner (once per load; never in prod or SSR)
 if (typeof window !== 'undefined' && !ENV.PROD) {
   warnOnce('dev-banner', '[Dev] Marketplace v%s, Evidence v%s, IN_CHUNK=%d', VERSION, EVIDENCE_VERSION, IN_CHUNK);
+  
+  // Warn about seed IDs relying on slug backfill
+  setTimeout(() => {
+    if ((window as any).__mpSlugBackfills?.size) {
+      warnOnce('mp-backfills', '[Audit] Seed IDs using slug backfill map:', 
+        Array.from((window as any).__mpSlugBackfills));
+    }
+  }, 1000);
 }
 
 export function useBatchRequirementOptions(requirementIds: string[]) {
