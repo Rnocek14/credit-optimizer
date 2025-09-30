@@ -5,6 +5,21 @@
 
 import { Node, Edge, MarkerType, Position } from '@xyflow/react';
 import { V2RequirementBlock, V2Edge, EdgeKind } from '../data/seedDataV2';
+
+type RFNode = Node;
+type RFEdge = Edge;
+
+export function buildVisibleEdges(nodes: RFNode[], rawEdges: RFEdge[]) {
+  const nodeMap = new Map(nodes.filter(n => !n.hidden).map(n => [n.id, n]));
+  const safeEdges = rawEdges.filter(e => {
+    const s = nodeMap.get(e.source);
+    const t = nodeMap.get(e.target);
+    if (!s || !t) return false;
+    if ((s.data?.is_header || s.data?.is_ghost) || (t.data?.is_header || t.data?.is_ghost)) return false;
+    return true;
+  });
+  return safeEdges;
+}
 import { applyDeterministicGrid, getReservedColsByYear, type Lane } from './deterministicGrid';
 import { laneXs, applyLanePackingFinal, NODE_HEIGHT, LANE_GAP } from './layoutTokens';
 import { HeaderNodeData } from '../nodes/HeaderNode';

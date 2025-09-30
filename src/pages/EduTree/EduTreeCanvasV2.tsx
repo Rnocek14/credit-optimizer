@@ -46,6 +46,7 @@ import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
 import '../../styles/eduTreeHud.css';
+import { auditSeeds, printAuditReport } from './utils/seedAuditor';
 
 type DevOverrides = {
   filterMode?: FilterMode;
@@ -244,6 +245,13 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
         gateType={gateType}
       />
 
+      {/* Phase 3: Gate aggregation chips */}
+      <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
+        {data.aggHasAce && <span className="chip chip-ace node--agg-has-ace">ACE</span>}
+        {data.aggHasClep && <span className="chip chip-clep node--agg-has-clep">CLEP</span>}
+        {(data.optionsCount ?? 0) === 0 && <span className="chip chip-ghost">No options yet</span>}
+      </div>
+
       {/* Handles - show appropriate handles based on mode */}
       {!singleRailStraight && (
         <>
@@ -382,7 +390,50 @@ function EduTreeCanvasV2Content({
   const updateNodeInternals = useUpdateNodeInternals();
   const fitViewCalled = useRef(false);
   const gatePositionsRef = useRef<any>(null);
+
+  // Phase 2: Gate freeze (resolve assertions & dangling edges)
+  const gateConfigKey = useMemo(() => {
+    return JSON.stringify({
+      mode: effectiveFilterMode,
+      programs: Array.from(selectedPrograms ?? []).sort(),
+      showPG: !!gatePositionsRef.current?.showPG,
+      showTG: !!gatePositionsRef.current?.showTG,
+      // if gates are year-dependent:
+      years: Array.from(new Set(nodes.filter(n => n.type === 'gate').map(n => (n.data?.year ?? null)))).sort(),
+    });
+  }, [effectiveFilterMode, selectedPrograms, gatePositionsRef.current?.showPG, gatePositionsRef.current?.showTG, nodes]);
+
+  const gateConfigRef = useRef<string>('');
+  useEffect(() => {
+    if (gateConfigRef.current === gateConfigKey) {
+      // console.debug('[EduTreeV2] Gate config unchanged; skipping');
+      return;
+    }
+    gateConfigRef.current = gateConfigKey;
+
+    const visibleGateIds = nodes
+      .filter(n => n.type === 'gate' && !n.hidden)
+      .map(n => n.id);
+
+    visibleGateIds.forEach(id => updateNodeInternals(id));
+
+    // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
+  }, [gateConfigKey, nodes, updateNodeInternals]);
   
+  // Phase 4: Seed auditor (dev-only safety net)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!blocks?.length) return;
+    (async () => {
+      try {
+        const report = await auditSeeds(blocks, Array.from(selectedPrograms ?? []));
+        printAuditReport(report);
+      } catch (e) {
+        console.warn('[SeedAudit] failed:', e);
+      }
+    })();
+  }, [blocks, selectedPrograms]);
+
   // Enhanced React Flow monitoring and recovery system
   const eventDebugger = useReactFlowEventDebugger({
     enabled: process.env.NODE_ENV === 'development',

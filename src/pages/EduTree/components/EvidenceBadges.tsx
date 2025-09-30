@@ -15,6 +15,10 @@ export const EvidenceBadges: React.FC<Props> = ({
 }) => {
   const { raw, getCourseStatus } = useUserEvidence();
 
+  if (!raw) {
+    return <span className="badge badge-ghost" title="Evidence temporarily unavailable">Evidence n/a</span>;
+  }
+
   // Prefer server-side coverage if available; otherwise do a quick client calc.
   const coverage = React.useMemo(() => {
     const server = raw?.byBlock?.[blockId];

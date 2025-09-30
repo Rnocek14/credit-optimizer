@@ -10,6 +10,7 @@ import { usePathHighlight } from '../ctx/PathHighlightContext';
 import { useBatchRequirementOptions } from '@/hooks/useBatchRequirementOptions';
 import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
 import { useUserPlan } from '@/hooks/useUserPlan';
+import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
 
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
@@ -281,26 +282,48 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   // Batch fetch marketplace data and selected courses
   const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
   const { data: selectedCoursesData } = useUserPlanSelections(userPlan?.id);
+
+  // Phase 3: Gate aggregation (chips show transferables)
+  const gateAggregates = useMemo(() => {
+    if (!marketplaceData) return new Map<string, MPInfo>();
+
+    const m = new Map<string, MPInfo>();
+
+    // Example: program gate at Y2 aggregates Y1 requirements
+    const y1Ids = blocks.filter(b => /^y1-/.test(String(b.id)) && !(b as any).is_header && !(b as any).is_empty_year).map(b => b.id);
+    if (y1Ids.length) m.set('gate-y2-programs', aggregateGateMarketplaceData(y1Ids, marketplaceData));
+
+    // Example: track gate at Y3 aggregates Y2 requirements for selected programs
+    const y2Ids = blocks
+      .filter(b => /^y2-/.test(String(b.id)) && (!selectedPrograms?.length || selectedPrograms.includes(b.program_id)))
+      .map(b => b.id);
+    if (y2Ids.length) m.set('gate-y3-tracks', aggregateGateMarketplaceData(y2Ids, marketplaceData));
+
+    return m;
+  }, [blocks, marketplaceData, selectedPrograms]);
   
   // Enrich blocks with marketplace and selection data
   const enrichedBlocks = useMemo(() => {
     return blocks.map(block => {
-      // Only enrich if we have marketplace data for this block
-      const marketplaceInfo = marketplaceData?.get(block.id);
+      const isGate = String(block.id).startsWith('gate-');
+      const mpInfo = isGate ? gateAggregates.get(block.id) : marketplaceData?.get(block.id);
       const selectedCourse = selectedCoursesData?.get(block.id);
-      
-      if (!marketplaceInfo && !selectedCourse && !userPlan?.id) return block;
-      
+
+      if (!mpInfo && !selectedCourse && !userPlan?.id) return block;
+
       return {
         ...block,
-        optionsCount: marketplaceInfo?.optionsCount,
-        hasAceCredit: marketplaceInfo?.hasAceCredit,
-        hasClep: marketplaceInfo?.hasClep,
+        optionsCount: mpInfo?.optionsCount,
+        hasAceCredit: mpInfo?.hasAceCredit,
+        hasClep: mpInfo?.hasClep,
         selectedCourse,
-        planId: userPlan?.id
+        planId: userPlan?.id,
+        // gate CSS helpers
+        aggHasAce: !!mpInfo?.hasAceCredit,
+        aggHasClep: !!mpInfo?.hasClep,
       };
     });
-  }, [blocks, marketplaceData, selectedCoursesData, userPlan?.id]);
+  }, [blocks, marketplaceData, gateAggregates, selectedCoursesData, userPlan?.id]);
   
   return {
     blocks: enrichedBlocks,

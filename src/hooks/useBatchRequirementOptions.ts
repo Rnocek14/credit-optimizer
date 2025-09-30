@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 const __mpCache = new Map<string, string[]>();
 
 // Generate candidate marketplace keys from a node ID (deterministic, ordered by distance)
-function marketplaceKeysFromNodeId(id: string): string[] {
+export function marketplaceKeysFromNodeId(id: string): string[] {
   const raw = String(id ?? '').trim().toLowerCase();
   if (!raw) return [];
   if (__mpCache.has(raw)) return __mpCache.get(raw)!;

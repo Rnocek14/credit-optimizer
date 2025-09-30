@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 export type EvidenceSummary = {
   // catalog course ids the student has completed / is in-progress / pending transfer
@@ -25,21 +26,30 @@ type EvidenceSets = {
 };
 
 export function useUserEvidence() {
+  const { state } = useUnifiedData();
+  const user = state?.user;
+
   const { data } = useQuery({
-    queryKey: ['student-evidence'],
+    queryKey: ['student-evidence', user?.id ?? 'anon'],
+    enabled: !!user?.id,          // ❗️no calls when unauthenticated
+    retry: false,                 // ❗️no retry loops on 400s
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('evidence-summary', {
-        body: {}
+        body: { userId: user!.id }, // include if your function expects it
       });
-      
+
       if (error) {
-        console.error('Evidence API error:', error);
-        throw new Error('Failed to load evidence summary');
+        const warned: Set<string> = (window as any).__evidenceWarned ?? new Set();
+        if (!warned.has('evidence-400')) {
+          console.warn('[Evidence] summary failed once:', { status: error.status, message: error.message });
+          warned.add('evidence-400');
+          (window as any).__evidenceWarned = warned;
+        }
+        return null as unknown as EvidenceSummary; // graceful fallback
       }
-      
       return data as EvidenceSummary;
     },
-    staleTime: 60_000,
   });
 
   const sets = React.useMemo<EvidenceSets>(() => {
