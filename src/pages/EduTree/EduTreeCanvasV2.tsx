@@ -544,7 +544,20 @@ function EduTreeCanvasV2Content({
   // Use dev override filter mode when provided, then props, then default
   const passedFilterMode = dev.filterMode ?? overrideFilterMode ?? filterMode;
   
-  const { blocks, edges, dataVersion, isLoading, isV2Mode, filterMode: currentFilterMode, effectiveFilterMode, isAutoMode, selectedPrograms } = useEduTreeV2Data(passedFilterMode);
+  const { 
+    blocks, 
+    edges, 
+    dataVersion, 
+    isLoading, 
+    isV2Mode, 
+    filterMode: currentFilterMode, 
+    effectiveFilterMode, 
+    isAutoMode, 
+    selectedPrograms,
+    optionsByBlock,
+    rulesByBlock,
+    userPlanSelections 
+  } = useEduTreeV2Data(passedFilterMode);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [flowEdges, setEdges, onEdgesChange] = useEdgesState([]);
   const { fitView } = useReactFlow();
@@ -1244,7 +1257,11 @@ function EduTreeCanvasV2Content({
       effectiveFilterMode || 'compare-tracks', // Pass filter mode for header routing  
       flags.eduTreeV2EdgeKinds ?? true, // Pass V2 edge kinds flag (default true)
       gatePositions, // Pass gate positioning decisions
-      selectedPrograms // Pass selected programs for Guard B
+      selectedPrograms, // Pass selected programs for Guard B
+      dataVersion, // Course-aware: data version for node identity
+      optionsByBlock, // Course-aware: options per block
+      rulesByBlock, // Course-aware: transfer rules per block
+      userPlanSelections // Course-aware: user selections
     );
   }, [blocksKey, edges, isV2Mode, setNodes, setEdges, effectiveFlags.eduTreeV2Grid, effectiveFlags.eduTreeLayoutMode, usePlan, singleRailStraight, effectiveFilterMode, flags.eduTreeV2EdgeKinds, gatePositions, selectedPrograms]);
   

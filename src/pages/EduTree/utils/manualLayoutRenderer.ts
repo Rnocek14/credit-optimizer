@@ -70,6 +70,10 @@ export interface V2NodeData {
     creditsEarned: number;
     creditsNeeded: number;
   };
+  // Course-aware fields (Phase A complete)
+  options?: any[]; // Array of CourseOption objects
+  transferRules?: any[]; // Array of transfer rule objects
+  selectedCourseId?: string; // User's selected course ID
   // Data version for React identity tracking
   __v?: string;
   [key: string]: unknown; // Index signature for ReactFlow compatibility
@@ -82,8 +86,21 @@ export interface V2NodeData {
 export function blocksToNodes(
   blocks: V2RequirementBlock[], 
   singleRailStraight: boolean = false,
-  selectedPrograms?: string[]
+  selectedPrograms?: string[],
+  dataVersion?: string,
+  optionsByBlock?: Map<string, any[]>,
+  transferRulesByBlock?: Map<string, any[]>,
+  userPlanSelections?: any[]
 ): Node<V2NodeData>[] {
+  
+  // Course-aware: Build selections map for quick lookup
+  const selectionsByBlock = new Map<string, any>();
+  if (userPlanSelections) {
+    userPlanSelections.forEach(sel => {
+      const blockId = String(sel.requirement_id ?? sel.block_id ?? '').toLowerCase();
+      if (blockId) selectionsByBlock.set(blockId, sel);
+    });
+  }
   
   // GUARD B — Render-time kill switch: Drop any remaining ghosts for non-selected programs
   let safeBlocks = blocks;
@@ -163,6 +180,12 @@ export function blocksToNodes(
     const sel = (block as any).selectedCourse?.id ?? '∅';
     const mpSig = `${oc ?? '∅'}|${ace}|${clep}|${sel}`;
     
+    // Course-aware: Get options and transfer rules for this block
+    const blockIdNormalized = String(block.id).toLowerCase();
+    const courseOptions = optionsByBlock?.get(blockIdNormalized) ?? [];
+    const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
+    const selection = selectionsByBlock.get(blockIdNormalized);
+    
     // DIAGNOSTIC: Log marketplace data mapping - MORE DETAILED
     if (process.env.NODE_ENV === 'development') {
       const blockIndex = safeBlocks.indexOf(block);
@@ -213,8 +236,12 @@ export function blocksToNodes(
         selectedCourse: (block as any).selectedCourse,
         // Marketplace signature for re-render detection
         mpSig,
+        // Course-aware: Add options, transfer rules, and selection
+        options: courseOptions,
+        transferRules: transferRules,
+        selectedCourseId: selection?.course_id,
         // Data version for React identity tracking
-        __v: (block as any).__v,
+        __v: dataVersion ?? (block as any).__v,
         // Fallback ID for debugging
         _rfNodeId: block.id
       } as V2NodeData
@@ -572,7 +599,11 @@ export function applyManualLayout(
   filterMode: string = '',
   useV2EdgeKinds: boolean = false,
   gatePositions?: GatePositions,
-  selectedPrograms?: string[]
+  selectedPrograms?: string[],
+  dataVersion?: string,
+  optionsByBlock?: Map<string, any[]>,
+  transferRulesByBlock?: Map<string, any[]>,
+  userPlanSelections?: any[]
 ): void {
   console.log('[ManualLayout] Applying direct positions for', blocks.length, 'blocks', 
     useGridAnchors ? '(with grid anchors)' : '(manual positions)',
@@ -614,7 +645,15 @@ export function applyManualLayout(
   });
   
   // Create nodes with phase A planning data (blocks are pre-filtered)
-  const processedNodes = blocksToNodes(blocks, singleRailStraight, selectedPrograms).map(node => {
+  const processedNodes = blocksToNodes(
+    blocks, 
+    singleRailStraight, 
+    selectedPrograms,
+    dataVersion,
+    optionsByBlock,
+    transferRulesByBlock,
+    userPlanSelections
+  ).map(node => {
     const block = blocks.find(b => b.id === node.id);
     if (!block || block.is_virtual || block.is_empty_year) return node;
     
