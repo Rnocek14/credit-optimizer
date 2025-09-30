@@ -20,6 +20,16 @@ export interface V2RequirementBlock {
   position_y: number;
   is_virtual?: boolean;
   is_empty_year?: boolean; // New flag for ghost nodes
+  
+  // Enriched fields (added by useEduTreeV2Data)
+  optionsCount?: number;
+  hasAceCredit?: boolean;
+  hasClep?: boolean;
+  selectedCourse?: any;
+  planId?: string;
+  aggHasAce?: boolean;
+  aggHasClep?: boolean;
+  __v?: string; // Data version for React identity tracking
 }
 
 export interface Junction {

@@ -70,6 +70,8 @@ export interface V2NodeData {
     creditsEarned: number;
     creditsNeeded: number;
   };
+  // Data version for React identity tracking
+  __v?: string;
   [key: string]: unknown; // Index signature for ReactFlow compatibility
 }
 
@@ -211,6 +213,8 @@ export function blocksToNodes(
         selectedCourse: (block as any).selectedCourse,
         // Marketplace signature for re-render detection
         mpSig,
+        // Data version for React identity tracking
+        __v: (block as any).__v,
         // Fallback ID for debugging
         _rfNodeId: block.id
       } as V2NodeData

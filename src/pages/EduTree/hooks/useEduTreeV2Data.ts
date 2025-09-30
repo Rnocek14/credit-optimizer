@@ -13,6 +13,7 @@ import { useBatchRequirementOptions, marketplaceKeysFromNodeId } from '@/hooks/u
 import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
+import { mergeBlocksWithLiveData, calculateDataVersion, type DBBlock, type DBCourse } from '../utils/dataMerge';
 
 // Data freshness diagnostic
 let __dataRecomputeCount = 0;
@@ -258,6 +259,15 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     }
   }, [effectiveFilterMode, pathHighlight.primarySelection, pathHighlight.secondarySelection]);
 
+  // Phase 4b: Calculate data version for change detection
+  const dataVersion = useMemo(() => {
+    return calculateDataVersion(
+      liveBlocksData as DBBlock[] | undefined,
+      liveCoursesData as DBCourse[] | undefined,
+      Date.now() // Use current timestamp as proxy for selections changes
+    );
+  }, [liveBlocksData, liveCoursesData]);
+
   const { blocks, edges } = useMemo(() => {
     if (!isV2Mode) {
       return { blocks: [], edges: [] };
@@ -268,29 +278,35 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     const dataChecksum = `courses:${liveCoursesData?.length ?? 0}|blocks:${liveBlocksData?.length ?? 0}|seed:${GOLDEN_LAYOUT_SEED.blocks.length}`;
     console.count('[DATA→NODES] recompute');
     console.log('[DATA→NODES] checksum:', dataChecksum, '(recompute #' + __dataRecomputeCount + ')');
+    console.log('[DATA→NODES] dataVersion:', dataVersion);
     
-    console.log('[EduTreeV2Data] PHASE 5 DEBUG - Using golden layout seed with filter mode:', effectiveFilterMode, isAutoMode ? '(auto-detected)' : '');
+    console.log('[EduTreeV2Data] PHASE 5 DEBUG - Merging live data with seed layout');
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     console.log('[EduTreeV2Data] Selected programs:', selectedPrograms);
     console.log('[EduTreeV2Data] Live data:', { courses: liveCoursesData?.length ?? 0, blocks: liveBlocksData?.length ?? 0 });
     
-    // DEBUG: Count both CS and IT nodes in original seed data
-    const originalItNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_it');
-    const originalCsNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_cs');
-    console.log('[DEBUG] Original seed data node counts:', {
-      IT: { count: originalItNodes.length, sample: originalItNodes.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))},
-      CS: { count: originalCsNodes.length, sample: originalCsNodes.slice(0, 3).map(n => ({ id: n.id, program_id: n.program_id, track_id: n.track_id }))}
+    // CRITICAL FIX: Merge live DB data with seed layout BEFORE filtering
+    const mergedBlocks = mergeBlocksWithLiveData(
+      GOLDEN_LAYOUT_SEED.blocks, 
+      liveBlocksData as DBBlock[] | undefined
+    );
+    
+    console.log('[EduTreeV2Data] After merge:', {
+      seedBlocks: GOLDEN_LAYOUT_SEED.blocks.length,
+      liveBlocks: liveBlocksData?.length ?? 0,
+      mergedBlocks: mergedBlocks.length,
+      sampleMerged: mergedBlocks.slice(0, 3).map(b => ({ id: b.id, title: b.title, credits: b.credits_needed }))
     });
     
-    // Apply enhanced filtering with selectedPrograms
-    console.log('[EduTreeV2Data] About to filter with:', {
+    // Apply enhanced filtering with selectedPrograms to MERGED data
+    console.log('[EduTreeV2Data] About to filter merged data with:', {
       effectiveFilterMode,
       selectedPrograms,
       programsLength: selectedPrograms.length,
-      originalBlocksCount: GOLDEN_LAYOUT_SEED.blocks.length
+      mergedBlocksCount: mergedBlocks.length
     });
     
-    const filteredBlocks = filterBlocksByMode(GOLDEN_LAYOUT_SEED.blocks, effectiveFilterMode, { programs: selectedPrograms });
+    const filteredBlocks = filterBlocksByMode(mergedBlocks, effectiveFilterMode, { programs: selectedPrograms });
     
     // DEBUG: Count both CS and IT nodes after mode filtering
     const itNodesAfterFilter = filteredBlocks.filter(b => b.program_id === 'bs_it');
@@ -371,7 +387,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       blocks: blocksFinal,
       edges: filteredEdges
     };
-  }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms, liveCoursesData, liveBlocksData]);
+  }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms, liveCoursesData, liveBlocksData, dataVersion]);
   
   // Extract requirement IDs for batch fetching (exclude ghosts/empty years)
   const requirementIds = useMemo(() => {
@@ -519,7 +535,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     return m;
   }, [blocks, marketplaceData, selectedPrograms]);
   
-  // Enrich blocks with marketplace and selection data
+  // Enrich blocks with marketplace and selection data + data version
   const enrichedBlocks = useMemo(() => {
     // DIAGNOSTIC: Dump first 10 blocks' MP join result (Step 3 from checklist)
     if (typeof window !== 'undefined' && !(window as any).__mpEnrichOnce) {
@@ -575,6 +591,8 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         // gate CSS helpers
         aggHasAce: !!mpInfo?.hasAceCredit,
         aggHasClep: !!mpInfo?.hasClep,
+        // Data version for React identity tracking
+        __v: dataVersion,
       };
     });
     
@@ -583,10 +601,21 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       (window as any).__enriched = result;
       // Expose the lookup helper for audit
       (window as any).marketplaceKeysFromNodeId = marketplaceKeysFromNodeId;
+      
+      // Log sample enriched nodes with version
+      console.log('[ENRICH] Sample enriched blocks with dataVersion:', 
+        result.slice(0, 3).map(b => ({ 
+          id: b.id, 
+          title: b.title, 
+          credits: b.credits_needed,
+          optionsCount: b.optionsCount,
+          __v: b.__v 
+        }))
+      );
     }
     
     return result;
-  }, [blocks, marketplaceData, gateAggregates, selectedCoursesData, userPlan?.id]);
+  }, [blocks, marketplaceData, gateAggregates, selectedCoursesData, userPlan?.id, dataVersion]);
   
   return {
     blocks: enrichedBlocks,
