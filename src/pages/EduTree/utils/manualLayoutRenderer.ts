@@ -158,11 +158,13 @@ export function blocksToNodes(
         isVirtual: block.is_virtual,
         junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
         singleRailStraight,
-        // Marketplace fields from enriched blocks
+        // Marketplace fields from enriched blocks - normalized to numbers
         optionsCount: Number((block as any).optionsCount ?? 0),
         hasAceCredit: !!(block as any).hasAceCredit,
         hasClep: !!(block as any).hasClep,
-        selectedCourse: (block as any).selectedCourse
+        selectedCourse: (block as any).selectedCourse,
+        // Fallback ID for debugging
+        _rfNodeId: block.id
       } as V2NodeData
     };
   });

@@ -72,7 +72,12 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   const flags = useFeatureFlags();
   const pathHighlight = usePathHighlight();
   const blockData = data as any;
-  const blockId = blockData?.block?.id ?? blockData?.id ?? data?.id ?? 'unknown';
+  // Bulletproof blockId resolution with fallback chain
+  const blockId =
+    blockData?.block?.id ??
+    blockData?.id ??
+    (blockData && typeof blockData === 'object' && '_rfNodeId' in blockData ? blockData._rfNodeId : undefined) ??
+    'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
@@ -88,15 +93,16 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     return ENV.DEGREE_MARKETPLACE || LOCAL_MP || URL_MP;
   }, []);
   
-  // DIAGNOSTIC: Log each node's marketplace state (Step 2 from checklist)
+  // DIAGNOSTIC: Log marketplace state in dev only
   useEffect(() => {
-    console.log('[REQNODE]', blockId, { 
-      SHOW_MP, 
-      optionsCount, 
-      isFinite: Number.isFinite(optionsCount),
-      greaterThanZero: optionsCount > 0,
-      rawData: data
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[REQNODE]', blockId, { 
+        SHOW_MP, 
+        optionsCount, 
+        isFinite: Number.isFinite(optionsCount),
+        greaterThanZero: optionsCount > 0
+      });
+    }
   }, [blockId, optionsCount, SHOW_MP]);
   
   // Extract track and program info for styling
@@ -180,23 +186,23 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
         </div>
       )}
       
-      {/* Phase 2: Course marketplace chips - gated behind feature flag */}
-      {/* DIAGNOSTIC: Temporarily always show to see what's coming through (Step 1 from checklist) */}
-      {SHOW_MP && (
-        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]" title="mp-chip-diag">
+      {/* Phase 2: Course marketplace chips - only show when meaningful */}
+      {SHOW_MP && Number.isFinite(optionsCount) && optionsCount > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
           <button
             onClick={() => setModalOpen(true)}
             className="px-2 py-0.5 rounded-full bg-surface border border-border/50 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
+            title="View catalog course options that satisfy this requirement"
           >
-            Options: {Number.isFinite(optionsCount) ? optionsCount : '∅'}
+            Options: {optionsCount}
           </button>
           {hasAceCredit && (
-            <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50">
+            <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50" title="ACE credit available">
               ACE
             </span>
           )}
           {hasClep && (
-            <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50">
+            <span className="px-1.5 py-0.5 rounded bg-blue-100/60 text-blue-700 border border-blue-200/50" title="CLEP exam available">
               CLEP
             </span>
           )}
@@ -909,17 +915,6 @@ function EduTreeCanvasV2Content({
           (window as any).__rfNodes = finalNodes; // Alias for easier console access
           (window as any).__flowEdges__ = newEdges;
           (window as any).gatePositions = gatePositions;
-          
-          // DIAGNOSTIC: Log first 3 nodes with marketplace data
-          console.log('[EduTreeV2] Sample nodes with marketplace data:', 
-            finalNodes.slice(0, 3).map(n => ({
-              id: n.id,
-              dataId: n.data?.id,
-              blockId: n.data?.block?.id,
-              optionsCount: n.data?.optionsCount,
-              hasAceCredit: n.data?.hasAceCredit
-            }))
-          );
         }
         
         // Validate no overlaps (acceptance criteria)
