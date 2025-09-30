@@ -3,6 +3,6 @@
  * Bump these when schema/API changes require cache invalidation
  */
 
-export const EVIDENCE_VERSION = 'evidence-v1';
-export const MARKETPLACE_VERSION = 'mp-keys-v1';
-export const IN_CHUNK = 500; // Postgres IN() query chunk size
+export const MARKETPLACE_VERSION = 'v3';    // bump on schema/transform changes
+export const EVIDENCE_VERSION    = 'v2';    // bump when evidence structure changes
+export const IN_CHUNK            = 500;     // keep in sync with Postgres params

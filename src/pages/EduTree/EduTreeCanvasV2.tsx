@@ -409,10 +409,18 @@ function EduTreeCanvasV2Content({
   const scheduleGateUpdate = useMemo(() => {
     let raf = 0;
     const schedule = (fn: () => void) => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(fn);
+      if (typeof requestAnimationFrame === 'function') {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(fn);
+      } else {
+        fn(); // SSR/no-RAF fallback (no-op throttle)
+      }
     };
-    schedule.cancel = () => cancelAnimationFrame(raf);
+    schedule.cancel = () => {
+      if (typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(raf);
+      }
+    };
     return schedule;
   }, []);
 

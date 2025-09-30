@@ -293,13 +293,15 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
         gateId: 'gate-y2-programs', 
         where: b => /^y1-/.test(String(b.id)) && 
                    !String(b.id).startsWith('header-') && 
-                   !b.is_empty_year 
+                   !b.is_empty_year &&
+                   !b.is_virtual
       },
       { 
         gateId: 'gate-y3-tracks', 
         where: b => /^y2-/.test(String(b.id)) && 
                    !String(b.id).startsWith('header-') && 
                    !b.is_empty_year &&
+                   !b.is_virtual &&
                    (!selectedPrograms?.length || selectedPrograms.includes(b.program_id ?? ''))
       },
       // Future gates can be added here

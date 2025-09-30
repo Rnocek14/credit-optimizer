@@ -1,8 +1,9 @@
 export type MPInfo = { optionsCount: number; hasAceCredit: boolean; hasClep: boolean };
+export type MPMap = Map<string, MPInfo>;
 
 export function aggregateGateMarketplaceData(
   childBlockIds: string[],
-  mp: Map<string, MPInfo>
+  mp: MPMap
 ): MPInfo {
   let maxOptions = 0, anyAce = false, anyClep = false;
   for (const id of childBlockIds) {

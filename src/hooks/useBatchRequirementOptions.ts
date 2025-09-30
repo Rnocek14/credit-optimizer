@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
 import { warnOnce } from '@/utils/warnOnce';
-import { MARKETPLACE_VERSION as VERSION, IN_CHUNK } from '@/config/versions';
+import { MARKETPLACE_VERSION as VERSION, EVIDENCE_VERSION, IN_CHUNK } from '@/config/versions';
 
 // Module-scope cache for key generation with versioning
 const __mpCache = new Map<string, string[]>();
@@ -39,6 +39,11 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
   return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => 
     arr.slice(i * size, (i + 1) * size)
   );
+}
+
+// Dev banner (once per load)
+if (typeof window !== 'undefined') {
+  warnOnce('dev-banner', '[Dev] Marketplace v%s, Evidence v%s, IN_CHUNK=%d', VERSION, EVIDENCE_VERSION, IN_CHUNK);
 }
 
 export function useBatchRequirementOptions(requirementIds: string[]) {
