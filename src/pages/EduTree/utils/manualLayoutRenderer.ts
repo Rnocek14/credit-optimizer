@@ -186,6 +186,23 @@ export function blocksToNodes(
     const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
     const selection = selectionsByBlock.get(blockIdNormalized);
     
+    // [ACCEPTANCE TEST] Log enrichment for first 5 blocks with data
+    if (process.env.NODE_ENV === 'development' && (courseOptions.length > 0 || transferRules.length > 0 || selection)) {
+      const blockIndex = safeBlocks.indexOf(block);
+      if (blockIndex < 5) {
+        console.log('[blocksToNodes][ENRICH]', {
+          blockId: block.id,
+          blockIndex,
+          optionsCount: courseOptions.length,
+          transferRulesCount: transferRules.length,
+          selectedCourseId: selection?.course_id,
+          sampleOption: courseOptions[0]?.code,
+          sampleTransfer: transferRules[0]?.transferState,
+          dataVersion
+        });
+      }
+    }
+    
     // DIAGNOSTIC: Log marketplace data mapping - MORE DETAILED
     if (process.env.NODE_ENV === 'development') {
       const blockIndex = safeBlocks.indexOf(block);
@@ -207,46 +224,74 @@ export function blocksToNodes(
       }
     }
     
+    const nodeData: V2NodeData = {
+      id: block.id,
+      block: {
+        id: block.id,
+        creditsNeeded: block.credits_needed ?? null,
+        catalogCourseIds: (block as any).catalogCourseIds
+      },
+      title: block.title,
+      ruleType: block.rule_type,
+      levelYear: block.level_year,
+      area: block.area,
+      creditsNeeded: block.credits_needed,
+      trackId: block.track_id,
+      programId: block.program_id,
+      track_id: block.track_id,
+      program_id: block.program_id,
+      isVirtual: block.is_virtual,
+      junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
+      singleRailStraight,
+      // Marketplace fields from enriched blocks - DON'T mask undefined
+      optionsCount: oc,
+      hasAceCredit: (block as any).hasAceCredit ?? undefined,
+      hasClep: (block as any).hasClep ?? undefined,
+      selectedCourse: (block as any).selectedCourse,
+      // Marketplace signature for re-render detection
+      mpSig,
+      // Course-aware: Add options, transfer rules, and selection
+      options: courseOptions,
+      transferRules: transferRules,
+      selectedCourseId: selection?.course_id,
+      // Data version for React identity tracking
+      __v: dataVersion ?? (block as any).__v,
+      // Fallback ID for debugging
+      _rfNodeId: block.id
+    };
+    
     return {
       ...baseNode,
       type: block.is_virtual ? 'gate' : 'requirement',
-      data: {
-        id: block.id,
-        block: {
-          id: block.id,
-          creditsNeeded: block.credits_needed ?? null,
-          catalogCourseIds: (block as any).catalogCourseIds
-        },
-        title: block.title,
-        ruleType: block.rule_type,
-        levelYear: block.level_year,
-        area: block.area,
-        creditsNeeded: block.credits_needed,
-        trackId: block.track_id,
-        programId: block.program_id,
-        track_id: block.track_id,
-        program_id: block.program_id,
-        isVirtual: block.is_virtual,
-        junctionType: block.is_virtual ? (block.id.includes('program') ? 'program' : 'track') : undefined,
-        singleRailStraight,
-        // Marketplace fields from enriched blocks - DON'T mask undefined
-        optionsCount: oc,
-        hasAceCredit: (block as any).hasAceCredit ?? undefined,
-        hasClep: (block as any).hasClep ?? undefined,
-        selectedCourse: (block as any).selectedCourse,
-        // Marketplace signature for re-render detection
-        mpSig,
-        // Course-aware: Add options, transfer rules, and selection
-        options: courseOptions,
-        transferRules: transferRules,
-        selectedCourseId: selection?.course_id,
-        // Data version for React identity tracking
-        __v: dataVersion ?? (block as any).__v,
-        // Fallback ID for debugging
-        _rfNodeId: block.id
-      } as V2NodeData
+      data: nodeData
     };
   });
+  
+  // [ACCEPTANCE TEST] Log final enriched nodes (sample first 3 with data)
+  if (process.env.NODE_ENV === 'development') {
+    const enrichedSample = safeBlocks
+      .map(block => {
+        const blockIdNormalized = String(block.id).toLowerCase();
+        const courseOptions = optionsByBlock?.get(blockIdNormalized) ?? [];
+        const transferRules = transferRulesByBlock?.get(blockIdNormalized) ?? [];
+        const selection = selectionsByBlock.get(blockIdNormalized);
+        return {
+          id: block.id,
+          title: block.title,
+          optionsCount: courseOptions.length,
+          opt0: courseOptions[0]?.code,
+          transfer0: transferRules[0]?.transferState,
+          selectedCourseId: selection?.course_id,
+          __v: dataVersion
+        };
+      })
+      .filter(b => b.optionsCount > 0 || b.selectedCourseId)
+      .slice(0, 3);
+      
+    if (enrichedSample.length > 0) {
+      console.log('[EduTree][FINAL NODES]', enrichedSample);
+    }
+  }
 }
 
 /**

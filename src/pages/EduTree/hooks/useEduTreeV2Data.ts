@@ -310,13 +310,22 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
           'postgres_changes',
           { event: '*', schema: 'public', table: tableName },
           (payload) => {
-            console.log(`[Realtime] ${tableName} changed:`, payload);
+            console.log(`[Realtime][${tableName}] DB change detected:`, {
+              event: payload.eventType,
+              table: tableName,
+              timestamp: new Date().toISOString(),
+              ...(payload.new ? { newRecord: { id: (payload.new as any)?.id } } : {}),
+              ...(payload.old ? { oldRecord: { id: (payload.old as any)?.id } } : {})
+            });
+            
             // Invalidate relevant queries
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.requirementOptionsBatch(visibleBlockIds, scope) });
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.transferRulesBatch(visibleBlockIds, scope) });
             if (userPlan?.id) {
               queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PLAN_SELECTIONS(userPlan.id) });
             }
+            
+            console.log(`[Realtime][${tableName}] Invalidated queries for scope:`, scope);
           }
         )
         .subscribe();
@@ -340,13 +349,41 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
 
   // Phase 4b: Calculate data version for change detection (with real maps)
   const dataVersion = useMemo(() => {
-    return calculateDataVersion(
+    const version = calculateDataVersion(
       liveBlocksData as DBBlock[] | undefined,
       liveCoursesData as DBCourse[] | undefined,
       optionsByBlock,
       transferRulesByBlock,
       selectionsUpdatedAt
     );
+    
+    // [ACCEPTANCE TEST] Log dataVersion calculation inputs
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[EduTreeV2Data][dataVersion]', {
+        version,
+        blocksCount: liveBlocksData?.length ?? 0,
+        coursesCount: liveCoursesData?.length ?? 0,
+        optionsMapSize: optionsByBlock?.size ?? 0,
+        transferMapSize: transferRulesByBlock?.size ?? 0,
+        selectionsTimestamp: selectionsUpdatedAt,
+        sampleOptions: optionsByBlock && optionsByBlock.size > 0 
+          ? Array.from(optionsByBlock.entries()).slice(0, 2).map(([blockId, opts]) => ({ 
+              blockId, 
+              count: opts.length,
+              first: opts[0]?.code 
+            }))
+          : 'none',
+        sampleTransfer: transferRulesByBlock && transferRulesByBlock.size > 0
+          ? Array.from(transferRulesByBlock.entries()).slice(0, 2).map(([blockId, rules]) => ({ 
+              blockId, 
+              count: rules.length,
+              firstState: rules[0]?.transferState 
+            }))
+          : 'none'
+      });
+    }
+    
+    return version;
   }, [liveBlocksData, liveCoursesData, optionsByBlock, transferRulesByBlock, selectionsUpdatedAt]);
 
   const { blocks, edges } = useMemo(() => {

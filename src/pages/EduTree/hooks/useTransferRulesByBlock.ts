@@ -84,11 +84,20 @@ export function useTransferRulesByBlock(
       });
 
       if (process.env.NODE_ENV === 'development') {
+        const sampleBlock = rulesByBlock.size > 0 ? Array.from(rulesByBlock.entries())[0] : null;
         console.log('[useTransferRulesByBlock] Fetched:', {
-          blockIds: blockIds.slice(0, 3),
+          scope,
+          blockIdsCount: blockIds.length,
+          blockIdsSample: blockIds.slice(0, 3),
           totalRules: rulesData?.length || 0,
           blocksWithRules: rulesByBlock.size,
           coursesWithRules: rulesByCourse.size,
+          sampleBlock: sampleBlock ? {
+            blockId: sampleBlock[0],
+            rulesCount: sampleBlock[1].length,
+            firstState: sampleBlock[1][0]?.transferState,
+            firstScore: sampleBlock[1][0]?.score
+          } : null
         });
       }
 

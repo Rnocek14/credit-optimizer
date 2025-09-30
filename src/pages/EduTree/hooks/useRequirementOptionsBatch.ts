@@ -107,11 +107,19 @@ export function useRequirementOptionsBatch(
       });
 
       if (process.env.NODE_ENV === 'development') {
+        const sampleBlock = resultMap.size > 0 ? Array.from(resultMap.entries())[0] : null;
         console.log('[useRequirementOptionsBatch] Fetched:', {
-          blockIds: blockIds.slice(0, 3),
+          scope,
+          blockIdsCount: blockIds.length,
+          blockIdsSample: blockIds.slice(0, 3),
           totalOptions: optionsData.length,
           coursesFound: coursesData?.length || 0,
           resultMapSize: resultMap.size,
+          sampleBlock: sampleBlock ? {
+            blockId: sampleBlock[0],
+            optionsCount: sampleBlock[1].length,
+            firstCourse: sampleBlock[1][0]?.code
+          } : null
         });
       }
 

@@ -89,18 +89,20 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
     'unknown';
   const creditsNeeded = blockData?.creditsNeeded ?? blockData?.block?.creditsNeeded ?? null;
   
-  // [INSTRUMENTATION] Log when this node renders with what fields it receives
+  // [ACCEPTANCE TEST] Log when this node renders with course-aware fields
   React.useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && Math.random() < 0.05) { // Sample 5%
-      console.log('[RequirementNode render]', {
+    const hasData = (data as any)?.options?.length > 0 || (data as any)?.selectedCourseId;
+    if (process.env.NODE_ENV === 'development' && (hasData || Math.random() < 0.02)) {
+      console.log('[RequirementNode][render]', {
         id: blockId,
         title: data?.title,
-        credits: data?.creditsNeeded ?? creditsNeeded,
-        v: data?.__v,
-        keys: Object.keys(data || {}).slice(0, 10)
+        optionsLen: (data as any)?.options?.length ?? 0,
+        transferLen: (data as any)?.transferRules?.length ?? 0,
+        selectedCourseId: (data as any)?.selectedCourseId,
+        v: data?.__v
       });
     }
-  }, [blockId, data?.title, data?.creditsNeeded, data?.__v]);
+  }, [blockId, data?.title, data?.__v]);
   const catalogCourseIds = blockData?.block?.catalogCourseIds ?? blockData?.catalogCourseIds ?? undefined;
   
   // Phase 2: Course marketplace data - BULLETPROOF LAST-MILE RESOLVER
