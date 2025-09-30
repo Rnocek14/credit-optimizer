@@ -1,11 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useMemo } from 'react';
+
+// Module-scope cache for key generation
+const __mpCache = new Map<string, string[]>();
 
 // Generate candidate marketplace keys from a node ID (deterministic, ordered by distance)
 function marketplaceKeysFromNodeId(id: string): string[] {
-  const s = String(id).trim().toLowerCase();
-  const base = s.replace(/\s+/g, '-');
+  const raw = String(id ?? '').trim().toLowerCase();
+  if (!raw) return [];
+  if (__mpCache.has(raw)) return __mpCache.get(raw)!;
 
+  const base = raw.replace(/\s+/g, '-');
   const candidates: string[] = [
     base,                                    // y2-it-core
     base.replace(/^y\d-/, ''),               // it-core
@@ -15,7 +21,9 @@ function marketplaceKeysFromNodeId(id: string): string[] {
   ];
 
   // de-dupe while preserving order
-  return candidates.filter((k, i, a) => a.indexOf(k) === i);
+  const out = candidates.filter((k, i, a) => k && a.indexOf(k) === i);
+  __mpCache.set(raw, out);
+  return out;
 }
 
 // Chunk array for large IN() queries (Postgres limit ~32k params)
@@ -79,17 +87,29 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
 
       console.log('[MP-BATCH] 🗝️ candidate keys:', uniqueKeys.length, '→ rows:', rows.length);
 
-      // Map results back to original node IDs (first match per node wins)
+      // Map results back to original node IDs (use max/sum for collisions)
       const resultMap = new Map<string, { optionsCount: number; hasAceCredit: boolean; hasClep: boolean }>();
       for (const d of rows) {
         const nodeId = pickNodeId(String(d.block_id).toLowerCase());
-        if (!nodeId || resultMap.has(nodeId)) continue;
+        if (!nodeId) continue;
         
-        resultMap.set(nodeId, {
+        const next = {
           optionsCount: d.options_count ?? 0,
           hasAceCredit: !!d.has_ace_credit,
           hasClep: !!d.has_clep,
-        });
+        };
+
+        const existing = resultMap.get(nodeId);
+        if (!existing) {
+          resultMap.set(nodeId, next);
+        } else {
+          // Handle multi-row collisions: use max for counts, OR for booleans
+          resultMap.set(nodeId, {
+            optionsCount: Math.max(existing.optionsCount, next.optionsCount),
+            hasAceCredit: existing.hasAceCredit || next.hasAceCredit,
+            hasClep: existing.hasClep || next.hasClep,
+          });
+        }
       }
 
       // Debug visibility
@@ -99,10 +119,13 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
         (window as any).__mpResultNodeIds = Array.from(resultMap.keys());
       }
 
-      // Log misses for debugging (one-time per page load)
+      // Log misses for debugging (one warning per mount)
+      const warned = (window as any).__mpWarned ?? new Set<string>();
       const misses = requirementIds.filter(id => !resultMap.has(id));
-      if (misses.length > 0) {
+      if (misses.length > 0 && !warned.has('mp-misses')) {
         console.warn('[MP-BATCH] ⚠️ No marketplace data for:', misses);
+        warned.add('mp-misses');
+        (window as any).__mpWarned = warned;
       }
 
       return resultMap;
