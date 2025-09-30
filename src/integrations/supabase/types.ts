@@ -7797,6 +7797,30 @@ export type Database = {
           },
         ]
       }
+      requirement_option_counts_by_block: {
+        Row: {
+          block_id: string
+          has_ace_credit: boolean
+          has_clep: boolean
+          options_count: number
+          updated_at: string
+        }
+        Insert: {
+          block_id: string
+          has_ace_credit?: boolean
+          has_clep?: boolean
+          options_count?: number
+          updated_at?: string
+        }
+        Update: {
+          block_id?: string
+          has_ace_credit?: boolean
+          has_clep?: boolean
+          options_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       requirement_options: {
         Row: {
           created_at: string | null
@@ -11435,15 +11459,6 @@ export type Database = {
           },
         ]
       }
-      requirement_option_counts_by_block: {
-        Row: {
-          block_id: string | null
-          has_ace_credit: boolean | null
-          has_clep: boolean | null
-          options_count: number | null
-        }
-        Relationships: []
-      }
       requirement_options_view: {
         Row: {
           cost_usd: number | null
@@ -11850,6 +11865,10 @@ export type Database = {
         Returns: undefined
       }
       refresh_career_steps_with_levels: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      refresh_requirement_option_counts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
