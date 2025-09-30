@@ -51,13 +51,15 @@ export function normalizeProgramCompareLanes(
     // IT program (lower lanes)
     if (b.program_id === "bs_it") {
       // Everything IT (Y2 cores/electives, Y3 ghost, Y4 capstone) sits in the lower band
-      console.log('[DEBUG] Normalizing IT node to DOWN_CORE lane:', {
-        id: b.id,
-        program_id: b.program_id,
-        level_year: b.level_year,
-        old_position_y: b.position_y,
-        new_position_y: ROW.DOWN_CORE
-      });
+      if (import.meta.env.DEV && Math.random() < 0.02) {
+        console.log('[DEBUG] Normalizing IT node to DOWN_CORE lane:', {
+          id: b.id,
+          program_id: b.program_id,
+          level_year: b.level_year,
+          old_position_y: b.position_y,
+          new_position_y: ROW.DOWN_CORE
+        });
+      }
       return { ...b, position_y: ROW.DOWN_CORE };
     }
 

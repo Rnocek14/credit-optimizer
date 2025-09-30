@@ -1093,11 +1093,7 @@ export function applyManualLayout(
     console.assert(!hasHeaders, '[REGRESSION] Header nodes should not be rendered on canvas - all labeling should be in ComparePicker widget');
   }
   
-  // Fit view once after positions are set
-  setTimeout(() => {
-    fitView();
-    console.log('[ManualLayout] Applied positions and fitted view');  
-  }, 100);
+  // Note: fitView is handled by useFrameLockedFitView hook - no need to call it here
 }
 
 /**

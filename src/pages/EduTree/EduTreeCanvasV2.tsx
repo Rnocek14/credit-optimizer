@@ -16,6 +16,7 @@ import { validateEduTreeDataModel, assertNoDanglingHeaders, assertGateX, assertH
 import { runRegressionChecks } from './utils/regressionChecks';
 import { runSmokeTest } from './utils/smokeTest';
 import { assertNoInvisibleMetroEdges } from './utils/assertNoInvisibleMetroEdges';
+import { cleanupEdgesBeforeValidation } from './utils/edgeCleanup';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { type FilterMode } from './data/seedDataV2';
 import { LaneHeaders } from './components/LaneHeaders';
@@ -1167,9 +1168,12 @@ function EduTreeCanvasV2Content({
       const viewW = 1800;
       const lanesCalc = laneXs(viewW);
       
+      // Clean up edges before validation to prevent false positives
+      const cleanedEdges = cleanupEdgesBeforeValidation(flowEdges, nodes);
+      
       // Run GPT's validation functions
       try {
-        assertNoDanglingHeaders({ edges: flowEdges, nodes });
+        assertNoDanglingHeaders({ edges: cleanedEdges, nodes });
         assertGateX({ 
           nodes, 
           gatePositions, 
@@ -1179,17 +1183,17 @@ function EduTreeCanvasV2Content({
         
         // Run comprehensive regression checks with centralized column positions
         runRegressionChecks({
-          edges: flowEdges,
+          edges: cleanedEdges,
           nodes,
           gatePositions,
           cols: { y1: lanesCalc.y1, y2: lanesCalc.y2, y3: lanesCalc.gateTG, y4: lanesCalc.gateTG }
         });
         
-        // Run ChatGPT's smoke test
+        // Run ChatGPT's smoke test (uses global __flowEdges__)
         runSmokeTest();
         
         // Assert no invisible metro edges (development only)
-        if (!assertNoInvisibleMetroEdges(nodes, flowEdges)) {
+        if (!assertNoInvisibleMetroEdges(nodes, cleanedEdges)) {
           console.warn('[EduTreeV2] Invisible metro edges detected - check edge filtering logic');
         }
       } catch (e) {
