@@ -342,6 +342,18 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   // Enrich blocks with marketplace and selection data
   const enrichedBlocks = useMemo(() => {
+    // DIAGNOSTIC: Dump first 10 blocks' MP join result (Step 3 from checklist)
+    if (typeof window !== 'undefined' && !(window as any).__mpEnrichOnce) {
+      (window as any).__mpEnrichOnce = true;
+      console.log('[ENRICH:sample] First 10 blocks with MP lookup:',
+        blocks.slice(0, 10).map(b => ({
+          id: b.id,
+          mp: getMpInfoForBlock(marketplaceData, String(b.id)),
+          isGate: String(b.id).startsWith('gate-')
+        }))
+      );
+    }
+    
     return blocks.map(block => {
       const isGate = String(block.id).startsWith('gate-');
       const mpInfo = isGate 

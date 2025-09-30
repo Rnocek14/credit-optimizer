@@ -195,6 +195,12 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
         (window as any).__lastReqIds = requirementIds;
         (window as any).__mpCandidateKeys = uniqueKeys;
         (window as any).__mpResultNodeIds = Array.from(resultMap.keys());
+        // DIAGNOSTIC: Expose map for manual testing (Step 4/5c from checklist)
+        (window as any).__MP_MAP = resultMap;
+        // DIAGNOSTIC: Print sample keys for validation (Step 4 from checklist)
+        console.log('[MP-MAP:keys] Sample of resultMap keys (first 50):', 
+          Array.from(resultMap.keys()).slice(0, 50)
+        );
       }
 
       // Log misses for debugging (one warning per mount)

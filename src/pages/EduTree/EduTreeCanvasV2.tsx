@@ -90,6 +90,17 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   
   // SHOW_MP is computed at module level (see top of file)
   
+  // DIAGNOSTIC: Log each node's marketplace state (Step 2 from checklist)
+  useEffect(() => {
+    console.log('[REQNODE]', blockId, { 
+      SHOW_MP, 
+      optionsCount, 
+      isFinite: Number.isFinite(optionsCount),
+      greaterThanZero: optionsCount > 0,
+      rawData: data
+    });
+  }, [blockId, optionsCount]);
+  
   // Extract track and program info for styling
   const trackId = data.trackId || blockData?.track_id || blockData?.block?.track_id;
   const programId = data.programId || blockData?.program_id || blockData?.block?.program_id;
@@ -172,13 +183,14 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       )}
       
       {/* Phase 2: Course marketplace chips - gated behind feature flag */}
-      {SHOW_MP && Number.isFinite(optionsCount) && optionsCount > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]">
+      {/* DIAGNOSTIC: Temporarily always show to see what's coming through (Step 1 from checklist) */}
+      {SHOW_MP && (
+        <div className="mt-2 flex flex-wrap gap-1 items-center text-[10px]" title="mp-chip-diag">
           <button
             onClick={() => setModalOpen(true)}
             className="px-2 py-0.5 rounded-full bg-surface border border-border/50 hover:bg-primary/10 hover:border-primary/50 transition-colors cursor-pointer"
           >
-            Options: {optionsCount}
+            Options: {String(optionsCount ?? '∅')}
           </button>
           {hasAceCredit && (
             <span className="px-1.5 py-0.5 rounded bg-amber-100/60 text-amber-700 border border-amber-200/50">
