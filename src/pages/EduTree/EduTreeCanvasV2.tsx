@@ -95,14 +95,13 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
   
   // DIAGNOSTIC: Log marketplace state in dev only
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[REQNODE]', blockId, { 
-        SHOW_MP, 
-        optionsCount, 
-        isFinite: Number.isFinite(optionsCount),
-        greaterThanZero: optionsCount > 0
-      });
-    }
+    if (process.env.NODE_ENV !== 'development') return;
+    console.log('[REQNODE]', blockId, { 
+      SHOW_MP, 
+      optionsCount, 
+      isFinite: Number.isFinite(optionsCount),
+      greaterThanZero: Number(optionsCount) > 0
+    });
   }, [blockId, optionsCount, SHOW_MP]);
   
   // Extract track and program info for styling
@@ -183,6 +182,17 @@ const RequirementNode = ({ data }: { data: V2NodeData }) => {
       {data.trackId && (
         <div className="text-xs font-medium text-primary mt-1">
           {data.trackId.toUpperCase()}
+        </div>
+      )}
+      
+      {/* TEMP DIAGNOSTIC: Dev-only chip to debug marketplace data flow */}
+      {process.env.NODE_ENV === 'development' && SHOW_MP && (
+        <div
+          onClick={() => setModalOpen(true)}
+          className="mt-2 px-2 py-0.5 rounded-full border border-border/50 text-muted-foreground cursor-pointer text-[10px]"
+          title="Dev diagnostic: shows raw count even if zero"
+        >
+          Options: {String(optionsCount ?? '∅')}
         </div>
       )}
       
@@ -326,12 +336,13 @@ const GateNode = ({ data }: { data: V2NodeData }) => {
   );
 };
 
-const nodeTypes = {
+// Memoize nodeTypes to prevent React Flow from remounting nodes
+const nodeTypes = useMemo(() => ({
   requirement: RequirementNode,
   gate: GateNode,
   header: HeaderNode,
   emptyYear: EmptyYearNode
-};
+}), []);
 
 const edgeTypes = {
   gate: GateEdge,
@@ -639,6 +650,10 @@ function EduTreeCanvasV2Content({
       // Make debugging tools available on window
       (window as any).getNodes = () => safeNodes;
       (window as any).getEdges = () => processedEdges;
+      (window as any).__rfNodes = safeNodes;
+      (window as any).__flowNodes__ = safeNodes; // alias
+      (window as any).__flowEdges__ = processedEdges;
+      
       (window as any).checkReactFlowPane = () => {
         const pane = document.querySelector('.react-flow__pane');
         if (pane) {

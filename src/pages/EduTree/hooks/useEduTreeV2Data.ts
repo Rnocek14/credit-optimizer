@@ -3,7 +3,7 @@
  * Bypasses legacy systems when V2 flags are active
  */
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
 import { usePathHighlight } from '../ctx/PathHighlightContext';
@@ -308,6 +308,13 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   // Batch fetch marketplace data and selected courses
   const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
   const { data: selectedCoursesData } = useUserPlanSelections(userPlan?.id);
+  
+  // Expose marketplace data map for dev console debugging
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      (window as any).__lastMpMap = marketplaceData;
+    }
+  }, [marketplaceData]);
 
   // Phase 3: Gate aggregation (chips show transferables) - Declarative rules
   const gateAggregates = useMemo(() => {
