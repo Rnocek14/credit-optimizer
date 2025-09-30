@@ -38,7 +38,11 @@ export function CompactDevPanel({ dev, setDev, effectiveFlags, effectiveFilterMo
     }
   }, [isExpanded]);
 
-  if (process.env.NODE_ENV !== 'development') {
+  // Show in dev mode OR if localStorage flag is set (allows testing in Preview)
+  const showDevControls = process.env.NODE_ENV === 'development' || 
+    (typeof window !== 'undefined' && localStorage.getItem('dev') === '1');
+
+  if (!showDevControls) {
     return null;
   }
 
