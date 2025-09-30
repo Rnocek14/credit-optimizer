@@ -7,10 +7,32 @@ import { useMemo } from 'react';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
 import { usePathHighlight } from '../ctx/PathHighlightContext';
-import { useBatchRequirementOptions } from '@/hooks/useBatchRequirementOptions';
+import { useBatchRequirementOptions, marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
 import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
+
+// Tolerant marketplace lookup: tries direct block.id, then all candidate keys
+function getMpInfoForBlock(marketplaceData: Map<string, MPInfo> | undefined, blockId: string): MPInfo | undefined {
+  if (!marketplaceData) return undefined;
+  
+  // Fast path: direct match
+  const direct = marketplaceData.get(blockId);
+  if (direct) return direct;
+
+  // Tolerant path: try all candidate keys (seed id -> db slugs like 'cs-elec', 'y1-foundations', etc.)
+  for (const candidateKey of marketplaceKeysFromNodeId(blockId)) {
+    const hit = marketplaceData.get(candidateKey);
+    if (hit) {
+      // Track backfill usage for debugging
+      (window as any).__mpSlugBackfills ??= new Set<string>();
+      (window as any).__mpSlugBackfills.add(`${blockId}→${candidateKey}`);
+      return hit;
+    }
+  }
+  
+  return undefined;
+}
 
 export interface UseEduTreeV2DataResult {
   blocks: V2RequirementBlock[];
@@ -320,38 +342,26 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   // Enrich blocks with marketplace and selection data
   const enrichedBlocks = useMemo(() => {
-    // Debug: Log marketplace data once
-    if (typeof window !== 'undefined' && marketplaceData) {
-      const w = window as any;
-      if (!w.__mpEnrichDebugLogged) {
-        const mpKeys = Array.from(marketplaceData.keys());
-        const blockIds = blocks.slice(0, 10).map(b => b.id);
-        console.log('[MP-ENRICH] Debug info:', {
-          marketplaceDataSize: marketplaceData.size,
-          marketplaceKeys: mpKeys.slice(0, 15),
-          sampleBlockIds: blockIds,
-          sampleMatch: blockIds.map(id => ({
-            blockId: id,
-            hasData: marketplaceData.has(id),
-            data: marketplaceData.get(id)
-          }))
-        });
-        w.__mpEnrichDebugLogged = true;
-      }
-    }
-
     return blocks.map(block => {
       const isGate = String(block.id).startsWith('gate-');
-      const mpInfo = isGate ? gateAggregates.get(block.id) : marketplaceData?.get(block.id);
+      const mpInfo = isGate 
+        ? gateAggregates.get(block.id)
+        : getMpInfoForBlock(marketplaceData, String(block.id));
       const selectedCourse = selectedCoursesData?.get(block.id);
 
       if (!mpInfo && !selectedCourse && !userPlan?.id) return block;
 
+      // Ensure optionsCount is a number
+      const optionsCountNum = 
+        mpInfo && typeof mpInfo.optionsCount !== 'number'
+          ? Number(mpInfo.optionsCount)
+          : mpInfo?.optionsCount;
+
       return {
         ...block,
-        optionsCount: mpInfo?.optionsCount,
-        hasAceCredit: mpInfo?.hasAceCredit,
-        hasClep: mpInfo?.hasClep,
+        optionsCount: optionsCountNum,
+        hasAceCredit: !!mpInfo?.hasAceCredit,
+        hasClep: !!mpInfo?.hasClep,
         selectedCourse,
         planId: userPlan?.id,
         // gate CSS helpers

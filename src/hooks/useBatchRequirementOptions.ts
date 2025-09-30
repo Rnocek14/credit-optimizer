@@ -152,24 +152,40 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
       // Map results back to original node IDs (use max/sum for collisions)
       const resultMap: MPMap = new Map<string, MPInfo>();
       for (const d of rows) {
-        const nodeId = pickNodeId(String(d.block_id).toLowerCase());
-        if (!nodeId) continue;
+        const dbSlug = String(d.block_id).toLowerCase();
+        const nodeId = pickNodeId(dbSlug);
         
-        const next = {
-          optionsCount: d.options_count ?? 0,
+        const info: MPInfo = {
+          optionsCount: Number(d.options_count ?? d.count ?? 0),
           hasAceCredit: !!d.has_ace_credit,
           hasClep: !!d.has_clep,
         };
 
-        const existing = resultMap.get(nodeId);
-        if (!existing) {
-          resultMap.set(nodeId, next);
+        // Dual-key strategy: key by both resolved nodeId (seed id) and raw DB slug
+        // This makes lookup tolerant to seed-ID vs DB-slug differences
+        if (nodeId) {
+          const existing = resultMap.get(nodeId);
+          if (!existing) {
+            resultMap.set(nodeId, info);
+          } else {
+            // Handle multi-row collisions: use max for counts, OR for booleans
+            resultMap.set(nodeId, {
+              optionsCount: Math.max(existing.optionsCount, info.optionsCount),
+              hasAceCredit: existing.hasAceCredit || info.hasAceCredit,
+              hasClep: existing.hasClep || info.hasClep,
+            });
+          }
+        }
+        
+        // Also key by raw DB slug for tolerant lookup
+        const existingSlug = resultMap.get(dbSlug);
+        if (!existingSlug) {
+          resultMap.set(dbSlug, info);
         } else {
-          // Handle multi-row collisions: use max for counts, OR for booleans
-          resultMap.set(nodeId, {
-            optionsCount: Math.max(existing.optionsCount, next.optionsCount),
-            hasAceCredit: existing.hasAceCredit || next.hasAceCredit,
-            hasClep: existing.hasClep || next.hasClep,
+          resultMap.set(dbSlug, {
+            optionsCount: Math.max(existingSlug.optionsCount, info.optionsCount),
+            hasAceCredit: existingSlug.hasAceCredit || info.hasAceCredit,
+            hasClep: existingSlug.hasClep || info.hasClep,
           });
         }
       }
