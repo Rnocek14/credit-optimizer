@@ -815,16 +815,14 @@ export function applyManualLayout(
   // Combine regular nodes with header nodes
   let allNodes = [...nodes, ...headerNodes];
   
-  // DIAGNOSTIC: Expose pre-layout and post-layout nodes for debugging
+  // DIAGNOSTIC: Expose pre-layout nodes for debugging
   if (process.env.NODE_ENV === 'development') {
     (window as any).__preLayoutNodes = nodes.map(n => ({
       id: n.id,
       type: n.type,
       optionsCount: n.data?.optionsCount,
       mpSig: n.data?.mpSig,
-      dataKeys: Object.keys(n.data || {})
     }));
-    (window as any).__postLayoutNodes = allNodes; // Will be updated after lane packing
   }
   
   // Apply comprehensive lane packing at the very end (after all positioning tweaks)
@@ -1074,12 +1072,13 @@ export function applyManualLayout(
       type: n.type,
       optionsCount: n.data?.optionsCount,
       mpSig: n.data?.mpSig,
-      dataKeys: Object.keys(n.data || {})
     }));
-    console.log('[ManualLayout] Diagnostic: Data preservation check', {
-      samplePreLayout: (window as any).__preLayoutNodes?.slice(0, 3),
-      samplePostLayout: (window as any).__postLayoutNodes?.slice(0, 3)
-    });
+    
+    const pre = (window as any).__preLayoutNodes?.slice(0, 5) || [];
+    const post = (window as any).__postLayoutNodes?.slice(0, 5) || [];
+    console.log('[ManualLayout] Data preservation check:');
+    console.table(pre);
+    console.table(post);
   }
   
   onApply(allNodes, sanitizedEdges);
