@@ -42,7 +42,11 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
 }
 
 // Dev banner (once per load; never in prod or SSR)
-if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+const IS_PROD =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.PROD) ||
+  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production');
+
+if (typeof window !== 'undefined' && !IS_PROD) {
   warnOnce('dev-banner', '[Dev] Marketplace v%s, Evidence v%s, IN_CHUNK=%d', VERSION, EVIDENCE_VERSION, IN_CHUNK);
 }
 

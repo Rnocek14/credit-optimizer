@@ -74,7 +74,10 @@ export async function auditSeeds(blocks: Block[], selectedPrograms: string[]): P
   }
 
   // Marketplace presence (skip if AUDIT_MP=false)
-  if (process.env.AUDIT_MP !== 'false') {
+  const IS_DEV = typeof window !== 'undefined';
+  const AUDIT_MP = IS_DEV; // Only audit marketplace in browser dev environments
+  
+  if (AUDIT_MP) {
     const candidates = Array.from(reqIds).flatMap(marketplaceKeysFromNodeId);
     const unique = Array.from(new Set(candidates.map(k => String(k).toLowerCase())));
     const present = new Set<string>();
@@ -118,8 +121,9 @@ export function printAuditReport(result: Result) {
   result.issues.forEach(i => console.warn(' -', i));
   console.groupEnd();
   
-  // CI mode: fail on issues
-  if (process.env.AUDIT_SEEDS === 'true') {
+  // CI mode: fail on issues (only in Node.js environments with process.env)
+  const IS_CI_MODE = typeof process !== 'undefined' && process.env?.AUDIT_SEEDS === 'true';
+  if (IS_CI_MODE) {
     console.error('[SeedAudit] Failing CI due to seed issues');
     throw new Error(`Seed audit failed with ${result.issues.length} issue(s)`);
   }

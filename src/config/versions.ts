@@ -3,6 +3,6 @@
  * Bump these when schema/API changes require cache invalidation
  */
 
-export const MARKETPLACE_VERSION = 'v3';    // bump on schema/transform changes
-export const EVIDENCE_VERSION    = 'v2';    // bump when evidence structure changes
-export const IN_CHUNK            = 500;     // keep in sync with Postgres params
+export const MARKETPLACE_VERSION = '2025-09-29' as const;
+export const EVIDENCE_VERSION    = '2025-09-29' as const;
+export const IN_CHUNK: number    = 500;     // keep as number for arithmetic
