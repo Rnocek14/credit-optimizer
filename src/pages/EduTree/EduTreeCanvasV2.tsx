@@ -420,19 +420,6 @@ function EduTreeCanvasV2Content({
     // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
   }, [gateConfigKey, nodes, updateNodeInternals]);
   
-  // Enhanced React Flow monitoring and recovery system
-    }
-    gateConfigRef.current = gateConfigKey;
-
-    const visibleGateIds = nodes
-      .filter(n => n.type === 'gate' && !n.hidden)
-      .map(n => n.id);
-
-    visibleGateIds.forEach(id => updateNodeInternals(id));
-
-    // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
-  }, [gateConfigKey, nodes, updateNodeInternals]);
-  
   // Phase 4: Seed auditor (dev-only safety net)
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return;
