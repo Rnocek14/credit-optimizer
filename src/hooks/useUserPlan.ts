@@ -91,7 +91,16 @@ export function useAddCourseToPlan() {
       return data;
     },
     onSuccess: (_, variables) => {
+      // Phase 3: Invalidate EduTree-related queries
       queryClient.invalidateQueries({ queryKey: ['user-plan-courses', variables.planId] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-selections', variables.planId] });
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
+      
+      console.log('[Course Mutation] Invalidated EduTree queries after adding course');
+      
       toast({
         title: 'Course added to plan',
         description: 'The course has been added to your degree plan.',
@@ -121,7 +130,16 @@ export function useRemoveCourseFromPlan() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Phase 3: Invalidate EduTree-related queries
       queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-selections'] });
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
+      
+      console.log('[Course Mutation] Invalidated EduTree queries after removing course');
+      
       toast({
         title: 'Course removed',
         description: 'The course has been removed from your plan.',

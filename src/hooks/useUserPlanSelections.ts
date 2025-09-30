@@ -28,5 +28,6 @@ export function useUserPlanSelections(planId?: string) {
       );
     },
     enabled: !!planId,
+    staleTime: 30_000, // 30 seconds - fresher data for selections
   });
 }

@@ -8,6 +8,13 @@ export const QUERY_KEYS = {
   USER_XP: (userId?: string, trackId?: string) => ['user-xp', userId, trackId],
   USER_LEVEL: (userId?: string, trackId?: string) => ['user-level', userId, trackId],
   
+  // EduTree V2 data - Live course/block data with real-time subscriptions
+  EDU_COURSES: () => ['edu-courses'] as const,
+  REQUIREMENT_BLOCKS: () => ['requirement-blocks'] as const,
+  BATCH_REQUIREMENT_OPTIONS: (requirementIds: string[]) => ['req-opt-batch', ...requirementIds.sort()] as const,
+  USER_PLAN_SELECTIONS: (planId?: string) => ['user-plan-selections', planId] as const,
+  USER_PLAN_COURSES: (planId?: string) => ['user-plan-courses', planId] as const,
+  
   // Track-aware data
   COURSE_PROGRESS: (userId?: string, trackId?: string) => ['course-progress', userId, trackId],
   COURSE_HISTORY: (userId?: string, trackId?: string) => ['course-history', userId, trackId],

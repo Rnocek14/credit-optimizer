@@ -159,6 +159,9 @@ export function useCourseProgress(trackId?: string) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, courseTrackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, courseTrackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, courseTrackId) });
+      // Invalidate EduTree queries for course changes
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
       toast({
         title: "Course Started!",
         description: "You've started learning this course and earned 5 XP!"
@@ -203,6 +206,10 @@ export function useCourseProgress(trackId?: string) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(undefined, trackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.LEARNING_MILESTONES(undefined, trackId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_LEVEL(undefined, trackId) });
+      // Invalidate EduTree queries for course completion
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-selections'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_TRACK_XP(undefined, trackId) });
       toast({
         title: "Course Completed! 🎉",

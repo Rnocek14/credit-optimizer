@@ -1,9 +1,11 @@
 /**
  * EduTree V2 Data Hook - Clean slate data loading
- * Bypasses legacy systems when V2 flags are active
+ * Now with live database queries + real-time subscriptions
  */
 
 import { useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useFeatureFlags } from '@/lib/featureFlags';
 import { GOLDEN_LAYOUT_SEED, filterBlocksByMode, filterEdgesByBlocks, type V2RequirementBlock, type V2Edge, type FilterMode } from '../data/seedDataV2';
 import { usePathHighlight } from '../ctx/PathHighlightContext';
@@ -11,6 +13,9 @@ import { useBatchRequirementOptions, marketplaceKeysFromNodeId } from '@/hooks/u
 import { useUserPlanSelections } from '@/hooks/useUserPlanSelections';
 import { useUserPlan } from '@/hooks/useUserPlan';
 import { aggregateGateMarketplaceData, type MPInfo } from '../utils/gateAggregation';
+
+// Data freshness diagnostic
+let __dataRecomputeCount = 0;
 
 // Tolerant marketplace lookup: tries direct block.id, then all candidate keys
 // NORMALIZE: force all keys to lowercase for consistent lookup
@@ -52,11 +57,109 @@ export interface UseEduTreeV2DataResult {
 export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2DataResult {
   const flags = useFeatureFlags();
   const pathHighlight = usePathHighlight();
+  const queryClient = useQueryClient();
   
   const isV2Mode = flags.eduTreeV2Grid && flags.eduTreeLayoutMode === 'manual_v1';
   
   // Get user plan for selected course enrichment
   const { data: userPlan } = useUserPlan();
+  
+  // Phase 1: Live database queries for courses and blocks
+  const { data: liveCoursesData } = useQuery({
+    queryKey: ['edu-courses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('edu_courses')
+        .select('*')
+        .order('code', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isV2Mode,
+    staleTime: 2 * 60_000, // 2 minutes
+  });
+
+  const { data: liveBlocksData } = useQuery({
+    queryKey: ['requirement-blocks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('requirement_blocks')
+        .select('*')
+        .order('level_year', { ascending: true })
+        .order('title', { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isV2Mode,
+    staleTime: 2 * 60_000,
+  });
+  
+  // Phase 2: Real-time subscriptions for course/block changes
+  useEffect(() => {
+    if (!isV2Mode) return;
+    
+    console.log('[EduTreeV2Data] Setting up real-time subscriptions');
+    
+    const courseChannel = supabase
+      .channel('edu-courses-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'edu_courses'
+        },
+        (payload) => {
+          console.log('[RT] edu_courses changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+          queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+          queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
+        }
+      )
+      .subscribe();
+
+    const blockChannel = supabase
+      .channel('requirement-blocks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requirement_blocks'
+        },
+        (payload) => {
+          console.log('[RT] requirement_blocks changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
+        }
+      )
+      .subscribe();
+
+    const optionsChannel = supabase
+      .channel('requirement-options-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'requirement_option_counts_by_block'
+        },
+        (payload) => {
+          console.log('[RT] requirement_option_counts_by_block changed:', payload);
+          queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+          queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[EduTreeV2Data] Cleaning up real-time subscriptions');
+      supabase.removeChannel(courseChannel);
+      supabase.removeChannel(blockChannel);
+      supabase.removeChannel(optionsChannel);
+    };
+  }, [isV2Mode, queryClient]);
   
   // REMOVED: Early return logic that was causing loading loops
   // Let downstream components handle graceful rendering when context is warming
@@ -160,9 +263,16 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       return { blocks: [], edges: [] };
     }
     
+    // Phase 4: Data freshness diagnostic
+    __dataRecomputeCount++;
+    const dataChecksum = `courses:${liveCoursesData?.length ?? 0}|blocks:${liveBlocksData?.length ?? 0}|seed:${GOLDEN_LAYOUT_SEED.blocks.length}`;
+    console.count('[DATA→NODES] recompute');
+    console.log('[DATA→NODES] checksum:', dataChecksum, '(recompute #' + __dataRecomputeCount + ')');
+    
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Using golden layout seed with filter mode:', effectiveFilterMode, isAutoMode ? '(auto-detected)' : '');
     console.log('[EduTreeV2Data] PHASE 5 DEBUG - Original filterMode:', filterMode, '→ effectiveFilterMode:', effectiveFilterMode);
     console.log('[EduTreeV2Data] Selected programs:', selectedPrograms);
+    console.log('[EduTreeV2Data] Live data:', { courses: liveCoursesData?.length ?? 0, blocks: liveBlocksData?.length ?? 0 });
     
     // DEBUG: Count both CS and IT nodes in original seed data
     const originalItNodes = GOLDEN_LAYOUT_SEED.blocks.filter(b => b.program_id === 'bs_it');
@@ -261,7 +371,7 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       blocks: blocksFinal,
       edges: filteredEdges
     };
-  }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms]);
+  }, [isV2Mode, effectiveFilterMode, isAutoMode, selectedPrograms, liveCoursesData, liveBlocksData]);
   
   // Extract requirement IDs for batch fetching (exclude ghosts/empty years)
   const requirementIds = useMemo(() => {

@@ -66,6 +66,11 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_HISTORY(userId, trackId) });
+      // Invalidate EduTree queries for course changes
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['requirement-blocks'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
       toast({
         title: "Course Parsed Successfully",
         description: "Course has been analyzed and added to your history",
@@ -185,6 +190,10 @@ export function useCourseIntelligencePipeline(userId: string, trackId?: string) 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.COURSE_PROGRESS(userId, trackId) });
+      // Invalidate EduTree queries for course changes
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-plan-selections'] });
       toast({
         title: "Added to Plan",
         description: "Course has been added to your learning plan",

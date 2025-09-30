@@ -279,6 +279,10 @@ export function submitCourseRating() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['course-details', data.course_id] });
       queryClient.invalidateQueries({ queryKey: ['enhanced-courses'] });
+      // Invalidate EduTree queries for course changes
+      queryClient.invalidateQueries({ queryKey: ['edu-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['batch-requirement-options'] });
+      queryClient.invalidateQueries({ queryKey: ['req-opt-batch'] });
       toast.success('Course rating submitted successfully!');
     },
     onError: (error) => {
