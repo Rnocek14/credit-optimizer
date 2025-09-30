@@ -671,6 +671,41 @@ function EduTreeCanvasV2Content({
       (window as any).checkInvalidNodes = () => {
         return safeNodes.filter(n => !Number.isFinite(n.position?.x) || !Number.isFinite(n.position?.y));
       };
+      
+      // MP Join Auditor - shows why joins succeeded/failed for each node
+      (window as any).__auditMp = () => {
+        const nodes = safeNodes.filter(n => (n?.type || '').includes('requirement'));
+        const mp = (window as any).__lastMpMap as Map<string, any> | undefined;
+        if (!mp) return console.warn('No __lastMpMap');
+
+        const keysFrom = (window as any).marketplaceKeysFromNodeId || ((id: string) => [id]);
+        const out = nodes.map(n => {
+          const blockId = ((n?.data as any)?.block?.id || (n?.data as any)?.id || n?.id || '').toLowerCase();
+          const direct = mp.has(blockId);
+          const candidates: string[] = Array.from(new Set(keysFrom(blockId).map(String).map((s: string) => s.toLowerCase())));
+          const hitCand = candidates.find((k: string) => mp.has(k)) as string | undefined;
+          
+          // Get options count from map
+          const optionsCountInMap = direct 
+            ? mp.get(blockId)?.optionsCount 
+            : hitCand 
+              ? mp.get(hitCand)?.optionsCount 
+              : null;
+          
+          return {
+            nodeId: n.id,
+            blockId,
+            directHit: direct,
+            candidateHit: !!hitCand,
+            hitKey: direct ? blockId : hitCand || null,
+            optionsCountInNode: (n?.data as any)?.optionsCount,
+            optionsCountInMap,
+            candidates
+          };
+        });
+        console.table(out);
+        return out;
+      };
     }
   }, [safeNodes, processedEdges]);
 

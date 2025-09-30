@@ -365,7 +365,10 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
       );
     }
     
-    return blocks.map(block => {
+    // Helper to convert to number without masking undefined
+    const asNum = (v: any) => (v === null || v === undefined || v === '') ? undefined : Number(v);
+    
+    const result = blocks.map(block => {
       const isGate = String(block.id).startsWith('gate-');
       const mpInfo = isGate 
         ? gateAggregates.get(block.id)
@@ -376,9 +379,10 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
 
       return {
         ...block,
-        optionsCount: Number(mpInfo?.optionsCount ?? 0),
-        hasAceCredit: !!mpInfo?.hasAceCredit,
-        hasClep: !!mpInfo?.hasClep,
+        // DON'T coerce to 0 - preserve undefined for "no join"
+        optionsCount: asNum(mpInfo?.optionsCount),
+        hasAceCredit: mpInfo?.hasAceCredit ?? undefined,
+        hasClep: mpInfo?.hasClep ?? undefined,
         selectedCourse,
         planId: userPlan?.id,
         // gate CSS helpers
@@ -389,10 +393,12 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
     
     // DIAGNOSTIC: Expose enriched blocks for console testing
     if (typeof window !== 'undefined') {
-      (window as any).__enriched = enrichedBlocks;
+      (window as any).__enriched = result;
+      // Expose the lookup helper for audit
+      (window as any).marketplaceKeysFromNodeId = marketplaceKeysFromNodeId;
     }
     
-    return enrichedBlocks;
+    return result;
   }, [blocks, marketplaceData, gateAggregates, selectedCoursesData, userPlan?.id]);
   
   return {
