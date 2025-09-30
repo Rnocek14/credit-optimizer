@@ -2,6 +2,9 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
+import { warnOnce } from "@/utils/warnOnce";
+
+const EVIDENCE_VERSION = 'evidence-v1';
 
 export type EvidenceSummary = {
   // catalog course ids the student has completed / is in-progress / pending transfer
@@ -30,22 +33,15 @@ export function useUserEvidence() {
   const user = state?.user;
 
   const { data } = useQuery({
-    queryKey: ['student-evidence', user?.id ?? 'anon'],
+    queryKey: ['student-evidence', EVIDENCE_VERSION, user?.id ?? 'anon'],
     enabled: !!user?.id,          // ❗️no calls when unauthenticated
     retry: false,                 // ❗️no retry loops on 400s
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('evidence-summary', {
-        body: { userId: user!.id }, // include if your function expects it
-      });
+      const { data, error } = await supabase.functions.invoke('evidence-summary');
 
       if (error) {
-        const warned: Set<string> = (typeof window !== 'undefined' && (window as any).__evidenceWarned) ?? new Set<string>();
-        if (!warned.has('evidence-400')) {
-          console.warn('[Evidence] summary failed once:', { status: error.status, message: error.message });
-          warned.add('evidence-400');
-          if (typeof window !== 'undefined') (window as any).__evidenceWarned = warned;
-        }
+        warnOnce('evidence-400', '[Evidence] summary failed once:', { status: error.status, message: error.message });
         return null as unknown as EvidenceSummary; // graceful fallback
       }
       return data as EvidenceSummary;

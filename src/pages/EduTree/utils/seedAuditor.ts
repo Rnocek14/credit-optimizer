@@ -116,4 +116,10 @@ export function printAuditReport(result: Result) {
   console.log('Stats:', result.stats);
   result.issues.forEach(i => console.warn(' -', i));
   console.groupEnd();
+  
+  // CI mode: fail on issues
+  if (process.env.AUDIT_SEEDS === 'true') {
+    console.error('[SeedAudit] Failing CI due to seed issues');
+    throw new Error(`Seed audit failed with ${result.issues.length} issue(s)`);
+  }
 }

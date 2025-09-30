@@ -404,6 +404,16 @@ function EduTreeCanvasV2Content({
   }, [effectiveFilterMode, selectedPrograms, nodes]);
 
   const gateConfigRef = useRef<string>('');
+  
+  // Micro-throttle gate handle updates to avoid same-frame duplicates
+  const scheduleGateUpdate = useMemo(() => {
+    let raf = 0;
+    return (fn: () => void) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fn);
+    };
+  }, []);
+
   useEffect(() => {
     if (gateConfigRef.current === gateConfigKey) {
       // console.debug('[EduTreeV2] Gate config unchanged; skipping');
@@ -411,14 +421,16 @@ function EduTreeCanvasV2Content({
     }
     gateConfigRef.current = gateConfigKey;
 
-    const visibleGateIds = nodes
-      .filter(n => n.type === 'gate' && !n.hidden)
-      .map(n => n.id);
+    scheduleGateUpdate(() => {
+      const visibleGateIds = nodes
+        .filter(n => n.type === 'gate' && !n.hidden)
+        .map(n => n.id);
 
-    visibleGateIds.forEach(id => updateNodeInternals(id));
+      visibleGateIds.forEach(id => updateNodeInternals(id));
 
-    // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
-  }, [gateConfigKey, nodes, updateNodeInternals]);
+      // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
+    });
+  }, [gateConfigKey, nodes, updateNodeInternals, scheduleGateUpdate]);
   
   // Phase 4: Seed auditor (dev-only safety net)
   useEffect(() => {

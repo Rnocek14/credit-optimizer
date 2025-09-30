@@ -283,21 +283,35 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   const { data: marketplaceData } = useBatchRequirementOptions(requirementIds);
   const { data: selectedCoursesData } = useUserPlanSelections(userPlan?.id);
 
-  // Phase 3: Gate aggregation (chips show transferables)
+  // Phase 3: Gate aggregation (chips show transferables) - Declarative rules
   const gateAggregates = useMemo(() => {
     if (!marketplaceData) return new Map<string, MPInfo>();
 
+    // Declarative aggregation rules - add new gates here
+    const AGG_RULES: Array<{ gateId: string; where(b: V2RequirementBlock): boolean }> = [
+      { 
+        gateId: 'gate-y2-programs', 
+        where: b => /^y1-/.test(String(b.id)) && 
+                   !String(b.id).startsWith('header-') && 
+                   !b.is_empty_year 
+      },
+      { 
+        gateId: 'gate-y3-tracks', 
+        where: b => /^y2-/.test(String(b.id)) && 
+                   !String(b.id).startsWith('header-') && 
+                   !b.is_empty_year &&
+                   (!selectedPrograms?.length || selectedPrograms.includes(b.program_id ?? ''))
+      },
+      // Future gates can be added here
+    ];
+
     const m = new Map<string, MPInfo>();
-
-    // Example: program gate at Y2 aggregates Y1 requirements
-    const y1Ids = blocks.filter(b => /^y1-/.test(String(b.id)) && !(b as any).is_header && !(b as any).is_empty_year).map(b => b.id);
-    if (y1Ids.length) m.set('gate-y2-programs', aggregateGateMarketplaceData(y1Ids, marketplaceData));
-
-    // Example: track gate at Y3 aggregates Y2 requirements for selected programs
-    const y2Ids = blocks
-      .filter(b => /^y2-/.test(String(b.id)) && (!selectedPrograms?.length || selectedPrograms.includes(b.program_id)))
-      .map(b => b.id);
-    if (y2Ids.length) m.set('gate-y3-tracks', aggregateGateMarketplaceData(y2Ids, marketplaceData));
+    for (const rule of AGG_RULES) {
+      const childIds = blocks.filter(rule.where).map(b => b.id);
+      if (childIds.length > 0) {
+        m.set(rule.gateId, aggregateGateMarketplaceData(childIds, marketplaceData));
+      }
+    }
 
     return m;
   }, [blocks, marketplaceData, selectedPrograms]);

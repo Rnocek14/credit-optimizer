@@ -1,37 +1,52 @@
-/* Gate aggregation chip styles */
+/* Gate aggregation chip styles with semantic design tokens */
 .chip {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  justify-content: center;
+  font-size: 0.75rem;
   font-weight: 500;
-  border-radius: 4px;
-  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 0.5rem;
+  padding: 0.125rem 0.5rem;
   border: 1px solid;
+  gap: 0.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chip-ace {
-  background-color: rgb(254 243 199 / 0.6);
-  color: rgb(180 83 9);
-  border-color: rgb(252 211 77 / 0.5);
+  background: rgba(245, 158, 11, 0.08);
+  color: hsl(38, 92%, 35%);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.chip-ace:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
 .chip-clep {
-  background-color: rgb(219 234 254 / 0.6);
-  color: rgb(29 78 216);
-  border-color: rgb(147 197 253 / 0.5);
+  background: rgba(59, 130, 246, 0.08);
+  color: hsl(217, 91%, 40%);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.chip-clep:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .chip-ghost {
-  background-color: rgb(243 244 246 / 0.6);
-  color: rgb(75 85 99);
-  border-color: rgb(209 213 219 / 0.5);
+  opacity: 0.7;
+  background: rgba(156, 163, 175, 0.08);
+  color: hsl(217, 10%, 50%);
+  border: 1px dashed rgba(156, 163, 175, 0.3);
 }
 
 /* CSS class helpers for aggregate detection */
 .node--agg-has-ace {
-  /* Custom styling if needed for gates with ACE aggregation */
+  /* Optional: subtle glow effect for gates with ACE */
 }
 
 .node--agg-has-clep {
-  /* Custom styling if needed for gates with CLEP aggregation */
+  /* Optional: subtle glow effect for gates with CLEP */
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
+import { warnOnce } from '@/utils/warnOnce';
 
 // Module-scope cache for key generation with versioning
 const VERSION = 'mp-keys-v1';
@@ -43,7 +44,7 @@ function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
 
 export function useBatchRequirementOptions(requirementIds: string[]) {
   return useQuery({
-    queryKey: ['req-opt-batch', requirementIds],
+    queryKey: ['req-opt-batch', VERSION, [...requirementIds].sort()],
     enabled: Array.isArray(requirementIds) && requirementIds.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -132,12 +133,9 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
       }
 
       // Log misses for debugging (one warning per mount)
-      const warned = (typeof window !== 'undefined' && (window as any).__mpWarned) ?? new Set<string>();
       const misses = requirementIds.filter(id => !resultMap.has(id));
-      if (misses.length > 0 && !warned.has('mp-misses')) {
-        console.warn('[MP-BATCH] ⚠️ No marketplace data for:', misses);
-        warned.add('mp-misses');
-        if (typeof window !== 'undefined') (window as any).__mpWarned = warned;
+      if (misses.length > 0) {
+        warnOnce('mp-misses', '[MP-BATCH] ⚠️ No marketplace data for:', misses);
       }
 
       return resultMap;
