@@ -410,16 +410,15 @@ function EduTreeCanvasV2Content({
     let raf = 0;
     const schedule = (fn: () => void) => {
       if (typeof requestAnimationFrame === 'function') {
-        cancelAnimationFrame(raf);
+        if (raf) cancelAnimationFrame(raf);
         raf = requestAnimationFrame(fn);
       } else {
-        fn(); // SSR/no-RAF fallback (no-op throttle)
+        fn(); // SSR / test env
       }
     };
     schedule.cancel = () => {
-      if (typeof cancelAnimationFrame === 'function') {
-        cancelAnimationFrame(raf);
-      }
+      if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
+      raf = 0;
     };
     return schedule;
   }, []);
