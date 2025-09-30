@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { marketplaceKeysFromNodeId } from '@/hooks/useBatchRequirementOptions';
 
+const IN_CHUNK = 500;
+
 type Block = {
   id: string;
   program_id?: string;
@@ -55,21 +57,43 @@ export async function auditSeeds(blocks: Block[], selectedPrograms: string[]): P
     [1, 2, 3, 4].forEach(y => { if (!years.includes(y)) issues.push(`Missing year ${y} blocks in ${p}`); });
   }
 
+  // Gate membership validation
+  const y1Ids = Array.from(reqIds).filter(id => /^y1-/.test(id));
+  const y2Ids = Array.from(reqIds).filter(id => /^y2-/.test(id));
+  
+  if (y1Ids.length === 0) {
+    issues.push('No Y1 requirements found to contribute to gate-y2-programs');
+  }
+  
+  const programSpecificY2 = y2Ids.filter(id => {
+    const block = blocks.find(b => String(b.id) === id);
+    return block && selectedPrograms.includes(block.program_id || '');
+  });
+  
+  if (selectedPrograms.length > 0 && programSpecificY2.length === 0) {
+    issues.push('No program-specific Y2 requirements found to contribute to gate-y3-tracks');
+  }
+
   // Marketplace presence
   const candidates = Array.from(reqIds).flatMap(marketplaceKeysFromNodeId);
   const unique = Array.from(new Set(candidates.map(k => String(k).toLowerCase())));
   const present = new Set<string>();
-  for (let i = 0; i < unique.length; i += 500) {
-    const part = unique.slice(i, i + 500);
-    const { data, error } = await supabase
-      .from('requirement_option_counts_by_block')
-      .select('block_id')
-      .in('block_id', part);
-    if (error) {
-      issues.push(`DB query error: ${error.message}`);
-      continue;
+  for (let i = 0; i < unique.length; i += IN_CHUNK) {
+    const part = unique.slice(i, i + IN_CHUNK);
+    try {
+      const { data, error } = await supabase
+        .from('requirement_option_counts_by_block')
+        .select('block_id')
+        .in('block_id', part);
+      if (error) {
+        issues.push(`DB query error: ${error.message}`);
+        continue;
+      }
+      data?.forEach(r => present.add(String(r.block_id).toLowerCase()));
+    } catch (e) {
+      // Handle Supabase connection issues silently in dev
+      console.warn('[SeedAudit] DB connection issue:', e);
     }
-    data?.forEach(r => present.add(String(r.block_id).toLowerCase()));
   }
   for (const id of reqIds) {
     const hasMatch = marketplaceKeysFromNodeId(id).some(k => present.has(k.toLowerCase()));

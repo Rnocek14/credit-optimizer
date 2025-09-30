@@ -2,8 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useMemo } from 'react';
 
-// Module-scope cache for key generation
+// Module-scope cache for key generation with versioning
+const VERSION = 'mp-keys-v1';
 const __mpCache = new Map<string, string[]>();
+
+// Clear cache on version changes (e.g., during hot reload)
+if (typeof window !== 'undefined' && (window as any).__mpCacheVersion !== VERSION) {
+  __mpCache.clear?.();
+  (window as any).__mpCacheVersion = VERSION;
+}
 
 // Generate candidate marketplace keys from a node ID (deterministic, ordered by distance)
 export function marketplaceKeysFromNodeId(id: string): string[] {
@@ -27,7 +34,8 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
 }
 
 // Chunk array for large IN() queries (Postgres limit ~32k params)
-function chunk<T>(arr: T[], size = 500): T[][] {
+const IN_CHUNK = 500;
+function chunk<T>(arr: T[], size = IN_CHUNK): T[][] {
   return Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => 
     arr.slice(i * size, (i + 1) * size)
   );
@@ -85,7 +93,11 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
         if (data) rows.push(...data);
       }
 
-      console.log('[MP-BATCH] 🗝️ candidate keys:', uniqueKeys.length, '→ rows:', rows.length);
+      console.log('[MP-BATCH]', { 
+        candidateKeys: uniqueKeys.length, 
+        rows: rows.length, 
+        chunks: Math.ceil(uniqueKeys.length / IN_CHUNK) 
+      });
 
       // Map results back to original node IDs (use max/sum for collisions)
       const resultMap = new Map<string, { optionsCount: number; hasAceCredit: boolean; hasClep: boolean }>();
@@ -120,12 +132,12 @@ export function useBatchRequirementOptions(requirementIds: string[]) {
       }
 
       // Log misses for debugging (one warning per mount)
-      const warned = (window as any).__mpWarned ?? new Set<string>();
+      const warned = (typeof window !== 'undefined' && (window as any).__mpWarned) ?? new Set<string>();
       const misses = requirementIds.filter(id => !resultMap.has(id));
       if (misses.length > 0 && !warned.has('mp-misses')) {
         console.warn('[MP-BATCH] ⚠️ No marketplace data for:', misses);
         warned.add('mp-misses');
-        (window as any).__mpWarned = warned;
+        if (typeof window !== 'undefined') (window as any).__mpWarned = warned;
       }
 
       return resultMap;

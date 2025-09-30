@@ -45,6 +45,7 @@ import { useSuffixCompare } from './hooks/useSuffixCompare';
 import './components/StabilityStyles.css';
 import './styles/trackOverlay.css';
 import './styles/reactFlowFix.css';
+import './styles/gateAggregation.css';
 import '../../styles/eduTreeHud.css';
 import { auditSeeds, printAuditReport } from './utils/seedAuditor';
 
@@ -398,16 +399,28 @@ function EduTreeCanvasV2Content({
       programs: Array.from(selectedPrograms ?? []).sort(),
       showPG: !!gatePositionsRef.current?.showPG,
       showTG: !!gatePositionsRef.current?.showTG,
-      // if gates are year-dependent:
-      years: Array.from(new Set(nodes.filter(n => n.type === 'gate').map(n => (n.data?.year ?? null)))).sort(),
+      years: Array.from(new Set(nodes.filter(n => n.type === 'gate').map(n => n.data?.year ?? null))).sort(),
     });
-  }, [effectiveFilterMode, selectedPrograms, gatePositionsRef.current?.showPG, gatePositionsRef.current?.showTG, nodes]);
+  }, [effectiveFilterMode, selectedPrograms, nodes]);
 
   const gateConfigRef = useRef<string>('');
   useEffect(() => {
     if (gateConfigRef.current === gateConfigKey) {
       // console.debug('[EduTreeV2] Gate config unchanged; skipping');
       return;
+    }
+    gateConfigRef.current = gateConfigKey;
+
+    const visibleGateIds = nodes
+      .filter(n => n.type === 'gate' && !n.hidden)
+      .map(n => n.id);
+
+    visibleGateIds.forEach(id => updateNodeInternals(id));
+
+    // console.debug('[EduTreeV2] Gate config changed; handles updated', { visibleGateIds });
+  }, [gateConfigKey, nodes, updateNodeInternals]);
+  
+  // Enhanced React Flow monitoring and recovery system
     }
     gateConfigRef.current = gateConfigKey;
 
@@ -433,6 +446,8 @@ function EduTreeCanvasV2Content({
       }
     })();
   }, [blocks, selectedPrograms]);
+
+  // Enhanced React Flow monitoring and recovery system
 
   // Enhanced React Flow monitoring and recovery system
   const eventDebugger = useReactFlowEventDebugger({

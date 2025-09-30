@@ -1,0 +1,37 @@
+/* Gate aggregation chip styles */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid;
+}
+
+.chip-ace {
+  background-color: rgb(254 243 199 / 0.6);
+  color: rgb(180 83 9);
+  border-color: rgb(252 211 77 / 0.5);
+}
+
+.chip-clep {
+  background-color: rgb(219 234 254 / 0.6);
+  color: rgb(29 78 216);
+  border-color: rgb(147 197 253 / 0.5);
+}
+
+.chip-ghost {
+  background-color: rgb(243 244 246 / 0.6);
+  color: rgb(75 85 99);
+  border-color: rgb(209 213 219 / 0.5);
+}
+
+/* CSS class helpers for aggregate detection */
+.node--agg-has-ace {
+  /* Custom styling if needed for gates with ACE aggregation */
+}
+
+.node--agg-has-clep {
+  /* Custom styling if needed for gates with CLEP aggregation */
+}

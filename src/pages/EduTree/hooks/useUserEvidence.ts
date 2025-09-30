@@ -40,11 +40,11 @@ export function useUserEvidence() {
       });
 
       if (error) {
-        const warned: Set<string> = (window as any).__evidenceWarned ?? new Set();
+        const warned: Set<string> = (typeof window !== 'undefined' && (window as any).__evidenceWarned) ?? new Set<string>();
         if (!warned.has('evidence-400')) {
           console.warn('[Evidence] summary failed once:', { status: error.status, message: error.message });
           warned.add('evidence-400');
-          (window as any).__evidenceWarned = warned;
+          if (typeof window !== 'undefined') (window as any).__evidenceWarned = warned;
         }
         return null as unknown as EvidenceSummary; // graceful fallback
       }
