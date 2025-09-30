@@ -15,6 +15,24 @@ if (typeof window !== 'undefined' && (window as any).__mpCacheVersion !== VERSIO
   (window as any).__mpCacheVersion = VERSION;
 }
 
+// Reverse mapping from seed data IDs to database slugs
+const SEED_TO_DB_SLUG: Record<string, string> = {
+  'y1-found': 'foundations',
+  'y1-math': 'mathematics',
+  'y1-genedab': 'general-education',
+  'y2-cs-core': 'core-i',
+  'y2-cs-elec': 'program-electives',
+  'y2-it-core': 'core-i',
+  'y2-it-elec': 'program-electives',
+  'y3-se-core': 'core-ii',
+  'y3-se-elec': 'track-electives',
+  'y3-ds-core': 'core-ii',
+  'y3-ds-elec': 'track-electives',
+  'y4-se-cap': 'capstone',
+  'y4-ds-cap': 'capstone',
+  'y4-it-cap': 'capstone',
+};
+
 // Generate candidate marketplace keys from a node ID (deterministic, ordered by distance)
 export function marketplaceKeysFromNodeId(id: string): string[] {
   const raw = String(id ?? '').trim().toLowerCase();
@@ -29,6 +47,17 @@ export function marketplaceKeysFromNodeId(id: string): string[] {
     base.replace(/_/g, '-'),                 // underscores → dashes
     base.replace(/^year-\d-/, ''),           // safeguard for alt seeds
   ];
+
+  // Add reverse mapping from seed data ID to database slug
+  const dbSlug = SEED_TO_DB_SLUG[base];
+  if (dbSlug) {
+    candidates.push(dbSlug);                 // foundations
+    // Also try year-prefixed version of the slug
+    const yearMatch = base.match(/^y(\d)-/);
+    if (yearMatch) {
+      candidates.push(`y${yearMatch[1]}-${dbSlug}`); // y1-foundations
+    }
+  }
 
   // de-dupe while preserving order
   const out = candidates.filter((k, i, a) => k && a.indexOf(k) === i);
