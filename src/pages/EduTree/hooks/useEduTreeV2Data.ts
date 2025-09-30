@@ -320,6 +320,26 @@ export function useEduTreeV2Data(filterMode: FilterMode = null): UseEduTreeV2Dat
   
   // Enrich blocks with marketplace and selection data
   const enrichedBlocks = useMemo(() => {
+    // Debug: Log marketplace data once
+    if (typeof window !== 'undefined' && marketplaceData) {
+      const w = window as any;
+      if (!w.__mpEnrichDebugLogged) {
+        const mpKeys = Array.from(marketplaceData.keys());
+        const blockIds = blocks.slice(0, 10).map(b => b.id);
+        console.log('[MP-ENRICH] Debug info:', {
+          marketplaceDataSize: marketplaceData.size,
+          marketplaceKeys: mpKeys.slice(0, 15),
+          sampleBlockIds: blockIds,
+          sampleMatch: blockIds.map(id => ({
+            blockId: id,
+            hasData: marketplaceData.has(id),
+            data: marketplaceData.get(id)
+          }))
+        });
+        w.__mpEnrichDebugLogged = true;
+      }
+    }
+
     return blocks.map(block => {
       const isGate = String(block.id).startsWith('gate-');
       const mpInfo = isGate ? gateAggregates.get(block.id) : marketplaceData?.get(block.id);
